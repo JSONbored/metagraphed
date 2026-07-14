@@ -272,6 +272,19 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/stake-quote?amount=1000&direction=stake",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.direction, "stake");
+      assert.ok(["alpha", "tao"].includes(body.data.expected_out_unit));
+      assert.equal(typeof body.data.expected_out, "number");
+      assert.equal(typeof body.data.spot_price_tao, "number");
+      assert.equal(typeof body.data.effective_price_tao, "number");
+      assert.equal(typeof body.data.price_impact_pct, "number");
+      assert.equal(typeof body.data.is_root, "boolean");
+    },
+  ],
+  [
     "/api/v1/subnets/7/weights?window=30d",
     (body) => {
       assert.equal(body.data.netuid, 7);
@@ -694,6 +707,19 @@ const checks = [
         body.data.stake_concentration === null ||
           typeof body.data.stake_concentration === "object",
       );
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/positions",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal(Array.isArray(body.data.positions), true);
+      assert.equal(typeof body.data.position_count, "number");
+      assert.equal(typeof body.data.total_stake_tao, "number");
     },
   ],
   [

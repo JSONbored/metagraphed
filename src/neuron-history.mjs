@@ -114,7 +114,7 @@ export function buildEconomicsTrends(rows, { window, capped } = {}) {
     if (!acc) {
       acc = {
         subnet_count: 0,
-        stake_sum: 0,
+        stake_sum_rao: 0n,
         stake_seen: false,
         validator_sum: 0,
         validator_seen: false,
@@ -135,7 +135,11 @@ export function buildEconomicsTrends(rows, { window, capped } = {}) {
     const miners = toFiniteOrNull(r.miner_count);
     const emission = toFiniteOrNull(r.emission_share);
     if (stake != null) {
-      acc.stake_sum += stake;
+      // Exact rao-integer BigInt accumulation, not float (#2924): this is a
+      // network-wide sum across every reporting subnet for the day, already
+      // well past 2^53-1's exact-double ceiling (~9,007,199 TAO at rao
+      // precision) -- see raoToTaoString's own header comment below.
+      acc.stake_sum_rao += BigInt(Math.round(stake * 1e9));
       acc.stake_seen = true;
     }
     if (validators != null) {
@@ -168,7 +172,7 @@ export function buildEconomicsTrends(rows, { window, capped } = {}) {
   const days = entries.map(([snapshot_date, acc]) => ({
     snapshot_date,
     subnet_count: acc.subnet_count,
-    total_stake_tao: acc.stake_seen ? roundTao(acc.stake_sum) : null,
+    total_stake_tao: acc.stake_seen ? raoToTaoString(acc.stake_sum_rao) : null,
     alpha_price_tao_weighted:
       acc.weighted_price_den > 0
         ? roundPrice(acc.weighted_price_num / acc.weighted_price_den)
@@ -201,6 +205,25 @@ function toFiniteOrNull(v) {
 
 function roundTao(v) {
   return Math.round(v * 1e6) / 1e6;
+}
+
+const RAO_PER_TAO = 1_000_000_000n;
+
+// Exact rao-precision decimal string, never a JS number (#2924): a network-
+// wide daily total_stake_tao sum is already well past 2^53-1's exact-double
+// ceiling (~9,007,199 TAO at rao precision) -- confirmed live 2026-07-14 at
+// ~328M TAO, 36x over. A double can't hold this many significant digits at
+// full rao precision, so both the BigInt accumulation above and this string
+// formatting (instead of returning a float) are required to avoid silently
+// corrupting the value. Mirrors the identical helper in
+// scripts/lib/economics-artifacts.mjs's buildEconomicsArtifact summary.
+// No negative-sign handling: total_stake_tao is a non-negative on-chain
+// quantity, so a negative sum is unreachable here -- would be untestable
+// dead code.
+function raoToTaoString(rao) {
+  const whole = rao / RAO_PER_TAO;
+  const frac = rao % RAO_PER_TAO;
+  return `${whole}.${frac.toString().padStart(9, "0")}`;
 }
 // Round a TAO sum, preserving null — so an unrounded D1 SUM(stake_tao)/SUM(
 // emission_tao) never leaks accumulated float noise, while a null SUM (cold/

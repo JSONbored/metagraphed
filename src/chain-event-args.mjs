@@ -81,6 +81,100 @@ const ACCOUNT_KEYS = new Set([
   // LimitOrders.execute_batched_orders' explicitly-typed nested "signer").
   "contract",
   "signer",
+  // Added 2026-07-14 (#5359/#61), two distinct gaps found while building
+  // POSITIONAL_FIELD_NAMES below:
+  // (1) ColdkeySwapped's args ARRIVE as a named object ({"new_coldkey":...,
+  //     "old_coldkey":...}, confirmed live) but stayed raw hex anyway --
+  //     the exact key names were simply never added here, same root cause
+  //     as the 2026-07-12 new_hotkey/old_hotkey gap this set already fixed,
+  //     just the coldkey-swap counterpart the original sweep missed.
+  // (2) origin_coldkey/destination_coldkey (StakeTransferred) and
+  //     destination_hotkey (StakeMoved) are synthetic names this file
+  //     assigns via POSITIONAL_FIELD_NAMES below to positions confirmed
+  //     live to be 32-byte AccountId32 values with no name of their own
+  //     (StakeTransferred/StakeMoved's args arrive as bare unnamed tuples).
+  "new_coldkey",
+  "old_coldkey",
+  "origin_coldkey",
+  "destination_coldkey",
+  "destination_hotkey",
+]);
+
+// Confirmed positional field orders for events whose args arrive as an
+// UNNAMED tuple (a bare JSON array, no key at any depth -- confirmed live
+// 2026-07-14 for every entry below except TakeIncreased/TakeDecreased/
+// CRV3WeightsRevealed, which have zero rows in the currently-indexed
+// chain_events range to sample directly; those three are included on
+// strong structural grounds instead -- apps/indexer-rs's own extract()
+// match arms explicitly group TakeIncreased/TakeDecreased with the
+// confirmed-live-positional DelegateAdded under one "_take_changed" shape
+// comment, and CRV3WeightsRevealed's own comment ("NOTE netuid-first,
+// reverse of *Committed") describes the exact shape independently
+// confirmed live for its newer sibling TimelockedWeightsRevealed).
+//
+// Sourced from apps/indexer-rs/src/main.rs's extract() (the account_events
+// curator, which reads these same fields by position off the identical
+// decoded Value shape) cross-checked against a live chain_events.args
+// sample per event kind (metagraphed#5347's investigation tooling: DUMP_
+// METADATA-style live decode + a direct Postgres sample query, both
+// 2026-07-14). Deliberately partial: an event's real field count sometimes
+// exceeds what indexer-rs itself curates (e.g. StakeAdded/StakeRemoved
+// carry a confirmed-live 6th positional field indexer-rs never reads) --
+// every name here is either a real account (needed for the SS58-vs-hex
+// decision this whole file exists for) or copied straight from an
+// extract() doc comment; an unmapped trailing position falls through to
+// the existing generic decode exactly like today, rather than guess a name
+// for a field this codebase hasn't verified.
+const POSITIONAL_FIELD_NAMES = new Map([
+  ["SubtensorModule.NeuronRegistered", ["netuid", "uid", "hotkey"]],
+  [
+    "SubtensorModule.StakeAdded",
+    ["coldkey", "hotkey", "amount_tao", "alpha_amount", "netuid"],
+  ],
+  [
+    "SubtensorModule.StakeRemoved",
+    ["coldkey", "hotkey", "amount_tao", "alpha_amount", "netuid"],
+  ],
+  [
+    "SubtensorModule.StakeMoved",
+    [
+      "coldkey",
+      "hotkey",
+      "origin_netuid",
+      "destination_hotkey",
+      "destination_netuid",
+      "amount",
+    ],
+  ],
+  ["SubtensorModule.AxonServed", ["netuid", "hotkey"]],
+  ["SubtensorModule.WeightsSet", ["netuid", "uid"]],
+  ["SubtensorModule.NetworkAdded", ["netuid"]],
+  ["SubtensorModule.NetworkRemoved", ["netuid"]],
+  ["SubtensorModule.DelegateAdded", ["coldkey", "hotkey", "take"]],
+  ["SubtensorModule.TakeIncreased", ["coldkey", "hotkey", "take"]],
+  ["SubtensorModule.TakeDecreased", ["coldkey", "hotkey", "take"]],
+  ["SubtensorModule.CRV3WeightsCommitted", ["who", "netuid", "commit_hash"]],
+  ["SubtensorModule.CRV3WeightsRevealed", ["netuid", "who"]],
+  [
+    "SubtensorModule.TimelockedWeightsCommitted",
+    ["who", "netuid", "commit_hash", "reveal_round"],
+  ],
+  ["SubtensorModule.TimelockedWeightsRevealed", ["netuid", "who"]],
+  [
+    "SubtensorModule.StakeSwapped",
+    ["coldkey", "hotkey", "origin_netuid", "destination_netuid", "amount"],
+  ],
+  [
+    "SubtensorModule.StakeTransferred",
+    [
+      "origin_coldkey",
+      "destination_coldkey",
+      "hotkey",
+      "origin_netuid",
+      "destination_netuid",
+      "amount",
+    ],
+  ],
 ]);
 
 function isByteArray(v, len) {
@@ -325,10 +419,12 @@ function decode(value, keyHint, ctx) {
  * nodes worth a field-specific collapse once decoded (ENUM_PAYLOAD_FIELDS).
  *
  * `ctx` is the emitting event's `{pallet, method}` (pass `row.pallet`/
- * `row.method` from the Postgres row) -- used only by the narrow
- * TEXTUAL_FIELDS/HEX_BLOB_FIELDS/ENUM_PAYLOAD_FIELDS allowlists above; omit
- * it and every other decode still works identically, just without those
- * fields' extra treatment.
+ * `row.method` from the Postgres row) -- used by the narrow TEXTUAL_FIELDS/
+ * HEX_BLOB_FIELDS/ENUM_PAYLOAD_FIELDS allowlists above AND by
+ * POSITIONAL_FIELD_NAMES below; omit it and every other decode still works
+ * identically, just without those fields' extra treatment (an untagged
+ * positional tuple then has no key hint at any depth, same as before
+ * POSITIONAL_FIELD_NAMES existed, and every account inside it renders hex).
  * Deliberately does NOT add a GENERIC byte-blob or enum-collapse heuristic
  * beyond the two fixed byte-array lengths (32/20) and the explicit
  * allowlists -- chain_events.args carries no per-field type string the way
@@ -337,5 +433,23 @@ function decode(value, keyHint, ctx) {
  * #4693/#4915 avoid elsewhere by consulting a typed descriptor's own `type`
  * first. */
 export function decodeChainEventArgs(args, ctx = null) {
-  return decode(normalizeChainEventValue(args), undefined, ctx);
+  const normalized = normalizeChainEventValue(args);
+  // Untagged positional tuples (a bare array, no key at any depth) get a
+  // synthetic per-position key hint for the handful of event kinds this
+  // file has confirmed the exact field order for (#5359/#61) -- restores
+  // the SAME SS58/hex decision every OTHER (named-object) event already
+  // gets, without changing the output shape: still an array, just with
+  // correctly-decoded elements instead of raw hex for the account ones. A
+  // position past the known names (or an event kind not in the map) falls
+  // through to `decode(item, undefined, ctx)`, identical to pre-#5359
+  // behavior.
+  if (ctx && Array.isArray(normalized)) {
+    const names = POSITIONAL_FIELD_NAMES.get(
+      `${ctx.pallet ?? ""}.${ctx.method ?? ""}`,
+    );
+    if (names) {
+      return normalized.map((item, i) => decode(item, names[i], ctx));
+    }
+  }
+  return decode(normalized, undefined, ctx);
 }

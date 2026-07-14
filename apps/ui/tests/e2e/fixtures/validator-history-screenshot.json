@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "schema_version": 1,
+  "data": {
+    "schema_version": 1,
+    "hotkey": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+    "window": "30d",
+    "point_count": 3,
+    "points": [
+      {
+        "snapshot_date": "2026-07-12",
+        "subnet_count": 2,
+        "total_stake_tao": 842000,
+        "total_emission_tao": 4.82,
+        "rewards_per_1000_tao": 0.00572
+      },
+      {
+        "snapshot_date": "2026-07-11",
+        "subnet_count": 2,
+        "total_stake_tao": 838000,
+        "total_emission_tao": 4.75,
+        "rewards_per_1000_tao": 0.00567
+      },
+      {
+        "snapshot_date": "2026-07-10",
+        "subnet_count": 2,
+        "total_stake_tao": 835000,
+        "total_emission_tao": 4.7,
+        "rewards_per_1000_tao": 0.00563
+      }
+    ]
+  },
+  "meta": { "generated_at": "2026-07-14T08:00:00.000Z" }
+}

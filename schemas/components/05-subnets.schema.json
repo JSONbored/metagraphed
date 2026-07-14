@@ -1377,7 +1377,11 @@
                 "properties": {
                   "subnet_count": { "type": "integer", "minimum": 0 },
                   "with_economics_count": { "type": "integer", "minimum": 0 },
-                  "total_stake_tao": { "type": "number", "minimum": 0 },
+                  "total_stake_tao": {
+                    "type": "string",
+                    "pattern": "^\\d+\\.\\d{9}$",
+                    "description": "Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding."
+                  },
                   "total_validators": { "type": "integer", "minimum": 0 },
                   "total_miners": { "type": "integer", "minimum": 0 },
                   "registration_open_count": { "type": "integer", "minimum": 0 }
@@ -1992,6 +1996,23 @@
           "validator_trust": { "type": ["number", "null"] }
         }
       },
+      "ColdkeyIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data.",
+        "required": ["has_identity"],
+        "properties": {
+          "has_identity": { "type": "boolean" },
+          "name": { "type": ["string", "null"] },
+          "url": { "type": ["string", "null"], "format": "uri" },
+          "github": { "type": ["string", "null"] },
+          "image": { "type": ["string", "null"], "format": "uri" },
+          "discord": { "type": ["string", "null"], "maxLength": 200 },
+          "description": { "type": ["string", "null"] },
+          "additional": { "type": ["string", "null"] },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
       "GlobalValidatorEntry": {
         "type": "object",
         "additionalProperties": false,
@@ -2000,12 +2021,18 @@
           "hotkey",
           "featured",
           "coldkey",
+          "coldkey_identity",
           "coldkey_count",
           "subnet_count",
           "uid_count",
           "take",
           "total_stake_tao",
+          "root_stake_tao",
+          "alpha_stake_tao",
           "total_emission_tao",
+          "nominator_count",
+          "apy_estimate",
+          "apy_estimate_eligible_subnet_count",
           "stake_dominance",
           "avg_validator_trust",
           "max_validator_trust",
@@ -2017,6 +2044,13 @@
           "hotkey": { "type": "string" },
           "featured": { "type": "boolean" },
           "coldkey": { "type": ["string", "null"] },
+          "coldkey_identity": {
+            "description": "The row's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat.",
+            "oneOf": [
+              { "$ref": "#/components/schemas/ColdkeyIdentity" },
+              { "type": "null" }
+            ]
+          },
           "coldkey_count": { "type": "integer", "minimum": 0 },
           "subnet_count": { "type": "integer", "minimum": 0 },
           "uid_count": { "type": "integer", "minimum": 0 },
@@ -2025,7 +2059,32 @@
             "description": "Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Global per-hotkey. Null if no SubtensorModule::Delegates entry existed at capture time."
           },
           "total_stake_tao": { "type": "number", "minimum": 0 },
+          "root_stake_tao": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao."
+          },
+          "alpha_stake_tao": {
+            "type": "number",
+            "minimum": 0,
+            "description": "total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao."
+          },
           "total_emission_tao": { "type": "number", "minimum": 0 },
+          "nominator_count": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan (see validator_nominator_counts) than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0."
+          },
+          "apy_estimate": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0."
+          },
+          "apy_estimate_eligible_subnet_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0."
+          },
           "stake_dominance": {
             "type": ["number", "null"],
             "minimum": 0,
@@ -2217,11 +2276,17 @@
           "schema_version",
           "hotkey",
           "coldkey",
+          "coldkey_identity",
           "coldkey_count",
           "subnet_count",
           "take",
           "total_stake_tao",
+          "root_stake_tao",
+          "alpha_stake_tao",
           "total_emission_tao",
+          "nominator_count",
+          "apy_estimate",
+          "apy_estimate_eligible_subnet_count",
           "avg_validator_trust",
           "max_validator_trust",
           "captured_at",
@@ -2232,6 +2297,13 @@
           "schema_version": { "type": "integer" },
           "hotkey": { "type": "string" },
           "coldkey": { "type": ["string", "null"] },
+          "coldkey_identity": {
+            "description": "The validator's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat.",
+            "oneOf": [
+              { "$ref": "#/components/schemas/ColdkeyIdentity" },
+              { "type": "null" }
+            ]
+          },
           "coldkey_count": { "type": "integer", "minimum": 0 },
           "subnet_count": { "type": "integer", "minimum": 0 },
           "take": {
@@ -2239,7 +2311,32 @@
             "description": "Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Null if no SubtensorModule::Delegates entry existed at capture time."
           },
           "total_stake_tao": { "type": "number", "minimum": 0 },
+          "root_stake_tao": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao."
+          },
+          "alpha_stake_tao": {
+            "type": "number",
+            "minimum": 0,
+            "description": "total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao."
+          },
           "total_emission_tao": { "type": "number", "minimum": 0 },
+          "nominator_count": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0."
+          },
+          "apy_estimate": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0."
+          },
+          "apy_estimate_eligible_subnet_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0."
+          },
           "avg_validator_trust": { "type": ["number", "null"] },
           "max_validator_trust": { "type": ["number", "null"] },
           "captured_at": { "type": ["string", "null"], "format": "date-time" },
@@ -2447,7 +2544,13 @@
         "properties": {
           "snapshot_date": { "type": "string" },
           "subnet_count": { "type": "integer", "minimum": 0 },
-          "total_stake_tao": { "type": ["number", "null"] },
+          "total_stake_tao": {
+            "oneOf": [
+              { "type": "string", "pattern": "^\\d+\\.\\d{9}$" },
+              { "type": "null" }
+            ],
+            "description": "Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide daily total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. Null only when no subnet reported a value that day."
+          },
           "alpha_price_tao_weighted": { "type": ["number", "null"] },
           "alpha_price_tao_median": { "type": ["number", "null"] },
           "validator_count": { "type": ["integer", "null"] },
@@ -3515,6 +3618,55 @@
           "positions": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/PortfolioPosition" }
+          }
+        }
+      },
+      "NominatorPosition": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One (hotkey, netuid) delegation this account holds, reconstructed from nominator_positions (#5233) joined against the live neurons stake_tao for that (hotkey, netuid).",
+        "required": ["hotkey", "netuid", "share_fraction", "stake_tao"],
+        "properties": {
+          "hotkey": { "type": "string" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "share_fraction": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "This account's share of the hotkey's total alpha-pool shares on this subnet (0..1) -- a dimensionless ratio, not a TAO amount. Every delegator's share_fraction for the same (hotkey, netuid) sums to exactly 1.0."
+          },
+          "stake_tao": {
+            "type": "number",
+            "minimum": 0,
+            "description": "share_fraction * the hotkey's current stake_tao for this netuid. Derived at serve time from the live neurons snapshot, so it moves as that snapshot refreshes even between nominator_positions scans."
+          }
+        }
+      },
+      "AccountPositionsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from AccountPortfolioArtifact's hotkey-scoped view (a pure delegator shows near-zero there since its stake lives on someone ELSE's hotkey row). Sourced from nominator_positions, a share-fraction ledger populated by the same SubtensorModule::Alpha scan as validator_nominator_counts (#2549), joined against live neurons stake_tao. Served live at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is NOT covered -- root has no alpha pool (#2550) and Alpha carries no root data at all, so an account that only holds root-delegated stake shows an empty positions[] here, not because it holds nothing but because this source can't see it yet.",
+        "required": [
+          "schema_version",
+          "ss58",
+          "captured_at",
+          "position_count",
+          "total_stake_tao",
+          "positions"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "captured_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "The most recent nominator_positions.captured_at across this account's positions -- when the source Alpha scan last observed them, not when neurons.stake_tao (used for the stake_tao join) last refreshed."
+          },
+          "position_count": { "type": "integer", "minimum": 0 },
+          "total_stake_tao": { "type": "number", "minimum": 0 },
+          "positions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NominatorPosition" }
           }
         }
       },

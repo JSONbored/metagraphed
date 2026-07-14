@@ -45,6 +45,31 @@
         "https://github.com/tag101-ai/tag101"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/101"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-101-eni-min-compute",
+      "kind": "data-artifact",
+      "name": "eni minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official SN101 eni source repository (tag101-ai/tag101) as min_compute.yml. Documents the subnet operator CPU/GPU/memory/storage/network floors (version 0.2.0, separate miner and validator specs). Pinned to an immutable commit. Fills the file's gap note for a verified standalone static data artifact.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eni",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/tag101-ai/tag101/blob/115f36da7c483d16018d4c16a14f8fb8d0433306/min_compute.yml",
+        "https://github.com/tag101-ai/tag101"
+      ],
+      "url": "https://raw.githubusercontent.com/tag101-ai/tag101/115f36da7c483d16018d4c16a14f8fb8d0433306/min_compute.yml"
     }
   ]
 }

@@ -61,6 +61,9 @@ export const R2_ONLY_PATTERNS = [
   // Rolling 24h buy/sell alpha volume (#4339/8.1): computed live from the same
   // account_events stream as stake-flow.
   /^subnets\/(?:\d+|\{netuid\})\/volume\.json$/,
+  // Constant-product stake/unstake slippage quote (#5235): computed live from
+  // the economics-tier AMM pool reserves.
+  /^subnets\/(?:\d+|\{netuid\})\/stake-quote\.json$/,
   // Validator weight-setting activity: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.
@@ -125,6 +128,10 @@ export const R2_ONLY_PATTERNS = [
   // Cross-subnet neuron portfolio, computed live from the neurons D1 tier at
   // /api/v1/accounts/{ss58}/portfolio — never a file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/portfolio\.json$/,
+  // Nominator-side (coldkey) position reconstruction (#5233), computed live
+  // from nominator_positions joined against the neurons D1 tier at
+  // /api/v1/accounts/{ss58}/positions — never a file.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/positions\.json$/,
   // Per-account, per-subnet position history (#4329/6.2), computed live from the
   // account_position_daily D1 rollup tier at
   // /api/v1/accounts/{ss58}/subnets/{netuid}/history — never a file.

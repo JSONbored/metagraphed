@@ -51,11 +51,17 @@ export function AccountPositionHistoryChart({ ss58, netuid }: { ss58: string; ne
   const hasData = series.stake.length + series.emission.length + series.yield.length > 0;
 
   const windowSelector = (
-    <div className="inline-flex rounded-md border border-border bg-surface/40 p-0.5">
+    <div
+      role="tablist"
+      aria-label="History window"
+      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+    >
       {WINDOWS.map((w) => (
         <button
           key={w}
           type="button"
+          role="tab"
+          aria-selected={w === win}
           onClick={() => setWin(w)}
           className={classNames(
             "px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider rounded transition-colors",

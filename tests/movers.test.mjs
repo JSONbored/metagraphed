@@ -252,7 +252,7 @@ describe("computeMovers", () => {
       );
       assert.equal(
         network.total_stake_start_tao,
-        50,
+        "50.000000000",
         `network stake start for total_stake_tao ${JSON.stringify(blank)}`,
       );
       assert.equal(
@@ -406,15 +406,29 @@ describe("movers network summary", () => {
 
   test("totals stake/emission/validators across all subnets with their deltas", () => {
     const { network } = buildMovers(startRows, endRows, opts);
-    assert.equal(network.total_stake_start_tao, 150);
-    assert.equal(network.total_stake_end_tao, 280);
-    assert.equal(network.total_stake_delta_tao, 130);
-    assert.equal(network.total_emission_start_tao, 9);
-    assert.equal(network.total_emission_end_tao, 13);
-    assert.equal(network.total_emission_delta_tao, 4);
+    assert.equal(network.total_stake_start_tao, "150.000000000");
+    assert.equal(network.total_stake_end_tao, "280.000000000");
+    assert.equal(network.total_stake_delta_tao, "130.000000000");
+    assert.equal(network.total_emission_start_tao, "9.000000000");
+    assert.equal(network.total_emission_end_tao, "13.000000000");
+    assert.equal(network.total_emission_delta_tao, "4.000000000");
     assert.equal(network.total_validators_start, 5);
     assert.equal(network.total_validators_end, 6);
     assert.equal(network.total_validators_delta, 1);
+  });
+
+  test("stake/emission deltas are lossless negative strings when the network net-decreased", () => {
+    // End totals (100 + 20 = 120 stake, 4 + 1 = 5 emission) are BELOW start totals
+    // (150 stake, 9 emission) -- exercises raoToTaoString's negative-sign branch,
+    // which (unlike the always-non-negative cumulative totals) is genuinely
+    // reachable here: a window can net-decrease.
+    const decreasing = [
+      agg(1, "e", { neurons: 12, validators: 4, stake: 100, emission: 4 }),
+      agg(2, "e", { neurons: 8, validators: 2, stake: 20, emission: 1 }),
+    ];
+    const { network } = buildMovers(startRows, decreasing, opts);
+    assert.equal(network.total_stake_delta_tao, "-30.000000000");
+    assert.equal(network.total_emission_delta_tao, "-4.000000000");
   });
 
   test("gainer/loser/unchanged counts follow the active sort metric", () => {
@@ -455,7 +469,7 @@ describe("movers network summary", () => {
       startDate: null,
       endDate: null,
     });
-    assert.equal(network.total_stake_end_tao, 0);
+    assert.equal(network.total_stake_end_tao, "0.000000000");
     assert.equal(network.total_validators_delta, 0);
     assert.equal(network.gainers, 0);
     assert.equal(network.losers, 0);

@@ -15,6 +15,15 @@ describe("normalizeGlobalValidators", () => {
         {
           hotkey: "5Hotkey",
           coldkey: "5Coldkey",
+          coldkey_identity: {
+            has_identity: true,
+            name: "TensorOps",
+            image: "https://example.com/logo.png",
+          },
+          take: 0.18,
+          root_stake_tao: 10,
+          alpha_stake_tao: 90.5,
+          nominator_count: 42,
           coldkey_count: 1,
           subnet_count: 2,
           uid_count: 3,
@@ -50,6 +59,11 @@ describe("normalizeGlobalValidators", () => {
     expect(out.validators[0]).toMatchObject({
       hotkey: "5Hotkey",
       coldkey: "5Coldkey",
+      take: 0.18,
+      root_stake_tao: 10,
+      alpha_stake_tao: 90.5,
+      nominator_count: 42,
+      coldkey_identity: { has_identity: true, name: "TensorOps" },
       subnet_count: 2,
       uid_count: 3,
       subnets: [{ netuid: 1, uid: 0, stake_tao: 50, emission_tao: 0.5, validator_trust: 1 }],

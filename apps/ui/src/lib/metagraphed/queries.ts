@@ -200,6 +200,7 @@ import type {
   GlobalValidatorSubnet,
   ValidatorDetail,
   ValidatorDetailSubnet,
+  ColdkeyIdentity,
   ValidatorNominatorEntry,
   ValidatorHistory,
   ValidatorHistoryPoint,
@@ -5327,6 +5328,22 @@ const GLOBAL_VALIDATOR_SORTS: GlobalValidatorSort[] = [
   "uid_count",
 ];
 
+function normalizeColdkeyIdentity(raw: unknown): ColdkeyIdentity | null {
+  if (raw == null) return null;
+  if (!isRecord(raw)) return null;
+  return {
+    has_identity: booleanValue(raw.has_identity) ?? false,
+    name: firstString(raw.name) ?? null,
+    url: firstString(raw.url) ?? null,
+    github: firstString(raw.github) ?? null,
+    image: firstString(raw.image) ?? null,
+    discord: firstString(raw.discord) ?? null,
+    description: firstString(raw.description) ?? null,
+    additional: firstString(raw.additional) ?? null,
+    captured_at: firstString(raw.captured_at) ?? null,
+  };
+}
+
 function normalizeGlobalValidatorSubnet(raw: unknown): GlobalValidatorSubnet | null {
   if (!isRecord(raw)) return null;
   const netuid = coerceFiniteNumber(raw.netuid);
@@ -5360,11 +5377,19 @@ function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
     // spread, so it must be listed explicitly or it silently vanishes.
     featured: booleanValue(raw.featured) ?? false,
     coldkey: typeof raw.coldkey === "string" ? raw.coldkey : null,
+    coldkey_identity: normalizeColdkeyIdentity(raw.coldkey_identity),
     coldkey_count: coerceFiniteNumber(raw.coldkey_count) ?? 0,
     subnet_count: coerceFiniteNumber(raw.subnet_count) ?? 0,
     uid_count: coerceFiniteNumber(raw.uid_count) ?? 0,
+    take: nullableNum(raw.take),
     total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? 0,
+    root_stake_tao: coerceFiniteNumber(raw.root_stake_tao) ?? 0,
+    alpha_stake_tao: coerceFiniteNumber(raw.alpha_stake_tao) ?? 0,
     total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
+    nominator_count: nullableNum(raw.nominator_count),
+    apy_estimate: nullableNum(raw.apy_estimate),
+    apy_estimate_eligible_subnet_count:
+      coerceFiniteNumber(raw.apy_estimate_eligible_subnet_count) ?? 0,
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),
     stake_dominance: nullableNum(raw.stake_dominance),
@@ -5659,9 +5684,14 @@ export const validatorDetailQuery = (hotkey: string) =>
         data: {
           hotkey: firstString(d.hotkey) ?? hotkey,
           coldkey: firstString(d.coldkey) ?? null,
+          coldkey_identity: normalizeColdkeyIdentity(d.coldkey_identity),
           coldkey_count: firstFiniteNumber(d.coldkey_count) ?? 0,
           subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+          take: firstFiniteNumber(d.take) ?? null,
+          nominator_count: firstFiniteNumber(d.nominator_count) ?? null,
           total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? 0,
+          root_stake_tao: firstFiniteNumber(d.root_stake_tao) ?? 0,
+          alpha_stake_tao: firstFiniteNumber(d.alpha_stake_tao) ?? 0,
           total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? 0,
           avg_validator_trust: firstFiniteNumber(d.avg_validator_trust) ?? null,
           max_validator_trust: firstFiniteNumber(d.max_validator_trust) ?? null,

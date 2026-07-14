@@ -59,6 +59,12 @@ const subnetHyperparamsLatestHashes = vi.hoisted(() => ({ current: [] }));
 // has no purge step (see handleAccountIdentitySync's own header comment).
 const accountIdentitySyncFailure = vi.hoisted(() => ({ error: null }));
 const accountIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
+// State for the validator-nominator-counts-sync write route's tests only
+// (#2549). No prune/history hooks -- a single latest-only upsert, like
+// health-checks-sync below, not a diff-and-append table.
+const validatorNominatorCountsSyncFailure = vi.hoisted(() => ({
+  error: null,
+}));
 // State for the subnet-identity-sync write route's tests only (#4832
 // gap-closure). No prune-rows hook -- like account_identity, this table has
 // no purge step. Its "latest hash per netuid" query shares subnet_hyperparams'
@@ -79,6 +85,31 @@ const rpcUsageSyncFailure = vi.hoisted(() => ({ error: null }));
 // simulate the table not existing yet (pre-migration) without touching any
 // other query's mock plumbing.
 const featuredValidatorsQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for the /api/v1/validators + /api/v1/validators/:hotkey
+// account_identity join (#5234) tests only. Dispatched by its own text match
+// (like the DELETE FROM neurons / DELETE FROM subnet_hyperparams sql.unsafe
+// branches below) rather than the shared mockQueue, so priming it never
+// shifts any existing validators test's mockQueue-ordering assumptions.
+const accountIdentityJoinRows = vi.hoisted(() => ({ current: [] }));
+const accountIdentityJoinQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for the validator_nominator_counts READ (#2549) tests only -- same
+// isolation purpose as featuredValidatorsQueryFailure above, but for the
+// SELECT loadValidatorNominatorCounts issues (distinct from
+// validatorNominatorCountsSyncFailure, which only matches the sync route's
+// own INSERT).
+const validatorNominatorCountsQueryFailure = vi.hoisted(() => ({
+  error: null,
+}));
+// State for the subnet_hyperparams tempo READ (#2551) tests only -- same
+// isolation purpose as validatorNominatorCountsQueryFailure above, but for
+// loadSubnetTempos' own SELECT.
+const subnetTemposQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for the nominator-positions-sync WRITE (#5233) tests only.
+const nominatorPositionsSyncFailure = vi.hoisted(() => ({ error: null }));
+// State for the nominator_positions READ (#5233) tests only -- same
+// isolation purpose as subnetTemposQueryFailure above, but for
+// loadNominatorPositions' own SELECT.
+const nominatorPositionsQueryFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -148,6 +179,24 @@ vi.mock("postgres", () => ({
         return Promise.reject(accountIdentitySyncFailure.error);
       }
       if (
+        validatorNominatorCountsSyncFailure.error &&
+        /INSERT INTO validator_nominator_counts\b/.test(text)
+      ) {
+        return Promise.reject(validatorNominatorCountsSyncFailure.error);
+      }
+      if (
+        nominatorPositionsSyncFailure.error &&
+        /INSERT INTO nominator_positions\b/.test(text)
+      ) {
+        return Promise.reject(nominatorPositionsSyncFailure.error);
+      }
+      if (
+        nominatorPositionsQueryFailure.error &&
+        /FROM nominator_positions\b/.test(text)
+      ) {
+        return Promise.reject(nominatorPositionsQueryFailure.error);
+      }
+      if (
         subnetSnapshotSyncFailure.error &&
         /INSERT INTO subnet_snapshots\b/.test(text)
       ) {
@@ -176,6 +225,18 @@ vi.mock("postgres", () => ({
         /FROM featured_validators\b/.test(text)
       ) {
         return Promise.reject(featuredValidatorsQueryFailure.error);
+      }
+      if (
+        validatorNominatorCountsQueryFailure.error &&
+        /FROM validator_nominator_counts\b/.test(text)
+      ) {
+        return Promise.reject(validatorNominatorCountsQueryFailure.error);
+      }
+      if (
+        subnetTemposQueryFailure.error &&
+        /FROM subnet_hyperparams\b/.test(text)
+      ) {
+        return Promise.reject(subnetTemposQueryFailure.error);
       }
       if (
         healthUptimeRollupSyncFailure.error &&
@@ -215,16 +276,46 @@ vi.mock("postgres", () => ({
       if (/DELETE FROM subnet_hyperparams\b/.test(text)) {
         return Promise.resolve(subnetHyperparamsPruneRows.current);
       }
+      if (/FROM account_identity WHERE account IN/.test(text)) {
+        if (accountIdentityJoinQueryFailure.error) {
+          return Promise.reject(accountIdentityJoinQueryFailure.error);
+        }
+        return Promise.resolve(accountIdentityJoinRows.current);
+      }
       return Promise.resolve(mockRows.current);
     };
     // sql.begin(["read only",] cb) reserves a connection for cb in real
-    // postgres.js; the mock just invokes cb with this same sql function so
-    // every existing tagged-template assertion (sqlCalls, mockQueue) still
-    // sees the identical call stream, and resolves to whatever cb returns.
+    // postgres.js; the mock invokes cb with a wrapped sql so every existing
+    // tagged-template assertion (sqlCalls, mockQueue) still sees the
+    // identical call stream, and resolves to whatever cb returns.
+    //
+    // #5220: this wrapper also mirrors a real postgres.js behavior that an
+    // earlier, naive `cb(sql)` pass-through did NOT reproduce and that let a
+    // production bug ship past this suite -- every query issued directly
+    // against a `begin()` transaction's `sql` poisons the whole transaction
+    // if it rejects, even when the *caller* catches that rejection locally
+    // (postgres.js tracks it via each query's own internal `.catch()`; see
+    // node_modules/postgres/src/index.js's `scope()`/`uncaughtError`).
+    // `sql.savepoint(fn)` is the only way to isolate a query's failure from
+    // the enclosing transaction, so it runs `fn` against the unwrapped sql
+    // (no poisoning) instead.
     sql.begin = (optionsOrCb, maybeCb) => {
       const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
       sqlBeginOptions.push(typeof optionsOrCb === "string" ? optionsOrCb : "");
-      return cb(sql);
+      let uncaughtError;
+      function scopedSql(...args) {
+        const result = sql(...args);
+        Promise.resolve(result).catch((e) => {
+          if (!uncaughtError) uncaughtError = e;
+        });
+        return result;
+      }
+      Object.assign(scopedSql, sql);
+      scopedSql.savepoint = (fn) => fn(sql);
+      return Promise.resolve(cb(scopedSql)).then((result) => {
+        if (uncaughtError) throw uncaughtError;
+        return result;
+      });
     };
     return sql;
   },
@@ -236,10 +327,13 @@ const NEURON_DAILY_BACKFILL_SECRET = "test-neuron-daily-backfill-secret";
 const ROLLUP_SYNC_SECRET = "test-rollup-sync-secret";
 const SUBNET_HYPERPARAMS_SYNC_SECRET = "test-subnet-hyperparams-sync-secret";
 const ACCOUNT_IDENTITY_SYNC_SECRET = "test-account-identity-sync-secret";
+const VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET =
+  "test-validator-nominator-counts-sync-secret";
 const SUBNET_IDENTITY_SYNC_SECRET = "test-subnet-identity-sync-secret";
 const HEALTH_CHECKS_SYNC_SECRET = "test-health-checks-sync-secret";
 const SUBNET_SNAPSHOT_SYNC_SECRET = "test-subnet-snapshot-sync-secret";
 const RPC_USAGE_SYNC_SECRET = "test-rpc-usage-sync-secret";
+const NOMINATOR_POSITIONS_SYNC_SECRET = "test-nominator-positions-sync-secret";
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   NEURONS_SYNC_SECRET,
@@ -247,10 +341,12 @@ const env = {
   ROLLUP_SYNC_SECRET,
   SUBNET_HYPERPARAMS_SYNC_SECRET,
   ACCOUNT_IDENTITY_SYNC_SECRET,
+  VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
   SUBNET_IDENTITY_SYNC_SECRET,
   HEALTH_CHECKS_SYNC_SECRET,
   SUBNET_SNAPSHOT_SYNC_SECRET,
   RPC_USAGE_SYNC_SECRET,
+  NOMINATOR_POSITIONS_SYNC_SECRET,
 };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
@@ -270,6 +366,11 @@ beforeEach(() => {
   subnetHyperparamsLatestHashes.current = [];
   accountIdentitySyncFailure.error = null;
   accountIdentityLatestHashes.current = [];
+  validatorNominatorCountsSyncFailure.error = null;
+  validatorNominatorCountsQueryFailure.error = null;
+  subnetTemposQueryFailure.error = null;
+  nominatorPositionsSyncFailure.error = null;
+  nominatorPositionsQueryFailure.error = null;
   subnetIdentitySyncFailure.error = null;
   subnetIdentityLatestHashes.current = [];
   healthChecksSyncFailure.error = null;
@@ -277,6 +378,8 @@ beforeEach(() => {
   healthUptimeRollupSyncFailure.error = null;
   rpcUsageSyncFailure.error = null;
   featuredValidatorsQueryFailure.error = null;
+  accountIdentityJoinRows.current = [];
+  accountIdentityJoinQueryFailure.error = null;
   mockRows.current = [
     {
       block_number: "123",
@@ -422,10 +525,16 @@ test("chain-events decodes both account-keyed fields of a Balances.Transfer (to 
   expect(body.events[0].args.amount).toBe(30681);
 });
 
-test("chain-events hex-encodes an untagged positional 32-byte value (no field name to key SS58 off of)", async () => {
+test("chain-events decodes a positional SubtensorModule.TimelockedWeightsRevealed [netuid, who] to SS58 via coerceEvent's ctx (#5359/#61, fixed 2026-07-14)", async () => {
   // Real SubtensorModule.TimelockedWeightsRevealed row (block 8587756, event
-  // 2): args has no field names at all for non-System/Balances pallets --
-  // must degrade to hex, never guess an SS58 address with no key hint.
+  // 2). Previously hex-encoded the who field for lack of a key hint at any
+  // depth -- coerceEvent already passed row.pallet/row.method as ctx, but
+  // decodeChainEventArgs only used ctx for the TEXTUAL/HEX_BLOB/ENUM_PAYLOAD
+  // allowlists, never to recover a positional tuple's field names. Fixed by
+  // POSITIONAL_FIELD_NAMES (src/chain-event-args.mjs) -- see
+  // tests/chain-event-args.test.mjs for the exhaustive per-event-kind unit
+  // coverage; this is the one route-level regression test proving the fix
+  // reaches a real REST response, not just the decoder in isolation.
   mockRows.current = [
     {
       block_number: "8587756",
@@ -452,7 +561,7 @@ test("chain-events hex-encodes an untagged positional 32-byte value (no field na
   const body = await res.json();
   expect(body.events[0].args).toEqual([
     78,
-    "0xa2c17957c44381b7f39e6f0aab251f7a09985983ea61f92910a8b39a92fcd145",
+    "5Fk765B4CRBekwErwE5VxvveWhHztHSfsnsLt8cbDayDWsuk",
   ]);
 });
 
@@ -1342,6 +1451,43 @@ test("GET /api/v1/subnets/:netuid/validators still serves the primary rows when 
   expect(body.validators[0].featured).toBe(false);
 });
 
+test("GET /api/v1/validators still serves the primary rows when the featured_validators read fails (#5220)", async () => {
+  // Regression test for #5220: this network-wide route (unlike the single
+  // /validators/:hotkey detail route, which never reads featured_validators)
+  // returned validator_count: 0 in production because a bare sql`...` inside
+  // loadFeaturedHotkeys poisoned the whole shared sql.begin() transaction --
+  // even though this function's own try/catch handled the rejection -- so
+  // the outer sql.begin() itself rejected after the route handler had
+  // already built its response. See loadFeaturedHotkeys's header comment and
+  // the sql.begin mock above for how postgres.js's real transaction-scoped
+  // error tracking works.
+  featuredValidatorsQueryFailure.error = new Error(
+    'relation "featured_validators" does not exist',
+  );
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        netuid: 7,
+        uid: 3,
+        hotkey: "5Hot",
+        coldkey: "5Cold",
+        validator_trust: "0.8",
+        emission_tao: "1.23",
+        stake_tao: "456.7",
+        block_number: "5000000",
+        captured_at: "1780000000000",
+      },
+    ],
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validator_count).toBe(1);
+  expect(body.validators[0].hotkey).toBe("5Hot");
+  expect(body.validators[0].featured).toBe(false);
+});
+
 test("GET /api/v1/validators returns the network-wide validator leaderboard with defaults", async () => {
   mockRows.current = [
     {
@@ -1424,6 +1570,73 @@ test("GET /api/v1/validators falls back to the default sort/limit on invalid val
   expect(body.limit).toBe(20);
 });
 
+const IDENTITY_ROW = {
+  account: "5Cold",
+  name: "Acme Validators",
+  url: "https://acme-validators.io",
+  github: "https://github.com/acme-validators",
+  image: "https://acme-validators.io/logo.png",
+  discord: "acme#1234",
+  description: "Professional validator operator",
+  additional: "Est. 2023",
+  captured_at: "1750000000000",
+};
+
+test("GET /api/v1/validators joins coldkey_identity from account_identity by coldkey (#5234)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
+  accountIdentityJoinRows.current = [IDENTITY_ROW];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].coldkey).toBe("5Cold");
+  expect(body.validators[0].coldkey_identity.has_identity).toBe(true);
+  expect(body.validators[0].coldkey_identity.name).toBe("Acme Validators");
+  expect(queryText()).toMatch(
+    /FROM account_identity WHERE account IN \(\$1::text\)/,
+  );
+  const joinCall = sqlCalls.find((call) =>
+    /FROM account_identity WHERE account IN/.test(call.text),
+  );
+  expect(joinCall.values).toEqual(["5Cold"]);
+});
+
+test("GET /api/v1/validators reports has_identity:false when no account_identity row matches the coldkey (#5234)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
+  accountIdentityJoinRows.current = [];
+  const res = await req("/api/v1/validators");
+  const body = await res.json();
+  expect(body.validators[0].coldkey_identity.has_identity).toBe(false);
+  expect(body.validators[0].coldkey_identity.name).toBe(null);
+});
+
+test("GET /api/v1/validators skips the identity join query when there are no validator rows (#5234)", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  expect(queryText()).not.toMatch(/FROM account_identity WHERE account IN/);
+});
+
+test("GET /api/v1/validators skips a row with no coldkey when collecting join keys, without erroring (#5234)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7, coldkey: null }];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].coldkey_identity).toBe(null);
+  expect(queryText()).not.toMatch(/FROM account_identity WHERE account IN/);
+});
+
+test("GET /api/v1/validators still serves validators (has_identity:false) when the identity join query fails (#5234)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
+  accountIdentityJoinQueryFailure.error = new Error(
+    'relation "account_identity" does not exist',
+  );
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].hotkey).toBe("5Hot");
+  expect(body.validators[0].coldkey_identity.has_identity).toBe(false);
+});
+
 test("GET /api/v1/validators/:hotkey resolves cross-subnet validator detail", async () => {
   mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
   const res = await req("/api/v1/validators/5Hot");
@@ -1434,6 +1647,176 @@ test("GET /api/v1/validators/:hotkey resolves cross-subnet validator detail", as
   expect(body.subnets[0].netuid).toBe(7);
   expect(queryText()).toMatch(/WHERE hotkey = /);
   expect(queryText()).toMatch(/validator_permit = TRUE/);
+});
+
+test("GET /api/v1/validators/:hotkey joins coldkey_identity for its primary coldkey (#5234)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
+  accountIdentityJoinRows.current = [IDENTITY_ROW];
+  const res = await req("/api/v1/validators/5Hot");
+  const body = await res.json();
+  expect(body.coldkey).toBe("5Cold");
+  expect(body.coldkey_identity.has_identity).toBe(true);
+  expect(body.coldkey_identity.description).toBe(
+    "Professional validator operator",
+  );
+});
+
+test("GET /api/v1/validators/:hotkey sends one deduped identity lookup when every subnet row shares the same coldkey (#5234)", async () => {
+  mockRows.current = [
+    { ...NEURON_ROW, netuid: 7 },
+    { ...NEURON_ROW, netuid: 12 },
+  ];
+  accountIdentityJoinRows.current = [IDENTITY_ROW];
+  const res = await req("/api/v1/validators/5Hot");
+  const body = await res.json();
+  expect(body.subnet_count).toBe(2);
+  expect(body.coldkey_identity.has_identity).toBe(true);
+  const joinCalls = sqlCalls.filter((call) =>
+    /FROM account_identity WHERE account IN/.test(call.text),
+  );
+  expect(joinCalls.length).toBe(1);
+  expect(joinCalls[0].values).toEqual(["5Cold"]);
+});
+
+test("GET /api/v1/validators/:hotkey for an absent hotkey has coldkey_identity:null (no coldkey to look up) and skips the join query (#5234)", async () => {
+  mockRows.current = [];
+  const res = await req(`/api/v1/validators/${SS58}`);
+  const body = await res.json();
+  expect(body.coldkey).toBe(null);
+  expect(body.coldkey_identity).toBe(null);
+  expect(queryText()).not.toMatch(/FROM account_identity WHERE account IN/);
+});
+
+test("GET /api/v1/validators joins nominator_count by hotkey from validator_nominator_counts (#2549)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        netuid: 1,
+        uid: 0,
+        hotkey: "hk-a",
+        coldkey: "ck-a",
+        validator_trust: "0.5",
+        emission_tao: "1",
+        stake_tao: "100",
+        block_number: "10",
+        captured_at: "1780000000000",
+      },
+      {
+        netuid: 2,
+        uid: 0,
+        hotkey: "hk-b",
+        coldkey: "ck-b",
+        validator_trust: "0.9",
+        emission_tao: "5",
+        stake_tao: "9000",
+        block_number: "10",
+        captured_at: "1780000000000",
+      },
+    ],
+    [], // loadFeaturedHotkeys
+    [{ hotkey: "hk-a", nominator_count: 17 }],
+  ];
+  const res = await req("/api/v1/validators");
+  const body = await res.json();
+  expect(queryText()).toMatch(/FROM validator_nominator_counts/);
+  const byHotkey = Object.fromEntries(
+    body.validators.map((v) => [v.hotkey, v.nominator_count]),
+  );
+  expect(byHotkey["hk-a"]).toBe(17);
+  expect(byHotkey["hk-b"]).toBe(null);
+});
+
+test("GET /api/v1/validators still serves the primary rows when the validator_nominator_counts read fails", async () => {
+  validatorNominatorCountsQueryFailure.error = new Error(
+    'relation "validator_nominator_counts" does not exist',
+  );
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, netuid: 7, hotkey: "5Hot" }],
+    [], // loadFeaturedHotkeys
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].hotkey).toBe("5Hot");
+  expect(body.validators[0].nominator_count).toBe(null);
+});
+
+test("GET /api/v1/validators/:hotkey joins nominator_count from validator_nominator_counts (#2549)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, hotkey: "5Hot", netuid: 7 }],
+    [{ hotkey: "5Hot", nominator_count: 9 }],
+  ];
+  const res = await req("/api/v1/validators/5Hot");
+  const body = await res.json();
+  expect(body.nominator_count).toBe(9);
+});
+
+test("GET /api/v1/validators computes apy_estimate from a subnet_hyperparams tempo join (#2551)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        ...NEURON_ROW,
+        hotkey: "5Hot",
+        netuid: 3,
+        stake_tao: "1000",
+        emission_tao: "0.85",
+      },
+    ],
+    [], // loadFeaturedHotkeys
+    [], // loadValidatorNominatorCounts
+    [{ netuid: 3, tempo: 360 }],
+  ];
+  const res = await req("/api/v1/validators");
+  const body = await res.json();
+  expect(queryText()).toMatch(/FROM subnet_hyperparams/);
+  // epochsPerYear = 31,536,000/(360*12) = 7,300; annualized = 0.85*7,300 =
+  // 6,205; apy = 6,205/1,000 = 6.205 -- same worked example as the builder
+  // unit tests (tests/metagraph-neurons.test.mjs).
+  expect(body.validators[0].apy_estimate).toBe(6.205);
+  expect(body.validators[0].apy_estimate_eligible_subnet_count).toBe(1);
+});
+
+test("GET /api/v1/validators still serves the primary rows when the subnet_hyperparams tempo read fails (#2551)", async () => {
+  subnetTemposQueryFailure.error = new Error(
+    'relation "subnet_hyperparams" does not exist',
+  );
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, netuid: 7, hotkey: "5Hot" }],
+    [], // loadFeaturedHotkeys
+    [], // loadValidatorNominatorCounts
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].hotkey).toBe("5Hot");
+  expect(body.validators[0].apy_estimate).toBe(null);
+  expect(body.validators[0].apy_estimate_eligible_subnet_count).toBe(0);
+});
+
+test("GET /api/v1/validators/:hotkey computes apy_estimate from a subnet_hyperparams tempo join (#2551)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        ...NEURON_ROW,
+        hotkey: "5Hot",
+        netuid: 3,
+        stake_tao: "1000",
+        emission_tao: "0.85",
+      },
+    ],
+    [], // loadValidatorNominatorCounts
+    [{ netuid: 3, tempo: 360 }],
+  ];
+  const res = await req("/api/v1/validators/5Hot");
+  const body = await res.json();
+  expect(body.apy_estimate).toBe(6.205);
+  expect(body.apy_estimate_eligible_subnet_count).toBe(1);
 });
 
 // #4832 Tier 2: the live-`neurons` routes with no shared D1 loader (the
@@ -3835,6 +4218,467 @@ test("account-identity-sync maps a DB failure to a clean 502 instead of throwing
   expect((await res.json()).error).toBe("write failed");
 });
 
+// #2549: POST /api/v1/internal/validator-nominator-counts-sync -- the write
+// path into validator_nominator_counts (see workers/data-api.mjs's
+// handleValidatorNominatorCountsSync). Simpler than account-identity-sync
+// above: latest-only upsert, no history/hash-diff table.
+function validatorNominatorCountRow(overrides = {}) {
+  return {
+    hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    nominator_count: 42,
+    captured_at: 1_780_000_000_000,
+    ...overrides,
+  };
+}
+
+function postValidatorNominatorCounts(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined)
+    headers["x-validator-nominator-counts-sync-token"] = secret;
+  return req("/api/v1/internal/validator-nominator-counts-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
+  });
+}
+
+test("validator-nominator-counts-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow()],
+    { secret: "wrong" },
+  );
+  expect(wrong.status).toBe(401);
+  const missing = await postValidatorNominatorCounts([
+    validatorNominatorCountRow(),
+  ]);
+  expect(missing.status).toBe(401);
+});
+
+test("validator-nominator-counts-sync is disabled (503) when VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/validator-nominator-counts-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-validator-nominator-counts-sync-token":
+          VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+      },
+      body: JSON.stringify([validatorNominatorCountRow()]),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("validator-nominator-counts-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/validator-nominator-counts-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-validator-nominator-counts-sync-token":
+          VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+      },
+      body: JSON.stringify([validatorNominatorCountRow()]),
+    }),
+    { VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("validator-nominator-counts-sync rejects a body over the byte cap (413)", async () => {
+  const res = await postValidatorNominatorCounts(null, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+    raw: "[" + "1".repeat(100_000_001) + "]",
+  });
+  expect(res.status).toBe(413);
+});
+
+test("validator-nominator-counts-sync rejects malformed JSON (400)", async () => {
+  const res = await postValidatorNominatorCounts(null, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects a body that isn't an array or {rows:[...]} (400)", async () => {
+  const res = await postValidatorNominatorCounts(
+    { not: "an array" },
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync accepts the {rows:[...]} wrapped form, not just a bare array", async () => {
+  const res = await postValidatorNominatorCounts(
+    { rows: [validatorNominatorCountRow()] },
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validator_nominator_counts_written).toBe(1);
+});
+
+test("validator-nominator-counts-sync rejects more than the row cap (413)", async () => {
+  // MAX_ROWS is 1,000,000 (headroom above the real ~112k-hotkey scan, see
+  // migrations/0043_validator_nominator_counts.sql) -- building/serializing
+  // a cap+1 array this large routinely exceeds vitest's 5s default, unlike
+  // the other sync endpoints' much smaller caps (e.g. account-identity's
+  // 20,000), so this one test gets a raised timeout.
+  const many = Array.from({ length: 1_000_001 }, (_, i) => ({
+    hotkey: `5X${i}`,
+    nominator_count: 0,
+    captured_at: 1_780_000_000_000,
+  }));
+  const res = await postValidatorNominatorCounts(many, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(413);
+}, 15_000);
+
+test("validator-nominator-counts-sync rejects a row with a missing/empty hotkey (400)", async () => {
+  const res = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow({ hotkey: "" })],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects a non-object row (400)", async () => {
+  const res = await postValidatorNominatorCounts(["not-an-object"], {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects a row carrying an unknown column (400)", async () => {
+  const res = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow({ unexpected_field: "nope" })],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects a negative or non-integer nominator_count (400)", async () => {
+  const negative = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow({ nominator_count: -1 })],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(negative.status).toBe(400);
+  const fractional = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow({ nominator_count: 1.5 })],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(fractional.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects a row missing a finite captured_at (400)", async () => {
+  const res = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow({ captured_at: "not-a-number" })],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects an empty array (400)", async () => {
+  const res = await postValidatorNominatorCounts([], {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync writes a batch and reports the count written", async () => {
+  const rows = [
+    validatorNominatorCountRow({ hotkey: "5Hk1", nominator_count: 5 }),
+    validatorNominatorCountRow({ hotkey: "5Hk2", nominator_count: 0 }),
+  ];
+  const res = await postValidatorNominatorCounts(rows, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, validator_nominator_counts_written: 2 });
+  expect(queryText()).toMatch(/INSERT INTO validator_nominator_counts/);
+  expect(queryText()).toMatch(/ON CONFLICT \(hotkey\) DO UPDATE SET/);
+});
+
+test("validator-nominator-counts-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  validatorNominatorCountsSyncFailure.error = new Error("connection reset");
+  const res = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow()],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+// #5352 live incident: a real 112,550-row sync (762,577-row Alpha scan
+// output) hit Postgres' hard 65535-bound-parameters-per-statement ceiling
+// (112,550 rows x 3 columns = 337,650 params) inside a single INSERT,
+// failing every real-world sync at production scale even though every
+// smaller test above passed. batchedUpsert (workers/data-api.mjs) splits
+// into VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH-sized statements inside
+// one sql.begin() transaction -- this proves more than one INSERT actually
+// gets issued for a payload over that threshold, not just that the response
+// still reports the right total.
+test("validator-nominator-counts-sync splits a payload over the per-statement param cap into multiple INSERT statements (#5352)", async () => {
+  const MAX_ROWS_PER_BATCH = 20_000; // must match workers/data-api.mjs's own constant
+  const rows = Array.from({ length: MAX_ROWS_PER_BATCH + 1 }, (_, i) =>
+    validatorNominatorCountRow({ hotkey: `5Hk${i}`, nominator_count: i }),
+  );
+  const res = await postValidatorNominatorCounts(rows, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  expect((await res.json()).validator_nominator_counts_written).toBe(
+    rows.length,
+  );
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO validator_nominator_counts"),
+  );
+  expect(insertCalls.length).toBe(2);
+});
+
+test("validator-nominator-counts-sync issues a single INSERT for a payload at or under the per-statement batch size", async () => {
+  const rows = [
+    validatorNominatorCountRow({ hotkey: "5Hk1" }),
+    validatorNominatorCountRow({ hotkey: "5Hk2" }),
+  ];
+  const res = await postValidatorNominatorCounts(rows, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO validator_nominator_counts"),
+  );
+  expect(insertCalls.length).toBe(1);
+});
+
+// #5233: POST /api/v1/internal/nominator-positions-sync -- the write path
+// into nominator_positions (see workers/data-api.mjs's
+// handleNominatorPositionsSync). Same latest-only-upsert shape as
+// validator-nominator-counts-sync above, just a wider composite key.
+function nominatorPositionRow(overrides = {}) {
+  return {
+    coldkey: "5Cold1",
+    hotkey: "5Hk1",
+    netuid: 3,
+    share_fraction: 0.25,
+    captured_at: 1_780_000_000_000,
+    ...overrides,
+  };
+}
+
+function postNominatorPositions(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined)
+    headers["x-nominator-positions-sync-token"] = secret;
+  return req("/api/v1/internal/nominator-positions-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
+  });
+}
+
+test("nominator-positions-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postNominatorPositions([nominatorPositionRow()], {
+    secret: "nope",
+  });
+  expect(wrong.status).toBe(401);
+  const missing = await postNominatorPositions([nominatorPositionRow()]);
+  expect(missing.status).toBe(401);
+});
+
+test("nominator-positions-sync is disabled (503) when NOMINATOR_POSITIONS_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/nominator-positions-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-nominator-positions-sync-token": NOMINATOR_POSITIONS_SYNC_SECRET,
+      },
+      body: JSON.stringify([nominatorPositionRow()]),
+    }),
+    { ...env, NOMINATOR_POSITIONS_SYNC_SECRET: undefined },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("nominator-positions-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/nominator-positions-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-nominator-positions-sync-token": NOMINATOR_POSITIONS_SYNC_SECRET,
+      },
+      body: JSON.stringify([nominatorPositionRow()]),
+    }),
+    { ...env, HYPERDRIVE: undefined },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("nominator-positions-sync rejects malformed JSON (400)", async () => {
+  const res = await postNominatorPositions(null, {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("nominator-positions-sync rejects a body that isn't an array (400)", async () => {
+  const res = await postNominatorPositions(null, {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+    raw: JSON.stringify({ nope: true }),
+  });
+  expect(res.status).toBe(400);
+});
+
+test("nominator-positions-sync rejects an empty array (400)", async () => {
+  const res = await postNominatorPositions([], {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("nominator-positions-sync rejects a row missing a required field or carrying an unknown key (400)", async () => {
+  const missingColdkey = await postNominatorPositions(
+    [nominatorPositionRow({ coldkey: "" })],
+    { secret: NOMINATOR_POSITIONS_SYNC_SECRET },
+  );
+  expect(missingColdkey.status).toBe(400);
+
+  const negativeFraction = await postNominatorPositions(
+    [nominatorPositionRow({ share_fraction: -0.1 })],
+    { secret: NOMINATOR_POSITIONS_SYNC_SECRET },
+  );
+  expect(negativeFraction.status).toBe(400);
+
+  const unknownKey = await postNominatorPositions(
+    [{ ...nominatorPositionRow(), extra: 1 }],
+    { secret: NOMINATOR_POSITIONS_SYNC_SECRET },
+  );
+  expect(unknownKey.status).toBe(400);
+});
+
+test("nominator-positions-sync accepts the wrapped {rows:[...]} form and upserts on (coldkey, hotkey, netuid)", async () => {
+  const res = await postNominatorPositions(
+    { rows: [nominatorPositionRow()] },
+    { secret: NOMINATOR_POSITIONS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, nominator_positions_written: 1 });
+  expect(queryText()).toMatch(/INSERT INTO nominator_positions/);
+  expect(queryText()).toMatch(/ON CONFLICT \(coldkey, hotkey, netuid\)/);
+});
+
+test("nominator-positions-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  nominatorPositionsSyncFailure.error = new Error("connection reset");
+  const res = await postNominatorPositions([nominatorPositionRow()], {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+// #5352 live incident (same root cause as validator-nominator-counts-sync's
+// own batching test above): a real 132,505-row sync hit Postgres' 65535
+// bound-parameters-per-statement ceiling even harder here (5 columns vs 3 --
+// 132,505 x 5 = 662,525 params). batchedUpsert applies identically; this
+// proves nominator-positions-sync actually issues multiple INSERT
+// statements for a payload over its own (smaller, 5-column) batch size.
+test("nominator-positions-sync splits a payload over the per-statement param cap into multiple INSERT statements (#5352)", async () => {
+  const MAX_ROWS_PER_BATCH = 10_000; // must match workers/data-api.mjs's own constant
+  const rows = Array.from({ length: MAX_ROWS_PER_BATCH + 1 }, (_, i) =>
+    nominatorPositionRow({ hotkey: `5Hk${i}`, netuid: i % 128 }),
+  );
+  const res = await postNominatorPositions(rows, {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  expect((await res.json()).nominator_positions_written).toBe(rows.length);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO nominator_positions"),
+  );
+  expect(insertCalls.length).toBe(2);
+});
+
+test("nominator-positions-sync issues a single INSERT for a payload at or under the per-statement batch size", async () => {
+  const rows = [
+    nominatorPositionRow({ hotkey: "5Hk1" }),
+    nominatorPositionRow({ hotkey: "5Hk2" }),
+  ];
+  const res = await postNominatorPositions(rows, {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO nominator_positions"),
+  );
+  expect(insertCalls.length).toBe(1);
+});
+
+test("GET /api/v1/accounts/:ss58/positions joins share_fraction against live neurons stake_tao (#5233)", async () => {
+  // loadNominatorPositions is a plain tagged-template call -- consumes
+  // mockQueue. loadNeuronStakeByHotkeys goes through sql.unsafe (an IN-list
+  // query), which this mock always answers from mockRows.current regardless
+  // of mockQueue (see the sql.unsafe branch's own fallback), so the two rows
+  // are primed separately rather than both queued.
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        coldkey: "5Cold1",
+        hotkey: "5Hk1",
+        netuid: 3,
+        share_fraction: 0.25,
+        captured_at: "1780000000000",
+      },
+    ], // loadNominatorPositions
+  ];
+  mockRows.current = [{ hotkey: "5Hk1", netuid: 3, stake_tao: "1000" }]; // loadNeuronStakeByHotkeys
+  const res = await req("/api/v1/accounts/5Cold1/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(queryText()).toMatch(/FROM nominator_positions WHERE coldkey/);
+  expect(queryText()).toMatch(/FROM neurons WHERE hotkey IN/);
+  expect(body.ss58).toBe("5Cold1");
+  expect(body.position_count).toBe(1);
+  expect(body.positions[0].stake_tao).toBe(250);
+  expect(body.total_stake_tao).toBe(250);
+});
+
+test("GET /api/v1/accounts/:ss58/positions returns an empty card for a coldkey with no positions", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [], // loadNominatorPositions -- no rows, so distinctHotkeys is empty and loadNeuronStakeByHotkeys short-circuits without a query
+  ];
+  const res = await req("/api/v1/accounts/5NoPositions/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.position_count).toBe(0);
+  expect(body.total_stake_tao).toBe(0);
+  expect(body.positions).toEqual([]);
+});
+
+test("GET /api/v1/accounts/:ss58/positions still serves an empty card when the nominator_positions read fails", async () => {
+  nominatorPositionsQueryFailure.error = new Error(
+    'relation "nominator_positions" does not exist',
+  );
+  const res = await req("/api/v1/accounts/5Cold1/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.position_count).toBe(0);
+  expect(body.positions).toEqual([]);
+});
+
 test("GET /api/v1/accounts/:ss58/identity returns the latest row", async () => {
   mockRows.current = [
     {
@@ -5463,6 +6307,10 @@ test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", asyn
       total_stake_tao: 90,
       alpha_price_tao: 0.01,
       emission_share: 0.02,
+      tao_in_pool_tao: 26707.57,
+      alpha_in_pool: 2956464.98,
+      alpha_out_pool: 2257199.02,
+      subnet_volume_tao: 798027.45,
     },
   ];
   const res = await req("/api/v1/subnets/7/trajectory");
@@ -5471,6 +6319,11 @@ test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", asyn
   expect(body.netuid).toBe(7);
   expect(body.points[0].date).toBe("2026-06-01");
   expect(body.points[0].completeness_score).toBe(90);
+  // #2552: pool liquidity + volume flow through the Postgres trajectory path.
+  expect(body.points[0].tao_in_pool_tao).toBe(26707.57);
+  expect(body.points[0].alpha_in_pool).toBe(2956464.98);
+  expect(body.points[0].alpha_out_pool).toBe(2257199.02);
+  expect(body.points[0].subnet_volume_tao).toBe(798027.45);
 });
 
 test("GET /api/v1/economics/trends: aggregates daily rows network-wide", async () => {
@@ -5514,6 +6367,10 @@ function snapshotRow(overrides = {}) {
     total_stake_tao: 90,
     alpha_price_tao: 0.01,
     emission_share: 0.02,
+    tao_in_pool_tao: 26707.57,
+    alpha_in_pool: 2956464.98,
+    alpha_out_pool: 2257199.02,
+    subnet_volume_tao: 798027.45,
     captured_at: 1780000000000,
     ...overrides,
   };
@@ -5638,6 +6495,21 @@ test("subnet-snapshot-sync upserts subnet_snapshots with the COALESCE-on-economi
   expect(queryText()).toMatch(
     /validator_count = COALESCE\(subnet_snapshots\.validator_count, excluded\.validator_count\)/,
   );
+  // #2552: pool liquidity + volume columns follow the same COALESCE-on-conflict
+  // semantics as the other economics columns (a later NULL never wipes an
+  // earlier fire's good value).
+  for (const column of [
+    "tao_in_pool_tao",
+    "alpha_in_pool",
+    "alpha_out_pool",
+    "subnet_volume_tao",
+  ]) {
+    expect(queryText()).toMatch(
+      new RegExp(
+        `${column} = COALESCE\\(subnet_snapshots\\.${column}, excluded\\.${column}\\)`,
+      ),
+    );
+  }
 });
 
 test("subnet-snapshot-sync defaults every optional field to null when absent", async () => {

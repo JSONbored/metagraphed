@@ -261,6 +261,12 @@ CREATE TABLE IF NOT EXISTS subnet_snapshots (
   total_stake_tao    NUMERIC,
   alpha_price_tao    NUMERIC,
   emission_share     NUMERIC,
+  -- Pool liquidity + volume (#2552) — point-in-time AMM reserves/cumulative
+  -- volume, NUMERIC like the other TAO-precision economics columns above.
+  tao_in_pool_tao    NUMERIC,
+  alpha_in_pool      NUMERIC,
+  alpha_out_pool     NUMERIC,
+  subnet_volume_tao  NUMERIC,
   PRIMARY KEY (netuid, snapshot_date)
 );
 CREATE INDEX IF NOT EXISTS idx_subnet_snapshots_date
@@ -576,18 +582,6 @@ CREATE INDEX IF NOT EXISTS idx_rpc_proxy_events_network_observed
   ON rpc_proxy_events (network, observed_at);
 CREATE INDEX IF NOT EXISTS idx_rpc_proxy_events_observed_endpoint
   ON rpc_proxy_events (observed_at, endpoint_id);
-
--- ---------------------------------------------------------------------------
--- Indexer coordination
--- ---------------------------------------------------------------------------
-
--- Durable cursor (also mirrored in Redis for hot access). Single row id=1.
-CREATE TABLE IF NOT EXISTS indexer_cursor (
-  id               SMALLINT PRIMARY KEY DEFAULT 1,
-  last_block       BIGINT NOT NULL,
-  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT indexer_cursor_singleton CHECK (id = 1)
-);
 
 -- ---------------------------------------------------------------------------
 -- Realtime firehose outbox (ADR 0015, #4980)

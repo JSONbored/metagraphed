@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { resolveRefetchInterval, usePageVisible } from "@/hooks/use-refetch-interval";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { RefreshCw, Pause, Play, ChevronDown, ChevronRight } from "lucide-react";
+import { RefreshCw, Pause, Play, ChevronDown, ChevronRight, ArrowUpRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -45,10 +45,11 @@ const INTERVAL_OPTIONS: Array<{ label: string; value: number }> = [
 
 const INCIDENT_INITIAL_VISIBLE = 12;
 
-// Mirrors the six Health mega-menu quick-filter links (nav-mega-menu-data.ts
+// Mirrors the Health mega-menu ops deep-links (nav-mega-menu-data.ts
 // `MEGA_PANELS` "health" panel) so `/health?view=...` and `/health?status=...`
-// deep-link into a specific section/filter instead of always rendering the
-// same fixed page. `status` also backs the page's own incident-filter chips.
+// scroll to a specific section/filter. Public plain-language status lives on
+// `/status` (surfaced from the same panel). `status` also backs the page's own
+// incident-filter chips.
 const HEALTH_VIEWS = ["", "matrix", "incidents", "sources", "freshness"] as const;
 type HealthView = (typeof HEALTH_VIEWS)[number];
 
@@ -79,13 +80,13 @@ export const Route = createFileRoute("/health")({
       {
         name: "description",
         content:
-          "Global health, freshness, source health, and recent incidents across the registry.",
+          "Operational health drill-down for maintainers: subnet matrix, endpoint mosaic, source freshness, and live incidents.",
       },
       { property: "og:title", content: "Health — Metagraphed" },
       {
         property: "og:description",
         content:
-          "Global health, freshness, source health, and recent incidents across the registry.",
+          "Operational health drill-down for maintainers: subnet matrix, endpoint mosaic, source freshness, and live incidents.",
       },
     ],
   }),
@@ -131,13 +132,22 @@ function HealthPage() {
           <HealthHero
             interval={effectiveInterval}
             controls={
-              <AutoRefreshControl
-                enabled={enabled}
-                visible={visible}
-                intervalMs={intervalMs}
-                onToggle={() => setEnabled((v) => !v)}
-                onIntervalChange={setIntervalMs}
-              />
+              <>
+                <Link
+                  to="/status"
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
+                >
+                  Public status
+                  <ArrowUpRight className="size-3" aria-hidden="true" />
+                </Link>
+                <AutoRefreshControl
+                  enabled={enabled}
+                  visible={visible}
+                  intervalMs={intervalMs}
+                  onToggle={() => setEnabled((v) => !v)}
+                  onIntervalChange={setIntervalMs}
+                />
+              </>
             }
           />
         </Suspense>
@@ -264,7 +274,17 @@ function HealthHero({
       eyebrow="Operations"
       live
       title="Health & freshness"
-      description="Probe-derived health. User submissions cannot set uptime, latency, or incident state."
+      description={
+        <>
+          Operational drill-down for maintainers — subnet matrix, endpoint mosaic, source freshness,
+          and live incidents. Probe-derived only; submissions cannot set uptime or incident state.
+          For plain-language uptime, see{" "}
+          <Link to="/status" className="text-accent-text underline-offset-2 hover:underline">
+            System status
+          </Link>
+          .
+        </>
+      }
       actions={controls}
       caption={<>health · {h?.total ?? "—"} surfaces</>}
       kpis={[

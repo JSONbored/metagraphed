@@ -39,6 +39,7 @@ import {
   handleChainPerformance,
   handleChainYield,
   handleAccountPortfolio,
+  handleAccountPositions,
   handleAccountsList,
   handleSubnetConcentrationHistory,
   handleSubnetPerformanceHistory,
@@ -905,12 +906,18 @@ describe("handleGlobalValidators", () => {
       hotkey: "hk-a",
       featured: false,
       coldkey: null,
+      coldkey_identity: null,
       coldkey_count: 0,
       subnet_count: 1,
       uid_count: 1,
       take: null,
       total_stake_tao: 0,
+      root_stake_tao: 0,
+      alpha_stake_tao: 0,
       total_emission_tao: 0,
+      nominator_count: null,
+      apy_estimate: null,
+      apy_estimate_eligible_subnet_count: 0,
       stake_dominance: null,
       avg_validator_trust: null,
       max_validator_trust: null,
@@ -5345,6 +5352,47 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       ),
     );
     assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountPositions: flag=postgres uses Postgres data, D1 never queried (#5233)", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", positions: [] }),
+    };
+    const body = await json(
+      await handleAccountPositions(
+        req(`/api/v1/accounts/${SS58}/positions`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountPositions: flag=postgres degrades to an empty schema-stable card on failure, D1 never queried (#5233)", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleAccountPositions(
+        req(`/api/v1/accounts/${SS58}/positions`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.equal(body.data.ss58, SS58);
+    assert.deepEqual(body.data.positions, []);
+    assert.equal(body.data.position_count, 0);
+    assert.equal(body.data.total_stake_tao, 0);
     assert.deepEqual(captures.sql, []);
   });
 

@@ -13,6 +13,14 @@ import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
+import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
+import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
+import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
+import {
+  annualizedDelegatorApyPct,
+  formatApyPct,
+  formatTakePct,
+} from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 // The full GlobalValidatorSort set the /api/v1/validators endpoint accepts.
@@ -76,6 +84,7 @@ function ValidatorsPage() {
         description="Network-wide validator directory — hotkeys ranked across all Bittensor subnets, computed live from the chain-direct metagraph."
         actions={<ShareButton />}
       />
+      <ValidatorGuide />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <ValidatorsTable
@@ -157,17 +166,22 @@ function ValidatorsTable({
       </div>
 
       {validators.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="hidden md:block overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">
             <thead className="bg-surface/50">
               <tr>
+                <th className={TH}>Operator</th>
                 <th className={TH}>Hotkey</th>
                 <th className={TH}>Coldkey</th>
+                <th className={`${TH} text-right`}>Take</th>
+                <th className={`${TH} text-right`}>Est. APY</th>
                 <th className={`${TH} text-right`}>Active subnets</th>
                 <th className={`${TH} text-right`}>UIDs</th>
+                <th className={`${TH} text-right`}>Nominators</th>
                 <th className={`${TH} text-right`}>Dominance</th>
                 <th className={`${TH} text-right`}>Total stake</th>
                 <th className={`${TH} text-right`}>Total emission</th>
+                <th className={`${TH} text-right`}>Est. APY</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -206,6 +220,9 @@ function ValidatorsTable({
                   <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                     {formatNumber(v.uid_count)}
                   </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {v.nominator_count != null ? formatNumber(v.nominator_count) : "—"}
+                  </td>
                   <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                     {v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"}
                   </td>
@@ -214,6 +231,9 @@ function ValidatorsTable({
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                     {taoCompact(v.total_emission_tao)}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {v.apy_estimate != null ? `${(v.apy_estimate * 100).toFixed(1)}%` : "—"}
                   </td>
                 </tr>
               ))}
@@ -226,6 +246,13 @@ function ValidatorsTable({
           description="The global validator directory is empty for this window."
         />
       )}
+
+      {validators.length > 0 ? (
+        <ValidatorCardList
+          validators={validators}
+          className="grid gap-3 sm:grid-cols-2 md:hidden"
+        />
+      ) : null}
     </div>
   );
 }

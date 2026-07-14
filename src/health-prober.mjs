@@ -927,6 +927,10 @@ export async function syncSubnetSnapshotToPostgres(
         total_stake_tao: econ.total_stake_tao ?? null,
         alpha_price_tao: econ.alpha_price_tao ?? null,
         emission_share: econ.emission_share ?? null,
+        tao_in_pool_tao: econ.tao_in_pool_tao ?? null,
+        alpha_in_pool: econ.alpha_in_pool ?? null,
+        alpha_out_pool: econ.alpha_out_pool ?? null,
+        subnet_volume_tao: econ.subnet_volume_tao ?? null,
         captured_at: capturedAt,
       };
     });
@@ -1023,14 +1027,19 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
        (netuid, snapshot_date, completeness_score, surface_count,
         endpoint_count, monitored_count, candidate_count,
         validator_count, miner_count, total_stake_tao, alpha_price_tao,
-        emission_share, captured_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        emission_share, tao_in_pool_tao, alpha_in_pool, alpha_out_pool,
+        subnet_volume_tao, captured_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
        validator_count = COALESCE(subnet_snapshots.validator_count, excluded.validator_count),
        miner_count = COALESCE(subnet_snapshots.miner_count, excluded.miner_count),
        total_stake_tao = COALESCE(subnet_snapshots.total_stake_tao, excluded.total_stake_tao),
        alpha_price_tao = COALESCE(subnet_snapshots.alpha_price_tao, excluded.alpha_price_tao),
-       emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share)`,
+       emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share),
+       tao_in_pool_tao = COALESCE(subnet_snapshots.tao_in_pool_tao, excluded.tao_in_pool_tao),
+       alpha_in_pool = COALESCE(subnet_snapshots.alpha_in_pool, excluded.alpha_in_pool),
+       alpha_out_pool = COALESCE(subnet_snapshots.alpha_out_pool, excluded.alpha_out_pool),
+       subnet_volume_tao = COALESCE(subnet_snapshots.subnet_volume_tao, excluded.subnet_volume_tao)`,
   );
   const statements = profiles
     .filter((profile) => Number.isInteger(profile.netuid))
@@ -1049,6 +1058,10 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
         econ.total_stake_tao ?? null,
         econ.alpha_price_tao ?? null,
         econ.emission_share ?? null,
+        econ.tao_in_pool_tao ?? null,
+        econ.alpha_in_pool ?? null,
+        econ.alpha_out_pool ?? null,
+        econ.subnet_volume_tao ?? null,
         capturedAt,
       );
     });

@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Boxes, Coins, Gauge, Zap } from "lucide-react";
+import { Boxes, Coins, Gauge, Percent, Users, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -11,6 +11,9 @@ import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { PageHero, ShareButton, SectionAnchor, CopyableCode, StatTile } from "@jsonbored/ui-kit";
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
+import { ValidatorApyPanel } from "@/components/metagraphed/validator-apy-panel";
+import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
+import { WatchValidatorAlert } from "@/components/metagraphed/watch-validator-alert";
 import {
   ValidatorNominatorsTable,
   type ValidatorNominatorsSearch,
@@ -20,6 +23,11 @@ import { validatorDetailQuery, validatorNominatorsQuery } from "@/lib/metagraphe
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
+import {
+  annualizedDelegatorApyPct,
+  formatApyPct,
+  formatTakePct,
+} from "@/lib/metagraphed/validator-apy";
 import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
 
 const validatorDetailSearchSchema = z.object({
@@ -201,21 +209,35 @@ function NominatorsSection({ hotkey }: { hotkey: string }) {
 
 function ValidatorDetail({ hotkey }: { hotkey: string }) {
   const sourceRef = ss58PathSegment(hotkey);
-  const detail = useSuspenseQuery(validatorDetailQuery(hotkey)).data.data;
+  const detailRes = useSuspenseQuery(validatorDetailQuery(hotkey)).data;
+  const detail = detailRes.data;
+  const displayName =
+    detail.coldkey_identity?.has_identity && detail.coldkey_identity.name
+      ? detail.coldkey_identity.name
+      : (shortHash(hotkey, 8) ?? "Validator");
+  const snapshotApy = annualizedDelegatorApyPct(
+    detail.total_emission_tao,
+    detail.total_stake_tao,
+    detail.take,
+  );
 
   return (
     <>
       <PageHero
         eyebrow="Explorer · validator"
         live
-        title={shortHash(hotkey, 8) ?? "Validator"}
+        title={displayName}
         description={
-          // PageHero renders `description` inside a <p> — block elements (div/p)
-          // are invalid HTML there (triggers a hydration mismatch), so this uses
-          // block-styled <span>s instead of the <div>/<p> combo other detail pages
-          // use for the same "blurb + copyable chip" shape.
           <span className="block space-y-4">
-            <span className="block max-w-2xl">
+            <span className="flex flex-wrap items-center gap-3">
+              <ValidatorIdentityChip hotkey={hotkey} identity={detail.coldkey_identity} size={40} />
+              {detail.coldkey_identity?.has_identity ? (
+                <span className="text-[11px] text-ink-muted">
+                  Operator identity is declared on the coldkey — not hotkey-specific (#5234).
+                </span>
+              ) : null}
+            </span>
+            <span className="block max-w-2xl text-sm text-ink-muted">
               Cross-subnet performance, nominators, and staking history for one Bittensor validator
               hotkey.
             </span>
@@ -228,12 +250,15 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
         caption="explorer / v1"
       />
 
-      <div className="mb-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <StatTile
           icon={Coins}
           eyebrow="Total stake"
           value={taoCompact(detail.total_stake_tao)}
-          hint="across all subnets"
+          // Root (netuid 0) is TAO-denominated with no price exposure; alpha
+          // is the sum across every other subnet's own alpha token (#2550).
+          hint={`Root ${taoCompact(detail.root_stake_tao)} · Alpha ${taoCompact(detail.alpha_stake_tao)}`}
+          truncate={false}
           tone="accent"
           className="rounded-2xl border-accent/25 bg-card/95 p-5 shadow-[0_24px_80px_-52px_rgba(45,212,191,0.45)]"
         />
@@ -258,7 +283,38 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           hint="mean across subnets"
           className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
         />
+        <StatTile
+          icon={Percent}
+          eyebrow="Take rate"
+          value={formatTakePct(detail.take)}
+          hint="commission kept from delegators"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
+        <StatTile
+          icon={Users}
+          eyebrow="Nominators"
+          value={detail.nominator_count != null ? formatNumber(detail.nominator_count) : "—"}
+          hint="distinct coldkeys delegated"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
+        <StatTile
+          icon={Zap}
+          eyebrow="Est. APY"
+          value={formatApyPct(snapshotApy)}
+          hint="snapshot · net of take"
+          truncate={false}
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
       </div>
+
+      <SectionAnchor
+        id="apy"
+        title="Delegator yield (APY)"
+        subtitle="7d / 30d / 90d windows from daily history"
+        tone="accent"
+      >
+        <ValidatorApyPanel hotkey={hotkey} take={detail.take} generatedAt={detail.captured_at} />
+      </SectionAnchor>
 
       <SectionAnchor id="subnets" title="Per-subnet performance" tone="accent">
         <SubnetPerformanceTable subnets={detail.subnets} />
@@ -284,6 +340,15 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             <NominatorsSection hotkey={hotkey} />
           </Suspense>
         </QueryErrorBoundary>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="watch"
+        title="Watch this validator"
+        subtitle="Alert on new delegations or stake, via the existing chain alert-triggers API."
+        tone="accent"
+      >
+        <WatchValidatorAlert hotkey={hotkey} />
       </SectionAnchor>
 
       <SectionAnchor

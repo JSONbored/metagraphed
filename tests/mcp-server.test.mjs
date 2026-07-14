@@ -5557,6 +5557,244 @@ describe("MCP get_rpc_usage", () => {
   });
 });
 
+describe("MCP call_rpc", () => {
+  // Mirrors rpcEnv() in tests/request-handlers-rpc-proxy.test.mjs: rpc/pools.json
+  // is R2-only, so both ASSETS and METAGRAPH_ARCHIVE are stubbed the same way
+  // readArtifact's tier resolution expects.
+  const RPC_POOL = {
+    pools: [
+      {
+        id: "finney-rpc",
+        endpoints: [
+          {
+            id: "fx",
+            provider: "fx",
+            pool_eligible: true,
+            status: "ok",
+            score: 100,
+            url: "https://bittensor-finney.api.onfinality.io/public",
+          },
+        ],
+      },
+    ],
+  };
+
+  function callRpcEnv(overrides = {}) {
+    return {
+      METAGRAPH_ENABLE_RPC_PROXY: "true",
+      ASSETS: {
+        async fetch(request) {
+          const target = new URL(request.url);
+          if (target.pathname === "/metagraph/rpc/pools.json") {
+            return Response.json(RPC_POOL);
+          }
+          return new Response("{}", { status: 404 });
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            async json() {
+              return RPC_POOL;
+            },
+          };
+        },
+      },
+      ...overrides,
+    };
+  }
+
+  test("rejects a missing method as invalid_params", async () => {
+    const res = await callTool("call_rpc", {}, { env: callRpcEnv() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("rejects a non-array params as invalid_params", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health", params: "nope" },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("rejects a non-string network as invalid_params", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health", network: 123 },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("propagates the REST route's rpc_method_blocked error verbatim for a denied method", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "author_submitExtrinsic" },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /rpc_method_blocked/);
+  });
+
+  test("propagates rpc_network_unsupported for an unknown network", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health", network: "moonbeam" },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /rpc_network_unsupported/);
+  });
+
+  test("forwards the real MCP client IP into the proxy's rate-limit key", async () => {
+    let limiterKey;
+    const env = callRpcEnv({
+      // MCP_RATE_LIMITER absent falls back to RPC_RATE_LIMITER for the transport-
+      // level MCP rate limit too (enforceMcpRateLimit) -- stub it separately so
+      // only the proxy's own internal check below is under test.
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: false };
+        },
+      },
+    });
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health" },
+      { env, headers: { "cf-connecting-ip": "198.51.100.7" } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /rpc_rate_limited/);
+    assert.equal(limiterKey, "rpc:198.51.100.7");
+  });
+
+  test("returns the upstream result plus served-endpoint metadata on success", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { isSyncing: false, peers: 3, shouldHavePeers: true },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.network, "finney");
+      assert.equal(out.method, "system_health");
+      assert.deepEqual(out.result, {
+        isSyncing: false,
+        peers: 3,
+        shouldHavePeers: true,
+      });
+      assert.equal(out.error, null);
+      assert.equal(out.endpoint_id, "fx");
+      assert.equal(out.provider, "fx");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("defaults jsonrpc to 2.0 and result to null when the upstream body omits them", async () => {
+    const originalFetch = globalThis.fetch;
+    // A real JSON-RPC 2.0 upstream always includes both fields; this exercises
+    // the defensive fallback for a hypothetical malformed/truncated upstream
+    // body, not a shape the proxy is known to ever actually produce.
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ id: 1 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.jsonrpc, "2.0");
+      assert.equal(out.result, null);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("state_getStorage forwards to the state-query path and validates the key", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "state_getStorage", params: ["not-hex"] },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /0x-prefixed hex/);
+  });
+
+  test("rpc_invalid_response when the upstream body is not JSON", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response("not json", {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+      });
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rpc_invalid_response/);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("advertises a call_rpc-shaped outputSchema and the result validates against it", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const def = listToolDefinitions().find((t) => t.name === "call_rpc");
+    assert.ok(def.outputSchema);
+    const validate = ajv.compile(def.outputSchema);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: 1, result: "finney" }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_chain" },
+        { env: callRpcEnv() },
+      );
+      assert.ok(
+        validate(res.body.result.structuredContent),
+        JSON.stringify(validate.errors),
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
@@ -7120,6 +7358,71 @@ describe("list_subnets", () => {
       );
     }
   });
+
+  test("filters by coverage_level and curation_level (and their not_ exclusions)", async () => {
+    const covDeps = makeDeps({
+      "/metagraph/subnets.json": {
+        subnets: [
+          {
+            netuid: 1,
+            name: "A",
+            coverage_level: "probed",
+            curation_level: "maintainer-reviewed",
+          },
+          {
+            netuid: 2,
+            name: "B",
+            coverage_level: "manifested",
+            curation_level: "community-seeded",
+          },
+          {
+            netuid: 3,
+            name: "C",
+            coverage_level: "native-only",
+            curation_level: "native",
+          },
+        ],
+      },
+    });
+    const rangeNetuids = (out) =>
+      out.subnets.map((s) => s.netuid).sort((a, b) => a - b);
+
+    const byCoverage = (
+      await callTool(
+        "list_subnets",
+        { coverage_level: "probed" },
+        { deps: covDeps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(byCoverage), [1]);
+
+    const byCuration = (
+      await callTool(
+        "list_subnets",
+        { curation_level: "community-seeded" },
+        { deps: covDeps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(byCuration), [2]);
+
+    const notCoverage = (
+      await callTool(
+        "list_subnets",
+        { not_coverage_level: "native-only" },
+        { deps: covDeps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(notCoverage), [1, 2]);
+
+    const notCuration = (
+      await callTool(
+        "list_subnets",
+        { not_curation_level: "native" },
+        { deps: covDeps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(notCuration), [1, 2]);
+  });
 });
 
 // The keyword search tools share the list_subnets pagination contract: page
@@ -7395,6 +7698,117 @@ describe("MCP economics + metagraph data tools", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
+  // Realistic reserves (SN64 from the live economics.json artifact), matching
+  // the fixture in tests/subnet-stake-quote-api.test.mjs.
+  const STAKE_QUOTE_POOL_ROW = {
+    netuid: 64,
+    tao_in_pool_tao: 201959.938748425,
+    alpha_in_pool: 2730860.150574127,
+  };
+  const STAKE_QUOTE_BLOB = { subnets: [STAKE_QUOTE_POOL_ROW] };
+
+  test("get_subnet_stake_quote quotes a stake against the live pool reserves", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 1000, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, 64);
+    assert.equal(out.direction, "stake");
+    assert.equal(out.expected_out_unit, "alpha");
+    assert.equal(out.is_root, false);
+    assert.ok(out.expected_out > 0);
+    assert.ok(out.price_impact_pct > 0);
+    assert.equal(out.tao_in_pool_tao, STAKE_QUOTE_POOL_ROW.tao_in_pool_tao);
+  });
+
+  test("get_subnet_stake_quote quotes an unstake against the live pool reserves", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 500, direction: "unstake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.direction, "unstake");
+    assert.equal(out.expected_out_unit, "tao");
+    assert.ok(out.expected_out > 0);
+  });
+
+  test("get_subnet_stake_quote defaults direction to stake when omitted", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 10 },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.structuredContent.direction, "stake");
+  });
+
+  test("get_subnet_stake_quote returns a 1:1 zero-impact quote for root (netuid 0)", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 0, amount: 42, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.is_root, true);
+    assert.equal(out.expected_out, 42);
+    assert.equal(out.price_impact_pct, 0);
+    assert.equal(out.tao_in_pool_tao, null);
+  });
+
+  test("get_subnet_stake_quote rejects a non-positive amount as invalid_amount", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: -5, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_amount/);
+  });
+
+  test("get_subnet_stake_quote rejects an unknown direction as invalid_direction", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 10, direction: "swap" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_direction/);
+  });
+
+  test("get_subnet_stake_quote surfaces insufficient_liquidity when the subnet has no pool row", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 999, amount: 10, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /insufficient_liquidity/);
   });
 
   test("get_economics serves the live KV economics tier with REST list-query filters", async () => {
@@ -8286,7 +8700,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.window, "30d");
     assert.equal(out.day_count, 2);
     assert.equal(out.days[0].snapshot_date, "2026-06-01");
-    assert.equal(out.days[1].total_stake_tao, 1000);
+    assert.equal(out.days[1].total_stake_tao, "1000.000000000");
   });
 
   test("get_economics_trends rejects an invalid window", async () => {
@@ -10325,6 +10739,125 @@ describe("MCP economics + metagraph data tools", () => {
     }
   });
 
+  // compare_subnets doesn't fit the generic marker-passthrough Postgres-tier
+  // contract used elsewhere: handleCompare has no single D1 route to
+  // forward, so its health dimension synthesizes its own internal
+  // /api/v1/internal/compare-health request (netuids only, no dimensions --
+  // structure/economics never touch D1/Postgres, they're registry+
+  // economics-tier reads) and only when the health dimension is requested.
+  // The DATA_API response also isn't returned verbatim: composeCompareData
+  // folds it down to surface_count/ok_count/avg_latency_ms per netuid, so
+  // there's no top-level `marker` field to assert on -- same two-test
+  // contract as the shared CASES loops, adapted to that shape.
+  test("compare_subnets: health dimension flag=postgres uses Postgres data at the internal REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            rows: [
+              { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
+            ],
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "compare_subnets",
+      { netuids: [7], dimensions: ["health"] },
+      { deps: liveAnalyticsDeps, env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(captured, "/api/v1/internal/compare-health?netuids=7");
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.subnets[0].health, {
+      surface_count: 9,
+      ok_count: 8,
+      avg_latency_ms: 55,
+    });
+  });
+
+  test("compare_subnets: health+economics dimensions flag=postgres still includes economicsRows", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            rows: [
+              { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
+            ],
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "compare_subnets",
+      { netuids: [7], dimensions: ["health", "economics"] },
+      { deps: liveAnalyticsDeps, env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(captured, "/api/v1/internal/compare-health?netuids=7");
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.subnets[0].health, {
+      surface_count: 9,
+      ok_count: 8,
+      avg_latency_ms: 55,
+    });
+    assert.ok(out.subnets[0].economics);
+  });
+
+  test("compare_subnets: health dimension flag=postgres falls back to D1 on DATA_API failure", async () => {
+    const env = {
+      ...d1Env,
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "compare_subnets",
+      { netuids: [7], dimensions: ["health"] },
+      { deps: liveAnalyticsDeps, env },
+    );
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    // Same surfaceStatus fixture d1Env's METAGRAPH_HEALTH_DB serves the
+    // existing "composes health-only dimensions" test above.
+    assert.deepEqual(out.subnets[0].health, {
+      surface_count: 3,
+      ok_count: 2,
+      avg_latency_ms: 120,
+    });
+  });
+
+  test("compare_subnets: non-health dimensions never attempt Postgres even when flag=postgres", async () => {
+    let dataApiCalled = false;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          dataApiCalled = true;
+          return Response.json({ rows: [] });
+        },
+      },
+    };
+    const res = await callTool(
+      "compare_subnets",
+      { netuids: [7], dimensions: ["structure"] },
+      { deps: liveAnalyticsDeps, env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(dataApiCalled, false);
+  });
+
   test("get_global_incidents returns empty summary on cold D1", async () => {
     const res = await callTool("get_global_incidents", { window: "7d" });
     const out = res.body.result.structuredContent;
@@ -11562,6 +12095,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       signer: EXTRINSIC_ROW.signer,
       call_module: "SubtensorModule",
       call_function: "set_weights",
+      call_hash: "0x" + "a".repeat(64),
       success: true,
       block_start: 100,
       block_end: 200,
@@ -11698,6 +12232,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
           });
         },
       };
+      const callHash = "0x" + "b".repeat(64);
       await callTool(
         "list_extrinsics",
         {
@@ -11705,6 +12240,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
           signer: SS58,
           call_module: "SubtensorModule",
           call_function: "set_weights",
+          call_hash: callHash,
           success: true,
           limit: 10,
           offset: 20,
@@ -11717,6 +12253,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.equal(seenUrl.searchParams.get("signer"), SS58);
       assert.equal(seenUrl.searchParams.get("call_module"), "SubtensorModule");
       assert.equal(seenUrl.searchParams.get("call_function"), "set_weights");
+      assert.equal(seenUrl.searchParams.get("call_hash"), callHash);
       assert.equal(seenUrl.searchParams.get("success"), "true");
       assert.equal(seenUrl.searchParams.get("limit"), "10");
     });
@@ -13882,5 +14419,2927 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     const res = await callTool("get_freshness", {}, { deps });
     const out = res.body.result.structuredContent;
     assert.equal(out.sources[0].status, "stale");
+  });
+});
+
+// MCP feature-parity tools (#5225): validator detail/nominators/history, subnet
+// hyperparameters/volume/recycled, account identity/position-history,
+// sudo/governance-config feeds, the runtime spec-version timeline, and the
+// site-wide accounts leaderboard. Each mirrors an existing REST route the MCP
+// surface was previously missing.
+describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
+  const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so all three tools always rank over a schema-stable empty
+  // base (buildValidatorDetail/buildValidatorNominators/buildValidatorHistory
+  // called with []) -- row-shaping over real rows is covered directly against
+  // the pure builders in tests/validator-nominators.test.mjs and
+  // tests/validator-history.test.mjs; this only proves the MCP wiring.
+  test("get_validator_detail returns a schema-stable zeroed aggregate", async () => {
+    const res = await callTool("get_validator_detail", { hotkey: HOTKEY });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.hotkey, HOTKEY);
+    assert.equal(out.coldkey, null);
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.take, null);
+  });
+
+  test("get_validator_detail rejects a missing/invalid hotkey", async () => {
+    const missing = await callTool("get_validator_detail", {});
+    assert.equal(missing.body.result.isError, true);
+
+    const bad = await callTool("get_validator_detail", { hotkey: "not-ss58" });
+    assert.equal(bad.body.result.isError, true);
+    assert.match(bad.body.result.content[0].text, /ss58/i);
+  });
+
+  test("get_validator_nominators returns a schema-stable empty ranked list with defaults", async () => {
+    const res = await callTool("get_validator_nominators", { hotkey: HOTKEY });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.hotkey, HOTKEY);
+    assert.equal(out.window, "30d");
+    assert.equal(out.sort, "net_staked");
+    assert.equal(out.limit, 20);
+    assert.equal(out.offset, 0);
+    assert.equal(out.nominator_count, 0);
+    assert.deepEqual(out.nominators, []);
+  });
+
+  test("get_validator_nominators accepts each window/sort and an explicit coldkey", async () => {
+    for (const window of ["7d", "30d", "90d"]) {
+      const res = await callTool("get_validator_nominators", {
+        hotkey: HOTKEY,
+        window,
+      });
+      assert.equal(res.body.result.structuredContent.window, window);
+    }
+    for (const sort of ["net_staked", "gross_staked", "last_activity"]) {
+      const res = await callTool("get_validator_nominators", {
+        hotkey: HOTKEY,
+        sort,
+      });
+      assert.equal(res.body.result.structuredContent.sort, sort);
+    }
+    const withColdkey = await callTool("get_validator_nominators", {
+      hotkey: HOTKEY,
+      coldkey: HOTKEY,
+    });
+    assert.equal(withColdkey.body.result.isError, false);
+  });
+
+  test("get_validator_nominators rejects an invalid window/sort/coldkey", async () => {
+    const badWindow = await callTool("get_validator_nominators", {
+      hotkey: HOTKEY,
+      window: "5d",
+    });
+    assert.equal(badWindow.body.result.isError, true);
+
+    const badSort = await callTool("get_validator_nominators", {
+      hotkey: HOTKEY,
+      sort: "bogus",
+    });
+    assert.equal(badSort.body.result.isError, true);
+
+    const badColdkey = await callTool("get_validator_nominators", {
+      hotkey: HOTKEY,
+      coldkey: "not-ss58",
+    });
+    assert.equal(badColdkey.body.result.isError, true);
+    assert.match(badColdkey.body.result.content[0].text, /coldkey/);
+  });
+
+  test("get_validator_nominators: flag=postgres unwraps the DATA_API {data, generatedAt} envelope onto the top level", async () => {
+    // workers/data-api.mjs's own nominators route wraps its response as
+    // { data: buildValidatorNominators(...), generatedAt } -- unlike the
+    // flat-shaped neurons-tier routes. Assert hotkey/nominator_count/
+    // nominators land at the TOP of structuredContent (matching this tool's
+    // own outputSchema), not nested under .data, so a future regression to a
+    // bare `tryPostgresTier(...) ?? builder(...)` (no unwrap) fails loudly
+    // here instead of only violating the schema silently in production.
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: {
+              schema_version: 1,
+              hotkey: HOTKEY,
+              window: "30d",
+              sort: "net_staked",
+              limit: 20,
+              offset: 0,
+              nominator_count: 1,
+              nominators: [
+                {
+                  coldkey: "5Cold",
+                  net_staked_tao: 10,
+                  gross_staked_tao: 10,
+                  unstaked_tao: 0,
+                  event_count: 1,
+                  last_observed_at: "2026-07-01T00:00:00.000Z",
+                },
+              ],
+            },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_validator_nominators",
+      { hotkey: HOTKEY },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.data, undefined);
+    assert.equal(out.hotkey, HOTKEY);
+    assert.equal(out.nominator_count, 1);
+    assert.equal(out.nominators[0].coldkey, "5Cold");
+  });
+
+  test("get_validator_history returns a schema-stable empty point series", async () => {
+    const res = await callTool("get_validator_history", { hotkey: HOTKEY });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.hotkey, HOTKEY);
+    assert.equal(out.window, "30d");
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
+  });
+
+  test("get_validator_history accepts every REST-supported window", async () => {
+    for (const window of ["7d", "30d", "90d", "1y", "all"]) {
+      const res = await callTool("get_validator_history", {
+        hotkey: HOTKEY,
+        window,
+      });
+      assert.equal(res.body.result.structuredContent.window, window);
+    }
+  });
+
+  test("get_validator_history rejects an unknown window", async () => {
+    const res = await callTool("get_validator_history", {
+      hotkey: HOTKEY,
+      window: "5d",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+});
+
+describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
+  test("get_subnet_hyperparams returns hyperparameters:null when never captured", async () => {
+    const res = await callTool("get_subnet_hyperparams", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.hyperparameters, null);
+    assert.equal(out.captured_at, null);
+    assert.equal(out.block_number, null);
+  });
+
+  test("get_subnet_hyperparams rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_hyperparams", {});
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_hyperparams_history returns a schema-stable empty timeline", async () => {
+    const res = await callTool("get_subnet_hyperparams_history", {
+      netuid: 7,
+      limit: 10,
+      offset: 5,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.entry_count, 0);
+    assert.deepEqual(out.entries, []);
+    assert.equal(out.limit, 10);
+    assert.equal(out.offset, 5);
+  });
+
+  test("get_subnet_hyperparams_history rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_hyperparams_history", {});
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_volume reports zeroed 24h volume with a null vol_mcap_ratio when market cap is absent", async () => {
+    const deps = makeDeps({
+      "/metagraph/economics.json": {
+        captured_at: "2026-01-01T00:00:00Z",
+        summary: {},
+        subnets: [{ netuid: 7 }],
+      },
+    });
+    const res = await callTool("get_subnet_volume", { netuid: 7 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "24h");
+    assert.equal(out.buy_volume_alpha, 0);
+    assert.equal(out.sell_volume_alpha, 0);
+    assert.equal(out.total_volume_tao, 0);
+    assert.equal(out.buy_count, 0);
+    assert.equal(out.sentiment, "neutral");
+    assert.equal(out.vol_mcap_ratio, null);
+  });
+
+  test("get_subnet_volume surfaces not_found when the economics artifact is absent", async () => {
+    const res = await callTool("get_subnet_volume", { netuid: 7 }, {});
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_volume rejects a missing netuid", async () => {
+    const deps = makeDeps({
+      "/metagraph/economics.json": { subnets: [] },
+    });
+    const res = await callTool("get_subnet_volume", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_recycled returns recycled_tao:0 for genuinely unset storage", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+    });
+    try {
+      const res = await callTool("get_subnet_recycled", { netuid: 7 }, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.netuid, 7);
+      assert.equal(out.recycled_tao, 0);
+      assert.ok(out.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_subnet_recycled returns recycled_tao:null on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("rpc down");
+    };
+    try {
+      const res = await callTool("get_subnet_recycled", { netuid: 7 }, {});
+      assert.equal(res.body.result.structuredContent.recycled_tao, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_subnet_recycled rejects a netuid outside the u16 range", async () => {
+    const res = await callTool("get_subnet_recycled", { netuid: 70000 }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /u16/);
+  });
+
+  test("get_subnet_recycled applies the RPC rate limiter before the finney fetch", async () => {
+    let limiterKey;
+    let fetchCalled = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      fetchCalled = true;
+      throw new Error("should not fetch");
+    };
+    const env = {
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: false };
+        },
+      },
+    };
+    try {
+      const res = await callTool("get_subnet_recycled", { netuid: 7 }, { env });
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rate_limited/);
+      assert.equal(limiterKey, "recycled:mcp:anonymous");
+      assert.equal(fetchCalled, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+});
+
+describe("MCP account identity/position-history tools (#5225 parity)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  function accountIdentityD1({ identity, identityHistory } = {}, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  if (/FROM account_identity_history/.test(sql))
+                    return Promise.resolve({ results: identityHistory || [] });
+                  if (/FROM account_identity WHERE/.test(sql))
+                    return Promise.resolve({ results: identity || [] });
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_account_identity returns has_identity:false on cold D1", async () => {
+    const res = await callTool("get_account_identity", { ss58: SS58 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.account, SS58);
+    assert.equal(out.has_identity, false);
+    assert.equal(out.name, null);
+    assert.equal(out.captured_at, null);
+  });
+
+  test("get_account_identity returns the real identity from D1", async () => {
+    const env = accountIdentityD1({
+      identity: [
+        {
+          account: SS58,
+          name: "Alice",
+          url: "https://alice.example",
+          github: "https://github.com/alice",
+          image: null,
+          discord: "alice#0001",
+          description: "validator",
+          additional: null,
+          captured_at: 1_700_000_000_000,
+        },
+      ],
+    });
+    const res = await callTool("get_account_identity", { ss58: SS58 }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.has_identity, true);
+    assert.equal(out.name, "Alice");
+    assert.equal(out.github, "https://github.com/alice");
+    assert.ok(out.captured_at);
+  });
+
+  test("get_account_identity rejects an invalid ss58", async () => {
+    const res = await callTool("get_account_identity", { ss58: "not-ss58" });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  describe("get_account_identity D1 -> Postgres serving cutover", () => {
+    test("flag=postgres uses Postgres data, D1 never queried", async () => {
+      const capture = [];
+      const env = {
+        ...accountIdentityD1({ identity: [] }, capture),
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              schema_version: 1,
+              account: SS58,
+              has_identity: true,
+              name: "PgAlice",
+            }),
+        },
+      };
+      const res = await callTool(
+        "get_account_identity",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(res.body.result.structuredContent.name, "PgAlice");
+      assert.deepEqual(capture, []);
+    });
+
+    test("flag=postgres falls back to D1 on failure", async () => {
+      const env = {
+        ...accountIdentityD1({
+          identity: [{ account: SS58, name: "D1Alice", captured_at: 1 }],
+        }),
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(
+        "get_account_identity",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(res.body.result.structuredContent.name, "D1Alice");
+    });
+  });
+
+  test("get_account_identity_history returns an empty timeline on cold D1", async () => {
+    const res = await callTool("get_account_identity_history", {
+      ss58: SS58,
+      limit: 10,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.account, SS58);
+    assert.equal(out.entry_count, 0);
+    assert.deepEqual(out.entries, []);
+    assert.equal(out.limit, 10);
+  });
+
+  test("get_account_identity_history returns the real timeline from D1", async () => {
+    const env = accountIdentityD1({
+      identityHistory: [
+        {
+          id: 2,
+          observed_at: 1_700_000_000_000,
+          name: "Alice",
+          url: null,
+          github: null,
+          image: null,
+          discord: null,
+          description: null,
+          additional: null,
+          identity_hash: "hash-1",
+        },
+      ],
+    });
+    const res = await callTool(
+      "get_account_identity_history",
+      { ss58: SS58 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.entry_count, 1);
+    assert.equal(out.entries[0].identity_hash, "hash-1");
+    assert.equal(out.entries[0].name, "Alice");
+  });
+
+  describe("get_account_identity_history D1 -> Postgres serving cutover", () => {
+    test("flag=postgres uses Postgres data, D1 never queried", async () => {
+      const capture = [];
+      const env = {
+        ...accountIdentityD1({ identityHistory: [] }, capture),
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              schema_version: 1,
+              account: SS58,
+              entry_count: 1,
+              entries: [{ identity_hash: "pg-hash" }],
+            }),
+        },
+      };
+      const res = await callTool(
+        "get_account_identity_history",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(
+        res.body.result.structuredContent.entries[0].identity_hash,
+        "pg-hash",
+      );
+      assert.deepEqual(capture, []);
+    });
+  });
+
+  test("get_account_position_history returns a schema-stable empty point series", async () => {
+    const res = await callTool("get_account_position_history", {
+      ss58: SS58,
+      netuid: 7,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "30d");
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
+  });
+
+  test("get_account_position_history accepts every REST-supported window", async () => {
+    for (const window of ["7d", "30d", "90d", "1y", "all"]) {
+      const res = await callTool("get_account_position_history", {
+        ss58: SS58,
+        netuid: 7,
+        window,
+      });
+      assert.equal(res.body.result.structuredContent.window, window);
+    }
+  });
+
+  test("get_account_position_history rejects a missing netuid or unknown window", async () => {
+    const missingNetuid = await callTool("get_account_position_history", {
+      ss58: SS58,
+    });
+    assert.equal(missingNetuid.body.result.isError, true);
+
+    const badWindow = await callTool("get_account_position_history", {
+      ss58: SS58,
+      netuid: 7,
+      window: "5d",
+    });
+    assert.equal(badWindow.body.result.isError, true);
+  });
+});
+
+describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () => {
+  test("get_sudo degrades to an empty feed on cold D1", async () => {
+    const res = await callTool("get_sudo", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.extrinsic_count, 0);
+    assert.deepEqual(out.extrinsics, []);
+  });
+
+  test("get_sudo: flag=postgres forwards to /api/v1/sudo, D1 never queried", async () => {
+    let capturedPath;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedPath = new URL(req.url).pathname;
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 1,
+            extrinsics: [{ call_module: "Sudo" }],
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_sudo",
+      { call_function: "sudo_set_weights_set_rate_limit" },
+      { env },
+    );
+    assert.equal(capturedPath, "/api/v1/sudo");
+    assert.equal(
+      res.body.result.structuredContent.extrinsics[0].call_module,
+      "Sudo",
+    );
+  });
+
+  test("get_sudo rejects a non-boolean success filter", async () => {
+    const res = await callTool("get_sudo", { success: "maybe" });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_governance_config_changes degrades to an empty feed on cold D1", async () => {
+    const res = await callTool("get_governance_config_changes", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.extrinsic_count, 0);
+    assert.deepEqual(out.extrinsics, []);
+  });
+
+  test("get_governance_config_changes: flag=postgres forwards to /api/v1/governance/config-changes", async () => {
+    let capturedPath;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedPath = new URL(req.url).pathname;
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await callTool("get_governance_config_changes", {}, { env });
+    assert.equal(capturedPath, "/api/v1/governance/config-changes");
+  });
+
+  test("get_sudo_key returns hotkey:null for genuinely unset storage", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+    });
+    try {
+      const res = await callTool("get_sudo_key", {}, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.hotkey, null);
+      assert.ok(out.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_sudo_key returns hotkey:null on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("rpc down");
+    };
+    try {
+      const res = await callTool("get_sudo_key", {}, {});
+      assert.equal(res.body.result.structuredContent.hotkey, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_sudo_key rejects an unexpected argument", async () => {
+    const res = await callTool("get_sudo_key", { netuid: 7 }, {});
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_runtime returns a schema-stable empty transition timeline (D1 write path retired)", async () => {
+    const res = await callTool("get_runtime", {}, {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.transition_count, 0);
+    assert.deepEqual(out.transitions, []);
+    assert.equal(out.current_spec_version, null);
+    assert.equal(out.coverage_from_block, null);
+  });
+
+  test("get_runtime: flag=postgres uses Postgres data", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          assert.equal(new URL(req.url).pathname, "/api/v1/runtime");
+          return Response.json({
+            schema_version: 1,
+            transition_count: 1,
+            current_spec_version: 300,
+            coverage_from_block: 100,
+            coverage_from_at: null,
+            transitions: [
+              { spec_version: 300, block_number: 100, observed_at: null },
+            ],
+          });
+        },
+      },
+    };
+    const res = await callTool("get_runtime", {}, { env });
+    assert.equal(res.body.result.structuredContent.current_spec_version, 300);
+  });
+
+  test("list_accounts returns a schema-stable empty leaderboard (neurons D1 write path retired)", async () => {
+    const res = await callTool("list_accounts", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "total_stake");
+    assert.equal(out.limit, 20);
+    assert.equal(out.account_count, 0);
+    assert.deepEqual(out.accounts, []);
+  });
+
+  test("list_accounts accepts each REST-supported sort key with an empty leaderboard", async () => {
+    for (const sort of [
+      "total_stake",
+      "total_emission",
+      "subnet_count",
+      "uid_count",
+      "validator_count",
+      "stake_dominance",
+      "last_active",
+    ]) {
+      const res = await callTool("list_accounts", { sort, limit: 1 });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.sort, sort);
+      assert.equal(out.limit, 1);
+    }
+  });
+
+  test("list_accounts rejects an invalid sort", async () => {
+    const res = await callTool("list_accounts", { sort: "bogus" });
+    assert.equal(res.body.result.isError, true);
+  });
+});
+
+describe("MCP endpoint tools — live overlay staleness fix (#5225)", () => {
+  const liveKv = {
+    last_run_at: FRESH_RUN,
+    surfaces: [
+      {
+        surface_id: "sn-7-example-api",
+        netuid: 7,
+        status: "failed",
+        classification: "down",
+        latency_ms: null,
+        last_ok: "2026-06-12T00:00:00.000Z",
+        last_checked: "2026-06-13T00:00:00.000Z",
+      },
+    ],
+  };
+
+  test("list_endpoints overlays live health onto endpoints carrying a surface_id", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/endpoints.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          endpoints: [
+            {
+              surface_id: "sn-7-example-api",
+              netuid: 7,
+              kind: "subnet-api",
+              status: "ok",
+              pool_eligible: true,
+            },
+          ],
+        },
+      },
+      { "health:current": liveKv },
+    );
+    const res = await callTool("list_endpoints", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].status, "failed");
+  });
+
+  test("list_endpoints skips the overlay when no endpoint carries a surface_id (unchanged)", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/endpoints.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          endpoints: [{ netuid: 7, kind: "rest", status: "ok" }],
+        },
+      },
+      { "health:current": liveKv },
+    );
+    const res = await callTool("list_endpoints", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].status, "ok");
+  });
+
+  test("get_subnet_endpoints overlays live health onto its endpoints", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/endpoints/7.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          netuid: 7,
+          endpoints: [
+            {
+              surface_id: "sn-7-example-api",
+              kind: "subnet-api",
+              status: "ok",
+            },
+          ],
+        },
+      },
+      { "health:current": liveKv },
+    );
+    const res = await callTool("get_subnet_endpoints", { netuid: 7 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].status, "failed");
+  });
+
+  test("list_rpc_endpoints overlays live RPC pool health onto matching endpoint ids", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/rpc-endpoints.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          endpoints: [
+            {
+              id: "fullnode",
+              url: "wss://rpc.example",
+              network: "finney",
+              status: "ok",
+            },
+          ],
+        },
+      },
+      {
+        [KV_HEALTH_RPC_POOL]: {
+          last_run_at: FRESH_RUN,
+          endpoints: [
+            {
+              id: "fullnode",
+              status: "degraded",
+              classification: "slow",
+              latency_ms: 900,
+            },
+          ],
+        },
+      },
+    );
+    const res = await callTool("list_rpc_endpoints", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].latency_ms, 900);
+    assert.equal(out.endpoints[0].health_source, "probe-derived");
+  });
+
+  test("list_rpc_endpoints falls back to the static artifact when no pool KV is present", async () => {
+    const deps = makeDeps({
+      "/metagraph/rpc-endpoints.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        endpoints: [
+          {
+            id: "fullnode",
+            url: "wss://rpc.example",
+            network: "finney",
+            status: "ok",
+          },
+        ],
+      },
+    });
+    const res = await callTool("list_rpc_endpoints", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].status, "ok");
+  });
+});
+
+// All twelve of these tools previously called their builder with []
+// unconditionally -- #4909's D1 retirement left no D1 path to route to
+// (neurons/neuron_daily are dropped), so they always served zeroed/empty
+// data in production while their REST siblings (entities.mjs's
+// handleSubnetConcentration et al.) served real Postgres data via
+// tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE"). This block
+// confirms the same wiring now reaches DATA_API at REST's exact path +
+// query params, and degrades safely to the schema-stable empty shape (never
+// isError) on any Postgres failure -- same contract as the pre-existing
+// get_subnet_identity_history/list_extrinsics Postgres-cutover blocks above.
+describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => {
+  const CASES = [
+    {
+      tool: "get_subnet_concentration",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/concentration",
+    },
+    {
+      tool: "get_subnet_performance",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/performance",
+    },
+    {
+      tool: "get_chain_concentration",
+      args: {},
+      path: "/api/v1/chain/concentration",
+    },
+    {
+      tool: "get_chain_performance",
+      args: {},
+      path: "/api/v1/chain/performance",
+    },
+    {
+      tool: "get_chain_yield",
+      args: {},
+      path: "/api/v1/chain/yield",
+    },
+    {
+      tool: "get_subnet_yield",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/yield",
+    },
+    {
+      tool: "get_subnet_concentration_history",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/concentration/history?window=30d",
+    },
+    {
+      tool: "get_subnet_performance_history",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/performance/history?window=30d",
+    },
+    {
+      tool: "get_subnet_yield_history",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/yield/history?window=30d",
+    },
+    {
+      tool: "get_subnet_turnover",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/turnover?window=30d",
+    },
+    {
+      tool: "get_subnet_turnover",
+      args: { netuid: 7, window: "30d", changes: true },
+      path: "/api/v1/subnets/7/turnover?window=30d&changes=true",
+    },
+    {
+      tool: "get_chain_turnover",
+      args: { window: "30d" },
+      path: "/api/v1/chain/turnover?window=30d&limit=20",
+    },
+    {
+      tool: "get_subnet_movers",
+      args: {},
+      path: "/api/v1/subnets/movers?window=30d&sort=stake&limit=20",
+    },
+    {
+      tool: "get_subnet_metagraph",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/metagraph",
+    },
+    {
+      tool: "get_subnet_metagraph",
+      args: { netuid: 7, validator_permit: true },
+      path: "/api/v1/subnets/7/metagraph?validator_permit=true",
+    },
+    {
+      tool: "list_subnet_validators",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/validators",
+    },
+    {
+      tool: "list_global_validators",
+      args: {},
+      path: "/api/v1/validators?sort=subnet_count&limit=20",
+    },
+    {
+      tool: "get_validator_detail",
+      args: { hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
+      path: "/api/v1/validators/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    },
+    {
+      tool: "get_neuron",
+      args: { netuid: 7, uid: 3 },
+      path: "/api/v1/subnets/7/neurons/3",
+    },
+    {
+      tool: "list_accounts",
+      args: {},
+      path: "/api/v1/accounts?sort=total_stake&limit=20",
+    },
+    {
+      tool: "get_validator_history",
+      args: {
+        hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        window: "30d",
+      },
+      path: "/api/v1/validators/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/history?window=30d",
+    },
+    {
+      tool: "get_neuron_history",
+      args: { netuid: 7, uid: 3, window: "30d" },
+      path: "/api/v1/subnets/7/neurons/3/history?window=30d",
+    },
+    {
+      tool: "get_subnet_history",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/history?window=30d",
+    },
+    {
+      tool: "get_account_subnets",
+      args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets",
+    },
+    {
+      tool: "get_account_portfolio",
+      args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/portfolio",
+    },
+    {
+      tool: "get_account_position_history",
+      args: {
+        ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        netuid: 7,
+        window: "30d",
+      },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets/7/history?window=30d",
+    },
+  ];
+
+  for (const { tool, args, path } of CASES) {
+    const label = path.includes("changes=true")
+      ? `${tool} (changes=true)`
+      : path.includes("validator_permit=true")
+        ? `${tool} (validator_permit=true)`
+        : tool;
+
+    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
+      let captured;
+      const env = {
+        METAGRAPH_NEURONS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (req) => {
+            const reqUrl = new URL(req.url);
+            captured = reqUrl.pathname + reqUrl.search;
+            return Response.json({
+              schema_version: 1,
+              marker: "from-postgres",
+            });
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        "from-postgres",
+        label,
+      );
+      assert.equal(captured, path, label);
+    });
+
+    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
+      const env = {
+        METAGRAPH_NEURONS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+    });
+  }
+
+  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    for (const { tool, args } of CASES) {
+      const res = await callTool(tool, args, { env });
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        undefined,
+        `${tool} should not reach DATA_API without the flag`,
+      );
+    }
+  });
+});
+
+// get_rpc_usage is gated on METAGRAPH_RPC_USAGE_SOURCE, not
+// METAGRAPH_NEURONS_SOURCE, so it doesn't fit the shared CASES loop above
+// (which hardcodes the neurons-tier flag) -- same two-test-per-tool
+// contract, just with the correct flag name and its own CASES array.
+describe("MCP get_rpc_usage — Postgres tier wiring", () => {
+  const CASES = [
+    {
+      tool: "get_rpc_usage",
+      args: {},
+      path: "/api/v1/rpc/usage?window=7d",
+    },
+    {
+      tool: "get_rpc_usage",
+      args: { window: "30d" },
+      path: "/api/v1/rpc/usage?window=30d",
+    },
+  ];
+
+  for (const { tool, args, path } of CASES) {
+    const label = path.includes("window=30d") ? `${tool} (window=30d)` : tool;
+
+    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
+      let captured;
+      const env = {
+        METAGRAPH_RPC_USAGE_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (req) => {
+            const reqUrl = new URL(req.url);
+            captured = reqUrl.pathname + reqUrl.search;
+            return Response.json({
+              schema_version: 1,
+              marker: "from-postgres",
+            });
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        "from-postgres",
+        label,
+      );
+      assert.equal(captured, path, label);
+    });
+
+    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
+      const env = {
+        METAGRAPH_RPC_USAGE_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+    });
+  }
+
+  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    for (const { tool, args } of CASES) {
+      const res = await callTool(tool, args, { env });
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        undefined,
+        `${tool} should not reach DATA_API without the flag`,
+      );
+    }
+  });
+});
+
+// get_subnet_trajectory / get_economics_trends are gated on
+// METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, not METAGRAPH_NEURONS_SOURCE, so they
+// don't fit the shared CASES loop above (which hardcodes the neurons-tier
+// flag) -- same two-test-per-tool contract, just with the correct flag name
+// and its own CASES array.
+describe("MCP subnet-snapshots-tier analytics tools — Postgres tier wiring", () => {
+  const CASES = [
+    {
+      tool: "get_subnet_trajectory",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/trajectory",
+    },
+    {
+      tool: "get_economics_trends",
+      args: {},
+      path: "/api/v1/economics/trends?window=30d",
+    },
+    {
+      tool: "get_economics_trends",
+      args: { window: "7d" },
+      path: "/api/v1/economics/trends?window=7d",
+    },
+  ];
+
+  for (const { tool, args, path } of CASES) {
+    const label = path.includes("window=7d") ? `${tool} (window=7d)` : tool;
+
+    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
+      let captured;
+      const env = {
+        METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (req) => {
+            const reqUrl = new URL(req.url);
+            captured = reqUrl.pathname + reqUrl.search;
+            return Response.json({
+              schema_version: 1,
+              marker: "from-postgres",
+            });
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        "from-postgres",
+        label,
+      );
+      assert.equal(captured, path, label);
+    });
+
+    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
+      const env = {
+        METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+    });
+  }
+
+  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    for (const { tool, args } of CASES) {
+      const res = await callTool(tool, args, { env });
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        undefined,
+        `${tool} should not reach DATA_API without the flag`,
+      );
+    }
+  });
+});
+
+// get_network_activity / get_chain_calls / get_chain_signers / get_chain_fees
+// are gated on METAGRAPH_EXTRINSICS_SOURCE, not METAGRAPH_NEURONS_SOURCE, so
+// they don't fit the shared CASES loop above (which hardcodes the
+// neurons-tier flag) -- same two-test-per-tool contract, just with the
+// correct flag name and its own CASES array.
+describe("MCP extrinsics-tier chain analytics tools — Postgres tier wiring", () => {
+  const CASES = [
+    {
+      tool: "get_network_activity",
+      args: {},
+      path: "/api/v1/chain/activity?window=7d",
+    },
+    {
+      tool: "get_network_activity",
+      args: { window: "30d" },
+      path: "/api/v1/chain/activity?window=30d",
+    },
+    {
+      tool: "get_chain_calls",
+      args: {},
+      path: "/api/v1/chain/calls?window=7d&group_by=module&limit=50",
+    },
+    {
+      tool: "get_chain_calls",
+      args: {
+        window: "30d",
+        group_by: "module_function",
+        limit: 10,
+        call_module: "Balances",
+      },
+      path: "/api/v1/chain/calls?window=30d&group_by=module_function&limit=10&call_module=Balances",
+    },
+    {
+      tool: "get_chain_signers",
+      args: {},
+      path: "/api/v1/chain/signers?window=7d&sort=tx_count&limit=50",
+    },
+    {
+      tool: "get_chain_signers",
+      args: {
+        window: "30d",
+        sort: "total_fee_tao",
+        limit: 5,
+        call_module: "Balances",
+      },
+      path: "/api/v1/chain/signers?window=30d&sort=total_fee_tao&limit=5&call_module=Balances",
+    },
+    {
+      tool: "get_chain_fees",
+      args: {},
+      path: "/api/v1/chain/fees?window=7d&limit=25",
+    },
+    {
+      tool: "get_chain_fees",
+      args: { window: "30d", limit: 10, call_module: "Balances" },
+      path: "/api/v1/chain/fees?window=30d&limit=10&call_module=Balances",
+    },
+  ];
+
+  for (const { tool, args, path } of CASES) {
+    const label = path.includes("call_module=")
+      ? `${tool} (call_module)`
+      : tool;
+
+    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
+      let captured;
+      const env = {
+        METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (req) => {
+            const reqUrl = new URL(req.url);
+            captured = reqUrl.pathname + reqUrl.search;
+            return Response.json({
+              schema_version: 1,
+              marker: "from-postgres",
+            });
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        "from-postgres",
+        label,
+      );
+      assert.equal(captured, path, label);
+    });
+
+    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
+      const env = {
+        METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+    });
+  }
+
+  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    for (const { tool, args } of CASES) {
+      const res = await callTool(tool, args, { env });
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        undefined,
+        `${tool} should not reach DATA_API without the flag`,
+      );
+    }
+  });
+});
+
+// list_blocks / get_blocks_summary / get_block are gated on
+// METAGRAPH_BLOCKS_SOURCE, not METAGRAPH_NEURONS_SOURCE or
+// METAGRAPH_EXTRINSICS_SOURCE, so they don't fit either shared CASES loop
+// above -- same two-test-per-tool contract, just with the correct flag name
+// and its own CASES array.
+describe("MCP blocks-tier chain-explorer tools — Postgres tier wiring", () => {
+  const CASES = [
+    {
+      tool: "list_blocks",
+      args: {},
+      path: "/api/v1/blocks?limit=50&offset=0",
+    },
+    {
+      tool: "list_blocks",
+      args: {
+        author: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        spec_version: 300,
+        block_start: 100,
+        block_end: 200,
+        from: 1000,
+        to: 2000,
+        min_extrinsics: 1,
+        min_events: 2,
+        limit: 10,
+        offset: 5,
+        cursor: "abc123",
+      },
+      path:
+        "/api/v1/blocks?author=5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" +
+        "&spec_version=300&block_start=100&block_end=200&from=1000&to=2000" +
+        "&min_extrinsics=1&min_events=2&limit=10&offset=5&cursor=abc123",
+    },
+    {
+      tool: "get_blocks_summary",
+      args: {},
+      path: "/api/v1/blocks/summary",
+    },
+    {
+      tool: "get_block",
+      args: { ref: "4200000" },
+      path: "/api/v1/blocks/4200000",
+    },
+  ];
+
+  for (const { tool, args, path } of CASES) {
+    const label = path.includes("author=") ? `${tool} (filtered)` : tool;
+
+    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
+      let captured;
+      const env = {
+        METAGRAPH_BLOCKS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (req) => {
+            const reqUrl = new URL(req.url);
+            captured = reqUrl.pathname + reqUrl.search;
+            return Response.json({
+              schema_version: 1,
+              marker: "from-postgres",
+            });
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        "from-postgres",
+        label,
+      );
+      assert.equal(captured, path, label);
+    });
+
+    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
+      const env = {
+        METAGRAPH_BLOCKS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+    });
+  }
+
+  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    for (const { tool, args } of CASES) {
+      const res = await callTool(tool, args, { env });
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        undefined,
+        `${tool} should not reach DATA_API without the flag`,
+      );
+    }
+  });
+});
+
+// get_subnet_hyperparams / get_subnet_hyperparams_history are gated on
+// METAGRAPH_SUBNET_HYPERPARAMS_SOURCE, not METAGRAPH_NEURONS_SOURCE, so they
+// don't fit the shared CASES loop above (which hardcodes the neurons-tier
+// flag) -- same two-test-per-tool contract, just with the correct flag name.
+describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
+  test("get_subnet_hyperparams: flag=postgres uses Postgres data at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({ schema_version: 1, marker: "from-postgres" });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_hyperparams",
+      { netuid: 7 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, "/api/v1/subnets/7/hyperparameters");
+  });
+
+  test("get_subnet_hyperparams: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_hyperparams",
+      { netuid: 7 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_subnet_hyperparams: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    const res = await callTool(
+      "get_subnet_hyperparams",
+      { netuid: 7 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_subnet_hyperparams_history: flag=postgres uses Postgres data at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({ schema_version: 1, marker: "from-postgres" });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_hyperparams_history",
+      { netuid: 7 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(
+      captured,
+      "/api/v1/subnets/7/hyperparameters/history?limit=100&offset=0",
+    );
+  });
+
+  test("get_subnet_hyperparams_history: flag=postgres forwards a supplied limit/offset", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({ schema_version: 1, marker: "from-postgres" });
+        },
+      },
+    };
+    await callTool(
+      "get_subnet_hyperparams_history",
+      { netuid: 7, limit: 25, offset: 50 },
+      { env },
+    );
+    assert.equal(
+      captured,
+      "/api/v1/subnets/7/hyperparameters/history?limit=25&offset=50",
+    );
+  });
+
+  test("get_subnet_hyperparams_history: flag=postgres forwards a supplied cursor", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({ schema_version: 1, marker: "from-postgres" });
+        },
+      },
+    };
+    await callTool(
+      "get_subnet_hyperparams_history",
+      { netuid: 7, cursor: "opaque-cursor-value" },
+      { env },
+    );
+    assert.equal(
+      captured,
+      "/api/v1/subnets/7/hyperparameters/history?limit=100&offset=0&cursor=opaque-cursor-value",
+    );
+  });
+
+  test("get_subnet_hyperparams_history: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_hyperparams_history",
+      { netuid: 7 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_subnet_hyperparams_history: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    const res = await callTool(
+      "get_subnet_hyperparams_history",
+      { netuid: 7 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+});
+
+// get_subnet_weights / get_subnet_weight_setters / get_subnet_serving /
+// get_subnet_prometheus / get_subnet_stake_moves / get_validator_nominators
+// are gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE, not METAGRAPH_NEURONS_SOURCE,
+// so they don't fit the shared CASES loop above (which hardcodes the
+// neurons-tier flag) -- same two-test-per-tool contract, just with the
+// correct flag name and its own CASES array.
+describe("MCP account_events-tier subnet/validator activity tools — Postgres tier wiring", () => {
+  const CASES = [
+    {
+      tool: "get_subnet_weights",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/weights?window=7d",
+    },
+    {
+      tool: "get_subnet_weights",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/weights?window=30d",
+    },
+    {
+      tool: "get_subnet_weight_setters",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/weights/setters?window=7d",
+    },
+    {
+      tool: "get_subnet_serving",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/serving?window=7d",
+    },
+    {
+      tool: "get_subnet_prometheus",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/prometheus?window=7d",
+    },
+    {
+      tool: "get_subnet_stake_moves",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/stake-moves?window=7d",
+    },
+    // get_validator_nominators is deliberately NOT in this generic CASES
+    // array: its DATA_API route wraps the response as { data, generatedAt }
+    // (unlike every other tool here, which returns the flat shape directly),
+    // so it needs its own .data-aware mock and already has a dedicated test
+    // earlier in this file ("unwraps the DATA_API {data, generatedAt}
+    // envelope onto the top level").
+    {
+      tool: "get_subnet_registrations",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/registrations?window=7d",
+    },
+    {
+      tool: "get_subnet_stake_transfers",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/stake-transfers?window=7d",
+    },
+    {
+      tool: "get_subnet_axon_removals",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/axon-removals?window=7d",
+    },
+    {
+      tool: "get_subnet_deregistrations",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/deregistrations?window=7d",
+    },
+    {
+      tool: "get_subnet_events",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/events?limit=100&offset=0",
+    },
+    {
+      tool: "get_subnet_event_summary",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/event-summary?window=30d&limit=10",
+    },
+    {
+      tool: "get_account",
+      args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    },
+    {
+      tool: "get_account_events",
+      args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/events?limit=100&offset=0",
+    },
+    {
+      tool: "get_account_history",
+      args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/history",
+    },
+    {
+      tool: "get_account_history",
+      args: {
+        ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        netuid: 7,
+        from: "2026-01-01",
+        to: "2026-01-31",
+        limit: 50,
+        offset: 10,
+        cursor: "abc",
+      },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/history?netuid=7&from=2026-01-01&to=2026-01-31&limit=50&offset=10&cursor=abc",
+    },
+    {
+      tool: "get_account_transfers",
+      args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/transfers?limit=100&offset=0",
+    },
+    {
+      tool: "get_account_transfers",
+      args: {
+        ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        direction: "sent",
+        block_start: 100,
+        block_end: 200,
+        limit: 5,
+        offset: 10,
+        cursor: "xyz",
+      },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/transfers?direction=sent&block_start=100&block_end=200&limit=5&offset=10&cursor=xyz",
+    },
+    {
+      tool: "get_account_counterparties",
+      args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties",
+    },
+    {
+      tool: "get_account_counterparties",
+      args: {
+        ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        limit: 10,
+      },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties?limit=10",
+    },
+    {
+      tool: "get_account_counterparties",
+      args: {
+        ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        counterparty: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+      },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties?counterparty=5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+    },
+    {
+      tool: "get_account_counterparties",
+      args: {
+        ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        counterparty: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+        limit: 5,
+      },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties?counterparty=5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty&limit=5",
+    },
+    {
+      tool: "get_chain_transfers",
+      args: {},
+      path: "/api/v1/chain/transfers?window=7d&limit=25",
+    },
+    {
+      tool: "get_chain_transfers",
+      args: { window: "30d", limit: 10 },
+      path: "/api/v1/chain/transfers?window=30d&limit=10",
+    },
+    {
+      tool: "get_chain_transfer_pairs",
+      args: {},
+      path: "/api/v1/chain/transfer-pairs?window=7d&sort=volume&limit=25",
+    },
+    {
+      tool: "get_chain_transfer_pairs",
+      args: { window: "30d", sort: "count", limit: 10 },
+      path: "/api/v1/chain/transfer-pairs?window=30d&sort=count&limit=10",
+    },
+    {
+      tool: "get_chain_stake_flow",
+      args: {},
+      path: "/api/v1/chain/stake-flow?window=7d&limit=20",
+    },
+    {
+      tool: "get_chain_weights",
+      args: {},
+      path: "/api/v1/chain/weights?window=7d&limit=20",
+    },
+    {
+      tool: "get_chain_weight_setters",
+      args: {},
+      path: "/api/v1/chain/weights/setters?window=7d&limit=20",
+    },
+    {
+      tool: "get_chain_serving",
+      args: {},
+      path: "/api/v1/chain/serving?window=7d&limit=20",
+    },
+    {
+      tool: "get_chain_prometheus",
+      args: {},
+      path: "/api/v1/chain/prometheus?window=7d&limit=20",
+    },
+    {
+      tool: "get_chain_prometheus",
+      args: { window: "30d", limit: 10 },
+      path: "/api/v1/chain/prometheus?window=30d&limit=10",
+    },
+    {
+      tool: "get_chain_axon_removals",
+      args: {},
+      path: "/api/v1/chain/axon-removals?window=7d&limit=20",
+    },
+    {
+      tool: "get_chain_axon_removals",
+      args: { window: "30d", limit: 10 },
+      path: "/api/v1/chain/axon-removals?window=30d&limit=10",
+    },
+    {
+      tool: "get_chain_registrations",
+      args: {},
+      path: "/api/v1/chain/registrations?window=7d&limit=20",
+    },
+    {
+      tool: "get_chain_registrations",
+      args: { window: "30d", limit: 10 },
+      path: "/api/v1/chain/registrations?window=30d&limit=10",
+    },
+    {
+      tool: "get_chain_deregistrations",
+      args: {},
+      path: "/api/v1/chain/deregistrations?window=7d&limit=20",
+    },
+    {
+      tool: "get_chain_deregistrations",
+      args: { window: "30d", limit: 10 },
+      path: "/api/v1/chain/deregistrations?window=30d&limit=10",
+    },
+    {
+      tool: "get_chain_stake_moves",
+      args: {},
+      path: "/api/v1/chain/stake-moves?window=7d&limit=20",
+    },
+    {
+      tool: "get_chain_stake_moves",
+      args: { window: "30d", limit: 10 },
+      path: "/api/v1/chain/stake-moves?window=30d&limit=10",
+    },
+    {
+      tool: "get_chain_stake_transfers",
+      args: {},
+      path: "/api/v1/chain/stake-transfers?window=7d&limit=20",
+    },
+    {
+      tool: "get_chain_stake_transfers",
+      args: { window: "30d", limit: 10 },
+      path: "/api/v1/chain/stake-transfers?window=30d&limit=10",
+    },
+  ];
+
+  for (const { tool, args, path } of CASES) {
+    const label = path.includes("coldkey=") ? `${tool} (coldkey)` : tool;
+
+    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
+      let captured;
+      const env = {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (req) => {
+            const reqUrl = new URL(req.url);
+            captured = reqUrl.pathname + reqUrl.search;
+            return Response.json({
+              schema_version: 1,
+              marker: "from-postgres",
+            });
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        "from-postgres",
+        label,
+      );
+      assert.equal(captured, path, label);
+    });
+
+    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
+      const env = {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+    });
+  }
+
+  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    for (const { tool, args } of CASES) {
+      const res = await callTool(tool, args, { env });
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        undefined,
+        `${tool} should not reach DATA_API without the flag`,
+      );
+    }
+  });
+});
+
+// get_subnet_stake_flow and get_subnet_volume are also gated on
+// METAGRAPH_ACCOUNT_EVENTS_SOURCE, but unlike the flat-data-shaped tools in
+// the CASES loop above (whose DATA_API response IS the builder payload),
+// entities.mjs's handleSubnetStakeFlow/handleSubnetAlphaVolume destructure
+// `{ data, generatedAt }` from tryPostgresTier's result (mirroring
+// workers/data-api.mjs's `/subnets/:netuid/stake-flow` and `/volume` routes,
+// which return `json({ data: buildX(...), generatedAt })`, not a flat
+// buildX(...) body) -- so these two tools unwrap `.data` before falling back,
+// and the DATA_API mock here must nest the marker under `data` to exercise
+// that unwrap, not sit at the top level like the flat-shaped CASES tools.
+describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring", () => {
+  test("get_subnet_stake_flow: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const res = await callTool("get_subnet_stake_flow", { netuid: 7 }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(
+      captured,
+      "/api/v1/subnets/7/stake-flow?window=30d&direction=all",
+    );
+  });
+
+  test("get_subnet_stake_flow: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool("get_subnet_stake_flow", { netuid: 7 }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_subnet_stake_flow: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool("get_subnet_stake_flow", { netuid: 7 }, { env });
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_subnet_volume: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const deps = makeDeps({
+      "/metagraph/economics.json": { subnets: [{ netuid: 7 }] },
+    });
+    const res = await callTool(
+      "get_subnet_volume",
+      { netuid: 7 },
+      { env, deps },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, "/api/v1/subnets/7/volume");
+  });
+
+  test("get_subnet_volume: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const deps = makeDeps({
+      "/metagraph/economics.json": { subnets: [{ netuid: 7 }] },
+    });
+    const res = await callTool(
+      "get_subnet_volume",
+      { netuid: 7 },
+      { env, deps },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_subnet_volume: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const deps = makeDeps({
+      "/metagraph/economics.json": { subnets: [{ netuid: 7 }] },
+    });
+    const res = await callTool(
+      "get_subnet_volume",
+      { netuid: 7 },
+      { env, deps },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+});
+
+// get_account_stake_flow / get_account_stake_moves / get_account_registrations /
+// get_account_weight_setters are also gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE,
+// and like get_subnet_stake_flow/get_subnet_volume above (not like the
+// flat-shaped CASES tools), entities.mjs's handleAccountStakeFlow et al.
+// destructure `{ data, generatedAt }` from tryPostgresTier's result, so these
+// four tools unwrap `.data` before falling back -- the DATA_API mock here
+// nests the marker under `data` to exercise that unwrap.
+describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_registrations / get_account_weight_setters — Postgres tier wiring", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  test("get_account_stake_flow: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_stake_flow",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(
+      captured,
+      `/api/v1/accounts/${SS58}/stake-flow?window=30d&direction=all`,
+    );
+  });
+
+  test("get_account_stake_flow: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_stake_flow",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_stake_flow: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_account_stake_flow",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_stake_moves: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_stake_moves",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, `/api/v1/accounts/${SS58}/stake-moves?window=30d`);
+  });
+
+  test("get_account_stake_moves: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_stake_moves",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_stake_moves: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_account_stake_moves",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_registrations: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_registrations",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, `/api/v1/accounts/${SS58}/registrations?window=30d`);
+  });
+
+  test("get_account_registrations: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_registrations",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_registrations: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_account_registrations",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_weight_setters: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_weight_setters",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, `/api/v1/accounts/${SS58}/weight-setters?window=7d`);
+  });
+
+  test("get_account_weight_setters: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_weight_setters",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_weight_setters: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_account_weight_setters",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_serving: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const res = await callTool("get_account_serving", { ss58: SS58 }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, `/api/v1/accounts/${SS58}/serving?window=30d`);
+  });
+
+  test("get_account_serving: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool("get_account_serving", { ss58: SS58 }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_serving: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool("get_account_serving", { ss58: SS58 }, { env });
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_axon_removals: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_axon_removals",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, `/api/v1/accounts/${SS58}/axon-removals?window=30d`);
+  });
+
+  test("get_account_axon_removals: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_axon_removals",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_axon_removals: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_account_axon_removals",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_prometheus: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_prometheus",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, `/api/v1/accounts/${SS58}/prometheus?window=30d`);
+  });
+
+  test("get_account_prometheus: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_prometheus",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_prometheus: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_account_prometheus",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_deregistrations: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_deregistrations",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(
+      captured,
+      `/api/v1/accounts/${SS58}/deregistrations?window=30d`,
+    );
+  });
+
+  test("get_account_deregistrations: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_deregistrations",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_deregistrations: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_account_deregistrations",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+});
+
+// get_block_events is also gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE, but
+// unlike the flat-data-shaped tools in the account_events-tier CASES loop
+// above, entities.mjs's handleBlockEvents destructures `{ data }` from
+// tryPostgresTier's result -- workers/data-api.mjs's /blocks/:ref/events
+// route returns `json({ data: buildBlockEvents(...) })`, not a flat
+// buildBlockEvents(...) body -- so this tool unwraps `.data` before falling
+// back, and the DATA_API mock here must nest the marker under `data`.
+describe("MCP get_block_events — Postgres tier wiring", () => {
+  test("get_block_events: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+          });
+        },
+      },
+    };
+    const res = await callTool("get_block_events", { ref: "4200000" }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, "/api/v1/blocks/4200000/events?limit=100&offset=0");
+  });
+
+  test("get_block_events: flag=postgres forwards a supplied limit/offset and a 0x hash ref", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+          });
+        },
+      },
+    };
+    const hash = `0x${"ab".repeat(32)}`;
+    await callTool(
+      "get_block_events",
+      { ref: hash, limit: 25, offset: 50 },
+      { env },
+    );
+    assert.equal(captured, `/api/v1/blocks/${hash}/events?limit=25&offset=50`);
+  });
+
+  test("get_block_events: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool("get_block_events", { ref: "4200000" }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_block_events: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+          }),
+      },
+    };
+    const res = await callTool("get_block_events", { ref: "4200000" }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+});
+
+// get_account_extrinsics and list_block_extrinsics are both gated on
+// METAGRAPH_EXTRINSICS_SOURCE, not METAGRAPH_NEURONS_SOURCE (the shared CASES
+// loop above) or METAGRAPH_ACCOUNT_EVENTS_SOURCE (the account_events-tier CASES
+// loop), so neither fits either shared array. get_account_extrinsics mirrors
+// REST's handleAccountExtrinsics, which uses tryPostgresTier's result directly
+// (a flat buildAccountExtrinsics(...) body, same shape as get_account_events);
+// list_block_extrinsics mirrors handleBlockExtrinsics, which destructures
+// `{ data }` from tryPostgresTier's result (workers/data-api.mjs's
+// /blocks/:ref/extrinsics route returns `json({ data: buildBlockExtrinsics(...) })`),
+// same shape as the get_block_events tool above.
+describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  test("get_account_extrinsics: flag=postgres uses Postgres data at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({ schema_version: 1, marker: "from-postgres" });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_extrinsics",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(
+      captured,
+      `/api/v1/accounts/${SS58}/extrinsics?limit=100&offset=0`,
+    );
+  });
+
+  test("get_account_extrinsics: flag=postgres forwards block_start/block_end/limit/offset/cursor", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({ schema_version: 1, marker: "from-postgres" });
+        },
+      },
+    };
+    await callTool(
+      "get_account_extrinsics",
+      {
+        ss58: SS58,
+        block_start: 100,
+        block_end: 200,
+        limit: 5,
+        offset: 10,
+        cursor: "abc",
+      },
+      { env },
+    );
+    assert.equal(
+      captured,
+      `/api/v1/accounts/${SS58}/extrinsics?block_start=100&block_end=200&limit=5&offset=10&cursor=abc`,
+    );
+  });
+
+  test("get_account_extrinsics: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_extrinsics",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("get_account_extrinsics: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    const res = await callTool(
+      "get_account_extrinsics",
+      { ss58: SS58 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+});
+
+describe("MCP list_block_extrinsics — Postgres tier wiring", () => {
+  test("list_block_extrinsics: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "list_block_extrinsics",
+      { ref: "4200000" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(
+      captured,
+      "/api/v1/blocks/4200000/extrinsics?limit=50&offset=0",
+    );
+  });
+
+  test("list_block_extrinsics: flag=postgres forwards a supplied limit/offset and a 0x hash ref", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+          });
+        },
+      },
+    };
+    const hash = `0x${"ab".repeat(32)}`;
+    await callTool(
+      "list_block_extrinsics",
+      { ref: hash, limit: 25, offset: 60 },
+      { env },
+    );
+    assert.equal(
+      captured,
+      `/api/v1/blocks/${hash}/extrinsics?limit=25&offset=60`,
+    );
+  });
+
+  test("list_block_extrinsics: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "list_block_extrinsics",
+      { ref: "4200000" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+
+  test("list_block_extrinsics: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+          }),
+      },
+    };
+    const res = await callTool(
+      "list_block_extrinsics",
+      { ref: "4200000" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+});
+
+// get_health_trends / get_subnet_health_trends / get_subnet_health_percentiles
+// / get_subnet_health_incidents / get_global_incidents are gated on
+// METAGRAPH_HEALTH_SOURCE, not METAGRAPH_NEURONS_SOURCE or
+// METAGRAPH_EXTRINSICS_SOURCE, so they don't fit either shared CASES loop
+// above -- same two-test-per-tool contract, just with the correct flag name
+// and its own CASES array.
+describe("MCP health-tier analytics tools — Postgres tier wiring", () => {
+  const CASES = [
+    {
+      tool: "get_health_trends",
+      args: {},
+      path: "/api/v1/health/trends",
+    },
+    {
+      tool: "get_subnet_health_trends",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/health/trends",
+    },
+    {
+      tool: "get_subnet_health_percentiles",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/health/percentiles?window=7d",
+    },
+    {
+      tool: "get_subnet_health_percentiles",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/health/percentiles?window=30d",
+    },
+    {
+      tool: "get_subnet_health_incidents",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/health/incidents?window=7d",
+    },
+    {
+      tool: "get_subnet_health_incidents",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/health/incidents?window=30d",
+    },
+    {
+      tool: "get_global_incidents",
+      args: {},
+      path: "/api/v1/incidents?window=7d",
+    },
+    {
+      tool: "get_global_incidents",
+      args: { window: "30d" },
+      path: "/api/v1/incidents?window=30d",
+    },
+    {
+      tool: "get_subnet_uptime",
+      args: { netuid: 7, window: "1y", min_samples: 5 },
+      path: "/api/v1/subnets/7/uptime?window=1y&min_samples=5",
+    },
+    {
+      tool: "get_subnet_uptime",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/uptime?window=90d",
+    },
+  ];
+
+  for (const { tool, args, path } of CASES) {
+    const label = path.includes("window=30d") ? `${tool} (window=30d)` : tool;
+
+    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
+      let captured;
+      const env = {
+        METAGRAPH_HEALTH_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (req) => {
+            const reqUrl = new URL(req.url);
+            captured = reqUrl.pathname + reqUrl.search;
+            return Response.json({
+              schema_version: 1,
+              marker: "from-postgres",
+            });
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        "from-postgres",
+        label,
+      );
+      assert.equal(captured, path, label);
+    });
+
+    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
+      const env = {
+        METAGRAPH_HEALTH_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+    });
+  }
+
+  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    for (const { tool, args } of CASES) {
+      const res = await callTool(tool, args, { env });
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        undefined,
+        `${tool} should not reach DATA_API without the flag`,
+      );
+    }
   });
 });

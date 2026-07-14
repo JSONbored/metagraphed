@@ -327,7 +327,7 @@ describe("history builders", () => {
     const [recent] = out.days;
     assert.equal(recent.snapshot_date, "2026-06-02");
     assert.equal(recent.subnet_count, 2);
-    assert.equal(recent.total_stake_tao, 400);
+    assert.equal(recent.total_stake_tao, "400.000000000");
     // (0.02·300 + 0.06·100)/400 = 0.03 weighted; median([0.02,0.06]) = 0.04.
     assert.equal(recent.alpha_price_tao_weighted, 0.03);
     assert.equal(recent.alpha_price_tao_median, 0.04);
@@ -395,7 +395,7 @@ describe("history builders", () => {
     assert.equal(day.alpha_price_tao_weighted, 0.1);
     // Both prices count toward the unweighted median → median([0.1,0.5]) = 0.3.
     assert.equal(day.alpha_price_tao_median, 0.3);
-    assert.equal(day.total_stake_tao, 200);
+    assert.equal(day.total_stake_tao, "200.000000000");
     assert.equal(day.window, undefined);
   });
 
@@ -422,7 +422,7 @@ describe("history builders", () => {
     // Blank row contributes nothing: aggregates match the single real row, not
     // a 0-inflated/deflated blend.
     assert.equal(day.subnet_count, 2);
-    assert.equal(day.total_stake_tao, 200);
+    assert.equal(day.total_stake_tao, "200.000000000");
     assert.equal(day.alpha_price_tao_weighted, 0.1);
     assert.equal(day.alpha_price_tao_median, 0.1);
     assert.equal(day.validator_count, 3);

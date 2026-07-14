@@ -56,6 +56,22 @@
         "submitted_by": "dalledajay-coder"
       },
       "notes": "Public no-auth GET returning SN26 Perturb's current emission burn rate as JSON ({\"burnRate\":0.5} observed at submission time). The endpoint is declared as BURN_RATE_ENDPOINT in the subnet's validator source (perturbnet/constants.py in the official repo, pinned above) and is served from api.perturbai.io, the same host as the already-registered health surface."
+    },
+    {
+      "id": "sn-26-perturb-whitepaper-docs",
+      "name": "Perturb whitepaper",
+      "kind": "docs",
+      "url": "https://www.perturbai.io/whitepaper",
+      "provider": "perturb",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://www.perturbai.io/"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "notes": "Public no-auth whitepaper for SN26 Perturb (adversarial-perturbation ImageNet subnet), served at www.perturbai.io/whitepaper and linked from the official perturbai.io homepage nav (the registered website_url, same operator as the api.perturbai.io surfaces). Covers the abstract, methodology, miner/validator roles, scoring, and emission model. Distinct in URL, host, and kind from the api.perturbai.io endpoints already registered."
     }
   ],
   "social": {

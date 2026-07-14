@@ -1980,17 +1980,42 @@ export interface GlobalValidatorSubnet {
   validator_trust: number | null;
 }
 
+/** Self-declared on-chain identity for a validator's primary coldkey (#5234). */
+export interface ColdkeyIdentity {
+  has_identity: boolean;
+  name: string | null;
+  url: string | null;
+  github: string | null;
+  image: string | null;
+  discord: string | null;
+  description: string | null;
+  additional: string | null;
+  captured_at: string | null;
+}
+
 /** One validator/operator row grouped by hotkey across subnet memberships. */
 export interface GlobalValidator {
   hotkey: string;
   /** DB-toggled maintainer pin (#5166) — always present, moves the row to the front of the default (unsorted) view. */
   featured: boolean;
   coldkey: string | null;
+  /** Primary coldkey's self-declared identity (#5234); null when coldkey is null. */
+  coldkey_identity: ColdkeyIdentity | null;
   coldkey_count: number;
   subnet_count: number;
   uid_count: number;
+  /** Validator take/commission (#2548), 0..1 fraction kept from delegator rewards. */
+  take: number | null;
   total_stake_tao: number;
+  root_stake_tao: number;
+  alpha_stake_tao: number;
   total_emission_tao: number;
+  /** Distinct coldkeys currently staking to this hotkey, network-wide (#2549). Null when the low-frequency source table has no row for this hotkey yet. */
+  nominator_count: number | null;
+  /** Estimated annualized yield (#2551) — a stake-weighted blend across every subnet membership with a known tempo. See apy_estimate_eligible_subnet_count. Null when no membership resolved a tempo. */
+  apy_estimate: number | null;
+  /** Count of subnet memberships that contributed to apy_estimate, out of subnet_count total (#2551). */
+  apy_estimate_eligible_subnet_count: number;
   avg_validator_trust: number | null;
   max_validator_trust: number | null;
   stake_dominance: number | null;
@@ -2037,9 +2062,16 @@ export interface ValidatorDetail {
   schema_version?: number;
   hotkey: string;
   coldkey: string | null;
+  coldkey_identity: ColdkeyIdentity | null;
   coldkey_count: number;
   subnet_count: number;
+  take: number | null;
+  nominator_count: number | null;
   total_stake_tao: number;
+  /** Stake on netuid 0 (root), TAO-denominated 1:1, no AMM/price exposure (#2550). */
+  root_stake_tao: number;
+  /** total_stake_tao minus root_stake_tao — the alpha-token-denominated legs. */
+  alpha_stake_tao: number;
   total_emission_tao: number;
   avg_validator_trust: number | null;
   max_validator_trust: number | null;
@@ -3241,4 +3273,27 @@ export interface WebhookSubscriptionView {
   created_at: string | null;
   active: boolean;
   delivery: WebhookDeliveryStatus;
+}
+
+/**
+ * POST /api/v1/alerts/triggers response (#4984 Part 1). `owner_token` is
+ * returned exactly once here — GET/PATCH never echo it back, matching the
+ * webhook subscription secret's own once-only convention.
+ */
+export interface AlertTriggerCreated {
+  id: string;
+  name: string | null;
+  table_filter: string[] | null;
+  netuid: number | null;
+  event_kind: string | null;
+  account: string | null;
+  min_amount_tao: number | null;
+  channel: "webhook" | "email" | "telegram" | "discord";
+  destination: string;
+  active: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  last_matched_at: string | null;
+  match_count: number;
+  owner_token: string;
 }

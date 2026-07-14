@@ -186,6 +186,25 @@
         "submitted_by": "rust-toml"
       },
       "notes": "Public no-auth static JSON dataset slippage_estimates.json committed in the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Distinct from the model-coefficients surface: this is the precomputed per-asset, per-trade-size empirical slippage lookup table (e.g. crypto BTCUSDC/ETHUSDC long/short across notional buckets). The path is resolved in vali_objects/utils/vali_bkp_utils.py and loaded by the PriceSlippageModel in vali_objects/utils/price_slippage_model.py to estimate execution slippage when scoring miner positions. Whitelisted for commit in .gitignore, so it is intentionally published."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-8-vanta-llms-txt",
+      "kind": "data-artifact",
+      "name": "Vanta Network llms.txt index",
+      "notes": "Public no-auth machine-readable llms.txt index of SN8 Vanta Network, served at the registered official website www.vantanetwork.io. The document self-identifies as SN8 — its header states Vanta Network is 'built on Bittensor Subnet 8'. An agent-consumable Markdown map of the network (what it is, how performance is evaluated on-chain, key links), distinct from the HTML website/docs surfaces already registered.",
+      "provider": "vanta",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/taoshidev/vanta-network",
+        "https://www.vantanetwork.io/"
+      ],
+      "url": "https://www.vantanetwork.io/llms.txt"
     }
   ],
   "social": {

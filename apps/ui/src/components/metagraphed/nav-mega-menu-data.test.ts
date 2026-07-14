@@ -109,6 +109,18 @@ describe("MEGA_PANELS catalogue", () => {
       }
     }
   });
+  it("surfaces both /status and /health under the Health mega-panel", () => {
+    // #5345: /status was footer-only while the mega-menu deep-linked only into
+    // /health?view=… — surface both so users can reach public status and the
+    // ops drill-down from the same panel without guessing which page is which.
+    const health = MEGA_PANELS.find((p) => p.key === "health");
+    expect(health).toBeDefined();
+    const browseTos = new Set(health!.browse.map((l) => l.to));
+    expect(browseTos.has("/status")).toBe(true);
+    expect(browseTos.has("/health")).toBe(true);
+    expect(health!.browse[0]?.to).toBe("/status");
+    expect(health!.browse[0]?.label).toMatch(/public status/i);
+  });
 });
 
 describe("storage helpers (SSR/node-safe)", () => {

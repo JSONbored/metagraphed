@@ -154,6 +154,56 @@
         "https://github.com/nodexo-ai/nodexo/blob/main/neurons/validator/validator.py"
       ],
       "url": "https://raw.githubusercontent.com/nodexo-ai/nodexo/main/chain_config_mainnet.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-106-nodexo-bundled-subnet-config",
+      "kind": "data-artifact",
+      "name": "Nodexo bundled subnet config",
+      "notes": "Public no-auth JSON operational configuration bundle for the SN106 Nodexo GPU-compute subnet, published in the official nodexo-ai/nodexo repository at common/bundled_subnet_config.json. Defines runtime policy (blacklist/active-rental-policy, endpoint-host rules, and other validator/miner operational parameters) that ships with the subnet software. Distinct from the mainnet EVM chain-config artifact already registered. Pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nodexo",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/nodexo-ai/nodexo/blob/a461e3f96d3c4714d4e0311669a665086bb46f3e/common/bundled_subnet_config.json",
+        "https://github.com/nodexo-ai/nodexo"
+      ],
+      "url": "https://raw.githubusercontent.com/nodexo-ai/nodexo/a461e3f96d3c4714d4e0311669a665086bb46f3e/common/bundled_subnet_config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-106-nodexo-subnetconfig-abi",
+      "kind": "data-artifact",
+      "name": "Nodexo SubnetConfig contract ABI",
+      "notes": "Public no-auth machine-readable Solidity ABI (JSON) for the SN106 Nodexo on-chain SubnetConfig contract, published in the official nodexo-ai/nodexo repository at abis/SubnetConfig.json. Describes the constructor, functions, and events of the EVM contract that holds the subnet's on-chain configuration referenced by the registered mainnet chain-config. Pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nodexo",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/nodexo-ai/nodexo/blob/f104f2fa848da6bc7d02b7ac00a2c9a7f1a5af73/abis/SubnetConfig.json",
+        "https://github.com/nodexo-ai/nodexo"
+      ],
+      "url": "https://raw.githubusercontent.com/nodexo-ai/nodexo/f104f2fa848da6bc7d02b7ac00a2c9a7f1a5af73/abis/SubnetConfig.json"
     }
   ]
 }

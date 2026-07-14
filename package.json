@@ -75,6 +75,8 @@
     "validate:private-boundary": "node scripts/validate-private-boundary.mjs",
     "validate:workflows": "node scripts/validate-workflows.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
+    "migrate": "node scripts/apply-migrations.mjs",
+    "migrate:dry-run": "node scripts/apply-migrations.mjs --dry-run",
     "openapi:generate": "node scripts/generate-openapi.mjs --write",
     "openapi:generate:dry-run": "node scripts/generate-openapi.mjs",
     "types:generate": "node scripts/generate-types.mjs",
@@ -123,15 +125,15 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.10",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "eslint": "^10.6.0",
+    "eslint": "^10.7.0",
     "openapi-typescript": "^7.13.0",
-    "prettier": "^3.9.4",
+    "prettier": "^3.9.5",
     "vite": "^7.3.6",
-    "vitest": "^4.1.9",
-    "wrangler": "4.107.0"
+    "vitest": "^4.1.10",
+    "wrangler": "4.110.0"
   },
   "overrides": {
     "esbuild": "^0.28.1",

@@ -5,6 +5,8 @@
 // Pure + exported for tests; the Worker handlers run the D1 or Postgres query
 // and call these builders.
 
+import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.mjs";
+
 // The columns the handlers SELECT for a neuron row.
 export const NEURON_COLUMNS =
   "uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, " +
@@ -51,6 +53,22 @@ export const GLOBAL_VALIDATOR_LIMIT_DEFAULT = 20;
 export const GLOBAL_VALIDATOR_LIMIT_MAX = 100;
 const GLOBAL_VALIDATOR_SUBNET_LIMIT = 10;
 const RAO_PER_TAO = 1e9;
+
+// Bittensor's network-wide block time is a long-stable EXTERNAL protocol
+// parameter (~12s) that this repo does not measure per-request -- distinct
+// from any live-computed block-time distribution elsewhere in this repo
+// (e.g. blocks-summary.mjs's blockTimeDistribution), which would make the
+// same emission_tao annualize differently on every request purely from
+// block-production jitter. If a future chain upgrade changes Bittensor's
+// consensus block time, this constant needs a matching update; it is a
+// documented assumption apy_estimate depends on, not something this route
+// verifies (#2551).
+const APY_SECONDS_PER_BLOCK = 12;
+// Calendar year, no leap-day adjustment -- a documented convention, not a
+// protocol-derived figure. No prior art for "a year" exists elsewhere in
+// this repo (src/chain-yield.mjs / src/subnet-yield.mjs are explicitly
+// snapshot-only, never annualized) -- apy_estimate is the new precedent.
+const APY_SECONDS_PER_YEAR = 365 * 24 * 60 * 60; // 31,536,000
 
 function toIso(ms) {
   // D1 can return the INTEGER captured_at as a numeric string; a bare
@@ -112,6 +130,16 @@ function round(value, dp = 6) {
   if (value == null || !Number.isFinite(value)) return null;
   const factor = 10 ** dp;
   return Math.round(value * factor) / factor;
+}
+
+// 1 TAO = 1e9 rao; round yield-shaped outputs to that precision to shed
+// IEEE-754 noise below the rao floor while keeping small ratios meaningful.
+// Matches src/chain-yield.mjs / src/subnet-yield.mjs's own round9 exactly
+// (apy_estimate is a sibling yield-shaped field, not a trust/take value, so
+// it uses this precision convention rather than round()'s 6dp default).
+function round9(value) {
+  if (value == null || !Number.isFinite(value)) return null;
+  return Math.round(Number(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
 // Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
@@ -250,11 +278,91 @@ function primaryColdkey(coldkeys) {
   return ranked[0]?.[0] ?? null;
 }
 
-function buildGlobalValidatorEntry(entry) {
+// The coldkey's own self-declared identity (#5234), joined by `coldkey` --
+// NOT the hotkey's. `identityByColdkey` is a coldkey -> account_identity row
+// Map built by the caller (empty by default, so every existing D1 call site
+// below that never passes one gets a stable "no identity" shape rather than
+// an omitted field). Reuses buildAccountIdentity's own has_identity/sanitize
+// logic and IDENTITY_FIELDS's field list (single source of truth with the
+// /accounts/{ss58}/identity artifact) rather than re-deriving it, dropping
+// only that artifact's own schema_version/account (redundant here -- the
+// caller already knows which coldkey this is).
+function coldkeyIdentity(coldkey, identityByColdkey) {
+  if (!coldkey) return null;
+  const full = buildAccountIdentity(
+    identityByColdkey.get(coldkey) ?? null,
+    coldkey,
+  );
+  const identity = { has_identity: full.has_identity };
+  for (const field of IDENTITY_FIELDS) identity[field] = full[field];
+  identity.captured_at = full.captured_at;
+  return identity;
+}
+
+// Estimated annualized yield (#2551): mutates `acc` (either a
+// buildGlobalValidators per-hotkey entry or buildValidatorDetail's local
+// accumulator) with one subnet-membership row's contribution to
+// apy_estimate. `tempoByNetuid` is a netuid -> tempo(blocks) Map (loaded by
+// the caller from subnet_hyperparams); a membership whose netuid has no
+// resolvable tempo, or that holds no positive stake, is EXCLUDED from both
+// the numerator and denominator -- never defaulted to an assumed tempo,
+// mirroring this codebase's null-never-fabricated convention (see
+// nominator_count above). stake/emission are already-coerced
+// numberOrZero() results, matching every other call site in this file.
+//
+// Each eligible row's emission_tao (a single most-recently-captured
+// per-epoch reading, see NEURON_COLUMNS) is annualized using that row's own
+// subnet's tempo and projected across a full year, then accumulated in
+// rao-BigInt space alongside its stake so the final ratio (finalizeApy) is
+// algebraically a stake-weighted blend across every eligible membership,
+// computed as one sum-of-emission / sum-of-stake division rather than an
+// average of per-row ratios -- mirrors stakeTotalRao/emissionTotalRao's own
+// accumulate-then-convert-once pattern.
+function accumulateApyRow(acc, netuid, stake, emission, tempoByNetuid) {
+  const tempo = tempoByNetuid.get(netuid);
+  if (tempo == null) return; // unresolved tempo -- excluded, never defaulted
+  if (!(stake > 0)) return; // zero/negative-impossible stake -- excluded
+  const epochsPerYear = APY_SECONDS_PER_YEAR / (tempo * APY_SECONDS_PER_BLOCK);
+  const annualizedEmission = emission * epochsPerYear;
+  acc.apyNumeratorRao += toRaoBig(annualizedEmission);
+  acc.apyDenominatorRao += toRaoBig(stake);
+  acc.apyEligibleCount += 1;
+}
+
+// Reads the three fields accumulateApyRow above populates and produces the
+// two apy_estimate* output fields. Null (never 0) when no membership had a
+// resolvable tempo -- "no APY opinion" rather than "confirmed zero yield".
+function finalizeApy(acc) {
+  if (acc.apyEligibleCount === 0 || acc.apyDenominatorRao <= 0n) {
+    return { apy_estimate: null, apy_estimate_eligible_subnet_count: 0 };
+  }
+  const apy =
+    raoBigToTao(acc.apyNumeratorRao) / raoBigToTao(acc.apyDenominatorRao);
+  return {
+    apy_estimate: round9(apy),
+    apy_estimate_eligible_subnet_count: acc.apyEligibleCount,
+  };
+}
+
+function buildGlobalValidatorEntry(
+  entry,
+  identityByColdkey,
+  nominatorCounts = new Map(),
+) {
   const avgTrust =
     entry.validatorTrustCount > 0
       ? entry.validatorTrustTotal / entry.validatorTrustCount
       : null;
+  // Root (netuid 0) stake is TAO-denominated with no AMM/price exposure;
+  // every other netuid's stake is that subnet's alpha token (#2550). Both
+  // legs are already present in entry.subnets -- one membership row per
+  // netuid, including netuid 0 when the hotkey holds root stake -- so the
+  // split needs no new ingestion, just separating the existing rao-precision
+  // total by whether a root membership row exists. Rao-BigInt subtraction
+  // (not float) keeps it exact, mirroring stakeTotalRao's own accumulation.
+  const rootSubnet = entry.subnets.find((s) => s.netuid === 0) ?? null;
+  const rootStakeRao = rootSubnet ? toRaoBig(rootSubnet.stake_tao) : 0n;
+  const alphaStakeRao = entry.stakeTotalRao - rootStakeRao;
   const subnets = entry.subnets
     .sort(
       (a, b) =>
@@ -264,16 +372,27 @@ function buildGlobalValidatorEntry(entry) {
         a.uid - b.uid,
     )
     .slice(0, GLOBAL_VALIDATOR_SUBNET_LIMIT);
+  const coldkey = primaryColdkey(entry.coldkeys);
   return {
     hotkey: entry.hotkey,
     featured: entry.featured === true,
-    coldkey: primaryColdkey(entry.coldkeys),
+    coldkey,
+    coldkey_identity: coldkeyIdentity(coldkey, identityByColdkey),
     coldkey_count: entry.coldkeys.size,
     subnet_count: entry.netuids.size,
     uid_count: entry.uidCount,
     take: round(entry.take),
     total_stake_tao: roundTao(raoBigToTao(entry.stakeTotalRao)),
+    root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
+    alpha_stake_tao: roundTao(raoBigToTao(alphaStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
+    // #2549: from the separate validator_nominator_counts side table, joined
+    // by hotkey. Null when that table has no row for this hotkey yet (cold
+    // table, or a hotkey the last low-frequency scan hasn't covered) --
+    // never fabricated as 0, which would misreport "confirmed zero
+    // nominators" as opposed to "unknown."
+    nominator_count: nominatorCounts.get(entry.hotkey) ?? null,
+    ...finalizeApy(entry),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(entry.maxValidatorTrust),
     latest_captured_at: toIso(entry.latestCapturedAt),
@@ -310,6 +429,18 @@ export function buildGlobalValidators(
     sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
     featuredHotkeys = new Set(),
+    identityByColdkey = new Map(),
+    // hotkey -> nominator_count (#2549), sourced from the separate
+    // validator_nominator_counts side table -- see that migration's own
+    // comment for why this can't be a neurons-tier column. A cold/absent
+    // map (e.g. the D1-retired fallback below, which never has one) leaves
+    // every entry's nominator_count null, never throws.
+    nominatorCounts = new Map(),
+    // netuid -> tempo(blocks) (#2551), sourced from subnet_hyperparams --
+    // see accumulateApyRow's own comment for why an unresolved netuid is
+    // excluded rather than defaulted. A cold/absent map leaves every entry's
+    // apy_estimate null, never throws.
+    tempoByNetuid = new Map(),
   } = {},
 ) {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
@@ -350,6 +481,9 @@ export function buildGlobalValidators(
         uidCount: 0,
         stakeTotalRao: 0n,
         emissionTotalRao: 0n,
+        apyNumeratorRao: 0n,
+        apyDenominatorRao: 0n,
+        apyEligibleCount: 0,
         validatorTrustTotal: 0,
         validatorTrustCount: 0,
         maxValidatorTrust: null,
@@ -376,6 +510,7 @@ export function buildGlobalValidators(
     entry.uidCount += 1;
     entry.stakeTotalRao += toRaoBig(stake);
     entry.emissionTotalRao += toRaoBig(emission);
+    accumulateApyRow(entry, netuid, stake, emission, tempoByNetuid);
     if (trust != null) {
       entry.validatorTrustTotal += trust;
       entry.validatorTrustCount += 1;
@@ -417,7 +552,12 @@ export function buildGlobalValidators(
   }
 
   const validators = applyStakeDominance(
-    [...validatorsByHotkey.values()].map(buildGlobalValidatorEntry),
+    // Wrapped (not a bare `.map(buildGlobalValidatorEntry)`) so Array#map's
+    // index arg never lands in buildGlobalValidatorEntry's identityByColdkey
+    // parameter -- same landmine formatNeuron's own header comment documents.
+    [...validatorsByHotkey.values()].map((entry) =>
+      buildGlobalValidatorEntry(entry, identityByColdkey, nominatorCounts),
+    ),
   ).sort(
     (a, b) =>
       validatorSortValue(b, normalizedSort) -
@@ -513,6 +653,12 @@ export async function loadSubnetValidators(d1, netuid) {
   return buildSubnetValidators(rows, netuid);
 }
 
+// No identityByColdkey passed here (#5234): account_identity's D1 write path
+// is retired -- Postgres is the only actively-written copy -- so this D1
+// fallback deliberately serves a stable coldkey_identity:{has_identity:false,
+// ...} shape rather than joining a frozen/stale D1 copy. The live route
+// (workers/data-api.mjs's /api/v1/validators, Postgres-backed) is what
+// actually joins.
 export async function loadGlobalValidators(
   d1,
   {
@@ -546,10 +692,38 @@ export async function loadNeuron(d1, netuid, uid) {
 // full per-subnet Neuron detail (not the leaderboard's 5-field/top-10-capped
 // GlobalValidatorSubnet slice) since a detail page's whole point is the full
 // per-subnet performance table.
-export function buildValidatorDetail(rows, hotkey) {
+export function buildValidatorDetail(
+  rows,
+  hotkey,
+  {
+    identityByColdkey = new Map(),
+    // #2549: from the separate validator_nominator_counts side table (looked
+    // up by the caller, since this function has no DB access of its own).
+    // Null when that table has no row for this hotkey yet -- never fabricated
+    // as 0.
+    nominatorCount = null,
+    // netuid -> tempo(blocks) (#2551), sourced from subnet_hyperparams. See
+    // accumulateApyRow's own comment. A cold/absent map leaves apy_estimate
+    // null, never throws.
+    tempoByNetuid = new Map(),
+  } = {},
+) {
   const coldkeys = new Map();
   let stakeTotalRao = 0n;
+  // Root (netuid 0) stake is TAO-denominated with no AMM/price exposure;
+  // every other netuid's stake is that subnet's alpha token (#2550) --
+  // tracked separately here since the root membership row (when present) is
+  // already one of `rows`, no new ingestion needed.
+  let rootStakeRao = 0n;
   let emissionTotalRao = 0n;
+  // Plain object (not three separate `let`s) so it can be passed directly to
+  // the shared accumulateApyRow/finalizeApy helpers buildGlobalValidators
+  // also uses (#2551) -- one accumulation implementation, not duplicated.
+  const apyAcc = {
+    apyNumeratorRao: 0n,
+    apyDenominatorRao: 0n,
+    apyEligibleCount: 0,
+  };
   let validatorTrustTotal = 0;
   let validatorTrustCount = 0;
   let maxValidatorTrust = null;
@@ -576,8 +750,13 @@ export function buildValidatorDetail(rows, hotkey) {
       const rowTake = nullableNumber(row?.take);
       if (rowTake != null) take = rowTake;
     }
-    stakeTotalRao += toRaoBig(numberOrZero(row?.stake_tao));
-    emissionTotalRao += toRaoBig(numberOrZero(row?.emission_tao));
+    const stake = numberOrZero(row?.stake_tao);
+    const emission = numberOrZero(row?.emission_tao);
+    const rowStakeRao = toRaoBig(stake);
+    stakeTotalRao += rowStakeRao;
+    if (netuid === 0) rootStakeRao += rowStakeRao;
+    emissionTotalRao += toRaoBig(emission);
+    accumulateApyRow(apyAcc, netuid, stake, emission, tempoByNetuid);
     const trust = nullableNumber(row?.validator_trust);
     if (trust != null) {
       validatorTrustTotal += trust;
@@ -604,16 +783,22 @@ export function buildValidatorDetail(rows, hotkey) {
   const avgTrust =
     validatorTrustCount > 0 ? validatorTrustTotal / validatorTrustCount : null;
   subnets.sort((a, b) => a.netuid - b.netuid || a.uid - b.uid);
+  const coldkey = primaryColdkey(coldkeys);
 
   return {
     schema_version: 1,
     hotkey,
-    coldkey: primaryColdkey(coldkeys),
+    coldkey,
+    coldkey_identity: coldkeyIdentity(coldkey, identityByColdkey),
     coldkey_count: coldkeys.size,
     subnet_count: subnets.length,
     take: round(take),
     total_stake_tao: roundTao(raoBigToTao(stakeTotalRao)),
+    root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
+    alpha_stake_tao: roundTao(raoBigToTao(stakeTotalRao - rootStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
+    nominator_count: nominatorCount,
+    ...finalizeApy(apyAcc),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(maxValidatorTrust),
     captured_at: toIso(latestCapturedAt),
@@ -622,6 +807,7 @@ export function buildValidatorDetail(rows, hotkey) {
   };
 }
 
+// No identityByColdkey passed here either -- see loadGlobalValidators' comment.
 export async function loadValidatorDetail(d1, hotkey) {
   const rows = await d1(
     `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,

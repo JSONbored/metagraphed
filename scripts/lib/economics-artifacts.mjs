@@ -59,6 +59,35 @@ export function computeAlphaFdvTao(alphaPriceTao) {
   return alphaPriceTao * ALPHA_MAX_SUPPLY;
 }
 
+const RAO_PER_TAO = 1_000_000_000n;
+
+// Sum a per-subnet TAO field in exact rao-integer BigInt space, not float
+// space (#2924): summing ~130 subnets' already-large total_stake_tao values
+// with plain `+=` compounds float error, and the network-wide total is
+// already well past 2^53-1's exact-double ceiling (~9,007,199 TAO at rao
+// precision) -- confirmed live 2026-07-14 at ~328M TAO, 36x over. Formats as
+// a fixed 9-decimal (rao-precision) string, never a JS number, so neither
+// the summation nor the JSON serialization loses precision. Mirrors the
+// toRaoBig/raoBigToTao pattern used for per-entity sums elsewhere (e.g.
+// src/chain-yield.mjs), extended to a string output since -- unlike those
+// per-entity totals -- this sum's magnitude is the whole reason this exists.
+// No negative-sign handling: total_stake_tao is a non-negative on-chain
+// quantity (matches the schema's own `minimum: 0`), so a negative sum is
+// unreachable -- unlike a real negative-capable delta, branching on a sign
+// that can never occur here would just be untestable dead code.
+function sumFieldTaoString(rows, field) {
+  let sumRao = 0n;
+  for (const row of rows) {
+    const value = row[field];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      sumRao += BigInt(Math.round(value * 1e9));
+    }
+  }
+  const whole = sumRao / RAO_PER_TAO;
+  const frac = sumRao % RAO_PER_TAO;
+  return `${whole}.${frac.toString().padStart(9, "0")}`;
+}
+
 export function buildEconomicsArtifact({
   subnets,
   economicsByNetuid,
@@ -134,7 +163,7 @@ export function buildEconomicsArtifact({
     summary: {
       subnet_count: subnets.length,
       with_economics_count: rows.length,
-      total_stake_tao: round(sumField("total_stake_tao"), 9),
+      total_stake_tao: sumFieldTaoString(rows, "total_stake_tao"),
       total_validators: sumField("validator_count"),
       total_miners: sumField("miner_count"),
       registration_open_count: rows.filter((row) => row.registration_allowed)

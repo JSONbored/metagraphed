@@ -91,6 +91,7 @@ import {
   buildBlockEvents,
 } from "../../src/account-events.mjs";
 import { buildAccountPortfolio } from "../../src/account-portfolio.mjs";
+import { buildAccountPositions } from "../../src/account-nominator-positions.mjs";
 import { buildAccountPositionHistory } from "../../src/account-position-history.mjs";
 import { loadAccountIdentity } from "../../src/account-identity.mjs";
 import { loadAccountIdentityHistory } from "../../src/account-identity-history.mjs";
@@ -100,6 +101,7 @@ import {
 } from "../../src/account-balance.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
+import { computeStakeQuote } from "../../src/stake-quote.mjs";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
 import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.mjs";
@@ -298,7 +300,12 @@ const GLOBAL_VALIDATOR_CSV_COLUMNS = [
   "subnet_count",
   "uid_count",
   "total_stake_tao",
+  "root_stake_tao",
+  "alpha_stake_tao",
   "total_emission_tao",
+  "nominator_count",
+  "apy_estimate",
+  "apy_estimate_eligible_subnet_count",
   "stake_dominance",
   "avg_validator_trust",
   "max_validator_trust",
@@ -2222,6 +2229,69 @@ async function resolveSubnetMarketCapTao(env, netuid) {
     : null;
 }
 
+// One subnet's live AMM pool reserves (#5235) — the constant-product inputs the
+// stake-quote math needs — resolved from the same live-KV-then-committed-R2
+// economics tiers as resolveSubnetMarketCapTao, plus the blob's freshness stamp
+// for the response meta. Returns { row: null } when neither tier has a row.
+async function resolveSubnetEconomicsRow(env, netuid) {
+  const live = await resolveLiveEconomics({
+    readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
+    env,
+    contractVersion: contractVersion(env),
+  });
+  let blob = Array.isArray(live?.data?.subnets) ? live.data : null;
+  if (!blob) {
+    const artifact = await readArtifact(env, "/metagraph/economics.json");
+    blob =
+      artifact.ok && Array.isArray(artifact.data?.subnets)
+        ? artifact.data
+        : null;
+  }
+  const rows = Array.isArray(blob?.subnets) ? blob.subnets : [];
+  return {
+    row: rows.find((entry) => entry?.netuid === netuid) ?? null,
+    generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
+  };
+}
+
+// GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake
+// (#5235): a read-only constant-product slippage/price-impact estimate against
+// the subnet's live AMM pool reserves — no chain write, no custody. Pure math in
+// src/stake-quote.mjs; this handler just resolves the reserves and maps its
+// typed result onto the API envelope (400 for a bad request, 422 when the pool
+// can't fill the requested swap).
+export async function handleSubnetStakeQuote(request, env, netuid, url) {
+  const validationError = validateEntityQuery(url, ["amount", "direction"]);
+  if (validationError) return analyticsQueryError(validationError);
+  // A missing/empty `amount` coerces to 0, which computeStakeQuote rejects as
+  // invalid_amount just like a non-numeric value — no separate null check.
+  const amount = Number(url.searchParams.get("amount"));
+  const direction = url.searchParams.get("direction") ?? "stake";
+  const { row, generatedAt } = await resolveSubnetEconomicsRow(env, netuid);
+  const result = computeStakeQuote({
+    netuid,
+    taoInPool: row?.tao_in_pool_tao,
+    alphaInPool: row?.alpha_in_pool,
+    amount,
+    direction,
+  });
+  if (!result.ok) {
+    return errorResponse(result.code, result.error, result.status);
+  }
+  return envelopeResponse(
+    request,
+    {
+      data: { schema_version: 1, ...result.quote },
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/stake-quote.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
 // GET /api/v1/subnets/{netuid}/volume (#4339/8.1): rolling 24h buy (StakeAdded)
 // vs sell (StakeRemoved) alpha volume for one subnet, summed live from the same
 // account_events stream as stake-flow — unsigned (buy + sell), never netted, and
@@ -2397,269 +2467,120 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
   );
 }
 
+// Factory for the account-events handlers below (#5296): each GET /api/v1/accounts/{ss58}/<kind>
+// endpoint validates ?window=, resolves via the Postgres tier with a schema-stable-zeros fallback,
+// and wraps the result in the standard account envelope — identical control flow across all 7,
+// differing only in the window enum, the shaping builder, and the response artifact's URL suffix.
+function makeAccountEventHandler({ windows, defaultWindow, build, urlSuffix }) {
+  return async function handleAccountEvent(request, env, ss58, url) {
+    const validationError = validateQueryParams(url, ["window"]);
+    if (validationError) return analyticsQueryError(validationError);
+    const windowParam = url.searchParams.get("window") || defaultWindow;
+    if (!Object.hasOwn(windows, windowParam)) {
+      return analyticsQueryError({
+        parameter: "window",
+        message: unsupportedWindowMessage(windowParam, windows),
+      });
+    }
+    const { data, generatedAt } = (await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) ?? {
+      data: build([], ss58, { window: windowParam }),
+      generatedAt: null,
+    };
+    return accountEnvelopeResponse(
+      request,
+      {
+        data,
+        meta: await accountMeta(
+          env,
+          `/metagraph/accounts/${ss58}/${urlSuffix}.json`,
+          generatedAt,
+        ),
+      },
+      "short",
+    );
+  };
+}
+
 // GET /api/v1/accounts/{ss58}/stake-moves: the account's per-subnet StakeMoved footprint
 // over a 7d/30d/90d window — movement count + first/last timestamps per subnet, an HHI
 // concentration of where its re-delegation churn is focused, and the dominant subnet.
 // account_events-derived (source "chain-events"). Cold/absent store → schema-stable zeros.
-export async function handleAccountStakeMoves(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
-  if (!Object.hasOwn(ACCOUNT_STAKE_MOVES_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(
-        windowParam,
-        ACCOUNT_STAKE_MOVES_WINDOWS,
-      ),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountStakeMoves([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/stake-moves.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountStakeMoves = makeAccountEventHandler({
+  windows: ACCOUNT_STAKE_MOVES_WINDOWS,
+  defaultWindow: DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+  build: buildAccountStakeMoves,
+  urlSuffix: "stake-moves",
+});
 
 // GET /api/v1/accounts/{ss58}/weight-setters: the account's (validator's) per-subnet WeightsSet
 // footprint over a 7d/30d window — weight-set count + first/last timestamps per subnet, an HHI
 // concentration of where its weight-setting activity is focused, and the dominant subnet.
 // account_events-derived (source "chain-events"). Cold/absent store → schema-stable zeros.
-export async function handleAccountWeightSetters(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
-  if (!Object.hasOwn(ACCOUNT_WEIGHT_SETTERS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(
-        windowParam,
-        ACCOUNT_WEIGHT_SETTERS_WINDOWS,
-      ),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountWeightSetters([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/weight-setters.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountWeightSetters = makeAccountEventHandler({
+  windows: ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+  defaultWindow: DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+  build: buildAccountWeightSetters,
+  urlSuffix: "weight-setters",
+});
 
 // GET /api/v1/accounts/{ss58}/registrations: the account's per-subnet NeuronRegistered footprint
 // over a 7d/30d/90d window — registration count + first/last timestamps per subnet, an HHI
 // concentration of where its registration activity is focused, and the dominant subnet.
 // account_events-derived (source "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountRegistrations(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_REGISTRATION_WINDOW;
-  if (!Object.hasOwn(REGISTRATION_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, REGISTRATION_WINDOWS),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountRegistrations([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/registrations.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountRegistrations = makeAccountEventHandler({
+  windows: REGISTRATION_WINDOWS,
+  defaultWindow: DEFAULT_REGISTRATION_WINDOW,
+  build: buildAccountRegistrations,
+  urlSuffix: "registrations",
+});
 
 // GET /api/v1/accounts/{ss58}/serving: the account's per-subnet AxonServed footprint over a
 // 7d/30d/90d window — announcement count + first/last timestamps per subnet, an HHI concentration
 // of where its serving activity is focused, and the dominant subnet. account_events-derived (source
 // "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountServing(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam = url.searchParams.get("window") || DEFAULT_SERVING_WINDOW;
-  if (!Object.hasOwn(SERVING_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, SERVING_WINDOWS),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountServing([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/serving.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountServing = makeAccountEventHandler({
+  windows: SERVING_WINDOWS,
+  defaultWindow: DEFAULT_SERVING_WINDOW,
+  build: buildAccountServing,
+  urlSuffix: "serving",
+});
 
 // GET /api/v1/accounts/{ss58}/axon-removals: the account's per-subnet AxonInfoRemoved footprint over
 // a 7d/30d/90d window — removal count + first/last timestamps per subnet, an HHI concentration of
 // where its teardown activity is focused, and the dominant subnet. account_events-derived (source
 // "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountAxonRemovals(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_AXON_REMOVAL_WINDOW;
-  if (!Object.hasOwn(AXON_REMOVAL_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, AXON_REMOVAL_WINDOWS),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountAxonRemovals([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/axon-removals.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountAxonRemovals = makeAccountEventHandler({
+  windows: AXON_REMOVAL_WINDOWS,
+  defaultWindow: DEFAULT_AXON_REMOVAL_WINDOW,
+  build: buildAccountAxonRemovals,
+  urlSuffix: "axon-removals",
+});
 
 // GET /api/v1/accounts/{ss58}/prometheus: the account's per-subnet PrometheusServed footprint over a
 // 7d/30d/90d window — announcement count + first/last timestamps per subnet, an HHI concentration of
 // where its telemetry activity is focused, and the dominant subnet. account_events-derived (source
 // "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountPrometheus(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_PROMETHEUS_WINDOW;
-  if (!Object.hasOwn(PROMETHEUS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, PROMETHEUS_WINDOWS),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountPrometheus([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/prometheus.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountPrometheus = makeAccountEventHandler({
+  windows: PROMETHEUS_WINDOWS,
+  defaultWindow: DEFAULT_PROMETHEUS_WINDOW,
+  build: buildAccountPrometheus,
+  urlSuffix: "prometheus",
+});
 
 // GET /api/v1/accounts/{ss58}/deregistrations: the account's per-subnet NeuronDeregistered footprint
 // over a 7d/30d/90d window — eviction count + first/last timestamps per subnet, an HHI concentration
 // of where its deregistration activity is focused, and the dominant subnet. account_events-derived
 // (source "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountDeregistrations(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_DEREGISTRATION_WINDOW;
-  if (!Object.hasOwn(DEREGISTRATION_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, DEREGISTRATION_WINDOWS),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountDeregistrations([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/deregistrations.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountDeregistrations = makeAccountEventHandler({
+  windows: DEREGISTRATION_WINDOWS,
+  defaultWindow: DEFAULT_DEREGISTRATION_WINDOW,
+  build: buildAccountDeregistrations,
+  urlSuffix: "deregistrations",
+});
 
 // GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates
 // (account_events, matched by hotkey OR coldkey) joined to current registrations
@@ -3153,6 +3074,32 @@ export async function handleAccountPortfolio(request, env, ss58) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/portfolio.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/positions (#5233): this account's reconstructed
+// nominator-side positions -- what it holds delegated across every
+// hotkey/subnet, distinct from /portfolio above (hotkey-scoped). Postgres-
+// only, same shape as handleAccountPositionHistory's own no-D1-fallback note:
+// nominator_positions never had a D1-era predecessor, so there is nothing to
+// fall back to besides a schema-stable empty card. Reuses
+// METAGRAPH_NEURONS_SOURCE (not a dedicated flag) since this route's stake_tao
+// join reads the same neurons tier that flag already gates in production.
+export async function handleAccountPositions(request, env, ss58) {
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    buildAccountPositions([], new Map(), ss58);
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/positions.json`,
         data.captured_at,
       ),
     },

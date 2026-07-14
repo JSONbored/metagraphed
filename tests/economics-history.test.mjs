@@ -51,3 +51,91 @@ test("formatTrajectory nulls economics on pre-migration rows", () => {
   assert.equal(out.points[0].total_stake_tao, null);
   assert.equal(out.points[0].alpha_price_tao, null);
 });
+
+// #2552: pool reserves + volume carried in the time series alongside the
+// other economics columns.
+test("formatTrajectory carries pool liquidity + volume fields in the time series (#2552)", () => {
+  const out = formatTrajectory({
+    netuid: 1,
+    rows: [
+      {
+        snapshot_date: "2026-06-21",
+        tao_in_pool_tao: 26707.57,
+        alpha_in_pool: 2956464.98,
+        alpha_out_pool: 2257199.02,
+        subnet_volume_tao: 798027.45,
+      },
+    ],
+  });
+  const point = out.points[0];
+  assert.equal(point.tao_in_pool_tao, 26707.57);
+  assert.equal(point.alpha_in_pool, 2956464.98);
+  assert.equal(point.alpha_out_pool, 2257199.02);
+  assert.equal(point.subnet_volume_tao, 798027.45);
+});
+
+test("formatTrajectory nulls pool liquidity + volume on pre-migration rows (#2552)", () => {
+  const out = formatTrajectory({
+    netuid: 1,
+    rows: [{ snapshot_date: "2026-06-01", completeness_score: 70 }],
+  });
+  assert.equal(out.points[0].tao_in_pool_tao, null);
+  assert.equal(out.points[0].alpha_in_pool, null);
+  assert.equal(out.points[0].alpha_out_pool, null);
+  assert.equal(out.points[0].subnet_volume_tao, null);
+});
+
+// #2552's core deliverable: "net TAO in/out flow" is the windowed delta of
+// the point-in-time pool reserves, not a separately-ingested metric.
+test("formatTrajectory's 7d/30d deltas report net pool flow (#2552)", () => {
+  const out = formatTrajectory({
+    netuid: 1,
+    rows: [
+      {
+        snapshot_date: "2026-05-20",
+        tao_in_pool_tao: 20000,
+        alpha_in_pool: 2900000,
+        alpha_out_pool: 2200000,
+      },
+      {
+        snapshot_date: "2026-06-14",
+        tao_in_pool_tao: 24000,
+        alpha_in_pool: 2940000,
+        alpha_out_pool: 2230000,
+      },
+      {
+        snapshot_date: "2026-06-21",
+        tao_in_pool_tao: 26707.57,
+        alpha_in_pool: 2956464.98,
+        alpha_out_pool: 2257199.02,
+      },
+    ],
+  });
+  const delta7d = out.deltas["7d"];
+  assert.equal(delta7d.from_date, "2026-06-14");
+  assert.equal(delta7d.to_date, "2026-06-21");
+  assert.ok(Math.abs(delta7d.tao_in_pool_tao - 2707.57) < 1e-6);
+  assert.ok(Math.abs(delta7d.alpha_in_pool - 16464.98) < 1e-6);
+  assert.ok(Math.abs(delta7d.alpha_out_pool - 27199.02) < 1e-6);
+
+  const delta30d = out.deltas["30d"];
+  assert.equal(delta30d.from_date, "2026-05-20");
+  assert.equal(delta30d.to_date, "2026-06-21");
+  assert.ok(Math.abs(delta30d.tao_in_pool_tao - 6707.57) < 1e-6);
+});
+
+test("formatTrajectory's deltas are null when a bound is missing a pool reading (#2552)", () => {
+  const out = formatTrajectory({
+    netuid: 1,
+    rows: [
+      { snapshot_date: "2026-05-20", tao_in_pool_tao: null },
+      {
+        snapshot_date: "2026-06-21",
+        tao_in_pool_tao: 26707.57,
+        alpha_in_pool: 2956464.98,
+      },
+    ],
+  });
+  assert.equal(out.deltas["30d"].tao_in_pool_tao, null);
+  assert.equal(out.deltas["30d"].alpha_out_pool, null);
+});

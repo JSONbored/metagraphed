@@ -24,7 +24,7 @@ export const Route = createFileRoute("/about")({
       {
         name: "description",
         content:
-          "Methodology, scope boundaries, and contribution model for the Metagraphed Bittensor registry.",
+          "Methodology, scope, and contribution model for Metagraphed — the unofficial Bittensor explorer and integration registry.",
       },
     ],
   }),
@@ -37,7 +37,7 @@ function AboutPage() {
       <PageHero
         eyebrow="About"
         title="Methodology & scope"
-        description="Metagraphed extends the native Bittensor metagraph with public-interface and health metadata. Unofficial — not a block explorer."
+        description="An unofficial, public explorer and integration registry for Bittensor — blocks, subnets, validators, and accounts alongside the public interfaces each subnet exposes, all machine-readable for developers and AI agents."
         actions={
           <a
             href={GITHUB_REPO}
@@ -54,16 +54,25 @@ function AboutPage() {
         <div className="space-y-8 min-w-0">
           <Section title="What this is">
             <p>
-              A builder-facing public registry and explorer for Bittensor subnets: APIs, OpenAPI
-              schemas, docs, repos, dashboards, data artifacts, SSE streams, endpoint health, schema
-              drift, freshness, source evidence, providers, and curation gaps. Adapted for the
-              heterogeneous, app-layer shape of Bittensor subnets.
+              An unofficial, public explorer and integration registry for Bittensor. The explorer
+              reads chain-direct data — blocks, subnets, validators, and accounts — with endpoint
+              health, schema drift, and freshness. The registry maps every public interface a subnet
+              exposes — APIs, OpenAPI schemas, docs, repos, SSE streams, data artifacts, and
+              providers — with source evidence and the curation gaps still to fill. Everything is
+              machine-readable, served over REST, GraphQL, and MCP for developers and AI agents
+              alike.
             </p>
           </Section>
           <Section title="What this is not">
             <ul className="list-disc pl-5 space-y-1.5">
-              <li>Not a block explorer, wallet app, validator dashboard, or operator console.</li>
-              <li>Not an OpenTensor/Bittensor product. Unofficial registry only.</li>
+              <li>
+                Not an OpenTensor or Bittensor Foundation product — an independent, unofficial
+                project.
+              </li>
+              <li>
+                Not a custodial wallet or exchange — non-custodial by design: your keys and funds
+                never leave your own wallet, and any signing stays local, never on our servers.
+              </li>
               <li>No private keys, PATs, or token-gated data are ever requested or displayed.</li>
               <li>Endpoint pool eligibility is metadata only — proxy routing is future-scoped.</li>
             </ul>
@@ -108,13 +117,26 @@ function AboutPage() {
           </Section>
           <Section title="API & artifacts">
             <p className="mb-3">
-              JSON Schema is canonical. OpenAPI and TypeScript clients are projections. Every public
-              list and detail view is reachable via the API or as a static artifact.
+              JSON Schema is canonical; OpenAPI and the typed clients are projections of it. Every
+              public list and detail view is reachable over REST, GraphQL, and MCP — or as a static
+              JSON artifact — so a human, a script, or an agent all read the same data.
             </p>
             <div className="space-y-2">
               <CopyableCode
-                label="API"
+                label="REST"
                 value={`${API_BASE}/api/v1`}
+                truncate={false}
+                className="w-full"
+              />
+              <CopyableCode
+                label="GraphQL"
+                value={`${API_BASE}/api/v1/graphql`}
+                truncate={false}
+                className="w-full"
+              />
+              <CopyableCode
+                label="MCP"
+                value={`${API_BASE}/mcp`}
                 truncate={false}
                 className="w-full"
               />

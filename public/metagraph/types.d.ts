@@ -225,6 +225,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons D1 tier. Root (netuid 0) stake is not covered. */
+        get: operations["accountPositions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/prometheus": {
         parameters: {
             query?: never;
@@ -2316,6 +2333,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/stake-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote. */
+        get: operations["subnetStakeQuote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/stake-transfers": {
         parameters: {
             query?: never;
@@ -2903,6 +2937,21 @@ export interface components {
             schema_version: number;
             ss58: string;
             window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from AccountPortfolioArtifact's hotkey-scoped view (a pure delegator shows near-zero there since its stake lives on someone ELSE's hotkey row). Sourced from nominator_positions, a share-fraction ledger populated by the same SubtensorModule::Alpha scan as validator_nominator_counts (#2549), joined against live neurons stake_tao. Served live at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is NOT covered -- root has no alpha pool (#2550) and Alpha carries no root data at all, so an account that only holds root-delegated stake shows an empty positions[] here, not because it holds nothing but because this source can't see it yet. */
+        AccountPositionsArtifact: {
+            /**
+             * Format: date-time
+             * @description The most recent nominator_positions.captured_at across this account's positions -- when the source Alpha scan last observed them, not when neurons.stake_tao (used for the stake_tao join) last refreshed.
+             */
+            captured_at: string | null;
+            position_count: number;
+            positions: components["schemas"]["NominatorPosition"][];
+            schema_version: number;
+            ss58: string;
+            total_stake_tao: number;
         } & {
             [key: string]: unknown;
         };
@@ -4273,6 +4322,21 @@ export interface components {
         });
         /** @enum {unknown} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
+        /** @description Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data. */
+        ColdkeyIdentity: {
+            additional?: string | null;
+            /** Format: date-time */
+            captured_at?: string | null;
+            description?: string | null;
+            discord?: string | null;
+            github?: string | null;
+            has_identity: boolean;
+            /** Format: uri */
+            image?: string | null;
+            name?: string | null;
+            /** Format: uri */
+            url?: string | null;
+        };
         CompareArtifact: {
             dimensions?: string[];
             observed_at?: string | null;
@@ -4536,7 +4600,8 @@ export interface components {
                 registration_open_count: number;
                 subnet_count: number;
                 total_miners: number;
-                total_stake_tao: number;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. */
+                total_stake_tao: string;
                 total_validators: number;
                 with_economics_count: number;
             };
@@ -4558,7 +4623,8 @@ export interface components {
             miner_count?: number | null;
             snapshot_date: string;
             subnet_count: number;
-            total_stake_tao?: number | null;
+            /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide daily total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. Null only when no subnet reported a value that day. */
+            total_stake_tao?: string | null;
             validator_count?: number | null;
         };
         EndpointIncident: {
@@ -4928,15 +4994,27 @@ export interface components {
         };
         /** @description One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot. `featured` (#5166) reflects a maintainer-toggled DB pin (featured_validators, keyed by hotkey) -- true moves the row to the front of the default (unsorted) view; an explicit non-default ?sort= keeps its normal rank while `featured` stays true. */
         GlobalValidatorEntry: {
+            /** @description total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao. */
+            alpha_stake_tao: number;
+            /** @description Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0. */
+            apy_estimate: number | null;
+            /** @description Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0. */
+            apy_estimate_eligible_subnet_count: number;
             avg_validator_trust: number | null;
             coldkey: string | null;
             coldkey_count: number;
+            /** @description The row's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat. */
+            coldkey_identity: components["schemas"]["ColdkeyIdentity"] | null;
             featured: boolean;
             hotkey: string;
             latest_block_number: number | null;
             /** Format: date-time */
             latest_captured_at: string | null;
             max_validator_trust: number | null;
+            /** @description Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan (see validator_nominator_counts) than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0. */
+            nominator_count: number | null;
+            /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
+            root_stake_tao: number;
             stake_dominance: number | null;
             subnet_count: number;
             subnets: components["schemas"]["GlobalValidatorSubnet"][];
@@ -5304,6 +5382,15 @@ export interface components {
             window?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** @description One (hotkey, netuid) delegation this account holds, reconstructed from nominator_positions (#5233) joined against the live neurons stake_tao for that (hotkey, netuid). */
+        NominatorPosition: {
+            hotkey: string;
+            netuid: number;
+            /** @description This account's share of the hotkey's total alpha-pool shares on this subnet (0..1) -- a dimensionless ratio, not a TAO amount. Every delegator's share_fraction for the same (hotkey, netuid) sums to exactly 1.0. */
+            share_fraction: number;
+            /** @description share_fraction * the hotkey's current stake_tao for this netuid. Derived at serve time from the live neurons snapshot, so it moves as that snapshot refreshes even between nominator_positions scans. */
+            stake_tao: number;
         };
         OpenApiArtifact: {
             components: {
@@ -6844,12 +6931,18 @@ export interface components {
             network: {
                 gainers: number;
                 losers: number;
-                total_emission_delta_tao: number;
-                total_emission_end_tao: number;
-                total_emission_start_tao: number;
-                total_stake_delta_tao: number;
-                total_stake_end_tao: number;
-                total_stake_start_tao: number;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string: total_emission_end_tao minus total_emission_start_tao, computed in exact rao-integer space. May be negative. */
+                total_emission_delta_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's end snapshot. See total_stake_start_tao. */
+                total_emission_end_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's start snapshot. See total_stake_start_tao. */
+                total_emission_start_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string: total_stake_end_tao minus total_stake_start_tao, computed in exact rao-integer space (not as a difference of two already-lossy floats). May be negative (a leading '-') when network stake net-decreased over the window. */
+                total_stake_delta_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's end snapshot. See total_stake_start_tao. */
+                total_stake_end_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's start snapshot -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#5290, mirrors #2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. */
+                total_stake_start_tao: string;
                 total_validators_delta: number;
                 total_validators_end: number;
                 total_validators_start: number;
@@ -7198,6 +7291,23 @@ export interface components {
             /** @enum {string|null} */
             window: "7d" | "30d" | null;
         };
+        /** @description Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for an ?amount=/?direction=stake|unstake swap against the subnet's live economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math -- no chain write, no custody -- mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000x the relevant reserve is rejected). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote with null pool reserves. */
+        SubnetStakeQuoteArtifact: {
+            alpha_in_pool: number | null;
+            amount: number;
+            /** @enum {string} */
+            direction: "stake" | "unstake";
+            effective_price_tao: number;
+            expected_out: number;
+            /** @enum {string} */
+            expected_out_unit: "alpha" | "tao";
+            is_root: boolean;
+            netuid: number;
+            price_impact_pct: number;
+            schema_version: number;
+            spot_price_tao: number;
+            tao_in_pool_tao: number | null;
+        };
         /** @description Per-subnet stake-transfer activity over a 7d/30d window: distinct senders (accounts), StakeTransferred event count, and transfers per sender for ONE subnet. The per-subnet drill-in of /api/v1/chain/stake-transfers and the between-coldkeys sibling of /api/v1/subnets/{netuid}/stake-moves — transfer_stake relocates staked alpha between accounts on the same hotkey (origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/subnets/{netuid}/stake-transfers (no static file); zeroed when the subnet has no events in the window. */
         SubnetStakeTransfersArtifact: {
             distinct_senders: number;
@@ -7214,6 +7324,7 @@ export interface components {
         SubnetStatus: "active" | "inactive" | "unknown";
         SubnetSurfacesArtifact: components["schemas"]["SurfacesArtifact"];
         SubnetTrajectoryArtifact: {
+            /** @description Windowed deltas (7d/30d) between the latest point and the point at or before that many days prior. tao_in_pool_tao/alpha_in_pool/alpha_out_pool deltas are the net TAO/alpha flow into or out of the pool over the window (#2552) — positive means net inflow. */
             deltas: {
                 [key: string]: {
                     [key: string]: unknown;
@@ -7222,13 +7333,21 @@ export interface components {
             netuid: number;
             point_count: number;
             points: ({
+                /** @description Alpha reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative. */
+                alpha_in_pool?: number | null;
+                /** @description Alpha issued/staked out of the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative. */
+                alpha_out_pool?: number | null;
                 alpha_price_tao?: number | null;
                 completeness_score?: number | null;
                 date: string;
                 emission_share?: number | null;
                 endpoint_count?: number | null;
                 miner_count?: number | null;
+                /** @description Cumulative subnet trading volume in TAO as reported by the chain at this snapshot (#2552). */
+                subnet_volume_tao?: number | null;
                 surface_count?: number | null;
+                /** @description TAO reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative — see deltas for net flow. */
+                tao_in_pool_tao?: number | null;
                 total_stake_tao?: number | null;
                 validator_count?: number | null;
             } & {
@@ -7594,14 +7713,26 @@ export interface components {
         };
         /** @description Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, served live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404 — the single-entity drill-in of /api/v1/validators. */
         ValidatorDetailArtifact: {
+            /** @description total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao. */
+            alpha_stake_tao: number;
+            /** @description Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0. */
+            apy_estimate: number | null;
+            /** @description Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0. */
+            apy_estimate_eligible_subnet_count: number;
             avg_validator_trust: number | null;
             block_number: number | null;
             /** Format: date-time */
             captured_at: string | null;
             coldkey: string | null;
             coldkey_count: number;
+            /** @description The validator's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat. */
+            coldkey_identity: components["schemas"]["ColdkeyIdentity"] | null;
             hotkey: string;
             max_validator_trust: number | null;
+            /** @description Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0. */
+            nominator_count: number | null;
+            /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
+            root_stake_tao: number;
             schema_version: number;
             subnet_count: number;
             subnets: components["schemas"]["ValidatorDetailSubnet"][];
@@ -9351,6 +9482,119 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountPortfolioArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountPositions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "position_count": 1,
+                     *         "positions": [
+                     *           {
+                     *             "hotkey": "example",
+                     *             "netuid": 7,
+                     *             "share_fraction": 0.5,
+                     *             "stake_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *         "total_stake_tao": 0.5
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountPositionsArtifact"];
                     };
                 };
             };
@@ -15987,7 +16231,7 @@ export interface operations {
                      *           "registration_open_count": 1,
                      *           "subnet_count": 1,
                      *           "total_miners": 1,
-                     *           "total_stake_tao": 0.5,
+                     *           "total_stake_tao": "327838334.635978200",
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
                      *         }
@@ -26423,6 +26667,121 @@ export interface operations {
             };
         };
     };
+    subnetStakeQuote: {
+        parameters: {
+            query?: {
+                amount?: number;
+                direction?: "stake" | "unstake";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "alpha_in_pool": 0.5,
+                     *         "amount": 0.5,
+                     *         "direction": "stake",
+                     *         "effective_price_tao": 0.5,
+                     *         "expected_out": 0.5,
+                     *         "expected_out_unit": "alpha",
+                     *         "is_root": false,
+                     *         "netuid": 7,
+                     *         "price_impact_pct": 0.5,
+                     *         "schema_version": 1,
+                     *         "spot_price_tao": 0.5,
+                     *         "tao_in_pool_tao": 0.5
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetStakeQuoteArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetStakeTransfers: {
         parameters: {
             query?: {
@@ -26733,8 +27092,8 @@ export interface operations {
                         data?: components["schemas"]["SubnetTrajectoryArtifact"];
                     };
                     /**
-                     * @example date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share
-                     *     2026-06-01,35,1,1,8,60,90,0.01,0.02
+                     * @example date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao
+                     *     2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45
                      */
                     "text/csv": string;
                 };
@@ -27840,12 +28199,12 @@ export interface operations {
                      *         "network": {
                      *           "gainers": 1,
                      *           "losers": 1,
-                     *           "total_emission_delta_tao": 0.5,
-                     *           "total_emission_end_tao": 0.5,
-                     *           "total_emission_start_tao": 0.5,
-                     *           "total_stake_delta_tao": 0.5,
-                     *           "total_stake_end_tao": 0.5,
-                     *           "total_stake_start_tao": 0.5,
+                     *           "total_emission_delta_tao": "-1234567.891234500",
+                     *           "total_emission_end_tao": "327838334.635978200",
+                     *           "total_emission_start_tao": "327838334.635978200",
+                     *           "total_stake_delta_tao": "-1234567.891234500",
+                     *           "total_stake_end_tao": "327838334.635978200",
+                     *           "total_stake_start_tao": "327838334.635978200",
                      *           "total_validators_delta": 1,
                      *           "total_validators_end": 1,
                      *           "total_validators_start": 1,
@@ -28332,14 +28691,22 @@ export interface operations {
                      *         "validator_count": 1,
                      *         "validators": [
                      *           {
+                     *             "alpha_stake_tao": 0.5,
+                     *             "apy_estimate": 0.5,
+                     *             "apy_estimate_eligible_subnet_count": 1,
                      *             "avg_validator_trust": 0.5,
                      *             "coldkey": "example",
                      *             "coldkey_count": 1,
+                     *             "coldkey_identity": {
+                     *               "has_identity": false
+                     *             },
                      *             "featured": false,
                      *             "hotkey": "example",
                      *             "latest_block_number": 5000000,
                      *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
                      *             "max_validator_trust": 0.5,
+                     *             "nominator_count": 1,
+                     *             "root_stake_tao": 0.5,
                      *             "stake_dominance": 0.5,
                      *             "subnet_count": 1,
                      *             "subnets": [
@@ -28462,13 +28829,29 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "alpha_stake_tao": 0.5,
+                     *         "apy_estimate": 0.5,
+                     *         "apy_estimate_eligible_subnet_count": 1,
                      *         "avg_validator_trust": 0.5,
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "coldkey": "example",
                      *         "coldkey_count": 1,
+                     *         "coldkey_identity": {
+                     *           "additional": "example",
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "description": "Example description.",
+                     *           "discord": "example",
+                     *           "github": "example",
+                     *           "has_identity": false,
+                     *           "image": "https://api.metagraph.sh/example",
+                     *           "name": "Example Subnet",
+                     *           "url": "https://api.metagraph.sh/example"
+                     *         },
                      *         "hotkey": "example",
                      *         "max_validator_trust": 0.5,
+                     *         "nominator_count": 1,
+                     *         "root_stake_tao": 0.5,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
                      *         "subnets": [

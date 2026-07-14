@@ -194,7 +194,7 @@ describe("buildEconomicsArtifact", () => {
     assert.deepEqual(artifact.summary, {
       subnet_count: 0,
       with_economics_count: 0,
-      total_stake_tao: 0,
+      total_stake_tao: "0.000000000",
       total_validators: 0,
       total_miners: 0,
       registration_open_count: 0,
@@ -232,7 +232,7 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(row.slug, "sn-1");
     assert.equal(artifact.summary.subnet_count, 1);
     assert.equal(artifact.summary.with_economics_count, 1);
-    assert.equal(artifact.summary.total_stake_tao, 1000);
+    assert.equal(artifact.summary.total_stake_tao, "1000.000000000");
     assert.equal(artifact.summary.total_validators, 9);
     assert.equal(artifact.summary.total_miners, 200);
     assert.equal(artifact.summary.registration_open_count, 1);

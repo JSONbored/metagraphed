@@ -26,6 +26,7 @@ import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { handleRpcProxyRequest } from "../workers/request-handlers/rpc-proxy.mjs";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   isValidMcpSessionId,
@@ -288,6 +289,8 @@ import {
   parseCompareDimensionList,
   parseCompareNetuidList,
   parseUptimeWindow,
+  composeCompareData,
+  profilesProjectionFromRows,
 } from "./analytics-live.mjs";
 import {
   loadChainRegistrations,
@@ -342,6 +345,8 @@ import {
   loadSubnetReliability,
   loadSubnetTrajectory,
   mergeFreshness,
+  mergeRpcEndpoints,
+  overlayArtifactEndpoints,
   overlayCatalogDetail,
   overlayCatalogIndex,
   overlayOverviewHealth,
@@ -355,6 +360,7 @@ import {
   buildSubnetMetagraph,
   buildSubnetValidators,
   buildGlobalValidators,
+  buildValidatorDetail,
   GLOBAL_VALIDATOR_SORTS,
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -524,6 +530,33 @@ import {
 } from "./ai-search.mjs";
 import { keywordScore, queryTerms } from "./keyword-search.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
+import {
+  buildAccountsList,
+  ACCOUNTS_LIST_SORTS,
+  DEFAULT_ACCOUNTS_LIST_SORT,
+  ACCOUNTS_LIST_LIMIT_DEFAULT,
+  ACCOUNTS_LIST_LIMIT_MAX,
+} from "./accounts-list.mjs";
+import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
+import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
+import { buildAlphaVolume } from "./alpha-volume.mjs";
+import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
+import { buildAccountPositionHistory } from "./account-position-history.mjs";
+import { loadAccountIdentity } from "./account-identity.mjs";
+import { loadAccountIdentityHistory } from "./account-identity-history.mjs";
+import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";
+import { loadSudoKey } from "./sudo-key.mjs";
+import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
+import {
+  buildValidatorNominators,
+  NOMINATOR_WINDOWS,
+  DEFAULT_NOMINATOR_WINDOW,
+  NOMINATOR_SORTS,
+  DEFAULT_NOMINATOR_SORT,
+  NOMINATOR_LIMIT_DEFAULT,
+  NOMINATOR_LIMIT_MAX,
+} from "./validator-nominators.mjs";
+import { buildValidatorHistory } from "./validator-history.mjs";
 
 // Protocol versions we understand, newest first. We echo the client's requested
 // version when it is one of these, otherwise we answer with our latest. We meet
@@ -959,9 +992,7 @@ function mcpD1Runner(ctx) {
 // DATA_API via tryPostgresTier (#4694) -- MCP tool handlers receive
 // structured args, not an inbound Request the way REST's handleExtrinsics
 // does, so this reconstructs the identical query-string shape
-// workers/data-api.mjs's extrinsics routes parse. list_extrinsics'
-// inputSchema has no call_hash param (REST-only, #4322), so that filter is
-// never forwarded here -- nothing else to reconcile. The host in the URL is
+// workers/data-api.mjs's extrinsics routes parse. The host in the URL is
 // never dispatched to (DATA_API.fetch resolves the binding directly, the
 // same convention src/data-api-mcp.mjs's dataApiFetchJson already uses).
 function mcpExtrinsicsListRequest(args) {
@@ -972,6 +1003,39 @@ function mcpExtrinsicsListRequest(args) {
   if (signer) params.set("signer", signer);
   const callModule = optionalString(args, "call_module");
   if (callModule) params.set("call_module", callModule);
+  const callFunction = optionalString(args, "call_function");
+  if (callFunction) params.set("call_function", callFunction);
+  const callHash = optionalString(args, "call_hash");
+  if (callHash) params.set("call_hash", callHash);
+  const success = optionalSuccessFilter(args);
+  if (success !== undefined) params.set("success", String(success));
+  const blockStart = optionalNonNegativeInt(args, "block_start");
+  if (blockStart != null) params.set("block_start", String(blockStart));
+  const blockEnd = optionalNonNegativeInt(args, "block_end");
+  if (blockEnd != null) params.set("block_end", String(blockEnd));
+  const from = optionalNonNegativeInt(args, "from");
+  if (from != null) params.set("from", String(from));
+  const to = optionalNonNegativeInt(args, "to");
+  if (to != null) params.set("to", String(to));
+  if (args?.limit != null) params.set("limit", String(args.limit));
+  if (args?.offset != null) params.set("offset", String(args.offset));
+  const cursor = optionalString(args, "cursor");
+  if (cursor) params.set("cursor", cursor);
+  return new Request(`https://d/api/v1/extrinsics?${params.toString()}`);
+}
+
+// Synthetic GET {pathname}{...} request for the two fixed-call_module
+// extrinsics-feed variants (get_sudo -> /api/v1/sudo, call_module=Sudo;
+// get_governance_config_changes -> /api/v1/governance/config-changes,
+// call_module=AdminUtils) -- same query-string shape as
+// mcpExtrinsicsListRequest MINUS signer/call_module (workers/data-api.mjs
+// derives call_module from the pathname itself for these two routes, not a
+// query param -- see its PATH_TO_CALL_MODULE-style mapping), so passing the
+// correct fixed pathname is what selects the filter, nothing else needed.
+function mcpFixedCallModuleFeedRequest(pathname, args) {
+  const params = new URLSearchParams();
+  const block = optionalNonNegativeInt(args, "block");
+  if (block != null) params.set("block", String(block));
   const callFunction = optionalString(args, "call_function");
   if (callFunction) params.set("call_function", callFunction);
   const success = optionalSuccessFilter(args);
@@ -988,7 +1052,8 @@ function mcpExtrinsicsListRequest(args) {
   if (args?.offset != null) params.set("offset", String(args.offset));
   const cursor = optionalString(args, "cursor");
   if (cursor) params.set("cursor", cursor);
-  return new Request(`https://d/api/v1/extrinsics?${params.toString()}`);
+  const qs = params.toString();
+  return new Request(`https://d${pathname}${qs ? `?${qs}` : ""}`);
 }
 
 function mcpExtrinsicDetailRequest(ref) {
@@ -1024,6 +1089,45 @@ function mcpChainIdentityHistoryRequest({ limit }) {
   const qs = params.toString();
   return new Request(
     `https://d/api/v1/chain/identity-history${qs ? `?${qs}` : ""}`,
+  );
+}
+
+// Synthetic GET /api/v1/accounts/{ss58}/identity request, forwarded UNCHANGED
+// to DATA_API via tryPostgresTier -- mirrors REST's handleAccountIdentity,
+// same METAGRAPH_ACCOUNT_IDENTITY_SOURCE flag, no query params.
+function mcpAccountIdentityRequest(ss58) {
+  return new Request(
+    `https://d/api/v1/accounts/${encodeURIComponent(ss58)}/identity`,
+  );
+}
+
+// Synthetic GET request for the neurons-tier chain-*/subnet-* analytics
+// family (concentration, performance, yield, turnover, movers + their
+// history variants) -- every one of these routes is gated on the SAME
+// METAGRAPH_NEURONS_SOURCE flag (entities.mjs's handleSubnetConcentration
+// et al. all call tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")),
+// so one shared pathname+params builder covers all of them.
+function mcpNeuronsTierRequest(pathname, params = {}) {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null) qs.set(key, String(value));
+  }
+  const q = qs.toString();
+  return new Request(`https://d${pathname}${q ? `?${q}` : ""}`);
+}
+
+// Synthetic GET /api/v1/accounts/{ss58}/identity-history{...} request, same
+// limit/offset/cursor contract as mcpSubnetIdentityHistoryRequest above --
+// mirrors REST's handleAccountIdentityHistory, same
+// METAGRAPH_ACCOUNT_IDENTITY_SOURCE flag as get_account_identity.
+function mcpAccountIdentityHistoryRequest(ss58, { limit, offset, cursor }) {
+  const params = new URLSearchParams();
+  if (limit != null) params.set("limit", String(limit));
+  if (offset != null) params.set("offset", String(offset));
+  if (cursor) params.set("cursor", cursor);
+  const qs = params.toString();
+  return new Request(
+    `https://d/api/v1/accounts/${encodeURIComponent(ss58)}/identity-history${qs ? `?${qs}` : ""}`,
   );
 }
 
@@ -1202,11 +1306,20 @@ function requireHistoryWindow(args) {
   return { label, days };
 }
 
-// One subnet's per-day aggregate history — mirrors handleSubnetHistory. The
-// neuron_daily D1 table was retired (#4772); buildSubnetHistory([]) yields the
+// One subnet's per-day aggregate history — mirrors handleSubnetHistory. Tries
+// the Postgres tier first (METAGRAPH_NEURONS_SOURCE); the neuron_daily D1
+// table was retired (#4772), so buildSubnetHistory([]) yields the
 // schema-stable point_count:0 payload the same way a cold/absent D1 used to.
 async function loadSubnetHistory(ctx, netuid, { label }) {
-  return buildSubnetHistory([], netuid, { window: label });
+  return (
+    (await tryPostgresTier(
+      ctx.env,
+      mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/history`, {
+        window: label,
+      }),
+      "METAGRAPH_NEURONS_SOURCE",
+    )) ?? buildSubnetHistory([], netuid, { window: label })
+  );
 }
 
 // Mirrors REST's handleSubnetIdentityHistory: try Postgres first, fall back
@@ -1233,11 +1346,23 @@ async function loadSubnetIdentityHistoryTool(
   );
 }
 
-// One UID's per-day time series — mirrors handleNeuronHistory. The
-// neuron_daily D1 table was retired (#4772); buildNeuronHistory([]) yields the
-// schema-stable point_count:0 payload the same way a cold/absent D1 used to.
+// One UID's per-day time series — mirrors handleNeuronHistory. Tries the
+// Postgres tier first (METAGRAPH_NEURONS_SOURCE); the neuron_daily D1 table
+// was retired (#4772), so buildNeuronHistory([]) yields the schema-stable
+// point_count:0 payload the same way a cold/absent D1 used to.
 async function loadNeuronHistory(ctx, netuid, uid, { label }) {
-  return buildNeuronHistory([], netuid, uid, { window: label });
+  return (
+    (await tryPostgresTier(
+      ctx.env,
+      mcpNeuronsTierRequest(
+        `/api/v1/subnets/${netuid}/neurons/${uid}/history`,
+        {
+          window: label,
+        },
+      ),
+      "METAGRAPH_NEURONS_SOURCE",
+    )) ?? buildNeuronHistory([], netuid, uid, { window: label })
+  );
 }
 
 // One provider's detail + (optionally) its endpoints, mirroring GET
@@ -1566,6 +1691,20 @@ function requireSs58(args) {
 // derived from the single pattern source so it can't drift.
 const SS58_PATTERN_SOURCE = SS58_ADDRESS_PATTERN.source;
 
+// A validator identity is the same SS58 shape as an account, just a different
+// argument name (a hotkey the caller already knows, not one they're looking
+// up) -- same runtime pattern check as requireSs58, distinct error text.
+function requireHotkey(args) {
+  const value = requireString(args, "hotkey");
+  if (!SS58_ADDRESS_PATTERN.test(value)) {
+    throw toolError(
+      "invalid_params",
+      "Argument `hotkey` must be a valid SS58 account address (base58, 47-48 chars).",
+    );
+  }
+  return value;
+}
+
 // The optional `blocks` window for get_chain_activity: a missing value defaults
 // to 1000; a provided value must be a positive integer and is clamped to the
 // data Worker's 1-5000 bound so a stray large value is silently capped (the data
@@ -1729,7 +1868,13 @@ function rangeFilterSubnets(rows, args) {
 
 // Categorical args list_subnets filters on, each available as inclusion (`arg`)
 // and exclusion (`not_arg`).
-const LIST_SUBNETS_CATEGORICAL = ["status", "subnet_type", "domain"];
+const LIST_SUBNETS_CATEGORICAL = [
+  "status",
+  "subnet_type",
+  "domain",
+  "coverage_level",
+  "curation_level",
+];
 
 // Does `subnet` match categorical filter `field` = `value` (already lowercased)?
 // `domain` tests the union of curated + derived categories; the rest are scalar.
@@ -1975,6 +2120,27 @@ export const MCP_TOOLS = [
         not_domain: {
           type: "string",
           description: "Exclude subnets tagged with this domain/category.",
+        },
+        coverage_level: {
+          type: "string",
+          enum: QUERY_ENUMS.coverageLevel,
+          description: "Filter by how the registry sourced this subnet's data.",
+        },
+        not_coverage_level: {
+          type: "string",
+          enum: QUERY_ENUMS.coverageLevel,
+          description: "Exclude subnets with this coverage_level.",
+        },
+        curation_level: {
+          type: "string",
+          enum: QUERY_ENUMS.curationLevel,
+          description:
+            "Filter by how this subnet's listing was curated/trusted.",
+        },
+        not_curation_level: {
+          type: "string",
+          enum: QUERY_ENUMS.curationLevel,
+          description: "Exclude subnets with this curation_level.",
         },
         min_readiness: {
           type: "integer",
@@ -2262,9 +2428,16 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return loadSubnetHealthTrends(mcpD1Runner(ctx), netuid, {
-        observedAt: await mcpObservedAt(ctx),
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/health/trends`),
+          "METAGRAPH_HEALTH_SOURCE",
+        )) ??
+        (await loadSubnetHealthTrends(mcpD1Runner(ctx), netuid, {
+          observedAt: await mcpObservedAt(ctx),
+        }))
+      );
     },
   },
   {
@@ -2283,6 +2456,12 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(_args, ctx) {
+      const postgres = await tryPostgresTier(
+        ctx.env,
+        mcpNeuronsTierRequest("/api/v1/health/trends"),
+        "METAGRAPH_HEALTH_SOURCE",
+      );
+      if (postgres) return postgres;
       const { data } = await loadBulkHealthTrends(mcpD1Runner(ctx), {
         observedAt: await mcpObservedAt(ctx),
       });
@@ -2319,10 +2498,20 @@ export const MCP_TOOLS = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label } = parsed;
-      return loadSubnetPercentiles(mcpD1Runner(ctx), netuid, {
-        window: label,
-        observedAt: await mcpObservedAt(ctx),
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/subnets/${netuid}/health/percentiles`,
+            { window: label },
+          ),
+          "METAGRAPH_HEALTH_SOURCE",
+        )) ??
+        (await loadSubnetPercentiles(mcpD1Runner(ctx), netuid, {
+          window: label,
+          observedAt: await mcpObservedAt(ctx),
+        }))
+      );
     },
   },
   {
@@ -2357,10 +2546,19 @@ export const MCP_TOOLS = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label } = parsed;
-      return loadSubnetIncidents(mcpD1Runner(ctx), netuid, {
-        window: label,
-        observedAt: await mcpObservedAt(ctx),
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/health/incidents`, {
+            window: label,
+          }),
+          "METAGRAPH_HEALTH_SOURCE",
+        )) ??
+        (await loadSubnetIncidents(mcpD1Runner(ctx), netuid, {
+          window: label,
+          observedAt: await mcpObservedAt(ctx),
+        }))
+      );
     },
   },
   {
@@ -2384,6 +2582,57 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetEconomics(ctx, netuid);
+    },
+  },
+  {
+    name: "get_subnet_stake_quote",
+    title: "Get a subnet stake/unstake quote",
+    description:
+      "Estimate a stake or unstake against one subnet's AMM pool: expected " +
+      "alpha/TAO out, spot and effective price, and price impact, computed " +
+      "with the chain's own constant-product swap formula against the " +
+      "subnet's live pool reserves (the same economics tier get_subnet_economics " +
+      "reads). direction stake (default) spends amount TAO for alpha; unstake " +
+      "spends amount alpha for TAO. Root (netuid 0) has no AMM pool and always " +
+      "quotes 1:1 with zero price impact. Read-only, pure math -- it builds no " +
+      "transaction, signs nothing, and never touches a key. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/stake-quote.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        amount: {
+          type: "number",
+          description:
+            "Amount to quote, in TAO for direction=stake or alpha for " +
+            "direction=unstake. Must be a finite number greater than 0.",
+          exclusiveMinimum: 0,
+        },
+        direction: {
+          type: "string",
+          enum: STAKE_QUOTE_DIRECTIONS,
+          description: 'Swap direction: stake or unstake (default "stake").',
+        },
+      },
+      required: ["netuid", "amount"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const amount = args?.amount;
+      const direction = optionalString(args, "direction") ?? "stake";
+      const { economics } = await loadSubnetEconomics(ctx, netuid);
+      const result = computeStakeQuote({
+        netuid,
+        taoInPool: economics?.tao_in_pool_tao,
+        alphaInPool: economics?.alpha_in_pool,
+        amount,
+        direction,
+      });
+      if (!result.ok) {
+        throw toolError(result.code, result.error);
+      }
+      return { schema_version: 1, ...result.quote };
     },
   },
   {
@@ -2421,7 +2670,13 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return loadSubnetTrajectory(mcpD1Runner(ctx), netuid);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/trajectory`),
+          "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
+        )) ?? (await loadSubnetTrajectory(mcpD1Runner(ctx), netuid))
+      );
     },
   },
   {
@@ -2450,6 +2705,12 @@ export const MCP_TOOLS = [
         throw toolError("invalid_params", error.message);
       }
       const { label, days } = parsed;
+      const postgres = await tryPostgresTier(
+        ctx.env,
+        mcpNeuronsTierRequest("/api/v1/economics/trends", { window: label }),
+        "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
+      );
+      if (postgres) return postgres;
       const { data } = await loadEconomicsTrends(mcpD1Runner(ctx), {
         windowLabel: label,
         windowDays: days,
@@ -2474,9 +2735,15 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return buildConcentration([], netuid);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/concentration`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildConcentration([], netuid)
+      );
     },
   },
   {
@@ -2499,9 +2766,15 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return buildSubnetPerformance([], netuid);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/performance`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildSubnetPerformance([], netuid)
+      );
     },
   },
   {
@@ -2520,8 +2793,14 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, _ctx) {
-      return buildChainConcentration([]);
+    async handler(_args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/concentration"),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildChainConcentration([])
+      );
     },
   },
   {
@@ -2541,8 +2820,14 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, _ctx) {
-      return buildChainPerformance([]);
+    async handler(_args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/performance"),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildChainPerformance([])
+      );
     },
   },
   {
@@ -2604,8 +2889,14 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, _ctx) {
-      return buildChainYield([]);
+    async handler(_args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/yield"),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildChainYield([])
+      );
     },
   },
   {
@@ -2638,7 +2929,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
       if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, window)) {
@@ -2652,12 +2943,19 @@ export const MCP_TOOLS = [
         CHAIN_TURNOVER_LIMIT_DEFAULT,
         CHAIN_TURNOVER_LIMIT_MAX,
       );
-      return buildChainTurnover([], {
-        window,
-        startDate: null,
-        endDate: null,
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/turnover", { window, limit }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildChainTurnover([], {
+          window,
+          startDate: null,
+          endDate: null,
+          limit,
+        })
+      );
     },
   },
   {
@@ -2704,11 +3002,21 @@ export const MCP_TOOLS = [
         CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
         CHAIN_STAKE_FLOW_LIMIT_MAX,
       );
-      return loadChainStakeFlow(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_STAKE_FLOW_WINDOWS[window],
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/stake-flow", {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainStakeFlow(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_STAKE_FLOW_WINDOWS[window],
+          limit,
+        }))
+      );
     },
   },
   {
@@ -2755,11 +3063,21 @@ export const MCP_TOOLS = [
         CHAIN_WEIGHTS_LIMIT_DEFAULT,
         CHAIN_WEIGHTS_LIMIT_MAX,
       );
-      return loadChainWeights(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_WEIGHTS_WINDOWS[window],
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/weights", {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainWeights(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_WEIGHTS_WINDOWS[window],
+          limit,
+        }))
+      );
     },
   },
   {
@@ -2805,11 +3123,21 @@ export const MCP_TOOLS = [
         CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
         CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
       );
-      return loadChainWeightSetters(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_WEIGHT_SETTERS_WINDOWS[window],
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/weights/setters", {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainWeightSetters(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_WEIGHT_SETTERS_WINDOWS[window],
+          limit,
+        }))
+      );
     },
   },
   {
@@ -2857,11 +3185,21 @@ export const MCP_TOOLS = [
         CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
         CHAIN_STAKE_MOVES_LIMIT_MAX,
       );
-      return loadChainStakeMoves(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_STAKE_MOVES_WINDOWS[window],
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/stake-moves", {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainStakeMoves(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_STAKE_MOVES_WINDOWS[window],
+          limit,
+        }))
+      );
     },
   },
   {
@@ -2909,11 +3247,21 @@ export const MCP_TOOLS = [
         CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
         CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
       );
-      return loadChainStakeTransfers(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_STAKE_TRANSFERS_WINDOWS[window],
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/stake-transfers", {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainStakeTransfers(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_STAKE_TRANSFERS_WINDOWS[window],
+          limit,
+        }))
+      );
     },
   },
   {
@@ -2961,11 +3309,21 @@ export const MCP_TOOLS = [
         CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
         CHAIN_AXON_REMOVALS_LIMIT_MAX,
       );
-      return loadChainAxonRemovals(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_AXON_REMOVALS_WINDOWS[window],
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/axon-removals", {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainAxonRemovals(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_AXON_REMOVALS_WINDOWS[window],
+          limit,
+        }))
+      );
     },
   },
   {
@@ -3014,11 +3372,21 @@ export const MCP_TOOLS = [
         CHAIN_SERVING_LIMIT_DEFAULT,
         CHAIN_SERVING_LIMIT_MAX,
       );
-      return loadChainServing(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_SERVING_WINDOWS[window],
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/serving", {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainServing(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_SERVING_WINDOWS[window],
+          limit,
+        }))
+      );
     },
   },
   {
@@ -3067,11 +3435,21 @@ export const MCP_TOOLS = [
         CHAIN_PROMETHEUS_LIMIT_DEFAULT,
         CHAIN_PROMETHEUS_LIMIT_MAX,
       );
-      return loadChainPrometheus(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_PROMETHEUS_WINDOWS[window],
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/prometheus", {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainPrometheus(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_PROMETHEUS_WINDOWS[window],
+          limit,
+        }))
+      );
     },
   },
   {
@@ -3088,8 +3466,17 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, _ctx) {
-      return buildBlocksSummary([]);
+    async handler(_args, ctx) {
+      // Mirrors REST's handleBlocksSummary: try Postgres first, fall back to
+      // the schema-stable zeroed card now that blocks' D1 write path is
+      // retired (#4772) and the table is dropped in production.
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/blocks/summary"),
+          "METAGRAPH_BLOCKS_SOURCE",
+        )) ?? buildBlocksSummary([])
+      );
     },
   },
   {
@@ -3114,16 +3501,26 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const parsed = parseConcentrationHistoryWindow(args?.window);
       if (parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
-      return buildConcentrationHistory([], netuid, {
-        window: parsed.label,
-        capped: false,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/subnets/${netuid}/concentration/history`,
+            { window: parsed.label },
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildConcentrationHistory([], netuid, {
+          window: parsed.label,
+          capped: false,
+        })
+      );
     },
   },
   {
@@ -3157,11 +3554,21 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const { label } = requireHistoryWindow(args);
+      const changes = optionalBoolean(args, "changes");
       const turnoverOptions = { window: label, startDate: null, endDate: null };
-      if (!optionalBoolean(args, "changes")) {
+      const postgres = await tryPostgresTier(
+        ctx.env,
+        mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/turnover`, {
+          window: label,
+          changes: changes ? "true" : undefined,
+        }),
+        "METAGRAPH_NEURONS_SOURCE",
+      );
+      if (postgres) return postgres;
+      if (!changes) {
         return buildTurnover([], netuid, turnoverOptions);
       }
       return {
@@ -3191,9 +3598,15 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return buildSubnetYield([], netuid);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/yield`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildSubnetYield([], netuid)
+      );
     },
   },
   {
@@ -3219,17 +3632,26 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const parsed = parseSubnetYieldHistoryWindow(args?.window);
       if (args?.window !== undefined && parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
       const { label } = parsed;
-      return buildSubnetYieldHistory([], netuid, {
-        window: label,
-        capped: false,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/yield/history`, {
+            window: label,
+          }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildSubnetYieldHistory([], netuid, {
+          window: label,
+          capped: false,
+        })
+      );
     },
   },
   {
@@ -3261,7 +3683,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
@@ -3279,7 +3701,18 @@ export const MCP_TOOLS = [
           `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
         );
       }
-      return buildStakeFlow([], netuid, { window });
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/stake-flow`, {
+              window,
+              direction,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildStakeFlow([], netuid, { window })
+      );
     },
   },
   {
@@ -3315,7 +3748,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
@@ -3330,10 +3763,20 @@ export const MCP_TOOLS = [
         SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
         SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
       );
-      return buildSubnetEventSummary([], [], netuid, {
-        window,
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/event-summary`, {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        buildSubnetEventSummary([], [], netuid, {
+          window,
+          limit,
+        })
+      );
     },
   },
   {
@@ -3359,7 +3802,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
@@ -3369,7 +3812,15 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_WEIGHTS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildSubnetWeights(null, netuid, { window });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/weights`, {
+            window,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildSubnetWeights(null, netuid, { window })
+      );
     },
   },
   {
@@ -3396,7 +3847,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
@@ -3406,7 +3857,15 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildSubnetWeightSetters([], null, netuid, { window });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/weights/setters`, {
+            window,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildSubnetWeightSetters([], null, netuid, { window })
+      );
     },
   },
   {
@@ -3432,7 +3891,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
@@ -3442,7 +3901,15 @@ export const MCP_TOOLS = [
           `window must be one of: ${Object.keys(SUBNET_REGISTRATIONS_WINDOWS).join(", ")}.`,
         );
       }
-      return buildSubnetRegistrations(null, netuid, { window });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/registrations`, {
+            window,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildSubnetRegistrations(null, netuid, { window })
+      );
     },
   },
   {
@@ -3468,7 +3935,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
@@ -3478,7 +3945,15 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildSubnetStakeMoves(null, netuid, { window });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/stake-moves`, {
+            window,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildSubnetStakeMoves(null, netuid, { window })
+      );
     },
   },
   {
@@ -3505,7 +3980,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
@@ -3515,7 +3990,15 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_STAKE_TRANSFERS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildSubnetStakeTransfers(null, netuid, { window });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/stake-transfers`, {
+            window,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildSubnetStakeTransfers(null, netuid, { window })
+      );
     },
   },
   {
@@ -3542,7 +4025,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
@@ -3552,7 +4035,15 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_AXON_REMOVALS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildSubnetAxonRemovals(null, netuid, { window });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/axon-removals`, {
+            window,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildSubnetAxonRemovals(null, netuid, { window })
+      );
     },
   },
   {
@@ -3580,7 +4071,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_SERVING_WINDOW;
@@ -3590,7 +4081,15 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_SERVING_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildSubnetServing(null, netuid, { window });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/serving`, {
+            window,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildSubnetServing(null, netuid, { window })
+      );
     },
   },
   {
@@ -3618,7 +4117,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_PROMETHEUS_WINDOW;
@@ -3628,7 +4127,15 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_PROMETHEUS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildSubnetPrometheus(null, netuid, { window });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/prometheus`, {
+            window,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildSubnetPrometheus(null, netuid, { window })
+      );
     },
   },
   {
@@ -3654,7 +4161,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
@@ -3664,7 +4171,15 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildSubnetDeregistrations(null, netuid, { window });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/deregistrations`, {
+            window,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildSubnetDeregistrations(null, netuid, { window })
+      );
     },
   },
   {
@@ -3689,17 +4204,27 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const parsed = parseSubnetPerformanceHistoryWindow(args?.window);
       if (args?.window !== undefined && parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
       const { label } = parsed;
-      return buildSubnetPerformanceHistory([], netuid, {
-        window: label,
-        capped: false,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/subnets/${netuid}/performance/history`,
+            { window: label },
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildSubnetPerformanceHistory([], netuid, {
+          window: label,
+          capped: false,
+        })
+      );
     },
   },
   {
@@ -3734,7 +4259,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const window = optionalString(args, "window") ?? DEFAULT_MOVERS_WINDOW;
       if (!Object.hasOwn(MOVERS_WINDOWS, window)) {
         throw toolError(
@@ -3754,13 +4279,24 @@ export const MCP_TOOLS = [
         MOVERS_LIMIT_DEFAULT,
         MOVERS_LIMIT_MAX,
       );
-      return buildMovers([], [], {
-        window,
-        startDate: null,
-        endDate: null,
-        sort,
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/subnets/movers", {
+            window,
+            sort,
+            limit,
+          }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildMovers([], [], {
+          window,
+          startDate: null,
+          endDate: null,
+          sort,
+          limit,
+        })
+      );
     },
   },
   {
@@ -3798,11 +4334,22 @@ export const MCP_TOOLS = [
       if (args?.window !== undefined && window === null) {
         throw toolError("invalid_params", "window must be one of: 90d, 1y.");
       }
-      return loadSubnetUptime(mcpD1Runner(ctx), netuid, {
-        window: window || "90d",
-        observedAt: await mcpObservedAt(ctx),
-        minSamples: optionalNonNegativeInt(args, "min_samples"),
-      });
+      const minSamples = optionalNonNegativeInt(args, "min_samples");
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/uptime`, {
+            window,
+            min_samples: minSamples,
+          }),
+          "METAGRAPH_HEALTH_SOURCE",
+        )) ??
+        (await loadSubnetUptime(mcpD1Runner(ctx), netuid, {
+          window,
+          observedAt: await mcpObservedAt(ctx),
+          minSamples,
+        }))
+      );
     },
   },
   {
@@ -3925,12 +4472,43 @@ export const MCP_TOOLS = [
       const profiles =
         (await loadArtifactData(ctx, "/metagraph/profiles.json")).profiles ||
         [];
+      const economicsRows = await loadEconomicsSubnetRows(ctx);
+      const observedAt = await mcpObservedAt(ctx);
+      // handleCompare has no single D1 route to forward -- its health
+      // dimension synthesizes its own /api/v1/internal/compare-health
+      // request (structure/economics never touch D1/Postgres, they're
+      // registry+economics-tier reads) -- mirror that exactly rather than
+      // wrapping the whole tool in tryPostgresTier's usual passthrough.
+      if (dimensions.includes("health")) {
+        const postgres = await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/internal/compare-health", {
+            netuids: netuids.join(","),
+          }),
+          "METAGRAPH_HEALTH_SOURCE",
+        );
+        if (postgres) {
+          const { subnetMeta, mostComplete } =
+            profilesProjectionFromRows(profiles);
+          return composeCompareData({
+            requestedNetuids: netuids,
+            dimensions,
+            subnetMeta,
+            structureRows: mostComplete,
+            economicsRows: dimensions.includes("economics")
+              ? economicsRows
+              : null,
+            healthRows: postgres.rows,
+            observedAt,
+          });
+        }
+      }
       return loadCompareSubnets(mcpD1Runner(ctx), {
         profiles,
-        economicsRows: await loadEconomicsSubnetRows(ctx),
+        economicsRows,
         netuids,
         dimensions,
-        observedAt: await mcpObservedAt(ctx),
+        observedAt,
       });
     },
   },
@@ -3958,11 +4536,18 @@ export const MCP_TOOLS = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label, days } = parseAnalyticsWindow(args?.window ?? "7d");
-      return loadGlobalIncidents(mcpD1Runner(ctx), {
-        windowLabel: label,
-        windowDays: days,
-        observedAt: await mcpObservedAt(ctx),
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/incidents", { window: label }),
+          "METAGRAPH_HEALTH_SOURCE",
+        )) ??
+        (await loadGlobalIncidents(mcpD1Runner(ctx), {
+          windowLabel: label,
+          windowDays: days,
+          observedAt: await mcpObservedAt(ctx),
+        }))
+      );
     },
   },
   {
@@ -3987,13 +4572,24 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       // validator_permit is validated for REST-parity but, like the D1 filter it
       // used to bound, has nothing left to filter now that neurons is retired
-      // (#4772) -- buildSubnetMetagraph([]) below never sees it.
-      optionalBoolean(args, "validator_permit");
-      return buildSubnetMetagraph([], netuid);
+      // (#4772) -- buildSubnetMetagraph([]) below never sees it. It IS still
+      // forwarded to the Postgres tier below, mirroring REST's
+      // handleSubnetMetagraph (validator_permit=true is the only value that
+      // changes the canonical cache path; omission and false are equivalent).
+      const validatorPermit = optionalBoolean(args, "validator_permit");
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`, {
+            validator_permit: validatorPermit ? "true" : undefined,
+          }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildSubnetMetagraph([], netuid)
+      );
     },
   },
   {
@@ -4027,11 +4623,21 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const limit = optionalPositiveInt(args, "limit");
       const minStakeTao = optionalNonNegativeNumber(args, "min_stake_tao");
-      const data = buildSubnetValidators([], netuid);
+      // limit/min_stake_tao are MCP-only post-filters (REST's
+      // handleSubnetValidators takes no such params), so the synthetic
+      // request below carries no query string -- filtering happens after,
+      // against whichever source (Postgres or the dead-empty fallback)
+      // produced `data`, same as before this tier was wired.
+      const data =
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/validators`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildSubnetValidators([], netuid);
       if (limit === null && minStakeTao === null) {
         return data;
       }
@@ -4078,7 +4684,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const sort =
         optionalEnum(args, "sort", GLOBAL_VALIDATOR_SORTS) ??
         DEFAULT_GLOBAL_VALIDATOR_SORT;
@@ -4087,7 +4693,174 @@ export const MCP_TOOLS = [
         GLOBAL_VALIDATOR_LIMIT_DEFAULT,
         GLOBAL_VALIDATOR_LIMIT_MAX,
       );
-      return buildGlobalValidators([], { sort, limit });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/validators", { sort, limit }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildGlobalValidators([], { sort, limit })
+      );
+    },
+  },
+  {
+    name: "get_validator_detail",
+    title: "Get one validator's cross-subnet detail",
+    description:
+      "Fetch a single validator identity's validator_permit rows aggregated " +
+      "across every subnet it operates in: coldkey, cross-subnet stake/emission " +
+      "totals, avg/max validator trust, and the full per-subnet membership list. " +
+      "The single-entity drill-in of list_global_validators. Returns a zeroed " +
+      "aggregate with an empty subnets list for a cold/absent hotkey, never an " +
+      "error. Mirrors GET /api/v1/validators/{hotkey}.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        hotkey: {
+          type: "string",
+          description: "Validator hotkey (SS58 address).",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["hotkey"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const hotkey = requireHotkey(args);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/validators/${encodeURIComponent(hotkey)}`,
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildValidatorDetail([], hotkey)
+      );
+    },
+  },
+  {
+    name: "get_validator_nominators",
+    title: "Get who has staked to a validator",
+    description:
+      "Fetch the nominators (stakers) of one validator across every subnet it " +
+      "operates in, over a window (7d, 30d, default 90d), ranked by net_staked " +
+      "(default), gross_staked, or last_activity. Optional coldkey narrows to " +
+      "one nominator's own flow. Mirrors GET /api/v1/validators/{hotkey}/nominators.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        hotkey: {
+          type: "string",
+          description: "Validator hotkey (SS58 address).",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: Object.keys(NOMINATOR_WINDOWS),
+          description: "History window (default 90d).",
+        },
+        sort: {
+          type: "string",
+          enum: NOMINATOR_SORTS,
+          description: "Ranking key (default net_staked).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max nominators to return (1-100, default 20).",
+          minimum: 1,
+          maximum: NOMINATOR_LIMIT_MAX,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset (default 0).",
+          minimum: 0,
+        },
+        coldkey: {
+          type: "string",
+          description: "Narrow to one nominator's own flow (SS58 address).",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["hotkey"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const hotkey = requireHotkey(args);
+      const window =
+        optionalEnum(args, "window", Object.keys(NOMINATOR_WINDOWS)) ??
+        DEFAULT_NOMINATOR_WINDOW;
+      const sort =
+        optionalEnum(args, "sort", NOMINATOR_SORTS) ?? DEFAULT_NOMINATOR_SORT;
+      const limit = clampLimit(
+        args?.limit,
+        NOMINATOR_LIMIT_DEFAULT,
+        NOMINATOR_LIMIT_MAX,
+      );
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const coldkey = optionalString(args, "coldkey");
+      if (coldkey && !SS58_ADDRESS_PATTERN.test(coldkey)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `coldkey` must be a valid SS58 account address (base58, 47-48 chars).",
+        );
+      }
+      // The DATA_API route (workers/data-api.mjs) wraps its response as
+      // { data, generatedAt } -- unlike the flat-shaped neurons-tier routes
+      // mcpNeuronsTierRequest's other callers hit, this one needs its own
+      // .data unwrap or a live-Postgres response would violate this tool's
+      // own outputSchema (hotkey/nominator_count/nominators at the top
+      // level) the moment METAGRAPH_ACCOUNT_EVENTS_SOURCE flips to postgres.
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(
+              `/api/v1/validators/${encodeURIComponent(hotkey)}/nominators`,
+              { window, sort, limit, offset, coldkey },
+            ),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ??
+        buildValidatorNominators([], hotkey, { window, sort, limit, offset })
+      );
+    },
+  },
+  {
+    name: "get_validator_history",
+    title: "Get a validator's staked-over-time history",
+    description:
+      "Fetch one validator's cross-subnet staked-over-time history: one point " +
+      "per day, summed across every subnet it validates in, plus a rewards-per-" +
+      "1000-TAO rate. Choose the window (7d, 30d, 90d, 1y, all; default 30d). " +
+      "Mirrors GET /api/v1/validators/{hotkey}/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        hotkey: {
+          type: "string",
+          description: "Validator hotkey (SS58 address).",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["hotkey"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const hotkey = requireHotkey(args);
+      const { label } = requireHistoryWindow(args);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/validators/${hotkey}/history`, {
+            window: label,
+          }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildValidatorHistory([], hotkey, { window: label })
+      );
     },
   },
   {
@@ -4111,13 +4884,21 @@ export const MCP_TOOLS = [
       required: ["netuid", "uid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       // uid is validated for REST-parity but, like the D1 filter it used to
       // bound, has nothing left to look up now that neurons is retired
-      // (#4772) -- buildNeuronDetail(null, ...) below never sees it.
-      requireNonNegativeInt(args, "uid");
-      return buildNeuronDetail(null, netuid);
+      // (#4772) -- buildNeuronDetail(null, ...) below never sees it. It IS
+      // still forwarded in the synthetic path below, mirroring REST's
+      // handleNeuron.
+      const uid = requireNonNegativeInt(args, "uid");
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/neurons/${uid}`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildNeuronDetail(null, netuid)
+      );
     },
   },
   {
@@ -4279,23 +5060,198 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
       requireKnownEventKind(kind);
-      // block_start/block_end are validated for REST-parity but, like the D1 filters
-      // they used to bound, have nothing left to filter now that account_events is
-      // retired (#4772) -- buildSubnetEvents([]) below never sees them either.
-      optionalNonNegativeInt(args, "block_start");
-      optionalNonNegativeInt(args, "block_end");
-      optionalString(args, "cursor");
-      return buildSubnetEvents([], netuid, {
-        limit: clampLimit(args?.limit, 100, 1000),
-        offset: Number.isFinite(args?.offset)
-          ? Math.max(0, Math.floor(args.offset))
-          : 0,
-        nextCursor: null,
-      });
+      // block_start/block_end/cursor are validated for REST-parity and forwarded
+      // to the Postgres tier below; the D1 fallback (buildSubnetEvents([]))
+      // never sees them since account_events is retired (#4772).
+      const blockStart = optionalNonNegativeInt(args, "block_start");
+      const blockEnd = optionalNonNegativeInt(args, "block_end");
+      const cursor = optionalString(args, "cursor");
+      const limit = clampLimit(args?.limit, 100, 1000);
+      const offset = Number.isFinite(args?.offset)
+        ? Math.max(0, Math.floor(args.offset))
+        : 0;
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/events`, {
+            kind,
+            block_start: blockStart,
+            block_end: blockEnd,
+            limit,
+            offset,
+            cursor,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        buildSubnetEvents([], netuid, {
+          limit,
+          offset,
+          nextCursor: null,
+        })
+      );
+    },
+  },
+  {
+    name: "get_subnet_hyperparams",
+    title: "Get a subnet's current hyperparameters",
+    description:
+      "Fetch one subnet's current on-chain hyperparameters (tempo, weight " +
+      "limits, activity cutoff, immunity period, registration allowed, and the " +
+      "rest of the SubtensorModule hyperparameter set). hyperparameters:null " +
+      "when the subnet has never been captured. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/hyperparameters.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/hyperparameters`),
+          "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+        )) ?? buildSubnetHyperparams(null, netuid)
+      );
+    },
+  },
+  {
+    name: "get_subnet_hyperparams_history",
+    title: "Get a subnet's hyperparameter change history",
+    description:
+      "Fetch the append-only hyperparameter-change timeline for one subnet: " +
+      "one entry per detected diff, newest first. Forward-only — entries only " +
+      "exist from when diff-on-change tracking started. Page with limit " +
+      "(1-1000, default 100) / offset, or follow next_cursor. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/hyperparameters/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        limit: {
+          type: "integer",
+          description: "Max entries to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Deprecated offset fallback when cursor is omitted.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a prior response's next_cursor.",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const limit = clampLimit(args?.limit, 100, 1000);
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      // cursor is validated for REST-parity and forwarded to the Postgres tier
+      // below; the D1 fallback (buildSubnetHyperparamsHistory([])) never sees
+      // it since subnet_hyperparams's D1 write path is retired (#4772).
+      const cursor = optionalString(args, "cursor");
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/subnets/${netuid}/hyperparameters/history`,
+            { limit, offset, cursor },
+          ),
+          "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+        )) ??
+        buildSubnetHyperparamsHistory([], netuid, {
+          limit,
+          offset,
+          nextCursor: null,
+        })
+      );
+    },
+  },
+  {
+    name: "get_subnet_volume",
+    title: "Get a subnet's rolling 24h alpha volume",
+    description:
+      "Fetch one subnet's rolling 24h buy (StakeAdded) vs sell (StakeRemoved) " +
+      "alpha volume, unsigned (buy + sell, never netted) — a canonical market-" +
+      "depth figure, not a windowed analytics view. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/volume.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const netEconomics = await loadSubnetEconomics(ctx, netuid);
+      const marketCapTao =
+        typeof netEconomics.economics?.alpha_market_cap_tao === "number" &&
+        Number.isFinite(netEconomics.economics.alpha_market_cap_tao)
+          ? netEconomics.economics.alpha_market_cap_tao
+          : null;
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/volume`),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildAlphaVolume([], netuid, { marketCapTao })
+      );
+    },
+  },
+  {
+    name: "get_subnet_recycled",
+    title: "Get a subnet's live cumulative recycled TAO",
+    description:
+      "Fetch the live cumulative TAO recycled for registration on one subnet, " +
+      "queried directly from the chain's RAORecycledForRegistration storage at " +
+      "request time (not a rollup). recycled_tao is null on an RPC failure. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/recycled.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      if (!isU16Netuid(netuid)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `netuid` must be an integer in the u16 range 0..65535.",
+        );
+      }
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `recycled:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live recycled-TAO requests from this client; slow down.",
+          );
+        }
+      }
+      return loadSubnetRecycled(ctx.env, netuid);
     },
   },
   {
@@ -4323,9 +5279,15 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
-      return buildAccountSummary(ss58, {});
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}`),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildAccountSummary(ss58, {})
+      );
     },
   },
   {
@@ -4439,24 +5401,42 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const kind = optionalString(args, "kind");
       requireKnownEventKind(kind);
-      // netuid/block_start/block_end/cursor are validated for REST-parity but, like
-      // the D1 filters they used to bound, have nothing left to filter now that
-      // account_events is retired (#4772) -- buildAccountEvents([]) never sees them.
-      optionalNonNegativeInt(args, "netuid");
-      optionalNonNegativeInt(args, "block_start");
-      optionalNonNegativeInt(args, "block_end");
-      optionalString(args, "cursor");
-      return buildAccountEvents([], ss58, {
-        limit: clampLimit(args?.limit, 100, 1000),
-        offset: Number.isFinite(args?.offset)
-          ? Math.max(0, Math.floor(args.offset))
-          : 0,
-        nextCursor: null,
-      });
+      // netuid/block_start/block_end/cursor are validated for REST-parity and
+      // forwarded to the Postgres tier below; the D1 fallback
+      // (buildAccountEvents([])) never sees them since account_events is
+      // retired (#4772).
+      const netuid = optionalNonNegativeInt(args, "netuid");
+      const blockStart = optionalNonNegativeInt(args, "block_start");
+      const blockEnd = optionalNonNegativeInt(args, "block_end");
+      const cursor = optionalString(args, "cursor");
+      const limit = clampLimit(args?.limit, 100, 1000);
+      const offset = Number.isFinite(args?.offset)
+        ? Math.max(0, Math.floor(args.offset))
+        : 0;
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/events`, {
+            kind,
+            netuid,
+            block_start: blockStart,
+            block_end: blockEnd,
+            limit,
+            offset,
+            cursor,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        buildAccountEvents([], ss58, {
+          limit,
+          offset,
+          nextCursor: null,
+        })
+      );
     },
   },
   {
@@ -4481,9 +5461,15 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
-      return buildAccountSubnets([], ss58);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/subnets`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildAccountSubnets([], ss58)
+      );
     },
   },
   {
@@ -4509,11 +5495,158 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
-      return buildAccountPortfolio([], ss58);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/portfolio`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildAccountPortfolio([], ss58)
+      );
     },
   },
+  {
+    name: "get_account_identity",
+    title: "Get an account's on-chain identity",
+    description:
+      "Fetch the latest-only on-chain personal identity for one account (name, " +
+      "url, image, discord, github, and the rest of the MetagraphInfo.identities " +
+      "fields set via set_identity). has_identity is false for the common case " +
+      "— most accounts never call set_identity. Mirrors " +
+      "GET /api/v1/accounts/{ss58}/identity.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description: "The account's SS58 address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpAccountIdentityRequest(ss58),
+          "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+        )) ?? (await loadAccountIdentity(mcpD1Runner(ctx), ss58))
+      );
+    },
+  },
+  {
+    name: "get_account_identity_history",
+    title: "Get an account's on-chain identity change history",
+    description:
+      "Fetch the append-only diff-tracking timeline for one account's on-chain " +
+      "identity, newest first. Page with limit (1-1000, default 100) / offset, " +
+      "or follow next_cursor. Mirrors GET /api/v1/accounts/{ss58}/identity-history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description: "The account's SS58 address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        limit: {
+          type: "integer",
+          description: "Max entries to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Deprecated offset fallback when cursor is omitted.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a prior response's next_cursor.",
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const limit = clampLimit(args?.limit, 100, 1000);
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const cursor = optionalString(args, "cursor");
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpAccountIdentityHistoryRequest(ss58, { limit, offset, cursor }),
+          "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+        )) ??
+        (await loadAccountIdentityHistory(mcpD1Runner(ctx), ss58, {
+          limit,
+          offset,
+          cursor,
+        }))
+      );
+    },
+  },
+  {
+    name: "get_account_position_history",
+    title: "Get an account's position history in one subnet",
+    description:
+      "Fetch one account's per-day position history in one subnet: stake, " +
+      "emission, rank, trust, incentive, dividends per snapshot_date, newest " +
+      "first. Choose the window (7d, 30d, 90d, 1y, all; default 30d). Mirrors " +
+      "GET /api/v1/accounts/{ss58}/subnets/{netuid}/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description: "The account's SS58 address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["ss58", "netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const netuid = requireNetuid(args);
+      const { label } = requireHistoryWindow(args);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/accounts/${ss58}/subnets/${netuid}/history`,
+            { window: label },
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildAccountPositionHistory([], ss58, netuid, { window: label })
+      );
+    },
+  },
+  // get_account_stake_flow, get_account_stake_moves, get_account_axon_removals,
+  // get_account_prometheus, get_account_registrations, get_account_weight_setters,
+  // get_account_serving, and get_account_deregistrations (this cluster) are not
+  // yet wired to Postgres -- each still calls its builder unconditionally with an
+  // empty D1 result (account_events' D1 write path is retired, #4772), taking an
+  // unused _ctx. When one of these gets wired: its DATA_API route in
+  // workers/data-api.mjs returns json({ data: builder(...), generatedAt }), the
+  // SAME wrapped shape get_validator_nominators's own DATA_API route uses (see
+  // that tool's handler, above) -- not the flat shape the neurons-tier routes
+  // mcpNeuronsTierRequest's other callers hit. Wiring one of these with a bare
+  // `tryPostgresTier(...) ?? builder(...)` (no `.data` unwrap) would violate its
+  // own outputSchema the moment the Postgres flag flips on, exactly as
+  // get_validator_nominators's own wiring had to guard against.
   {
     name: "get_account_stake_flow",
     title: "Get an account's staking flow scorecard",
@@ -4547,7 +5680,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
@@ -4557,9 +5690,9 @@ export const MCP_TOOLS = [
           `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // direction is validated for REST-parity but, like the D1 filter it used to
-      // bound, has nothing left to filter now that account_events is retired
-      // (#4772) -- buildAccountStakeFlow([]) below never sees it.
+      // direction is validated for REST-parity and forwarded to the Postgres
+      // tier below; the D1 fallback (buildAccountStakeFlow([])) never sees it
+      // since account_events is retired (#4772).
       const direction =
         optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
       if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
@@ -4568,7 +5701,18 @@ export const MCP_TOOLS = [
           `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
         );
       }
-      return buildAccountStakeFlow([], ss58, { window });
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/stake-flow`, {
+              window,
+              direction,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildAccountStakeFlow([], ss58, { window })
+      );
     },
   },
   {
@@ -4601,7 +5745,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
@@ -4611,7 +5755,17 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildAccountStakeMoves([], ss58, { window });
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/stake-moves`, {
+              window,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildAccountStakeMoves([], ss58, { window })
+      );
     },
   },
   {
@@ -4644,7 +5798,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_AXON_REMOVAL_WINDOW;
@@ -4654,7 +5808,17 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_AXON_REMOVALS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildAccountAxonRemovals([], ss58, { window });
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/axon-removals`, {
+              window,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildAccountAxonRemovals([], ss58, { window })
+      );
     },
   },
   {
@@ -4688,7 +5852,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_PROMETHEUS_WINDOW;
@@ -4698,7 +5862,17 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_PROMETHEUS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildAccountPrometheus([], ss58, { window });
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/prometheus`, {
+              window,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildAccountPrometheus([], ss58, { window })
+      );
     },
   },
   {
@@ -4731,7 +5905,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_REGISTRATION_WINDOW;
@@ -4741,7 +5915,17 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_REGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildAccountRegistrations([], ss58, { window });
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/registrations`, {
+              window,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildAccountRegistrations([], ss58, { window })
+      );
     },
   },
   {
@@ -4773,7 +5957,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
@@ -4783,7 +5967,17 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildAccountWeightSetters([], ss58, { window });
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/weight-setters`, {
+              window,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildAccountWeightSetters([], ss58, { window })
+      );
     },
   },
   {
@@ -4817,7 +6011,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const window = optionalString(args, "window") ?? DEFAULT_SERVING_WINDOW;
       if (!Object.hasOwn(SERVING_WINDOWS, window)) {
@@ -4826,7 +6020,17 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_SERVING_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildAccountServing([], ss58, { window });
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/serving`, {
+              window,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildAccountServing([], ss58, { window })
+      );
     },
   },
   {
@@ -4860,7 +6064,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW;
@@ -4870,7 +6074,17 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return buildAccountDeregistrations([], ss58, { window });
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/deregistrations`, {
+              window,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildAccountDeregistrations([], ss58, { window })
+      );
     },
   },
   {
@@ -4937,14 +6151,24 @@ export const MCP_TOOLS = [
       const from = optionalDayArg(args, "from");
       const to = optionalDayArg(args, "to");
       const cursor = optionalString(args, "cursor");
-      return loadAccountHistory(mcpD1Runner(ctx), ss58, {
+      const historyOptions = {
         netuid,
         from: from ?? undefined,
         to: to ?? undefined,
         limit: args?.limit,
         offset: args?.offset,
         cursor: cursor ?? undefined,
-      });
+      };
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/accounts/${ss58}/history`,
+            historyOptions,
+          ),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? (await loadAccountHistory(mcpD1Runner(ctx), ss58, historyOptions))
+      );
     },
   },
   {
@@ -5000,21 +6224,36 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
-      // block_start/block_end/cursor are validated for REST-parity but, like the D1
-      // filters they used to bound, have nothing left to filter now that extrinsics
-      // is retired (#4772) -- buildAccountExtrinsics([]) below never sees them.
-      optionalNonNegativeInt(args, "block_start");
-      optionalNonNegativeInt(args, "block_end");
-      optionalString(args, "cursor");
-      return buildAccountExtrinsics([], ss58, {
-        limit: clampLimit(args?.limit, 100, 1000),
-        offset: Number.isFinite(args?.offset)
-          ? Math.max(0, Math.floor(args.offset))
-          : 0,
-        nextCursor: null,
-      });
+      // block_start/block_end/cursor are validated for REST-parity and forwarded
+      // to the Postgres tier below; the D1 fallback (buildAccountExtrinsics([]))
+      // never sees them since extrinsics is retired (#4772).
+      const blockStart = optionalNonNegativeInt(args, "block_start");
+      const blockEnd = optionalNonNegativeInt(args, "block_end");
+      const cursor = optionalString(args, "cursor");
+      const limit = clampLimit(args?.limit, 100, 1000);
+      const offset = Number.isFinite(args?.offset)
+        ? Math.max(0, Math.floor(args.offset))
+        : 0;
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/extrinsics`, {
+            block_start: blockStart,
+            block_end: blockEnd,
+            limit,
+            offset,
+            cursor,
+          }),
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        )) ??
+        buildAccountExtrinsics([], ss58, {
+          limit,
+          offset,
+          nextCursor: null,
+        })
+      );
     },
   },
   {
@@ -5077,24 +6316,41 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const direction = optionalString(args, "direction");
-      // block_start/block_end/cursor are validated for REST-parity but, like the D1
-      // filters they used to bound, have nothing left to filter now that
-      // account_events is retired (#4772) -- buildAccountTransfers([]) never sees
-      // them.
-      optionalNonNegativeInt(args, "block_start");
-      optionalNonNegativeInt(args, "block_end");
-      optionalString(args, "cursor");
-      return buildAccountTransfers([], ss58, {
-        direction: direction ?? undefined,
-        limit: clampLimit(args?.limit, 100, 1000),
-        offset: Number.isFinite(args?.offset)
-          ? Math.max(0, Math.floor(args.offset))
-          : 0,
-        nextCursor: null,
-      });
+      // block_start/block_end/cursor are validated for REST-parity and forwarded to
+      // the Postgres tier below; the local D1 fallback still ignores them (like the
+      // D1 filters they used to bound, they have nothing left to filter now that
+      // account_events' D1 write path is retired (#4772) -- buildAccountTransfers([])
+      // never sees them).
+      const blockStart = optionalNonNegativeInt(args, "block_start");
+      const blockEnd = optionalNonNegativeInt(args, "block_end");
+      const cursor = optionalString(args, "cursor");
+      const limit = clampLimit(args?.limit, 100, 1000);
+      const offset = Number.isFinite(args?.offset)
+        ? Math.max(0, Math.floor(args.offset))
+        : 0;
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/transfers`, {
+            direction: direction ?? undefined,
+            block_start: blockStart,
+            block_end: blockEnd,
+            limit,
+            offset,
+            cursor,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        buildAccountTransfers([], ss58, {
+          direction: direction ?? undefined,
+          limit,
+          offset,
+          nextCursor: null,
+        })
+      );
     },
   },
   {
@@ -5138,7 +6394,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const counterparty = optionalString(args, "counterparty");
       if (counterparty != null) {
@@ -5154,29 +6410,46 @@ export const MCP_TOOLS = [
             "Argument `counterparty` must differ from `ss58`.",
           );
         }
-        // account_events is retired (#4772) -- an empty rows input always yields
-        // transfer_count: 0, so this mirrors loadCounterpartyRelationship's
-        // composite shape with an always-empty counterparties list, without
-        // querying D1 at all.
+        // account_events' D1 write path is retired (#4772) -- an empty rows
+        // input always yields transfer_count: 0, so this mirrors
+        // loadCounterpartyRelationship's composite shape with an always-empty
+        // counterparties list, without querying D1 at all.
         const emptyRelationship = buildCounterpartyRelationship(
           [],
           ss58,
           counterparty,
           { limit: args?.limit },
         );
-        return {
-          schema_version: 1,
-          ss58,
-          counterparty_count: 0,
-          transfers_scanned: emptyRelationship.transfers_scanned,
-          scan_capped: emptyRelationship.scan_capped,
-          total_sent_tao: emptyRelationship.total_sent_tao,
-          total_received_tao: emptyRelationship.total_received_tao,
-          counterparties: [],
-          relationship: emptyRelationship,
-        };
+        return (
+          (await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/counterparties`, {
+              counterparty,
+              limit: args?.limit,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )) ?? {
+            schema_version: 1,
+            ss58,
+            counterparty_count: 0,
+            transfers_scanned: emptyRelationship.transfers_scanned,
+            scan_capped: emptyRelationship.scan_capped,
+            total_sent_tao: emptyRelationship.total_sent_tao,
+            total_received_tao: emptyRelationship.total_received_tao,
+            counterparties: [],
+            relationship: emptyRelationship,
+          }
+        );
       }
-      return buildCounterparties([], ss58, { limit: args?.limit });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/counterparties`, {
+            limit: args?.limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? buildCounterparties([], ss58, { limit: args?.limit })
+      );
     },
   },
   {
@@ -5260,26 +6533,51 @@ export const MCP_TOOLS = [
       required: [],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
-      // Every filter below is validated for REST-parity but, like the D1 filters
-      // they used to bound, has nothing left to filter now that blocks is retired
-      // (#4772) -- buildBlockFeed([]) below never sees them.
-      optionalString(args, "cursor");
-      optionalString(args, "author");
-      optionalNonNegativeInt(args, "spec_version");
-      optionalNonNegativeInt(args, "block_start");
-      optionalNonNegativeInt(args, "block_end");
-      optionalNonNegativeInt(args, "from");
-      optionalNonNegativeInt(args, "to");
-      optionalNonNegativeInt(args, "min_extrinsics");
-      optionalNonNegativeInt(args, "min_events");
-      return buildBlockFeed([], {
-        limit: clampLimit(args?.limit, 50, 100),
-        offset: Number.isFinite(args?.offset)
-          ? Math.max(0, Math.floor(args.offset))
-          : 0,
-        nextCursor: null,
-      });
+    async handler(args, ctx) {
+      // Every filter below is validated for REST-parity and, now that the
+      // Postgres tier can be flipped on, forwarded to it below -- only the
+      // buildBlockFeed([]) D1 fallback ignores them (nothing left to filter
+      // now that blocks' D1 write path is retired, #4772).
+      const cursor = optionalString(args, "cursor");
+      const author = optionalString(args, "author");
+      const specVersion = optionalNonNegativeInt(args, "spec_version");
+      const blockStart = optionalNonNegativeInt(args, "block_start");
+      const blockEnd = optionalNonNegativeInt(args, "block_end");
+      const from = optionalNonNegativeInt(args, "from");
+      const to = optionalNonNegativeInt(args, "to");
+      const minExtrinsics = optionalNonNegativeInt(args, "min_extrinsics");
+      const minEvents = optionalNonNegativeInt(args, "min_events");
+      const limit = clampLimit(args?.limit, 50, 100);
+      const offset = Number.isFinite(args?.offset)
+        ? Math.max(0, Math.floor(args.offset))
+        : 0;
+      // Mirrors REST's handleBlocks: try Postgres first, fall back to the
+      // schema-stable empty feed now that blocks' D1 write path is retired
+      // (#4772) and the table is dropped in production.
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/blocks", {
+            author,
+            spec_version: specVersion,
+            block_start: blockStart,
+            block_end: blockEnd,
+            from,
+            to,
+            min_extrinsics: minExtrinsics,
+            min_events: minEvents,
+            limit,
+            offset,
+            cursor,
+          }),
+          "METAGRAPH_BLOCKS_SOURCE",
+        )) ??
+        buildBlockFeed([], {
+          limit,
+          offset,
+          nextCursor: null,
+        })
+      );
     },
   },
   {
@@ -5303,9 +6601,18 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ref = requireString(args, "ref");
-      return buildBlock(undefined, ref);
+      // Mirrors REST's handleBlock: try Postgres first, fall back to the
+      // schema-stable block:null shape now that blocks' D1 write path is
+      // retired (#4772) and the table is dropped in production.
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/blocks/${encodeURIComponent(ref)}`),
+          "METAGRAPH_BLOCKS_SOURCE",
+        )) ?? buildBlock(undefined, ref)
+      );
     },
   },
   {
@@ -5341,14 +6648,28 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ref = requireString(args, "ref");
-      return buildBlockExtrinsics([], ref, null, {
-        limit: clampLimit(args?.limit, 50, 100),
-        offset: Number.isFinite(args?.offset)
-          ? Math.max(0, Math.floor(args.offset))
-          : 0,
-      });
+      const limit = clampLimit(args?.limit, 50, 100);
+      const offset = Number.isFinite(args?.offset)
+        ? Math.max(0, Math.floor(args.offset))
+        : 0;
+      // Mirrors REST's handleBlockExtrinsics, which destructures `{ data }` from
+      // tryPostgresTier's result -- workers/data-api.mjs's /blocks/:ref/extrinsics
+      // route returns `json({ data: buildBlockExtrinsics(...) })`, not a flat
+      // buildBlockExtrinsics(...) body like the sibling account-extrinsics route.
+      const { data } = (await tryPostgresTier(
+        ctx.env,
+        mcpNeuronsTierRequest(
+          `/api/v1/blocks/${encodeURIComponent(ref)}/extrinsics`,
+          {
+            limit,
+            offset,
+          },
+        ),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      )) ?? { data: buildBlockExtrinsics([], ref, null, { limit, offset }) };
+      return data;
     },
   },
   {
@@ -5384,14 +6705,28 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const ref = requireString(args, "ref");
-      return buildBlockEvents([], ref, null, {
-        limit: clampLimit(args?.limit, 100, 1000),
-        offset: Number.isFinite(args?.offset)
-          ? Math.max(0, Math.floor(args.offset))
-          : 0,
-      });
+      const limit = clampLimit(args?.limit, 100, 1000);
+      const offset = Number.isFinite(args?.offset)
+        ? Math.max(0, Math.floor(args.offset))
+        : 0;
+      // Mirrors REST's handleBlockEvents, which destructures `{ data }` from
+      // tryPostgresTier's result -- workers/data-api.mjs's /blocks/:ref/events
+      // route returns `json({ data: buildBlockEvents(...) })`, not a flat
+      // buildBlockEvents(...) body like the sibling account-events routes.
+      const { data } = (await tryPostgresTier(
+        ctx.env,
+        mcpNeuronsTierRequest(
+          `/api/v1/blocks/${encodeURIComponent(ref)}/events`,
+          {
+            limit,
+            offset,
+          },
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? { data: buildBlockEvents([], ref, null, { limit, offset }) };
+      return data;
     },
   },
   {
@@ -5400,10 +6735,13 @@ export const MCP_TOOLS = [
     description:
       "Fetch the extrinsic feed (newest first) from the chain extrinsic tier, with " +
       "optional filters: block (exact height), signer (SS58 address), call_module " +
-      "(e.g. 'SubtensorModule'), call_function (e.g. 'set_weights'), success " +
-      "(true|false), block_start/block_end (inclusive height range), and from/to " +
-      "(observed_at epoch-ms range). Page with limit (1-100, default 50) / offset, " +
-      "or follow next_cursor for stable keyset pagination. Mirrors GET /api/v1/extrinsics.",
+      "(e.g. 'SubtensorModule'), call_function (e.g. 'set_weights'), call_hash (0x " +
+      "hash matched within call_args, e.g. to link a Multisig approve_as_multi/" +
+      "cancel_as_multi/as_multi approval chain — pair with call_module for a " +
+      "narrow scan), success (true|false), block_start/block_end (inclusive " +
+      "height range), and from/to (observed_at epoch-ms range). Page with limit " +
+      "(1-100, default 50) / offset, or follow next_cursor for stable keyset " +
+      "pagination. Mirrors GET /api/v1/extrinsics.",
     inputSchema: {
       type: "object",
       properties: {
@@ -5428,6 +6766,13 @@ export const MCP_TOOLS = [
           type: "string",
           description:
             "Optional call function filter, e.g. 'set_weights'. Omit for all.",
+        },
+        call_hash: {
+          type: "string",
+          description:
+            "Optional 0x call hash to match inside call_args, e.g. to link a " +
+            "Multisig approve_as_multi/cancel_as_multi/as_multi approval chain. " +
+            "Pair with call_module for a narrow scan. Omit for all.",
         },
         success: {
           type: "boolean",
@@ -5487,6 +6832,7 @@ export const MCP_TOOLS = [
       optionalString(args, "signer");
       optionalString(args, "call_module");
       optionalString(args, "call_function");
+      optionalString(args, "call_hash");
       optionalString(args, "cursor");
       optionalNonNegativeInt(args, "block");
       optionalSuccessFilter(args);
@@ -5550,6 +6896,252 @@ export const MCP_TOOLS = [
           mcpExtrinsicDetailRequest(ref),
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) ?? buildExtrinsic(undefined, ref)
+      );
+    },
+  },
+  {
+    name: "get_sudo",
+    title: "Get the root-origin (Sudo) call feed",
+    description:
+      "Fetch the extrinsics feed filtered to the Sudo pallet — subtensor's " +
+      "root-origin call table (it has no Council/Senate, only Sudo). Same " +
+      "filters as list_extrinsics minus signer/call_module (call_module is " +
+      "fixed to Sudo). Use get_sudo_key for the current Sudo::Key holder. " +
+      "Mirrors GET /api/v1/sudo.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        block: {
+          type: "integer",
+          description: "Exact block number.",
+          minimum: 0,
+        },
+        call_function: {
+          type: "string",
+          description: "Exact call_function to match.",
+        },
+        success: {
+          type: "boolean",
+          description: "Filter to successful (true) or failed (false) calls.",
+        },
+        block_start: {
+          type: "integer",
+          description: "Inclusive block-height range start.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description: "Inclusive block-height range end.",
+          minimum: 0,
+        },
+        from: {
+          type: "integer",
+          description: "Alias for block_start.",
+          minimum: 0,
+        },
+        to: {
+          type: "integer",
+          description: "Alias for block_end.",
+          minimum: 0,
+        },
+        limit: {
+          type: "integer",
+          description: "Pagination limit.",
+          minimum: 1,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor.",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpFixedCallModuleFeedRequest("/api/v1/sudo", args),
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        )) ??
+        buildExtrinsicFeed([], {
+          limit: args?.limit,
+          offset: args?.offset,
+          nextCursor: null,
+        })
+      );
+    },
+  },
+  {
+    name: "get_sudo_key",
+    title: "Get the current Sudo::Key holder",
+    description:
+      "Fetch the current Sudo::Key holder, queried live from finney RPC at " +
+      "request time (1h KV cache). hotkey is null on an RPC failure or an " +
+      "unset sudo key. Mirrors GET /api/v1/sudo/key.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadSudoKey(ctx.env);
+    },
+  },
+  {
+    name: "get_governance_config_changes",
+    title: "Get the root-origin network-config change feed",
+    description:
+      "Fetch the extrinsics feed filtered to the AdminUtils pallet — " +
+      "subtensor's root-origin hyperparameter/network-config change pathway " +
+      "(re-scoped from a Council/Senate framing subtensor doesn't have). Same " +
+      "filters as list_extrinsics minus signer/call_module (call_module is " +
+      "fixed to AdminUtils). Mirrors GET /api/v1/governance/config-changes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        block: {
+          type: "integer",
+          description: "Exact block number.",
+          minimum: 0,
+        },
+        call_function: {
+          type: "string",
+          description: "Exact call_function to match.",
+        },
+        success: {
+          type: "boolean",
+          description: "Filter to successful (true) or failed (false) calls.",
+        },
+        block_start: {
+          type: "integer",
+          description: "Inclusive block-height range start.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description: "Inclusive block-height range end.",
+          minimum: 0,
+        },
+        from: {
+          type: "integer",
+          description: "Alias for block_start.",
+          minimum: 0,
+        },
+        to: {
+          type: "integer",
+          description: "Alias for block_end.",
+          minimum: 0,
+        },
+        limit: {
+          type: "integer",
+          description: "Pagination limit.",
+          minimum: 1,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor.",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpFixedCallModuleFeedRequest(
+            "/api/v1/governance/config-changes",
+            args,
+          ),
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        )) ??
+        buildExtrinsicFeed([], {
+          limit: args?.limit,
+          offset: args?.offset,
+          nextCursor: null,
+        })
+      );
+    },
+  },
+  {
+    name: "get_runtime",
+    title: "Get the runtime spec-version transition timeline",
+    description:
+      "Fetch the spec-version transition timeline: the earliest known block " +
+      "at each distinct runtime spec_version observed, ascending by block " +
+      "number. A single aggregate over the whole retained window — nothing to " +
+      "filter or paginate. spec_version wasn't tracked before 2026-06-25 and " +
+      "can't be back-filled for rows written before then. Mirrors " +
+      "GET /api/v1/runtime.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          new Request("https://d/api/v1/runtime"),
+          "METAGRAPH_BLOCKS_SOURCE",
+        )) ?? buildRuntimeVersionHistory([])
+      );
+    },
+  },
+  {
+    name: "list_accounts",
+    title: "List the site-wide accounts leaderboard",
+    description:
+      "Fetch the site-wide accounts leaderboard: every currently-registered " +
+      "hotkey (miners included, not just validator_permit=1 rows), sortable by " +
+      "total_stake (default), total_emission, subnet_count, uid_count, " +
+      "validator_count, stake_dominance, or last_active. The all-accounts " +
+      "generalization of list_global_validators. Mirrors GET /api/v1/accounts.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sort: {
+          type: "string",
+          enum: ACCOUNTS_LIST_SORTS,
+          description: "Ranking key (default total_stake).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max accounts to return (1-100, default 20).",
+          minimum: 1,
+          maximum: ACCOUNTS_LIST_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const sort =
+        optionalEnum(args, "sort", ACCOUNTS_LIST_SORTS) ??
+        DEFAULT_ACCOUNTS_LIST_SORT;
+      const limit = clampLimit(
+        args?.limit,
+        ACCOUNTS_LIST_LIMIT_DEFAULT,
+        ACCOUNTS_LIST_LIMIT_MAX,
+      );
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/accounts", { sort, limit }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildAccountsList([], { sort, limit })
       );
     },
   },
@@ -5773,13 +7365,25 @@ export const MCP_TOOLS = [
           "call_module must be at most 100 characters.",
         );
       }
-      return loadChainCalls(mcpD1Runner(ctx), {
-        window: label,
-        groupBy,
-        callModule,
-        limit,
-        observedAt: await mcpObservedAt(ctx),
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/calls", {
+            window: label,
+            group_by: groupBy,
+            limit,
+            call_module: callModule,
+          }),
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        )) ??
+        (await loadChainCalls(mcpD1Runner(ctx), {
+          window: label,
+          groupBy,
+          callModule,
+          limit,
+          observedAt: await mcpObservedAt(ctx),
+        }))
+      );
     },
   },
   {
@@ -5834,6 +7438,17 @@ export const MCP_TOOLS = [
           "call_module must be at most 100 characters.",
         );
       }
+      const postgres = await tryPostgresTier(
+        ctx.env,
+        mcpNeuronsTierRequest("/api/v1/chain/signers", {
+          window: label,
+          sort,
+          limit,
+          call_module: callModule,
+        }),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (postgres) return postgres;
       const { data } = await loadMcpChainSigners(ctx, {
         label,
         days,
@@ -5889,6 +7504,16 @@ export const MCP_TOOLS = [
           "call_module must be at most 100 characters.",
         );
       }
+      const postgres = await tryPostgresTier(
+        ctx.env,
+        mcpNeuronsTierRequest("/api/v1/chain/fees", {
+          window: label,
+          limit,
+          call_module: callModule,
+        }),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (postgres) return postgres;
       const { data } = await loadChainFees(mcpD1Runner(ctx), {
         window: label,
         limit,
@@ -5936,11 +7561,21 @@ export const MCP_TOOLS = [
         CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
         CHAIN_REGISTRATIONS_LIMIT_MAX,
       );
-      return await loadChainRegistrations(mcpD1Runner(ctx), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/registrations", {
+            window: label,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainRegistrations(mcpD1Runner(ctx), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }))
+      );
     },
   },
   {
@@ -5988,11 +7623,21 @@ export const MCP_TOOLS = [
         CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
         CHAIN_DEREGISTRATIONS_LIMIT_MAX,
       );
-      return loadChainDeregistrations(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_DEREGISTRATIONS_WINDOWS[window],
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/deregistrations", {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainDeregistrations(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_DEREGISTRATIONS_WINDOWS[window],
+          limit,
+        }))
+      );
     },
   },
   {
@@ -6036,12 +7681,22 @@ export const MCP_TOOLS = [
         CHAIN_TRANSFER_LIMIT_DEFAULT,
         CHAIN_TRANSFER_LIMIT_MAX,
       );
-      return loadChainTransfers(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_TRANSFER_WINDOWS[window],
-        observedAt: await mcpObservedAt(ctx),
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/transfers", {
+            window,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainTransfers(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_TRANSFER_WINDOWS[window],
+          observedAt: await mcpObservedAt(ctx),
+          limit,
+        }))
+      );
     },
   },
   {
@@ -6097,13 +7752,24 @@ export const MCP_TOOLS = [
         CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
         CHAIN_TRANSFER_PAIR_LIMIT_MAX,
       );
-      return loadChainTransferPairs(mcpD1Runner(ctx), {
-        windowLabel: window,
-        windowDays: CHAIN_TRANSFER_PAIR_WINDOWS[window],
-        observedAt: await mcpObservedAt(ctx),
-        limit,
-        sort,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/transfer-pairs", {
+            window,
+            sort,
+            limit,
+          }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainTransferPairs(mcpD1Runner(ctx), {
+          windowLabel: window,
+          windowDays: CHAIN_TRANSFER_PAIR_WINDOWS[window],
+          observedAt: await mcpObservedAt(ctx),
+          limit,
+          sort,
+        }))
+      );
     },
   },
   {
@@ -6132,6 +7798,12 @@ export const MCP_TOOLS = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label } = parsed;
+      const postgres = await tryPostgresTier(
+        ctx.env,
+        mcpNeuronsTierRequest("/api/v1/chain/activity", { window: label }),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (postgres) return postgres;
       const { data } = await loadNetworkActivity(mcpD1Runner(ctx), {
         window: label,
         observedAt: await mcpObservedAt(ctx),
@@ -6443,7 +8115,22 @@ export const MCP_TOOLS = [
       const poolEligible = optionalNullableBoolean(args, "pool_eligible");
       const limit = optionalPositiveInt(args, "limit");
       const offset = optionalNonNegativeInt(args, "offset") ?? 0;
-      const data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
+      let data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
+      // Live per-endpoint health overlay (mirrors workers/api.mjs's raw-
+      // artifact serving path): the build-time endpoints.json bakes stale
+      // operational health, so replace it from the 15-minute cron snapshot
+      // before filtering/pagination -- status/pool_eligible filters below
+      // must see live values, not the baked ones.
+      if (
+        Array.isArray(data?.endpoints) &&
+        data.endpoints.some((endpoint) => endpoint?.surface_id)
+      ) {
+        const overlaid = overlayArtifactEndpoints(
+          data,
+          await mcpLiveHealth(ctx),
+        );
+        if (overlaid) data = overlaid;
+      }
       const all = Array.isArray(data.endpoints) ? data.endpoints : [];
       const filtered = all.filter(
         (e) =>
@@ -6489,7 +8176,17 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(_args, ctx) {
-      return loadArtifactData(ctx, "/metagraph/rpc-endpoints.json");
+      const staticData = await loadArtifactData(
+        ctx,
+        "/metagraph/rpc-endpoints.json",
+      );
+      // Live overlay (mirrors workers/api.mjs's rpc-endpoints raw-artifact
+      // route): the build-time snapshot bakes stale health/latency, replace
+      // it from the 15-minute cron RPC-pool KV snapshot.
+      const pool = ctx.readHealthKv
+        ? await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL)
+        : null;
+      return pool ? mergeRpcEndpoints(staticData, pool) : staticData;
     },
   },
   {
@@ -6577,7 +8274,22 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return loadArtifactData(ctx, `/metagraph/endpoints/${netuid}.json`);
+      const data = await loadArtifactData(
+        ctx,
+        `/metagraph/endpoints/${netuid}.json`,
+      );
+      // Live per-endpoint health overlay, same rule as list_endpoints above.
+      if (
+        Array.isArray(data?.endpoints) &&
+        data.endpoints.some((endpoint) => endpoint?.surface_id)
+      ) {
+        const overlaid = overlayArtifactEndpoints(
+          data,
+          await mcpLiveHealth(ctx),
+        );
+        if (overlaid) return overlaid;
+      }
+      return data;
     },
   },
   {
@@ -6906,10 +8618,17 @@ export const MCP_TOOLS = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label } = parsed;
-      return loadRpcUsage(mcpD1Runner(ctx), {
-        window: label,
-        observedAt: await mcpObservedAt(ctx),
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/rpc/usage", { window: label }),
+          "METAGRAPH_RPC_USAGE_SOURCE",
+        )) ??
+        loadRpcUsage(mcpD1Runner(ctx), {
+          window: label,
+          observedAt: await mcpObservedAt(ctx),
+        })
+      );
     },
   },
   {
@@ -6978,6 +8697,116 @@ export const MCP_TOOLS = [
         eligible_count: candidates.length,
         endpoints,
         live_health: Boolean(liveRpcPool),
+      };
+    },
+  },
+  {
+    name: "call_rpc",
+    title: "Call a read-only Bittensor RPC method",
+    description:
+      "Proxy a single read-only, allowlisted Substrate/Subtensor JSON-RPC call " +
+      "(chain_getBlock, chain_getBlockHash, chain_getFinalizedHead, chain_getHeader, " +
+      "rpc_methods, state_getRuntimeVersion, system_chain, system_health, " +
+      "system_name, system_properties, system_version, plus the state-query " +
+      "methods state_getStorage/state_getKeysPaged) against the finney or test " +
+      "network, with the same method allowlist, state-query param validation, " +
+      "rate limiting, and endpoint failover as the public proxy. Use " +
+      "get_best_rpc_endpoint to pick a node for direct WSS access instead. " +
+      "Mirrors POST /rpc/v1/{network}.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        method: {
+          type: "string",
+          description:
+            "The JSON-RPC method name, e.g. 'chain_getBlockHash' or 'state_getStorage'.",
+        },
+        params: {
+          type: "array",
+          description:
+            "JSON-RPC positional params for the method. Omit for none.",
+        },
+        network: {
+          type: "string",
+          enum: ["finney", "test"],
+          description: "Bittensor network to query (default 'finney').",
+        },
+      },
+      required: ["method"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      if (typeof args?.method !== "string" || !args.method) {
+        throw toolError(
+          "invalid_params",
+          "Argument `method` is required and must be a non-empty string.",
+        );
+      }
+      if (args.params !== undefined && !Array.isArray(args.params)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `params`, when present, must be an array.",
+        );
+      }
+      if (args.network !== undefined && typeof args.network !== "string") {
+        throw toolError(
+          "invalid_params",
+          "Argument `network`, when present, must be a string.",
+        );
+      }
+      const network = args.network || "finney";
+      const rpcRequestBody = {
+        jsonrpc: "2.0",
+        id: 1,
+        method: args.method,
+        params: args.params ?? [],
+      };
+      // Forward through the SAME handler REST callers hit (allowlist, state-query
+      // param validation, rate limits, endpoint pool + failover, cache) rather
+      // than reimplementing any of it -- cf-connecting-ip is forged from
+      // ctx.clientIp (itself derived from the real inbound header, see
+      // mcpClientKey) so the proxy's per-client rate-limit buckets key on the
+      // actual caller instead of this synthetic request having none.
+      const proxyRequest = new Request(
+        `https://d/rpc/v1/${encodeURIComponent(network)}`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "cf-connecting-ip": ctx.clientIp,
+          },
+          body: JSON.stringify(rpcRequestBody),
+        },
+      );
+      const response = await handleRpcProxyRequest(
+        proxyRequest,
+        ctx.env,
+        new URL(proxyRequest.url),
+      );
+      let payload;
+      try {
+        payload = await response.json();
+      } catch {
+        throw toolError(
+          "rpc_invalid_response",
+          "The RPC proxy returned a non-JSON response.",
+        );
+      }
+      if (!response.ok) {
+        // handleRpcProxyRequest's every error path goes through workers/http.mjs's
+        // errorResponse(), which always populates error.code/error.message -- no
+        // "malformed error body" case exists to guess a fallback for.
+        throw toolError(payload.error.code, payload.error.message);
+      }
+      return {
+        network,
+        method: args.method,
+        jsonrpc: payload?.jsonrpc ?? "2.0",
+        result: payload && "result" in payload ? payload.result : null,
+        error: payload?.error ?? null,
+        endpoint_id: response.headers.get("x-metagraph-rpc-endpoint-id"),
+        provider: response.headers.get("x-metagraph-rpc-provider"),
+        cache: response.headers.get("x-metagraph-rpc-cache"),
       };
     },
   },
@@ -7929,6 +9758,38 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       summary: { type: ["object", "null"] },
       economics: { type: ["object", "null"] },
+    },
+  },
+  get_subnet_stake_quote: {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "schema_version",
+      "netuid",
+      "direction",
+      "amount",
+      "expected_out",
+      "expected_out_unit",
+      "spot_price_tao",
+      "effective_price_tao",
+      "price_impact_pct",
+      "tao_in_pool_tao",
+      "alpha_in_pool",
+      "is_root",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      direction: { type: "string", enum: STAKE_QUOTE_DIRECTIONS },
+      amount: { type: "number" },
+      expected_out: { type: "number" },
+      expected_out_unit: { type: "string", enum: ["alpha", "tao"] },
+      spot_price_tao: { type: "number" },
+      effective_price_tao: { type: "number" },
+      price_impact_pct: { type: "number" },
+      tao_in_pool_tao: { type: ["number", "null"] },
+      alpha_in_pool: { type: ["number", "null"] },
+      is_root: { type: "boolean" },
     },
   },
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
@@ -9231,6 +11092,67 @@ const TOOL_OUTPUT_SCHEMAS = {
       validators: objectItems(GLOBAL_VALIDATOR_ITEM),
     },
   },
+  get_validator_detail: {
+    type: "object",
+    additionalProperties: true,
+    required: ["hotkey", "subnet_count", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      hotkey: { type: "string" },
+      coldkey: NULLABLE_STRING,
+      coldkey_count: { type: "integer" },
+      subnet_count: { type: "integer" },
+      take: { type: ["number", "null"] },
+      total_stake_tao: ANY,
+      total_emission_tao: ANY,
+      avg_validator_trust: { type: ["number", "null"] },
+      max_validator_trust: { type: ["number", "null"] },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      subnets: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_validator_nominators: {
+    type: "object",
+    additionalProperties: true,
+    required: ["hotkey", "nominator_count", "nominators"],
+    properties: {
+      schema_version: { type: "integer" },
+      hotkey: { type: "string" },
+      window: NULLABLE_STRING,
+      sort: { type: "string", enum: NOMINATOR_SORTS },
+      limit: { type: "integer" },
+      offset: { type: "integer" },
+      nominator_count: { type: "integer" },
+      nominators: objectItems({
+        coldkey: { type: "string" },
+        staked_tao: ANY,
+        unstaked_tao: ANY,
+        net_staked_tao: ANY,
+        gross_staked_tao: ANY,
+        event_count: { type: "integer" },
+        last_observed_at: NULLABLE_STRING,
+      }),
+    },
+  },
+  get_validator_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["hotkey", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      hotkey: { type: "string" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        subnet_count: NULLABLE_INT,
+        total_stake_tao: ANY,
+        total_emission_tao: ANY,
+        rewards_per_1000_tao: { type: ["number", "null"] },
+      }),
+    },
+  },
   get_neuron: {
     type: "object",
     additionalProperties: true,
@@ -9284,6 +11206,73 @@ const TOOL_OUTPUT_SCHEMAS = {
         logo_url: NULLABLE_STRING,
         identity_hash: { type: "string" },
       }),
+    },
+  },
+  get_subnet_hyperparams: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      hyperparameters: { type: ["object", "null"], additionalProperties: true },
+    },
+  },
+  get_subnet_hyperparams_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "entry_count", "entries"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      entry_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      entries: objectItems({
+        block_number: NULLABLE_INT,
+        observed_at: NULLABLE_STRING,
+        hyperparameters: {
+          type: ["object", "null"],
+          additionalProperties: true,
+        },
+        hyperparams_hash: NULLABLE_STRING,
+      }),
+    },
+  },
+  get_subnet_volume: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "window"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: { type: "string" },
+      buy_volume_alpha: ANY,
+      sell_volume_alpha: ANY,
+      total_volume_alpha: ANY,
+      buy_volume_tao: ANY,
+      sell_volume_tao: ANY,
+      total_volume_tao: ANY,
+      buy_count: { type: "integer" },
+      sell_count: { type: "integer" },
+      net_volume_alpha: ANY,
+      sentiment_ratio: { type: ["number", "null"] },
+      sentiment: NULLABLE_STRING,
+      vol_mcap_ratio: { type: ["number", "null"] },
+    },
+  },
+  get_subnet_recycled: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "queried_at"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      recycled_tao: { type: ["number", "null"] },
+      queried_at: NULLABLE_STRING,
     },
   },
   get_neuron_history: {
@@ -9370,6 +11359,61 @@ const TOOL_OUTPUT_SCHEMAS = {
       overall_yield: { type: ["number", "null"] },
       stake_concentration: { type: ["object", "null"] },
       positions: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_account_identity: {
+    type: "object",
+    additionalProperties: true,
+    required: ["account", "has_identity"],
+    properties: {
+      schema_version: { type: "integer" },
+      account: { type: "string" },
+      has_identity: { type: "boolean" },
+      name: NULLABLE_STRING,
+      url: NULLABLE_STRING,
+      github: NULLABLE_STRING,
+      image: NULLABLE_STRING,
+      discord: NULLABLE_STRING,
+      description: NULLABLE_STRING,
+      additional: NULLABLE_STRING,
+      captured_at: NULLABLE_STRING,
+    },
+  },
+  get_account_identity_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["account", "entry_count", "entries"],
+    properties: {
+      schema_version: { type: "integer" },
+      account: { type: "string" },
+      entry_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      entries: objectItems({
+        observed_at: NULLABLE_STRING,
+        name: NULLABLE_STRING,
+        url: NULLABLE_STRING,
+        github: NULLABLE_STRING,
+        image: NULLABLE_STRING,
+        discord: NULLABLE_STRING,
+        description: NULLABLE_STRING,
+        additional: NULLABLE_STRING,
+        identity_hash: NULLABLE_STRING,
+      }),
+    },
+  },
+  get_account_position_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "netuid", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: { type: "array", items: { type: "object" } },
     },
   },
   get_account_events: {
@@ -9881,6 +11925,86 @@ const TOOL_OUTPUT_SCHEMAS = {
       ref: ANY,
       extrinsic: { type: ["object", "null"], additionalProperties: true },
       events: objectItems(ACCOUNT_EVENT_ITEM),
+    },
+  },
+  get_sudo: {
+    type: "object",
+    additionalProperties: true,
+    required: ["extrinsic_count", "extrinsics"],
+    properties: {
+      schema_version: { type: "integer" },
+      extrinsic_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      extrinsics: objectItems(EXTRINSIC_ITEM),
+    },
+  },
+  get_sudo_key: {
+    type: "object",
+    additionalProperties: true,
+    required: ["hotkey", "queried_at"],
+    properties: {
+      schema_version: { type: "integer" },
+      hotkey: NULLABLE_STRING,
+      queried_at: NULLABLE_STRING,
+    },
+  },
+  get_governance_config_changes: {
+    type: "object",
+    additionalProperties: true,
+    required: ["extrinsic_count", "extrinsics"],
+    properties: {
+      schema_version: { type: "integer" },
+      extrinsic_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      extrinsics: objectItems(EXTRINSIC_ITEM),
+    },
+  },
+  get_runtime: {
+    type: "object",
+    additionalProperties: true,
+    required: ["transition_count", "transitions"],
+    properties: {
+      schema_version: { type: "integer" },
+      transition_count: { type: "integer" },
+      current_spec_version: NULLABLE_INT,
+      coverage_from_block: NULLABLE_INT,
+      coverage_from_at: NULLABLE_STRING,
+      transitions: objectItems({
+        spec_version: { type: "integer" },
+        block_number: { type: "integer" },
+        observed_at: NULLABLE_STRING,
+      }),
+    },
+  },
+  list_accounts: {
+    type: "object",
+    additionalProperties: true,
+    required: ["sort", "limit", "account_count", "accounts"],
+    properties: {
+      schema_version: { type: "integer" },
+      sort: { type: "string", enum: ACCOUNTS_LIST_SORTS },
+      limit: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      account_count: { type: "integer" },
+      accounts: objectItems({
+        hotkey: { type: "string" },
+        coldkey: NULLABLE_STRING,
+        coldkey_count: { type: "integer" },
+        subnet_count: { type: "integer" },
+        uid_count: { type: "integer" },
+        validator_count: { type: "integer" },
+        miner_count: { type: "integer" },
+        total_stake_tao: ANY,
+        total_emission_tao: ANY,
+        latest_captured_at: NULLABLE_STRING,
+        latest_block_number: NULLABLE_INT,
+        subnets: { type: "array", items: { type: "object" } },
+      }),
     },
   },
   get_block_chain_events: {
@@ -10518,6 +12642,21 @@ const TOOL_OUTPUT_SCHEMAS = {
         status: NULLABLE_STRING,
         health_source: NULLABLE_STRING,
       }),
+    },
+  },
+  call_rpc: {
+    type: "object",
+    additionalProperties: true,
+    required: ["network", "method", "jsonrpc"],
+    properties: {
+      network: { type: "string" },
+      method: { type: "string" },
+      jsonrpc: { type: "string" },
+      result: ANY,
+      error: { type: ["object", "null"] },
+      endpoint_id: NULLABLE_STRING,
+      provider: NULLABLE_STRING,
+      cache: NULLABLE_STRING,
     },
   },
   registry_summary: {

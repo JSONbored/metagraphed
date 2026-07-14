@@ -1382,136 +1382,163 @@ describe("analytics edge cache", () => {
   });
 });
 
-const NEURON_CAPTURED_AT = 1_781_500_000_000;
-const NEURON_ROW = {
-  uid: 0,
-  hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-  coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-  active: 1,
-  validator_permit: 1,
-  rank: 0.1,
-  trust: 0.9,
-  validator_trust: 0.8,
-  consensus: 0.7,
-  incentive: 0.6,
-  dividends: 0.5,
-  emission_tao: 1,
-  stake_tao: 100,
-  registered_at_block: 1,
-  is_immunity_period: 0,
-  axon: null,
-  block_number: 100,
-  captured_at: NEURON_CAPTURED_AT,
-};
+// #5358: the neurons/neuron_daily-backed cache-stamp functions
+// (readSubnetNeuronsCacheStamp, readNeuronsCacheStamp, readNeuronDailyCacheStamp,
+// withNeuronsEdgeCache) have been removed from
+// workers/request-handlers/analytics.mjs. Every one of them read a D1 table
+// (neurons / neuron_daily) that was fully dropped by #4772 ("retire D1
+// chain-data write path"), so they had been reading a permanently-empty/
+// nonexistent source and returning a frozen stamp ever since -- these routes'
+// edge caches never correctly busted on new data (they just served stale
+// content until the CDN's own TTL expired). The 11 call sites that used to pass
+// one of these as a custom `resolveCacheStamp` now fall through to
+// withEdgeCache's DEFAULT stamp: the same shared health-cron `last_run_at` KV
+// value every other Postgres-tier analytics route already busts on. These
+// handlers were also already migrated (#4909) to read Postgres only (a D1
+// query would always miss the dropped table), so they never touch D1 at all
+// now, on either a MISS or a HIT.
 
-function neuronsEnv(
-  queries,
-  { lastRunAt = LAST_RUN_AT, neuronCapturedAt = NEURON_CAPTURED_AT } = {},
-) {
-  return {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            queries.push({ sql, params });
-            if (sql.includes("MAX(captured_at)")) {
+const FORMERLY_NEURONS_TIER_SUBNET_ROUTES = [
+  { keyParts: "subnet-metagraph", path: "/api/v1/subnets/7/metagraph" },
+  { keyParts: "subnet-validators", path: "/api/v1/subnets/7/validators" },
+  {
+    keyParts: "subnet-concentration",
+    path: "/api/v1/subnets/7/concentration",
+  },
+  { keyParts: "subnet-performance", path: "/api/v1/subnets/7/performance" },
+  { keyParts: "subnet-yield", path: "/api/v1/subnets/7/yield" },
+];
+
+describe("formerly neurons-tier routes now share the health-cron edge-cache stamp (#5358)", () => {
+  test("a NEW neurons.captured_at value no longer busts the cache -- it's a dead signal now", async () => {
+    // The key regression test: before #5358 this exact scenario (a fresh
+    // neuron captured_at, unchanged last_run_at) would have busted the cache
+    // via readSubnetNeuronsCacheStamp. It must NOT anymore.
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    let neuronCapturedAt = 1_700_000_000_000;
+    // A D1 stub that WOULD answer a captured_at-keyed stamp query if anything
+    // still asked one. `queries` staying empty across both passes below is
+    // itself part of the regression proof (#4909 already moved these routes to
+    // Postgres-tier-only, so nothing should ever reach this stub).
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              queries.push({ sql, params });
               return {
                 all: () =>
                   Promise.resolve({
                     results: [{ captured_at: neuronCapturedAt }],
                   }),
               };
-            }
-            if (sql.includes("FROM neurons")) {
-              return {
-                all: () => Promise.resolve({ results: [NEURON_ROW] }),
-              };
-            }
-            return { all: () => Promise.resolve({ results: [] }) };
-          },
-        };
+            },
+          };
+        },
       },
-    },
-    METAGRAPH_CONTROL: {
-      async get(key) {
-        if (key === "health:meta") {
-          return lastRunAt ? { last_run_at: lastRunAt } : null;
-        }
-        return null;
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          return key === "health:meta" ? { last_run_at: LAST_RUN_AT } : null;
+        },
       },
-    },
-  };
-}
+    };
 
-function expectedStampKey(stamp, keyParts, pathname, search = "") {
-  return `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
-    CONTRACT_VERSION,
-  )}/${encodeURIComponent(stamp)}/${keyParts}${pathname}${search}`;
-}
-
-describe("neurons-tier edge cache", () => {
-  test("metagraph/validators/concentration key on neuron captured_at, not health last_run_at", async () => {
-    originalCaches = globalThis.caches;
-    const cache = mockCaches();
-    cache.install();
-    const queries = [];
-    const env = neuronsEnv(queries);
-
-    for (const [keyParts, path] of [
-      ["global-validators", "/api/v1/validators?sort=subnet_count&limit=1"],
-      ["subnet-metagraph", "/api/v1/subnets/7/metagraph"],
-      ["subnet-validators", "/api/v1/subnets/7/validators"],
-      ["subnet-concentration", "/api/v1/subnets/7/concentration"],
-      ["subnet-performance", "/api/v1/subnets/7/performance"],
-    ]) {
+    for (const { path } of FORMERLY_NEURONS_TIER_SUBNET_ROUTES) {
       await handleRequest(
         new Request(`https://api.metagraph.sh${path}`),
         env,
         ctx,
       );
+    }
+    await Promise.resolve();
+    const putKeysAfterFirstPass = [...cache.putKeys];
+    assert.equal(
+      putKeysAfterFirstPass.length,
+      FORMERLY_NEURONS_TIER_SUBNET_ROUTES.length,
+    );
+    for (const key of putKeysAfterFirstPass) {
+      assert.ok(
+        key.includes(encodeURIComponent(LAST_RUN_AT)),
+        `cache key must key on the shared health-cron stamp: ${key}`,
+      );
+    }
+
+    // Bump the (now-dead) neuron captured_at signal, same last_run_at -- every
+    // one of these routes must still be a cache HIT (same key, no new entry).
+    neuronCapturedAt += 60_000;
+    for (const { path } of FORMERLY_NEURONS_TIER_SUBNET_ROUTES) {
+      await handleRequest(
+        new Request(`https://api.metagraph.sh${path}`),
+        env,
+        ctx,
+      );
+    }
+    await Promise.resolve();
+    assert.deepEqual(
+      cache.putKeys,
+      putKeysAfterFirstPass,
+      "a changed neuron captured_at must not seed any new cache entry",
+    );
+    assert.equal(cache.store.size, FORMERLY_NEURONS_TIER_SUBNET_ROUTES.length);
+    assert.equal(
+      queries.length,
+      0,
+      "none of these routes touch D1 at all anymore (Postgres-tier only, #4909)",
+    );
+  });
+
+  test("a NEW health-cron last_run_at DOES bust the cache for all 5 formerly-neurons-tier per-subnet routes", async () => {
+    for (const { keyParts, path } of FORMERLY_NEURONS_TIER_SUBNET_ROUTES) {
+      originalCaches = globalThis.caches;
+      const cache = mockCaches();
+      cache.install();
+      const url = `https://api.metagraph.sh${path}`;
+
+      await handleRequest(
+        new Request(url),
+        analyticsEnv([], { lastRunAt: LAST_RUN_AT }),
+        ctx,
+      );
       await Promise.resolve();
+      assert.equal(
+        cache.store.size,
+        1,
+        `${keyParts}: first stamp seeds one entry`,
+      );
+
+      const NEW_LAST_RUN_AT = "2026-06-19T00:00:00.000Z";
+      await handleRequest(
+        new Request(url),
+        analyticsEnv([], { lastRunAt: NEW_LAST_RUN_AT }),
+        ctx,
+      );
+      await Promise.resolve();
+      assert.equal(
+        cache.store.size,
+        2,
+        `${keyParts}: a fresh health-cron last_run_at must seed a NEW entry`,
+      );
       assert.ok(
         cache.putKeys.some((key) =>
-          key.includes(encodeURIComponent(String(NEURON_CAPTURED_AT))),
+          key.includes(encodeURIComponent(NEW_LAST_RUN_AT)),
         ),
-        `${keyParts}: cache key must include neuron captured_at`,
+        `${keyParts}: the new entry must key on the new last_run_at`,
       );
-      assert.ok(
-        !cache.putKeys.some((key) =>
-          key.includes(encodeURIComponent(LAST_RUN_AT)),
-        ),
-        `${keyParts}: cache key must not use health last_run_at`,
-      );
+
+      globalThis.caches = originalCaches;
     }
   });
 
-  test("global validators rejects invalid queries before reading the neuron cache stamp", async () => {
+  test("global validators canonicalizes equivalent query variants before caching, with ZERO D1 queries on the HIT", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
     const queries = [];
-    const env = neuronsEnv(queries);
-
-    const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/validators?bogus=1"),
-      env,
-      ctx,
-    );
-    await Promise.resolve();
-
-    assert.equal(res.status, 400);
-    assert.equal(queries.length, 0, "invalid queries must not read D1 stamp");
-    assert.deepEqual(cache.putKeys, []);
-    assert.equal(cache.store.size, 0);
-  });
-
-  test("global validators canonicalizes equivalent query variants before caching", async () => {
-    originalCaches = globalThis.caches;
-    const cache = mockCaches();
-    cache.install();
-    const queries = [];
-    const env = neuronsEnv(queries);
+    const env = analyticsEnv(queries);
 
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/validators?limit=1"),
@@ -1530,15 +1557,16 @@ describe("neurons-tier edge cache", () => {
       ctx,
     );
     assert.equal(hit.status, 200);
+    // Before #5358 a HIT still issued one D1 query to read the neuron
+    // captured_at stamp (readNeuronsCacheStamp); the stamp is now KV-sourced,
+    // so a HIT must not touch D1 at all.
     assert.equal(
       queries.length,
-      queriesAfterMiss + 1,
-      "a cache HIT reads only the stamp and skips validator data queries",
+      queriesAfterMiss,
+      "a cache HIT must not issue any D1 query now that the stamp is KV-sourced",
     );
-    assert.match(queries.at(-1).sql, /MAX\(captured_at\)/);
     assert.deepEqual(cache.putKeys, [
-      expectedStampKey(
-        NEURON_CAPTURED_AT,
+      expectedKey(
         "global-validators",
         "/api/v1/validators",
         "?sort=subnet_count&limit=1",
@@ -1547,96 +1575,32 @@ describe("neurons-tier edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
-  test("CSV requests use distinct neuron-tier cache keys", async () => {
+  test("global validators rejects invalid queries before touching D1 or the cache", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
     const queries = [];
-    const env = neuronsEnv(queries);
+    const env = analyticsEnv(queries);
 
-    const routes = [
-      {
-        keyParts: "global-validators",
-        path: "/api/v1/validators?limit=1",
-        cachePath: "/api/v1/validators",
-        search: "?sort=subnet_count&limit=1&format=csv",
-      },
-      {
-        keyParts: "subnet-metagraph",
-        path: "/api/v1/subnets/7/metagraph",
-        cachePath: "/api/v1/subnets/7/metagraph",
-        search: "?format=csv",
-      },
-      {
-        keyParts: "subnet-validators",
-        path: "/api/v1/subnets/7/validators",
-        cachePath: "/api/v1/subnets/7/validators",
-        search: "?format=csv",
-      },
-    ];
-
-    for (const route of routes) {
-      const res = await handleRequest(
-        new Request(`https://api.metagraph.sh${route.path}`, {
-          headers: { accept: "text/csv" },
-        }),
-        env,
-        ctx,
-      );
-      await Promise.resolve();
-      assert.equal(res.status, 200, route.keyParts);
-      assert.match(res.headers.get("content-type"), /^text\/csv/);
-    }
-
-    assert.deepEqual(
-      cache.putKeys,
-      routes.map((route) =>
-        expectedStampKey(
-          NEURON_CAPTURED_AT,
-          route.keyParts,
-          route.cachePath,
-          route.search,
-        ),
-      ),
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/validators?bogus=1"),
+      env,
+      ctx,
     );
+    await Promise.resolve();
+
+    assert.equal(res.status, 400);
+    assert.equal(queries.length, 0, "invalid queries must not touch D1");
+    assert.deepEqual(cache.putKeys, []);
+    assert.equal(cache.store.size, 0);
   });
 
-  test("a new neuron captured_at busts cache while health last_run_at is unchanged", async () => {
+  test("health percentiles still bust on health last_run_at (unaffected sibling route)", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
     const queries = [];
-    const envA = neuronsEnv(queries, { neuronCapturedAt: NEURON_CAPTURED_AT });
-    const url = "https://api.metagraph.sh/api/v1/subnets/7/metagraph";
-
-    await handleRequest(new Request(url), envA, ctx);
-    await Promise.resolve();
-    assert.deepEqual(cache.putKeys, [
-      expectedStampKey(
-        String(NEURON_CAPTURED_AT),
-        "subnet-metagraph",
-        "/api/v1/subnets/7/metagraph",
-      ),
-    ]);
-
-    const envB = neuronsEnv(queries, {
-      neuronCapturedAt: NEURON_CAPTURED_AT + 60_000,
-    });
-    await handleRequest(new Request(url), envB, ctx);
-    await Promise.resolve();
-    assert.equal(
-      cache.store.size,
-      2,
-      "a newer captured_at must seed a new entry",
-    );
-  });
-
-  test("health percentiles still bust on health last_run_at only", async () => {
-    originalCaches = globalThis.caches;
-    const cache = mockCaches();
-    cache.install();
-    const queries = [];
-    const env = neuronsEnv(queries);
+    const env = analyticsEnv(queries);
 
     await handleRequest(
       new Request(

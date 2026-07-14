@@ -147,6 +147,25 @@
         "https://github.com/one-covenant/basilica/blob/1a75c1cb7c62caabe929b280931f0e074e2757f2/crates/basilica-validator/tests/fixtures/lshw/a100_sxm5_30vcpu.json"
       ],
       "url": "https://raw.githubusercontent.com/one-covenant/basilica/1a75c1cb7c62caabe929b280931f0e074e2757f2/crates/basilica-validator/tests/fixtures/lshw/a100_sxm5_30vcpu.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-39-basilica-docs-llms-full-txt",
+      "kind": "data-artifact",
+      "name": "Basilica docs llms-full.txt index",
+      "notes": "Public no-auth machine-readable llms-full.txt full-text index of the official SN39 Basilica documentation, served at docs.basilica.ai (the same domain as the registered website basilica.ai, api.basilica.ai subnet-api, and docs.basilica.ai/miners docs surfaces). The document itself states 'netuid = 39' / 'subnet 39', self-identifying it as SN39's docs. An agent-consumable full-text Markdown map of the Basilica docs (GPU rental / verifiable compute), distinct from the docs.basilica.ai/miners HTML docs page already registered.",
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/one-covenant/basilica",
+        "https://www.basilica.ai/"
+      ],
+      "url": "https://docs.basilica.ai/llms-full.txt"
     }
   ],
   "website_url": "https://www.basilica.ai/"

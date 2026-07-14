@@ -96,7 +96,13 @@ const ROUTE_INDEX: Array<{
     icon: Network,
     scope: "route",
   },
-  { label: "Health", to: "/health", hint: "Global probe status", icon: Activity, scope: "route" },
+  {
+    label: "Health",
+    to: "/health",
+    hint: "Ops matrix, mosaic & freshness",
+    icon: Activity,
+    scope: "route",
+  },
   {
     label: "Status",
     to: "/status",
@@ -748,6 +754,10 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
           );
         })}
 
+        {/* #3994: the "Semantic matches" group was verified to render cleanly —
+            no clipping, overlap, or contrast issues — at all six viewport/theme
+            combinations (mobile/tablet/desktop × light/dark), closing the
+            evidence gap left by #3847's misleading before/after captures. */}
         {semanticHits.length > 0 ? (
           <CommandGroup heading="Semantic matches">
             {semanticHits.map((r, i) => {

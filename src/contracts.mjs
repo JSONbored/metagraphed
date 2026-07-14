@@ -1020,6 +1020,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetStakeFlowArtifact",
   ),
   artifact(
+    "subnet-stake-quote",
+    "/metagraph/subnets/{netuid}/stake-quote.json",
+    "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake, computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool) at /api/v1/subnets/{netuid}/stake-quote (no static file). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000× the relevant reserve is rejected with 422). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+    "SubnetStakeQuoteArtifact",
+  ),
+  artifact(
     "subnet-alpha-volume",
     "/metagraph/subnets/{netuid}/volume.json",
     "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1): unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as /api/v1/subnets/{netuid}/stake-flow (no static file). Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data (#2589's trader-feature fence).",
@@ -1228,6 +1234,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/accounts/{ss58}/portfolio.json",
     "A wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration) — richer than the /subnets registration footprint, computed live from the neurons D1 tier at /api/v1/accounts/{ss58}/portfolio (no static file).",
     "AccountPortfolioArtifact",
+  ),
+  artifact(
+    "account-positions",
+    "/metagraph/accounts/{ss58}/positions.json",
+    "This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from account-portfolio's hotkey-scoped view (a pure delegator shows near-zero there). Computed live from nominator_positions (a share-fraction ledger) joined against the neurons D1 tier's stake_tao, served at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is not covered -- see the artifact schema's own description.",
+    "AccountPositionsArtifact",
   ),
   artifact(
     "account-subnet-position-history",
@@ -2294,6 +2306,23 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-stake-quote",
+    "GET",
+    "/api/v1/subnets/{netuid}/stake-quote",
+    "/metagraph/subnets/{netuid}/stake-quote.json",
+    "Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "amount", schema: { type: "number", exclusiveMinimum: 0 } },
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["stake", "unstake"] },
+      },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "subnet-movers",
     "GET",
     "/api/v1/subnets/movers",
@@ -2875,6 +2904,17 @@ export const API_ROUTES = [
     "/api/v1/accounts/{ss58}/portfolio",
     "/metagraph/accounts/{ss58}/portfolio.json",
     "Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration). Richer than /subnets; computed live from the neurons D1 tier.",
+    "short",
+    ["accounts", "analytics"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-positions",
+    "GET",
+    "/api/v1/accounts/{ss58}/positions",
+    "/metagraph/accounts/{ss58}/positions.json",
+    "Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons D1 tier. Root (netuid 0) stake is not covered.",
     "short",
     ["accounts", "analytics"],
     [],
@@ -4315,8 +4355,8 @@ function csvExampleForRoute(entry) {
   }
   if (entry.id === "subnet-trajectory") {
     return [
-      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share",
-      "2026-06-01,35,1,1,8,60,90,0.01,0.02",
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
+      "2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45",
     ].join("\r\n");
   }
   if (entry.id === "extrinsics-feed") {

@@ -41,9 +41,9 @@ const ACTIONS: QuickAction[] = [
   },
   {
     to: "/health",
-    eyebrow: "Status",
+    eyebrow: "Ops",
     title: "Check health",
-    description: "Global probes, source freshness, and per-subnet uptime trends.",
+    description: "Ops drill-down: matrix, mosaic, freshness, and live incidents.",
     icon: Activity,
   },
   {

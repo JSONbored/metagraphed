@@ -287,6 +287,27 @@
         "https://github.com/ditto-assistant/dittobench-starter-kit"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/118"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-118-ditto-admin-openapi",
+      "kind": "openapi",
+      "name": "Ditto Admin API OpenAPI schema",
+      "notes": "Public no-auth Swagger 2.0 schema (info.title \"Ditto Admin API\", 13 paths, basePath /api/admin/v1) served by the SN118 Ditto backend at api.heyditto.ai. The official Ditto developer docs (heyditto.ai/docs/building-apps-on-ditto) instruct developers to open the Swagger UI at /api/admin/v1/swagger/, which this doc.json backs. The schema document itself is public and unauthenticated (the API it describes uses an AdminKey). Fills the manifest gap: no machine-readable schema was recorded before.",
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "reyanthony062001-ops"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.heyditto.ai/api/admin/v1/swagger/doc.json",
+      "source_urls": [
+        "https://heyditto.ai/docs/building-apps-on-ditto/",
+        "https://api.heyditto.ai/api/admin/v1/swagger/doc.json"
+      ],
+      "url": "https://api.heyditto.ai/api/admin/v1/swagger/doc.json"
     }
   ],
   "website_url": "https://heyditto.ai/"

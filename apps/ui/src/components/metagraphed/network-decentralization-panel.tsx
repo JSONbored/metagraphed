@@ -27,6 +27,29 @@ const TILE_ICONS: Record<string, LucideIcon> = {
   "validator-trust-median": ShieldCheck,
 };
 
+// Per-metric explainers (#5330): what each score means and which direction is
+// healthier, surfaced as an info tooltip on each tile.
+const TILE_TOOLTIPS: Record<string, string> = {
+  "stake-gini":
+    "Gini coefficient of stake distribution (0–1). 0 means stake is spread perfectly evenly; 1 means one holder owns it all. Lower is more decentralized.",
+  "stake-hhi":
+    "Herfindahl–Hirschman Index of stake — the sum of squared stake shares. Higher means stake is concentrated in fewer holders; lower is healthier.",
+  "stake-nakamoto":
+    "Nakamoto coefficient: the fewest entities that together control over 50% of stake. Higher means more parties must collude to capture consensus — more resilient.",
+  "stake-entropy":
+    "Shannon entropy of the stake distribution. Higher entropy means stake is spread across more neurons — more decentralized.",
+  "stake-top1":
+    "Share of total stake held by the top 1% of holders. Lower means less concentration at the very top.",
+  "emission-gini":
+    "Gini coefficient of emission (reward) distribution (0–1). Lower means rewards are shared more evenly; higher means a few neurons capture most emission.",
+  "trust-median":
+    "Median on-chain trust score across neurons (0–1) — the consensus view of how much peers weight each neuron. Higher and steadier is healthier.",
+  "consensus-median":
+    "Median consensus score (0–1): how closely each neuron's weights align with the subnet consensus. Higher means broader agreement.",
+  "validator-trust-median":
+    "Median validator-trust score (0–1) among permitted validators. Higher means validators are consistently trusted by their peers.",
+};
+
 // Suspense fallback that mirrors the panel's own grid (6 concentration tiles +
 // a 3-tile score row) so the skeleton occupies the same responsive height as
 // the loaded content — no layout shift when the data arrives, unlike a single
@@ -59,6 +82,7 @@ function Tile({ tile }: { tile: DecentralizationTile }) {
       value={tile.value}
       hint={tile.hint}
       tone={tile.tone}
+      tooltip={TILE_TOOLTIPS[tile.key]}
     />
   );
 }

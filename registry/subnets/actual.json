@@ -94,6 +94,53 @@
       },
       "source_urls": ["https://actual.inc/"],
       "url": "https://actual.inc/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-95-actual-model-registry-index",
+      "kind": "data-artifact",
+      "name": "Actual model registry public index",
+      "notes": "Public no-auth machine-readable JSON index of the SN95 Actual model registry, served at models.actual.inc/index.json (schemaVersion \"actual.modelRegistry.publicIndex.v1\", carrying generatedAt and a registry object of available GGUF models). This is the machine-readable counterpart to the browser-facing models.actual.inc/ registry page already registered — a distinct URL returning structured JSON rather than HTML. Verified 200 application/json.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "actual-computer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://actual.inc/",
+        "https://models.actual.inc/index.json"
+      ],
+      "url": "https://models.actual.inc/index.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-95-actual-llms-txt",
+      "kind": "data-artifact",
+      "name": "Actual Computer llms.txt agent index",
+      "notes": "Public no-auth machine-readable llms.txt served at actual.inc/llms.txt for SN95 Actual Computer — an agent/LLM-facing Markdown runbook describing the private-inference product (install one binary, authorize a device, get OpenAI/Anthropic-compatible local APIs) and pointing to the install, register, and model-registry resources; content begins '# Actual Computer'. Distinct from the model-registry surfaces (a different URL and a text/markdown artifact). A companion llms-full.txt exists at the same host.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "actual-computer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": ["https://actual.inc/", "https://actual.inc/llms.txt"],
+      "url": "https://actual.inc/llms.txt"
     }
   ],
   "contact": "subnet@actual.inc"
