@@ -226,7 +226,15 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           </FieldRow>
           <FieldRow label="Block hash">
             {block.block_hash ? (
-              <CopyableCode value={block.block_hash} truncate={false} />
+              // Truncate to match "Parent hash" below (#5343) — the raw untruncated
+              // CopyableCode overflowed the details row on mobile. It's the current
+              // block, so no self-link; the full hash stays available on hover.
+              <span
+                className="font-mono text-[12px] text-ink-strong break-all"
+                title={block.block_hash}
+              >
+                {shortHash(block.block_hash, 10)}
+              </span>
             ) : (
               <span className="text-ink-muted">—</span>
             )}
