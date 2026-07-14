@@ -347,6 +347,9 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/subnets/7/yield",
       `/api/v1/testnet/accounts/${SS58}/stake-flow`,
       `/api/v1/testnet/accounts/${SS58}/portfolio`,
+      // Nominator-side position reconstruction (#5233) reads the same
+      // mainnet-only neurons D1 tier as /portfolio above.
+      `/api/v1/testnet/accounts/${SS58}/positions`,
       "/api/v1/testnet/incidents",
 
       "/api/v1/testnet/rpc/usage",

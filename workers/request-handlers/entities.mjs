@@ -91,6 +91,7 @@ import {
   buildBlockEvents,
 } from "../../src/account-events.mjs";
 import { buildAccountPortfolio } from "../../src/account-portfolio.mjs";
+import { buildAccountPositions } from "../../src/account-nominator-positions.mjs";
 import { buildAccountPositionHistory } from "../../src/account-position-history.mjs";
 import { loadAccountIdentity } from "../../src/account-identity.mjs";
 import { loadAccountIdentityHistory } from "../../src/account-identity-history.mjs";
@@ -3073,6 +3074,32 @@ export async function handleAccountPortfolio(request, env, ss58) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/portfolio.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/positions (#5233): this account's reconstructed
+// nominator-side positions -- what it holds delegated across every
+// hotkey/subnet, distinct from /portfolio above (hotkey-scoped). Postgres-
+// only, same shape as handleAccountPositionHistory's own no-D1-fallback note:
+// nominator_positions never had a D1-era predecessor, so there is nothing to
+// fall back to besides a schema-stable empty card. Reuses
+// METAGRAPH_NEURONS_SOURCE (not a dedicated flag) since this route's stake_tao
+// join reads the same neurons tier that flag already gates in production.
+export async function handleAccountPositions(request, env, ss58) {
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    buildAccountPositions([], new Map(), ss58);
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/positions.json`,
         data.captured_at,
       ),
     },

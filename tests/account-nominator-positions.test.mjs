@@ -7,6 +7,70 @@ import {
   distinctHotkeys,
   stakeByHotkeyNetuid,
 } from "../src/account-nominator-positions.mjs";
+import { handleRequest } from "../workers/api.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+
+const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
+  test("cold store (no METAGRAPH_NEURONS_SOURCE flag, D1 never touched) -> 200 with an empty card", async () => {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/positions`),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.position_count, 0);
+    assert.equal(body.data.total_stake_tao, 0);
+    assert.deepEqual(body.data.positions, []);
+  });
+
+  test("flag=postgres proxies to DATA_API and returns its shape", async () => {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/positions`),
+      {
+        ...createLocalArtifactEnv(),
+        METAGRAPH_NEURONS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              schema_version: 1,
+              ss58: SS58,
+              captured_at: null,
+              position_count: 1,
+              total_stake_tao: 250,
+              positions: [
+                {
+                  hotkey: "5Hk1",
+                  netuid: 3,
+                  share_fraction: 0.25,
+                  stake_tao: 250,
+                },
+              ],
+            }),
+        },
+      },
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.position_count, 1);
+    assert.equal(body.data.positions[0].stake_tao, 250);
+  });
+
+  test("testnet variant 404s instead of leaking a D1/R2 key (mainnet-only tier)", async () => {
+    const res = await handleRequest(
+      new Request(
+        `https://api.metagraph.sh/api/v1/testnet/accounts/${SS58}/positions`,
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 404);
+  });
+});
 
 describe("stakeByHotkeyNetuid", () => {
   test("builds a hotkey|netuid -> stake_tao Map from neurons rows", () => {
