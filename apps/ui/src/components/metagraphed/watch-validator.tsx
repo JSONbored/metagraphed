@@ -115,7 +115,7 @@ export function WatchValidator({ hotkey }: { hotkey: string }) {
         <button
           type="submit"
           disabled={!canSubmit}
-          className="inline-flex shrink-0 items-center justify-center rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-[13px] font-medium text-accent-text transition-colors hover:bg-accent/15 disabled:opacity-50"
+          className="inline-flex shrink-0 items-center justify-center rounded border border-border bg-card px-4 py-1.5 text-[13px] font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent disabled:opacity-50"
         >
           {mutation.isPending ? "Watching…" : "Watch"}
         </button>
