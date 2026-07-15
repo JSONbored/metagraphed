@@ -4,6 +4,16 @@
 // `[[104]]` (confirmed real data, block 8587445/extrinsic_index 19, 162
 // in-window occurrences).
 //
+// Also covers a BoundedVec<T,_> holding a single struct-typed element, the
+// same "extra array layer around a bounded collection" shape as a BTreeSet --
+// found by the 2026-07-14/15 exhaustive decode audit on two call types:
+// LimitOrders.execute_batched_orders's `orders`
+// (BoundedVec<SignedOrder<AccountId32>,_>, block 8617315/extrinsic_index 18:
+// served `[[{"order":{...}}]]` instead of `[{"order":{...}}]`) and
+// Commitments.set_commitment's `info.fields`
+// (BoundedVec<Data,_>, block 8623300/extrinsic_index 12: served
+// `{"fields":[[{"Raw100":"..."}]]}` instead of `{"fields":[{"Raw100":"..."}]}`).
+//
 // Deliberately scoped to named (callModule, callFunction, fieldName)
 // triples, NOT a generic "strip any outer array wrapping another array"
 // rule. That shape is structurally IDENTICAL to an AccountId32/MultiAddress/
@@ -38,7 +48,11 @@
 // header already describes, except walk() runs BEFORE this module ever gets
 // a chance to unwrap the (by-then-already-destroyed) field. walk() checks
 // this same set to skip that heuristic for an allowlisted field instead.
-export const BTREESET_FIELDS = new Set(["SubtensorModule.claim_root.subnets"]);
+export const BTREESET_FIELDS = new Set([
+  "SubtensorModule.claim_root.subnets",
+  "LimitOrders.execute_batched_orders.orders",
+  "Commitments.set_commitment.fields",
+]);
 
 function unwrapBTreeSetLayer(value) {
   return Array.isArray(value) && value.length === 1 && Array.isArray(value[0])

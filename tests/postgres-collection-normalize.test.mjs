@@ -140,4 +140,38 @@ describe("decodeBTreeSetFields", () => {
     });
     assert.equal(out.netuid, 9);
   });
+
+  test("unwraps LimitOrders.execute_batched_orders's orders (BoundedVec<SignedOrder,_>, real block 8617315/18, found by 2026-07-14/15 exhaustive audit)", () => {
+    const descriptorShape = [
+      { name: "netuid", type: "u16", value: 74 },
+      {
+        name: "orders",
+        type: "BoundedVec<SignedOrder<AccountId32>, _>",
+        value: [
+          [{ order: { name: "V1", values: [{ amount: 462651842697 }] } }],
+        ],
+      },
+    ];
+    const out = decode(
+      "LimitOrders",
+      "execute_batched_orders",
+      descriptorShape,
+    );
+    assert.deepEqual(out[1].value, [
+      { order: { name: "V1", values: [{ amount: 462651842697 }] } },
+    ]);
+  });
+
+  test("unwraps Commitments.set_commitment's info.fields (BoundedVec<Data,_> nested inside a struct field, real block 8623300/12, found by 2026-07-14/15 exhaustive audit)", () => {
+    const descriptorShape = [
+      { name: "netuid", type: "u16", value: 123 },
+      {
+        name: "info",
+        type: "CommitmentInfo<_>",
+        value: { fields: [[{ Raw100: "https://example.com" }]] },
+      },
+    ];
+    const out = decode("Commitments", "set_commitment", descriptorShape);
+    assert.deepEqual(out[1].value.fields, [{ Raw100: "https://example.com" }]);
+  });
 });
