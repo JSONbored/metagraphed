@@ -15,6 +15,11 @@ import {
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
 } from "./subnet-registrations.mjs";
 import {
+  buildSubnetAxonRemovals,
+  SUBNET_AXON_REMOVALS_WINDOWS,
+  DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
+} from "./subnet-axon-removals.mjs";
+import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
 } from "../workers/request-handlers/analytics.mjs";
@@ -107,6 +112,8 @@ export const SDL = `
     subnet(netuid: Int!): Subnet
     "Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations."
     subnet_registrations(netuid: Int!, window: String): SubnetRegistrations!
+    "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
+    subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
     "Paginated provider/source registry."
     providers(limit: Int, cursor: String): ProviderList!
     "One provider with its subnets."
@@ -558,6 +565,17 @@ export const SDL = `
     registrations_per_registrant: Float
   }
 
+  "Per-subnet axon-removal activity over a window (#5718). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
+  type SubnetAxonRemovals {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    distinct_removers: Int!
+    removals: Int!
+    removals_per_remover: Float
+  }
+
   "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope."
   type GlobalIncidents {
     schema_version: Int!
@@ -985,6 +1003,7 @@ export const FIELD_COMPLEXITY = {
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1536,6 +1555,43 @@ const rootValue = {
       distinct_registrants: data.distinct_registrants ?? 0,
       registrations: data.registrations ?? 0,
       registrations_per_registrant: data.registrations_per_registrant ?? null,
+    };
+  },
+
+  async subnet_axon_removals({ netuid, window }, context) {
+    // Same 7d/30d window validation handleSubnetAxonRemovals uses -- an
+    // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
+    if (!Object.hasOwn(SUBNET_AXON_REMOVALS_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SUBNET_AXON_REMOVALS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetAxonRemovals
+    // zeroed-card fallback contract handleSubnetAxonRemovals uses; a subnet with no
+    // AxonInfoRemoved events in the window is a schema-stable zeroed card, never a
+    // GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/axon-removals`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? buildSubnetAxonRemovals(null, netuid, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      observed_at: data.observed_at ?? null,
+      distinct_removers: data.distinct_removers ?? 0,
+      removals: data.removals ?? 0,
+      removals_per_remover: data.removals_per_remover ?? null,
     };
   },
 
