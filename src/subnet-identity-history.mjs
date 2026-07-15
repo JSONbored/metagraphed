@@ -15,9 +15,6 @@ import {
 
 const D1_STATEMENTS_PER_BATCH = 100;
 
-export const IDENTITY_HISTORY_COLUMNS =
-  "id, netuid, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash";
-
 const READ_COLUMNS =
   "id, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash";
 
