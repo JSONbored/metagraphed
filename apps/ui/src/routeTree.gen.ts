@@ -21,6 +21,7 @@ import { Route as GapsRouteImport } from './routes/gaps'
 import { Route as FeedsRouteImport } from './routes/feeds'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as EndpointsRouteImport } from './routes/endpoints'
+import { Route as EconomicsRouteImport } from './routes/economics'
 import { Route as ChainEventsRouteImport } from './routes/chain-events'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as AboutRouteImport } from './routes/about'
@@ -99,6 +100,11 @@ const ExplorerRoute = ExplorerRouteImport.update({
 const EndpointsRoute = EndpointsRouteImport.update({
   id: '/endpoints',
   path: '/endpoints',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EconomicsRoute = EconomicsRouteImport.update({
+  id: '/economics',
+  path: '/economics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChainEventsRoute = ChainEventsRouteImport.update({
@@ -202,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
   '/chain-events': typeof ChainEventsRoute
+  '/economics': typeof EconomicsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/feeds': typeof FeedsRoute
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
   '/chain-events': typeof ChainEventsRoute
+  '/economics': typeof EconomicsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/feeds': typeof FeedsRoute
@@ -269,6 +277,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
   '/chain-events': typeof ChainEventsRoute
+  '/economics': typeof EconomicsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/feeds': typeof FeedsRoute
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/agents'
     | '/chain-events'
+    | '/economics'
     | '/endpoints'
     | '/explorer'
     | '/feeds'
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/agents'
     | '/chain-events'
+    | '/economics'
     | '/endpoints'
     | '/explorer'
     | '/feeds'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/agents'
     | '/chain-events'
+    | '/economics'
     | '/endpoints'
     | '/explorer'
     | '/feeds'
@@ -404,6 +416,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AgentsRoute: typeof AgentsRoute
   ChainEventsRoute: typeof ChainEventsRoute
+  EconomicsRoute: typeof EconomicsRoute
   EndpointsRoute: typeof EndpointsRoute
   ExplorerRoute: typeof ExplorerRoute
   FeedsRoute: typeof FeedsRoute
@@ -517,6 +530,13 @@ declare module '@tanstack/react-router' {
       path: '/endpoints'
       fullPath: '/endpoints'
       preLoaderRoute: typeof EndpointsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/economics': {
+      id: '/economics'
+      path: '/economics'
+      fullPath: '/economics'
+      preLoaderRoute: typeof EconomicsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chain-events': {
@@ -660,6 +680,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AgentsRoute: AgentsRoute,
   ChainEventsRoute: ChainEventsRoute,
+  EconomicsRoute: EconomicsRoute,
   EndpointsRoute: EndpointsRoute,
   ExplorerRoute: ExplorerRoute,
   FeedsRoute: FeedsRoute,

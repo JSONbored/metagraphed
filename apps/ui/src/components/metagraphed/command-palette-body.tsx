@@ -15,6 +15,7 @@ import {
   ArrowRightLeft,
   Bot,
   Braces,
+  Coins,
   Compass,
   Copy,
   ExternalLink,
@@ -139,6 +140,13 @@ const ROUTE_INDEX: Array<{
     to: "/feeds",
     hint: "RSS, Atom, JSON Feed subscriptions",
     icon: Rss,
+    scope: "route",
+  },
+  {
+    label: "Economics",
+    to: "/economics",
+    hint: "Stake, alpha price, emission share, trends",
+    icon: Coins,
     scope: "route",
   },
   {
