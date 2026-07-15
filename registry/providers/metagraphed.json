@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "metagraphed",
-  "name": "Metagraphed",
-  "kind": "registry",
-  "website_url": "https://metagraph.sh",
-  "docs_url": "https://github.com/JSONbored/metagraphed",
   "authority": "registry-observed",
-  "notes": "Registry and probe observations are not protocol authority."
+  "docs_url": "https://github.com/JSONbored/metagraphed",
+  "id": "metagraphed",
+  "kind": "registry",
+  "logo_url": "https://metagraph.sh/logos/metagraphed.png",
+  "name": "Metagraphed",
+  "notes": "Registry and probe observations are not protocol authority.",
+  "schema_version": 1,
+  "website_url": "https://metagraph.sh"
 }

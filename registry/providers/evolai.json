@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "evolai",
-  "name": "EvolAI",
-  "kind": "subnet-team",
-  "website_url": "https://evolai.ai/",
-  "github_url": "https://github.com/openevolai/evolai",
   "authority": "official",
-  "notes": "Provider entry for EvolAI SN47 source repository and referenced public Hugging Face dataset."
+  "github_url": "https://github.com/openevolai/evolai",
+  "id": "evolai",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/evolai.png",
+  "name": "EvolAI",
+  "notes": "Provider entry for EvolAI SN47 source repository and referenced public Hugging Face dataset.",
+  "schema_version": 1,
+  "website_url": "https://evolai.ai/"
 }
