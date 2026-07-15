@@ -3321,6 +3321,181 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
   });
 });
 
+describe("graphql — validator_nominators (#5692, Postgres-tier + buildValidatorNominators fallback list)", () => {
+  const HOTKEY = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  function nominatorsQuery(argsClause) {
+    return `{ validator_nominators(hotkey: "${HOTKEY}"${argsClause}) {
+      schema_version hotkey window sort limit offset nominator_count
+      nominators { coldkey staked_tao unstaked_tao net_staked_tao gross_staked_tao event_count last_observed_at }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable empty list (a hotkey with no nominators)", async () => {
+    const { status, body } = await gql(nominatorsQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.validator_nominators, {
+      schema_version: 1,
+      hotkey: HOTKEY,
+      window: "30d",
+      sort: "net_staked",
+      limit: 20,
+      offset: 0,
+      nominator_count: 0,
+      nominators: [],
+    });
+  });
+
+  test("resolves Postgres-tier nominators for a valid non-default window/sort combination", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            data: {
+              schema_version: 1,
+              hotkey: HOTKEY,
+              window: "7d",
+              sort: "gross_staked",
+              limit: 20,
+              offset: 0,
+              nominator_count: 1,
+              nominators: [
+                {
+                  coldkey: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+                  staked_tao: 12.5,
+                  unstaked_tao: 2.5,
+                  net_staked_tao: 10,
+                  gross_staked_tao: 15,
+                  event_count: 4,
+                  last_observed_at: "2026-07-14T00:00:00.000Z",
+                },
+              ],
+            },
+            generatedAt: "2026-07-14T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      nominatorsQuery(', window: "7d", sort: "gross_staked"'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(
+      capturedUrl.pathname,
+      `/api/v1/validators/${HOTKEY}/nominators`,
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl.searchParams.get("sort"), "gross_staked");
+    assert.equal(body.data.validator_nominators.window, "7d");
+    assert.equal(body.data.validator_nominators.sort, "gross_staked");
+    assert.equal(body.data.validator_nominators.nominator_count, 1);
+    assert.equal(body.data.validator_nominators.nominators.length, 1);
+    assert.equal(
+      body.data.validator_nominators.nominators[0].coldkey,
+      "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+    );
+    assert.equal(
+      body.data.validator_nominators.nominators[0].net_staked_tao,
+      10,
+    );
+  });
+
+  test("a Postgres-tier body missing the data envelope falls back to buildValidatorNominators (no throw)", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(nominatorsQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.validator_nominators.nominator_count, 0);
+    assert.deepEqual(body.data.validator_nominators.nominators, []);
+    assert.equal(body.data.validator_nominators.hotkey, HOTKEY);
+  });
+
+  test("a Postgres-tier body with an empty data envelope degrades each field to its schema-stable default (no throw)", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({ data: {} }) },
+    };
+    const { status, body } = await gql(nominatorsQuery(""), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.validator_nominators, {
+      schema_version: 1,
+      hotkey: HOTKEY,
+      window: "30d",
+      sort: "net_staked",
+      limit: 20,
+      offset: 0,
+      nominator_count: 0,
+      nominators: [],
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(nominatorsQuery(', window: "1y"'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /1y/);
+  });
+
+  test("an unsupported sort is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(nominatorsQuery(', sort: "bogus"'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /bogus/);
+  });
+
+  test("the largest supported window (90d) and last-activity sort resolve as a valid boundary combination", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            data: {
+              schema_version: 1,
+              hotkey: HOTKEY,
+              window: "90d",
+              sort: "last_activity",
+              limit: 20,
+              offset: 0,
+              nominator_count: 0,
+              nominators: [],
+            },
+            generatedAt: null,
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      nominatorsQuery(', window: "90d", sort: "last_activity"'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+    assert.equal(capturedUrl.searchParams.get("sort"), "last_activity");
+    assert.equal(body.data.validator_nominators.window, "90d");
+    assert.equal(body.data.validator_nominators.sort, "last_activity");
+  });
+
+  test("validator_nominators is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.validator_nominators, 5);
+  });
+});
+
 describe("Subscription.chainEvents", () => {
   test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
     const hub = fakeChainFirehose((repeater) => {

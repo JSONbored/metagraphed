@@ -62,6 +62,14 @@ import {
   MOVERS_WINDOWS,
   buildMovers,
 } from "./movers.mjs";
+import {
+  DEFAULT_NOMINATOR_SORT,
+  DEFAULT_NOMINATOR_WINDOW,
+  NOMINATOR_LIMIT_DEFAULT,
+  NOMINATOR_SORTS,
+  NOMINATOR_WINDOWS,
+  buildValidatorNominators,
+} from "./validator-nominators.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
@@ -117,6 +125,8 @@ export const SDL = `
     economics_trends(window: String): EconomicsTrends!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
     subnet_movers(window: String, sort: String, limit: Int): SubnetMovers!
+    "Nominators (stakers) of one validator across every subnet it operates in, over a window, ranked by net/gross flow or recency; a hotkey with no nominators resolves to a schema-stable empty list, never null. Mirrors GET /api/v1/validators/{hotkey}/nominators."
+    validator_nominators(hotkey: String!, window: String, sort: String): NominatorList!
   }
 
   type SubnetList {
@@ -596,6 +606,29 @@ export const SDL = `
     validator_trust: Float
   }
 
+  "Nominators (stakers) of one validator, ranked by net/gross flow or recency over the window. nominators is empty on a cold store or a hotkey with no nominators, never null."
+  type NominatorList {
+    schema_version: Int!
+    hotkey: String!
+    window: String
+    sort: String!
+    limit: Int!
+    offset: Int!
+    nominator_count: Int!
+    nominators: [Nominator!]!
+  }
+
+  "One coldkey's staked/unstaked flow into a validator hotkey over the requested window."
+  type Nominator {
+    coldkey: String!
+    staked_tao: Float!
+    unstaked_tao: Float!
+    net_staked_tao: Float!
+    gross_staked_tao: Float!
+    event_count: Int!
+    last_observed_at: String
+  }
+
   "Self-reported on-chain identity (SubtensorModule::set_identity) for a coldkey."
   type Identity {
     has_identity: Boolean!
@@ -842,6 +875,7 @@ export const FIELD_COMPLEXITY = {
   block: RELATIONSHIP_FIELD_COMPLEXITY,
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
+  validator_nominators: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -1814,6 +1848,56 @@ const rootValue = {
         unchanged: network.unchanged ?? 0,
       },
       movers: data.movers || [],
+    };
+  },
+
+  async validator_nominators({ hotkey, window, sort }, context) {
+    const requestedWindow = window ?? DEFAULT_NOMINATOR_WINDOW;
+    if (!Object.hasOwn(NOMINATOR_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, NOMINATOR_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const requestedSort = sort ?? DEFAULT_NOMINATOR_SORT;
+    if (!NOMINATOR_SORTS.includes(requestedSort)) {
+      throw new GraphQLError(
+        `"${requestedSort}" is not a supported sort. Supported: ${NOMINATOR_SORTS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("sort", requestedSort);
+    // Same tryPostgresTier ?? buildValidatorNominators([], hotkey, ...) fallback
+    // contract REST's handleValidatorNominators and MCP's get_validator_nominators
+    // both use -- account_events' D1 copy is frozen (#4826), so a cold/absent
+    // Postgres tier degrades straight to the schema-stable empty list rather
+    // than a D1 read.
+    const body = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/validators/${encodeURIComponent(hotkey)}/nominators`,
+        params,
+      ),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
+    const data =
+      body?.data ??
+      buildValidatorNominators([], hotkey, {
+        window: requestedWindow,
+        sort: requestedSort,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      hotkey: data.hotkey ?? hotkey,
+      window: data.window ?? requestedWindow,
+      sort: data.sort ?? requestedSort,
+      limit: data.limit ?? NOMINATOR_LIMIT_DEFAULT,
+      offset: data.offset ?? 0,
+      nominator_count: data.nominator_count ?? 0,
+      nominators: data.nominators || [],
     };
   },
 };
