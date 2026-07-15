@@ -24,7 +24,7 @@
   "docs_url": "https://docs.targon.com/",
   "name": "Targon",
   "netuid": 4,
-  "notes": "Reviewed overlay for SN4 using the official Targon website, docs, Intel whitepaper, and source repository. No public API, OpenAPI schema, SSE stream, or standalone data artifact is verified yet.",
+  "notes": "Reviewed overlay for SN4 using the official Targon website, docs, Intel whitepaper, and source repository. The docs site's own sitemap lists 10 API categories (compute, health, heim, inventory, ssh-keys, templates, user, version, volumes, workloads); all but inventory and version are personal compute-rental account actions requiring a Bearer API key (create/manage workloads, templates, ssh keys, volumes), not eligible for public surface tracking. The documented no-auth health endpoints (/tha/v2/healthz, /tha/v2/readyz) currently 500 in production despite the docs describing them as working liveness/readiness checks -- not tracked as a surface since it would only generate false-unhealthy noise. No OpenAPI/Swagger schema, SSE stream, or standalone data artifact is verified yet.",
   "schema_version": 1,
   "slug": "sn-4",
   "social": {
@@ -128,6 +128,24 @@
       },
       "source_urls": ["https://docs.targon.com/api/inventory"],
       "url": "https://api.targon.com/tha/v2/inventory"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-4-targon-version-api",
+      "kind": "subnet-api",
+      "name": "Targon Hub API version",
+      "notes": "Public no-auth GET /tha/v2/version on api.targon.com returning the Targon Hub API's own release metadata (name, version, gitHash, buildDate). Documented in the official Targon API docs.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
+      "public_safe": true,
+      "source_urls": ["https://docs.targon.com/api/version"],
+      "url": "https://api.targon.com/tha/v2/version"
     },
     {
       "auth_required": false,

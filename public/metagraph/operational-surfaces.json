@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 158,
+  "surface_count": 159,
   "surfaces": [
     {
       "auth_required": false,
@@ -335,6 +335,24 @@
       "surface_id": "sn-4-targon-subnet-api",
       "surface_key": "srf-40be5162d95eb737",
       "url": "https://api.targon.com/tha/v2/inventory"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 4,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
+      "public_safe": true,
+      "subnet_name": "Targon",
+      "subnet_slug": "sn-4",
+      "surface_id": "sn-4-targon-version-api",
+      "surface_key": "srf-d5daaf19626ba91f",
+      "url": "https://api.targon.com/tha/v2/version"
     },
     {
       "auth_required": false,
