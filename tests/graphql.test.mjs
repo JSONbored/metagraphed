@@ -6067,6 +6067,391 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
   });
 });
 
+describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 zero card)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+  const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zero list card, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}") {
+          schema_version ss58 counterparty_count transfers_scanned scan_capped
+          total_sent_tao total_received_tao
+          counterparties { address sent_tao received_tao net_tao transfer_count last_block }
+          relationship { counterparty }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_counterparties, {
+      schema_version: 1,
+      ss58: SS58,
+      counterparty_count: 0,
+      transfers_scanned: 0,
+      scan_capped: false,
+      total_sent_tao: 0,
+      total_received_tao: 0,
+      counterparties: [],
+      relationship: null,
+    });
+  });
+
+  test("resolves the Postgres-tier list envelope, mapping each ranked counterparty", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          counterparty_count: 2,
+          transfers_scanned: 7,
+          scan_capped: false,
+          total_sent_tao: 12.5,
+          total_received_tao: 4.25,
+          counterparties: [
+            {
+              address: OTHER,
+              sent_tao: 10,
+              received_tao: 4.25,
+              net_tao: -5.75,
+              transfer_count: 5,
+              last_block: 4321,
+            },
+            {
+              address: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+              sent_tao: 2.5,
+              received_tao: 0,
+              net_tao: -2.5,
+              transfer_count: 2,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", limit: 5) {
+          ss58 counterparty_count transfers_scanned scan_capped
+          total_sent_tao total_received_tao
+          counterparties { address sent_tao received_tao net_tao transfer_count last_block }
+          relationship { counterparty }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.account_counterparties;
+    assert.equal(r.counterparty_count, 2);
+    assert.equal(r.transfers_scanned, 7);
+    assert.equal(r.total_sent_tao, 12.5);
+    assert.equal(r.relationship, null);
+    assert.deepEqual(r.counterparties, [
+      {
+        address: OTHER,
+        sent_tao: 10,
+        received_tao: 4.25,
+        net_tao: -5.75,
+        transfer_count: 5,
+        last_block: 4321,
+      },
+      {
+        address: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+        sent_tao: 2.5,
+        received_tao: 0,
+        net_tao: -2.5,
+        transfer_count: 2,
+        last_block: null,
+      },
+    ]);
+  });
+
+  test("relationship mode: maps the Postgres-tier composite envelope with transfer evidence", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          counterparty_count: 1,
+          transfers_scanned: 3,
+          scan_capped: false,
+          total_sent_tao: 8,
+          total_received_tao: 1,
+          counterparties: [
+            {
+              address: OTHER,
+              sent_tao: 8,
+              received_tao: 1,
+              net_tao: -7,
+              transfer_count: 3,
+              last_block: 900,
+            },
+          ],
+          relationship: {
+            schema_version: 1,
+            ss58: SS58,
+            counterparty: OTHER,
+            transfer_count: 3,
+            transfers_scanned: 3,
+            scan_capped: false,
+            total_sent_tao: 8,
+            total_received_tao: 1,
+            net_tao: -7,
+            first_block: 700,
+            last_block: 900,
+            first_seen_at: "2026-05-01T00:00:00.000Z",
+            last_seen_at: "2026-06-01T00:00:00.000Z",
+            limit: 50,
+            transfers: [
+              {
+                block_number: 900,
+                event_index: 2,
+                netuid: 0,
+                from: SS58,
+                to: OTHER,
+                amount_tao: 5,
+                direction: "sent",
+                observed_at: "2026-06-01T00:00:00.000Z",
+              },
+            ],
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}", limit: 50) {
+          counterparty_count
+          counterparties { address transfer_count }
+          relationship {
+            counterparty transfer_count net_tao first_block last_block
+            first_seen_at last_seen_at limit
+            transfers { block_number event_index netuid from to amount_tao direction observed_at }
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.account_counterparties;
+    assert.equal(r.counterparty_count, 1);
+    assert.deepEqual(r.counterparties, [{ address: OTHER, transfer_count: 3 }]);
+    assert.equal(r.relationship.counterparty, OTHER);
+    assert.equal(r.relationship.net_tao, -7);
+    assert.equal(r.relationship.first_block, 700);
+    assert.equal(r.relationship.limit, 50);
+    assert.deepEqual(r.relationship.transfers, [
+      {
+        block_number: 900,
+        event_index: 2,
+        netuid: 0,
+        from: SS58,
+        to: OTHER,
+        amount_tao: 5,
+        direction: "sent",
+        observed_at: "2026-06-01T00:00:00.000Z",
+      },
+    ]);
+  });
+
+  test("relationship mode cold store: a schema-stable empty relationship envelope, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}") {
+          counterparty_count
+          counterparties { address }
+          relationship { counterparty transfer_count scan_capped limit transfers { direction } }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.account_counterparties;
+    assert.equal(r.counterparty_count, 0);
+    assert.deepEqual(r.counterparties, []);
+    assert.equal(r.relationship.counterparty, OTHER);
+    assert.equal(r.relationship.transfer_count, 0);
+    assert.equal(r.relationship.scan_capped, false);
+    assert.equal(r.relationship.limit, 50);
+    assert.deepEqual(r.relationship.transfers, []);
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({ counterparties: [{ address: OTHER }] }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}") {
+          schema_version ss58 counterparty_count transfers_scanned scan_capped
+          total_sent_tao total_received_tao
+          counterparties { address sent_tao received_tao net_tao transfer_count last_block }
+          relationship { counterparty }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_counterparties, {
+      schema_version: 1,
+      ss58: SS58,
+      counterparty_count: 0,
+      transfers_scanned: 0,
+      scan_capped: false,
+      total_sent_tao: 0,
+      total_received_tao: 0,
+      counterparties: [
+        {
+          address: OTHER,
+          sent_tao: 0,
+          received_tao: 0,
+          net_tao: 0,
+          transfer_count: 0,
+          last_block: null,
+        },
+      ],
+      relationship: null,
+    });
+  });
+
+  test("a Postgres-tier body with no counterparties key degrades to an empty list, never null", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({ schema_version: 1 })),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}") {
+          schema_version ss58 counterparty_count transfers_scanned scan_capped
+          total_sent_tao total_received_tao
+          counterparties { address }
+          relationship { counterparty }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_counterparties, {
+      schema_version: 1,
+      ss58: SS58,
+      counterparty_count: 0,
+      transfers_scanned: 0,
+      scan_capped: false,
+      total_sent_tao: 0,
+      total_received_tao: 0,
+      counterparties: [],
+      relationship: null,
+    });
+  });
+
+  test("relationship mode: a bare relationship object degrades every field to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          counterparties: [{ address: OTHER }],
+          relationship: {},
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}") {
+          relationship {
+            schema_version ss58 counterparty transfer_count transfers_scanned
+            scan_capped total_sent_tao total_received_tao net_tao
+            first_block last_block first_seen_at last_seen_at limit
+            transfers { direction }
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_counterparties.relationship, {
+      schema_version: 1,
+      ss58: SS58,
+      counterparty: OTHER,
+      transfer_count: 0,
+      transfers_scanned: 0,
+      scan_capped: false,
+      total_sent_tao: 0,
+      total_received_tao: 0,
+      net_tao: 0,
+      first_block: null,
+      last_block: null,
+      first_seen_at: null,
+      last_seen_at: null,
+      limit: 0,
+      transfers: [],
+    });
+  });
+
+  test("relationship mode: a partial transfer row degrades its nullable fields, keeping the required direction", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          counterparties: [{ address: OTHER }],
+          relationship: {
+            counterparty: OTHER,
+            transfers: [{ direction: "received" }],
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}") {
+          relationship {
+            transfers { block_number event_index netuid from to amount_tao direction observed_at }
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_counterparties.relationship.transfers, [
+      {
+        block_number: null,
+        event_index: null,
+        netuid: null,
+        from: null,
+        to: null,
+        amount_tao: 0,
+        direction: "received",
+        observed_at: null,
+      },
+    ]);
+  });
+
+  test("a malformed ss58 address is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ account_counterparties(ss58: "not-an-address") { counterparty_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/ss58/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_counterparties ?? null, null);
+  });
+
+  test("a malformed counterparty address is a GraphQL error", async () => {
+    const { body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "not-an-address") { counterparty_count } }`,
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/counterparty/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_counterparties ?? null, null);
+  });
+
+  test("a counterparty equal to ss58 is a GraphQL error", async () => {
+    const { body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${SS58}") { counterparty_count } }`,
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/differ/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_counterparties ?? null, null);
+  });
+
+  test("account_counterparties is weighted as a relationship field", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.account_counterparties,
+      FIELD_COMPLEXITY.account_identity_history,
+    );
+  });
+});
+
 describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live fallback)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 

@@ -152,6 +152,10 @@ import {
 } from "./account-stake-moves.mjs";
 import { loadAccountIdentity } from "./account-identity.mjs";
 import { loadAccountIdentityHistory } from "./account-identity-history.mjs";
+import {
+  buildCounterparties,
+  buildCounterpartyRelationship,
+} from "./counterparties.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import {
@@ -324,6 +328,8 @@ export const SDL = `
     account_identity(ss58: String!): AccountIdentity!
     "One account's on-chain identity change history, newest first -- an append-only diff-tracking timeline (name/url/github/image/discord/description/additional plus a stable hash per entry). Page with limit/offset or cursor (opaque keyset from a prior response's next_cursor). An address with no identity-history rows resolves to a schema-stable empty timeline, never null. Mirrors GET /api/v1/accounts/{ss58}/identity-history."
     account_identity_history(ss58: String!, limit: Int, offset: Int, cursor: String): AccountIdentityHistory!
+    "Rank who one account transacts native TAO with, by total transfer volume, from the Balances.Transfer feed: per counterparty the sent/received/net TAO, transfer count, and last block, plus scan totals. Pass counterparty=<ss58> (must differ from ss58) to drill into a single relationship instead -- its fund-flow totals plus direction-aware transfer evidence under relationship, newest first. limit caps the ranked list (default 20) or the relationship's transfer evidence (default 50); 1-100. An address with no transfers resolves to a schema-stable zero card, never null. Mirrors GET /api/v1/accounts/{ss58}/counterparties."
+    account_counterparties(ss58: String!, counterparty: String, limit: Int): AccountCounterparties!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
     "Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom), composed live from the registry profiles projection plus D1 health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards."
@@ -1770,6 +1776,62 @@ export const SDL = `
     entries: [AccountIdentityHistoryEntry!]!
   }
 
+  "One counterparty the account transacts native TAO with, aggregated over the scanned Transfer set."
+  type AccountCounterparty {
+    address: String!
+    sent_tao: Float!
+    received_tao: Float!
+    net_tao: Float!
+    transfer_count: Int!
+    last_block: Int
+  }
+
+  "One direction-aware transfer between the account and the drilled-into counterparty."
+  type AccountCounterpartyTransfer {
+    block_number: Int
+    event_index: Int
+    netuid: Int
+    from: String
+    to: String
+    amount_tao: Float!
+    "sent (account = from) or received (account = to)."
+    direction: String!
+    observed_at: String
+  }
+
+  "Focused fund-flow summary for one account/counterparty relationship, with the bounded transfer evidence; only present when counterparty was supplied."
+  type AccountCounterpartyRelationship {
+    schema_version: Int!
+    ss58: String!
+    counterparty: String!
+    transfer_count: Int!
+    transfers_scanned: Int!
+    scan_capped: Boolean!
+    total_sent_tao: Float!
+    total_received_tao: Float!
+    net_tao: Float!
+    "Oldest block/timestamp are null when the newest-first scan was truncated (scan_capped)."
+    first_block: Int
+    last_block: Int
+    first_seen_at: String
+    last_seen_at: String
+    limit: Int!
+    transfers: [AccountCounterpartyTransfer!]!
+  }
+
+  type AccountCounterparties {
+    schema_version: Int!
+    ss58: String!
+    counterparty_count: Int!
+    transfers_scanned: Int!
+    scan_capped: Boolean!
+    total_sent_tao: Float!
+    total_received_tao: Float!
+    counterparties: [AccountCounterparty!]!
+    "Present only in relationship (counterparty) mode; null in list mode."
+    relationship: AccountCounterpartyRelationship
+  }
+
   type AccountEvent {
     block_number: Int
     event_index: Int
@@ -2037,6 +2099,7 @@ export const FIELD_COMPLEXITY = {
   account_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
   account_identity: RELATIONSHIP_FIELD_COMPLEXITY,
   account_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_counterparties: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   // A single latest-only row -- but it fans out into the full hyperparameter
   // block, so it is priced with the other per-subnet relationship fields.
@@ -4118,6 +4181,115 @@ const rootValue = {
         additional: e.additional ?? null,
         identity_hash: e.identity_hash ?? null,
       })),
+    };
+  },
+
+  async account_counterparties({ ss58, counterparty, limit }, context) {
+    // Same SS58 validation every account_* resolver uses -- a malformed address
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty card.
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // The relationship drilldown needs a second, distinct SS58 -- the same two
+    // guards the get_account_counterparties MCP tool applies to `counterparty`.
+    if (counterparty != null) {
+      if (!SS58_ADDRESS_PATTERN.test(counterparty)) {
+        throw new GraphQLError("counterparty must be a valid SS58 address.", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      if (counterparty === ss58) {
+        throw new GraphQLError("counterparty must differ from ss58.", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
+    // MCP tool use, forwarding counterparty/limit as query params. The
+    // account_events D1 write path is retired (#4772), so a tier miss resolves
+    // to the pure builders over an empty scan -- a schema-stable zero card in
+    // list mode, or the same composite envelope with an empty counterparties
+    // list in relationship mode, never a GraphQL error.
+    const params = new URLSearchParams();
+    if (counterparty != null) params.set("counterparty", counterparty);
+    if (limit != null) params.set("limit", String(limit));
+    const tier = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/accounts/${encodeURIComponent(ss58)}/counterparties`,
+        params,
+      ),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
+    let data = tier;
+    if (data == null) {
+      if (counterparty != null) {
+        const rel = buildCounterpartyRelationship([], ss58, counterparty, {
+          limit,
+        });
+        data = {
+          schema_version: 1,
+          ss58,
+          counterparty_count: 0,
+          transfers_scanned: rel.transfers_scanned,
+          scan_capped: rel.scan_capped,
+          total_sent_tao: rel.total_sent_tao,
+          total_received_tao: rel.total_received_tao,
+          counterparties: [],
+          relationship: rel,
+        };
+      } else {
+        data = buildCounterparties([], ss58, { limit });
+      }
+    }
+    const rel = data.relationship;
+    return {
+      schema_version: data.schema_version ?? 1,
+      ss58: data.ss58 ?? ss58,
+      counterparty_count: data.counterparty_count ?? 0,
+      transfers_scanned: data.transfers_scanned ?? 0,
+      scan_capped: data.scan_capped ?? false,
+      total_sent_tao: data.total_sent_tao ?? 0,
+      total_received_tao: data.total_received_tao ?? 0,
+      counterparties: (data.counterparties ?? []).map((c) => ({
+        address: c.address,
+        sent_tao: c.sent_tao ?? 0,
+        received_tao: c.received_tao ?? 0,
+        net_tao: c.net_tao ?? 0,
+        transfer_count: c.transfer_count ?? 0,
+        last_block: c.last_block ?? null,
+      })),
+      relationship: rel
+        ? {
+            schema_version: rel.schema_version ?? 1,
+            ss58: rel.ss58 ?? ss58,
+            counterparty: rel.counterparty ?? counterparty,
+            transfer_count: rel.transfer_count ?? 0,
+            transfers_scanned: rel.transfers_scanned ?? 0,
+            scan_capped: rel.scan_capped ?? false,
+            total_sent_tao: rel.total_sent_tao ?? 0,
+            total_received_tao: rel.total_received_tao ?? 0,
+            net_tao: rel.net_tao ?? 0,
+            first_block: rel.first_block ?? null,
+            last_block: rel.last_block ?? null,
+            first_seen_at: rel.first_seen_at ?? null,
+            last_seen_at: rel.last_seen_at ?? null,
+            limit: rel.limit ?? 0,
+            transfers: (rel.transfers ?? []).map((t) => ({
+              block_number: t.block_number ?? null,
+              event_index: t.event_index ?? null,
+              netuid: t.netuid ?? null,
+              from: t.from ?? null,
+              to: t.to ?? null,
+              amount_tao: t.amount_tao ?? 0,
+              direction: t.direction,
+              observed_at: t.observed_at ?? null,
+            })),
+          }
+        : null,
     };
   },
 
