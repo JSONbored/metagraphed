@@ -2553,6 +2553,202 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
   });
 });
 
+describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty timeline fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag / no D1 rows returns a schema-stable empty timeline, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_identity_history(netuid: 1) {
+          schema_version netuid entry_count limit offset next_cursor
+          entries { subnet_name identity_hash }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_identity_history, {
+      schema_version: 1,
+      netuid: 1,
+      entry_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      entries: [],
+    });
+  });
+
+  test("resolves the Postgres-tier timeline entries", async () => {
+    const env = {
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          entry_count: 1,
+          limit: 50,
+          offset: 0,
+          next_cursor: null,
+          entries: [
+            {
+              block_number: 4200,
+              observed_at: "2026-07-01T00:00:00.000Z",
+              subnet_name: "Example",
+              symbol: "EX",
+              description: "desc",
+              github_repo: "https://github.com/example/repo",
+              subnet_url: "https://example.com",
+              discord: "https://discord.gg/example",
+              logo_url: "https://example.com/logo.png",
+              identity_hash: "abc123",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_identity_history(netuid: 7, limit: 50) {
+          netuid entry_count limit
+          entries {
+            block_number observed_at subnet_name symbol description
+            github_repo subnet_url discord logo_url identity_hash
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.subnet_identity_history;
+    assert.equal(r.netuid, 7);
+    assert.equal(r.entry_count, 1);
+    assert.equal(r.limit, 50);
+    assert.deepEqual(r.entries, [
+      {
+        block_number: 4200,
+        observed_at: "2026-07-01T00:00:00.000Z",
+        subnet_name: "Example",
+        symbol: "EX",
+        description: "desc",
+        github_repo: "https://github.com/example/repo",
+        subnet_url: "https://example.com",
+        discord: "https://discord.gg/example",
+        logo_url: "https://example.com/logo.png",
+        identity_hash: "abc123",
+      },
+    ]);
+  });
+
+  test("D1 fallback path shapes rows through loadSubnetIdentityHistory", async () => {
+    const observedAt = Date.parse("2026-06-15T12:00:00.000Z");
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return {
+                    results: [
+                      {
+                        id: 11,
+                        block_number: 100,
+                        observed_at: observedAt,
+                        subnet_name: "Alpha",
+                        symbol: "A",
+                        description: "alpha desc",
+                        github_repo: "https://github.com/jsonbored/alpha",
+                        subnet_url: "https://metagraph.sh",
+                        discord: "alpha#1234",
+                        logo_url: null,
+                        identity_hash: "deadbeef",
+                      },
+                    ],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ subnet_identity_history(netuid: 86, limit: 10) {
+          netuid entry_count limit
+          entries { block_number observed_at subnet_name symbol identity_hash }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.subnet_identity_history;
+    assert.equal(r.netuid, 86);
+    assert.equal(r.entry_count, 1);
+    assert.equal(r.limit, 10);
+    assert.equal(r.entries.length, 1);
+    assert.equal(r.entries[0].block_number, 100);
+    assert.equal(r.entries[0].observed_at, "2026-06-15T12:00:00.000Z");
+    assert.equal(r.entries[0].subnet_name, "Alpha");
+    assert.equal(r.entries[0].symbol, "A");
+    assert.equal(r.entries[0].identity_hash, "deadbeef");
+  });
+
+  test("pagination args are forwarded to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ subnet_identity_history(netuid: 3, limit: 25, offset: 10, cursor: "abc") { entry_count } }',
+      env,
+    );
+    assert.equal(capturedUrl.searchParams.get("limit"), "25");
+    assert.equal(capturedUrl.searchParams.get("offset"), "10");
+    assert.equal(capturedUrl.searchParams.get("cursor"), "abc");
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/identity-history"));
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_identity_history(netuid: 9) {
+          schema_version netuid entry_count limit offset next_cursor entries { subnet_name }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_identity_history, {
+      schema_version: 1,
+      netuid: 9,
+      entry_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      entries: [],
+    });
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty card", async () => {
+    const { body } = await gql(
+      "{ subnet_identity_history(netuid: -1) { entry_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_identity_history ?? null, null);
+  });
+
+  test("subnet_identity_history is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_identity_history, 5);
+  });
+});
+
 describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderboard)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 

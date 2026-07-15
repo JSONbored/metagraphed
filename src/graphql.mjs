@@ -41,9 +41,11 @@ import {
 } from "../workers/request-handlers/analytics.mjs";
 import {
   BLOCK_PAGINATION,
+  FEED_PAGINATION,
   clampLimit,
   clampOffset,
 } from "../workers/request-params.mjs";
+import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import {
   buildGlobalHealth,
   formatLeaderboards,
@@ -176,6 +178,8 @@ export const SDL = `
     subnet_weights(netuid: Int!, window: String): SubnetWeights!
     "Per-subnet emission-per-stake yield over the current metagraph snapshot: each UID's yield plus the subnet-wide aggregate and p25/median/p75/p90 distribution; a subnet with no neurons resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/yield."
     subnet_yield(netuid: Int!): SubnetYield!
+    "Append-only on-chain SubnetIdentitiesV3 change timeline for one subnet (name, symbol, description, repo, website, discord, logo), newest first; page with limit/offset or follow next_cursor. A subnet with no matching events resolves to a schema-stable empty timeline (entry_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/identity-history."
+    subnet_identity_history(netuid: Int!, limit: Int, offset: Int, cursor: String): SubnetIdentityHistory!
     "Paginated provider/source registry."
     providers(limit: Int, cursor: String): ProviderList!
     "One provider with its subnets."
@@ -643,6 +647,31 @@ export const SDL = `
     surface_count: Int
     ok_count: Int
     avg_latency_ms: Int
+  }
+
+  "Append-only on-chain subnet identity timeline (#1647 / #5721). Empty entries on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/identity-history."
+  type SubnetIdentityHistory {
+    schema_version: Int!
+    netuid: Int!
+    entry_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    entries: [SubnetIdentityHistoryEntry!]!
+  }
+
+  "One SubnetIdentitiesV3 snapshot recorded when a tracked identity field changed."
+  type SubnetIdentityHistoryEntry {
+    block_number: Int
+    observed_at: String
+    subnet_name: String
+    symbol: String
+    description: String
+    github_repo: String
+    subnet_url: String
+    discord: String
+    logo_url: String
+    identity_hash: String
   }
 
   "Per-subnet neuron-registration activity over a window (#5720). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/registrations."
@@ -1353,6 +1382,7 @@ export const FIELD_COMPLEXITY = {
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_yield: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2020,6 +2050,48 @@ const rootValue = {
       distinct_removers: data.distinct_removers ?? 0,
       removals: data.removals ?? 0,
       removals_per_remover: data.removals_per_remover ?? null,
+    };
+  },
+
+  async subnet_identity_history({ netuid, limit, offset, cursor }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (cursor) params.set("cursor", cursor);
+    // Same tryPostgresTier(METAGRAPH_SUBNET_IDENTITY_SOURCE) ->
+    // loadSubnetIdentityHistory fallback contract handleSubnetIdentityHistory
+    // uses; a subnet with no matching events is a schema-stable empty
+    // timeline (entry_count 0), never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/identity-history`,
+          params,
+        ),
+        "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+      )) ??
+      (await loadSubnetIdentityHistory(graphqlD1(context), netuid, {
+        limit: safeLimit,
+        offset: safeOffset,
+        cursor,
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      entry_count: data.entry_count ?? 0,
+      limit: data.limit ?? safeLimit,
+      offset: data.offset ?? safeOffset,
+      next_cursor: data.next_cursor ?? null,
+      entries: data.entries || [],
     };
   },
 
