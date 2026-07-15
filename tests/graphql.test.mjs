@@ -3708,6 +3708,135 @@ describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card f
   });
 });
 
+describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card fallback)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_registrations(ss58: "${SS58}") {
+          schema_version address window total_registrations subnet_count
+          concentration dominant_netuid subnets { netuid registrations }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_registrations, {
+      schema_version: 1,
+      address: SS58,
+      window: "30d",
+      total_registrations: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          data: {
+            schema_version: 1,
+            address: SS58,
+            window: "90d",
+            total_registrations: 7,
+            subnet_count: 2,
+            concentration: 0.63,
+            dominant_netuid: 1,
+            subnets: [
+              {
+                netuid: 1,
+                registrations: 5,
+                first_registered_at: "2026-04-01T00:00:00.000Z",
+                last_registered_at: "2026-06-01T00:00:00.000Z",
+              },
+              { netuid: 2, registrations: 2 },
+            ],
+          },
+          generatedAt: "2026-06-01T00:00:00.000Z",
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_registrations(ss58: "${SS58}", window: "90d") {
+          address window total_registrations subnet_count concentration dominant_netuid
+          subnets { netuid registrations first_registered_at last_registered_at }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.account_registrations;
+    assert.equal(r.window, "90d");
+    assert.equal(r.total_registrations, 7);
+    assert.equal(r.subnet_count, 2);
+    assert.equal(r.concentration, 0.63);
+    assert.equal(r.dominant_netuid, 1);
+    assert.deepEqual(r.subnets, [
+      {
+        netuid: 1,
+        registrations: 5,
+        first_registered_at: "2026-04-01T00:00:00.000Z",
+        last_registered_at: "2026-06-01T00:00:00.000Z",
+      },
+      {
+        netuid: 2,
+        registrations: 2,
+        first_registered_at: null,
+        last_registered_at: null,
+      },
+    ]);
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({ data: {} })),
+    };
+    const { status, body } = await gql(
+      `{ account_registrations(ss58: "${SS58}", window: "7d") {
+          schema_version address window total_registrations subnet_count
+          concentration dominant_netuid subnets { netuid }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_registrations, {
+      schema_version: 1,
+      address: SS58,
+      window: "7d",
+      total_registrations: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("a malformed ss58 address is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ account_registrations(ss58: "not-an-address") { total_registrations } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/ss58/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_registrations ?? null, null);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      `{ account_registrations(ss58: "${SS58}", window: "99d") { total_registrations } }`,
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|30d/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_registrations ?? null, null);
+  });
+});
+
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
