@@ -6748,6 +6748,231 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   });
 });
 
+describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+  const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function dataApi(response, capture) {
+    return {
+      fetch: async (req) => {
+        if (capture) capture.url = new URL(req.url);
+        return response;
+      },
+    };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty feed, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_transfers(ss58: "${SS58}") {
+          schema_version ss58 transfer_count limit offset next_cursor
+          transfers { block_number event_index from to amount_tao direction observed_at }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_transfers, {
+      schema_version: 1,
+      ss58: SS58,
+      transfer_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      transfers: [],
+    });
+  });
+
+  test("resolves the flat Postgres-tier envelope, mapping each transfer's fields", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          transfer_count: 1,
+          limit: 50,
+          offset: 0,
+          next_cursor: "b:1200:3",
+          transfers: [
+            {
+              block_number: 1200,
+              event_index: 3,
+              from: SS58,
+              to: OTHER,
+              amount_tao: 1.5,
+              direction: "sent",
+              observed_at: "2026-07-15T00:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_transfers(ss58: "${SS58}") {
+          schema_version ss58 transfer_count limit offset next_cursor
+          transfers { block_number event_index from to amount_tao direction observed_at }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_transfers, {
+      schema_version: 1,
+      ss58: SS58,
+      transfer_count: 1,
+      limit: 50,
+      offset: 0,
+      next_cursor: "b:1200:3",
+      transfers: [
+        {
+          block_number: 1200,
+          event_index: 3,
+          from: SS58,
+          to: OTHER,
+          amount_tao: 1.5,
+          direction: "sent",
+          observed_at: "2026-07-15T00:00:00.000Z",
+        },
+      ],
+    });
+  });
+
+  test("hits /api/v1/accounts/{ss58}/transfers and forwards every filter", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          transfer_count: 0,
+          limit: 5,
+          offset: 2,
+          next_cursor: null,
+          transfers: [],
+        }),
+        capture,
+      ),
+    };
+    const { status } = await gql(
+      `{ account_transfers(ss58: "${SS58}", limit: 5, offset: 2, cursor: "c:9:1", direction: "received", block_start: 10, block_end: 20) { transfer_count } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/transfers`);
+    assert.equal(capture.url.searchParams.get("limit"), "5");
+    assert.equal(capture.url.searchParams.get("offset"), "2");
+    assert.equal(capture.url.searchParams.get("cursor"), "c:9:1");
+    assert.equal(capture.url.searchParams.get("direction"), "received");
+    assert.equal(capture.url.searchParams.get("block_start"), "10");
+    assert.equal(capture.url.searchParams.get("block_end"), "20");
+  });
+
+  test("clamps limit/offset to FEED_PAGINATION bounds before forwarding", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({}), capture),
+    };
+    await gql(
+      `{ account_transfers(ss58: "${SS58}", limit: 100000, offset: -5) { transfer_count } }`,
+      env,
+    );
+    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
+    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
+    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
+    assert.equal(forwardedOffset, 0);
+    // No filter params were supplied, so none are forwarded.
+    assert.equal(capture.url.searchParams.get("cursor"), null);
+    assert.equal(capture.url.searchParams.get("direction"), null);
+    assert.equal(capture.url.searchParams.get("block_start"), null);
+    assert.equal(capture.url.searchParams.get("block_end"), null);
+  });
+
+  test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ account_transfers(ss58: "${SS58}") {
+          schema_version ss58 transfer_count limit offset next_cursor transfers { from }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_transfers, {
+      schema_version: 1,
+      ss58: SS58,
+      transfer_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      transfers: [],
+    });
+  });
+
+  test("a transfer row with missing fields degrades each to null", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          transfer_count: 1,
+          next_cursor: null,
+          transfers: [{}],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_transfers(ss58: "${SS58}") {
+          transfers { block_number event_index from to amount_tao direction observed_at }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_transfers.transfers, [
+      {
+        block_number: null,
+        event_index: null,
+        from: null,
+        to: null,
+        amount_tao: null,
+        direction: null,
+        observed_at: null,
+      },
+    ]);
+  });
+
+  test("an invalid ss58 is a GraphQL error and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { body } = await gql(
+      '{ account_transfers(ss58: "not-an-address") { transfer_count } }',
+      env,
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/ss58/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_transfers ?? null, null);
+    assert.equal(called, false);
+  });
+
+  test("account_transfers is weighted as a relationship field", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.account_transfers,
+      FIELD_COMPLEXITY.account_identity_history,
+    );
+  });
+});
+
 describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live fallback)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
