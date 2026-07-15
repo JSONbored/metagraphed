@@ -1,5 +1,6 @@
 {
   "categories": [],
+  "contact": "support@resilabs.ai",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
@@ -8,10 +9,11 @@
   "netuid": 46,
   "schema_version": 1,
   "slug": "sn-46",
-  "status": "active",
   "social": {
     "x": "https://x.com/resilabsai"
   },
+  "source_repo": "https://github.com/resi-labs-ai/RESI-models",
+  "status": "active",
   "surfaces": [
     {
       "auth_required": false,
@@ -90,9 +92,29 @@
         "https://zipcode.ai/api/dashboard/docs"
       ],
       "url": "https://zipcode.ai/api/dashboard/stats/emissions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-46-zipcode-real-estate-validation-set",
+      "kind": "data-artifact",
+      "name": "Zipcode real estate validation dataset",
+      "notes": "Public no-auth GET returning the SN46 real-estate validation dataset (price, living_area_sqft, lot_size_sqft, bedrooms, bathrooms, lat/long, year_built, and other property features), the miner-model evaluation ground truth. Documented in the RESI Dashboard API docs (path /api/dashboard/validation-set/real_estate/download).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://zipcode.ai/api/dashboard/docs"],
+      "url": "https://zipcode.ai/api/dashboard/validation-set/real_estate/download"
     }
   ],
-  "source_repo": "https://github.com/resi-labs-ai/RESI-models",
-  "website_url": "https://zipcode.ai/",
-  "contact": "support@resilabs.ai"
+  "website_url": "https://zipcode.ai/"
 }
