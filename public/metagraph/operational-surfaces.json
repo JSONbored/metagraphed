@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 229,
+  "surface_count": 231,
   "surfaces": [
     {
       "auth_required": false,
@@ -1757,6 +1757,42 @@
       "surface_id": "sn-19-blockmachine-subnet-api",
       "surface_key": "srf-f8bda901a1163175",
       "url": "https://api.blockmachine.io/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 20,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "groundlayer",
+      "public_safe": true,
+      "subnet_name": "GroundLayer",
+      "subnet_slug": "sn-20",
+      "surface_id": "sn-20-groundlayer-og-card-image",
+      "surface_key": "srf-6db21964dec0114d",
+      "url": "https://www.groundlayer.xyz/og-groundlayer.png"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 20,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "GroundLayer",
+      "subnet_slug": "sn-20",
+      "surface_id": "sn-20-taomarketcap-subnet-api",
+      "surface_key": "srf-ebe7ad3af0b78382",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/20"
     },
     {
       "auth_required": false,

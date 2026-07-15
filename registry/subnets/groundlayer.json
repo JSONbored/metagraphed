@@ -33,7 +33,7 @@
   "dashboard_url": "https://taomarketcap.com/subnets/20",
   "name": "GroundLayer",
   "netuid": 20,
-  "notes": "Reviewed overlay for SN20 using the live GroundLayer website, subnet page, and roadmap. Previously discovered source repository candidates are not live and common API/docs/OpenAPI paths currently return 404.",
+  "notes": "Reviewed overlay for SN20 using the live GroundLayer website, subnet page, and roadmap. Previously discovered source repository candidates are not live and common API/docs/OpenAPI paths currently return 404. Investigated rizzo.network (from the contact email groundlayer@rizzo.network) as a possible operator site/source-repo lead: confirmed it's a validator operator (Taostats-linked) with no on-page mention of GroundLayer/SN20, and its linked GitHub account (RogueTensor) has a single unrelated repo -- not added as a surface, source_repo remains null. 2 community-submitted surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed.",
   "schema_version": 1,
   "slug": "sn-20",
   "social": {
@@ -112,6 +112,12 @@
       "kind": "data-artifact",
       "name": "GroundLayer OpenGraph card image",
       "notes": "Public no-auth PNG brand image served at www.groundlayer.xyz/og-groundlayer.png and referenced by the official GroundLayer homepage OpenGraph and Twitter card metadata for SN20 social previews.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "groundlayer",
       "public_safe": true,
       "review": {
@@ -131,6 +137,12 @@
       "kind": "subnet-api",
       "name": "GroundLayer TaoMarketCap subnet snapshot API",
       "notes": "Public no-auth GET /public/v1/subnets/20 on api.taomarketcap.com returning machine-readable JSON for SN20 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. GroundLayer's official website paths under www.groundlayer.xyz do not expose a verified first-party public API; this indexed feed is documented in the TaoMarketCap developer API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
