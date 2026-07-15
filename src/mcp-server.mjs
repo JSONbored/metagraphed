@@ -31,6 +31,11 @@ import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   isValidMcpSessionId,
 } from "../workers/mcp-session-hub.mjs";
+import {
+  GRAPHQL_MAX_COMPLEXITY,
+  GRAPHQL_MAX_DEPTH,
+  handleGraphQLRequest,
+} from "./graphql.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.mjs";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
@@ -1643,6 +1648,21 @@ function requireString(args, key) {
     );
   }
   return value.trim();
+}
+
+// A plain object (not an array) for GraphQL `variables`, or undefined when
+// absent — matches the shape handleGraphQLRequest destructures from the POST
+// body.
+function optionalVariables(args) {
+  const value = args?.variables;
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw toolError(
+      "invalid_params",
+      "Argument `variables` must be an object when provided.",
+    );
+  }
+  return value;
 }
 
 // A trimmed optional string, or null when absent/blank — for free-form filters
@@ -9385,6 +9405,62 @@ export const MCP_TOOLS = [
       });
     },
   },
+  {
+    name: "query_graphql",
+    title: "Run a GraphQL query against /api/v1/graphql",
+    description:
+      "Forward an arbitrary read-only query (+ optional variables) to the " +
+      "metagraphed GraphQL endpoint and return its JSON-RPC-style result " +
+      `({ data, errors }). Prefer this over the individual REST-mirrored ` +
+      "tools (get_subnet, list_subnets, ...) when you need arbitrary field " +
+      "selection or several nested relations in one round-trip; prefer a " +
+      "dedicated tool instead when the lookup is a single well-known shape, " +
+      "since it needs no query string. Mutations are not supported — the " +
+      `schema is query-only. Subject to the same limits as the REST ` +
+      `endpoint: max depth ${GRAPHQL_MAX_DEPTH}, max complexity ` +
+      `${GRAPHQL_MAX_COMPLEXITY}; a query over either limit returns an ` +
+      "error instead of executing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "GraphQL query document, e.g. '{ health { status } }'.",
+        },
+        variables: {
+          type: "object",
+          description: "Optional variables object for the query.",
+        },
+        operationName: {
+          type: "string",
+          description:
+            "Optional operation name, required only when `query` defines more than one operation.",
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const query = requireString(args, "query");
+      const variables = optionalVariables(args);
+      const operationName = optionalString(args, "operationName");
+      const request = new Request("https://internal/api/v1/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query,
+          variables,
+          operationName: operationName ?? undefined,
+        }),
+      });
+      const response = await handleGraphQLRequest(request, ctx.env);
+      const result = await response.json();
+      if (response.status >= 400) {
+        throw toolError("invalid_params", result.errors[0].message);
+      }
+      return result;
+    },
+  },
 ];
 
 const TOOLS_BY_NAME = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
@@ -12852,6 +12928,14 @@ const TOOL_OUTPUT_SCHEMAS = {
       error: NULLABLE_STRING,
       probed_at: NULLABLE_STRING,
       from_cache: { type: "boolean" },
+    },
+  },
+  query_graphql: {
+    type: "object",
+    additionalProperties: true,
+    properties: {
+      data: { type: ["object", "null"] },
+      errors: { type: "array", items: { type: "object" } },
     },
   },
 };

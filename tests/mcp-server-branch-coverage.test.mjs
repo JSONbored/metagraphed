@@ -1471,3 +1471,56 @@ describe("get_build — branch coverage", () => {
     assert.match(res.body.result.content[0].text, /build-summary\.json/);
   });
 });
+
+// ── query_graphql — GraphQL bridge branches ───────────────────────────────
+describe("query_graphql — branch coverage", () => {
+  test("forwards query + variables + operationName and returns the endpoint's data", async () => {
+    const res = await callTool("query_graphql", {
+      query:
+        "query GetSubnet($n: Int!) { subnet(netuid: $n) { netuid } }",
+      variables: { n: 1 },
+      operationName: "GetSubnet",
+    });
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(res.body.result.structuredContent, {
+      data: { subnet: null },
+    });
+  });
+
+  test("runs without optional variables/operationName", async () => {
+    const res = await callTool("query_graphql", {
+      query: "{ health { status } }",
+    });
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(res.body.result.structuredContent, {
+      data: { health: null },
+    });
+  });
+
+  test("rejects a missing query", async () => {
+    const res = await callTool("query_graphql", {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Argument `query` must be a non-empty string/,
+    );
+  });
+
+  test("rejects a non-object `variables`", async () => {
+    const res = await callTool("query_graphql", {
+      query: "{ health { status } }",
+      variables: [1, 2],
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Argument `variables` must be an object/,
+    );
+  });
+
+  test("surfaces the endpoint's parse error as invalid_params", async () => {
+    const res = await callTool("query_graphql", { query: "{ subnet(" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /^invalid_params:/);
+  });
+});
