@@ -6,7 +6,18 @@ import {
   buildSwapStakeLimitParams,
   buildMoveStakeParams,
 } from "./stake-extrinsics";
-import { getApi, buildExtrinsic, getNextNonce } from "./chain-connection";
+import { buildIncreaseTakeParams, buildDecreaseTakeParams } from "./take-extrinsics";
+import {
+  getApi,
+  buildExtrinsic,
+  getNextNonce,
+  getCurrentBlock,
+  getMaxDelegateTake,
+  getMinDelegateTake,
+  getTxDelegateTakeRateLimit,
+  getCurrentTakeParts,
+  getLastTxBlockDelegateTake,
+} from "./chain-connection";
 import type { ApiPromise } from "@polkadot/api";
 
 const HOTKEY_A = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
@@ -50,6 +61,8 @@ function makeFakeApi() {
         removeStakeLimit: record("removeStakeLimit"),
         swapStakeLimit: record("swapStakeLimit"),
         moveStake: record("moveStake"),
+        increaseTake: record("increaseTake"),
+        decreaseTake: record("decreaseTake"),
       },
     },
   } as unknown as ApiPromise;
@@ -121,6 +134,20 @@ describe("buildExtrinsic", () => {
     buildExtrinsic(api, params);
     expect(calls.moveStake).toEqual([HOTKEY_A, HOTKEY_B, 4, 4, alphaToRawAlpha("3")]);
   });
+
+  it("calls increaseTake with (hotkey, take), in order", () => {
+    const { api, calls } = makeFakeApi();
+    const params = buildIncreaseTakeParams({ hotkey: HOTKEY_A, take: 1000 });
+    buildExtrinsic(api, params);
+    expect(calls.increaseTake).toEqual([HOTKEY_A, 1000]);
+  });
+
+  it("calls decreaseTake with (hotkey, take), in order", () => {
+    const { api, calls } = makeFakeApi();
+    const params = buildDecreaseTakeParams({ hotkey: HOTKEY_A, take: 500 });
+    buildExtrinsic(api, params);
+    expect(calls.decreaseTake).toEqual([HOTKEY_A, 500]);
+  });
 });
 
 describe("getNextNonce", () => {
@@ -129,5 +156,71 @@ describe("getNextNonce", () => {
     const api = { rpc: { system: { accountNextIndex } } } as unknown as ApiPromise;
     await expect(getNextNonce(api, HOTKEY_A)).resolves.toBe(7);
     expect(accountNextIndex).toHaveBeenCalledWith(HOTKEY_A);
+  });
+});
+
+describe("getCurrentBlock", () => {
+  it("returns the chain header's block number as a plain number", async () => {
+    const getHeader = vi.fn(async () => ({ number: { toNumber: () => 8_623_860 } }));
+    const api = { rpc: { chain: { getHeader } } } as unknown as ApiPromise;
+    await expect(getCurrentBlock(api)).resolves.toBe(8_623_860);
+  });
+});
+
+describe("live delegate-take bounds/rate-limit queries", () => {
+  function makeQueryApi(overrides: {
+    maxDelegateTake?: number;
+    minDelegateTake?: number;
+    txDelegateTakeRateLimit?: number;
+    currentTakeParts?: number;
+    lastRateLimitedBlock?: number;
+  }) {
+    const lastRateLimitedBlock = vi.fn(async (_key: unknown) => ({
+      toNumber: () => overrides.lastRateLimitedBlock ?? 0,
+    }));
+    const delegates = vi.fn(async (_hotkey: string) => ({
+      toNumber: () => overrides.currentTakeParts ?? 0,
+    }));
+    const api = {
+      query: {
+        subtensorModule: {
+          maxDelegateTake: vi.fn(async () => ({ toNumber: () => overrides.maxDelegateTake ?? 0 })),
+          minDelegateTake: vi.fn(async () => ({ toNumber: () => overrides.minDelegateTake ?? 0 })),
+          txDelegateTakeRateLimit: vi.fn(async () => ({
+            toNumber: () => overrides.txDelegateTakeRateLimit ?? 0,
+          })),
+          delegates,
+          lastRateLimitedBlock,
+        },
+      },
+    } as unknown as ApiPromise;
+    return { api, delegates, lastRateLimitedBlock };
+  }
+
+  it("getMaxDelegateTake returns the live-confirmed 18% bound (11796 parts)", async () => {
+    const { api } = makeQueryApi({ maxDelegateTake: 11_796 });
+    await expect(getMaxDelegateTake(api)).resolves.toBe(11_796);
+  });
+
+  it("getMinDelegateTake returns the live queried floor", async () => {
+    const { api } = makeQueryApi({ minDelegateTake: 0 });
+    await expect(getMinDelegateTake(api)).resolves.toBe(0);
+  });
+
+  it("getTxDelegateTakeRateLimit returns the live-confirmed 216000-block period", async () => {
+    const { api } = makeQueryApi({ txDelegateTakeRateLimit: 216_000 });
+    await expect(getTxDelegateTakeRateLimit(api)).resolves.toBe(216_000);
+  });
+
+  it("getCurrentTakeParts queries delegates with the hotkey", async () => {
+    const { api, delegates } = makeQueryApi({ currentTakeParts: 655 });
+    await expect(getCurrentTakeParts(api, HOTKEY_A)).resolves.toBe(655);
+    expect(delegates).toHaveBeenCalledWith(HOTKEY_A);
+  });
+
+  it("getLastTxBlockDelegateTake queries lastRateLimitedBlock with the LastTxBlockDelegateTake enum key", async () => {
+    const { api, lastRateLimitedBlock } = makeQueryApi({ lastRateLimitedBlock: 8_600_000 });
+    await expect(getLastTxBlockDelegateTake(api, HOTKEY_A)).resolves.toBe(8_600_000);
+    expect(lastRateLimitedBlock).toHaveBeenCalledWith({ LastTxBlockDelegateTake: HOTKEY_A });
   });
 });
