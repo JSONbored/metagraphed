@@ -53,6 +53,13 @@ export const getRouter = () => {
           if (error instanceof ApiError && error.code === "artifact_not_found") {
             return false;
           }
+          // #2564: `data_tier_unavailable` means the DATA_API service binding
+          // isn't wired into this deployment — retrying won't change that
+          // within a session, so don't burn 3 retries with backoff before the
+          // DataTierUnavailableNotice degradation renders.
+          if (error instanceof ApiError && error.code === "data_tier_unavailable") {
+            return false;
+          }
           return failureCount < 3;
         },
       },
