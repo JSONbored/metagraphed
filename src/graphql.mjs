@@ -10,6 +10,10 @@ import { readArtifact, readHealthKv } from "../workers/storage.mjs";
 import { contractVersion } from "../workers/responses.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import {
+  analyticsWindow,
+  loadGlobalIncidentsLedger,
+} from "../workers/request-handlers/analytics.mjs";
+import {
   BLOCK_PAGINATION,
   clampLimit,
   clampOffset,
@@ -74,6 +78,9 @@ export const GRAPHQL_MAX_QUERY_BYTES = 16 * 1024;
 // artifact and so cost a read / fan out per parent) are the only ones backed by
 // explicit resolver thunks, and each carries a complexity weight below.
 export const SDL = `
+  "Opaque JSON value, for dynamic-keyed maps with no fixed field set (e.g. the incident summary's by_kind/by_provider/by_status count maps) -- matching how the MCP mirror serves them."
+  scalar JSON
+
   type Query {
     "Paginated active-subnet index."
     subnets(limit: Int, cursor: String): SubnetList!
@@ -95,6 +102,8 @@ export const SDL = `
     opportunity_boards(limit: Int): OpportunityBoards!
     "Cross-subnet comparison: registry structure, live economics, and live health placed side by side for the requested netuids, in requested order. Mirrors GET /api/v1/compare."
     compare(netuids: [Int!]!, dimensions: [String!]): Compare!
+    "Global endpoint-incident ledger over a 7d/30d window; degrades to a schema-stable empty ledger (never a GraphQL error) on a cold/retired health tier. Mirrors GET /api/v1/incidents."
+    incidents(window: String): GlobalIncidents!
     "Recent-extrinsic feed (newest first), optionally filtered. Mirrors GET /api/v1/extrinsics."
     extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
     "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
@@ -449,6 +458,45 @@ export const SDL = `
     surface_count: Int
     ok_count: Int
     avg_latency_ms: Int
+  }
+
+  "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope."
+  type GlobalIncidents {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    source: String
+    "Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape."
+    summary: JSON
+    surfaces: [EndpointIncident!]!
+  }
+
+  "One endpoint incident in the global ledger. Mirrors the REST EndpointIncident shape (enum-valued fields carried as their string values)."
+  type EndpointIncident {
+    id: String
+    endpoint_id: String
+    state: String
+    severity: String
+    status: String
+    reason: String
+    kind: String
+    layer: String
+    classification: String
+    netuid: Int
+    provider: String
+    operator: String
+    subnet_name: String
+    subnet_slug: String
+    surface_id: String
+    surface_key: String
+    detected_at: String
+    last_checked: String
+    last_ok: String
+    observed_at: String
+    health_stale: Boolean
+    health_source: String
+    pool_eligible: Boolean
+    user_reported: Boolean
   }
 
   type ExtrinsicList {
@@ -838,6 +886,7 @@ export const FIELD_COMPLEXITY = {
   accounts: RELATIONSHIP_FIELD_COMPLEXITY,
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
+  incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1468,6 +1517,41 @@ const rootValue = {
       dimensions: parsedDimensions,
       observedAt: await loadObservedAt(context),
     });
+  },
+
+  async incidents({ window }, context) {
+    // Reuse the exact analyticsWindow parse/validate REST's handleGlobalIncidents
+    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL BAD_USER_INPUT
+    // error, not a silent empty result. analyticsWindow reads only the ?window param.
+    const windowUrl = new URL(context.request.url);
+    windowUrl.search = "";
+    if (window != null) windowUrl.searchParams.set("window", window);
+    const { label, days, error } = analyticsWindow(windowUrl);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same METAGRAPH_HEALTH_SOURCE Postgres tier -> loadGlobalIncidentsLedger D1
+    // fallback contract handleGlobalIncidents uses; the ledger is schema-stable on
+    // a cold/retired tier (empty surfaces + zeroed summary), never a GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", label);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/incidents", params),
+        "METAGRAPH_HEALTH_SOURCE",
+      )) ??
+      (await loadGlobalIncidentsLedger(context.env, { label, days })).data;
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? label,
+      observed_at: data.observed_at ?? null,
+      source: data.source ?? null,
+      summary: data.summary ?? null,
+      surfaces: data.surfaces ?? [],
+    };
   },
 
   async extrinsics(

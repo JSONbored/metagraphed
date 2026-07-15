@@ -2951,6 +2951,121 @@ describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback
   });
 });
 
+describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledger)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+  // Minimal D1 stub: every query returns no rows, so loadGlobalIncidentsLedger's
+  // fallback path runs to a schema-stable empty ledger without a live DB.
+  const emptyHealthDb = {
+    prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }),
+  };
+
+  test("cold store: no Postgres flag falls back to the D1 ledger, schema-stable empty, never null", async () => {
+    const { status, body } = await gql(
+      "{ incidents { schema_version window surfaces { id } } }",
+      { METAGRAPH_HEALTH_DB: emptyHealthDb },
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.incidents.schema_version, 1);
+    assert.equal(body.data.incidents.window, "7d");
+    assert.deepEqual(body.data.incidents.surfaces, []);
+  });
+
+  test("resolves the Postgres-tier ledger, including the JSON summary and typed surfaces", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          window: "30d",
+          observed_at: "2026-07-01T00:00:00.000Z",
+          source: "postgres",
+          summary: {
+            incident_count: 2,
+            active_count: 1,
+            by_status: { down: 1, warn: 1 },
+            by_severity: { high: 1, medium: 1 },
+            by_kind: {},
+            by_layer: {},
+            by_provider: { acme: 2 },
+          },
+          surfaces: [
+            {
+              id: "inc-1",
+              endpoint_id: "ep-1",
+              state: "down",
+              severity: "high",
+              status: "down",
+              reason: "probe timeout",
+              netuid: 5,
+              provider: "acme",
+              health_stale: false,
+              pool_eligible: true,
+              user_reported: false,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ incidents(window: "30d") {
+          schema_version window observed_at source
+          summary
+          surfaces { id endpoint_id state severity status reason netuid provider health_stale pool_eligible user_reported }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const inc = body.data.incidents;
+    assert.equal(inc.window, "30d");
+    assert.equal(inc.observed_at, "2026-07-01T00:00:00.000Z");
+    // JSON scalar passes the dynamic-keyed summary through as-is.
+    assert.equal(inc.summary.incident_count, 2);
+    assert.equal(inc.summary.active_count, 1);
+    assert.deepEqual(inc.summary.by_status, { down: 1, warn: 1 });
+    assert.deepEqual(inc.summary.by_provider, { acme: 2 });
+    assert.equal(inc.surfaces.length, 1);
+    assert.equal(inc.surfaces[0].id, "inc-1");
+    assert.equal(inc.surfaces[0].state, "down");
+    assert.equal(inc.surfaces[0].netuid, 5);
+    assert.equal(inc.surfaces[0].pool_eligible, true);
+  });
+
+  test("a partial Postgres-tier body degrades to the schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      '{ incidents(window: "30d") { schema_version window observed_at source summary surfaces { id } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.incidents, {
+      schema_version: 1,
+      window: "30d",
+      observed_at: null,
+      source: null,
+      summary: null,
+      surfaces: [],
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent empty ledger", async () => {
+    const { body } = await gql(
+      '{ incidents(window: "99d") { schema_version } }',
+      {
+        METAGRAPH_HEALTH_DB: emptyHealthDb,
+      },
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|7d/i.test(body.errors[0].message));
+    assert.equal(body.data?.incidents ?? null, null);
+  });
+});
+
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
