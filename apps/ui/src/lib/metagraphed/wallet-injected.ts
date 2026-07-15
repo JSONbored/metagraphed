@@ -23,6 +23,7 @@
 // zero SSR risk.
 
 import type { InjectedAccountWithMeta } from "@polkadot/extension-inject/types";
+import type { Signer } from "@polkadot/api/types";
 
 export type { InjectedAccountWithMeta };
 
@@ -45,4 +46,22 @@ export async function connectWallet(): Promise<InjectedAccountWithMeta[]> {
   const extensions = await web3Enable("Metagraphed");
   if (extensions.length === 0) return [];
   return web3Accounts();
+}
+
+/**
+ * The Signer for a specific extension source (account.meta.source, e.g.
+ * "polkadot-js" | "talisman" | "subwallet-js" | "taostats"), for use with
+ * extrinsic.signAndSend()/submitStakeExtrinsic(). Throws under SSR -- unlike
+ * connectWallet()/hasInjectedWallet(), which resolve to an empty/false value
+ * so callers can render around them, there is no sensible fallback for "give
+ * me a signer" with no window -- every caller of this function is itself
+ * already client-only (mid-flow after a wallet is already connected).
+ */
+export async function getSigner(source: string): Promise<Signer> {
+  if (typeof window === "undefined") {
+    throw new Error("getSigner() is client-only and must not be called during SSR");
+  }
+  const { web3FromSource } = await import("@polkadot/extension-dapp");
+  const extension = await web3FromSource(source);
+  return extension.signer;
 }

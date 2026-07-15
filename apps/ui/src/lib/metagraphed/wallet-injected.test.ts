@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { hasInjectedWallet, connectWallet } from "./wallet-injected";
+import { hasInjectedWallet, connectWallet, getSigner } from "./wallet-injected";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -37,5 +37,19 @@ describe("connectWallet (SSR safety only)", () => {
     // No window stubbed at all — matches how this module is actually invoked during
     // server rendering, where `window` is genuinely undefined, not merely falsy.
     await expect(connectWallet()).resolves.toEqual([]);
+  });
+});
+
+// Same posture as connectWallet above: only the SSR guard is exercised here. The real
+// web3FromSource dynamic-import path is deliberately NOT exercised in this unit suite
+// for the same WASM-avoidance reason. Real coverage is manual QA with an actual browser
+// extension; see the PR description.
+describe("getSigner (SSR safety only)", () => {
+  it("rejects under SSR without ever touching @polkadot/extension-dapp", async () => {
+    // No window stubbed at all — matches how this module is actually invoked during
+    // server rendering, where `window` is genuinely undefined, not merely falsy.
+    await expect(getSigner("polkadot-js")).rejects.toThrow(
+      "getSigner() is client-only and must not be called during SSR",
+    );
   });
 });

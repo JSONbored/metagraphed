@@ -51,6 +51,8 @@ import type {
   AccountStakeFlowSubnet,
   AccountHistory,
   AccountPortfolio,
+  AccountPosition,
+  AccountPositions,
   AccountStakeMoves,
   AccountStakeMovesSubnet,
   AccountRegistration,
@@ -2853,6 +2855,52 @@ export const accountPortfolioQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountPortfolio>;
+    },
+    staleTime: STALE_MED,
+  });
+
+export function normalizeAccountPosition(raw: unknown): AccountPosition | null {
+  if (!isRecord(raw)) return null;
+  const hotkey = firstString(raw.hotkey);
+  const netuid = firstFiniteNumber(raw.netuid);
+  const shareFraction = firstFiniteNumber(raw.share_fraction);
+  const stakeTao = firstFiniteNumber(raw.stake_tao);
+  if (!hotkey || netuid == null || shareFraction == null || stakeTao == null) return null;
+  return { hotkey, netuid, share_fraction: shareFraction, stake_tao: stakeTao };
+}
+
+/**
+ * #5233: the coldkey-scoped counterpart to accountPortfolioQuery. NOT a live
+ * query -- see AccountPositions' own doc comment (types.ts) for the
+ * daily/weekly-scan + zero-root-coverage caveats. Callers using this to
+ * prefill a stake/unstake "Max" amount must surface captured_at as a
+ * staleness label, and must not offer Max at all for netuid 0.
+ */
+export const accountPositionsQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-positions", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/positions`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const positions = Array.isArray(d.positions)
+        ? d.positions.slice(0, MAX_ACCOUNT_POSITIONS).flatMap((position) => {
+            const normalized = normalizeAccountPosition(position);
+            return normalized ? [normalized] : [];
+          })
+        : [];
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          captured_at: firstString(d.captured_at) ?? null,
+          position_count: firstFiniteNumber(d.position_count) ?? positions.length,
+          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? 0,
+          positions,
+        } as AccountPositions,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountPositions>;
     },
     staleTime: STALE_MED,
   });

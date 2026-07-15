@@ -6,7 +6,7 @@ import {
   buildSwapStakeLimitParams,
   buildMoveStakeParams,
 } from "./stake-extrinsics";
-import { getApi, buildExtrinsic } from "./chain-connection";
+import { getApi, buildExtrinsic, getNextNonce } from "./chain-connection";
 import type { ApiPromise } from "@polkadot/api";
 
 const HOTKEY_A = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
@@ -120,5 +120,14 @@ describe("buildExtrinsic", () => {
     });
     buildExtrinsic(api, params);
     expect(calls.moveStake).toEqual([HOTKEY_A, HOTKEY_B, 4, 4, alphaToRawAlpha("3")]);
+  });
+});
+
+describe("getNextNonce", () => {
+  it("returns the accountNextIndex RPC result as a plain number", async () => {
+    const accountNextIndex = vi.fn(async (_ss58: string) => ({ toNumber: () => 7 }));
+    const api = { rpc: { system: { accountNextIndex } } } as unknown as ApiPromise;
+    await expect(getNextNonce(api, HOTKEY_A)).resolves.toBe(7);
+    expect(accountNextIndex).toHaveBeenCalledWith(HOTKEY_A);
   });
 });

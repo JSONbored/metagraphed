@@ -94,6 +94,19 @@ export async function getFreeBalance(api: ApiPromise, coldkeySs58: string): Prom
 }
 
 /**
+ * The next unused transaction index (nonce) for an account, including any
+ * still-pending transactions in the node's tx pool -- for
+ * computeIdempotencyKey's nonce input. This is a standard substrate RPC
+ * (system_accountNextIndex, aka `system.accountNextIndex`), fully typed via
+ * @polkadot/api-augment unlike subtensor's own custom pallet surface, so no
+ * narrow local interface cast is needed here.
+ */
+export async function getNextNonce(api: ApiPromise, ss58: string): Promise<number> {
+  const index = await api.rpc.system.accountNextIndex(ss58);
+  return index.toNumber();
+}
+
+/**
  * Turn a pure params object (from stake-extrinsics.ts's builders) into a
  * signable SubmittableExtrinsic against this connection's runtime metadata.
  * The parameter ORDER passed to each api.tx.subtensorModule.* call below must

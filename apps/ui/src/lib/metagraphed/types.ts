@@ -1358,6 +1358,38 @@ export interface AccountPortfolio {
   [key: string]: unknown;
 }
 
+/**
+ * One reconstructed nominator-side (coldkey) position from
+ * buildAccountPositions (src/account-nominator-positions.mjs) -- share_fraction
+ * is dimensionless (the coldkey's share of that hotkey+netuid's total stake),
+ * not a snapshotted TAO figure; stake_tao is derived by multiplying it against
+ * the live neurons stake_tao at read time.
+ */
+export interface AccountPosition {
+  hotkey: string;
+  netuid: number;
+  share_fraction: number;
+  stake_tao: number;
+}
+
+/**
+ * #5233: /api/v1/accounts/{ss58}/positions -- the coldkey-scoped counterpart to
+ * AccountPortfolio (hotkey-scoped). Sourced from nominator_positions, populated
+ * by a daily/weekly full-chain scan (scripts/fetch-validator-nominator-counts.py)
+ * -- NOT a live query. Root (netuid 0) has zero coverage: SubtensorModule::Alpha
+ * carries no root data (root is TAO-denominated 1:1, no alpha pool). Treat
+ * captured_at as a staleness label for UI display, never as authoritative for a
+ * fund-safety decision.
+ */
+export interface AccountPositions {
+  ss58: string;
+  captured_at: string | null;
+  position_count: number;
+  total_stake_tao: number;
+  positions: AccountPosition[];
+  [key: string]: unknown;
+}
+
 /** Cross-subnet activity summary for one account from /api/v1/accounts/{ss58}. */
 export interface AccountSummary {
   ss58: string;

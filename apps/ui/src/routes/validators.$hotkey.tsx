@@ -14,6 +14,7 @@ import { ValidatorHistoryChart } from "@/components/metagraphed/validator-histor
 import { ValidatorApyPanel } from "@/components/metagraphed/validator-apy-panel";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
 import { WatchValidatorAlert } from "@/components/metagraphed/watch-validator-alert";
+import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import {
   ValidatorNominatorsTable,
   type ValidatorNominatorsSearch,
@@ -98,7 +99,15 @@ function ValidatorDetailGate({ hotkey }: { hotkey: string }) {
 
 const TH = "px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted";
 
-function SubnetPerformanceTable({ subnets }: { subnets: ValidatorDetailSubnet[] }) {
+function SubnetPerformanceTable({
+  hotkey,
+  validatorName,
+  subnets,
+}: {
+  hotkey: string;
+  validatorName?: string;
+  subnets: ValidatorDetailSubnet[];
+}) {
   if (subnets.length === 0) {
     return (
       <EmptyState
@@ -120,6 +129,7 @@ function SubnetPerformanceTable({ subnets }: { subnets: ValidatorDetailSubnet[] 
             <th className={`${TH} text-right`}>Dividends</th>
             <th className={`${TH} text-right`}>Val trust</th>
             <th className={`${TH} text-center`}>Permit</th>
+            <th className={`${TH} text-right`}>Stake</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -157,6 +167,23 @@ function SubnetPerformanceTable({ subnets }: { subnets: ValidatorDetailSubnet[] 
                 ) : (
                   <span className="font-mono text-[10px] text-ink-subtle-text">—</span>
                 )}
+              </td>
+              <td className="px-3 py-2 text-right">
+                <StakeUnstakeModal
+                  hotkey={hotkey}
+                  netuid={s.netuid}
+                  validatorName={validatorName}
+                  trigger={(open) => (
+                    <button
+                      type="button"
+                      onClick={open}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+                    >
+                      <Coins className="size-3 text-ink-muted" aria-hidden />
+                      Stake
+                    </button>
+                  )}
+                />
               </td>
             </tr>
           ))}
@@ -321,7 +348,11 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
       </SectionAnchor>
 
       <SectionAnchor id="subnets" title="Per-subnet performance" tone="accent">
-        <SubnetPerformanceTable subnets={detail.subnets} />
+        <SubnetPerformanceTable
+          hotkey={hotkey}
+          validatorName={hasIdentity ? displayName : undefined}
+          subnets={detail.subnets}
+        />
       </SectionAnchor>
 
       <SectionAnchor
