@@ -25,7 +25,7 @@ export function SettingsSummaryStrip({ tiles }: SettingsSummaryStripProps = {}) 
   const rows = tiles ?? buildSettingsSummaryTiles();
   return (
     <div
-      className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3"
+      className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3 min-w-0"
       data-testid="settings-summary-strip"
       aria-label="Webhook subscription actions at a glance"
     >
@@ -39,6 +39,7 @@ export function SettingsSummaryStrip({ tiles }: SettingsSummaryStripProps = {}) 
             value={tile.value}
             hint={tile.hint}
             tone={tile.tone}
+            className="min-w-0 overflow-hidden"
           />
         );
       })}

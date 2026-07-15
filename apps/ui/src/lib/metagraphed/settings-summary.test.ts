@@ -17,38 +17,38 @@ describe("settings-summary", () => {
     expect(SETTINGS_CHANGE_KINDS).toEqual(["subnets", "artifacts"]);
   });
 
-  it("builds PageHero KPIs with action / kind / auth / endpoint cells", () => {
+  it("builds PageHero KPIs with short action / kind / auth / API cells", () => {
     const kpis = buildSettingsHeroKpis();
     expect(kpis).toHaveLength(4);
     expect(kpis[0]).toEqual({
       label: "Actions",
       value: "3",
-      hint: "create · look up · delete",
+      hint: "forms",
     });
     expect(kpis[1]).toEqual({
-      label: "Change kinds",
+      label: "Kinds",
       value: "2",
-      hint: "subnets · artifacts",
+      hint: "feeds",
     });
     expect(kpis[2]).toEqual({
       label: "Auth",
-      value: "token + secret",
-      hint: "no account model",
+      value: "2",
+      hint: "keys",
     });
     expect(kpis[3]).toEqual({
-      label: "Endpoint",
-      value: "/webhooks/subscriptions",
-      hint: "public API",
+      label: "API",
+      value: "live",
+      hint: "public",
     });
   });
 
-  it("honors custom action and kind lists when building hero KPIs", () => {
+  it("honors custom action and kind list lengths when building hero KPIs", () => {
     const kpis = buildSettingsHeroKpis(
       [{ id: "create", label: "Create", method: "POST", hint: "token-gated" }],
       ["subnets"],
     );
-    expect(kpis[0]).toMatchObject({ value: "1", hint: "create" });
-    expect(kpis[1]).toMatchObject({ value: "1", hint: "subnets" });
+    expect(kpis[0]).toMatchObject({ value: "1", hint: "forms" });
+    expect(kpis[1]).toMatchObject({ value: "1", hint: "feeds" });
   });
 
   it("builds StatTile rows with an accent create tile", () => {

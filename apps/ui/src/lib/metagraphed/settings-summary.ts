@@ -55,7 +55,12 @@ export interface SettingsSummaryTile {
   tone: "default" | "accent";
 }
 
-/** PageHero KPI cells — hairline strip under the hero copy. */
+/** PageHero KPI cells — hairline strip under the hero copy.
+ * Keep value/hint short: the KPI strip lays value+hint on one flex row and
+ * long strings (e.g. `/webhooks/subscriptions`) escape the viewport at ≤1280px,
+ * which fails the responsive-overflow e2e gate. Detailed method labels live in
+ * the StatTile strip below instead.
+ */
 export function buildSettingsHeroKpis(
   actions: readonly SettingsSummaryActionInput[] = SETTINGS_SUMMARY_ACTIONS,
   kinds: readonly string[] = SETTINGS_CHANGE_KINDS,
@@ -64,22 +69,22 @@ export function buildSettingsHeroKpis(
     {
       label: "Actions",
       value: String(actions.length),
-      hint: actions.map((a) => a.label.toLowerCase()).join(" · "),
+      hint: "forms",
     },
     {
-      label: "Change kinds",
+      label: "Kinds",
       value: String(kinds.length),
-      hint: kinds.join(" · "),
+      hint: "feeds",
     },
     {
       label: "Auth",
-      value: "token + secret",
-      hint: "no account model",
+      value: "2",
+      hint: "keys",
     },
     {
-      label: "Endpoint",
-      value: "/webhooks/subscriptions",
-      hint: "public API",
+      label: "API",
+      value: "live",
+      hint: "public",
     },
   ];
 }
