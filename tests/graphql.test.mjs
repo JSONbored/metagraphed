@@ -7935,6 +7935,168 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
   });
 });
 
+describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fallback)", () => {
+  function callsQuery(argsClause) {
+    return `{ chain_calls${argsClause} {
+      schema_version window group_by observed_at total_extrinsics call_count
+      calls { call_module call_function count share }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable empty breakdown (7d/module)", async () => {
+    const { status, body } = await gql(callsQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_calls, {
+      schema_version: 1,
+      window: "7d",
+      group_by: "module",
+      observed_at: null,
+      total_extrinsics: 0,
+      call_count: 0,
+      calls: [],
+    });
+  });
+
+  test("resolves Postgres-tier call-mix rows", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "30d",
+            group_by: "module_function",
+            observed_at: "2026-07-14T00:00:00.000Z",
+            total_extrinsics: 8,
+            call_count: 1,
+            calls: [
+              {
+                call_module: "SubtensorModule",
+                call_function: "set_weights",
+                count: 6,
+                share: 0.75,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      callsQuery(`(window: "30d", group_by: "module_function")`),
+      env,
+    );
+    assert.equal(status, 200);
+    const d = body.data.chain_calls;
+    assert.equal(d.window, "30d");
+    assert.equal(d.group_by, "module_function");
+    assert.equal(d.total_extrinsics, 8);
+    assert.equal(d.call_count, 1);
+    const c = d.calls[0];
+    assert.equal(c.call_module, "SubtensorModule");
+    assert.equal(c.call_function, "set_weights");
+    assert.equal(c.count, 6);
+    assert.equal(c.share, 0.75);
+  });
+
+  test("a partial Postgres-tier body degrades every missing field to its schema-stable default", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      // Only a row's call_module present; envelope + row omit the rest, so
+      // every ?? default fallback must fire (not surface undefined).
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ calls: [{ call_module: "Balances" }] }),
+      },
+    };
+    const { status, body } = await gql(callsQuery(""), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_calls;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.window, "7d");
+    assert.equal(d.group_by, "module");
+    assert.equal(d.observed_at, null);
+    assert.equal(d.total_extrinsics, 0);
+    assert.equal(d.call_count, 0);
+    const c = d.calls[0];
+    assert.equal(c.call_module, "Balances");
+    assert.equal(c.call_function, null);
+    assert.equal(c.count, 0);
+    assert.equal(c.share, null);
+  });
+
+  test("an empty Postgres-tier body (no calls key) degrades to a schema-stable empty breakdown", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(callsQuery(""), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_calls, {
+      schema_version: 1,
+      window: "7d",
+      group_by: "module",
+      observed_at: null,
+      total_extrinsics: 0,
+      call_count: 0,
+      calls: [],
+    });
+  });
+
+  test("window/group_by/limit/call_module args are forwarded to the /chain/calls path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            group_by: "module",
+            total_extrinsics: 0,
+            call_count: 0,
+            calls: [],
+          });
+        },
+      },
+    };
+    await gql(
+      callsQuery(
+        `(window: "30d", group_by: "module", limit: 5, call_module: "SubtensorModule")`,
+      ),
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/calls");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("group_by"), "module");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(
+      capturedUrl.searchParams.get("call_module"),
+      "SubtensorModule",
+    );
+  });
+
+  test("rejects an unsupported window with BAD_USER_INPUT", async () => {
+    const { body } = await gql(callsQuery(`(window: "99d")`));
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("rejects an unsupported group_by with BAD_USER_INPUT", async () => {
+    const { body } = await gql(callsQuery(`(group_by: "signer")`));
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("rejects an over-long call_module with BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      callsQuery(`(call_module: "${"x".repeat(101)}")`),
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("chain_calls is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_calls, 5);
+  });
+});
+
 describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", () => {
   function servingQuery(argsClause) {
     return `{ chain_serving${argsClause} {

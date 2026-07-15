@@ -199,6 +199,7 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "./chain-turnover.mjs";
 import { buildTurnover } from "./turnover.mjs";
+import { buildChainCalls } from "./chain-analytics.mjs";
 import { buildChainPerformance } from "./chain-performance.mjs";
 import { buildChainConcentration } from "./concentration.mjs";
 import {
@@ -353,6 +354,8 @@ export const SDL = `
     chain_weights(window: String, limit: Int): ChainWeights!
     "Network-wide axon-serving announcement leaderboard over a 7d/30d window (default 7d): subnets ranked by AxonServed announcements with each's distinct-server count and announcements-per-server re-announcement intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide counterpart of subnet_serving. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/serving."
     chain_serving(window: String, limit: Int): ChainServing!
+    "Extrinsic call-mix breakdown over a 7d/30d window (default 7d): the extrinsic count and share per call_module, or per call_module+call_function when group_by is module_function (default module), optionally scoped to a single call_module, ranked by count (limit default 50, max 100). Computed live from the extrinsics tier; a cold store yields a schema-stable empty breakdown, never a GraphQL error. Mirrors GET /api/v1/chain/calls."
+    chain_calls(window: String, group_by: String, limit: Int, call_module: String): ChainCalls!
     "Network-wide weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators driving consensus network-wide, each with its total WeightsSet count, share of the network total, and first/last set times, ranked by activity. The setter-level drill-in behind chain_weights. Mirrors GET /api/v1/chain/weights/setters."
     chain_weight_setters(window: String, limit: Int): ChainWeightSetters!
     "Compact all-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history (probed every ~15 minutes); a cold store still returns both windows, schema-stable and zeroed, never a GraphQL error. Mirrors GET /api/v1/health/trends."
@@ -539,6 +542,25 @@ export const SDL = `
     neurons_start: Int!
     neurons_end: Int!
     neurons_delta: Int!
+  }
+
+  "One row of the extrinsic call-mix breakdown -- a call_module (plus call_function when group_by=module_function), its extrinsic count over the window, and its share of the window total (null when the window has no extrinsics)."
+  type ChainCall {
+    call_module: String!
+    call_function: String
+    count: Int!
+    share: Float
+  }
+
+  "Extrinsic call-mix breakdown over the window. Mirrors GET /api/v1/chain/calls's data envelope."
+  type ChainCalls {
+    schema_version: Int!
+    window: String!
+    group_by: String!
+    observed_at: String
+    total_extrinsics: Int!
+    call_count: Int!
+    calls: [ChainCall!]!
   }
 
   "Network-wide validator-set churn across all subnets (#5686). Mirrors GET /api/v1/chain/turnover's data envelope."
@@ -2211,6 +2233,7 @@ export const FIELD_COMPLEXITY = {
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_calls: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4690,6 +4713,68 @@ const rootValue = {
       },
       stability_distribution: data.stability_distribution ?? null,
       subnets: data.subnets || [],
+    };
+  },
+
+  async chain_calls(
+    { window, group_by: groupBy, limit, call_module: callModule },
+    context,
+  ) {
+    // Reuse the exact analyticsWindow parse/validate REST's handleChainCalls
+    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
+    // BAD_USER_INPUT error, not a silent empty result.
+    const windowUrl = new URL(context.request.url);
+    windowUrl.search = "";
+    if (window != null) windowUrl.searchParams.set("window", window);
+    const { label, error } = analyticsWindow(windowUrl);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const requestedGroupBy = groupBy ?? "module";
+    if (
+      requestedGroupBy !== "module" &&
+      requestedGroupBy !== "module_function"
+    ) {
+      throw new GraphQLError(
+        "group_by must be one of: module, module_function.",
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (callModule != null && callModule.length > 100) {
+      throw new GraphQLError("call_module must be at most 100 characters.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const safeLimit = clampLimit(limit, { defaultLimit: 50, maxLimit: 100 });
+    const params = new URLSearchParams();
+    params.set("window", label);
+    params.set("group_by", requestedGroupBy);
+    params.set("limit", String(safeLimit));
+    if (callModule != null) params.set("call_module", callModule);
+    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainCalls fallback
+    // handleChainCalls uses; the tier owns the call-mix aggregation (no logic
+    // duplicated here), and a cold store yields a schema-stable empty breakdown.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/calls", params),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      )) ?? buildChainCalls({ window: label, groupBy: requestedGroupBy });
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? label,
+      group_by: data.group_by ?? requestedGroupBy,
+      observed_at: data.observed_at ?? null,
+      total_extrinsics: data.total_extrinsics ?? 0,
+      call_count: data.call_count ?? 0,
+      calls: (data.calls ?? []).map((c) => ({
+        call_module: c.call_module,
+        call_function: c.call_function ?? null,
+        count: c.count ?? 0,
+        share: c.share ?? null,
+      })),
     };
   },
 
