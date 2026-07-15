@@ -110,6 +110,7 @@ import {
   buildAccountsList,
 } from "./accounts-list.mjs";
 import {
+  buildAccountSubnets,
   buildAccountSummary,
   buildAccountTransfers,
 } from "./account-events.mjs";
@@ -327,6 +328,8 @@ export const SDL = `
     account_position_history(ss58: String!, netuid: Int!, window: String): AccountPositionHistory!
     "One wallet's cross-subnet neuron portfolio: every subnet where the hotkey is a registered neuron, each position's economics (stake, emission, rank, trust, incentive, dividends, role) and emission/stake yield, plus wallet-level aggregates (totals, counts, overall return, stake concentration). Richer than account.registrations (registration footprint only). An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio."
     account_portfolio(ss58: String!): AccountPortfolio!
+    "One account's live cross-subnet footprint: every subnet where the hotkey is currently registered as a neuron, each with its netuid, uid, stake, validator-permit and active flag, plus a subnet_count. The registration snapshot only (netuid/uid/stake/permit/active) -- account_portfolio is the richer economics view over the same neurons. An unregistered or never-seen address resolves to a schema-stable empty footprint (subnet_count 0, subnets []), never null. Mirrors GET /api/v1/accounts/{ss58}/subnets."
+    account_subnets(ss58: String!): AccountSubnets!
     "One account's per-subnet axon-serving footprint over a 7d/30d/90d window (default 30d): AxonServed announcement count and first/last timestamps per subnet, an HHI concentration of where its serving activity is focused, and the dominant subnet; an address with no announcements in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/serving."
     account_serving(ss58: String!, window: String): AccountServing!
     "One account's per-subnet axon-removal footprint over a 7d/30d/90d window (default 30d): AxonInfoRemoved count and first/last timestamps per subnet, an HHI concentration of where its teardown activity is focused, and the dominant subnet; an address with no removals in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/axon-removals."
@@ -1998,6 +2001,15 @@ export const SDL = `
     yield: Float
   }
 
+  "One account's live cross-subnet registration footprint (the neurons snapshot), backing account_subnets. The lightweight sibling of AccountPortfolio -- registration facts only, no economics rollup."
+  type AccountSubnets {
+    schema_version: Int!
+    ss58: String!
+    subnet_count: Int!
+    "Where this hotkey is currently registered, ordered by netuid -- each an AccountRegistration (netuid/uid/stake/validator_permit/active)."
+    subnets: [AccountRegistration!]!
+  }
+
   "One wallet's cross-subnet neuron portfolio (#5702): every subnet where the hotkey is a registered neuron, plus wallet-level aggregates. Mirrors GET /api/v1/accounts/{ss58}/portfolio."
   type AccountPortfolio {
     schema_version: Int!
@@ -2224,6 +2236,7 @@ export const FIELD_COMPLEXITY = {
   account_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
   account_position_history: RELATIONSHIP_FIELD_COMPLEXITY,
   account_portfolio: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_subnets: RELATIONSHIP_FIELD_COMPLEXITY,
   // Fans out into leaderboardProfilesProjection plus several D1 reads and the
   // economics tier -- same cost class as the other relationship fields.
   registry_leaderboards: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4014,6 +4027,34 @@ const rootValue = {
       overall_yield: data.overall_yield ?? null,
       stake_concentration: data.stake_concentration ?? null,
       positions: data.positions || [],
+    };
+  },
+
+  async account_subnets({ ss58 }, context) {
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountSubnets([])
+    // fallback contract the REST route (/accounts/{ss58}/subnets) and the
+    // get_account_subnets MCP tool use -- a flat body (like account_portfolio's),
+    // not the { data, generatedAt } envelope the account-event footprint family
+    // uses. An unregistered address is a schema-stable empty card, never null.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/subnets`,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildAccountSubnets([], ss58);
+    return {
+      schema_version: data.schema_version ?? 1,
+      ss58: data.ss58 ?? ss58,
+      subnet_count: data.subnet_count ?? 0,
+      subnets: data.subnets || [],
     };
   },
 

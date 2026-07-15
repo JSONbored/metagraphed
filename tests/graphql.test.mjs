@@ -4019,6 +4019,129 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
   });
 });
 
+describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-card fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function query(argsClause) {
+    return `{ account_subnets${argsClause} {
+      schema_version ss58 subnet_count
+      subnets { netuid uid stake_tao validator_permit active }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty footprint, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_subnets, {
+      schema_version: 1,
+      ss58: SS58,
+      subnet_count: 0,
+      subnets: [],
+    });
+  });
+
+  test("resolves the Postgres-tier footprint (flat body, unlike the account-event footprint family)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            subnet_count: 2,
+            subnets: [
+              {
+                netuid: 3,
+                uid: 5,
+                stake_tao: 1000,
+                validator_permit: true,
+                active: true,
+              },
+              {
+                netuid: 7,
+                uid: 9,
+                stake_tao: 500,
+                validator_permit: false,
+                active: false,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    const s = body.data.account_subnets;
+    assert.equal(s.subnet_count, 2);
+    assert.equal(s.subnets[0].netuid, 3);
+    assert.equal(s.subnets[0].validator_permit, true);
+    assert.equal(s.subnets[0].active, true);
+    assert.equal(s.subnets[1].netuid, 7);
+    assert.equal(s.subnets[1].validator_permit, false);
+    assert.equal(s.subnets[1].active, false);
+  });
+
+  test("ss58 is forwarded on the Postgres-tier request path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            subnet_count: 0,
+            subnets: [],
+          });
+        },
+      },
+    };
+    await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/subnets`);
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty footprint", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_subnets, {
+      schema_version: 1,
+      ss58: SS58,
+      subnet_count: 0,
+      subnets: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query('(ss58: "not-a-valid-address")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("account_subnets is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_subnets, 5);
+  });
+});
+
 // --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
 //
 // The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,
