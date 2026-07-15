@@ -2383,7 +2383,7 @@ function SectionAnchor({
                   type: "button",
                   onClick: onCopy,
                   "aria-label": `Copy link to ${typeof title === "string" ? title : id} section`,
-                  className: "mg-anchor-btn inline-flex items-center text-ink-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded p-0.5",
+                  className: "mg-anchor-btn inline-flex items-center justify-center text-ink-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded min-h-11 min-w-11 p-0.5",
                   children: copied ? /* @__PURE__ */ jsx(Check, { className: "size-3.5 text-accent" }) : /* @__PURE__ */ jsx(Link2, { className: "size-3.5" })
                 }
               )
