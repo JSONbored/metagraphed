@@ -6579,6 +6579,236 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier + D1-live fallb
   });
 });
 
+describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallback)", () => {
+  function alphaVolumeQuery(argsClause = "") {
+    return `{ chain_alpha_volume${argsClause} {
+      schema_version window observed_at subnet_count
+      network {
+        buy_volume_alpha sell_volume_alpha total_volume_alpha
+        buy_volume_tao sell_volume_tao total_volume_tao
+        buy_count sell_count net_volume_alpha sentiment_ratio sentiment
+      }
+      volume_distribution { count mean min p25 median p75 p90 max }
+      subnets {
+        schema_version netuid window
+        buy_volume_alpha sell_volume_alpha total_volume_alpha
+        buy_volume_tao sell_volume_tao total_volume_tao
+        buy_count sell_count net_volume_alpha sentiment_ratio sentiment vol_mcap_ratio
+      }
+    } }`;
+  }
+
+  // loadChainAlphaVolume issues a single (netuid, event_kind) GROUP BY over
+  // account_events; the mock returns those aggregate rows for the one query.
+  function chainAlphaVolumeD1(rows = []) {
+    return {
+      prepare() {
+        return {
+          bind() {
+            return {
+              async all() {
+                return { results: rows };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable zeroed card", async () => {
+    const { status, body } = await gql(alphaVolumeQuery());
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_alpha_volume, {
+      schema_version: 1,
+      window: "24h",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        buy_volume_alpha: 0,
+        sell_volume_alpha: 0,
+        total_volume_alpha: 0,
+        buy_volume_tao: 0,
+        sell_volume_tao: 0,
+        total_volume_tao: 0,
+        buy_count: 0,
+        sell_count: 0,
+        net_volume_alpha: 0,
+        sentiment_ratio: null,
+        sentiment: "neutral",
+      },
+      volume_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for an explicit limit, forwarding it as a query param", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "24h",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              buy_volume_alpha: 100,
+              sell_volume_alpha: 40,
+              total_volume_alpha: 140,
+              buy_volume_tao: 50,
+              sell_volume_tao: 20,
+              total_volume_tao: 70,
+              buy_count: 10,
+              sell_count: 5,
+              net_volume_alpha: 60,
+              sentiment_ratio: 0.4286,
+              sentiment: "bullish",
+            },
+            volume_distribution: {
+              count: 1,
+              mean: 70,
+              min: 70,
+              p25: 70,
+              median: 70,
+              p75: 70,
+              p90: 70,
+              max: 70,
+            },
+            subnets: [
+              {
+                schema_version: 1,
+                netuid: 3,
+                window: "24h",
+                buy_volume_alpha: 100,
+                sell_volume_alpha: 40,
+                total_volume_alpha: 140,
+                buy_volume_tao: 50,
+                sell_volume_tao: 20,
+                total_volume_tao: 70,
+                buy_count: 10,
+                sell_count: 5,
+                net_volume_alpha: 60,
+                sentiment_ratio: 0.4286,
+                sentiment: "bullish",
+                vol_mcap_ratio: null,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(alphaVolumeQuery("(limit: 5)"), env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/alpha-volume");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    const card = body.data.chain_alpha_volume;
+    assert.equal(card.window, "24h");
+    assert.equal(card.subnet_count, 1);
+    assert.equal(card.observed_at, "2026-07-10T00:00:00.000Z");
+    assert.equal(card.network.total_volume_tao, 70);
+    assert.equal(card.network.sentiment, "bullish");
+    assert.equal(card.volume_distribution.median, 70);
+    assert.equal(card.subnets[0].netuid, 3);
+    assert.equal(card.subnets[0].vol_mcap_ratio, null);
+  });
+
+  test("clamps an over-max limit before forwarding it to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({});
+        },
+      },
+    };
+    const { status } = await gql(alphaVolumeQuery("(limit: 9999)"), env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(alphaVolumeQuery(), env);
+    assert.equal(status, 200);
+    const card = body.data.chain_alpha_volume;
+    assert.equal(card.schema_version, 1);
+    assert.equal(card.window, "24h");
+    assert.equal(card.observed_at, null);
+    assert.equal(card.subnet_count, 0);
+    assert.equal(card.network.total_volume_tao, 0);
+    assert.equal(card.network.sentiment, "neutral");
+    assert.equal(card.volume_distribution, null);
+    assert.deepEqual(card.subnets, []);
+  });
+
+  test("no Postgres tier flag: rolls up the account_events StakeAdded/StakeRemoved stream straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainAlphaVolumeD1([
+        {
+          netuid: 3,
+          event_kind: "StakeAdded",
+          alpha_volume: 100,
+          tao_volume: 50,
+          event_count: 10,
+          last_observed: 1_750_000_000_000,
+        },
+        {
+          netuid: 3,
+          event_kind: "StakeRemoved",
+          alpha_volume: 40,
+          tao_volume: 20,
+          event_count: 5,
+          last_observed: 1_749_000_000_000,
+        },
+      ]),
+    };
+    const { status, body } = await gql(alphaVolumeQuery(), env);
+    assert.equal(status, 200);
+    const card = body.data.chain_alpha_volume;
+    assert.equal(card.subnet_count, 1);
+    assert.equal(card.network.buy_volume_alpha, 100);
+    assert.equal(card.network.sell_volume_alpha, 40);
+    assert.equal(card.network.total_volume_tao, 70);
+    assert.equal(card.network.net_volume_alpha, 60);
+    assert.equal(card.network.sentiment_ratio, 0.4286);
+    assert.equal(card.network.sentiment, "bullish");
+    assert.equal(card.volume_distribution.count, 1);
+    assert.equal(card.volume_distribution.median, 70);
+    assert.equal(card.subnets[0].netuid, 3);
+    assert.equal(card.subnets[0].total_volume_tao, 70);
+    assert.equal(card.subnets[0].vol_mcap_ratio, null);
+    assert.equal(card.observed_at, new Date(1_750_000_000_000).toISOString());
+  });
+
+  test("a D1 query error degrades to a schema-stable zeroed card (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(alphaVolumeQuery(), env);
+    assert.equal(status, 200);
+    const card = body.data.chain_alpha_volume;
+    assert.equal(card.subnet_count, 0);
+    assert.equal(card.network.total_volume_tao, 0);
+    assert.deepEqual(card.subnets, []);
+  });
+
+  test("chain_alpha_volume is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_alpha_volume, 5);
+  });
+});
+
 describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", () => {
   function trendsQuery() {
     return `{ health_trends { schema_version observed_at source windows } }`;

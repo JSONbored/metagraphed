@@ -167,6 +167,11 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "./chain-turnover.mjs";
 import {
+  CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+  CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+  loadChainAlphaVolume,
+} from "./chain-alpha-volume.mjs";
+import {
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
   CHAIN_WEIGHT_SETTERS_WINDOWS,
@@ -286,6 +291,8 @@ export const SDL = `
     health_trends: HealthTrends!
     "Network-wide emission-yield (return rate) aggregated across every subnet's neurons -- the aggregate network return, the same split by validator vs miner role, and the distribution of the per-neuron return rate. Every aggregate is null (never a GraphQL error) on a cold store. Mirrors GET /api/v1/chain/yield."
     chain_yield: ChainYield!
+    "Network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet with StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by total_volume_tao, each carrying its full buy/sell/total volume + sentiment scorecard (vol_mcap_ratio always null here -- no per-subnet market-cap input at the network level), plus a network rollup with its own net/gross sentiment reading and the per-subnet total-volume spread, summed live from the account_events stream. Fixed 24h window (no window arg); limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/alpha-volume."
+    chain_alpha_volume(limit: Int): ChainAlphaVolume!
     "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC (not the Postgres tier). recycled_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/recycled."
     subnet_recycled(netuid: Int!): SubnetRecycled
   }
@@ -545,6 +552,71 @@ export const SDL = `
     distinct_setters: Int!
     weight_sets: Int!
     sets_per_setter: Float
+  }
+
+  "Network-wide rolling 24h buy/sell alpha-volume leaderboard, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/alpha-volume's data envelope."
+  type ChainAlphaVolume {
+    schema_version: Int!
+    "Fixed rolling window label (always 24h)."
+    window: String
+    "Newest event observed_at across the window; null on a cold store."
+    observed_at: String
+    subnet_count: Int!
+    network: ChainAlphaVolumeNetwork!
+    "Spread of per-subnet total_volume_tao across every subnet with volume; null when no subnet had volume."
+    volume_distribution: ChainAlphaVolumeDistribution
+    subnets: [ChainAlphaVolumeSubnet!]!
+  }
+
+  "Network-wide buy/sell volume rollup across every subnet with volume in the window."
+  type ChainAlphaVolumeNetwork {
+    buy_volume_alpha: Float!
+    sell_volume_alpha: Float!
+    total_volume_alpha: Float!
+    buy_volume_tao: Float!
+    sell_volume_tao: Float!
+    total_volume_tao: Float!
+    buy_count: Int!
+    sell_count: Int!
+    net_volume_alpha: Float!
+    "net/gross alpha lean in [-1, 1]; null when there was no volume in the window."
+    sentiment_ratio: Float
+    "Coarse sentiment label (bullish/bearish/neutral); neutral both for balanced volume and an empty window."
+    sentiment: String!
+  }
+
+  "Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard)."
+  type ChainAlphaVolumeDistribution {
+    count: Int!
+    mean: Float!
+    min: Float!
+    p25: Float!
+    median: Float!
+    p75: Float!
+    p90: Float!
+    max: Float!
+  }
+
+  "One subnet's rolling 24h buy/sell volume scorecard, ranked by total_volume_tao then netuid."
+  type ChainAlphaVolumeSubnet {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    buy_volume_alpha: Float!
+    sell_volume_alpha: Float!
+    total_volume_alpha: Float!
+    buy_volume_tao: Float!
+    sell_volume_tao: Float!
+    total_volume_tao: Float!
+    buy_count: Int!
+    sell_count: Int!
+    net_volume_alpha: Float!
+    "net/gross alpha lean in [-1, 1]; null when this subnet had no volume."
+    sentiment_ratio: Float
+    "Coarse sentiment label (bullish/bearish/neutral)."
+    sentiment: String!
+    "24h volume / market-cap turnover ratio; always null here (no per-subnet market-cap input in scope at the network level)."
+    vol_mcap_ratio: Float
   }
 
   "Network-wide weight-setter leaderboard over a lookback window, summed live from the account_events WeightsSet stream. The setter-level drill-in behind ChainWeights. Mirrors GET /api/v1/chain/weights/setters."
@@ -1650,6 +1722,7 @@ export const FIELD_COMPLEXITY = {
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_yield: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_alpha_volume: RELATIONSHIP_FIELD_COMPLEXITY,
   account_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
   account_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
   account_portfolio: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3654,6 +3727,47 @@ const rootValue = {
       weight_sets: data.weight_sets ?? 0,
       setter_count: data.setter_count ?? 0,
       setters: data.setters || [],
+    };
+  },
+
+  async chain_alpha_volume({ limit }, context) {
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+      maxLimit: CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainAlphaVolume
+    // fallback contract REST's handleChainAlphaVolume uses -- a cold store yields
+    // a schema-stable zeroed card (subnet_count 0, empty leaderboard, neutral
+    // sentiment), never a GraphQL error. Fixed 24h window, no window arg.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/alpha-volume", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      (await loadChainAlphaVolume(graphqlD1(context), { limit: safeLimit }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? "24h",
+      observed_at: data.observed_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      network: data.network ?? {
+        buy_volume_alpha: 0,
+        sell_volume_alpha: 0,
+        total_volume_alpha: 0,
+        buy_volume_tao: 0,
+        sell_volume_tao: 0,
+        total_volume_tao: 0,
+        buy_count: 0,
+        sell_count: 0,
+        net_volume_alpha: 0,
+        sentiment_ratio: null,
+        sentiment: "neutral",
+      },
+      volume_distribution: data.volume_distribution ?? null,
+      subnets: data.subnets || [],
     };
   },
 
