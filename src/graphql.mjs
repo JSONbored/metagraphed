@@ -120,6 +120,7 @@ import {
   STAKE_FLOW_WINDOWS,
   buildAccountStakeFlow,
 } from "./account-stake-flow.mjs";
+import { buildAccountPositionHistory } from "./account-position-history.mjs";
 import {
   DEFAULT_STAKE_FLOW_DIRECTION,
   STAKE_FLOW_DIRECTIONS,
@@ -312,6 +313,8 @@ export const SDL = `
     account_deregistrations(ss58: String!, window: String): AccountDeregistrations!
     "One account's StakeAdded/StakeRemoved flow per subnet over a 7d/30d/90d window (default 30d) -- net + gross flow, a direction label (accumulating/exiting/churning/idle), and an HHI concentration of where its flow is focused. direction narrows to inflow (in) or outflow (out) only; all (default) reports both sides. An address with no flow in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/stake-flow."
     account_stake_flow(ss58: String!, window: String, direction: String): AccountStakeFlow!
+    "One account's per-subnet position (uid/role/active plus stake/emission/rank/trust/incentive/dividends/yield) day-by-day over a 7d/30d/90d/1y/all window (default 30d), newest first, one point per neuron_daily snapshot. An account with no rows for the subnet in the window resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/accounts/{ss58}/subnets/{netuid}/history."
+    account_position_history(ss58: String!, netuid: Int!, window: String): AccountPositionHistory!
     "One wallet's cross-subnet neuron portfolio: every subnet where the hotkey is a registered neuron, each position's economics (stake, emission, rank, trust, incentive, dividends, role) and emission/stake yield, plus wallet-level aggregates (totals, counts, overall return, stake concentration). Richer than account.registrations (registration footprint only). An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio."
     account_portfolio(ss58: String!): AccountPortfolio!
     "One account's per-subnet axon-serving footprint over a 7d/30d/90d window (default 30d): AxonServed announcement count and first/last timestamps per subnet, an HHI concentration of where its serving activity is focused, and the dominant subnet; an address with no announcements in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/serving."
@@ -1854,6 +1857,33 @@ export const SDL = `
     unstake_events: Int!
   }
 
+  "One account's per-subnet position history over a lookback window, one point per neuron_daily snapshot. Mirrors GET /api/v1/accounts/{ss58}/subnets/{netuid}/history."
+  type AccountPositionHistory {
+    schema_version: Int!
+    ss58: String!
+    netuid: Int!
+    window: String
+    point_count: Int!
+    points: [AccountPositionHistoryPoint!]!
+  }
+
+  "One day's position for an account in one subnet: the neuron's uid/role/active plus stake/emission and its rank/trust/incentive/dividends scores and emission-per-stake yield."
+  type AccountPositionHistoryPoint {
+    snapshot_date: String!
+    captured_at: String
+    uid: Int
+    coldkey: String
+    role: String!
+    active: Boolean!
+    stake_tao: Float
+    emission_tao: Float
+    rank: Float
+    trust: Float
+    incentive: Float
+    dividends: Float
+    yield: Float
+  }
+
   "One wallet's cross-subnet neuron portfolio (#5702): every subnet where the hotkey is a registered neuron, plus wallet-level aggregates. Mirrors GET /api/v1/accounts/{ss58}/portfolio."
   type AccountPortfolio {
     schema_version: Int!
@@ -2074,6 +2104,7 @@ export const FIELD_COMPLEXITY = {
   chain_alpha_volume: RELATIONSHIP_FIELD_COMPLEXITY,
   account_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
   account_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_position_history: RELATIONSHIP_FIELD_COMPLEXITY,
   account_portfolio: RELATIONSHIP_FIELD_COMPLEXITY,
   // Fans out into leaderboardProfilesProjection plus several D1 reads and the
   // economics tier -- same cost class as the other relationship fields.
@@ -3585,6 +3616,51 @@ const rootValue = {
     return {
       schema_version: data.schema_version ?? 1,
       hotkey: data.hotkey ?? hotkey,
+      window: data.window ?? label,
+      point_count: data.point_count ?? 0,
+      points: data.points || [],
+    };
+  },
+
+  async account_position_history({ ss58, netuid, window }, context) {
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (!isU16Netuid(netuid)) {
+      throw new GraphQLError("netuid must be a u16 subnet id (0-65535).", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same parseHistoryWindow the REST position-history handler uses, so
+    // accepted window labels (7d/30d/90d/1y/all, default 30d) match exactly.
+    const { label, error } = parseHistoryWindow(window);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("window", label);
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountPositionHistory
+    // fallback contract the REST handler uses; an account with no neuron_daily
+    // rows for the subnet in the window is a schema-stable empty-points card,
+    // never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/subnets/${netuid}/history`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildAccountPositionHistory([], ss58, netuid, { window: label });
+    return {
+      schema_version: data.schema_version ?? 1,
+      ss58: data.ss58 ?? ss58,
+      netuid: data.netuid ?? netuid,
       window: data.window ?? label,
       point_count: data.point_count ?? 0,
       points: data.points || [],

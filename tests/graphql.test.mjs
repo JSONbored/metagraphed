@@ -2434,6 +2434,150 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
   });
 });
 
+describe("graphql — account_position_history (#5889, Postgres-tier + empty-points fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty-points card, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 1) {
+          schema_version ss58 netuid window point_count points { snapshot_date }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_position_history, {
+      schema_version: 1,
+      ss58: SS58,
+      netuid: 1,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("resolves the Postgres-tier points for the requested window", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          netuid: 5,
+          window: "90d",
+          point_count: 1,
+          points: [
+            {
+              snapshot_date: "2026-07-01",
+              captured_at: "2026-07-01T00:00:00.000Z",
+              uid: 3,
+              coldkey: "5Cold",
+              role: "validator",
+              active: true,
+              stake_tao: 1000,
+              emission_tao: 4,
+              rank: 0.1,
+              trust: 0.2,
+              incentive: 0.3,
+              dividends: 0.4,
+              yield: 0.004,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 5, window: "90d") {
+          ss58 netuid window point_count
+          points { snapshot_date captured_at uid coldkey role active stake_tao emission_tao rank trust incentive dividends yield }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.account_position_history;
+    assert.equal(r.netuid, 5);
+    assert.equal(r.window, "90d");
+    assert.equal(r.point_count, 1);
+    assert.equal(r.points[0].role, "validator");
+    assert.equal(r.points[0].stake_tao, 1000);
+    assert.equal(r.points[0].yield, 0.004);
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the tier", async () => {
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "not-an-ss58", netuid: 1) { point_count } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("an out-of-range netuid is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 99999) { point_count } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("window is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 5, window: "7d") { window } }`,
+      env,
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.ok(
+      capturedUrl.pathname.endsWith(`/accounts/${SS58}/subnets/5/history`),
+    );
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 3, window: "30d") {
+          schema_version ss58 netuid window point_count points { snapshot_date }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_position_history, {
+      schema_version: 1,
+      ss58: SS58,
+      netuid: 3,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 1, window: "99d") { point_count } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+});
+
 describe("graphql — validator_history (#5710, Postgres-tier + empty-points fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
