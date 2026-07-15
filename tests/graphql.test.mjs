@@ -2193,6 +2193,181 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
   });
 });
 
+describe("graphql — incidents (#5660, Postgres-tier ledger + D1 fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  function healthDb(rows) {
+    return {
+      prepare: () => ({
+        bind: () => ({ all: async () => ({ results: rows }) }),
+      }),
+    };
+  }
+
+  test("incidents: cold Postgres tier + cold D1 returns a schema-stable empty ledger", async () => {
+    const { status, body } = await gql(
+      "{ incidents { window observed_at summary { incident_count affected_surface_count } surfaces { netuid } } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.incidents, {
+      window: "7d",
+      observed_at: null,
+      summary: { incident_count: 0, affected_surface_count: 0 },
+      surfaces: [],
+    });
+  });
+
+  test("incidents: resolves a Postgres-tier ledger", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          window: "7d",
+          observed_at: "2026-07-14T00:00:00.000Z",
+          source: "live-cron-prober",
+          summary: { incident_count: 1, affected_surface_count: 1 },
+          surfaces: [
+            {
+              netuid: 1,
+              surface_id: "sn-1-website",
+              incident_count: 1,
+              downtime_ms: 4000,
+              incidents: [
+                {
+                  started_at: 1000,
+                  ended_at: 5000,
+                  duration_ms: 4000,
+                  failed_samples: 3,
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ incidents { window summary { incident_count } surfaces { netuid surface_id downtime_ms incidents { started_at ended_at duration_ms failed_samples } } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.incidents.summary.incident_count, 1);
+    const surface = body.data.incidents.surfaces[0];
+    assert.equal(surface.netuid, 1);
+    assert.equal(surface.downtime_ms, 4000);
+    assert.equal(surface.incidents[0].failed_samples, 3);
+  });
+
+  test("incidents: window is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: null,
+            source: "live-cron-prober",
+            summary: { incident_count: 0, affected_surface_count: 0 },
+            surfaces: [],
+          });
+        },
+      },
+    };
+    await gql('{ incidents(window: "30d") { window } }', env);
+    assert.equal(capturedUrl.pathname, "/api/v1/incidents");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+  });
+
+  test("incidents: a malformed Postgres-tier body degrades to a schema-stable empty ledger", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      "{ incidents { window observed_at source summary { incident_count affected_surface_count } surfaces { netuid } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.incidents, {
+      window: "7d",
+      observed_at: null,
+      source: null,
+      summary: { incident_count: 0, affected_surface_count: 0 },
+      surfaces: [],
+    });
+  });
+
+  test("incidents: a cold Postgres tier falls back to the live D1 surface_checks aggregate", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: healthDb([
+        {
+          netuid: 2,
+          surface_id: "sn-2-api",
+          surface_key: "sn-2-api",
+          started_at: 1000,
+          ended_at: 9000,
+          failed_samples: 4,
+        },
+      ]),
+    };
+    const { status, body } = await gql(
+      "{ incidents { summary { incident_count affected_surface_count } surfaces { netuid incident_count downtime_ms } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.incidents.summary.incident_count, 1);
+    assert.equal(body.data.incidents.summary.affected_surface_count, 1);
+    assert.equal(body.data.incidents.surfaces[0].netuid, 2);
+    assert.equal(body.data.incidents.surfaces[0].downtime_ms, 8000);
+  });
+
+  test("incidents: a D1 error degrades to an empty ledger (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(
+      "{ incidents { surfaces { netuid } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.incidents.surfaces, []);
+  });
+
+  test("incidents: an unsupported window value is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      '{ incidents(window: "90d") { window } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("incidents is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.incidents, 5);
+  });
+});
+
 describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

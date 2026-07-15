@@ -23,6 +23,8 @@ import {
 } from "./health-serving.mjs";
 import {
   loadCompareSubnets,
+  loadGlobalIncidents,
+  parseAnalyticsWindow,
   parseCompareDimensionList,
   parseCompareNetuidList,
 } from "./analytics-live.mjs";
@@ -46,7 +48,7 @@ import {
 } from "./accounts-list.mjs";
 import { buildAccountSummary } from "./account-events.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
-import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
+import { ANALYTICS_WINDOWS, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import { parseHistoryWindow } from "./neuron-history.mjs";
 import { loadEconomicsTrends } from "./economics-trends.mjs";
 
@@ -78,6 +80,8 @@ export const SDL = `
     endpoints(netuid: Int, limit: Int, cursor: String): EndpointList!
     "Global operational health rollup with per-subnet summaries."
     health: GlobalHealth
+    "Cross-subnet incident ledger: surfaces with consecutive probe failures grouped into downtime incidents over the requested window (7d default, or 30d). Mirrors GET /api/v1/incidents."
+    incidents(window: String): GlobalIncidents!
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
     opportunity_boards(limit: Int): OpportunityBoards!
     "Cross-subnet comparison: registry structure, live economics, and live health placed side by side for the requested netuids, in requested order. Mirrors GET /api/v1/compare."
@@ -313,6 +317,37 @@ export const SDL = `
     latency_sample_count: Int
     last_checked: String
     last_ok: String
+  }
+
+  type GlobalIncidents {
+    window: String
+    observed_at: String
+    source: String
+    summary: IncidentsSummary!
+    surfaces: [IncidentSurface!]!
+  }
+
+  type IncidentsSummary {
+    incident_count: Int!
+    affected_surface_count: Int!
+  }
+
+  type IncidentSurface {
+    netuid: Int!
+    surface_id: String
+    incident_count: Int!
+    "Total downtime across this surface's incidents, in milliseconds."
+    downtime_ms: Float!
+    incidents: [Incident!]!
+  }
+
+  type Incident {
+    "Epoch-ms timestamp of the incident's first failed probe."
+    started_at: Float
+    "Epoch-ms timestamp of the incident's last failed probe."
+    ended_at: Float
+    duration_ms: Float
+    failed_samples: Int!
   }
 
   type OpportunityBoards {
@@ -710,6 +745,7 @@ export const FIELD_COMPLEXITY = {
   surfaces: RELATIONSHIP_FIELD_COMPLEXITY,
   endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
+  incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1290,6 +1326,37 @@ const rootValue = {
       health_source: result.health_source,
       scope: result.scope,
       subnets: result.subnets || [],
+    };
+  },
+
+  async incidents({ window }, context) {
+    const parsed = parseAnalyticsWindow(window);
+    if (!parsed) {
+      throw new GraphQLError(
+        `"${window}" is not a valid window. Supported: ${Object.keys(ANALYTICS_WINDOWS).join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const { label, days } = parsed;
+    const params = new URLSearchParams();
+    params.set("window", label);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/incidents", params),
+        "METAGRAPH_HEALTH_SOURCE",
+      )) ??
+      (await loadGlobalIncidents(graphqlD1(context), {
+        windowLabel: label,
+        windowDays: days,
+        observedAt: await loadObservedAt(context),
+      }));
+    return {
+      window: data.window ?? label,
+      observed_at: data.observed_at ?? null,
+      source: data.source ?? null,
+      summary: data.summary ?? { incident_count: 0, affected_surface_count: 0 },
+      surfaces: data.surfaces || [],
     };
   },
 
