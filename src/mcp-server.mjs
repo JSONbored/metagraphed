@@ -259,6 +259,11 @@ import {
   DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
 } from "./chain-stake-flow.mjs";
 import {
+  loadChainAlphaVolume,
+  CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+  CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+} from "./chain-alpha-volume.mjs";
+import {
   loadChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
   CHAIN_WEIGHTS_LIMIT_MAX,
@@ -839,6 +844,8 @@ export const MCP_INSTRUCTIONS =
   "(per-subnet churn, retention, and stability) across all subnets, " +
   "get_chain_stake_flow the network-wide cross-subnet capital-flow leaderboard " +
   "(per-subnet net TAO staked/unstaked and direction) across all subnets, " +
+  "get_chain_alpha_volume the network-wide rolling 24h buy/sell alpha-volume " +
+  "leaderboard (per-subnet buy/sell/total volume and sentiment) across all subnets, " +
   "get_chain_weights the network-wide validator weight-setting leaderboard " +
   "(per-subnet WeightsSet activity, distinct setters, and update intensity) " +
   "across all subnets, get_chain_weight_setters the network-wide weight-setter " +
@@ -3072,6 +3079,47 @@ export const MCP_TOOLS = [
           windowDays: CHAIN_STAKE_FLOW_WINDOWS[window],
           limit,
         }))
+      );
+    },
+  },
+  {
+    name: "get_chain_alpha_volume",
+    title: "Get network-wide rolling 24h alpha volume",
+    description:
+      "Fetch the network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet " +
+      "that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by " +
+      "total_volume_tao, each subnet carrying the same buy/sell/total volume + sentiment " +
+      "scorecard as get_subnet_volume (vol_mcap_ratio always null here — no per-subnet " +
+      "market-cap input in scope at the network level), plus a network rollup (with its own " +
+      "net/gross sentiment reading) and the count/mean/min/p25/median/p75/p90/max spread of " +
+      "per-subnet total volume, summed live from the account_events stream. The network-level " +
+      "companion of get_subnet_volume, mirroring how get_chain_stake_flow companions " +
+      "get_subnet_stake_flow. Fixed 24h window, no window parameter. Mirrors GET " +
+      "/api/v1/chain/alpha-volume.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: {
+          type: "integer",
+          description: `Max subnets in the alpha-volume leaderboard (1-${CHAIN_ALPHA_VOLUME_LIMIT_MAX}, default ${CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+        CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+      );
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/alpha-volume", { limit }),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? (await loadChainAlphaVolume(mcpD1Runner(ctx), { limit }))
       );
     },
   },
@@ -10303,6 +10351,102 @@ const TOOL_OUTPUT_SCHEMAS = {
             stake_events: { type: "integer" },
             unstake_events: { type: "integer" },
             direction: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  get_chain_alpha_volume: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: { type: "string" },
+      observed_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      // Network rollup over every subnet that had volume in the window, plus a network-wide
+      // net/gross sentiment reading derived from the same totals.
+      network: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "buy_volume_alpha",
+          "sell_volume_alpha",
+          "total_volume_alpha",
+          "buy_volume_tao",
+          "sell_volume_tao",
+          "total_volume_tao",
+          "buy_count",
+          "sell_count",
+          "net_volume_alpha",
+          "sentiment_ratio",
+          "sentiment",
+        ],
+        properties: {
+          buy_volume_alpha: ANY,
+          sell_volume_alpha: ANY,
+          total_volume_alpha: ANY,
+          buy_volume_tao: ANY,
+          sell_volume_tao: ANY,
+          total_volume_tao: ANY,
+          buy_count: { type: "integer" },
+          sell_count: { type: "integer" },
+          net_volume_alpha: ANY,
+          sentiment_ratio: { type: ["number", "null"] },
+          sentiment: { type: "string" },
+        },
+      },
+      // Spread of per-subnet total_volume_tao over EVERY subnet with volume; null when no
+      // subnet had volume in the window.
+      volume_distribution: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max",
+        ],
+        properties: {
+          count: { type: "integer" },
+          mean: { type: "number" },
+          min: { type: "number" },
+          p25: { type: "number" },
+          median: { type: "number" },
+          p75: { type: "number" },
+          p90: { type: "number" },
+          max: { type: "number" },
+        },
+      },
+      // Per-subnet alpha-volume leaderboard, biggest total volume first -- each entry is a
+      // full get_subnet_volume-shaped scorecard.
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: true,
+          required: ["netuid", "window"],
+          properties: {
+            schema_version: { type: "integer" },
+            netuid: { type: "integer" },
+            window: { type: "string" },
+            buy_volume_alpha: ANY,
+            sell_volume_alpha: ANY,
+            total_volume_alpha: ANY,
+            buy_volume_tao: ANY,
+            sell_volume_tao: ANY,
+            total_volume_tao: ANY,
+            buy_count: { type: "integer" },
+            sell_count: { type: "integer" },
+            net_volume_alpha: ANY,
+            sentiment_ratio: { type: ["number", "null"] },
+            sentiment: NULLABLE_STRING,
+            vol_mcap_ratio: { type: ["number", "null"] },
           },
         },
       },

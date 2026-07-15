@@ -9189,6 +9189,116 @@ describe("MCP economics + metagraph data tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  // One GROUP BY netuid, event_kind row from account_events, the shape
+  // loadChainAlphaVolume's SUM/COUNT/MAX query returns.
+  function alphaVolumeRow(
+    netuid,
+    event_kind,
+    alpha_volume,
+    tao_volume,
+    event_count,
+  ) {
+    return {
+      netuid,
+      event_kind,
+      alpha_volume,
+      tao_volume,
+      event_count,
+      last_observed: 1_750_000_000_000,
+    };
+  }
+
+  function chainAlphaVolumeEnv(rows) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: metagraphD1({ accountEvents: rows }),
+      },
+    };
+  }
+
+  test("get_chain_alpha_volume returns schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_alpha_volume", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "24h");
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.volume_distribution, null);
+    assert.equal(out.network.total_volume_tao, 0);
+    assert.equal(out.network.sentiment, "neutral");
+    assert.equal(out.observed_at, null);
+  });
+
+  test("get_chain_alpha_volume ranks subnets by total volume with a network rollup", async () => {
+    const res = await callTool(
+      "get_chain_alpha_volume",
+      { limit: 10 },
+      chainAlphaVolumeEnv([
+        // netuid 1: total 130 (biggest) -> ranks first.
+        alphaVolumeRow(1, "StakeAdded", 100, 100, 5),
+        alphaVolumeRow(1, "StakeRemoved", 30, 30, 2),
+        // netuid 2: total 100 -> ranks second.
+        alphaVolumeRow(2, "StakeAdded", 20, 20, 1),
+        alphaVolumeRow(2, "StakeRemoved", 80, 80, 3),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "24h");
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].total_volume_tao, 130);
+    assert.equal(out.subnets[0].sentiment, "bullish");
+    assert.equal(out.subnets[1].netuid, 2);
+    assert.equal(out.subnets[1].sentiment, "bearish");
+    // Network rollup: buy 120, sell 110 -> net +10, total 230.
+    assert.equal(out.network.buy_volume_tao, 120);
+    assert.equal(out.network.sell_volume_tao, 110);
+    assert.equal(out.network.total_volume_tao, 230);
+    assert.equal(out.volume_distribution.count, 2);
+  });
+
+  test("get_chain_alpha_volume rejects a window arg (no window param on this tool)", async () => {
+    // Unlike get_chain_stake_flow, this tool has no window enum: the fixed 24h
+    // window is not a parameter, so `additionalProperties: false` on its
+    // inputSchema rejects a `window` arg outright (validateToolArguments),
+    // rather than silently accepting and ignoring it.
+    const res = await callTool("get_chain_alpha_volume", { window: "7d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("get_chain_alpha_volume caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_alpha_volume",
+      { limit: 1 },
+      chainAlphaVolumeEnv([
+        alphaVolumeRow(1, "StakeAdded", 100, 100, 5),
+        alphaVolumeRow(2, "StakeAdded", 50, 50, 3),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    // Both subnets are counted in the rollup/distribution, but the page is capped.
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.volume_distribution.count, 2);
+  });
+
+  test("get_chain_alpha_volume payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_alpha_volume",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_alpha_volume",
+      {},
+      chainAlphaVolumeEnv([
+        alphaVolumeRow(1, "StakeAdded", 100, 100, 5),
+        alphaVolumeRow(1, "StakeRemoved", 20, 20, 2),
+      ]),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   // The network-wide aggregate row loadChainWeights reads first (its COUNT/
   // COUNT(DISTINCT)/MAX(observed_at) probe); a non-null newest_observed unlocks
   // the per-subnet read.

@@ -4175,6 +4175,90 @@
         },
         "additionalProperties": false
       },
+      "ChainAlphaVolumeArtifact": {
+        "type": "object",
+        "description": "Network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by total_volume_tao descending, each with the same buy/sell/total volume + sentiment scorecard SubnetAlphaVolumeArtifact carries (vol_mcap_ratio always null here — no per-subnet market-cap input in scope at the network level), plus a network rollup (with its own net/gross sentiment reading) and a distribution of the per-subnet total_volume_tao. Fixed 24h window, no static file — served live from the account_events D1 tier at /api/v1/chain/alpha-volume; zeros + empty leaderboard when cold.",
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "volume_distribution",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": "string", "enum": ["24h"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "network": {
+            "type": "object",
+            "required": [
+              "buy_volume_alpha",
+              "sell_volume_alpha",
+              "total_volume_alpha",
+              "buy_volume_tao",
+              "sell_volume_tao",
+              "total_volume_tao",
+              "buy_count",
+              "sell_count",
+              "net_volume_alpha",
+              "sentiment_ratio",
+              "sentiment"
+            ],
+            "properties": {
+              "buy_volume_alpha": { "type": "number", "minimum": 0 },
+              "sell_volume_alpha": { "type": "number", "minimum": 0 },
+              "total_volume_alpha": { "type": "number", "minimum": 0 },
+              "buy_volume_tao": { "type": "number", "minimum": 0 },
+              "sell_volume_tao": { "type": "number", "minimum": 0 },
+              "total_volume_tao": { "type": "number", "minimum": 0 },
+              "buy_count": { "type": "integer", "minimum": 0 },
+              "sell_count": { "type": "integer", "minimum": 0 },
+              "net_volume_alpha": { "type": "number" },
+              "sentiment_ratio": { "type": ["number", "null"] },
+              "sentiment": {
+                "type": "string",
+                "enum": ["bullish", "bearish", "neutral"]
+              }
+            },
+            "additionalProperties": false
+          },
+          "volume_distribution": {
+            "type": ["object", "null"],
+            "description": "Spread of the per-subnet total_volume_tao (always non-negative) across every subnet with volume in the window; null when no subnet had volume.",
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "properties": {
+              "count": { "type": "integer", "minimum": 0 },
+              "mean": { "type": "number", "minimum": 0 },
+              "min": { "type": "number", "minimum": 0 },
+              "p25": { "type": "number", "minimum": 0 },
+              "median": { "type": "number", "minimum": 0 },
+              "p75": { "type": "number", "minimum": 0 },
+              "p90": { "type": "number", "minimum": 0 },
+              "max": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubnetAlphaVolumeArtifact"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "ChainTransfersArtifact": {
         "type": "object",
         "description": "Network-wide native-TAO transfer analytics over a 7d/30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume. Served live from the account_events D1 tier at /api/v1/chain/transfers (no static file); zeros + empty leaderboards when cold.",

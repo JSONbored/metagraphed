@@ -650,6 +650,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/alpha-volume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h (subnets with no volume are excluded) ranked by total_volume_tao (biggest market activity first, ?limit <=100), each with the same buy/sell/total volume + sentiment scorecard as GET /api/v1/subnets/{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet total volume. Computed live from the account_events stream; schema-stable zeros + empty leaderboard when cold. Fixed 24h window (no ?window= param), matching the per-subnet route's own framing. */
+        get: operations["chainAlphaVolume"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/axon-removals": {
         parameters: {
             query?: never;
@@ -3698,6 +3715,41 @@ export interface components {
             success_rate: number | null;
             successful_extrinsics: number;
             unique_signers: number;
+        };
+        /** @description Network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by total_volume_tao descending, each with the same buy/sell/total volume + sentiment scorecard SubnetAlphaVolumeArtifact carries (vol_mcap_ratio always null here — no per-subnet market-cap input in scope at the network level), plus a network rollup (with its own net/gross sentiment reading) and a distribution of the per-subnet total_volume_tao. Fixed 24h window, no static file — served live from the account_events D1 tier at /api/v1/chain/alpha-volume; zeros + empty leaderboard when cold. */
+        ChainAlphaVolumeArtifact: {
+            network: {
+                buy_count: number;
+                buy_volume_alpha: number;
+                buy_volume_tao: number;
+                net_volume_alpha: number;
+                sell_count: number;
+                sell_volume_alpha: number;
+                sell_volume_tao: number;
+                /** @enum {string} */
+                sentiment: "bullish" | "bearish" | "neutral";
+                sentiment_ratio: number | null;
+                total_volume_alpha: number;
+                total_volume_tao: number;
+            };
+            /** Format: date-time */
+            observed_at: string | null;
+            schema_version: number;
+            subnet_count: number;
+            subnets: components["schemas"]["SubnetAlphaVolumeArtifact"][];
+            /** @description Spread of the per-subnet total_volume_tao (always non-negative) across every subnet with volume in the window; null when no subnet had volume. */
+            volume_distribution: {
+                count: number;
+                max: number;
+                mean: number;
+                median: number;
+                min: number;
+                p25: number;
+                p75: number;
+                p90: number;
+            } | null;
+            /** @enum {string} */
+            window: "24h";
         };
         /** @description Network-wide axon-removal activity over a 7d/30d window across the subnets with observed removal activity: a per-subnet leaderboard (distinct removers, AxonInfoRemoved count, removals per remover) plus a network rollup with the true distinct remover count and a distribution of per-subnet re-teardown intensity. The teardown-side companion to /api/v1/chain/serving (axon announcements) and the network-wide companion to /api/v1/subnets/{netuid}/axon-removals, served live from the account_events AxonInfoRemoved stream at /api/v1/chain/axon-removals (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainAxonRemovalsArtifact: {
@@ -12540,6 +12592,159 @@ export interface operations {
                     /**
                      * @example day,block_count,extrinsic_count,event_count,successful_extrinsics,success_rate,unique_signers
                      *     2026-07-01,7200,15000,42000,14950,0.9967,320
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainAlphaVolume: {
+        parameters: {
+            query?: {
+                limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "network": {
+                     *           "buy_count": 1,
+                     *           "buy_volume_alpha": 0.5,
+                     *           "buy_volume_tao": 0.5,
+                     *           "net_volume_alpha": 0.5,
+                     *           "sell_count": 1,
+                     *           "sell_volume_alpha": 0.5,
+                     *           "sell_volume_tao": 0.5,
+                     *           "sentiment": "bullish",
+                     *           "sentiment_ratio": 0.9966,
+                     *           "total_volume_alpha": 0.5,
+                     *           "total_volume_tao": 0.5
+                     *         },
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "buy_count": 1,
+                     *             "buy_volume_alpha": 0.5,
+                     *             "buy_volume_tao": 0.5,
+                     *             "net_volume_alpha": 0.5,
+                     *             "netuid": 7,
+                     *             "schema_version": 1,
+                     *             "sell_count": 1,
+                     *             "sell_volume_alpha": 0.5,
+                     *             "sell_volume_tao": 0.5,
+                     *             "sentiment": "bullish",
+                     *             "sentiment_ratio": 0.9966,
+                     *             "total_volume_alpha": 0.5,
+                     *             "total_volume_tao": 0.5,
+                     *             "vol_mcap_ratio": 0.9966,
+                     *             "window": "24h"
+                     *           }
+                     *         ],
+                     *         "volume_distribution": {
+                     *           "count": 1,
+                     *           "max": 0.5,
+                     *           "mean": 0.5,
+                     *           "median": 0.5,
+                     *           "min": 0.5,
+                     *           "p25": 0.5,
+                     *           "p75": 0.5,
+                     *           "p90": 0.5
+                     *         },
+                     *         "window": "24h"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainAlphaVolumeArtifact"];
+                    };
+                    /**
+                     * @example netuid,buy_volume_alpha,sell_volume_alpha,total_volume_alpha,buy_volume_tao,sell_volume_tao,total_volume_tao,buy_count,sell_count,net_volume_alpha,sentiment_ratio,sentiment,vol_mcap_ratio
+                     *     1,700,300,1000,70,30,100,5,2,400,0.4,bullish,
                      */
                     "text/csv": string;
                 };

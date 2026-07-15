@@ -4084,6 +4084,168 @@
         ],
         "type": "object"
       },
+      "ChainAlphaVolumeArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by total_volume_tao descending, each with the same buy/sell/total volume + sentiment scorecard SubnetAlphaVolumeArtifact carries (vol_mcap_ratio always null here — no per-subnet market-cap input in scope at the network level), plus a network rollup (with its own net/gross sentiment reading) and a distribution of the per-subnet total_volume_tao. Fixed 24h window, no static file — served live from the account_events D1 tier at /api/v1/chain/alpha-volume; zeros + empty leaderboard when cold.",
+        "properties": {
+          "network": {
+            "additionalProperties": false,
+            "properties": {
+              "buy_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "buy_volume_alpha": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "buy_volume_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "net_volume_alpha": {
+                "type": "number"
+              },
+              "sell_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "sell_volume_alpha": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "sell_volume_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "sentiment": {
+                "enum": [
+                  "bullish",
+                  "bearish",
+                  "neutral"
+                ],
+                "type": "string"
+              },
+              "sentiment_ratio": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total_volume_alpha": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "total_volume_tao": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "buy_volume_alpha",
+              "sell_volume_alpha",
+              "total_volume_alpha",
+              "buy_volume_tao",
+              "sell_volume_tao",
+              "total_volume_tao",
+              "buy_count",
+              "sell_count",
+              "net_volume_alpha",
+              "sentiment_ratio",
+              "sentiment"
+            ],
+            "type": "object"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetAlphaVolumeArtifact"
+            },
+            "type": "array"
+          },
+          "volume_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet total_volume_tao (always non-negative) across every subnet with volume in the window; null when no subnet had volume.",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "mean": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "median": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "min": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p25": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p75": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p90": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "window": {
+            "enum": [
+              "24h"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "volume_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainAxonRemovalsArtifact": {
         "additionalProperties": false,
         "description": "Network-wide axon-removal activity over a 7d/30d window across the subnets with observed removal activity: a per-subnet leaderboard (distinct removers, AxonInfoRemoved count, removals per remover) plus a network rollup with the true distinct remover count and a distribution of per-subnet re-teardown intensity. The teardown-side companion to /api/v1/chain/serving (axon announcements) and the network-wide companion to /api/v1/subnets/{netuid}/axon-removals, served live from the account_events AxonInfoRemoved stream at /api/v1/chain/axon-removals (no static file); subnet_count 0 and the leaderboard empty when cold.",

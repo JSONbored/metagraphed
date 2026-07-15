@@ -673,6 +673,13 @@ assert.ok(
     chainStakeFlow.network != null,
   "get_chain_stake_flow must return subnet_count + network + subnets[]",
 );
+const chainAlphaVolume = await callOk("get_chain_alpha_volume", { limit: 5 });
+assert.ok(
+  Number.isInteger(chainAlphaVolume.subnet_count) &&
+    Array.isArray(chainAlphaVolume.subnets) &&
+    chainAlphaVolume.network != null,
+  "get_chain_alpha_volume must return subnet_count + network + subnets[]",
+);
 const chainWeights = await callOk("get_chain_weights", {
   window: "7d",
   limit: 5,

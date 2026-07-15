@@ -120,6 +120,11 @@ import {
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
 } from "../../src/chain-stake-flow.mjs";
+import {
+  loadChainAlphaVolume,
+  CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+  CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+} from "../../src/chain-alpha-volume.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.mjs because the deferred handler clusters and a
@@ -838,6 +843,25 @@ const CHAIN_STAKE_FLOW_CSV_COLUMNS = [
   "direction",
 ];
 
+// The alpha-volume CSV exports the per-subnet leaderboard (data.subnets) — each row is a full
+// buildAlphaVolume scorecard (schema_version/window omitted here as constant across every row);
+// the network rollup + volume_distribution stay JSON-only, mirroring chain-stake-flow.
+const CHAIN_ALPHA_VOLUME_CSV_COLUMNS = [
+  "netuid",
+  "buy_volume_alpha",
+  "sell_volume_alpha",
+  "total_volume_alpha",
+  "buy_volume_tao",
+  "sell_volume_tao",
+  "total_volume_tao",
+  "buy_count",
+  "sell_count",
+  "net_volume_alpha",
+  "sentiment_ratio",
+  "sentiment",
+  "vol_mcap_ratio",
+];
+
 // CSV column order for the /api/v1/chain/weights per-subnet leaderboard rows
 // (the row-shaped `subnets` array). The network rollup + intensity_distribution
 // stay JSON-only, mirroring chain-stake-flow.
@@ -1357,6 +1381,88 @@ export async function handleChainStakeFlow(request, env, url, ctx = {}) {
       );
     },
     `${canonicalAnalyticsCacheRoute(url, ["limit"])}${csv ? "&format=csv" : ""}`,
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// Canonicalizes the /chain/alpha-volume cache key on `limit` only -- this route has no ?window=
+// param (fixed 24h, mirroring handleSubnetAlphaVolume's own framing), so there is no window value
+// to normalize into the key the way canonicalAnalyticsCacheRoute does for every windowed sibling.
+// `csv` is folded in directly (rather than string-concatenated after, like the windowed routes
+// do) so a bare request never produces a dangling "&format=csv" with no leading "?".
+function canonicalChainAlphaVolumeCacheRoute(url, csv) {
+  const search = new URL("https://cache-key.invalid/").searchParams;
+  const limitParam = url.searchParams.get("limit");
+  if (limitParam !== null) search.set("limit", limitParam);
+  if (csv) search.set("format", "csv");
+  const query = search.toString();
+  return `${url.pathname}${query ? `?${query}` : ""}`;
+}
+
+// Network-wide rolling 24h buy/sell alpha-volume leaderboard: rank every subnet by
+// total_volume_tao from the account_events stream, with a network rollup (including its own
+// net/gross sentiment reading) and a total-volume distribution. The network companion to
+// /api/v1/subnets/{netuid}/volume; edge-cached like the sibling chain-stake-flow route
+// (account_events-derived, analytics cron freshness). Fixed 24h window, no ?window= param --
+// mirrors handleSubnetAlphaVolume's own framing (#4339's scope: a canonical market-depth
+// figure, not a windowed analytics view).
+export async function handleChainAlphaVolume(request, env, url, ctx = {}) {
+  const validationError = validateQueryParams(url, ["limit", "format"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+    maxLimit: CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  const csv = csvRequested(url, request);
+
+  // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
+  // repeatedly force the network-wide account_events aggregation (mirrors chain-stake-flow).
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-alpha-volume",
+    async () => {
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ?? (await loadChainAlphaVolume(d1Runner(env), { limit }));
+      // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
+      // volume_distribution stay JSON-only (mirrors chain-stake-flow).
+      if (csv) {
+        return csvResponse(
+          data.subnets,
+          "chain-alpha-volume",
+          "short",
+          cacheRequest,
+          CHAIN_ALPHA_VOLUME_CSV_COLUMNS,
+        );
+      }
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/alpha-volume.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    canonicalChainAlphaVolumeCacheRoute(url, csv),
   );
   return request.method === "HEAD"
     ? new Response(null, { status: response.status, headers: response.headers })

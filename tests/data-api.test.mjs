@@ -5650,6 +5650,52 @@ test("GET /api/v1/chain/stake-flow: a single GROUP BY netuid, event_kind query",
   expect(body.subnet_count).toBe(1);
 });
 
+test("GET /api/v1/chain/alpha-volume: a single GROUP BY netuid, event_kind query", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [
+      {
+        netuid: 1,
+        event_kind: "StakeAdded",
+        alpha_volume: 10,
+        tao_volume: 20,
+        event_count: 2,
+        last_observed: "1780000000000",
+      },
+      {
+        netuid: 1,
+        event_kind: "StakeRemoved",
+        alpha_volume: 4,
+        tao_volume: 8,
+        event_count: 1,
+        last_observed: "1780000000000",
+      },
+    ],
+  ];
+  const res = await req("/api/v1/chain/alpha-volume?limit=10");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("24h");
+  expect(body.subnet_count).toBe(1);
+  expect(body.subnets[0].buy_volume_alpha).toBe(10);
+  expect(body.subnets[0].sell_volume_alpha).toBe(4);
+  expect(body.subnets[0].vol_mcap_ratio).toBeNull(); // no per-subnet market cap at network scope
+  expect(queryText()).toContain("event_kind IN (");
+});
+
+test("GET /api/v1/chain/alpha-volume: cold store returns the zeroed leaderboard", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [],
+  ];
+  const res = await req("/api/v1/chain/alpha-volume");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(0);
+  expect(body.subnets).toEqual([]);
+  expect(body.volume_distribution).toBeNull();
+});
+
 test("GET /api/v1/chain/transfers: totals + distinct counts + senders + receivers", async () => {
   mockQueue.current = [
     [], // consumed by the session-scoped `SET statement_timeout` call

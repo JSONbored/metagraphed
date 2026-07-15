@@ -56,8 +56,10 @@ const SENTIMENT_NEUTRAL_BAND = 0.2;
 // account-stake-flow.mjs's flowRatio, including its anti-overstatement clamp:
 // a sub-perfect ratio (real counter-volume exists) must never round to an
 // exact +/-1, which this card's own contract would misread as "no sell/buy
-// volume at all" (#2997's clamp, extended to this sibling ratio).
-function sentimentRatio(netAlpha, grossAlpha) {
+// volume at all" (#2997's clamp, extended to this sibling ratio). Exported so
+// chain-alpha-volume.mjs can derive the SAME sentiment reading at the
+// network-wide rollup level instead of re-deriving this math.
+export function sentimentRatio(netAlpha, grossAlpha) {
   if (grossAlpha <= 0) return null;
   const raw = netAlpha / grossAlpha;
   const rounded = Math.round(raw * 10000) / 10000;
@@ -70,8 +72,9 @@ function sentimentRatio(netAlpha, grossAlpha) {
 // net/gross lean account-stake-flow.mjs classifies for one account's capital
 // flow, relabeled for a subnet-wide volume reading — "bullish"/"bearish" past
 // the neutral band, "neutral" both for balanced two-way volume AND a
-// zero-volume window (no data is no signal either way).
-function classifySentiment(netAlpha, grossAlpha) {
+// zero-volume window (no data is no signal either way). Exported for
+// chain-alpha-volume.mjs's network-wide rollup (see sentimentRatio above).
+export function classifySentiment(netAlpha, grossAlpha) {
   if (grossAlpha <= 0) return "neutral";
   const ratio = netAlpha / grossAlpha;
   if (ratio >= SENTIMENT_NEUTRAL_BAND) return "bullish";

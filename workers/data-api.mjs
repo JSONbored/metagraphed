@@ -287,6 +287,10 @@ import {
   buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
 } from "../src/chain-stake-flow.mjs";
+import {
+  buildChainAlphaVolume,
+  CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+} from "../src/chain-alpha-volume.mjs";
 import { buildChainTransfers } from "../src/chain-transfers.mjs";
 import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
 import {
@@ -4714,6 +4718,30 @@ export default {
                 DEFAULT_ANALYTICS_WINDOW,
               ),
               limit: chainLimit(url, CHAIN_STAKE_FLOW_LIMIT_DEFAULT),
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/alpha-volume (#5598): network-wide rolling 24h
+        // buy/sell alpha-volume leaderboard, mirroring src/chain-alpha-volume.mjs's
+        // loadChainAlphaVolume. Fixed 24h window (no ?window= param, unlike the
+        // sibling chain-stake-flow above) -- same ANALYTICS_DAY_MS cutoff the
+        // subnet-level /api/v1/subnets/:netuid/volume branch above uses.
+        const chainAlphaVolume = url.pathname.match(
+          /^\/api\/v1\/chain\/alpha-volume$/,
+        );
+        if (chainAlphaVolume) {
+          const cutoff = Date.now() - ANALYTICS_DAY_MS;
+          const rows = await sql`
+          SELECT netuid, event_kind, COALESCE(SUM(alpha_amount), 0) AS alpha_volume,
+                 COALESCE(SUM(amount_tao), 0) AS tao_volume, COUNT(*) AS event_count,
+                 MAX(observed_at) AS last_observed
+          FROM account_events
+          WHERE event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND}) AND observed_at >= ${cutoff}
+          GROUP BY netuid, event_kind`;
+          return json(
+            buildChainAlphaVolume(rows, {
+              limit: chainLimit(url, CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT),
             }),
           );
         }

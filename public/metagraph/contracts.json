@@ -1164,6 +1164,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by total_volume_tao (subnets with no volume in the window are excluded), each subnet with the same buy/sell/total volume + sentiment scorecard as /api/v1/subnets/{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution of the per-subnet total volume, computed live from the account_events stake stream at /api/v1/chain/alpha-volume (no static file). Fixed 24h window, not OHLC/price data (#2589's trader-feature fence).",
+      "id": "chain-alpha-volume",
+      "path": "/metagraph/chain/alpha-volume.json",
+      "schema_ref": "#/components/schemas/ChainAlphaVolumeArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Network-wide validator weight-setting activity over a 7d or 30d window across the subnets with observed weight-setting activity (subnets with no WeightsSet events are absent): each subnet's distinct weight-setting validators, WeightsSet event count, and average updates per validator ranked into a leaderboard, a network rollup with the true distinct setter count (not a per-subnet sum) and total events, and a distribution summary of the per-subnet update intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events WeightsSet stream at /api/v1/chain/weights; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
       "id": "chain-weights",
       "path": "/metagraph/chain/weights.json",

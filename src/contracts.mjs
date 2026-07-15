@@ -1404,6 +1404,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainStakeFlowArtifact",
   ),
   artifact(
+    "chain-alpha-volume",
+    "/metagraph/chain/alpha-volume.json",
+    "Network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by total_volume_tao (subnets with no volume in the window are excluded), each subnet with the same buy/sell/total volume + sentiment scorecard as /api/v1/subnets/{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution of the per-subnet total volume, computed live from the account_events stake stream at /api/v1/chain/alpha-volume (no static file). Fixed 24h window, not OHLC/price data (#2589's trader-feature fence).",
+    "ChainAlphaVolumeArtifact",
+  ),
+  artifact(
     "chain-weights",
     "/metagraph/chain/weights.json",
     "Network-wide validator weight-setting activity over a 7d or 30d window across the subnets with observed weight-setting activity (subnets with no WeightsSet events are absent): each subnet's distinct weight-setting validators, WeightsSet event count, and average updates per validator ranked into a leaderboard, a network rollup with the true distinct setter count (not a per-subnet sum) and total events, and a distribution summary of the per-subnet update intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events WeightsSet stream at /api/v1/chain/weights; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
@@ -3382,6 +3388,19 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "chain-alpha-volume",
+    "GET",
+    "/api/v1/chain/alpha-volume",
+    "/metagraph/chain/alpha-volume.json",
+    "Fetch the network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h (subnets with no volume are excluded) ranked by total_volume_tao (biggest market activity first, ?limit <=100), each with the same buy/sell/total volume + sentiment scorecard as GET /api/v1/subnets/{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet total volume. Computed live from the account_events stream; schema-stable zeros + empty leaderboard when cold. Fixed 24h window (no ?window= param), matching the per-subnet route's own framing.",
+    "short",
+    ["chain", "analytics"],
+    csvRouteQuery([
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ]),
+    [],
+  ),
+  route(
     "chain-weights",
     "GET",
     "/api/v1/chain/weights",
@@ -4422,6 +4441,14 @@ function csvExampleForRoute(entry) {
     return [
       "netuid,total_staked_tao,total_unstaked_tao,net_flow_tao,gross_flow_tao,stake_events,unstake_events,direction",
       "1,100,30,70,130,5,2,inflow",
+    ].join("\r\n");
+  }
+  if (entry.id === "chain-alpha-volume") {
+    // The row-shaped per-subnet leaderboard (data.subnets); the network rollup +
+    // volume_distribution stay JSON-only, mirroring chain-stake-flow.
+    return [
+      "netuid,buy_volume_alpha,sell_volume_alpha,total_volume_alpha,buy_volume_tao,sell_volume_tao,total_volume_tao,buy_count,sell_count,net_volume_alpha,sentiment_ratio,sentiment,vol_mcap_ratio",
+      "1,700,300,1000,70,30,100,5,2,400,0.4,bullish,",
     ].join("\r\n");
   }
   if (entry.id === "blocks-feed") {
