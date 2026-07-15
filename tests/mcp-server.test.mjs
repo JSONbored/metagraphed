@@ -7912,6 +7912,118 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /insufficient_liquidity/);
   });
 
+  test("get_stake_action_preview previews a stake with a human-readable summary + disclaimer", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 1000, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 64);
+    assert.equal(out.direction, "stake");
+    assert.equal(out.estimated_out.unit, "alpha");
+    assert.ok(out.estimated_out.amount > 0);
+    assert.ok(out.price_impact_pct > 0);
+    assert.match(out.summary, /Staking 1000 TAO on subnet 64/);
+    assert.match(out.summary, /price impact \(slippage\)/);
+    assert.match(out.disclaimer, /does not execute/i);
+  });
+
+  test("get_stake_action_preview defaults direction to stake when omitted", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 10 },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.structuredContent.direction, "stake");
+  });
+
+  test("get_stake_action_preview previews an unstake (alpha in, TAO out)", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 500, direction: "unstake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.direction, "unstake");
+    assert.equal(out.estimated_out.unit, "tao");
+    assert.match(out.summary, /Unstaking 500 alpha on subnet 64/);
+    assert.ok(out.estimated_out.amount > 0);
+  });
+
+  test("get_stake_action_preview previews root (netuid 0) as 1:1 with no price impact", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 0, amount: 42, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 0);
+    assert.equal(out.price_impact_pct, 0);
+    assert.match(out.summary, /root/);
+    assert.match(out.summary, /no price impact/);
+  });
+
+  test("get_stake_action_preview output carries NO signable/extrinsic payload — only the human-readable summary", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 10, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    // The read-only guarantee: the response must be a plain summary with a
+    // disclaimer and expose nothing an agent could mistake for a submittable tx.
+    assert.ok(out.summary && out.disclaimer);
+    // Scan every field EXCEPT the disclaimer (which intentionally names these
+    // words to state the tool does none of them) for any transaction shape.
+    const { disclaimer: _disclaimer, ...scanned } = out;
+    const serialized = JSON.stringify(scanned).toLowerCase();
+    for (const forbidden of [
+      "extrinsic",
+      "unsigned",
+      "signraw",
+      "signature",
+      "call_data",
+      "calldata",
+      "0x",
+      "mortality",
+      "nonce",
+    ]) {
+      assert.ok(
+        !serialized.includes(forbidden),
+        `preview output must not contain a transaction-shaped field: "${forbidden}"`,
+      );
+    }
+  });
+
+  test("get_stake_action_preview surfaces insufficient_liquidity when the subnet has no pool row", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 999, amount: 10, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /insufficient_liquidity/);
+  });
+
   test("get_economics serves the live KV economics tier with REST list-query filters", async () => {
     const blob = {
       ...ECON_BLOB,
