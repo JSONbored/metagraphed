@@ -13,6 +13,7 @@ import { buildUrl } from "@/lib/metagraphed/client";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
+import { ValidatorDominanceChart } from "@/components/metagraphed/charts/validator-dominance-chart";
 import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
 import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
@@ -103,6 +104,13 @@ function ValidatorsPage() {
           />
         </Suspense>
       </QueryErrorBoundary>
+      <div className="mt-6" id="validator-dominance">
+        <QueryErrorBoundary>
+          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+            <ValidatorDominanceChart />
+          </Suspense>
+        </QueryErrorBoundary>
+      </div>
       <div className="mt-6" id="validator-subnet-heatmap">
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-64 w-full" />}>
