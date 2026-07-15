@@ -8221,6 +8221,166 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 });
 
+describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store fallback)", () => {
+  function feesQuery(argsClause) {
+    return `{ chain_fees${argsClause} {
+      schema_version window observed_at day_count
+      daily { day extrinsic_count total_fee_tao avg_fee_tao median_fee_tao total_tip_tao avg_tip_tao median_tip_tao }
+      top_fee_payers { signer total_fee_tao total_tip_tao extrinsic_count }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable empty series (7d)", async () => {
+    const { status, body } = await gql(feesQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_fees, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      day_count: 0,
+      daily: [],
+      top_fee_payers: [],
+    });
+  });
+
+  test("resolves Postgres-tier daily series + top payers", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-14T00:00:00.000Z",
+            day_count: 1,
+            daily: [
+              {
+                day: "2026-07-14",
+                extrinsic_count: 4,
+                total_fee_tao: 0.4,
+                avg_fee_tao: 0.1,
+                median_fee_tao: 0.1,
+                total_tip_tao: 0.02,
+                avg_tip_tao: 0.005,
+                median_tip_tao: 0.004,
+              },
+            ],
+            top_fee_payers: [
+              {
+                signer: "5Signer",
+                total_fee_tao: 0.4,
+                total_tip_tao: 0.02,
+                extrinsic_count: 4,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(feesQuery(`(window: "30d")`), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_fees;
+    assert.equal(d.window, "30d");
+    assert.equal(d.day_count, 1);
+    assert.equal(d.daily[0].day, "2026-07-14");
+    assert.equal(d.daily[0].total_fee_tao, 0.4);
+    assert.equal(d.daily[0].median_tip_tao, 0.004);
+    assert.equal(d.top_fee_payers[0].signer, "5Signer");
+    assert.equal(d.top_fee_payers[0].extrinsic_count, 4);
+  });
+
+  test("partial rows in each list degrade missing fields to their schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      // Each row carries only its required key; every other field is omitted so
+      // the per-item ?? default fallbacks (both lists) must fire.
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            daily: [{ day: "2026-07-14" }],
+            top_fee_payers: [{ signer: "5Signer" }],
+          }),
+      },
+    };
+    const { status, body } = await gql(feesQuery(""), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_fees;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.window, "7d");
+    assert.equal(d.observed_at, null);
+    assert.equal(d.day_count, 0);
+    const day = d.daily[0];
+    assert.equal(day.extrinsic_count, 0);
+    assert.equal(day.total_fee_tao, null);
+    assert.equal(day.avg_fee_tao, null);
+    assert.equal(day.median_fee_tao, null);
+    assert.equal(day.total_tip_tao, null);
+    assert.equal(day.avg_tip_tao, null);
+    assert.equal(day.median_tip_tao, null);
+    const payer = d.top_fee_payers[0];
+    assert.equal(payer.total_fee_tao, null);
+    assert.equal(payer.total_tip_tao, null);
+    assert.equal(payer.extrinsic_count, 0);
+  });
+
+  test("an empty Postgres-tier body (no daily/top_fee_payers keys) degrades to empty lists", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(feesQuery(""), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_fees, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      day_count: 0,
+      daily: [],
+      top_fee_payers: [],
+    });
+  });
+
+  test("window/limit/call_module args are forwarded to the /chain/fees path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            day_count: 0,
+            daily: [],
+            top_fee_payers: [],
+          });
+        },
+      },
+    };
+    await gql(
+      feesQuery(`(window: "30d", limit: 5, call_module: "Balances")`),
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/fees");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("call_module"), "Balances");
+  });
+
+  test("rejects an unsupported window with BAD_USER_INPUT", async () => {
+    const { body } = await gql(feesQuery(`(window: "99d")`));
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("rejects an over-long call_module with BAD_USER_INPUT", async () => {
+    const { body } = await gql(feesQuery(`(call_module: "${"x".repeat(101)}")`));
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("chain_fees is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_fees, 5);
+  });
+});
+
 describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", () => {
   function servingQuery(argsClause) {
     return `{ chain_serving${argsClause} {
