@@ -207,7 +207,7 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "./chain-turnover.mjs";
 import { buildTurnover } from "./turnover.mjs";
-import { buildChainCalls } from "./chain-analytics.mjs";
+import { buildChainCalls, buildChainFees } from "./chain-analytics.mjs";
 import { buildChainPerformance } from "./chain-performance.mjs";
 import { buildChainConcentration } from "./concentration.mjs";
 import {
@@ -368,6 +368,8 @@ export const SDL = `
     chain_calls(window: String, group_by: String, limit: Int, call_module: String): ChainCalls!
     "Network-wide Prometheus telemetry-endpoint announcement leaderboard over a 7d/30d window (default 7d): subnets ranked by PrometheusServed announcements with each's distinct-exporter count and announcements-per-exporter re-announcement intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The telemetry-endpoint companion to chain_serving's axon endpoints -- which subnets run observability infrastructure. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/prometheus."
     chain_prometheus(window: String, limit: Int): ChainPrometheus!
+    "Per-UTC-day network fee/tip series over a 7d/30d window (default 7d): each day's extrinsic count and total/avg/median fee + tip in TAO, plus the top fee-paying signers (limit default 25, max 100), optionally scoped to a single call_module. Computed live from the extrinsics tier; a cold store yields a schema-stable empty series, never a GraphQL error. Mirrors GET /api/v1/chain/fees."
+    chain_fees(window: String, limit: Int, call_module: String): ChainFees!
     "Network-wide weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators driving consensus network-wide, each with its total WeightsSet count, share of the network total, and first/last set times, ranked by activity. The setter-level drill-in behind chain_weights. Mirrors GET /api/v1/chain/weights/setters."
     chain_weight_setters(window: String, limit: Int): ChainWeightSetters!
     "Compact all-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history (probed every ~15 minutes); a cold store still returns both windows, schema-stable and zeroed, never a GraphQL error. Mirrors GET /api/v1/health/trends."
@@ -573,6 +575,36 @@ export const SDL = `
     total_extrinsics: Int!
     call_count: Int!
     calls: [ChainCall!]!
+  }
+
+  "One UTC day's fee/tip aggregate: extrinsic count, total/avg/median fee and tip in TAO (avg/median are null on a zero-extrinsic day)."
+  type ChainFeesDay {
+    day: String!
+    extrinsic_count: Int!
+    total_fee_tao: Float
+    avg_fee_tao: Float
+    median_fee_tao: Float
+    total_tip_tao: Float
+    avg_tip_tao: Float
+    median_tip_tao: Float
+  }
+
+  "One top fee-paying signer over the window, with its total fee/tip and extrinsic count."
+  type ChainFeePayer {
+    signer: String!
+    total_fee_tao: Float
+    total_tip_tao: Float
+    extrinsic_count: Int!
+  }
+
+  "Per-UTC-day network fee/tip series plus the top fee payers over the window. Mirrors GET /api/v1/chain/fees's data envelope."
+  type ChainFees {
+    schema_version: Int!
+    window: String!
+    observed_at: String
+    day_count: Int!
+    daily: [ChainFeesDay!]!
+    top_fee_payers: [ChainFeePayer!]!
   }
 
   "Network-wide validator-set churn across all subnets (#5686). Mirrors GET /api/v1/chain/turnover's data envelope."
@@ -2293,6 +2325,7 @@ export const FIELD_COMPLEXITY = {
   chain_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_calls: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_fees: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4863,6 +4896,62 @@ const rootValue = {
         call_function: c.call_function ?? null,
         count: c.count ?? 0,
         share: c.share ?? null,
+      })),
+    };
+  },
+
+  async chain_fees({ window, limit, call_module: callModule }, context) {
+    // Reuse the exact analyticsWindow parse/validate REST's handleChainFees
+    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
+    // BAD_USER_INPUT error, not a silent empty result.
+    const windowUrl = new URL(context.request.url);
+    windowUrl.search = "";
+    if (window != null) windowUrl.searchParams.set("window", window);
+    const { label, error } = analyticsWindow(windowUrl);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (callModule != null && callModule.length > 100) {
+      throw new GraphQLError("call_module must be at most 100 characters.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const safeLimit = clampLimit(limit, { defaultLimit: 25, maxLimit: 100 });
+    const params = new URLSearchParams();
+    params.set("window", label);
+    params.set("limit", String(safeLimit));
+    if (callModule != null) params.set("call_module", callModule);
+    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainFees fallback
+    // handleChainFees uses; the tier owns the daily/median/payer aggregation (no
+    // logic duplicated here), and a cold store yields a schema-stable empty series.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/fees", params),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      )) ?? buildChainFees({ window: label });
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? label,
+      observed_at: data.observed_at ?? null,
+      day_count: data.day_count ?? 0,
+      daily: (data.daily ?? []).map((d) => ({
+        day: d.day,
+        extrinsic_count: d.extrinsic_count ?? 0,
+        total_fee_tao: d.total_fee_tao ?? null,
+        avg_fee_tao: d.avg_fee_tao ?? null,
+        median_fee_tao: d.median_fee_tao ?? null,
+        total_tip_tao: d.total_tip_tao ?? null,
+        avg_tip_tao: d.avg_tip_tao ?? null,
+        median_tip_tao: d.median_tip_tao ?? null,
+      })),
+      top_fee_payers: (data.top_fee_payers ?? []).map((p) => ({
+        signer: p.signer,
+        total_fee_tao: p.total_fee_tao ?? null,
+        total_tip_tao: p.total_tip_tao ?? null,
+        extrinsic_count: p.extrinsic_count ?? 0,
       })),
     };
   },
