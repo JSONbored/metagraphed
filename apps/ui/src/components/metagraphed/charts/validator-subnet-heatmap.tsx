@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
@@ -65,58 +66,71 @@ export function ValidatorSubnetHeatmap() {
         </div>
       </div>
       <div className="w-full overflow-x-auto [scrollbar-gutter:stable]">
-        <table className="w-full min-w-[640px] text-[11px] font-mono">
-          <thead>
-            <tr>
-              <th className="sticky left-0 z-10 border-b border-border bg-card px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink-muted">
-                Validator
-              </th>
-              {netuids.map((n) => (
-                <th
-                  key={n}
-                  className="border-b border-border px-1.5 py-2 text-[10px] tabular-nums text-ink-muted"
-                >
-                  {n}
+        <TooltipProvider delayDuration={150}>
+          <table className="w-full min-w-[640px] text-[11px] font-mono">
+            <thead>
+              <tr>
+                <th className="sticky left-0 z-10 border-b border-border bg-card px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink-muted">
+                  Validator
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((v) => {
-              const byNet = new Map((v.subnets ?? []).map((s) => [s.netuid, s]));
-              return (
-                <tr key={v.hotkey} className="border-b border-border last:border-b-0">
-                  <td className="sticky left-0 z-10 border-r border-border bg-card px-3 py-1.5 text-ink-strong">
-                    <Link
-                      to="/accounts/$ss58"
-                      params={{ ss58: v.hotkey }}
-                      className="block max-w-[12ch] truncate hover:text-accent"
-                      title={v.hotkey}
-                    >
-                      {shortHash(v.hotkey) ?? v.hotkey}
-                    </Link>
-                  </td>
-                  {netuids.map((n) => {
-                    const s = byNet.get(n);
-                    const ratio = s && maxStake > 0 ? s.stake_tao / maxStake : null;
-                    return (
-                      <td key={n} className="p-0.5">
-                        <div
-                          className={classNames("h-6 rounded-sm", stakeTone(ratio))}
-                          title={
-                            s
-                              ? `${shortHash(v.hotkey)} · SN${n}\nstake ${taoCompact(s.stake_tao)} τ · emission ${taoCompact(s.emission_tao)} τ · trust ${s.validator_trust ?? "—"}`
-                              : `SN${n} · not in this validator's top-10 subnets`
-                          }
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                {netuids.map((n) => (
+                  <th
+                    key={n}
+                    className="border-b border-border px-1.5 py-2 text-[10px] tabular-nums text-ink-muted"
+                  >
+                    {n}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((v) => {
+                const byNet = new Map((v.subnets ?? []).map((s) => [s.netuid, s]));
+                return (
+                  <tr key={v.hotkey} className="border-b border-border last:border-b-0">
+                    <td className="sticky left-0 z-10 border-r border-border bg-card px-3 py-1.5 text-ink-strong">
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: v.hotkey }}
+                        className="block max-w-[12ch] truncate hover:text-accent"
+                        title={v.hotkey}
+                      >
+                        {shortHash(v.hotkey) ?? v.hotkey}
+                      </Link>
+                    </td>
+                    {netuids.map((n) => {
+                      const s = byNet.get(n);
+                      const ratio = s && maxStake > 0 ? s.stake_tao / maxStake : null;
+                      const summary = s
+                        ? `${shortHash(v.hotkey)} · SN${n} · stake ${taoCompact(s.stake_tao)} τ · emission ${taoCompact(s.emission_tao)} τ · trust ${s.validator_trust ?? "—"}`
+                        : `SN${n} · not in this validator's top-10 subnets`;
+                      return (
+                        <td key={n} className="p-0.5">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span
+                                tabIndex={0}
+                                role="img"
+                                aria-label={summary}
+                                className={classNames(
+                                  "block h-6 rounded-sm cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+                                  stakeTone(ratio),
+                                )}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-[11px]">
+                              {summary}
+                            </TooltipContent>
+                          </Tooltip>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TooltipProvider>
       </div>
     </div>
   );
