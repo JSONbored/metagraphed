@@ -1535,6 +1535,86 @@ fn env_u64(k: &str) -> Option<u64> {
     std::env::var(k).ok().and_then(|v| v.parse().ok())
 }
 
+/// Result of one tick's stuck-block state update -- see `track_stuck_block`.
+struct StuckBlockOutcome {
+    stuck_block: Option<u64>,
+    stuck_ticks: u64,
+    should_alert: bool,
+}
+
+/// Pure state-transition for run_live's stuck-block tracking, extracted so
+/// the counter/reset/re-alert-cadence logic is unit-testable without a live
+/// chain connection (metagraphed-indexer-rs#4). Call this once per
+/// decode-failure tick with the PREVIOUS (stuck_block, stuck_ticks) and the
+/// block that just failed; a different failed_block than the tracked one
+/// resets the counter to 1 (a new block, not a continuation of the old
+/// stuck one). should_alert is true on the threshold tick and every
+/// threshold-multiple after it, so a persistent wedge re-alerts periodically
+/// instead of going silent after the first alert.
+fn track_stuck_block(
+    stuck_block: Option<u64>,
+    stuck_ticks: u64,
+    failed_block: u64,
+    alert_threshold: u64,
+) -> StuckBlockOutcome {
+    let ticks = if stuck_block == Some(failed_block) {
+        stuck_ticks + 1
+    } else {
+        1
+    };
+    StuckBlockOutcome {
+        stuck_block: Some(failed_block),
+        stuck_ticks: ticks,
+        should_alert: ticks.is_multiple_of(alert_threshold),
+    }
+}
+
+// Fires a Discord webhook alert (same shape as the alertmanager-discord relay
+// already running on the archive/indexer boxes) when a single block has been
+// stuck in run_live's decode-retry loop for too long -- see
+// metagraphed-indexer-rs#4 (filed before the ADR 0016 consolidation, tracked
+// here now): a permanent decode failure (e.g. an unsupported new
+// pallet/type from a future runtime upgrade) previously retried forever
+// with only an eprintln, no signal outside someone tailing logs.
+//
+// Shells out to curl via tokio::process::Command rather than adding an HTTP
+// client crate (reqwest et al.) as a new dependency -- matches this repo's
+// existing curl-based alerting convention (metagraphed-infra's
+// send-alert.sh) for a single, rare, non-hot-path POST.
+async fn alert_stuck_block(webhook_url: Option<&str>, block: u64, ticks: u64, poll_secs: u64) {
+    let Some(url) = webhook_url else { return };
+    let minutes = (ticks * poll_secs) / 60;
+    let content = format!(
+        "🔴 metagraphed-indexer-rs: live ingestion stuck on block #{block} for ~{minutes}min ({ticks} retries) — possible permanent decode failure, check logs."
+    );
+    let payload = serde_json::json!({ "content": content }).to_string();
+    let result = tokio::process::Command::new("curl")
+        .args([
+            "-fsS",
+            "-m",
+            "15",
+            "-X",
+            "POST",
+            url,
+            "-H",
+            "content-type: application/json",
+            "-d",
+            &payload,
+        ])
+        .output()
+        .await;
+    match result {
+        Ok(out) if !out.status.success() => {
+            eprintln!(
+                "live: stuck-block alert webhook failed: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+        }
+        Err(e) => eprintln!("live: stuck-block alert webhook spawn failed: {e}"),
+        _ => {}
+    }
+}
+
 /// Highest block already in Postgres = the live frontier (the backfill only writes
 /// the historical range *below* it), so it doubles as the live indexer's cursor.
 async fn db_max_block(pg: &tokio_postgres::Client) -> Result<u64> {
@@ -1560,6 +1640,19 @@ async fn db_max_block(pg: &tokio_postgres::Client) -> Result<u64> {
 ///     interval, so the pg connection is never idle for an extended stretch.
 async fn run_live(client: &ChainClient, pg: &mut tokio_postgres::Client) -> Result<()> {
     let poll = env_u64("LIVE_POLL_SECS").unwrap_or(6);
+    // metagraphed-indexer-rs#4: a block that permanently fails to decode
+    // (e.g. an unsupported new pallet/type from a future runtime upgrade)
+    // retries forever by design -- correct, never silently skip -- but
+    // previously had zero signal outside someone tailing logs. Alert once a
+    // single block has been stuck this many consecutive polling ticks
+    // (default 20 * 6s poll = ~2min), then re-alert every `alert_threshold`
+    // ticks while it stays stuck, so a persistent wedge doesn't go silent
+    // again after the first alert. Optional: LIVE_ALERT_WEBHOOK_URL unset
+    // means alert_stuck_block is a no-op, matching this infra's existing
+    // "webhook optional, no default" convention (metagraphed-infra's own
+    // metagraph_alert_webhook_url).
+    let alert_webhook_url = std::env::var("LIVE_ALERT_WEBHOOK_URL").ok();
+    let alert_threshold = env_u64("LIVE_STUCK_ALERT_TICKS").unwrap_or(20).max(1);
     let head0 = client
         .call(|api| async move { Ok(api.at_current_block().await?.block_number()) })
         .await?;
@@ -1572,6 +1665,8 @@ async fn run_live(client: &ChainClient, pg: &mut tokio_postgres::Client) -> Resu
         cursor + 1
     );
     let mut n: u64 = 0;
+    let mut stuck_block: Option<u64> = None;
+    let mut stuck_ticks: u64 = 0;
     loop {
         let head = client
             .call(|api| async move { Ok(api.at_current_block().await?.block_number()) })
@@ -1585,9 +1680,20 @@ async fn run_live(client: &ChainClient, pg: &mut tokio_postgres::Client) -> Resu
                 Ok(d) => d,
                 Err(e) => {
                     eprintln!("live: #{h} decode failed ({e:#}) — retry next tick");
+                    let outcome = track_stuck_block(stuck_block, stuck_ticks, h, alert_threshold);
+                    stuck_block = outcome.stuck_block;
+                    stuck_ticks = outcome.stuck_ticks;
+                    if outcome.should_alert {
+                        alert_stuck_block(alert_webhook_url.as_deref(), h, stuck_ticks, poll).await;
+                    }
                     break;
                 }
             };
+            // Decode succeeded -- clear any stuck-block tracking for it.
+            if stuck_block == Some(h) {
+                stuck_block = None;
+                stuck_ticks = 0;
+            }
             let blocks: Vec<_> = d.block.into_iter().collect();
             flush(pg, &blocks, &d.extrinsics, &d.events, &d.chain_events)
                 .await
@@ -1875,6 +1981,55 @@ mod type_name_tests {
         ));
         let registry = builder.finish();
         assert_eq!(type_name(tuple_id, &registry), "(Vec<u16>, Vec<u16>)");
+    }
+}
+
+#[cfg(test)]
+mod stuck_block_tracking_tests {
+    use super::*;
+
+    #[test]
+    fn first_failure_on_a_new_block_starts_at_one_tick_no_alert() {
+        let outcome = track_stuck_block(None, 0, 100, 20);
+        assert_eq!(outcome.stuck_block, Some(100));
+        assert_eq!(outcome.stuck_ticks, 1);
+        assert!(!outcome.should_alert);
+    }
+
+    #[test]
+    fn repeated_failures_on_the_same_block_accumulate_ticks() {
+        let outcome = track_stuck_block(Some(100), 5, 100, 20);
+        assert_eq!(outcome.stuck_block, Some(100));
+        assert_eq!(outcome.stuck_ticks, 6);
+        assert!(!outcome.should_alert);
+    }
+
+    #[test]
+    fn reaching_the_threshold_fires_an_alert() {
+        let outcome = track_stuck_block(Some(100), 19, 100, 20);
+        assert_eq!(outcome.stuck_ticks, 20);
+        assert!(outcome.should_alert);
+    }
+
+    #[test]
+    fn a_different_block_failing_resets_the_counter_to_one() {
+        // Block 100 was stuck for 19 ticks, but block 101 is the one that
+        // failed THIS tick (100 must have succeeded in between) -- a fresh
+        // counter for 101, not a continuation of 100's count.
+        let outcome = track_stuck_block(Some(100), 19, 101, 20);
+        assert_eq!(outcome.stuck_block, Some(101));
+        assert_eq!(outcome.stuck_ticks, 1);
+        assert!(!outcome.should_alert);
+    }
+
+    #[test]
+    fn a_persistent_wedge_re_alerts_every_threshold_multiple() {
+        let at_40 = track_stuck_block(Some(100), 39, 100, 20);
+        assert_eq!(at_40.stuck_ticks, 40);
+        assert!(at_40.should_alert);
+        let at_41 = track_stuck_block(Some(100), 40, 100, 20);
+        assert_eq!(at_41.stuck_ticks, 41);
+        assert!(!at_41.should_alert);
     }
 }
 
