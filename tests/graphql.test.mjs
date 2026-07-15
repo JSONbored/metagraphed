@@ -21,6 +21,7 @@ import {
   maxDepthRule,
   schema as chainEventsSchema,
 } from "../src/graphql.mjs";
+import { LEADERBOARD_BOARDS } from "../src/health-serving.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { resolveClientIp } from "../workers/config.mjs";
 import {
@@ -6459,6 +6460,127 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
     assert.equal(FIELD_COMPLEXITY.subnet_recycled, 10);
     assert.ok(
       FIELD_COMPLEXITY.subnet_recycled > FIELD_COMPLEXITY.chain_weights,
+    );
+  });
+});
+
+describe("graphql — registry_leaderboards (#5661, shared composer + REST-matching validation)", () => {
+  // Every D1 query in the composer returns no rows, so the boards resolve from
+  // an empty projection without a live DB. No profiles artifact is injected, so
+  // leaderboardProfilesProjection's module-level cache is never populated —
+  // these tests can't leak a projection into each other.
+  const emptyHealthDb = {
+    prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }),
+  };
+
+  // Same shape handleLeaderboards' surface_status aggregate yields; the stub
+  // ignores the SQL, so a single board is asserted at a time.
+  function healthDb(results) {
+    return {
+      prepare: () => ({ bind: () => ({ all: async () => ({ results }) }) }),
+    };
+  }
+
+  test("cold store: every board resolves schema-stable and empty, never null", async () => {
+    const { status, body } = await gql(
+      `{ registry_leaderboards { schema_version board observed_at source boards } }`,
+      { METAGRAPH_HEALTH_DB: emptyHealthDb },
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.registry_leaderboards;
+    assert.equal(r.schema_version, 1);
+    // No board filter -> every board key present, each an empty ranked list.
+    assert.equal(r.board, null);
+    assert.equal(r.source, "registry+live-cron-prober");
+    for (const key of LEADERBOARD_BOARDS) {
+      assert.deepEqual(
+        r.boards[key],
+        [],
+        `board ${key} should be an empty list`,
+      );
+    }
+  });
+
+  test("an explicit board returns only that board, ranked from the D1 rows", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: healthDb([
+        { netuid: 7, total: 4, ok_count: 2, avg_latency_ms: 90 },
+        { netuid: 3, total: 4, ok_count: 4, avg_latency_ms: 42 },
+      ]),
+    };
+    const { status, body } = await gql(
+      `{ registry_leaderboards(board: "healthiest") { board boards } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.registry_leaderboards;
+    assert.equal(r.board, "healthiest");
+    // Filtered response carries just the requested board, matching REST.
+    assert.deepEqual(Object.keys(r.boards), ["healthiest"]);
+    // Ranked by uptime_ratio desc — the fully-ok subnet leads.
+    assert.deepEqual(
+      r.boards.healthiest.map((e) => e.netuid),
+      [3, 7],
+    );
+    assert.equal(r.boards.healthiest[0].surfaces_ok, 4);
+    assert.equal(r.boards.healthiest[0].avg_latency_ms, 42);
+  });
+
+  test("limit caps each board's entries", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: healthDb([
+        { netuid: 7, total: 4, ok_count: 2, avg_latency_ms: 90 },
+        { netuid: 3, total: 4, ok_count: 4, avg_latency_ms: 42 },
+      ]),
+    };
+    const { body } = await gql(
+      `{ registry_leaderboards(board: "healthiest", limit: 1) { boards } }`,
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.registry_leaderboards.boards.healthiest.length, 1);
+  });
+
+  test("an unknown board is a BAD_USER_INPUT error, not a silent empty board", async () => {
+    const { status, body } = await gql(
+      `{ registry_leaderboards(board: "not-a-board") { board } }`,
+      { METAGRAPH_HEALTH_DB: emptyHealthDb },
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors?.length, "expected a GraphQL error");
+    assert.match(body.errors[0].message, /Unknown board "not-a-board"/);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+    assert.equal(body.data?.registry_leaderboards ?? null, null);
+  });
+
+  test("a limit outside REST's 1..100 range is a BAD_USER_INPUT error", async () => {
+    for (const limit of [0, 101]) {
+      const { body } = await gql(
+        `{ registry_leaderboards(limit: ${limit}) { board } }`,
+        { METAGRAPH_HEALTH_DB: emptyHealthDb },
+      );
+      assert.ok(body.errors?.length, `limit ${limit} should error`);
+      assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+      assert.match(body.errors[0].message, /between 1 and 100/);
+    }
+  });
+
+  test("the boundary limits REST accepts are accepted here too", async () => {
+    for (const limit of [1, 100]) {
+      const { body } = await gql(
+        `{ registry_leaderboards(limit: ${limit}) { board } }`,
+        { METAGRAPH_HEALTH_DB: emptyHealthDb },
+      );
+      assert.equal(body.errors, undefined, `limit ${limit} should be accepted`);
+    }
+  });
+
+  test("is priced as a relationship field — it fans out into several D1 reads", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.registry_leaderboards,
+      FIELD_COMPLEXITY.health_trends,
     );
   });
 });
