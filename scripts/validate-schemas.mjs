@@ -154,6 +154,16 @@ const candidateSchema = await readJson(
 const providerSubmissionSchema = await readJson(
   path.join(repoRoot, "schemas/provider-submission.schema.json"),
 );
+// #5551: public-artifacts.schema.json documents the top-level shape of every
+// generated artifact served from metagraph.sh/metagraph (schema_version: 1,
+// network: "finney", the required per-kind properties). Registered explicitly
+// so it's addSchema'd under its $id here — rather than only ajv.compile()'d for
+// syntax by the generic loop below — and its `$defs` can be $ref'd to validate
+// real artifact data against it (see the public-artifact loop after the
+// per-component validation).
+const publicArtifactsSchema = await readJson(
+  path.join(repoRoot, "schemas/public-artifacts.schema.json"),
+);
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
 );
@@ -163,6 +173,7 @@ for (const schema of [
   subnetSchema,
   candidateSchema,
   providerSubmissionSchema,
+  publicArtifactsSchema,
 ]) {
   ajv.addSchema(schema, schema.$id);
 }
@@ -171,6 +182,7 @@ const explicitlyRegisteredSchemaIds = new Set([
   subnetSchema.$id,
   candidateSchema.$id,
   providerSubmissionSchema.$id,
+  publicArtifactsSchema.$id,
 ]);
 for (const schemaPath of await listJsonFiles(path.join(repoRoot, "schemas"))) {
   const schema = await readJson(schemaPath);
@@ -222,12 +234,44 @@ validate(
   "direct-provider-profile example",
 );
 
-for (const artifact of await artifactValidationTargets()) {
+const artifactTargets = await artifactValidationTargets();
+for (const artifact of artifactTargets) {
   const validator = compileComponentValidator(artifact.schema_ref);
   validate(
     validator,
     await readJson(artifact.file_path),
     `artifact:${artifact.label}`,
+  );
+}
+
+// #5551: additionally validate each real artifact against
+// public-artifacts.schema.json's own top-level contract, keyed by the artifact
+// id (hyphens -> underscores) to the schema property of the same name — e.g.
+// `api-index` -> `api_index` -> `$defs.genericArtifact`, `contracts` ->
+// `$defs.contractsArtifact`. This enforces the constraints that schema promises
+// (schema_version: 1, network: "finney", required per-kind fields), which were
+// previously only ajv.compile()-syntax-checked and fs.access()-existence-checked
+// (scripts/validate.mjs), never validated against real data. Artifacts the
+// schema does not document (e.g. openapi) carry no matching property and are
+// skipped; the per-component schema_ref check above still covers every artifact.
+const publicArtifactProperties = publicArtifactsSchema.properties || {};
+const publicArtifactValidators = new Map();
+for (const artifact of artifactTargets) {
+  const propertyKey = artifact.label.split(":")[0].replace(/-/g, "_");
+  const propertyRef = publicArtifactProperties[propertyKey]?.$ref;
+  if (!propertyRef) {
+    continue;
+  }
+  if (!publicArtifactValidators.has(propertyRef)) {
+    publicArtifactValidators.set(
+      propertyRef,
+      ajv.compile({ $ref: publicArtifactsSchema.$id + propertyRef }),
+    );
+  }
+  validate(
+    publicArtifactValidators.get(propertyRef),
+    await readJson(artifact.file_path),
+    `public-artifact:${artifact.label}`,
   );
 }
 

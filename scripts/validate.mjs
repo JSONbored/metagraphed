@@ -1379,6 +1379,13 @@ async function validateGeneratedArtifacts(
     }
   }
 
+  // Presence guard only — that each canonical schema contract is on disk. It is
+  // NOT the enforcement of these schemas: their real data-validation lives in
+  // scripts/validate-schemas.mjs, which ajv-compiles each and validates real
+  // provider/subnet/candidate records and (since #5551) the generated public
+  // artifacts against public-artifacts.schema.json's own `$defs`. Previously the
+  // existence check below was the SOLE signal that public-artifacts.schema.json
+  // was "enforced", which it never was against real data (#5551).
   for (const schemaPath of [
     "schemas/provider.schema.json",
     "schemas/subnet-manifest.schema.json",
