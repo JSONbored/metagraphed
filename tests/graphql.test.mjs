@@ -3669,6 +3669,104 @@ function asPlainJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-card fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function query(argsClause) {
+    return `{ account_subnets${argsClause} {
+      schema_version ss58 subnet_count
+      subnets { netuid uid stake_tao validator_permit active }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty card, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_subnets, {
+      schema_version: 1,
+      ss58: SS58,
+      subnet_count: 0,
+      subnets: [],
+    });
+  });
+
+  test("resolves the Postgres-tier registration card", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            subnet_count: 2,
+            subnets: [
+              {
+                netuid: 3,
+                uid: 5,
+                stake_tao: 1000,
+                validator_permit: true,
+                active: true,
+              },
+              {
+                netuid: 7,
+                uid: 9,
+                stake_tao: 500,
+                validator_permit: false,
+                active: false,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    const s = body.data.account_subnets;
+    assert.equal(s.subnet_count, 2);
+    assert.equal(s.subnets[0].netuid, 3);
+    assert.equal(s.subnets[0].validator_permit, true);
+    assert.equal(s.subnets[1].active, false);
+  });
+
+  test("ss58 is forwarded on the Postgres-tier request path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({ schema_version: 1, ss58: SS58, subnets: [] });
+        },
+      },
+    };
+    await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/subnets`);
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty card", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_subnets, {
+      schema_version: 1,
+      ss58: SS58,
+      subnet_count: 0,
+      subnets: [],
+    });
+  });
+
+  test("rejects an invalid ss58 with a BAD_USER_INPUT error", async () => {
+    const { status, body } = await gql(query(`(ss58: "not-an-address")`));
+    assert.equal(status, 200);
+    // account_subnets is non-null, so a resolver throw nulls the whole data root.
+    assert.equal(body.data, null);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+});
+
 describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

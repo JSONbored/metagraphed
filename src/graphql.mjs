@@ -109,7 +109,7 @@ import {
   DEFAULT_ACCOUNTS_LIST_SORT,
   buildAccountsList,
 } from "./accounts-list.mjs";
-import { buildAccountSummary } from "./account-events.mjs";
+import { buildAccountSummary, buildAccountSubnets } from "./account-events.mjs";
 import {
   DEFAULT_PROMETHEUS_WINDOW,
   PROMETHEUS_WINDOWS,
@@ -314,6 +314,8 @@ export const SDL = `
     account_stake_flow(ss58: String!, window: String, direction: String): AccountStakeFlow!
     "One wallet's cross-subnet neuron portfolio: every subnet where the hotkey is a registered neuron, each position's economics (stake, emission, rank, trust, incentive, dividends, role) and emission/stake yield, plus wallet-level aggregates (totals, counts, overall return, stake concentration). Richer than account.registrations (registration footprint only). An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio."
     account_portfolio(ss58: String!): AccountPortfolio!
+    "One wallet's current per-subnet registration state: every subnet where the hotkey is a registered neuron, each with its uid, stake, validator_permit, and active flag. A never-seen address resolves to a schema-stable empty card (subnet_count 0, subnets []), never null. Mirrors GET /api/v1/accounts/{ss58}/subnets."
+    account_subnets(ss58: String!): AccountSubnets!
     "One account's per-subnet axon-serving footprint over a 7d/30d/90d window (default 30d): AxonServed announcement count and first/last timestamps per subnet, an HHI concentration of where its serving activity is focused, and the dominant subnet; an address with no announcements in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/serving."
     account_serving(ss58: String!, window: String): AccountServing!
     "One account's per-subnet axon-removal footprint over a 7d/30d/90d window (default 30d): AxonInfoRemoved count and first/last timestamps per subnet, an HHI concentration of where its teardown activity is focused, and the dominant subnet; an address with no removals in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/axon-removals."
@@ -1888,6 +1890,23 @@ export const SDL = `
     yield: Float
   }
 
+  "One wallet's current per-subnet registration state. Mirrors GET /api/v1/accounts/{ss58}/subnets."
+  type AccountSubnets {
+    schema_version: Int!
+    ss58: String!
+    subnet_count: Int!
+    subnets: [AccountSubnetRegistration!]!
+  }
+
+  "One subnet a wallet's hotkey is currently registered in."
+  type AccountSubnetRegistration {
+    netuid: Int
+    uid: Int
+    stake_tao: Float
+    validator_permit: Boolean
+    active: Boolean
+  }
+
   # Realtime chain-event firehose (#4983, ADR 0015) -- a thin protocol adapter
   # over the SAME ChainFirehoseHub Durable Object connection #4982's SSE/WS
   # transports use, not a second event pipeline. Reached over WebSocket only
@@ -2075,6 +2094,7 @@ export const FIELD_COMPLEXITY = {
   account_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
   account_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
   account_portfolio: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_subnets: RELATIONSHIP_FIELD_COMPLEXITY,
   // Fans out into leaderboardProfilesProjection plus several D1 reads and the
   // economics tier -- same cost class as the other relationship fields.
   registry_leaderboards: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3776,6 +3796,32 @@ const rootValue = {
       overall_yield: data.overall_yield ?? null,
       stake_concentration: data.stake_concentration ?? null,
       positions: data.positions || [],
+    };
+  },
+
+  async account_subnets({ ss58 }, context) {
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountSubnets([], ss58)
+    // fallback contract handleAccountSubnets / get_account_subnets use -- the empty
+    // card (subnet_count 0, subnets []) is schema-stable, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/subnets`,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildAccountSubnets([], ss58);
+    return {
+      schema_version: data.schema_version ?? 1,
+      ss58: data.ss58 ?? ss58,
+      subnet_count: data.subnet_count ?? 0,
+      subnets: data.subnets || [],
     };
   },
 
