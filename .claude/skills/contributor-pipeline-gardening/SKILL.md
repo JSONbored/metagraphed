@@ -63,10 +63,13 @@ Hardening`) same as before.
    each repo is judged on its own backlog and must clear the bar on its own merits, focused on that
    repo's actual goals (corrected by the maintainer 2026-07-14 — an earlier version of this doc wrongly
    said "combined total, not per-repo"). **Exclude the "Enrich SNxxx" family (see below) from this
-   count** — it's a separately-automated queue, not this skill's backlog. **If the count is
-   meaningfully under floor, keep sourcing issues until it clears (or a pass genuinely turns up no more
-   real, non-duplicate gaps) — don't stop at a modest first batch just because "quality over volume"
-   (point 7 below) was satisfied.**
+   count** — it's a separately-automated queue, not this skill's backlog. **Don't just aim for the
+   floor (50) — push toward the top of the range (closer to 100) whenever real, non-padded gaps are
+   still findable** (reinforced by the maintainer 2026-07-15: more well-scoped available issues is
+   straightforwardly good for the project, since it's more real work contributors can pick up). If the
+   count is under ~100, keep sourcing issues until it's close to 100 (or a pass genuinely turns up no
+   more real, non-duplicate gaps) — don't stop at a modest first batch just because "quality over
+   volume" (point 7 below) was satisfied, and don't declare victory the moment 50 is cleared.
    1a. **The "Enrich SN<netuid> ..." family (tracked via #427, ~20-30 issues at any time) is handled by
    a separate automation, not this skill.** Don't count them toward the 50-100 top-up target (filter
    out any issue whose title matches "Enrich SN" before comparing against the target), and don't
