@@ -110,28 +110,6 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-34-bitmind-data-artifact",
-      "kind": "data-artifact",
-      "name": "BitMind community data-artifact",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "bitmind",
-      "public_safe": true,
-      "review": {
-        "confidence": "medium",
-        "state": "community-submitted",
-        "submitted_by": "kiannidev"
-      },
-      "source_urls": ["https://api.bitmind.ai/openapi.json"],
-      "url": "https://api.bitmind.ai/health"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "id": "sn-34-bitmind-openapi",
       "kind": "openapi",
       "name": "BitMind community openapi",

@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 141,
+  "surface_count": 138,
   "surfaces": [
     {
       "auth_required": false,
@@ -519,24 +519,6 @@
     {
       "auth_required": false,
       "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 7,
-      "probe": {
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "allways",
-      "public_safe": true,
-      "subnet_name": "Allways",
-      "subnet_slug": "allways",
-      "surface_id": "sn-7-allways-data-artifact",
-      "surface_key": "srf-c1b8cc4bcbfbe442",
-      "url": "https://api.all-ways.io/miners/leaderboard"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "kind": "subnet-api",
       "netuid": 7,
       "probe": {
@@ -1041,24 +1023,6 @@
     {
       "auth_required": false,
       "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 34,
-      "probe": {
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "bitmind",
-      "public_safe": true,
-      "subnet_name": "BitMind",
-      "subnet_slug": "sn-34",
-      "surface_id": "sn-34-bitmind-data-artifact",
-      "surface_key": "srf-4bfccb16de73d4f2",
-      "url": "https://api.bitmind.ai/health"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "kind": "subnet-api",
       "netuid": 34,
       "probe": {
@@ -1307,24 +1271,6 @@
       "surface_id": "sn-55-niome-tasks-api",
       "surface_key": "srf-acced7c8512e4106",
       "url": "https://niome-api.genomes.io/api/tasks"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 56,
-      "probe": {
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "gradients",
-      "public_safe": true,
-      "subnet_name": "Gradients",
-      "subnet_slug": "gradients",
-      "surface_id": "sn-56-gradients-data-artifact",
-      "surface_key": "srf-0c4b158f2a6899cc",
-      "url": "https://api.gradients.io/v1/network/status"
     },
     {
       "auth_required": false,
