@@ -107,6 +107,11 @@ import {
   AXON_REMOVAL_WINDOWS,
   DEFAULT_AXON_REMOVAL_WINDOW,
 } from "./account-axon-removals.mjs";
+import {
+  buildAccountStakeMoves,
+  ACCOUNT_STAKE_MOVES_WINDOWS,
+  DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+} from "./account-stake-moves.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import {
@@ -219,6 +224,8 @@ export const SDL = `
     account_serving(ss58: String!, window: String): AccountServing!
     "One account's per-subnet axon-removal footprint over a 7d/30d/90d window (default 30d): AxonInfoRemoved count and first/last timestamps per subnet, an HHI concentration of where its teardown activity is focused, and the dominant subnet; an address with no removals in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/axon-removals."
     account_axon_removals(ss58: String!, window: String): AccountAxonRemovals!
+    "One account's per-subnet StakeMoved footprint over a 7d/30d/90d window (default 30d): movement count, first/last timestamps, and the alpha price (TAO) at its most recent move per subnet, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet; an address with no moves in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/stake-moves."
+    account_stake_moves(ss58: String!, window: String): AccountStakeMoves!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
@@ -1099,6 +1106,27 @@ export const SDL = `
     subnets: [AccountAxonRemovalSubnet!]!
   }
 
+  "One subnet's slice of an account's stake-movement footprint over the window."
+  type AccountStakeMoveSubnet {
+    netuid: Int!
+    movements: Int!
+    first_moved_at: String
+    last_moved_at: String
+    "Alpha price (TAO) on the UTC day of this subnet's most recent move; null when that day has no snapshot yet or there was no move."
+    price_tao_at_last_move: Float
+  }
+
+  type AccountStakeMoves {
+    schema_version: Int!
+    address: String!
+    window: String
+    total_movements: Int!
+    subnet_count: Int!
+    concentration: Float
+    dominant_netuid: Int
+    subnets: [AccountStakeMoveSubnet!]!
+  }
+
   type AccountEvent {
     block_number: Int
     event_index: Int
@@ -1329,6 +1357,7 @@ export const FIELD_COMPLEXITY = {
   account_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   account_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   account_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2765,6 +2794,57 @@ const rootValue = {
         removals: s.removals,
         first_removed_at: s.first_removed_at ?? null,
         last_removed_at: s.last_removed_at ?? null,
+      })),
+    };
+  },
+
+  async account_stake_moves({ ss58, window }, context) {
+    // Same SS58 + window validation handleAccountStakeMoves (via
+    // makeAccountEventHandler) uses -- a malformed address or unsupported
+    // window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const windowParam = window ?? DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
+    if (!Object.hasOwn(ACCOUNT_STAKE_MOVES_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, ACCOUNT_STAKE_MOVES_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
+    // (with the buildAccountStakeMoves([], ...) zeroed-card cold fallback) the
+    // REST handler uses; an account with no StakeMoved events in the window is a
+    // schema-stable zeroed card, never a GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const tier = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/accounts/${encodeURIComponent(ss58)}/stake-moves`,
+        params,
+      ),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
+    const data =
+      tier?.data ?? buildAccountStakeMoves([], ss58, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      address: data.address ?? ss58,
+      window: data.window ?? windowParam,
+      total_movements: data.total_movements ?? 0,
+      subnet_count: data.subnet_count ?? 0,
+      concentration: data.concentration ?? null,
+      dominant_netuid: data.dominant_netuid ?? null,
+      subnets: (data.subnets ?? []).map((s) => ({
+        netuid: s.netuid,
+        movements: s.movements,
+        first_moved_at: s.first_moved_at ?? null,
+        last_moved_at: s.last_moved_at ?? null,
+        price_tao_at_last_move: s.price_tao_at_last_move ?? null,
       })),
     };
   },
