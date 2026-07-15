@@ -32,6 +32,7 @@ import {
   User,
   Wifi,
   Workflow,
+  Zap,
 } from "lucide-react";
 import { searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
@@ -123,6 +124,13 @@ const ROUTE_INDEX: Array<{
     to: "/graphql",
     hint: "Schema, root queries, limits",
     icon: Braces,
+    scope: "route",
+  },
+  {
+    label: "RPC",
+    to: "/rpc",
+    hint: "Proxy, pools, endpoints, usage",
+    icon: Zap,
     scope: "route",
   },
   {
