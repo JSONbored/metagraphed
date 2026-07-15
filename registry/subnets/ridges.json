@@ -91,6 +91,24 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-pyproject-manifest",
+      "kind": "data-artifact",
+      "name": "Ridges project dependency manifest (pyproject.toml)",
+      "notes": "Public no-auth pyproject.toml from the official ridgesai/ridges repository — the SN62 Ridges canonical build/dependency manifest. Declares the project identity (\"Decentralized AI software engineers\"), the required Python range (>=3.12.3,<3.14), the pinned Bittensor stack (bittensor==10.2.1), and the full runtime plus miner/dev dependency graph (FastAPI, SQLAlchemy, asyncpg, docker, openai, harbor, uvicorn, etc.). Machine-readable TOML, no secrets. Pinned to an immutable commit.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/pyproject.toml"
+      ],
+      "url": "https://raw.githubusercontent.com/ridgesai/ridges/06459e91e0e219dec56dfa98109967ec1c739700/pyproject.toml"
     }
   ],
   "contact": "hello@ridges.ai"
