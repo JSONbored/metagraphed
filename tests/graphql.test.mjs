@@ -4573,6 +4573,94 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
   });
 });
 
+describe("graphql — subnet_stake_moves (#5716, Postgres-tier + zeroed-card fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_stake_moves(netuid: 5) {
+          schema_version netuid window observed_at
+          distinct_movers movements movements_per_mover
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_stake_moves, {
+      schema_version: 1,
+      netuid: 5,
+      window: "7d",
+      observed_at: null,
+      distinct_movers: 0,
+      movements: 0,
+      movements_per_mover: null,
+    });
+  });
+
+  test("resolves the Postgres-tier card for the requested window", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          window: "30d",
+          observed_at: "2026-07-01T00:00:00.000Z",
+          distinct_movers: 6,
+          movements: 15,
+          movements_per_mover: 2.5,
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_stake_moves(netuid: 5, window: "30d") {
+          netuid window observed_at distinct_movers movements movements_per_mover
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const m = body.data.subnet_stake_moves;
+    assert.equal(m.window, "30d");
+    assert.equal(m.observed_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(m.distinct_movers, 6);
+    assert.equal(m.movements, 15);
+    assert.equal(m.movements_per_mover, 2.5);
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_stake_moves(netuid: 9, window: "30d") {
+          schema_version netuid window observed_at distinct_movers movements movements_per_mover
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_stake_moves, {
+      schema_version: 1,
+      netuid: 9,
+      window: "30d",
+      observed_at: null,
+      distinct_movers: 0,
+      movements: 0,
+      movements_per_mover: null,
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ subnet_stake_moves(netuid: 5, window: "99d") { movements } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|7d/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_stake_moves ?? null, null);
+  });
+});
+
 describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
