@@ -3856,6 +3856,150 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier + D1-live fallb
   });
 });
 
+describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", () => {
+  function trendsQuery() {
+    return `{ health_trends { schema_version observed_at source windows } }`;
+  }
+
+  // No GROUP BY window label -- loadBulkHealthTrends issues a single query
+  // over the full 30d cutoff and buckets rows into 7d/30d itself.
+  function bulkTrendsD1(rows = []) {
+    return {
+      prepare() {
+        return {
+          bind() {
+            return {
+              async all() {
+                return { results: rows };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store: schema-stable zeroed windows", async () => {
+    const { status, body } = await gql(trendsQuery());
+    assert.equal(status, 200);
+    assert.equal(body.data.health_trends.schema_version, 1);
+    assert.equal(body.data.health_trends.observed_at, null);
+    assert.equal(body.data.health_trends.windows["7d"].subnet_count, 0);
+    assert.deepEqual(body.data.health_trends.windows["7d"].subnets, []);
+    assert.equal(body.data.health_trends.windows["30d"].subnet_count, 0);
+    assert.deepEqual(body.data.health_trends.windows["30d"].subnets, []);
+  });
+
+  test("resolves Postgres-tier data, forwarding the request unchanged", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            observed_at: "2026-07-10T00:00:00.000Z",
+            source: "live-cron-prober",
+            windows: {
+              "7d": {
+                days: 7,
+                granularity: "1d",
+                subnet_count: 1,
+                subnets: [{ netuid: 3, samples: 10 }],
+              },
+              "30d": {
+                days: 30,
+                granularity: "1d",
+                subnet_count: 1,
+                subnets: [{ netuid: 3, samples: 40 }],
+              },
+            },
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(trendsQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/health/trends");
+    assert.equal(
+      body.data.health_trends.observed_at,
+      "2026-07-10T00:00:00.000Z",
+    );
+    assert.equal(body.data.health_trends.windows["7d"].subnet_count, 1);
+    assert.equal(body.data.health_trends.windows["30d"].subnets[0].netuid, 3);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(trendsQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.health_trends.schema_version, 1);
+    assert.equal(body.data.health_trends.observed_at, null);
+    assert.equal(body.data.health_trends.source, null);
+    assert.deepEqual(body.data.health_trends.windows, {});
+  });
+
+  test("no Postgres tier flag: aggregates surface_uptime_daily rows straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: bulkTrendsD1([
+        {
+          netuid: 7,
+          date: "2026-07-09",
+          total: 10,
+          ok_count: 9,
+          avg_latency_ms: 50,
+        },
+      ]),
+    };
+    const { status, body } = await gql(trendsQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.health_trends.schema_version, 1);
+    assert.equal(body.data.health_trends.windows["7d"].subnet_count, 1);
+    assert.equal(body.data.health_trends.windows["7d"].subnets[0].netuid, 7);
+    assert.equal(body.data.health_trends.windows["30d"].subnet_count, 1);
+  });
+
+  test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          return key === KV_HEALTH_META
+            ? { last_run_at: "2026-06-23T00:00:00.000Z" }
+            : null;
+        },
+      },
+      METAGRAPH_HEALTH_DB: bulkTrendsD1([]),
+    };
+    const { body } = await gql(trendsQuery(), env);
+    assert.equal(
+      body.data.health_trends.observed_at,
+      "2026-06-23T00:00:00.000Z",
+    );
+  });
+
+  test("a D1 query error degrades to a schema-stable empty matrix (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(trendsQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.health_trends.windows["7d"].subnet_count, 0);
+    assert.deepEqual(body.data.health_trends.windows["7d"].subnets, []);
+  });
+
+  test("health_trends is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.health_trends, 5);
+  });
+});
+
 describe("Subscription.chainEvents", () => {
   test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
     const hub = fakeChainFirehose((repeater) => {

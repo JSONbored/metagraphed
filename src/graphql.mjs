@@ -85,6 +85,7 @@ import {
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
   loadChainWeightSetters,
 } from "./chain-weight-setters.mjs";
+import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
@@ -151,6 +152,8 @@ export const SDL = `
     chain_weights(window: String, limit: Int): ChainWeights!
     "Network-wide weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators driving consensus network-wide, each with its total WeightsSet count, share of the network total, and first/last set times, ranked by activity. The setter-level drill-in behind chain_weights. Mirrors GET /api/v1/chain/weights/setters."
     chain_weight_setters(window: String, limit: Int): ChainWeightSetters!
+    "Compact all-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history (probed every ~15 minutes); a cold store still returns both windows, schema-stable and zeroed, never a GraphQL error. Mirrors GET /api/v1/health/trends."
+    health_trends: HealthTrends!
   }
 
   type SubnetList {
@@ -379,6 +382,15 @@ export const SDL = `
     share: Float
     first_set_at: String
     last_set_at: String
+  }
+
+  "All-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history. Mirrors GET /api/v1/health/trends' data envelope."
+  type HealthTrends {
+    schema_version: Int!
+    observed_at: String
+    source: String
+    "The 7d/30d windows keyed by window label (7d, 30d), each holding days/granularity/subnet_count and the per-subnet daily point series. Opaque JSON: dynamic-keyed by window label, matching the get_health_trends MCP/REST shape."
+    windows: JSON!
   }
 
   type SurfaceList {
@@ -992,6 +1004,7 @@ export const FIELD_COMPLEXITY = {
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
+  health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -2119,6 +2132,30 @@ const rootValue = {
       weight_sets: data.weight_sets ?? 0,
       setter_count: data.setter_count ?? 0,
       setters: data.setters || [],
+    };
+  },
+
+  async health_trends(_args, context) {
+    // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadBulkHealthTrends
+    // fallback contract REST's handleBulkHealthTrends and the get_health_trends
+    // MCP tool share -- a cold store yields both windows zeroed, never a
+    // GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/health/trends"),
+        "METAGRAPH_HEALTH_SOURCE",
+      )) ??
+      (
+        await loadBulkHealthTrends(graphqlD1(context), {
+          observedAt: await loadObservedAt(context),
+        })
+      ).data;
+    return {
+      schema_version: data.schema_version ?? 1,
+      observed_at: data.observed_at ?? null,
+      source: data.source ?? null,
+      windows: data.windows ?? {},
     };
   },
 };
