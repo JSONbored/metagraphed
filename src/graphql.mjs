@@ -195,6 +195,7 @@ import {
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "./chain-turnover.mjs";
+import { buildTurnover } from "./turnover.mjs";
 import { buildChainPerformance } from "./chain-performance.mjs";
 import { buildChainConcentration } from "./concentration.mjs";
 import {
@@ -361,6 +362,8 @@ export const SDL = `
     chain_alpha_volume(limit: Int): ChainAlphaVolume!
     "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC (not the Postgres tier). recycled_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/recycled."
     subnet_recycled(netuid: Int!): SubnetRecycled
+    "One subnet's validator/neuron-set turnover (entered/exited/retention/0-100 stability) between the boundary snapshots of a 7d/30d/90d/1y/all window (default 30d), from neuron_daily. comparable is false and the churn metrics zeroed on a single-snapshot or cold store, never null. Mirrors GET /api/v1/subnets/{netuid}/turnover."
+    subnet_turnover(netuid: Int!, window: String): SubnetTurnover!
     "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached, not the Postgres tier). balance_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/accounts/{ss58}/balance."
     account_balance(ss58: String!): AccountBalance
     "The network's on-chain sudo (superuser) key hotkey, read live from chain via RPC (not the Postgres tier). hotkey is null on RPC failure or a renounced sudo, schema-stable, never a GraphQL error. Mirrors GET /api/v1/sudo/key."
@@ -1421,6 +1424,26 @@ export const SDL = `
     queried_at: String!
   }
 
+  "One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard."
+  type SubnetTurnover {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    start_date: String
+    end_date: String
+    comparable: Boolean!
+    validators_start: Int!
+    validators_end: Int!
+    validators_entered: Int!
+    validators_exited: Int!
+    validator_retention: Float
+    neurons_start: Int!
+    neurons_end: Int!
+    uids_deregistered: Int!
+    neuron_retention: Float
+    stability_score: Int
+  }
+
   "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached). balance_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/balance."
   type AccountBalance {
     schema_version: Int!
@@ -2159,6 +2182,7 @@ export const FIELD_COMPLEXITY = {
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4922,6 +4946,57 @@ const rootValue = {
     // loadSubnetRecycled always sets schema_version/netuid/queried_at
     // unconditionally, so no `??` fallback is needed for those.
     return loadSubnetRecycled(context.env, netuid);
+  },
+
+  async subnet_turnover({ netuid, window }, context) {
+    if (!isU16Netuid(netuid)) {
+      throw new GraphQLError("netuid must be a u16 subnet id (0-65535).", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same parseHistoryWindow the REST turnover handler uses, so accepted
+    // window labels (7d/30d/90d/1y/all, default 30d) match exactly.
+    const { label, error } = parseHistoryWindow(window);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("window", label);
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildTurnover([]) empty-card
+    // fallback contract the REST handler uses (neuron_daily boundary snapshots); a
+    // subnet with no boundary rows in the window is a schema-stable empty card,
+    // never a GraphQL error. Mirrors the default scorecard (REST's ?changes=true
+    // detail is omitted).
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/turnover`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildTurnover([], netuid, { window: label });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? label,
+      start_date: data.start_date ?? null,
+      end_date: data.end_date ?? null,
+      comparable: data.comparable ?? false,
+      validators_start: data.validators_start ?? 0,
+      validators_end: data.validators_end ?? 0,
+      validators_entered: data.validators_entered ?? 0,
+      validators_exited: data.validators_exited ?? 0,
+      validator_retention: data.validator_retention ?? null,
+      neurons_start: data.neurons_start ?? 0,
+      neurons_end: data.neurons_end ?? 0,
+      uids_deregistered: data.uids_deregistered ?? 0,
+      neuron_retention: data.neuron_retention ?? null,
+      stability_score: data.stability_score ?? null,
+    };
   },
 
   async account_balance({ ss58 }, context) {

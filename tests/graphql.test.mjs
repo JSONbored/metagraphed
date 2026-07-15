@@ -2730,6 +2730,128 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
   });
 });
 
+describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+  const EMPTY = {
+    schema_version: 1,
+    netuid: 1,
+    window: "30d",
+    start_date: null,
+    end_date: null,
+    comparable: false,
+    validators_start: 0,
+    validators_end: 0,
+    validators_entered: 0,
+    validators_exited: 0,
+    validator_retention: null,
+    neurons_start: 0,
+    neurons_end: 0,
+    uids_deregistered: 0,
+    neuron_retention: null,
+    stability_score: null,
+  };
+  const ALL_FIELDS =
+    "schema_version netuid window start_date end_date comparable validators_start validators_end validators_entered validators_exited validator_retention neurons_start neurons_end uids_deregistered neuron_retention stability_score";
+
+  test("cold store: no Postgres flag returns a schema-stable empty card, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 1) { ${ALL_FIELDS} } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_turnover, EMPTY);
+  });
+
+  test("resolves the Postgres-tier scorecard for the requested window", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          window: "90d",
+          start_date: "2026-04-01",
+          end_date: "2026-06-30",
+          comparable: true,
+          validators_start: 10,
+          validators_end: 12,
+          validators_entered: 3,
+          validators_exited: 1,
+          validator_retention: 0.9,
+          neurons_start: 100,
+          neurons_end: 110,
+          uids_deregistered: 4,
+          neuron_retention: 0.85,
+          stability_score: 88,
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 5, window: "90d") { ${ALL_FIELDS} } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.subnet_turnover;
+    assert.equal(r.netuid, 5);
+    assert.equal(r.window, "90d");
+    assert.equal(r.comparable, true);
+    assert.equal(r.validators_entered, 3);
+    assert.equal(r.validator_retention, 0.9);
+    assert.equal(r.stability_score, 88);
+  });
+
+  test("window + netuid are forwarded to the Postgres tier route", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(`{ subnet_turnover(netuid: 7, window: "7d") { window } }`, env);
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/7/turnover"));
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 1, window: "30d") { ${ALL_FIELDS} } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_turnover, EMPTY);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 1, window: "99d") { comparable } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("an out-of-range netuid is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 99999) { comparable } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+});
+
 describe("graphql — validator_history (#5710, Postgres-tier + empty-points fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
