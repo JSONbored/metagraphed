@@ -1383,7 +1383,10 @@ async function validateGeneratedArtifacts(
     "schemas/provider.schema.json",
     "schemas/subnet-manifest.schema.json",
     "schemas/candidate-surface.schema.json",
-    "schemas/public-artifacts.schema.json",
+    // public-artifacts.schema.json is no longer existence-checked here: #5551
+    // wired it into real ajv validation in validate-schemas.mjs (its committed
+    // artifacts are validated against its `$defs`), so a bare fs.access is no
+    // longer the sole signal that the schema is enforced.
   ]) {
     try {
       await fs.access(path.join(repoRoot, schemaPath));

@@ -231,6 +231,32 @@ for (const artifact of await artifactValidationTargets()) {
   );
 }
 
+// #5551: enforce schemas/public-artifacts.schema.json against the real committed
+// artifacts it documents. The generic loop above only ajv.compile()s it for
+// syntax; nothing validated actual artifact data against its `$defs` (the
+// `schema_version: 1` const, per-kind required properties, etc.), and
+// validate.mjs merely existence-checked the file. The other artifacts this
+// schema describes (providers, subnets, health, ...) are R2-only / gitignored
+// (built and served on deploy), so only the git-committed ones are checkable
+// here; each is validated against the `$def` its top-level property `$ref`s.
+const PUBLIC_ARTIFACTS_SCHEMA_ID =
+  "https://metagraph.sh/schemas/public-artifacts.schema.json";
+const publicArtifactTargets = [
+  { property: "api_index", file_path: "public/metagraph/api-index.json" },
+  { property: "contracts", file_path: "public/metagraph/contracts.json" },
+  { property: "r2_manifest", file_path: "public/metagraph/r2-manifest.json" },
+];
+for (const { property, file_path } of publicArtifactTargets) {
+  const validator = ajv.getSchema(
+    `${PUBLIC_ARTIFACTS_SCHEMA_ID}#/properties/${property}`,
+  );
+  validate(
+    validator,
+    await readJson(path.join(repoRoot, file_path)),
+    `public-artifact:${property}`,
+  );
+}
+
 if (errors.length > 0) {
   console.error(`Schema validation failed with ${errors.length} issue(s):`);
   for (const error of errors.slice(0, 80)) {
