@@ -2227,6 +2227,306 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
   });
 });
 
+describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderboard)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  test("accounts: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
+    const { status, body } = await gql(
+      "{ accounts { items { hotkey } total sort captured_at block_number } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.accounts, {
+      items: [],
+      total: 0,
+      sort: "total_stake",
+      captured_at: null,
+      block_number: null,
+    });
+  });
+
+  test("accounts: resolves Postgres-tier rows", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            sort: "total_stake",
+            limit: 5,
+            captured_at: "2026-07-15T00:00:00.000Z",
+            block_number: 300,
+            account_count: 1,
+            accounts: [
+              {
+                hotkey: "5Account",
+                coldkey: "5Coldkey",
+                coldkey_count: 1,
+                subnet_count: 2,
+                uid_count: 2,
+                validator_count: 1,
+                miner_count: 1,
+                total_stake_tao: 1500,
+                total_emission_tao: 7,
+                stake_dominance: 0.42,
+                latest_captured_at: "2026-07-15T00:00:00.000Z",
+                latest_block_number: 300,
+                subnets: [
+                  { netuid: 1, uid: 5, stake_tao: 1000, emission_tao: 5 },
+                  { netuid: 3, uid: 9, stake_tao: 500, emission_tao: 2 },
+                ],
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      '{ accounts(sort: "total_stake", limit: 5) { items { hotkey coldkey subnet_count total_stake_tao stake_dominance latest_captured_at latest_block_number subnets { netuid uid stake_tao emission_tao } } total sort captured_at block_number } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.accounts.total, 1);
+    assert.equal(body.data.accounts.sort, "total_stake");
+    assert.equal(body.data.accounts.captured_at, "2026-07-15T00:00:00.000Z");
+    assert.equal(body.data.accounts.block_number, 300);
+    const item = body.data.accounts.items[0];
+    assert.equal(item.hotkey, "5Account");
+    assert.equal(item.coldkey, "5Coldkey");
+    assert.equal(item.subnet_count, 2);
+    assert.equal(item.total_stake_tao, 1500);
+    assert.equal(item.stake_dominance, 0.42);
+    assert.deepEqual(item.subnets, [
+      { netuid: 1, uid: 5, stake_tao: 1000, emission_tao: 5 },
+      { netuid: 3, uid: 9, stake_tao: 500, emission_tao: 2 },
+    ]);
+  });
+
+  test("accounts: sort and limit args are forwarded as query params to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            sort: "uid_count",
+            limit: 5,
+            captured_at: null,
+            block_number: null,
+            account_count: 0,
+            accounts: [],
+          });
+        },
+      },
+    };
+    await gql('{ accounts(sort: "uid_count", limit: 5) { total } }', env);
+    assert.equal(capturedUrl.pathname, "/api/v1/accounts");
+    assert.equal(capturedUrl.searchParams.get("sort"), "uid_count");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+  });
+
+  test("accounts: an omitted sort/limit forwards the defaults to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            sort: "total_stake",
+            limit: 20,
+            captured_at: null,
+            block_number: null,
+            account_count: 0,
+            accounts: [],
+          });
+        },
+      },
+    };
+    await gql("{ accounts { total } }", env);
+    assert.equal(capturedUrl.searchParams.get("sort"), "total_stake");
+    assert.equal(capturedUrl.searchParams.get("limit"), "20");
+  });
+
+  test("accounts: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      "{ accounts { items { hotkey } total sort captured_at block_number } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.accounts, {
+      items: [],
+      total: 0,
+      sort: "total_stake",
+      captured_at: null,
+      block_number: null,
+    });
+  });
+
+  test("accounts: an unsupported sort value is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      '{ accounts(sort: "not_a_real_sort") { total } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("account: an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      '{ account(ss58: "not-a-valid-address") { ss58 } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    // `account` is a nullable field (unlike `validators`/`accounts`), so the
+    // thrown error nulls out just this field, not the whole `data` object.
+    assert.equal(body.data.account, null);
+    assert.equal(called, false);
+  });
+
+  test("account: a never-seen address (cold store) resolves to a schema-stable zero summary, never null", async () => {
+    const { status, body } = await gql(
+      `{ account(ss58: "${SS58}") { ss58 event_count subnet_count event_scan_capped first_block last_block event_kinds { kind } registrations { netuid } recent_events { block_number } activity { tx_count modules_called { call_module } } } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account, {
+      ss58: SS58,
+      event_count: 0,
+      subnet_count: 0,
+      event_scan_capped: false,
+      first_block: null,
+      last_block: null,
+      event_kinds: [],
+      registrations: [],
+      recent_events: [],
+      activity: { tx_count: 0, modules_called: [] },
+    });
+  });
+
+  test("account: resolves Postgres-tier detail data", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            event_count: 12,
+            subnet_count: 2,
+            event_scan_capped: false,
+            first_block: 100,
+            last_block: 500,
+            first_seen_at: "2026-06-01T00:00:00.000Z",
+            last_seen_at: "2026-07-14T00:00:00.000Z",
+            event_kinds: [{ kind: "Transfer", count: 5 }],
+            registrations: [
+              {
+                netuid: 1,
+                uid: 5,
+                stake_tao: 10,
+                validator_permit: true,
+                active: true,
+              },
+            ],
+            recent_events: [
+              { block_number: 500, event_index: 0, event_kind: "Transfer" },
+            ],
+            activity: {
+              tx_count: 3,
+              last_tx_block: 490,
+              last_tx_at: "2026-07-13T00:00:00.000Z",
+              total_fee_tao: 0.01,
+              modules_called: [{ call_module: "SubtensorModule", count: 3 }],
+            },
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      `{ account(ss58: "${SS58}") { ss58 event_count subnet_count first_block last_block event_kinds { kind count } registrations { netuid stake_tao validator_permit active } recent_events { block_number event_kind } activity { tx_count last_tx_block total_fee_tao modules_called { call_module count } } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.account.ss58, SS58);
+    assert.equal(body.data.account.event_count, 12);
+    assert.equal(body.data.account.subnet_count, 2);
+    assert.equal(body.data.account.first_block, 100);
+    assert.equal(body.data.account.last_block, 500);
+    assert.deepEqual(body.data.account.event_kinds, [
+      { kind: "Transfer", count: 5 },
+    ]);
+    assert.deepEqual(body.data.account.registrations, [
+      { netuid: 1, stake_tao: 10, validator_permit: true, active: true },
+    ]);
+    assert.deepEqual(body.data.account.recent_events, [
+      { block_number: 500, event_kind: "Transfer" },
+    ]);
+    assert.deepEqual(body.data.account.activity, {
+      tx_count: 3,
+      last_tx_block: 490,
+      total_fee_tao: 0.01,
+      modules_called: [{ call_module: "SubtensorModule", count: 3 }],
+    });
+  });
+
+  test("account: a malformed Postgres-tier body degrades to a schema-stable zero summary", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      `{ account(ss58: "${SS58}") { ss58 event_count subnet_count event_scan_capped first_block last_block event_kinds { kind } registrations { netuid } recent_events { block_number } activity { tx_count modules_called { call_module } } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account, {
+      ss58: SS58,
+      event_count: 0,
+      subnet_count: 0,
+      event_scan_capped: false,
+      first_block: null,
+      last_block: null,
+      event_kinds: [],
+      registrations: [],
+      recent_events: [],
+      activity: { tx_count: 0, modules_called: [] },
+    });
+  });
+
+  test("accounts / account are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.accounts, 5);
+    assert.equal(FIELD_COMPLEXITY.account, 5);
+  });
+});
+
 // --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
 //
 // The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,

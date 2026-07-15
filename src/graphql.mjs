@@ -36,7 +36,16 @@ import {
   buildValidatorDetail,
   overlayFeaturedValidators,
 } from "./metagraph-neurons.mjs";
+import {
+  ACCOUNTS_LIST_LIMIT_DEFAULT,
+  ACCOUNTS_LIST_LIMIT_MAX,
+  ACCOUNTS_LIST_SORTS,
+  DEFAULT_ACCOUNTS_LIST_SORT,
+  buildAccountsList,
+} from "./accounts-list.mjs";
+import { buildAccountSummary } from "./account-events.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
+import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
@@ -78,6 +87,10 @@ export const SDL = `
     validators(sort: String, limit: Int): ValidatorList!
     "One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}."
     validator(hotkey: String!): Validator
+    "Site-wide accounts leaderboard -- every currently-registered hotkey, aggregated cross-subnet from the current neurons snapshot. Mirrors GET /api/v1/accounts."
+    accounts(sort: String, limit: Int): AccountList!
+    "One account's cross-subnet event-history summary by ss58 address; an address with no matching account_events rows resolves to a schema-stable zero summary, never null. Mirrors GET /api/v1/accounts/{ss58}."
+    account(ss58: String!): AccountSummary
   }
 
   type SubnetList {
@@ -421,6 +434,96 @@ export const SDL = `
     captured_at: String
   }
 
+  type AccountList {
+    items: [AccountEntry!]!
+    total: Int!
+    sort: String!
+    captured_at: String
+    block_number: Int
+  }
+
+  type AccountEntry {
+    hotkey: String!
+    coldkey: String
+    coldkey_count: Int
+    subnet_count: Int
+    uid_count: Int
+    validator_count: Int
+    miner_count: Int
+    total_stake_tao: Float
+    total_emission_tao: Float
+    stake_dominance: Float
+    latest_captured_at: String
+    latest_block_number: Int
+    "Per-subnet stake/emission rows for this account, capped at the top 10 by stake."
+    subnets: [AccountSubnet!]!
+  }
+
+  type AccountSubnet {
+    netuid: Int!
+    uid: Int
+    stake_tao: Float
+    emission_tao: Float
+  }
+
+  type AccountSummary {
+    ss58: String!
+    event_count: Int!
+    subnet_count: Int!
+    "True when this account has more events than the summary's scan window -- event_count/subnet_count/event_kinds are then a lower bound and first_block/first_seen_at are null."
+    event_scan_capped: Boolean!
+    first_block: Int
+    last_block: Int
+    first_seen_at: String
+    last_seen_at: String
+    event_kinds: [AccountEventKind!]!
+    "Where this hotkey is currently registered + staked (the live cross-subnet footprint)."
+    registrations: [AccountRegistration!]!
+    recent_events: [AccountEvent!]!
+    activity: AccountActivity!
+  }
+
+  type AccountEventKind {
+    kind: String!
+    count: Int!
+  }
+
+  type AccountRegistration {
+    netuid: Int
+    uid: Int
+    stake_tao: Float
+    validator_permit: Boolean!
+    active: Boolean!
+  }
+
+  type AccountEvent {
+    block_number: Int
+    event_index: Int
+    event_kind: String
+    hotkey: String
+    coldkey: String
+    netuid: Int
+    uid: Int
+    amount_tao: Float
+    alpha_amount: Float
+    observed_at: String
+    extrinsic_index: Int
+  }
+
+  "Signing-activity aggregate from the extrinsics tier, matched by signer only -- an account queried by a key that did not sign returns tx_count 0, other fields null/empty."
+  type AccountActivity {
+    tx_count: Int!
+    last_tx_block: Int
+    last_tx_at: String
+    total_fee_tao: Float
+    modules_called: [AccountModuleCall!]!
+  }
+
+  type AccountModuleCall {
+    call_module: String!
+    count: Int!
+  }
+
   # Realtime chain-event firehose (#4983, ADR 0015) -- a thin protocol adapter
   # over the SAME ChainFirehoseHub Durable Object connection #4982's SSE/WS
   # transports use, not a second event pipeline. Reached over WebSocket only
@@ -557,6 +660,8 @@ export const FIELD_COMPLEXITY = {
   extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
   validators: RELATIONSHIP_FIELD_COMPLEXITY,
   validator: RELATIONSHIP_FIELD_COMPLEXITY,
+  accounts: RELATIONSHIP_FIELD_COMPLEXITY,
+  account: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -946,6 +1051,30 @@ function validatorNode(validator) {
   };
 }
 
+// buildAccountSummary always returns a full-shaped object (a cold/absent store
+// still yields a zeroed summary, never a partial one), but a malformed
+// Postgres-tier response body degrades to `{}` -- normalized here the same way
+// extrinsicNode/ExtrinsicDetail's `data.ref ?? ref` fallback degrades a
+// malformed extrinsic-detail body, so a bad upstream body still resolves to
+// the same schema-stable zero shape as a genuinely cold store, not a
+// Non-Null-field error.
+function accountSummaryNode(data, ss58) {
+  return {
+    ss58: data.ss58 ?? ss58,
+    event_count: data.event_count ?? 0,
+    subnet_count: data.subnet_count ?? 0,
+    event_scan_capped: data.event_scan_capped === true,
+    first_block: data.first_block ?? null,
+    last_block: data.last_block ?? null,
+    first_seen_at: data.first_seen_at ?? null,
+    last_seen_at: data.last_seen_at ?? null,
+    event_kinds: data.event_kinds || [],
+    registrations: data.registrations || [],
+    recent_events: data.recent_events || [],
+    activity: data.activity || { tx_count: 0, modules_called: [] },
+  };
+}
+
 function providerNode(provider) {
   const netuids = provider?.netuids || [];
   return {
@@ -1270,6 +1399,58 @@ const rootValue = {
         "METAGRAPH_NEURONS_SOURCE",
       )) ?? buildValidatorDetail([], hotkey);
     return validatorNode(data);
+  },
+
+  async accounts({ sort, limit }, context) {
+    const requestedSort = sort ?? DEFAULT_ACCOUNTS_LIST_SORT;
+    if (!ACCOUNTS_LIST_SORTS.includes(requestedSort)) {
+      throw new GraphQLError(
+        `"${requestedSort}" is not a supported sort. Supported: ${ACCOUNTS_LIST_SORTS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: ACCOUNTS_LIST_LIMIT_DEFAULT,
+      maxLimit: ACCOUNTS_LIST_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("sort", requestedSort);
+    params.set("limit", String(safeLimit));
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/accounts", params),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ??
+      buildAccountsList([], {
+        sort: requestedSort,
+        limit: safeLimit,
+      });
+    return {
+      items: data.accounts || [],
+      total: data.account_count ?? 0,
+      sort: data.sort ?? requestedSort,
+      captured_at: data.captured_at ?? null,
+      block_number: data.block_number ?? null,
+    };
+  },
+
+  async account({ ss58 }, context) {
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}`,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? buildAccountSummary(ss58, {});
+    return accountSummaryNode(data, ss58);
   },
 };
 
