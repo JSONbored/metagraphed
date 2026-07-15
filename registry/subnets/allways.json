@@ -1,10 +1,5 @@
 {
-  "categories": [
-    "defi",
-    "bitcoin",
-    "subnet-api",
-    "pilot"
-  ],
+  "categories": ["defi", "bitcoin", "subnet-api", "pilot"],
   "curation": {
     "gap_notes": [
       "No verified dashboard surface yet (no dashboard link found on the website as of 2026-07-15).",
@@ -297,9 +292,7 @@
         "state": "community-submitted",
         "submitted_by": "kiannidev"
       },
-      "source_urls": [
-        "https://api.all-ways.io/swagger-json"
-      ],
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
       "url": "https://api.all-ways.io/miners/leaderboard"
     },
     {
@@ -321,9 +314,7 @@
         "state": "community-submitted",
         "submitted_by": "jsonbored"
       },
-      "source_urls": [
-        "https://api.all-ways.io/swagger"
-      ],
+      "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/swaps"
     },
     {
