@@ -30,9 +30,13 @@ interface GittensorMasterRepositories {
 
 export function GittensorRegisteredRepos({ slug }: { slug: string }) {
   const { data: res, isError } = useQuery(adapterQuery(slug));
-  const dimensions = res?.data?.dimensions as
-    | { master_repositories?: GittensorMasterRepositories }
-    | undefined;
+  // The adapter envelope nests the actual snapshot (and its `dimensions`) one
+  // level deeper than AdapterSnapshot's loose typing suggests: `data.snapshot
+  // .dimensions`, not `data.dimensions` -- verified directly against the real
+  // /api/v1/adapters/gittensor response, not assumed from the registry file's
+  // own on-disk shape (which is what `data.snapshot` mirrors).
+  const dimensions = (res?.data as { snapshot?: { dimensions?: unknown } })?.snapshot
+    ?.dimensions as { master_repositories?: GittensorMasterRepositories } | undefined;
   const master = dimensions?.master_repositories;
   const rows = (master?.top_emission_repositories ?? []).slice(0, ROWS_SHOWN);
 
@@ -43,7 +47,7 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
   const total = master?.repository_count;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div id="registered-repos" className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           Registered repositories
