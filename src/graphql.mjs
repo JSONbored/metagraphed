@@ -10,6 +10,13 @@ import { readArtifact, readHealthKv } from "../workers/storage.mjs";
 import { contractVersion } from "../workers/responses.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import {
+  loadChainAxonRemovals,
+  CHAIN_AXON_REMOVALS_WINDOWS,
+  DEFAULT_CHAIN_AXON_REMOVALS_WINDOW,
+  CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+  CHAIN_AXON_REMOVALS_LIMIT_MAX,
+} from "./chain-axon-removals.mjs";
+import {
   loadChainPrometheus,
   CHAIN_PROMETHEUS_WINDOWS,
   DEFAULT_CHAIN_PROMETHEUS_WINDOW,
@@ -368,6 +375,8 @@ export const SDL = `
     chain_calls(window: String, group_by: String, limit: Int, call_module: String): ChainCalls!
     "Network-wide Prometheus telemetry-endpoint announcement leaderboard over a 7d/30d window (default 7d): subnets ranked by PrometheusServed announcements with each's distinct-exporter count and announcements-per-exporter re-announcement intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The telemetry-endpoint companion to chain_serving's axon endpoints -- which subnets run observability infrastructure. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/prometheus."
     chain_prometheus(window: String, limit: Int): ChainPrometheus!
+    "Network-wide axon-removal (teardown) leaderboard over a 7d/30d window (default 7d): subnets ranked by AxonInfoRemoved events with each's distinct-remover count and removals-per-remover teardown intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The teardown counterpart of chain_serving's announcements -- where neurons are tearing endpoints down. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/axon-removals."
+    chain_axon_removals(window: String, limit: Int): ChainAxonRemovals!
     "Network-wide weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators driving consensus network-wide, each with its total WeightsSet count, share of the network total, and first/last set times, ranked by activity. The setter-level drill-in behind chain_weights. Mirrors GET /api/v1/chain/weights/setters."
     chain_weight_setters(window: String, limit: Int): ChainWeightSetters!
     "Compact all-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history (probed every ~15 minutes); a cold store still returns both windows, schema-stable and zeroed, never a GraphQL error. Mirrors GET /api/v1/health/trends."
@@ -703,6 +712,44 @@ export const SDL = `
     distinct_servers: Int!
     announcements: Int!
     announcements_per_server: Float
+  }
+
+  type ChainAxonRemovals {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    subnet_count: Int!
+    network: ChainAxonRemovalsNetwork!
+    intensity_distribution: ChainAxonRemovalsIntensityDistribution
+    subnets: [ChainAxonRemovalsSubnet!]!
+  }
+
+  "Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts."
+  type ChainAxonRemovalsNetwork {
+    distinct_removers: Int!
+    removals: Int!
+    "Null when distinct_removers is 0 (no defined intensity without removers)."
+    removals_per_remover: Float
+  }
+
+  "Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard."
+  type ChainAxonRemovalsIntensityDistribution {
+    count: Int!
+    mean: Float!
+    min: Float!
+    p25: Float!
+    median: Float!
+    p75: Float!
+    p90: Float!
+    max: Float!
+  }
+
+  "One subnet's axon-removal activity in the window, ranked by removals."
+  type ChainAxonRemovalsSubnet {
+    netuid: Int!
+    distinct_removers: Int!
+    removals: Int!
+    removals_per_remover: Float
   }
 
   type ChainPrometheus {
@@ -2296,6 +2343,7 @@ export const FIELD_COMPLEXITY = {
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   validator_nominators: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4949,6 +4997,50 @@ const rootValue = {
         distinct_servers: 0,
         announcements: 0,
         announcements_per_server: null,
+      },
+      intensity_distribution: data.intensity_distribution ?? null,
+      subnets: data.subnets || [],
+    };
+  },
+
+  async chain_axon_removals({ window, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
+    if (!Object.hasOwn(CHAIN_AXON_REMOVALS_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, CHAIN_AXON_REMOVALS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+      maxLimit: CHAIN_AXON_REMOVALS_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainAxonRemovals
+    // fallback contract REST's handleChainAxonRemovals uses -- a cold store yields a
+    // schema-stable zeroed card, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/axon-removals", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      (await loadChainAxonRemovals(graphqlD1(context), {
+        windowLabel: requestedWindow,
+        windowDays: CHAIN_AXON_REMOVALS_WINDOWS[requestedWindow],
+        limit: safeLimit,
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      observed_at: data.observed_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      network: data.network ?? {
+        distinct_removers: 0,
+        removals: 0,
+        removals_per_remover: null,
       },
       intensity_distribution: data.intensity_distribution ?? null,
       subnets: data.subnets || [],
