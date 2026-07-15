@@ -1,12 +1,12 @@
 {
   "authority": "official",
-  "docs_url": "https://github.com/unarbos/tau/blob/main/README.md",
-  "github_url": "https://github.com/unarbos/tau",
+  "docs_url": "https://github.com/ninja-subnet/ninja/blob/main/README.md",
+  "github_url": "https://github.com/ninja-subnet/ninja",
   "id": "unarbos",
   "kind": "subnet-team",
   "logo_url": "https://metagraph.sh/logos/unarbos.png",
   "name": "Unarbos",
-  "notes": "Provider entry for Unarbos Ninja SN66 website, source repositories, public health surface, and Swagger UI.",
+  "notes": "Provider entry for Unarbos Ninja SN66 website, source repositories, and public health surface. Migrated from unarbos/ninja.arbos.life to the ninja-subnet org / ninja66.ai domain -- verified live 2026-07-15.",
   "schema_version": 1,
-  "website_url": "https://ninja.arbos.life/"
+  "website_url": "https://ninja66.ai/"
 }
