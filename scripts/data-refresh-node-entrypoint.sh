@@ -90,6 +90,17 @@ if [ "$STEP" = "registry-sync-fast" ]; then
     exit 0
   fi
 
+  # Path-scope BEFORE paying for a full reset+clean+npm ci: main gets pushed
+  # to far more often than registry/subnets|providers actually change (any
+  # merge moves HEAD), and diffing two already-fetched commits needs no
+  # working-tree checkout. Advance the state file either way -- there's
+  # nothing to sync next run either.
+  if git -C "$REPO_DIR" diff --quiet "$LAST_SYNCED".."$NEW_HEAD" -- registry/subnets registry/providers; then
+    echo "entrypoint: registry-sync-fast: $LAST_SYNCED -> $NEW_HEAD, no registry/subnets or registry/providers changes -- skipping refresh"
+    echo "$NEW_HEAD" > "$STATE_FILE"
+    exit 0
+  fi
+
   echo "entrypoint: registry-sync-fast: $LAST_SYNCED -> $NEW_HEAD"
   git -C "$REPO_DIR" reset --hard "origin/${GIT_REF}"
   git -C "$REPO_DIR" clean -fdx
