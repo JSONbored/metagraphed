@@ -66,6 +66,50 @@
       },
       "source_urls": ["https://api.affine.io/openapi.json"],
       "url": "https://api.affine.io/api/v1/rank/current"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-scores-latest",
+      "kind": "subnet-api",
+      "name": "Affine latest scores",
+      "notes": "Public no-auth GET returning the latest per-miner scores (block_number, miner_hotkey, uid, model_revision). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.affine.io/api/v1/scores/latest"],
+      "url": "https://api.affine.io/api/v1/scores/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-scores-weights-latest",
+      "kind": "subnet-api",
+      "name": "Affine latest weights",
+      "notes": "Public no-auth GET returning the latest computed weights per UID alongside the scoring config. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.affine.io/api/v1/scores/weights/latest"],
+      "url": "https://api.affine.io/api/v1/scores/weights/latest"
     }
   ],
   "website_url": "https://www.affine.io/"

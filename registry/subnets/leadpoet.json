@@ -47,14 +47,14 @@
       "kind": "openapi",
       "name": "Leadpoet public web API OpenAPI schema",
       "notes": "Public no-auth OpenAPI 3.x schema for the SN71 Leadpoet web API (title \"Leadpoet Public API\", 5 paths) on leadpoet.com. Documents /api/health, /api/contact, and geo lookup routes for agents and prospective customers; same host as the existing health surface.",
-      "provider": "leadpoet",
-      "public_safe": true,
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 15000
       },
+      "provider": "leadpoet",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "bohdansolovie"
@@ -83,6 +83,50 @@
       },
       "source_urls": ["https://leadpoet.com/api/openapi.json"],
       "url": "https://leadpoet.com/api/geo/countries"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-71-leadpoet-geo-states",
+      "kind": "subnet-api",
+      "name": "Leadpoet geo states",
+      "notes": "Public no-auth GET returning the supported US states list for lead geo-targeting. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leadpoet",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://leadpoet.com/api/geo/states"],
+      "url": "https://leadpoet.com/api/geo/states"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-71-leadpoet-geo-cities",
+      "kind": "subnet-api",
+      "name": "Leadpoet geo cities",
+      "notes": "Public no-auth GET returning the supported cities list for lead geo-targeting. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leadpoet",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://leadpoet.com/api/geo/cities"],
+      "url": "https://leadpoet.com/api/geo/cities"
     }
   ],
   "website_url": "https://leadpoet.com/"

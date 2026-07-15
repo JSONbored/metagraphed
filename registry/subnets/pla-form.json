@@ -165,6 +165,28 @@
         "https://chain.joinbase.ai/v1/weights/latest"
       ],
       "url": "https://chain.joinbase.ai/v1/challenges/dashboard.svg"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-joinbase-validators-public",
+      "kind": "subnet-api",
+      "name": "Base validators (public)",
+      "notes": "Public no-auth GET returning the public validator list (hotkey, uid, status, online, capabilities). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://chain.joinbase.ai/v1/validators/public"],
+      "url": "https://chain.joinbase.ai/v1/validators/public"
     }
   ],
   "website_url": "https://www.platform.network/"

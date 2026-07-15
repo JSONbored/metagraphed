@@ -1,5 +1,6 @@
 {
   "categories": [],
+  "contact": "info@bitsota.ai",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
@@ -210,7 +211,96 @@
         "https://github.com/AlveusLabs/SN94-BitSota"
       ],
       "url": "https://raw.githubusercontent.com/AlveusLabs/SN94-BitSota/9a91af33b69a42ea9c124ea8a7ea4f05203fde04/capacitor_abi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-work-items",
+      "kind": "subnet-api",
+      "name": "Bitsota work items",
+      "notes": "Public no-auth GET returning active research work items (id, task_id, kind, strategy_key). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/api/v1/work-items"],
+      "url": "https://autoresearch.bitsota.com/api/v1/work-items"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-peer-evaluations",
+      "kind": "subnet-api",
+      "name": "Bitsota peer evaluations",
+      "notes": "Public no-auth GET returning peer evaluation records. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://autoresearch.bitsota.com/api/v1/peer-evaluations"
+      ],
+      "url": "https://autoresearch.bitsota.com/api/v1/peer-evaluations"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-verifications",
+      "kind": "subnet-api",
+      "name": "Bitsota verifications",
+      "notes": "Public no-auth GET returning submission verification records (id, submission_id, validator_hotkey). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/api/v1/verifications"],
+      "url": "https://autoresearch.bitsota.com/api/v1/verifications"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-onchain-status",
+      "kind": "subnet-api",
+      "name": "Bitsota on-chain status",
+      "notes": "Public no-auth GET returning on-chain connectivity status (configured, ws_url, contract, metadata_path). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/api/v1/onchain/status"],
+      "url": "https://autoresearch.bitsota.com/api/v1/onchain/status"
     }
-  ],
-  "contact": "info@bitsota.ai"
+  ]
 }

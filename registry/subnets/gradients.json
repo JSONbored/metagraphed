@@ -309,6 +309,28 @@
         "https://github.com/gradients-ai/G.O.D/blob/f0d3a1b790b0a34009ead27707916ae19e5e7201/validator/infrastructure/challenger_code_review_config.json"
       ],
       "url": "https://raw.githubusercontent.com/gradients-ai/G.O.D/f0d3a1b790b0a34009ead27707916ae19e5e7201/validator/infrastructure/challenger_code_review_config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-scores-url",
+      "kind": "subnet-api",
+      "name": "Gradients validator scores URL",
+      "notes": "Public no-auth GET returning a signed URL to the latest validator scores JSON snapshot for independent auditing. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.gradients.io/auditing/scores-url"],
+      "url": "https://api.gradients.io/auditing/scores-url"
     }
   ],
   "website_url": "https://www.gradients.io/"

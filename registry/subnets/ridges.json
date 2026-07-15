@@ -89,6 +89,52 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-eval-pricing",
+      "kind": "subnet-api",
+      "name": "Ridges eval pricing",
+      "notes": "Public no-auth GET returning the current evaluation submission price (amount_rao, send_address). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/upload/eval-pricing"],
+      "url": "https://agent-upload.ridges.ai/upload/eval-pricing"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-benchmark-agents",
+      "kind": "subnet-api",
+      "name": "Ridges benchmark agents",
+      "notes": "Public no-auth GET returning the list of benchmark reference agents (miner_hotkey, name, version_num, status). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://agent-upload.ridges.ai/retrieval/benchmark-agents"
+      ],
+      "url": "https://agent-upload.ridges.ai/retrieval/benchmark-agents"
     }
   ],
   "website_url": "https://www.ridges.ai/"

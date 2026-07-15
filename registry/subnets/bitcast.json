@@ -10,7 +10,6 @@
   "slug": "sn-93",
   "source_repo": "https://github.com/bitcast-network/bitcast",
   "status": "active",
-  "website_url": "https://stats.bitcast.network/",
   "surfaces": [
     {
       "auth_required": false,
@@ -35,87 +34,87 @@
       "url": "https://stats.bitcast.network/"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-93-bitcast-website",
-      "name": "Bitcast website",
       "kind": "website",
-      "url": "https://www.bitcast.network/",
+      "name": "Bitcast website",
+      "notes": "Official Bitcast website (page title \"bitcast\"), linked from the bitcast-network/bitcast README. Distinct from the stats subdomain set as the legacy website_url.",
       "provider": "bitcast-network",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
-      "source_urls": ["https://github.com/bitcast-network/bitcast"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Official Bitcast website (page title \"bitcast\"), linked from the bitcast-network/bitcast README. Distinct from the stats subdomain set as the legacy website_url."
+      "source_urls": ["https://github.com/bitcast-network/bitcast"],
+      "url": "https://www.bitcast.network/"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-93-bitcast-briefs",
-      "name": "Bitcast briefs / creator portal",
       "kind": "dashboard",
-      "url": "https://creator.bitcast.network/briefs",
+      "name": "Bitcast briefs / creator portal",
+      "notes": "Public Bitcast briefs / creator portal (active campaigns). The README's \"active briefs\" link (dashboard.bitcast.network) 301-redirects to this canonical creator.bitcast.network host. Distinct from the stats dashboard.",
       "provider": "bitcast-network",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "source_urls": ["https://github.com/bitcast-network/bitcast"],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Public Bitcast briefs / creator portal (active campaigns). The README's \"active briefs\" link (dashboard.bitcast.network) 301-redirects to this canonical creator.bitcast.network host. Distinct from the stats dashboard."
+      "url": "https://creator.bitcast.network/briefs"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-93-bitcast-deploy",
+      "kind": "source-repo",
       "name": "Bitcast deploy repository",
-      "kind": "source-repo",
-      "url": "https://github.com/bitcast-network/bitcast-deploy",
+      "notes": "Bitcast validator deployment repo; its GitHub description and README state \"bittensor subnet #93\" / \"netuid-93\". In the team's bitcast-network org, distinct from the top-level bitcast repo.",
       "provider": "bitcast-network",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "source_urls": ["https://github.com/bitcast-network/bitcast-deploy"],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Bitcast validator deployment repo; its GitHub description and README state \"bittensor subnet #93\" / \"netuid-93\". In the team's bitcast-network org, distinct from the top-level bitcast repo."
+      "url": "https://github.com/bitcast-network/bitcast-deploy"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-93-bitcast-x",
-      "name": "Bitcast X subnet-mechanism repository",
       "kind": "source-repo",
-      "url": "https://github.com/bitcast-network/bitcast-x",
+      "name": "Bitcast X subnet-mechanism repository",
+      "notes": "Bitcast \"X\" subnet-mechanism repo; README states \"Register a UID on subnet 93\" and \"Subnet ID: 93 (Bittensor mainnet)\". In the team's bitcast-network org.",
       "provider": "bitcast-network",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
-      "source_urls": ["https://github.com/bitcast-network/bitcast-x"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Bitcast \"X\" subnet-mechanism repo; README states \"Register a UID on subnet 93\" and \"Subnet ID: 93 (Bittensor mainnet)\". In the team's bitcast-network org."
+      "source_urls": ["https://github.com/bitcast-network/bitcast-x"],
+      "url": "https://github.com/bitcast-network/bitcast-x"
     },
     {
-      "id": "sn-93-bitcast-briefs-api",
-      "name": "Bitcast active briefs API",
-      "kind": "subnet-api",
-      "url": "https://creator.bitcast.network/api/briefs",
-      "provider": "bitcast-network",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-93-bitcast-briefs-api",
+      "kind": "subnet-api",
+      "name": "Bitcast active briefs API",
+      "notes": "Public JSON feed of active SN93 content briefs (id_brief, brief_id, brief text, boost, format). Served from the creator portal host; curl-verified 200 application/json with no auth. Distinct from the HTML briefs dashboard at /briefs.",
+      "provider": "bitcast-network",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/bitcast-network/bitcast",
-        "https://creator.bitcast.network/briefs"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "jimcody1995"
       },
-      "notes": "Public JSON feed of active SN93 content briefs (id_brief, brief_id, brief text, boost, format). Served from the creator portal host; curl-verified 200 application/json with no auth. Distinct from the HTML briefs dashboard at /briefs."
+      "source_urls": [
+        "https://github.com/bitcast-network/bitcast",
+        "https://creator.bitcast.network/briefs"
+      ],
+      "url": "https://creator.bitcast.network/api/briefs"
     },
     {
       "auth_required": false,
@@ -221,23 +220,46 @@
       "url": "https://raw.githubusercontent.com/bitcast-network/bitcast/main/min_compute.yml"
     },
     {
-      "id": "sn-93-bitcast-whitepaper-docs",
-      "name": "Bitcast whitepaper",
-      "kind": "docs",
-      "url": "https://www.bitcast.network/whitepaper.pdf",
-      "provider": "bitcast-network",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-93-bitcast-whitepaper-docs",
+      "kind": "docs",
+      "name": "Bitcast whitepaper",
+      "notes": "Public no-auth whitepaper (PDF) for SN93 Bitcast, served at www.bitcast.network/whitepaper.pdf on the official Bitcast website (the same operator as the registered stats.bitcast.network / creator.bitcast.network surfaces). A machine-readable document describing the subnet's design — content-attention incentive mechanism, miner/validator roles, and scoring. Distinct in URL and kind from the API/dashboard surfaces already registered.",
+      "provider": "bitcast-network",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/bitcast-network/bitcast",
-        "https://www.bitcast.network/"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Public no-auth whitepaper (PDF) for SN93 Bitcast, served at www.bitcast.network/whitepaper.pdf on the official Bitcast website (the same operator as the registered stats.bitcast.network / creator.bitcast.network surfaces). A machine-readable document describing the subnet's design — content-attention incentive mechanism, miner/validator roles, and scoring. Distinct in URL and kind from the API/dashboard surfaces already registered."
+      "source_urls": [
+        "https://github.com/bitcast-network/bitcast",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://www.bitcast.network/whitepaper.pdf"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-api-health",
+      "kind": "subnet-api",
+      "name": "Bitcast API health",
+      "notes": "Public no-auth GET returning API health including database liveness check. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://bitcast-api.bitcast.network/health"],
+      "url": "https://bitcast-api.bitcast.network/health"
     }
-  ]
+  ],
+  "website_url": "https://stats.bitcast.network/"
 }

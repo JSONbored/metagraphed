@@ -202,6 +202,28 @@
         "https://blockmachine.io/"
       ],
       "url": "https://api.blockmachine.io/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-ready",
+      "kind": "subnet-api",
+      "name": "Blockmachine readiness check",
+      "notes": "Public no-auth GET returning readiness status including database connectivity. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.blockmachine.io/ready"],
+      "url": "https://api.blockmachine.io/ready"
     }
   ],
   "website_url": "https://blockmachine.io/"

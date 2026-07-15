@@ -1,5 +1,6 @@
 {
   "categories": [],
+  "contact": "mk@babelbit.ai",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
@@ -8,10 +9,11 @@
   "netuid": 59,
   "schema_version": 1,
   "slug": "sn-59",
-  "status": "active",
   "social": {
     "x": "https://x.com/babelbit"
   },
+  "source_repo": "https://github.com/babelbit/babelbit_subnet",
+  "status": "active",
   "surfaces": [
     {
       "auth_required": false,
@@ -71,9 +73,29 @@
         "https://github.com/babelbit/babelbit_subnet/blob/main/README.md"
       ],
       "url": "https://raw.githubusercontent.com/babelbit/babelbit_subnet/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-59-babelbit-service-info",
+      "kind": "subnet-api",
+      "name": "Babelbit service info",
+      "notes": "Public no-auth GET returning the service self-description (service, version, description, authentication requirements). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.babelbit.ai/"],
+      "url": "https://api.babelbit.ai/"
     }
   ],
-  "source_repo": "https://github.com/babelbit/babelbit_subnet",
-  "website_url": "https://babelbit.ai/",
-  "contact": "mk@babelbit.ai"
+  "website_url": "https://babelbit.ai/"
 }
