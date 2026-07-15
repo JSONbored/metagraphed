@@ -4,6 +4,7 @@ import {
   Inbox,
   Clock,
   CheckCircle2,
+  Database,
   ExternalLink as ExternalLinkIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -13,6 +14,32 @@ import { ApiError } from "@/lib/metagraphed/client";
 import { getNetworkPrefix } from "@/lib/metagraphed/config";
 import { isUsableTimestamp } from "@/lib/metagraphed/format";
 import { NativeOnlyNotice } from "./native-only-notice";
+
+/**
+ * Shown when a `/chain-events*` request 503s with `data_tier_unavailable` —
+ * the deep-history Postgres tier's `DATA_API` service binding isn't wired
+ * into this deployment. Expected on a preview/fork/from-scratch environment,
+ * not a fault in the feed itself, so an informational notice reads better
+ * than a red error card (mirrors `NativeOnlyNotice`'s same reasoning).
+ */
+function DataTierUnavailableNotice({ context }: { context?: string }) {
+  return (
+    <div role="status" className="rounded border border-border bg-surface p-4">
+      <div className="flex items-start gap-3">
+        <Database className="size-4 shrink-0 text-ink-muted" />
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 font-display text-sm font-medium text-ink-strong">
+            Deep-history tier not enabled
+          </div>
+          <p className="text-xs leading-relaxed text-ink-muted">
+            {context ? `The ${context} view` : "This view"} reads the Postgres all-events tier,
+            which isn't bound in this deployment. It's unrelated to the rest of this page.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Re-exported so existing `import { Skeleton, ... } from "@/components/metagraphed/states"`
 // call sites keep working -- Skeleton's canonical home is now packages/ui-kit (needed by
@@ -47,6 +74,14 @@ export function ErrorState({
   // Degrade to an informational notice instead of a red error card.
   if (isApi && error.code === "artifact_not_found" && getNetworkPrefix() !== "") {
     return <NativeOnlyNotice context={context} />;
+  }
+  // #2564: the chain-events deep-history tier (workers/api.mjs's handleChainEventsProxy)
+  // 503s with this exact code whenever the DATA_API service binding isn't wired into a
+  // deployment (e.g. a preview/fork environment). That's an expected, documented
+  // condition, not a fault in this feed — an informational notice reads better than a
+  // red error card for every call site that reads /chain-events*.
+  if (isApi && error.code === "data_tier_unavailable") {
+    return <DataTierUnavailableNotice context={context} />;
   }
   const message = (error as Error)?.message ?? "Unknown error";
   const url = isApi ? error.url : undefined;
