@@ -4,11 +4,13 @@
 // comment for why this replaced a "Railway cron" plan with a box-side job).
 //
 // Runs on the box that hosts BOTH source Postgres databases (registry and
-// indexer) locally -- see scripts/data-refresh-node-entrypoint.sh's
-// export-parquet STEP, which runs this with --network host so
-// 127.0.0.1:5432/5433 are reachable. DuckDB's postgres extension reads each
-// table directly; nothing is loaded into this process's own memory beyond
-// what DuckDB's COPY needs.
+// indexer) locally -- REGISTRY_PG_HOST/INDEXER_PG_HOST default to
+// 127.0.0.1 for local/tunnel-based testing, but production sets them to the
+// containers' own names (reachable once the wrapper script joins this
+// container to their docker-compose networks -- see
+// scripts/data-refresh-node-entrypoint.sh's export-parquet STEP). DuckDB's
+// postgres extension reads each table directly; nothing is loaded into this
+// process's own memory beyond what DuckDB's COPY needs.
 //
 // R2 upload goes through `wrangler r2 object put --remote`, the same
 // mechanism scripts/r2-upload.mjs already uses (CLOUDFLARE_API_TOKEN +
@@ -28,7 +30,7 @@
 // Usage: node scripts/export-parquet.mjs [--dry-run]
 import { DuckDBInstance } from "@duckdb/node-api";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { sha256Hex, stableStringify } from "./lib.mjs";
@@ -39,6 +41,17 @@ const dryRun = args.has("--dry-run");
 const BUCKET = "metagraphed-artifacts";
 const RUN_PREFIX_ROOT = "metagraph/bulk/parquet";
 const SCHEMA_VERSION = 1;
+// `wrangler r2 object put` hard-caps single-file uploads at 300 MiB
+// (confirmed live: extrinsics.parquet came out to 602 MiB and failed --
+// #2538's first real deploy run). DuckDB's own COPY ... FILE_SIZE_BYTES is a
+// per-row-group target, not an exact cutoff -- verified live against the
+// real extrinsics table: a 200MB target produced parts up to 231MB (only
+// 23% headroom under 300MB) and a 150MB target still hit 200MB (33%
+// overshoot). 100MB tops out at 123MB in the same test -- comfortable
+// margin that should hold as this table only grows (growth adds more
+// parts, not bigger ones, since each part is bounded by row-group size
+// independent of total table size).
+const MAX_PART_BYTES = 100 * 1024 * 1024;
 
 // (table, source database) pairs -- matches #2538's explicit scope (subnets,
 // economics, endpoints, neurons/metagraph, blocks, extrinsics, chain-events
@@ -125,25 +138,38 @@ async function main() {
   const artifacts = [];
   try {
     for (const { table, db } of EXPORTS) {
-      const localPath = path.join(workDir, `${table}.parquet`);
+      const tableDir = path.join(workDir, table);
+      // Writes to a DIRECTORY, not a single file: DuckDB splits output into
+      // FILE_SIZE_BYTES-targeted parts (data_0.parquet, data_1.parquet, ...)
+      // -- small tables still just produce one part, so this is uniform
+      // across every table rather than special-cased for the large ones.
       // ZSTD: DuckDB's default is snappy; zstd trades a little CPU for
       // meaningfully smaller files, which matters more than write speed for
       // a once-nightly, R2-egress-conscious export.
       await connection.run(
-        `COPY (SELECT * FROM ${db}.${table}) TO '${localPath}' (FORMAT PARQUET, COMPRESSION ZSTD)`,
+        `COPY (SELECT * FROM ${db}.${table}) TO '${tableDir}' (FORMAT PARQUET, COMPRESSION ZSTD, FILE_SIZE_BYTES ${MAX_PART_BYTES})`,
       );
-      const buffer = await readFile(localPath);
-      const { size } = await stat(localPath);
-      artifacts.push({
-        table,
-        source_db: db,
-        path: `${table}.parquet`,
-        key: `${runPrefix}${table}.parquet`,
-        latest_key: `${latestPrefix}${table}.parquet`,
-        sha256: sha256Hex(buffer),
-        size_bytes: size,
-        row_count: await rowCount(connection, db, table),
-      });
+      const tableRowCount = await rowCount(connection, db, table);
+      const partFiles = (await readdir(tableDir)).sort();
+      for (const fileName of partFiles) {
+        const localPath = path.join(tableDir, fileName);
+        const buffer = await readFile(localPath);
+        const { size } = await stat(localPath);
+        artifacts.push({
+          table,
+          source_db: db,
+          path: `${table}/${fileName}`,
+          key: `${runPrefix}${table}/${fileName}`,
+          latest_key: `${latestPrefix}${table}/${fileName}`,
+          sha256: sha256Hex(buffer),
+          size_bytes: size,
+          // Table-level fact, duplicated on every part -- callers reading
+          // one part shouldn't need to cross-reference the others to know
+          // what the whole table represents.
+          row_count: tableRowCount,
+          part_count: partFiles.length,
+        });
+      }
     }
 
     const manifest = {
