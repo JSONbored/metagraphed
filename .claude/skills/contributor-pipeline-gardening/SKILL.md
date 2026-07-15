@@ -1,12 +1,14 @@
 ---
 name: contributor-pipeline-gardening
 description: >-
-  Daily maintenance of the contributor issue pipeline for JSONbored/metagraphed — closing issues
-  that are already done but not marked so, and topping up the contributor-available backlog with
-  well-scoped new issues. Invoke for "run the daily issue gardening", "audit open issues for
-  stale/complete ones", "generate new contributor issues", or any recurring/scheduled run of this
-  process. `reference.md` (next to this file) has the exhaustive label/milestone/template detail —
-  read it before doing real work, not just this file. This is the metagraphed-specific instance;
+  Maintenance of the contributor issue pipeline for JSONbored/metagraphed — closing issues that
+  are already done but not marked so, and keeping the contributor-available backlog at its
+  50-100+ steady-state floor with well-scoped new issues. Runs every ~8h via the scheduled task
+  (raised from daily on 2026-07-15 so the floor is maintained continuously, not caught up once a
+  day). Invoke for "run the issue gardening", "audit open issues for stale/complete ones",
+  "generate new contributor issues", or any recurring/scheduled run of this process.
+  `reference.md` (next to this file) has the exhaustive label/milestone/template detail — read it
+  before doing real work, not just this file. This is the metagraphed-specific instance;
   JSONbored/gittensory (loopover) has its own separate copy with different conventions — do not
   cross-apply either repo's specifics to the other without being asked.
 ---
@@ -33,14 +35,18 @@ scope-clarifying comment.
 
 **metagraphed-specific things to check while doing this:**
 
-- Milestone **#9 "Wave 3 — Frontend (post-consolidation)"** is marked `open` but currently shows 0
-  open / 480 closed issues — check whether this is simply drained (in which case close the milestone
-  itself) or whether it's silently missing new work that should be filed under it.
-- **74 of 142 open issues (as of 2026-07-14) have no milestone at all** — a much bigger gap than
-  gittensory's equivalent. Before generating new issues, spend part of a sweep folding orphaned
-  issues into the milestone they actually belong to (`Foundations & Infra`, `Wave 4 — Docs & Dev
-Surface`, `Partner Flywheel Hardening`, or a new one if none fit) — this repo's issue hygiene needs
-  more of this than gittensory's does.
+- Milestone **#9 "Wave 3 — Frontend (post-consolidation)"**: checked 2026-07-15, it is **not**
+  actually drained (11 open issues at that point, not the 0/480 an earlier snapshot of this doc
+  claimed) — re-verify its open-issue count fresh each run rather than trusting either number here,
+  this repo's milestones fill back up between runs.
+- **Unmilestoned-issue count**: checked 2026-07-15, only 23 of ~94 open issues were unmilestoned, and
+  all 23 were legitimately standalone (the Enrich-SNxx rolling-intake family, which is correctly
+  unmilestoned per its own separate automation, plus the bot-managed Dependency Dashboard) — not an
+  orphan-hygiene gap the way the original "74 of 142" snapshot implied. Re-verify fresh each run
+  rather than assuming either the old or new number still holds; if genuine orphans turn up (a
+  real code/schema/data issue with no milestone, not Enrich-SNxx or the Dependency Dashboard), fold
+  them into the closest fit (`Foundations & Infra`, `Wave 4 — Docs & Dev Surface`, `Partner Flywheel
+  Hardening`) same as before.
 - The **native-staking feature work** (`gittensor:feature`/`maintainer-only` issues in the low-5200s
   numbering, "take/commission management," "move/re-delegate stake flow," "risk disclosure copy") is
   active and security-sensitive — treat anything touching real stake movement, phishing surface, or
@@ -50,11 +56,17 @@ Surface`, `Partner Flywheel Hardening`, or a new one if none fit) — this repo'
 
 1. Compute this repo's own contributor-available count (unassigned, no `maintainer-only`, carries a
    `gittensor:*` label) before deciding how much to generate here — the target is **50-100+ open
-   contributor-available issues, independently per repo**. This is NOT a combined/shared pool with
-   gittensory/loopover; each repo is judged on its own backlog and must clear the bar on its own
-   merits, focused on that repo's actual goals (corrected by the maintainer 2026-07-14 — an earlier
-   version of this doc wrongly said "combined total, not per-repo"). **Exclude the "Enrich SNxxx"
-   family (see below) from this count** — it's a separately-automated queue, not this skill's backlog.
+   contributor-available issues, independently per repo, maintained AT ALL TIMES** (reinforced by the
+   maintainer 2026-07-15 — this is a steady-state floor to keep continuously, not a one-time catch-up;
+   the scheduled task's cadence was raised from daily to every 8h the same day specifically so this
+   gets re-checked well within a day). This is NOT a combined/shared pool with gittensory/loopover;
+   each repo is judged on its own backlog and must clear the bar on its own merits, focused on that
+   repo's actual goals (corrected by the maintainer 2026-07-14 — an earlier version of this doc wrongly
+   said "combined total, not per-repo"). **Exclude the "Enrich SNxxx" family (see below) from this
+   count** — it's a separately-automated queue, not this skill's backlog. **If the count is
+   meaningfully under floor, keep sourcing issues until it clears (or a pass genuinely turns up no more
+   real, non-duplicate gaps) — don't stop at a modest first batch just because "quality over volume"
+   (point 7 below) was satisfied.**
    1a. **The "Enrich SN<netuid> ..." family (tracked via #427, ~20-30 issues at any time) is handled by
    a separate automation, not this skill.** Don't count them toward the 50-100 top-up target (filter
    out any issue whose title matches "Enrich SN" before comparing against the target), and don't
@@ -72,21 +84,26 @@ Surface`, `Partner Flywheel Hardening`, or a new one if none fit) — this repo'
    `/api/v1/webhooks/*`, etc.) are currently `maintainer-only` but look like exactly the kind of
    low-risk, precedent-following, no-business-judgment work this framework says is safe to unlock —
    worth a first-pass review to confirm and relabel rather than only generating net-new issues.
-4. Every new issue: correct milestone, a `gittensor:bug`/`gittensor:feature`/`gittensor:priority`
-   label (this repo's own convention — priority isn't scarce here the way it is in gittensory, but
-   still means "the maintainer actually wants this soon," don't apply it reflexively to everything),
-   and `help wanted` (paired convention here too). Do NOT apply `good first issue` — it isn't a real
-   convention in this repo (the label doesn't exist here, confirmed 2026-07-14) and the maintainer
-   doesn't want it introduced. Only `gittensor:*` + `help wanted` matter for contributor-available
-   issues.
+4. **Every new issue gets a real milestone — no issue ships unmilestoned.** A `gittensor:bug`/
+   `gittensor:feature`/`gittensor:priority` label (this repo's own convention — priority isn't scarce
+   here the way it is in gittensory, but still means "the maintainer actually wants this soon," don't
+   apply it reflexively to everything), and `help wanted` (paired convention here too). Do NOT apply
+   `good first issue` — it isn't a real convention in this repo (the label doesn't exist here,
+   confirmed 2026-07-14) and the maintainer doesn't want it introduced. Only `gittensor:*` +
+   `help wanted` matter for contributor-available issues.
 5. Full body template — Context, Requirements, Deliverables, Expected Outcome, Links & Resources (see
    `reference.md`). Registry/surface-data contributions have their own distinct shape (one file per
    subnet, `registry/subnets/<slug>.json`) — don't template a data-contribution issue the same as a
    code/schema issue; see the `metagraphed` skill's own reference.md for the surface model if
    generating that kind of issue.
-6. Link relationships with GitHub's native `addSubIssue`/`addBlockedBy` mutations (same as gittensory
-   — confirmed available on this repo too via the same GraphQL check) rather than a markdown checklist.
-7. Quality over the number, same as gittensory's copy of this rule.
+6. **Check every new batch for a real dependency, then link it with GitHub's native
+   `addSubIssue`/`addBlockedBy` mutations** (confirmed available on this repo, same as gittensory) —
+   never a markdown checklist. This is a required check, not optional: most batches of independent
+   bug-fixes or REST/GraphQL/MCP-parity additions genuinely have no dependency on each other, and the
+   correct outcome of the check is then "no links needed" — don't force one just to look thorough.
+   Reserve the links for a real case where working out of order would waste a contributor's time.
+7. Quality over the number in what gets filed — don't pad with weak/duplicate/vague issues. This is
+   not license to stop early: see point 1's "if under floor" note.
 
 ## Daily digest
 

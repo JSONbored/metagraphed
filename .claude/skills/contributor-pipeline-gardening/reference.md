@@ -30,15 +30,23 @@ metagraphed is a Bittensor subnet registry + block-explorer product: `registry/s
 for the full contribution model — that skill is authoritative for how a PR gets merged here; this
 skill only covers issue-pipeline hygiene, not PR review mechanics.
 
-## Milestone taxonomy (as of 2026-07-14 — re-check, this repo's hygiene drifts faster than gittensory's)
+## Milestone taxonomy (re-check every run — this repo's hygiene and counts drift faster than gittensory's)
 
-| Milestone                                     | Open                                     | Nature                                                                                                        |
-| --------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `Foundations & Infra` (#11)                   | ~39-41                                   | General backend/infra work, mixed maintainer/contributor                                                      |
-| `Wave 4 — Docs & Dev Surface` (#10)           | ~25                                      | Docs pages for shipped API surfaces — mostly currently `maintainer-only` but low-risk to unlock, see SKILL.md |
-| `Partner Flywheel Hardening` (#13)            | ~4                                       | Small, check individually                                                                                     |
-| `Wave 3 — Frontend (post-consolidation)` (#9) | 0 open / 480 closed, still marked `open` | Likely fully drained — verify and close the milestone if so, or find out why it's still open                  |
-| Unmilestoned                                  | ~74 (over half of all open issues)       | Real hygiene gap — fold into the closest fit rather than leaving orphaned                                     |
+| Milestone                                     | Open (as of 2026-07-15)         | Nature                                                                                                        |
+| --------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `Foundations & Infra` (#11)                   | ~27+ (growing — see below)       | General backend/infra work, mixed maintainer/contributor. Also the default home for well-precedented REST/GraphQL/MCP parity issues (no dedicated milestone exists for that pattern yet). |
+| `Wave 4 — Docs & Dev Surface` (#10)           | ~21                               | Docs pages for shipped API surfaces — mostly currently `maintainer-only` but low-risk to unlock, see SKILL.md. Paused pending the fumadocs-mdx migration spike (loopover#6037) as of 2026-07-15 — don't unlock the "Docs page: X" family until that lands. |
+| `Partner Flywheel Hardening` (#13)            | ~4                                | Small, check individually                                                                                     |
+| `Wave 3 — Frontend (post-consolidation)` (#9) | 11 (checked 2026-07-15 — NOT drained, an earlier "0/480" snapshot of this doc was stale) | Verify its real open count fresh each run rather than trusting a cached number here                            |
+| Unmilestoned                                  | ~23 (checked 2026-07-15) | Mostly legitimate: the Enrich-SNxx rolling-intake family + the bot-managed Dependency Dashboard, both correctly standalone. Verify what's actually unmilestoned fresh each run before assuming it's a hygiene gap — an earlier "~74, real gap" snapshot of this doc was stale. |
+
+**Every gardening-generated issue gets a milestone — none ship unmilestoned** (reinforced by the
+maintainer, 2026-07-15). Default to the closest-fitting existing one from the table above. A new
+milestone is warranted only when nothing existing fits AND the work is either a genuinely major
+initiative or a recurring category that will keep needing a home — see gittensory/loopover's own
+`reference.md` for the `Miner Wave 4.5` precedent of the latter case. A one-off oddity alone isn't
+enough justification; when genuinely unsure on a high-stakes call like this, propose 1-2 options, but
+default to deciding and documenting the reasoning rather than blocking a run on confirmation.
 
 ## Labels — this repo's own convention, don't force gittensory's onto it
 
@@ -103,6 +111,13 @@ surface-contribution shape in `.claude/skills/metagraphed/reference.md` instead 
 code-issue template above for that kind of ask.
 
 ## Native relationship linking (GraphQL — confirmed available on this repo, 2026-07-14)
+
+**Check every new batch of issues for a real dependency before moving on — required, not optional**
+(reinforced by the maintainer, 2026-07-15). Most batches of independent bug-fixes or parity additions
+(e.g. a set of REST/GraphQL-mirror issues, each adding one unrelated field) genuinely have no
+dependency on each other — the correct outcome of the check is then "no links needed." Reserve
+`addBlockedBy` for a real case where working an issue out of order would waste a contributor's time,
+and `addSubIssue` for anything genuinely part of a parent epic/tracker.
 
 ```graphql
 mutation {
