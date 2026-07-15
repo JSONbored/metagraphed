@@ -107,6 +107,7 @@ import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range
 import { SubnetMasthead } from "@/components/metagraphed/subnet-masthead";
 import { OperationalPanel } from "@/components/metagraphed/operational-panel";
 import { ResourceExplorer } from "@/components/metagraphed/resource-explorer";
+import { GittensorRegisteredRepos } from "@/components/metagraphed/gittensor-registered-repos";
 import { SubnetProfilePanel } from "@/components/metagraphed/subnet-profile-panel";
 import { SubnetPulseStrip } from "@/components/metagraphed/subnet-pulse-strip";
 import { SubnetFilterProvider } from "@/components/metagraphed/subnet-filter-context";
@@ -393,6 +394,15 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
       <QueryErrorBoundary>
         <ResourceExplorer netuid={netuid} />
       </QueryErrorBoundary>
+
+      {/* 3b — Gittensor's registered repositories (netuid 74 only): ecosystem
+          member projects with emission-share metadata, not infrastructure
+          surfaces, so kept out of ResourceExplorer above. */}
+      {netuid === 74 ? (
+        <QueryErrorBoundary>
+          <GittensorRegisteredRepos slug="gittensor" />
+        </QueryErrorBoundary>
+      ) : null}
 
       {/* 4 — Subnet profile (lineage + economics + ownership + curation) */}
       <QueryErrorBoundary>
