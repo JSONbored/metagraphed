@@ -9,7 +9,7 @@
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-06T00:00:00.000Z",
     "source_count": 6,
-    "verified_at": null
+    "verified_at": "2026-06-06T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/0",
   "docs_url": "https://docs.learnbittensor.org/concepts/bittensor-networks",
@@ -35,6 +35,9 @@
       },
       "provider": "opentensor",
       "public_safe": true,
+      "source_urls": [
+        "https://docs.learnbittensor.org/concepts/bittensor-networks"
+      ],
       "url": "https://docs.learnbittensor.org/concepts/bittensor-networks"
     },
     {
@@ -50,6 +53,7 @@
       },
       "provider": "opentensor",
       "public_safe": true,
+      "source_urls": ["https://docs.learnbittensor.org/subtensor-nodes"],
       "url": "https://docs.learnbittensor.org/subtensor-nodes"
     },
     {
@@ -65,6 +69,7 @@
       },
       "provider": "opentensor",
       "public_safe": true,
+      "source_urls": ["https://bittensor.com"],
       "url": "https://bittensor.com"
     },
     {
@@ -80,6 +85,10 @@
       },
       "provider": "opentensor",
       "public_safe": true,
+      "source_urls": [
+        "https://docs.learnbittensor.org/concepts/bittensor-networks",
+        "https://github.com/opentensor/subtensor"
+      ],
       "url": "https://github.com/opentensor/subtensor"
     },
     {

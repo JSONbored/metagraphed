@@ -11,7 +11,7 @@
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-06T00:00:00.000Z",
     "source_count": 5,
-    "verified_at": null
+    "verified_at": "2026-06-06T00:00:00.000Z"
   },
   "dashboard_url": null,
   "docs_url": "https://docs.gittensor.io/",
@@ -63,6 +63,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
+      "source_urls": ["https://docs.gittensor.io/"],
       "url": "https://docs.gittensor.io/"
     },
     {
@@ -78,6 +79,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
+      "source_urls": ["https://gittensor.io/"],
       "url": "https://gittensor.io/"
     },
     {
@@ -93,6 +95,10 @@
       },
       "provider": "gittensor",
       "public_safe": true,
+      "source_urls": [
+        "https://docs.gittensor.io/",
+        "https://github.com/entrius/gittensor"
+      ],
       "url": "https://github.com/entrius/gittensor"
     },
     {
@@ -108,6 +114,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
+      "source_urls": ["https://docs.gittensor.io/register-repository.html"],
       "url": "https://docs.gittensor.io/register-repository.html"
     },
     {
@@ -123,6 +130,7 @@
       },
       "provider": "gittensor",
       "public_safe": true,
+      "source_urls": ["https://docs.gittensor.io/repository-hyperparameters"],
       "url": "https://docs.gittensor.io/repository-hyperparameters"
     },
     {
@@ -207,6 +215,7 @@
       },
       "provider": "gittensory",
       "public_safe": true,
+      "source_urls": ["https://gittensory.aethereal.dev/"],
       "url": "https://gittensory.aethereal.dev/"
     },
     {
