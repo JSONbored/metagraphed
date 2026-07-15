@@ -22,7 +22,7 @@
   "dashboard_url": "https://trishool.ai/dashboard",
   "name": "Trishool",
   "netuid": 23,
-  "notes": "Reviewed overlay for SN23 using the official Trishool dashboard, phase-two source repository, and public API landing URL. The API root returns a public landing response, but OpenAPI and docs paths currently require auth or return 404, so no schema-backed API is promoted.",
+  "notes": "Reviewed overlay for SN23 using the official Trishool dashboard, phase-two source repository, and public API landing URL. The API root returns a public landing response, but OpenAPI and docs paths currently require auth or return 404, so no schema-backed API is promoted (re-tested live, still accurate). 3 community-submitted surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. All 6 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-23",
   "social": {
@@ -96,6 +96,12 @@
       "kind": "docs",
       "name": "Trishool documentation",
       "notes": "Official Trishool documentation site (docs.trishool.ai), hosted on the subnet's own domain and linked from the official website trishool.ai.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "trishool",
       "public_safe": true,
       "review": {
@@ -112,6 +118,12 @@
       "kind": "data-artifact",
       "name": "Trishool tri-check submission schema template",
       "notes": "Public no-auth JSON template for the tri-check / alignet-style miner submission format (Q1–Q12 prompt object keys). Used for local testing and documentation of the expected batch submission shape.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "trishool",
       "public_safe": true,
       "review": {
@@ -131,6 +143,12 @@
       "kind": "docs",
       "name": "Trishool litepaper",
       "notes": "Public no-auth Trishool litepaper (PDF) for SN23, served at litepaper.trishool.ai — a dedicated subdomain of the registered official website trishool.ai (same operator as the api.trishool.ai and docs.trishool.ai surfaces). A machine-readable primary-source document describing the subnet's design, mechanism, and roles. Distinct in URL from the docs.trishool.ai API documentation already registered.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "trishool",
       "public_safe": true,
       "review": {

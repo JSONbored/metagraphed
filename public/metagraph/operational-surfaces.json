@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 236,
+  "surface_count": 237,
   "surfaces": [
     {
       "auth_required": false,
@@ -1919,6 +1919,24 @@
       "surface_id": "sn-23-trishool-api-root",
       "surface_key": "srf-b98c53721003635a",
       "url": "https://api.trishool.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 23,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "trishool",
+      "public_safe": true,
+      "subnet_name": "Trishool",
+      "subnet_slug": "sn-23",
+      "surface_id": "sn-23-trishool-submission-schema",
+      "surface_key": "srf-c1aaa6aede0e3c28",
+      "url": "https://raw.githubusercontent.com/TrishoolAI/trishool-phase2/main/tri-check/data/submission_schema.json"
     },
     {
       "auth_required": false,
