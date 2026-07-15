@@ -43,7 +43,7 @@ import {
 
 const SITE_URL = "https://metagraph.sh";
 const API_URL = "https://api.metagraph.sh";
-const FEED_MAX_ITEMS = 50;
+export const FEED_MAX_ITEMS = 50;
 const FEED_CACHE_SECONDS = 600;
 
 const FEED_CONTENT_TYPES = {
@@ -153,7 +153,7 @@ function subnetChangeText(n, change, entry) {
 
 // Registry feed: the latest changelog window's subnet + artifact + coverage
 // changes. `netuid` (optional) filters to one subnet.
-function registryItems(changelog, netuid) {
+export function registryItems(changelog, netuid) {
   const at = toIso(changelog?.generated_at) || new Date().toISOString();
   const items = [];
 
@@ -236,7 +236,7 @@ function registryItems(changelog, netuid) {
 }
 
 // Gaps feed: ranked enrichment targets from the served enrichment queue.
-function gapsItems(enrichmentQueue) {
+export function gapsItems(enrichmentQueue) {
   const at = toIso(enrichmentQueue?.generated_at) || new Date().toISOString();
   const items = [];
   for (const entry of enrichmentQueue?.queue || []) {
@@ -290,7 +290,7 @@ function gapsItems(enrichmentQueue) {
 
 // Incidents feed: each reconstructed incident from the served incidents artifact.
 // `netuid` (optional) filters to one subnet.
-function incidentItems(incidents, netuid) {
+export function incidentItems(incidents, netuid) {
   const items = [];
   for (const surface of incidents?.surfaces || []) {
     if (netuid != null && surface?.netuid !== netuid) continue;
@@ -325,7 +325,7 @@ function incidentItems(incidents, netuid) {
 
 // ── serializers ─────────────────────────────────────────────────────────────
 
-function sortAndCap(items, max = FEED_MAX_ITEMS) {
+export function sortAndCap(items, max = FEED_MAX_ITEMS) {
   return [...items]
     .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
     .slice(0, max);
@@ -346,7 +346,7 @@ function parseFeedLimit(raw) {
 // Optional `?tag=` filter: keep only items whose tags array includes the value.
 // A falsy/absent tag is a no-op (the whole feed). The tag is only ever compared,
 // never rendered into the feed body, so it needs no escaping.
-function filterByTag(items, tag) {
+export function filterByTag(items, tag) {
   if (!tag) return items;
   return items.filter((item) => (item.tags || []).includes(tag));
 }
@@ -354,7 +354,7 @@ function filterByTag(items, tag) {
 // Optional `?since=` filter: keep only items at or after `sinceMs` (epoch ms).
 // A null bound (absent param) is a no-op; items whose timestamp can't be parsed
 // are dropped, so a malformed feed entry never leaks past an explicit `since`.
-function filterSince(items, sinceMs) {
+export function filterSince(items, sinceMs) {
   if (sinceMs == null) return items;
   return items.filter((item) => {
     const t = Date.parse(item.timestamp);
@@ -365,7 +365,7 @@ function filterSince(items, sinceMs) {
 // Optional `?until=` filter: keep only items at or before `untilMs` (epoch ms).
 // A null bound (absent param) is a no-op; items whose timestamp can't be parsed
 // are dropped, so a malformed feed entry never leaks past an explicit `until`.
-function filterUntil(items, untilMs) {
+export function filterUntil(items, untilMs) {
   if (untilMs == null) return items;
   return items.filter((item) => {
     const t = Date.parse(item.timestamp);
@@ -514,7 +514,7 @@ export function parseFeedPath(pathname) {
 // (23:59:59.999Z) so the bound stays inclusive of the named day — `?until=DATE`
 // keeps every item from that day rather than dropping all but the midnight tick.
 // A date-time (with an explicit time) is an exact instant, unaffected by the flag.
-function parseSinceParam(value, { endOfDay = false } = {}) {
+export function parseSinceParam(value, { endOfDay = false } = {}) {
   const raw = String(value);
   const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
   if (dateOnly) {

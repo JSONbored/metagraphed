@@ -11162,6 +11162,279 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.surfaces[0].incidents[0].failed_samples, 3);
   });
 
+  test("get_feed requires kind and rejects an unknown one", async () => {
+    const missing = await callTool("get_feed", {});
+    assert.equal(missing.body.result.isError, true);
+    assert.match(missing.body.result.content[0].text, /kind.*required/);
+
+    const bogus = await callTool("get_feed", { kind: "bogus" });
+    assert.equal(bogus.body.result.isError, true);
+  });
+
+  test("get_feed requires netuid for kind subnet and rejects it otherwise", async () => {
+    const noNetuid = await callTool("get_feed", { kind: "subnet" });
+    assert.equal(noNetuid.body.result.isError, true);
+    assert.match(noNetuid.body.result.content[0].text, /netuid.*required/);
+
+    const strayNetuid = await callTool("get_feed", {
+      kind: "registry",
+      netuid: 7,
+    });
+    assert.equal(strayNetuid.body.result.isError, true);
+    assert.match(
+      strayNetuid.body.result.content[0].text,
+      /netuid.*only used when kind is `subnet`/,
+    );
+  });
+
+  test("get_feed kind=registry returns items from the changelog artifact", async () => {
+    const feedDeps = makeDeps({
+      "/metagraph/changelog.json": {
+        generated_at: "2026-06-15T00:00:00.000Z",
+        summary: {},
+        artifacts: { added: [], modified: [], removed: [] },
+        subnets: {
+          added: [{ netuid: 7, name: "Allways" }],
+          removed: [],
+          renamed: [],
+        },
+      },
+    });
+    const res = await callTool(
+      "get_feed",
+      { kind: "registry" },
+      { deps: feedDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.kind, "registry");
+    assert.equal(out.returned, 1);
+    assert.equal(out.items[0].tags.includes("subnet"), true);
+    assert.match(out.items[0].title, /Subnet 7 added/);
+  });
+
+  test("get_feed kind=registry degrades to an empty feed when the changelog artifact is missing", async () => {
+    const res = await callTool(
+      "get_feed",
+      { kind: "registry" },
+      { deps: makeDeps() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 0);
+    assert.deepEqual(out.items, []);
+  });
+
+  test("get_feed kind=incidents returns items from the live D1 incident ledger", async () => {
+    const now = Date.now();
+    const env = {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        incidentRows: [
+          {
+            netuid: 7,
+            surface_id: "api-root",
+            surface_key: "api-root",
+            started_at: now - 3_600_000,
+            ended_at: now - 1_800_000,
+            failed_samples: 3,
+          },
+        ],
+      }),
+    };
+    const res = await callTool(
+      "get_feed",
+      { kind: "incidents" },
+      {
+        deps: makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } }),
+        env,
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.items[0].tags.includes("sn7"), true);
+  });
+
+  test("get_feed kind=gaps returns items from the enrichment-queue artifact", async () => {
+    const feedDeps = makeDeps({
+      "/metagraph/review/enrichment-queue.json": {
+        generated_at: "2026-06-15T00:00:00.000Z",
+        queue: [
+          {
+            netuid: 7,
+            name: "Allways",
+            lane: "direct-submission",
+            priority_score: 42,
+            missing_kinds: ["openapi"],
+            direct_submission_kinds: ["openapi"],
+            recommended_action: "Submit an OpenAPI schema.",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_feed",
+      { kind: "gaps" },
+      { deps: feedDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.items[0].tags.includes("sn7"), true);
+    assert.match(out.items[0].title, /SN7 Allways/);
+  });
+
+  test("get_feed kind=gaps degrades to an empty feed when the enrichment-queue artifact is missing", async () => {
+    const res = await callTool(
+      "get_feed",
+      { kind: "gaps" },
+      { deps: makeDeps() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 0);
+    assert.deepEqual(out.items, []);
+  });
+
+  test("get_feed kind=subnet combines that subnet's registry changes and incidents", async () => {
+    const now = Date.now();
+    const feedDeps = makeDeps({
+      "/metagraph/changelog.json": {
+        generated_at: "2026-06-15T00:00:00.000Z",
+        summary: {},
+        artifacts: { added: [], modified: [], removed: [] },
+        subnets: {
+          added: [{ netuid: 7, name: "Allways" }],
+          removed: [],
+          renamed: [],
+        },
+      },
+    });
+    const env = {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        incidentRows: [
+          {
+            netuid: 7,
+            surface_id: "api-root",
+            surface_key: "api-root",
+            started_at: now - 3_600_000,
+            ended_at: now - 1_800_000,
+            failed_samples: 3,
+          },
+        ],
+      }),
+    };
+    const res = await callTool(
+      "get_feed",
+      { kind: "subnet", netuid: 7 },
+      { deps: feedDeps, env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.returned, 2);
+    const tagSets = out.items.map((item) => item.tags);
+    assert.ok(tagSets.some((tags) => tags.includes("registry")));
+    assert.ok(tagSets.some((tags) => tags.includes("incident")));
+  });
+
+  test("get_feed filters by tag, since/until, and caps with limit", async () => {
+    const feedDeps = makeDeps({
+      "/metagraph/changelog.json": {
+        generated_at: "2026-06-15T00:00:00.000Z",
+        summary: {},
+        artifacts: { added: [], modified: [], removed: [] },
+        subnets: {
+          added: [
+            { netuid: 7, name: "Allways" },
+            { netuid: 8, name: "Second" },
+          ],
+          removed: [],
+          renamed: [],
+        },
+      },
+    });
+    const byTag = await callTool(
+      "get_feed",
+      { kind: "registry", tag: "sn9-does-not-exist" },
+      { deps: feedDeps },
+    );
+    assert.equal(byTag.body.result.structuredContent.returned, 0);
+
+    const limited = await callTool(
+      "get_feed",
+      { kind: "registry", limit: 1 },
+      { deps: feedDeps },
+    );
+    assert.equal(limited.body.result.structuredContent.returned, 1);
+    assert.equal(limited.body.result.structuredContent.filters.limit, 1);
+
+    const windowed = await callTool(
+      "get_feed",
+      {
+        kind: "registry",
+        since: "2026-06-16",
+        until: "2026-06-17",
+      },
+      { deps: feedDeps },
+    );
+    assert.equal(windowed.body.result.structuredContent.returned, 0);
+  });
+
+  test("get_feed rejects a malformed since/until/limit", async () => {
+    const badSince = await callTool("get_feed", {
+      kind: "registry",
+      since: "not-a-date",
+    });
+    assert.equal(badSince.body.result.isError, true);
+
+    const badUntil = await callTool("get_feed", {
+      kind: "registry",
+      until: "not-a-date",
+    });
+    assert.equal(badUntil.body.result.isError, true);
+
+    const badLimit = await callTool("get_feed", {
+      kind: "registry",
+      limit: 0,
+    });
+    assert.equal(badLimit.body.result.isError, true);
+
+    // tools/call does not enforce inputSchema types, so a non-string tag/
+    // since/until must be rejected by the handler itself, not just a bad
+    // string value.
+    const nonStringSince = await callTool("get_feed", {
+      kind: "registry",
+      since: 123,
+    });
+    assert.equal(nonStringSince.body.result.isError, true);
+
+    const nonStringTag = await callTool("get_feed", {
+      kind: "registry",
+      tag: 123,
+    });
+    assert.equal(nonStringTag.body.result.isError, true);
+  });
+
+  test("get_feed payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_feed",
+    )?.outputSchema;
+    const feedDeps = makeDeps({
+      "/metagraph/changelog.json": {
+        generated_at: "2026-06-15T00:00:00.000Z",
+        summary: {},
+        artifacts: { added: [], modified: [], removed: [] },
+        subnets: {
+          added: [{ netuid: 7, name: "Allways" }],
+          removed: [],
+          renamed: [],
+        },
+      },
+    });
+    const res = await callTool(
+      "get_feed",
+      { kind: "registry" },
+      { deps: feedDeps },
+    );
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("the D1 runner swallows a query error and a missing result set", async () => {
     // A bound DB whose .all() throws must be caught and yield an empty payload.
     const throwingEnv = {

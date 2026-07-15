@@ -165,6 +165,12 @@ import {
   loadChangelog,
 } from "./changelog-mcp.mjs";
 import {
+  GET_FEED_INSTRUCTIONS,
+  GET_FEED_MCP_TOOL,
+  GET_FEED_OUTPUT_SCHEMA,
+  loadFeedItems,
+} from "./feed-mcp.mjs";
+import {
   GET_BUILD_INSTRUCTIONS,
   GET_BUILD_MCP_TOOL,
   GET_BUILD_OUTPUT_SCHEMA,
@@ -688,6 +694,7 @@ export const MCP_INSTRUCTIONS =
   GET_COVERAGE_INSTRUCTIONS +
   GET_CONTRACTS_INSTRUCTIONS +
   GET_CHANGELOG_INSTRUCTIONS +
+  GET_FEED_INSTRUCTIONS +
   GET_BUILD_INSTRUCTIONS +
   GET_ADAPTER_INSTRUCTIONS +
   LIST_CURATION_INSTRUCTIONS +
@@ -8537,6 +8544,23 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...GET_FEED_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadFeedItems(ctx, args, {
+        // Same cross-subnet incident ledger + wiring get_global_incidents uses
+        // (mcpD1Runner + mcpObservedAt), widest window (30d) -- get_feed's own
+        // since/until narrow further from there.
+        async loadIncidents() {
+          return loadGlobalIncidents(mcpD1Runner(ctx), {
+            windowLabel: "30d",
+            windowDays: 30,
+            observedAt: await mcpObservedAt(ctx),
+          });
+        },
+      });
+    },
+  },
+  {
     ...GET_BUILD_MCP_TOOL,
     async handler(_args, ctx) {
       return loadBuildSummary(ctx);
@@ -12603,6 +12627,7 @@ const TOOL_OUTPUT_SCHEMAS = {
     },
   },
   get_changelog: GET_CHANGELOG_OUTPUT_SCHEMA,
+  get_feed: GET_FEED_OUTPUT_SCHEMA,
   get_build: GET_BUILD_OUTPUT_SCHEMA,
   get_adapter: GET_ADAPTER_OUTPUT_SCHEMA,
   get_agent_catalog: {
