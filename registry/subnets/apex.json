@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 1,
-  "name": "Apex",
-  "slug": "sn-1",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -12,164 +7,166 @@
     "official-source-repo",
     "official-website"
   ],
-  "docs_url": "https://docs.macrocosmos.ai/subnets/subnet-1-apex",
-  "source_repo": "https://github.com/macrocosm-os/apex",
-  "dashboard_url": "https://taomarketcap.com/subnets/1",
-  "website_url": "https://apex.macrocosmos.ai/",
-  "notes": "Reviewed overlay for SN1 using the official Apex website, Macrocosmos docs link, and Apex source repository. No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact is verified yet.",
+  "contact": "support@macrocosmos.ai",
   "curation": {
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T09:50:00.000Z",
-    "verified_at": "2026-06-08T09:50:00.000Z",
     "source_count": 5,
-    "gap_notes": [
-      "The specific Apex docs URL resolves through the Macrocosmos docs site, but no machine-readable schema is available.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-06-08T09:50:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/1",
+  "docs_url": "https://docs.macrocosmos.ai/subnets/subnet-1-apex",
+  "name": "Apex",
+  "netuid": 1,
+  "notes": "Reviewed overlay for SN1 using the official Apex website, Macrocosmos docs link, and Apex source repository. Public orchestrator API (apex.api.macrocosmos.ai) has a machine-readable OpenAPI schema, healthcheck/readiness/Prometheus-metrics endpoints, and a HuggingFace data-artifact sample tracked; no verified SSE/event stream yet.",
+  "schema_version": 1,
+  "slug": "sn-1",
+  "social": {
+    "x": "https://x.com/macrocosmosai"
+  },
+  "source_repo": "https://github.com/macrocosm-os/apex",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-1-apex-website",
-      "name": "Apex website",
-      "kind": "website",
-      "url": "https://apex.macrocosmos.ai/",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/macrocosm-os/apex"],
+      "id": "sn-1-apex-website",
+      "kind": "website",
+      "name": "Apex website",
+      "notes": "Official Apex product website listed by the source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Apex product website listed by the source repository."
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": ["https://github.com/macrocosm-os/apex"],
+      "url": "https://apex.macrocosmos.ai/"
     },
     {
-      "id": "sn-1-apex-docs",
-      "name": "Apex docs",
-      "kind": "docs",
-      "url": "https://docs.macrocosmos.ai/subnets/subnet-1-apex",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-1-apex-docs",
+      "kind": "docs",
+      "name": "Apex docs",
+      "notes": "Official Macrocosmos docs link referenced by the Apex README.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
       "public_safe": true,
       "source_urls": [
         "https://github.com/macrocosm-os/apex/blob/main/README.md"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Macrocosmos docs link referenced by the Apex README."
+      "url": "https://docs.macrocosmos.ai/subnets/subnet-1-apex"
     },
     {
-      "id": "sn-1-apex-source",
-      "name": "Apex source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/macrocosm-os/apex",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/macrocosm-os/apex"],
+      "id": "sn-1-apex-source",
+      "kind": "source-repo",
+      "name": "Apex source repository",
+      "notes": "Official Apex source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Apex source repository."
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": ["https://github.com/macrocosm-os/apex"],
+      "url": "https://github.com/macrocosm-os/apex"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-1-apex-deep-research",
+      "kind": "source-repo",
       "name": "Apex deep-research tool",
-      "kind": "source-repo",
-      "url": "https://github.com/macrocosm-os/apex_deep_research",
+      "notes": "Deep-research tool for SN1 Apex (GitHub description: \"Deep researcher tool for SN1 Apex research\"), in the team's macrocosm-os org. Distinct from the main apex repo.",
       "provider": "macrocosmos",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "source_urls": ["https://github.com/macrocosm-os/apex_deep_research"],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Deep-research tool for SN1 Apex (GitHub description: \"Deep researcher tool for SN1 Apex research\"), in the team's macrocosm-os org. Distinct from the main apex repo."
+      "url": "https://github.com/macrocosm-os/apex_deep_research"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-1-apex-prompting-examples",
-      "name": "Apex prompting examples",
       "kind": "example",
-      "url": "https://github.com/macrocosm-os/prompting-examples",
+      "name": "Apex prompting examples",
+      "notes": "SN1 Apex examples and notebooks (GitHub description: \"SN1 Prompting examples and notebooks\"), in the team's macrocosm-os org.",
       "provider": "macrocosmos",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "source_urls": ["https://github.com/macrocosm-os/prompting-examples"],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "SN1 Apex examples and notebooks (GitHub description: \"SN1 Prompting examples and notebooks\"), in the team's macrocosm-os org."
+      "url": "https://github.com/macrocosm-os/prompting-examples"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-1-apex-benchmarking",
+      "kind": "source-repo",
       "name": "Apex benchmarking repository",
-      "kind": "source-repo",
-      "url": "https://github.com/macrocosm-os/apex-benchmarking",
+      "notes": "Public Apex benchmarking repository (GitHub description: \"Public Repo to share Apex-Benchmarking\"), in the team's macrocosm-os org.",
       "provider": "macrocosmos",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "source_urls": ["https://github.com/macrocosm-os/apex-benchmarking"],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Public Apex benchmarking repository (GitHub description: \"Public Repo to share Apex-Benchmarking\"), in the team's macrocosm-os org."
+      "url": "https://github.com/macrocosm-os/apex-benchmarking"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-1-apex-pvp-arch",
-      "name": "Apex PvP arena runtime",
       "kind": "source-repo",
-      "url": "https://github.com/macrocosm-os/apex-pvp-arch",
+      "name": "Apex PvP arena runtime",
+      "notes": "Apex PvP arena runtime (multi-container PvP game runtime for adversarial agent competition), in the team's macrocosm-os org.",
       "provider": "macrocosmos",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
-      "source_urls": ["https://github.com/macrocosm-os/apex-pvp-arch"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Apex PvP arena runtime (multi-container PvP game runtime for adversarial agent competition), in the team's macrocosm-os org."
+      "source_urls": ["https://github.com/macrocosm-os/apex-pvp-arch"],
+      "url": "https://github.com/macrocosm-os/apex-pvp-arch"
     },
     {
-      "id": "sn-1-macrocosmos-data-artifact",
-      "name": "Apex SN1 synthetic-data sample",
-      "kind": "data-artifact",
-      "url": "https://huggingface.co/datasets/macrocosm-os/subnet1-synthetic-data-sample",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-1-macrocosmos-data-artifact",
+      "kind": "data-artifact",
+      "name": "Apex SN1 synthetic-data sample",
+      "notes": "Macrocosmos-published HuggingFace sample of Subnet 1 synthetic Q&A/reasoning data (MIT, public, not gated). The dataset's SAMPLE.md opens \"# Subnet 1: Sample Data\" and the official Macrocosmos org (source) lists it; fills the subnet's noted missing-data-artifact gap.",
+      "provider": "macrocosmos",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "source_urls": [
         "https://huggingface.co/macrocosm-os",
         "https://huggingface.co/datasets/macrocosm-os/subnet1-synthetic-data-sample/raw/main/SAMPLE.md"
       ],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Macrocosmos-published HuggingFace sample of Subnet 1 synthetic Q&A/reasoning data (MIT, public, not gated). The dataset's SAMPLE.md opens \"# Subnet 1: Sample Data\" and the official Macrocosmos org (source) lists it; fills the subnet's noted missing-data-artifact gap."
+      "url": "https://huggingface.co/datasets/macrocosm-os/subnet1-synthetic-data-sample"
     },
     {
       "auth_required": false,
@@ -210,8 +207,51 @@
         "https://github.com/macrocosm-os/apex/blob/main/shared/common/src/common/settings.py"
       ],
       "url": "https://apex.api.macrocosmos.ai/healthcheck"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-healthcheck-ready",
+      "kind": "subnet-api",
+      "name": "Apex orchestrator readiness check",
+      "notes": "Public no-auth GET returning readiness status (observed: {\"status\":\"ready\"}), distinct from the already-tracked liveness /healthcheck. Documented in the subnet's own OpenAPI schema (path /healthcheck/ready); same host as the existing healthcheck surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/healthcheck/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-metrics",
+      "kind": "subnet-api",
+      "name": "Apex orchestrator Prometheus metrics",
+      "notes": "Public no-auth GET returning Prometheus text-exposition-format process/runtime metrics (python_gc_objects_collected_total and similar). Documented in the subnet's own OpenAPI schema (path /metrics); plain-text response, not JSON, so tracked with expect: any.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/metrics"
     }
   ],
-  "social": { "x": "https://x.com/macrocosmosai" },
-  "contact": "support@macrocosmos.ai"
+  "website_url": "https://apex.macrocosmos.ai/"
 }
