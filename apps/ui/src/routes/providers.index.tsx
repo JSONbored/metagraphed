@@ -21,6 +21,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
 import { resolveProviderCard } from "@/lib/metagraphed/provider-card-fields";
 import { healthStatusSegments } from "@/lib/metagraphed/health-segments";
@@ -30,6 +31,7 @@ import {
   PageHero,
   ViewModeToggle,
   ShareButton,
+  DownloadCsvButton,
   TimeAgo,
   ActionBar,
   Donut,
@@ -70,6 +72,19 @@ export const Route = createFileRoute("/providers/")({
   component: ProvidersPage,
 });
 
+type ProvidersSearch = z.infer<typeof providersSearchSchema>;
+
+/** Server-backed params for CSV export — client-only filters (q, high, count sorts) stay UI-side. */
+function providersQueryParams(search: ProvidersSearch) {
+  const authority =
+    search.authority && search.authority !== "high" ? search.authority : undefined;
+  return {
+    kind: search.kind || undefined,
+    authority,
+    sort: search.sort === "name" ? "name" : undefined,
+  };
+}
+
 function ProvidersPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -78,6 +93,7 @@ function ProvidersPage() {
     search.q || search.kind || search.authority || (search.sort && search.sort !== "name"),
   );
   const onReset = () => navigate({ search: { view: search.view } as never, replace: true });
+  const providersCsvUrl = buildUrl("/api/v1/providers", providersQueryParams(search));
   return (
     <AppShell>
       <PageHero
@@ -99,6 +115,7 @@ function ProvidersPage() {
             />
             <ActionBar>
               <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+              <DownloadCsvButton url={providersCsvUrl} bare />
               <ShareButton bare />
             </ActionBar>
           </>

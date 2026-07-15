@@ -1263,10 +1263,10 @@ describe("subnets CSV export", () => {
   });
 
   test("Accept: text/csv is ignored for collection routes without CSV contracts", async () => {
-    // /api/v1/providers is a list route that intentionally has no CSV contract,
-    // so content negotiation must fall through to the JSON envelope.
+    // /api/v1/source-snapshots is a list route with no CSV contract, so content
+    // negotiation must fall through to the JSON envelope.
     const res = await handleRequest(
-      req("/api/v1/providers?limit=1", {
+      req("/api/v1/source-snapshots?limit=1", {
         headers: { accept: "text/csv" },
       }),
       createLocalArtifactEnv(),
@@ -1277,7 +1277,7 @@ describe("subnets CSV export", () => {
 
     const body = await res.json();
     assert.equal(body.ok, true);
-    assert.equal(Array.isArray(body.data.providers), true);
+    assert.equal(Array.isArray(body.data.sources), true);
   });
 
   test("empty projected CSV exports retain the requested header row", async () => {
@@ -1425,6 +1425,7 @@ describe("registry list CSV export", () => {
 
   const CSV_ROUTES = [
     "economics",
+    "providers",
     "surfaces",
     "subnet-surfaces",
     "endpoints",
@@ -1450,7 +1451,7 @@ describe("registry list CSV export", () => {
   });
 
   test("list routes without a CSV contract stay JSON-only", () => {
-    for (const id of ["providers", "rpc-endpoints", "source-snapshots"]) {
+    for (const id of ["rpc-endpoints", "source-snapshots"]) {
       const entry = API_ROUTES.find((route) => route.id === id);
       assert.ok(entry, `route ${id} should exist`);
       assert.notEqual(entry.csv_response, true, `${id} must stay JSON-only`);
@@ -1461,6 +1462,7 @@ describe("registry list CSV export", () => {
   // a text/csv attachment named after the route id with a header row.
   for (const [path, filename] of [
     ["/api/v1/economics", "economics.csv"],
+    ["/api/v1/providers", "providers.csv"],
     ["/api/v1/surfaces", "surfaces.csv"],
     ["/api/v1/endpoints", "endpoints.csv"],
     ["/api/v1/candidates", "candidates.csv"],
