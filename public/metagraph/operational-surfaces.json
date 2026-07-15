@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 203,
+  "surface_count": 204,
   "surfaces": [
     {
       "auth_required": false,
@@ -1001,6 +1001,24 @@
       "surface_id": "sn-11-trajectoryrl-miners",
       "surface_key": "srf-e752617b3d782a38",
       "url": "https://trajrl.com/api/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 11,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "subnet_name": "TrajectoryRL",
+      "subnet_slug": "sn-11",
+      "surface_id": "sn-11-trajectoryrl-subnet-api",
+      "surface_key": "srf-fb2d84726c2ab7c6",
+      "url": "https://trajrl.com/api/stats"
     },
     {
       "auth_required": false,

@@ -38,7 +38,7 @@
   "docs_url": "https://trajrl.com/docs",
   "name": "TrajectoryRL",
   "netuid": 11,
-  "notes": "Reviewed overlay for SN11 TrajectoryRL using the official website, docs, leaderboard, live, winners, benchmark pages, and source repository. Common API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
+  "notes": "Reviewed overlay for SN11 TrajectoryRL using the official website, docs, leaderboard, live, winners, benchmark pages, and source repository. Common API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces. Two community-submitted surfaces (api-docs, subnet-api) had no probe config at all -- not disabled, just absent, meaning they were silently excluded from operational-surfaces.json / live health tracking despite being valid public endpoints (see #5932 for the registry-wide scope of this class of gap). Both confirmed live and given probe configs matching their sibling surfaces' conventions.",
   "schema_version": 1,
   "slug": "sn-11",
   "social": {
@@ -183,6 +183,12 @@
       "kind": "docs",
       "name": "TrajectoryRL API documentation",
       "notes": "Public request/response API specification for TrajectoryRL validator and miner integration, covering the web-submit channel, pre-eval checks, score submission, winner lookup, heartbeat, and log-upload flows.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "trajectoryrl",
       "public_safe": true,
       "review": {
@@ -202,6 +208,12 @@
       "kind": "subnet-api",
       "name": "TrajectoryRL network stats API",
       "notes": "Public read-only REST JSON endpoint reporting SN11 network totals (reports, LLM calls, tokens, cost); no auth. Documented in the official trajrl API client.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "trajectoryrl",
       "public_safe": true,
       "review": {
