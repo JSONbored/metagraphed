@@ -284,6 +284,8 @@ export const SDL = `
     extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
     "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
     extrinsic(ref: String!): ExtrinsicDetail
+    "Subtensor's root-origin hyperparameter/network-config change feed (newest first) -- the extrinsics feed fixed to call_module=AdminUtils, so it takes no signer/call_module filter. Same ExtrinsicList shape as extrinsics. Mirrors GET /api/v1/governance/config-changes."
+    governance_config_changes(limit: Int, offset: Int, cursor: String, block: Int, call_function: String, success: Boolean): ExtrinsicList!
     "Recent-block feed (newest first). Mirrors GET /api/v1/blocks."
     blocks(limit: Int, offset: Int, cursor: String): BlockList!
     "One block by numeric height or 0x block hash; block is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/{ref}."
@@ -2025,6 +2027,7 @@ export const FIELD_COMPLEXITY = {
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
+  governance_config_changes: RELATIONSHIP_FIELD_COMPLEXITY,
   validators: RELATIONSHIP_FIELD_COMPLEXITY,
   validator: RELATIONSHIP_FIELD_COMPLEXITY,
   validator_history: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3357,6 +3360,50 @@ const rootValue = {
     return {
       ref: data.ref ?? ref,
       extrinsic: extrinsicNode(data.extrinsic),
+    };
+  },
+
+  async governance_config_changes(
+    { limit, offset, cursor, block, call_function: callFunction, success },
+    context,
+  ) {
+    if (block != null && (!Number.isInteger(block) || block < 0)) {
+      throw new GraphQLError("block must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (cursor) params.set("cursor", cursor);
+    if (block != null) params.set("block", String(block));
+    if (callFunction) params.set("call_function", callFunction);
+    if (success != null) params.set("success", String(success));
+    // Same DATA_API extrinsics tier as Query.extrinsics, hitting the
+    // /governance/config-changes path so the worker fixes call_module=AdminUtils
+    // itself (see SUDO_GOVERNANCE_ROUTES in workers/data-api.mjs) -- no filter
+    // logic duplicated here; the REST route and MCP tool share this exact path.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          "/api/v1/governance/config-changes",
+          params,
+        ),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      )) ??
+      buildExtrinsicFeed([], {
+        limit: safeLimit,
+        offset: safeOffset,
+        nextCursor: null,
+      });
+    return {
+      items: (data.extrinsics || []).map(extrinsicNode),
+      total: data.extrinsic_count ?? 0,
+      next_cursor: data.next_cursor ?? null,
     };
   },
 

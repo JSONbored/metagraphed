@@ -1988,6 +1988,139 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 });
 
+describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("governance_config_changes: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
+    const { status, body } = await gql(
+      "{ governance_config_changes { items { call_module } total next_cursor } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.governance_config_changes, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("governance_config_changes: resolves Postgres-tier AdminUtils rows", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          extrinsic_count: 1,
+          limit: 20,
+          offset: 0,
+          next_cursor: "cursor-1",
+          extrinsics: [
+            {
+              block_number: 5,
+              extrinsic_index: 0,
+              extrinsic_hash: `0x${"a".repeat(64)}`,
+              signer: null,
+              call_module: "AdminUtils",
+              call_function: "sudo_set_weights_set_rate_limit",
+              call_args: [{ name: "netuid", value: 1 }],
+              success: true,
+              fee_tao: 0,
+              tip_tao: 0,
+              observed_at: "2026-07-14T00:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ governance_config_changes { items { block_number call_module call_function call_args success } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.governance_config_changes.total, 1);
+    assert.equal(body.data.governance_config_changes.next_cursor, "cursor-1");
+    const item = body.data.governance_config_changes.items[0];
+    assert.equal(item.call_module, "AdminUtils");
+    assert.equal(item.call_function, "sudo_set_weights_set_rate_limit");
+    assert.equal(item.success, true);
+    assert.equal(
+      item.call_args,
+      JSON.stringify([{ name: "netuid", value: 1 }]),
+    );
+  });
+
+  test("governance_config_changes: filter args are forwarded to the /governance/config-changes path (loader reuse, no signer/call_module)", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 5,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(
+      `{ governance_config_changes(limit: 5, block: 42, call_function: "sudo_set_tempo", success: true) { total } }`,
+      env,
+    );
+    // The worker fixes call_module=AdminUtils by path, so the resolver hits the
+    // governance route (not /extrinsics) and never forwards signer/call_module.
+    assert.equal(capturedUrl.pathname, "/api/v1/governance/config-changes");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("block"), "42");
+    assert.equal(
+      capturedUrl.searchParams.get("call_function"),
+      "sudo_set_tempo",
+    );
+    assert.equal(capturedUrl.searchParams.get("success"), "true");
+    assert.equal(capturedUrl.searchParams.get("signer"), null);
+    assert.equal(capturedUrl.searchParams.get("call_module"), null);
+  });
+
+  test("governance_config_changes: a cursor arg is forwarded as a query param", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 20,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(`{ governance_config_changes(cursor: "abc123") { total } }`, env);
+    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+  });
+
+  test("governance_config_changes: rejects a negative block with BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      "{ governance_config_changes(block: -1) { total } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("governance_config_changes is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.governance_config_changes, 5);
+  });
+});
+
 describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
