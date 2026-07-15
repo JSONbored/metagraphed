@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Boxes, Coins, Gauge, Percent, Users, Zap } from "lucide-react";
+import { useWallet } from "@/hooks/use-wallet";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -15,6 +16,7 @@ import { ValidatorApyPanel } from "@/components/metagraphed/validator-apy-panel"
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
 import { WatchValidatorAlert } from "@/components/metagraphed/watch-validator-alert";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
+import { TakeManagementModal } from "@/components/metagraphed/take-management-modal";
 import {
   ValidatorNominatorsTable,
   type ValidatorNominatorsSearch,
@@ -248,6 +250,13 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
     detail.total_stake_tao,
     detail.take,
   );
+  // Take is network-wide, not subnet-scoped, so unlike the per-subnet Stake
+  // action this belongs at the page level, not in SubnetPerformanceTable's
+  // rows. Hidden entirely (not just internally blocked) until the connected
+  // wallet is confirmed to be this validator's owning coldkey -- #5246's own
+  // "only surfaced when..." requirement, not just a submit-time guard.
+  const { wallet } = useWallet();
+  const isOwner = !!wallet && !!detail.coldkey && wallet.address === detail.coldkey;
 
   return (
     <>
@@ -277,7 +286,28 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             </span>
           </span>
         }
-        actions={<ShareButton />}
+        actions={
+          <div className="flex items-center gap-2">
+            {isOwner ? (
+              <TakeManagementModal
+                hotkey={hotkey}
+                ownerColdkey={detail.coldkey}
+                validatorName={hasIdentity ? displayName : undefined}
+                trigger={(open) => (
+                  <button
+                    type="button"
+                    onClick={open}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+                  >
+                    <Percent className="size-3 text-ink-muted" aria-hidden />
+                    Manage take
+                  </button>
+                )}
+              />
+            ) : null}
+            <ShareButton />
+          </div>
+        }
         caption="explorer / v1"
       />
 
