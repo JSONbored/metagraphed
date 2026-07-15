@@ -10,10 +10,6 @@ import {
   clampOffset,
 } from "../workers/request-params.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
-import {
-  EXTRINSIC_READ_COLUMNS,
-  buildAccountExtrinsics,
-} from "./extrinsics.mjs";
 
 // The SubtensorModule events the poller indexes — entity-relevant only, which
 // keeps volume ~1 MB/day (not ~100 MB/day). Kept in sync with fetch-events.py
@@ -332,63 +328,6 @@ export function buildSubnetEvents(
   };
 }
 
-// Paginated chain-event stream for one subnet (newest first), optional kind
-// filter, offset or keyset cursor. Clamps internally so REST and MCP agree; a
-// cursor overrides offset.
-export async function loadSubnetEvents(
-  d1,
-  netuid,
-  { kind, limit, offset, cursor, blockStart, blockEnd } = {},
-) {
-  const lim = clampLimit(limit, FEED_PAGINATION);
-  const off = clampOffset(offset);
-  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
-  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
-  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
-    return buildSubnetEvents([], netuid, {
-      limit: lim,
-      offset: off,
-      nextCursor: null,
-    });
-  }
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  const params = [netuid];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
-  if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
-  }
-  if (blockStart != null) {
-    sql += " AND block_number >= ?";
-    params.push(blockStart);
-  }
-  if (blockEnd != null) {
-    sql += " AND block_number <= ?";
-    params.push(blockEnd);
-  }
-  if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(lim);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(off);
-  }
-  const rows = await d1(sql, params);
-  const last = rows.length === lim ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  return buildSubnetEvents(rows, netuid, {
-    limit: lim,
-    offset: off,
-    nextCursor,
-  });
-}
-
 function emptyCategory(category) {
   return {
     category,
@@ -524,62 +463,6 @@ export function buildSubnetEventSummary(
     event_kinds: eventKinds,
     recent_events: recentEvents,
   };
-}
-
-export async function loadSubnetEventSummary(
-  d1,
-  netuid,
-  {
-    windowLabel = DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
-    limit = SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
-  } = {},
-) {
-  const effectiveWindowLabel = Object.hasOwn(
-    SUBNET_EVENT_SUMMARY_WINDOWS,
-    windowLabel,
-  )
-    ? windowLabel
-    : DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
-  const days = SUBNET_EVENT_SUMMARY_WINDOWS[effectiveWindowLabel];
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-  const lim = clampLimit(limit, {
-    defaultLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
-    maxLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
-  });
-  // WeightsSet ingestion can omit hotkey; count distinct actors over a
-  // hotkey-or-(netuid,uid) identity rather than COUNT(DISTINCT hotkey) alone —
-  // otherwise hotkey-less WeightsSet rows collapse to a dropped NULL and
-  // hotkey_count reads 0 despite many validators setting weights. Mirrors
-  // loadSubnetWeights / loadChainWeights (#3061).
-  const actorIdentity =
-    "CASE " +
-    "WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey " +
-    "WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid " +
-    "ELSE NULL END";
-  const kindRows = await d1(
-    "SELECT event_kind, COUNT(*) AS event_count, " +
-      "COUNT(DISTINCT " +
-      actorIdentity +
-      ") AS hotkey_count, " +
-      "COUNT(DISTINCT coldkey) AS coldkey_count, " +
-      "COALESCE(SUM(amount_tao), 0) AS amount_tao, " +
-      "COALESCE(SUM(alpha_amount), 0) AS alpha_amount, " +
-      "MIN(block_number) AS first_block, MAX(block_number) AS last_block, " +
-      "MIN(observed_at) AS first_observed_at, MAX(observed_at) AS last_observed_at " +
-      "FROM account_events WHERE netuid = ? AND observed_at >= ? " +
-      "GROUP BY event_kind ORDER BY event_count DESC, event_kind ASC",
-    [netuid, cutoff],
-  );
-  const recentRows = await d1(
-    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events ` +
-      "WHERE netuid = ? AND observed_at >= ? " +
-      "ORDER BY block_number DESC, event_index DESC LIMIT ?",
-    [netuid, cutoff, lim],
-  );
-  return buildSubnetEventSummary(kindRows, recentRows, netuid, {
-    window: effectiveWindowLabel,
-    limit: lim,
-  });
 }
 
 // The decoded chain events in ONE block (#1852, block explorer): account_events
@@ -718,229 +601,15 @@ export function buildAccountTransfers(
 // handlers and the MCP account tools. `d1` is a (sql, params) => Promise<rows[]>
 // runner; a cold/unbound DB yields [] → a schema-stable zero payload.
 
-// Events match either key (a coldkey controls hotkeys); a registration is hotkey-only.
-// OR across two columns can miss index plans in SQLite/D1 (#2059), so every
-// account_events read uses an indexed UNION-of-seeks (same pattern as
-// loadAccountTransfers' both-direction feed).
-const ACCOUNT_EVENT_HOTKEY_INDEX = "idx_account_events_hotkey";
-const ACCOUNT_EVENT_COLDKEY_INDEX = "idx_account_events_coldkey";
-const ACCOUNT_EVENT_HOTKEY_NETUID_INDEX = "idx_account_events_hotkey_netuid";
-const ACCOUNT_EVENT_COLDKEY_NETUID_INDEX = "idx_account_events_coldkey_netuid";
-
-function accountEventIndexedUnion(
-  select,
-  filters = "",
-  filterParams = [],
-  { netuidFiltered = false } = {},
-) {
-  const branchFilters = filters ? ` ${filters}` : "";
-  const hotkeyIndex = netuidFiltered
-    ? ACCOUNT_EVENT_HOTKEY_NETUID_INDEX
-    : ACCOUNT_EVENT_HOTKEY_INDEX;
-  const coldkeyIndex = netuidFiltered
-    ? ACCOUNT_EVENT_COLDKEY_NETUID_INDEX
-    : ACCOUNT_EVENT_COLDKEY_INDEX;
-  return {
-    sql:
-      `(SELECT ${select} FROM account_events INDEXED BY ${hotkeyIndex} WHERE hotkey = ?${branchFilters}` +
-      ` UNION ALL SELECT ${select} FROM account_events INDEXED BY ${coldkeyIndex} WHERE coldkey = ? AND (hotkey IS NULL OR hotkey <> ?)${branchFilters})`,
-    paramsFor(ss58) {
-      return [ss58, ...filterParams, ss58, ss58, ...filterParams];
-    },
-  };
-}
-const REGISTRATION_COLUMNS = "netuid, uid, stake_tao, validator_permit, active";
-// Bound public account-summary signing activity to the newest signer rows. This
-// keeps /api/v1/accounts/{ss58} from doing full retained-history aggregates for
-// high-volume signers on every unauthenticated request.
-export const ACCOUNT_ACTIVITY_RECENT_LIMIT = 1000;
-
-// Bound the account-summary EVENT aggregates the same way: a public, unauthenticated
-// GET /accounts/{ss58} must not aggregate a high-volume coldkey's entire retained
-// event history on every request. Each key branch seeks
-// its own newest N through its feed index, then the union is re-sorted and capped to N,
-// so an aggregate over it sees exactly the account's newest N events — never up to 2N,
-// never the full history.
+// Bound the account-summary EVENT aggregates: buildAccountSummary flags
+// event_scan_capped when a probe COUNT over the account's newest events exceeds
+// this cap, so the summary window stays bounded for high-volume coldkeys.
 export const ACCOUNT_EVENT_SUMMARY_SCAN_CAP = 5000;
-const SUMMARY_SCAN_COLUMNS =
-  "netuid, block_number, event_index, observed_at, event_kind";
 
-// A bounded, feed-ordered scan of the account's newest `limit` events (indexed
-// UNION-of-seeks, re-sorted and capped to `limit`). The summary aggregates over
-// the newest CAP; a probe over CAP+1 counts one extra row only to detect that the
-// account has more than CAP events (so an exactly-CAP account is not falsely
-// flagged, and the aggregate window stays exactly the documented CAP events).
-function accountEventBoundedScan(limit) {
-  // Each branch's ordered LIMIT seek is wrapped in a subquery: SQLite/D1 rejects
-  // an ORDER BY/LIMIT placed directly on a compound (UNION ALL) SELECT term, so
-  // the seek must be a nested SELECT, not a bare term.
-  const branch = (index, keyFilter) =>
-    `SELECT ${SUMMARY_SCAN_COLUMNS} FROM (` +
-    `SELECT ${SUMMARY_SCAN_COLUMNS} FROM account_events INDEXED BY ${index} ` +
-    `WHERE ${keyFilter} ORDER BY block_number DESC, event_index DESC LIMIT ?)`;
-  return {
-    sql:
-      `(SELECT ${SUMMARY_SCAN_COLUMNS} FROM (` +
-      branch(ACCOUNT_EVENT_HOTKEY_INDEX, "hotkey = ?") +
-      " UNION ALL " +
-      branch(
-        ACCOUNT_EVENT_COLDKEY_INDEX,
-        "coldkey = ? AND (hotkey IS NULL OR hotkey <> ?)",
-      ) +
-      ") ORDER BY block_number DESC, event_index DESC LIMIT ?)",
-    paramsFor(ss58) {
-      return [ss58, limit, ss58, ss58, limit, limit];
-    },
-  };
-}
-
-// Cross-subnet summary: event aggregates, per-kind counts, the 10 newest events,
-// current registrations, and bounded signing-activity aggregates from the extrinsics tier.
-export async function loadAccountSummary(d1, ss58) {
-  // Aggregate over exactly the newest CAP events; a probe over CAP+1 rows detects
-  // whether the account has more (so event_count/subnet_count/event_kinds are the
-  // documented CAP-event window and event_scan_capped trips only on real truncation).
-  const cap = ACCOUNT_EVENT_SUMMARY_SCAN_CAP;
-  const windowScan = accountEventBoundedScan(cap);
-  const probeScan = accountEventBoundedScan(cap + 1);
-  const recentUnion = accountEventIndexedUnion(ACCOUNT_EVENT_COLUMNS);
-  const [
-    aggRows,
-    kindRows,
-    probeRows,
-    regRows,
-    recentRows,
-    activityRows,
-    moduleRows,
-  ] = await Promise.all([
-    d1(
-      `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM ${windowScan.sql}`,
-      windowScan.paramsFor(ss58),
-    ),
-    d1(
-      `SELECT event_kind AS kind, COUNT(*) AS count FROM ${windowScan.sql} GROUP BY event_kind ORDER BY count DESC, event_kind ASC`,
-      windowScan.paramsFor(ss58),
-    ),
-    d1(`SELECT COUNT(*) AS n FROM ${probeScan.sql}`, probeScan.paramsFor(ss58)),
-    d1(
-      `SELECT ${REGISTRATION_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC, netuid ASC`,
-      [ss58],
-    ),
-    d1(
-      `SELECT * FROM ${recentUnion.sql} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
-      recentUnion.paramsFor(ss58),
-    ),
-    // Signing activity from the extrinsics tier, matched by signer and
-    // explicitly bounded to the newest rows before aggregation. The inner
-    // signer-scoped, feed-ordered seek is served by idx_extrinsics_signer_block,
-    // so the bound is an indexed LIMIT, not a sort-then-truncate over the
-    // signer's full retained history.
-    d1(
-      `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?)`,
-      [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
-    ),
-    // Top call modules over the same bounded window. `count DESC` alone is not a
-    // total order, so when modules tie on count the trailing LIMIT 10 would keep
-    // an arbitrary subset (D1/SQLite group order is unspecified); call_module ASC
-    // makes both the membership and the ordering of the top-10 deterministic.
-    d1(
-      `SELECT call_module, COUNT(*) AS count FROM (SELECT call_module FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?) GROUP BY call_module ORDER BY count DESC, call_module ASC LIMIT 10`,
-      [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
-    ),
-  ]);
-  return buildAccountSummary(ss58, {
-    agg: aggRows[0],
-    kinds: kindRows,
-    scanned: probeRows[0]?.n,
-    registrations: regRows,
-    recent: recentRows,
-    activity: activityRows[0],
-    modules: moduleRows,
-  });
-}
-
-// Paginated event history (newest first), optional kind filter, offset or keyset
-// cursor. Clamps internally so REST and MCP agree; a cursor overrides offset.
-export async function loadAccountEvents(
-  d1,
-  ss58,
-  { limit, offset, kind, netuid, cursor, blockStart, blockEnd } = {},
-) {
-  const lim = clampLimit(limit, FEED_PAGINATION);
-  const off = clampOffset(offset);
-  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
-  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
-  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
-    return buildAccountEvents([], ss58, {
-      limit: lim,
-      offset: off,
-      nextCursor: null,
-    });
-  }
-  const filterParts = [];
-  const filterParams = [];
-  if (kind) {
-    filterParts.push("AND event_kind = ?");
-    filterParams.push(kind);
-  }
-  if (netuid != null) {
-    filterParts.push("AND netuid = ?");
-    filterParams.push(netuid);
-  }
-  // Block-height range filter, parity with the extrinsics and chain-events
-  // feeds: the per-branch hotkey/coldkey indexes both lead block_number, so a
-  // bounded range stays index-satisfiable.
-  if (blockStart != null) {
-    filterParts.push("AND block_number >= ?");
-    filterParams.push(blockStart);
-  }
-  if (blockEnd != null) {
-    filterParts.push("AND block_number <= ?");
-    filterParams.push(blockEnd);
-  }
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  if (useCursor) {
-    filterParts.push("AND (block_number, event_index) < (?, ?)");
-    filterParams.push(cur[0], cur[1]);
-  }
-  const union = accountEventIndexedUnion(
-    ACCOUNT_EVENT_COLUMNS,
-    filterParts.join(" "),
-    filterParams,
-    { netuidFiltered: netuid != null },
-  );
-  const params = [...union.paramsFor(ss58), lim];
-  let sql = `SELECT * FROM ${union.sql} ORDER BY block_number DESC, event_index DESC LIMIT ?`;
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(off);
-  }
-  const rows = await d1(sql, params);
-  const last = rows.length === lim ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  return buildAccountEvents(rows, ss58, {
-    limit: lim,
-    offset: off,
-    nextCursor,
-  });
-}
-
-// The subnets where this account's hotkey is currently registered — the
-// cross-subnet footprint, ordered by netuid.
-export async function loadAccountSubnets(d1, ss58) {
-  const rows = await d1(
-    `SELECT ${REGISTRATION_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY netuid`,
-    [ss58],
-  );
-  return buildAccountSubnets(rows, ss58);
-}
-
-// ---- Account tail loaders (history, extrinsics, transfers) -----------------
-// These complete the account chain-data surface for the MCP server, following
-// the same loader-sharing pattern as loadAccount{Summary,Events,Subnets}.
+// ---- Account tail loaders (history, transfers) -----------------------------
+// These complete the account chain-data surface for the MCP server, sharing the
+// same loader pattern (clamp, cursor, schema-stable zero) as the other account
+// read paths.
 
 // Columns selected from the account_events_daily rollup (#1854). Only hotkey-
 // attributed rows are written, so a coldkey-only ss58 may return zero days.
@@ -1014,60 +683,6 @@ export async function loadAccountHistory(
       ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
       : null;
   return buildAccountHistory(rows, ss58, {
-    limit: lim,
-    offset: off,
-    nextCursor,
-  });
-}
-
-// Extrinsics signed by this account, newest first. Matched by the extrinsic
-// SIGNER only (not hotkey/coldkey union) — `extrinsics` carries a single
-// `signer` column. Clamps limit to 1-1000 (default 100); clamps offset. A
-// cursor takes precedence over offset for stable head-growing pages.
-export async function loadAccountExtrinsics(
-  d1,
-  ss58,
-  { limit, offset, cursor, blockStart, blockEnd } = {},
-) {
-  const lim = clampLimit(limit, FEED_PAGINATION);
-  const off = clampOffset(offset);
-  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
-  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
-  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
-    return buildAccountExtrinsics([], ss58, {
-      limit: lim,
-      offset: off,
-      nextCursor: null,
-    });
-  }
-  const params = [ss58];
-  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE signer = ?`;
-  if (blockStart != null) {
-    sql += " AND block_number >= ?";
-    params.push(blockStart);
-  }
-  if (blockEnd != null) {
-    sql += " AND block_number <= ?";
-    params.push(blockEnd);
-  }
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  if (useCursor) {
-    sql += " AND (block_number, extrinsic_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
-  }
-  sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
-  params.push(lim);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(off);
-  }
-  const rows = await d1(sql, params);
-  const last = rows.length === lim ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.extrinsic_index])
-    : null;
-  return buildAccountExtrinsics(rows, ss58, {
     limit: lim,
     offset: off,
     nextCursor,

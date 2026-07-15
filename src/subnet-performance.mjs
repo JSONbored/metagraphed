@@ -181,19 +181,11 @@ export async function loadSubnetPerformance(d1, netuid) {
 // needs its full per-UID distribution (Gini of the reward flow + the score
 // spread can't be a cheap SQL GROUP BY), so the read is the raw per-UID rows
 // bounded by a row cap that then drops a truncated oldest day.
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 export const PERFORMANCE_HISTORY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
 export const DEFAULT_PERFORMANCE_HISTORY_WINDOW = "30d";
 // Safety valve on the raw per-UID read (≈256 UIDs × 90d ≈ 23k; leaves head room
 // and the builder drops a truncated oldest day so every point is complete).
 export const PERFORMANCE_HISTORY_ROW_CAP = 50_000;
-
-// The neuron_daily columns the history read selects — the per-UID reward/score
-// columns plus the validator_permit/active flags the per-day lenses slice on.
-export const PERFORMANCE_HISTORY_READ_COLUMNS =
-  "snapshot_date, incentive, dividends, trust, consensus, " +
-  "validator_trust, validator_permit, active";
 
 // Parse ?window for the history route — a deliberately smaller set than the
 // structural history (no 1y/all) so the raw read stays bounded. Returns
@@ -293,25 +285,4 @@ export function buildSubnetPerformanceHistory(
     point_count: points.length,
     points,
   };
-}
-
-// Shared D1 loader (mirrors handleSubnetPerformanceHistory) — read one subnet's
-// dated neuron_daily rows over the window and shape them into the per-day series.
-// Exported for parity with loadSubnetPerformance. Cold store -> point_count:0.
-export async function loadSubnetPerformanceHistory(
-  d1,
-  netuid,
-  { windowLabel, windowDays },
-) {
-  const cutoff = new Date(Date.now() - windowDays * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-  const rows = await d1(
-    `SELECT ${PERFORMANCE_HISTORY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?`,
-    [netuid, cutoff, PERFORMANCE_HISTORY_ROW_CAP],
-  );
-  return buildSubnetPerformanceHistory(rows, netuid, {
-    window: windowLabel,
-    capped: rows.length >= PERFORMANCE_HISTORY_ROW_CAP,
-  });
 }

@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildSubnetWeights,
-  loadSubnetWeights,
-  WEIGHTS_EVENT_KIND,
   SUBNET_WEIGHTS_WINDOWS,
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
 } from "../src/subnet-weights.mjs";
@@ -72,63 +70,7 @@ describe("buildSubnetWeights", () => {
   });
 });
 
-describe("loadSubnetWeights", () => {
-  test("queries account_events for the netuid + WeightsSet over the window and shapes it", async () => {
-    let captured;
-    const d1 = async (sql, params) => {
-      captured = { sql, params };
-      return [
-        {
-          distinct_setters: 2,
-          weight_sets: 20,
-          newest_observed: 1750000000000,
-        },
-      ];
-    };
-    const d = await loadSubnetWeights(d1, 7, {
-      windowLabel: "7d",
-      windowDays: 7,
-    });
-    assert.match(captured.sql, /FROM account_events/);
-    assert.match(captured.sql, /netuid = \?/);
-    assert.equal(captured.params[0], 7);
-    assert.equal(captured.params[1], WEIGHTS_EVENT_KIND);
-    assert.equal(typeof captured.params[2], "number"); // cutoff epoch ms
-    assert.equal(d.netuid, 7);
-    assert.equal(d.window, "7d");
-    assert.equal(d.weight_sets, 20);
-    assert.equal(d.sets_per_setter, 10);
-  });
-
-  test("counts distinct setters over a hotkey-or-uid identity, not hotkey alone", async () => {
-    // WeightsSet events can carry a NULL hotkey; a bare COUNT(DISTINCT hotkey)
-    // collapses every hotkey-less event to one dropped NULL and undercounts the
-    // setters. The loader must fall back to (netuid, uid), mirroring #3011.
-    let captured;
-    const d1 = async (sql, params) => {
-      captured = { sql, params };
-      return [{ distinct_setters: 3, weight_sets: 30, newest_observed: null }];
-    };
-    await loadSubnetWeights(d1, 7, { windowLabel: "7d", windowDays: 7 });
-    assert.doesNotMatch(
-      captured.sql,
-      /COUNT\(DISTINCT hotkey\)/,
-      "must not count distinct hotkey alone",
-    );
-    assert.match(captured.sql, /WHEN hotkey IS NOT NULL/);
-    assert.match(captured.sql, /'uid:' \|\| netuid \|\| ':' \|\| uid/);
-  });
-
-  test("a cold store (no rows) yields the zeroed card", async () => {
-    const d = await loadSubnetWeights(async () => [], 9, {
-      windowLabel: "30d",
-      windowDays: 30,
-    });
-    assert.equal(d.netuid, 9);
-    assert.equal(d.weight_sets, 0);
-    assert.equal(d.sets_per_setter, null);
-  });
-
+describe("subnet-weights window exports", () => {
   test("exposes the window map + default matching /chain/weights", () => {
     assert.deepEqual(SUBNET_WEIGHTS_WINDOWS, { "7d": 7, "30d": 30 });
     assert.equal(DEFAULT_SUBNET_WEIGHTS_WINDOW, "7d");

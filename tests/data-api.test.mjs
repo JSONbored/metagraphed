@@ -1185,7 +1185,7 @@ test("GET /api/v1/accounts/:ss58/events matches hotkey OR coldkey in one flat WH
   expect(text).not.toContain("hotkey <>");
 });
 
-test("GET /api/v1/accounts/:ss58/events applies the same filter set as loadAccountEvents", async () => {
+test("GET /api/v1/accounts/:ss58/events applies the same filter set as the former account event-feed D1 loader", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
   await req(
     `/api/v1/accounts/${SS58}/events?kind=StakeAdded&netuid=4&block_start=1&block_end=2`,
