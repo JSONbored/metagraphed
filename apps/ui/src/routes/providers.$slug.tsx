@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
   EmptyState,
   PageHeading,
@@ -16,6 +17,8 @@ import {
   PrimaryLinksRail,
   CopyableCode,
   SectionAnchor,
+  ShareButton,
+  ActionBar,
 } from "@jsonbored/ui-kit";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
@@ -131,6 +134,11 @@ function ProviderShell({ slug }: { slug: string }) {
         subtitle={shouldShowProviderSlugSubtitle(p?.name, slug) ? <>· {slug}</> : null}
         description={p?.notes}
         links={<PrimaryLinksRail website={p?.website ?? p?.homepage} docs={p?.docs} />}
+        actions={
+          <ActionBar>
+            <ShareButton bare />
+          </ActionBar>
+        }
         stats={[
           { label: "Endpoints", value: formatNumber(summary?.endpoint_count) },
           { label: "Monitored", value: formatNumber(summary?.monitored_count) },
@@ -171,6 +179,9 @@ function ProviderShell({ slug }: { slug: string }) {
           {summary?.by_layer ? <BreakdownCard title="By layer" data={summary.by_layer} /> : null}
         </aside>
       </div>
+      <ApiSourceFooter
+        paths={[`/api/v1/providers/${slug}`, `/api/v1/providers/${slug}/endpoints`]}
+      />
     </>
   );
 }

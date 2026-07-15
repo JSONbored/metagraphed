@@ -27,6 +27,8 @@ import {
   DotRow,
   NoDataSpark,
   Sparkline,
+  ShareButton,
+  ActionBar,
 } from "@jsonbored/ui-kit";
 import {
   subnetEndpointsQuery,
@@ -445,6 +447,11 @@ export function SubnetMasthead({
               })}
             </div>
           ) : null}
+          <div className="mt-3">
+            <ActionBar>
+              <ShareButton bare />
+            </ActionBar>
+          </div>
         </div>
         {/* Desktop/tablet: health + curation beside the identity block. Mobile
             counterpart lives in the status row above so the body column stays wide. */}

@@ -17,6 +17,7 @@ import {
   Filter,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
   EmptyState,
   PageHeading,
@@ -334,6 +335,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
           ) : null}
           {tab === "api" ? <ApiPanel netuid={netuid} /> : null}
         </div>
+        <ApiSourceFooter paths={[`/api/v1/subnets/${netuid}/profile`]} />
       </SubnetFilterProvider>
     </TimeRangeProvider>
   );
