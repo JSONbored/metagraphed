@@ -7160,6 +7160,89 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
   });
 });
 
+describe("graphql — account_balance (#5700, live chain RPC via account-balance.mjs)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
+  // in tests/account-balance.test.mjs.
+  function withFetchStub(stub, fn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  test("resolves balance_tao (free + reserved) from a live RPC hit", async () => {
+    await withFetchStub(
+      async () => ({
+        ok: true,
+        json: async () => ({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { data: { free: 2_000_000_000, reserved: 500_000_000 } },
+        }),
+      }),
+      async () => {
+        const { status, body } = await gql(
+          `{ account_balance(ss58: "${SS58}") { schema_version ss58 balance_tao queried_at } }`,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.account_balance;
+        assert.equal(r.schema_version, 1);
+        assert.equal(r.ss58, SS58);
+        assert.equal(r.balance_tao, 2.5);
+        assert.ok(r.queried_at);
+      },
+    );
+  });
+
+  test("RPC failure degrades balance_tao to null, never a GraphQL error", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("network unreachable");
+      },
+      async () => {
+        const { status, body } = await gql(
+          `{ account_balance(ss58: "${SS58}") { balance_tao } }`,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.account_balance.balance_tao, null);
+      },
+    );
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the RPC", async () => {
+    let called = false;
+    await withFetchStub(
+      async () => {
+        called = true;
+        return { ok: true, json: async () => ({ result: { data: {} } }) };
+      },
+      async () => {
+        const { status, body } = await gql(
+          '{ account_balance(ss58: "not-an-address") { balance_tao } }',
+        );
+        assert.equal(status, 200);
+        assert.equal(body.data.account_balance, null);
+        assert.ok(
+          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+        );
+        assert.equal(called, false);
+      },
+    );
+  });
+
+  test("account_balance is weighted at the live-RPC complexity, heavier than a Postgres-tier relationship field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_balance, 10);
+    assert.ok(
+      FIELD_COMPLEXITY.account_balance > FIELD_COMPLEXITY.chain_weights,
+    );
+  });
+});
+
 describe("graphql — registry_leaderboards (#5661, shared composer + REST-matching validation)", () => {
   // Every D1 query in the composer returns no rows, so the boards resolve from
   // an empty projection without a live DB. No profiles artifact is injected, so

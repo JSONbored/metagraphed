@@ -77,6 +77,7 @@ import { buildBlock, buildBlockFeed } from "./blocks.mjs";
 import { buildBlocksSummary } from "./blocks-summary.mjs";
 import { buildChainYield } from "./chain-yield.mjs";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
+import { loadAccountBalance, isFinneySs58Address } from "./account-balance.mjs";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -288,6 +289,8 @@ export const SDL = `
     chain_yield: ChainYield!
     "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC (not the Postgres tier). recycled_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/recycled."
     subnet_recycled(netuid: Int!): SubnetRecycled
+    "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached, not the Postgres tier). balance_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/accounts/{ss58}/balance."
+    account_balance(ss58: String!): AccountBalance
   }
 
   type SubnetList {
@@ -1049,6 +1052,14 @@ export const SDL = `
     queried_at: String!
   }
 
+  "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached). balance_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/balance."
+  type AccountBalance {
+    schema_version: Int!
+    ss58: String!
+    balance_tao: Float
+    queried_at: String!
+  }
+
   "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary."
   type BlocksSummary {
     schema_version: Int!
@@ -1657,6 +1668,7 @@ export const FIELD_COMPLEXITY = {
   // economics tier -- same cost class as the other relationship fields.
   registry_leaderboards: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_recycled: LIVE_RPC_FIELD_COMPLEXITY,
+  account_balance: LIVE_RPC_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -3775,6 +3787,20 @@ const rootValue = {
     // loadSubnetRecycled always sets schema_version/netuid/queried_at
     // unconditionally, so no `??` fallback is needed for those.
     return loadSubnetRecycled(context.env, netuid);
+  },
+
+  async account_balance({ ss58 }, context) {
+    if (!isFinneySs58Address(ss58)) {
+      throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Live chain RPC, not the Postgres tier -- reuses loadAccountBalance's own
+    // KV cache/TTL, matching REST's handleAccountBalance exactly. balance_tao
+    // stays null on RPC failure (schema-stable), never a GraphQL error.
+    // loadAccountBalance always sets schema_version/ss58/queried_at
+    // unconditionally, so no `??` fallback is needed for those.
+    return loadAccountBalance(context.env, ss58);
   },
 };
 
