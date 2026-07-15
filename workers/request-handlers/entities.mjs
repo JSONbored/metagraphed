@@ -335,6 +335,18 @@ const ACCOUNTS_LIST_CSV_COLUMNS = [
   "latest_block_number",
   "subnets",
 ];
+// Public per-nominator row shape from buildValidatorNominators (#5745); the
+// internal `last_observed_ms` sort key is dropped before the response, so it is
+// intentionally not a column here.
+const VALIDATOR_NOMINATOR_CSV_COLUMNS = [
+  "coldkey",
+  "staked_tao",
+  "unstaked_tao",
+  "net_staked_tao",
+  "gross_staked_tao",
+  "event_count",
+  "last_observed_at",
+];
 // CSV column order for the /api/v1/chain/turnover per-subnet churn leaderboard
 // rows (the `subnets` array). The network rollup + stability distribution stay
 // JSON-only, mirroring the chain-analytics leaderboard CSV exports.
@@ -907,6 +919,7 @@ export async function handleValidatorNominators(request, env, hotkey, url) {
     "limit",
     "offset",
     "coldkey",
+    "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -956,6 +969,19 @@ export async function handleValidatorNominators(request, env, hotkey, url) {
     }),
     generatedAt: null,
   };
+  // CSV export mirrors handleAccountsList / handleGlobalValidators: the rows are
+  // already sorted/paginated/coldkey-filtered by buildValidatorNominators, so
+  // the CSV path carries the identical set the JSON path would (#5745). A cold
+  // result yields an empty array → a header-only CSV.
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.nominators,
+      "validator-nominators",
+      "short",
+      request,
+      VALIDATOR_NOMINATOR_CSV_COLUMNS,
+    );
+  }
   return accountEnvelopeResponse(
     request,
     {
