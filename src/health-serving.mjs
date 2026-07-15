@@ -92,16 +92,6 @@ function endpointPoolEligibility(endpoint) {
   };
 }
 
-export function parseLive(raw) {
-  if (!raw) return null;
-  if (typeof raw === "object") return raw;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
 function latestIso(values) {
   let best = null;
   for (const value of values) {

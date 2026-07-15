@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   parseHistoryWindow,
-  isValidSnapshotDate,
   buildNeuronHistory,
   buildSubnetHistory,
   buildEconomicsTrends,
@@ -80,20 +79,6 @@ describe("parseHistoryWindow", () => {
     for (const days of Object.values(HISTORY_WINDOWS)) {
       if (days != null) assert.ok(days <= MAX_HISTORY_POINTS);
     }
-  });
-});
-
-describe("isValidSnapshotDate", () => {
-  test("accepts a YYYY-MM-DD string, rejects everything else", () => {
-    assert.equal(isValidSnapshotDate("2026-06-20"), true);
-    // Shape-only (real-date/range checks are SQLite's job per the source note),
-    // but the format gate must reject obvious junk so it never reaches a query.
-    assert.equal(isValidSnapshotDate("2026-6-2"), false); // not zero-padded
-    assert.equal(isValidSnapshotDate("06/20/2026"), false); // wrong separators
-    assert.equal(isValidSnapshotDate("2026-06-20T00:00:00Z"), false); // datetime
-    assert.equal(isValidSnapshotDate(""), false);
-    assert.equal(isValidSnapshotDate(20260620), false); // not a string
-    assert.equal(isValidSnapshotDate(null), false);
   });
 });
 

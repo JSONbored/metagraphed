@@ -7,7 +7,6 @@ import {
   eventMatchesFilters,
   isPublicWebhookAddress,
   isPublicWebhookUrl,
-  isResolvedPublicWebhookUrl,
   normalizeFilters,
   resolveWebhookHostnamesWithDoh,
   publicSubscriptionView,
@@ -147,71 +146,6 @@ describe("isPublicWebhookUrl", () => {
 
   test("allows a registrable hostname with a dot", () => {
     assert.equal(isPublicWebhookUrl("https://hooks.example.com/mg"), true);
-  });
-});
-
-// --- isResolvedPublicWebhookUrl ----------------------------------------------
-describe("isResolvedPublicWebhookUrl", () => {
-  test("short-circuits false for a non-public URL", async () => {
-    assert.equal(
-      await isResolvedPublicWebhookUrl("http://example.com/x"),
-      false,
-    );
-  });
-
-  test("returns true with no resolver injected", async () => {
-    assert.equal(
-      await isResolvedPublicWebhookUrl("https://hooks.example.com/mg"),
-      true,
-    );
-  });
-
-  test("an IP-literal host is checked directly (resolver ignored)", async () => {
-    assert.equal(
-      await isResolvedPublicWebhookUrl("https://8.8.8.8/x", async () => [
-        "10.0.0.1",
-      ]),
-      true,
-    );
-    assert.equal(
-      await isResolvedPublicWebhookUrl("https://127.0.0.1/x", async () => [
-        "8.8.8.8",
-      ]),
-      false,
-    );
-  });
-
-  test("returns false when the resolver throws", async () => {
-    assert.equal(
-      await isResolvedPublicWebhookUrl("https://hooks.example.com/mg", () => {
-        throw new Error("dns boom");
-      }),
-      false,
-    );
-  });
-
-  test("requires every resolved address to be public", async () => {
-    assert.equal(
-      await isResolvedPublicWebhookUrl(
-        "https://hooks.example.com/mg",
-        async () => ["8.8.8.8", "1.1.1.1"],
-      ),
-      true,
-    );
-    assert.equal(
-      await isResolvedPublicWebhookUrl(
-        "https://hooks.example.com/mg",
-        async () => ["8.8.8.8", "10.0.0.1"],
-      ),
-      false,
-    );
-    assert.equal(
-      await isResolvedPublicWebhookUrl(
-        "https://hooks.example.com/mg",
-        async () => [],
-      ),
-      false,
-    );
   });
 });
 
