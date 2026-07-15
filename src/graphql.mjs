@@ -82,6 +82,11 @@ import {
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
 } from "./account-registrations.mjs";
+import {
+  buildAccountDeregistrations,
+  DEREGISTRATION_WINDOWS,
+  DEFAULT_DEREGISTRATION_WINDOW,
+} from "./account-deregistrations.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import {
@@ -184,6 +189,8 @@ export const SDL = `
     account_prometheus(ss58: String!, window: String): AccountPrometheus!
     "One account's per-subnet registration footprint over a 7d/30d/90d window (default 30d): NeuronRegistered count and first/last timestamps per subnet, an HHI concentration of where its registration activity is focused, and the dominant subnet; an address with no registrations in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/registrations."
     account_registrations(ss58: String!, window: String): AccountRegistrations!
+    "One account's per-subnet deregistration footprint over a 7d/30d/90d window (default 30d): NeuronDeregistered count and first/last timestamps per subnet, an HHI concentration of where its deregistration activity is focused, and the dominant subnet; an address with no deregistrations in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/deregistrations."
+    account_deregistrations(ss58: String!, window: String): AccountDeregistrations!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
@@ -978,6 +985,25 @@ export const SDL = `
     subnets: [AccountRegistrationSubnet!]!
   }
 
+  "One subnet's slice of an account's deregistration footprint over the window."
+  type AccountDeregistrationSubnet {
+    netuid: Int!
+    deregistrations: Int!
+    first_deregistered_at: String
+    last_deregistered_at: String
+  }
+
+  type AccountDeregistrations {
+    schema_version: Int!
+    address: String!
+    window: String
+    total_deregistrations: Int!
+    subnet_count: Int!
+    concentration: Float
+    dominant_netuid: Int
+    subnets: [AccountDeregistrationSubnet!]!
+  }
+
   type AccountEvent {
     block_number: Int
     event_index: Int
@@ -1170,6 +1196,7 @@ export const FIELD_COMPLEXITY = {
   accounts: RELATIONSHIP_FIELD_COMPLEXITY,
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   account_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2358,6 +2385,57 @@ const rootValue = {
         registrations: s.registrations,
         first_registered_at: s.first_registered_at ?? null,
         last_registered_at: s.last_registered_at ?? null,
+      })),
+    };
+  },
+
+  async account_deregistrations({ ss58, window }, context) {
+    // Same SS58 + window validation handleAccountDeregistrations (via
+    // makeAccountEventHandler) uses -- a malformed address or unsupported
+    // window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const windowParam = window ?? DEFAULT_DEREGISTRATION_WINDOW;
+    if (!Object.hasOwn(DEREGISTRATION_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, DEREGISTRATION_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
+    // (with the buildAccountDeregistrations([], ...) zeroed-card cold fallback) the
+    // REST handler uses; an account with no NeuronDeregistered events in the window
+    // is a schema-stable zeroed card, never a GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const tier = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/accounts/${encodeURIComponent(ss58)}/deregistrations`,
+        params,
+      ),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
+    const data =
+      tier?.data ??
+      buildAccountDeregistrations([], ss58, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      address: data.address ?? ss58,
+      window: data.window ?? windowParam,
+      total_deregistrations: data.total_deregistrations ?? 0,
+      subnet_count: data.subnet_count ?? 0,
+      concentration: data.concentration ?? null,
+      dominant_netuid: data.dominant_netuid ?? null,
+      subnets: (data.subnets ?? []).map((s) => ({
+        netuid: s.netuid,
+        deregistrations: s.deregistrations,
+        first_deregistered_at: s.first_deregistered_at ?? null,
+        last_deregistered_at: s.last_deregistered_at ?? null,
       })),
     };
   },
