@@ -28,7 +28,9 @@ describe("providers CSV export", () => {
 
   test("the CSV body carries a header row plus the projected rows", async () => {
     const res = await handleRequest(
-      req("/api/v1/providers?format=csv&fields=id,name,kind&sort=name&order=asc&limit=2"),
+      req(
+        "/api/v1/providers?format=csv&fields=id,name,kind&sort=name&order=asc&limit=2",
+      ),
       createLocalArtifactEnv(),
       {},
     );
@@ -59,7 +61,9 @@ describe("providers CSV export", () => {
       {},
     );
     const official = await handleRequest(
-      req("/api/v1/providers?format=csv&fields=id&authority=official&limit=1000"),
+      req(
+        "/api/v1/providers?format=csv&fields=id&authority=official&limit=1000",
+      ),
       env,
       {},
     );
@@ -96,7 +100,11 @@ describe("providers CSV export", () => {
           else inQuotes = !inQuotes;
         } else if (ch === "," && !inQuotes) fields += 1;
       }
-      assert.equal(fields, 3, `row should keep 3 columns: ${line.slice(0, 80)}`);
+      assert.equal(
+        fields,
+        3,
+        `row should keep 3 columns: ${line.slice(0, 80)}`,
+      );
     }
   });
 });
