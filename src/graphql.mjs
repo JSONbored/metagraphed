@@ -351,6 +351,8 @@ export const SDL = `
     account_balance(ss58: String!): AccountBalance
     "The network's on-chain sudo (superuser) key hotkey, read live from chain via RPC (not the Postgres tier). hotkey is null on RPC failure or a renounced sudo, schema-stable, never a GraphQL error. Mirrors GET /api/v1/sudo/key."
     sudo_key: SudoKey
+    "Recent Sudo-pallet extrinsic feed (newest first): the chain's superuser governance calls, the same shape as the extrinsics feed with call_module fixed to Sudo (so no signer/call_module args). Mirrors GET /api/v1/sudo."
+    sudo(limit: Int, offset: Int, cursor: String, block: Int, call_function: String, success: Boolean): ExtrinsicList!
   }
 
   type SubnetList {
@@ -2004,6 +2006,7 @@ export const FIELD_COMPLEXITY = {
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
+  sudo: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
   validators: RELATIONSHIP_FIELD_COMPLEXITY,
   validator: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3309,6 +3312,45 @@ const rootValue = {
       (await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/extrinsics", params),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      )) ??
+      buildExtrinsicFeed([], {
+        limit: safeLimit,
+        offset: safeOffset,
+        nextCursor: null,
+      });
+    return {
+      items: (data.extrinsics || []).map(extrinsicNode),
+      total: data.extrinsic_count ?? 0,
+      next_cursor: data.next_cursor ?? null,
+    };
+  },
+
+  async sudo(
+    { limit, offset, cursor, block, call_function: callFunction, success },
+    context,
+  ) {
+    // The Sudo governance feed is the /extrinsics feed with call_module fixed
+    // to Sudo by the route itself, so it takes no signer/call_module args and
+    // reuses the identical extrinsics source + ExtrinsicList shape.
+    if (block != null && (!Number.isInteger(block) || block < 0)) {
+      throw new GraphQLError("block must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (cursor) params.set("cursor", cursor);
+    if (block != null) params.set("block", String(block));
+    if (callFunction) params.set("call_function", callFunction);
+    if (success != null) params.set("success", String(success));
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/sudo", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) ??
       buildExtrinsicFeed([], {

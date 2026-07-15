@@ -1766,6 +1766,158 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
   });
 });
 
+describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("sudo: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
+    const { status, body } = await gql(
+      "{ sudo { items { call_module } total next_cursor } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.sudo, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("sudo: resolves Postgres-tier rows from the Sudo feed, JSON-encoding call_args", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          extrinsic_count: 1,
+          limit: 20,
+          offset: 0,
+          next_cursor: "cursor-1",
+          extrinsics: [
+            {
+              block_number: 9,
+              extrinsic_index: 0,
+              extrinsic_hash: `0x${"b".repeat(64)}`,
+              signer: "5Sudo",
+              call_module: "Sudo",
+              call_function: "sudo",
+              call_args: [{ name: "call", value: "setWeights" }],
+              success: true,
+              fee_tao: 0,
+              tip_tao: 0,
+              observed_at: "2026-07-15T00:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ sudo { items { block_number call_module call_args success } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.sudo.total, 1);
+    assert.equal(body.data.sudo.next_cursor, "cursor-1");
+    const item = body.data.sudo.items[0];
+    assert.equal(item.call_module, "Sudo");
+    assert.equal(item.success, true);
+    assert.equal(
+      item.call_args,
+      JSON.stringify([{ name: "call", value: "setWeights" }]),
+    );
+  });
+
+  test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 5,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(
+      `{ sudo(limit: 5, offset: 2, block: 42, call_function: "sudo", success: true) { total } }`,
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/sudo");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("offset"), "2");
+    assert.equal(capturedUrl.searchParams.get("block"), "42");
+    assert.equal(capturedUrl.searchParams.get("call_function"), "sudo");
+    assert.equal(capturedUrl.searchParams.get("success"), "true");
+    // The route fixes call_module=Sudo, so the field exposes neither arg.
+    assert.equal(capturedUrl.searchParams.get("call_module"), null);
+    assert.equal(capturedUrl.searchParams.get("signer"), null);
+  });
+
+  test("sudo: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 20,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(`{ sudo(cursor: "abc123") { total } }`, env);
+    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+  });
+
+  test("sudo: a negative block filter is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql("{ sudo(block: -1) { total } }", env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("sudo: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      "{ sudo { items { call_module } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.sudo, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+});
+
 describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
