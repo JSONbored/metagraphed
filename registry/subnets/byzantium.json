@@ -103,6 +103,22 @@
         "https://raw.githubusercontent.com/byzantiumaitao-arch/byzantium/main/link-service/app/api/validator/weights/route.ts"
       ],
       "url": "https://link.byzantiumai.net/api/validator/weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-76-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Byzantium TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/76 on api.taomarketcap.com returning machine-readable JSON for SN76 Byzantium on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields — the indexed subnet-state snapshot feed, complementary to the subnet's first-party validator-weights endpoint. Documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jaytbarimbao-collab"
+      },
+      "source_urls": ["https://api.taomarketcap.com/developer/documentation/"],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/76"
     }
   ],
   "website_url": "https://www.byzantiumai.net/"
