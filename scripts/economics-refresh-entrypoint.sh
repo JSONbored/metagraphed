@@ -10,11 +10,34 @@ set -euo pipefail
 
 REPO_DIR=/repo
 GIT_REPO_URL="https://github.com/JSONbored/metagraphed.git"
+# Floating branch, not a pinned commit SHA -- deliberate: this job's whole
+# purpose is staying current with registry/subnets/*.json (contributor PRs
+# land on main continuously) as well as any code fixes, so pinning would
+# defeat that and require manual re-pinning on every deploy. main already
+# requires review + CI + the Gittensory Gate before anything lands, the
+# same trust level every other box job implicitly extends to this repo.
+# (A security review flagged the unpinned clone given this same container
+# later holds CLOUDFLARE_API_TOKEN in the economics step -- considered, not
+# overlooked; see the atomic-clone fix just below for the finding that WAS
+# worth fixing from that same review.)
 GIT_REF="main"
 
 if [ ! -d "$REPO_DIR/.git" ]; then
+  # Clone into a temp dir, THEN copy its contents into $REPO_DIR -- an
+  # interrupted clone straight into $REPO_DIR would leave a partial .git
+  # directory that this same "already cloned?" check would treat as success
+  # on the NEXT run, silently proceeding against a broken checkout (flagged
+  # by a security review on the PR that added this script; real, cheap to
+  # fix). Copy, not `mv $CLONE_TMP $REPO_DIR` -- $REPO_DIR is the volume's
+  # own mount point, not a plain directory, so it can't be removed/replaced
+  # wholesale (`rm -rf $REPO_DIR` fails with "Device or resource busy",
+  # hit this for real testing the first version of this fix).
+  CLONE_TMP="$(mktemp -d /tmp/metagraphed-clone.XXXXXX)"
   echo "entrypoint: cloning ${GIT_REPO_URL}@${GIT_REF} (first run on this volume)"
-  git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO_URL" "$REPO_DIR"
+  git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO_URL" "$CLONE_TMP"
+  find "$REPO_DIR" -mindepth 1 -delete
+  cp -a "$CLONE_TMP"/. "$REPO_DIR"/
+  rm -rf "$CLONE_TMP"
   cd "$REPO_DIR"
   echo "entrypoint: npm ci"
   npm ci --no-audit --no-fund
