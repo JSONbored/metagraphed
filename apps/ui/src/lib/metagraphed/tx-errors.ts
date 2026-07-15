@@ -17,6 +17,15 @@
 //     message.
 //   - `BalanceLow` does not exist anywhere in either pallet's error enum --
 //     dropped, not carried forward as a guess.
+//   - Re-verified again against live source for #5251's pre-launch security
+//     review (2026-07-15): all four extrinsics' call indices/parameter order,
+//     every subtensorModule error name below, and all twelve
+//     CustomTransactionError codes are unchanged. One real drift found and
+//     fixed: `swap.SlippageTooHigh` was never a real swap-pallet Error<T>
+//     variant (pallets/swap/src/pallet/mod.rs has no such name at all) --
+//     removed as dead/unreachable. `swap.PriceLimitExceeded` already covers
+//     the identical failure mode ("the operation would exceed the price
+//     limit", the pallet's own doc comment), so no coverage is lost.
 //   - The five numeric tx-pool codes the issue cited (1, 6, 7, 8, 25) were
 //     independently verified against common/src/transaction_error.rs's own
 //     `CustomTransactionError -> u8` mapping and are all correct; the rest of
@@ -160,13 +169,9 @@ const MODULE_ERRORS: Record<string, ErrorEntry> = {
     category: "insufficient_liquidity",
     message: "Not enough liquidity in this subnet's pool for this trade size.",
   },
-  "swap.SlippageTooHigh": {
-    category: "insufficient_liquidity",
-    message: "Price moved beyond your slippage tolerance -- try again or widen the tolerance.",
-  },
   "swap.PriceLimitExceeded": {
     category: "insufficient_liquidity",
-    message: "The trade would cross your price limit.",
+    message: "Price moved beyond your slippage tolerance -- try again or widen the tolerance.",
   },
   "swap.ReservesTooLow": {
     category: "insufficient_liquidity",

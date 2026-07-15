@@ -3,10 +3,12 @@
 // here is a real fund-safety bug, not a cosmetic one.
 //
 // Every call shape below is verified against the live subtensor pallet source
-// (opentensor/subtensor, pallets/subtensor/src/macros/dispatches.rs, read
-// 2026-07-14) -- call name, parameter order, and parameter type for each of
-// add_stake_limit (call_index 88), remove_stake_limit (89), swap_stake_limit
-// (90), and move_stake (85).
+// (opentensor/subtensor, pallets/subtensor/src/macros/dispatches.rs) --
+// call name, parameter order, and parameter type for each of add_stake_limit
+// (call_index 88), remove_stake_limit (89), swap_stake_limit (90), and
+// move_stake (85). Re-checked twice: read 2026-07-14 when this module was
+// built, re-verified 2026-07-15 for #5251's pre-launch security review --
+// unchanged both times, call indices included.
 //
 // Per docs/adr/0018-native-staking-architecture.md §3, this module only ever
 // builds the `_limit` variants -- add_stake_limit/remove_stake_limit/
@@ -17,14 +19,22 @@
 // NO `_limit` counterpart anywhere in the pallet, and its cross-subnet case
 // runs through the same unprotected AMM-swap path as swap_stake (confirmed by
 // reading staking/move_stake.rs's `do_move_stake`, which calls the same
-// `transition_stake_internal` swap_stake uses, with the price-limit argument
-// hardcoded to `None`). A same-subnet move_stake (origin_netuid ==
-// destination_netuid) is genuinely riskless -- no AMM swap occurs, it's a
-// pure hotkey reassignment -- and is supported directly. A cross-subnet move
-// is NOT exposed as a single call here; buildMoveStakeParams throws with a
-// pointer to compose it from buildRemoveStakeLimitParams (origin) +
-// buildAddStakeLimitParams (destination) instead -- two slippage-protected
-// legs achieving the same end state, rather than one unprotected atomic call.
+// `transition_stake_internal` swap_stake uses -- but note the exact mechanism
+// on re-read: it passes `T::SwapInterface::min_price()`/`max_price()`, the
+// widest possible bounds, not a literal `None` sentinel; `transition_stake_
+// internal` treats `maybe_limit_price: Option<TaoBalance>` as slippage-
+// protected only when `Some`, so passing the extreme bound is functionally
+// identical to no protection at all -- any real price will fall inside it).
+// A same-subnet move_stake (origin_netuid == destination_netuid) is
+// genuinely riskless -- confirmed by re-reading transition_stake_internal's
+// own branch: same-netuid calls transfer_stake_within_subnet, a pure
+// hotkey/coldkey reassignment that never touches unstake_from_subnet/
+// stake_into_subnet (the two calls that actually invoke the AMM) -- and is
+// supported directly. A cross-subnet move is NOT exposed as a single call
+// here; buildMoveStakeParams throws with a pointer to compose it from
+// buildRemoveStakeLimitParams (origin) + buildAddStakeLimitParams
+// (destination) instead -- two slippage-protected legs achieving the same
+// end state, rather than one unprotected atomic call.
 
 import { taoToRao, raoToTao, type Rao, type RawAlpha } from "./units";
 import { isValidSs58 } from "./accounts";

@@ -152,6 +152,38 @@ describe("submitStakeExtrinsic", () => {
     ).rejects.toThrow(/already submitted/i);
   });
 
+  it("holds under a genuine concurrent race, not just sequential awaited calls -- a real double-click fires both before either resolves", async () => {
+    // hasAlreadySubmitted's check-then-add runs synchronously, before the
+    // first `await` inside submitStakeExtrinsic -- JS never interleaves two
+    // async function bodies at a non-await point, so this is safe by
+    // construction, but that's a claim about the runtime, not a test. Fire
+    // both calls with the SAME idempotency key and don't await the first
+    // before starting the second, mirroring what a real double-click on an
+    // as-yet-not-visually-disabled button produces.
+    const { extrinsic: first } = makeFakeExtrinsic();
+    const { extrinsic: second } = makeFakeExtrinsic();
+    const key = computeIdempotencyKey(sampleParams, 7, "concurrent-race-test");
+
+    const results = await Promise.allSettled([
+      submitStakeExtrinsic(fakeApi, first, {
+        signerAddress: HOTKEY,
+        signer: fakeSigner,
+        idempotencyKey: key,
+      }),
+      submitStakeExtrinsic(fakeApi, second, {
+        signerAddress: HOTKEY,
+        signer: fakeSigner,
+        idempotencyKey: key,
+      }),
+    ]);
+
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.message).toMatch(/already submitted/i);
+  });
+
   it("maps every ExtrinsicStatus variant to the corresponding BroadcastStatus", async () => {
     const { extrinsic, emit } = makeFakeExtrinsic();
     const key = computeIdempotencyKey(sampleParams, 4, "status-map-test");

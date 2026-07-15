@@ -29,7 +29,6 @@ const EXPECTED_MODULE_ERRORS: Array<[section: string, name: string, category: Tx
   ["subtensorModule", "InvalidChildkeyTake", "invalid_argument"],
   ["subtensorModule", "TransferDisallowed", "disabled"],
   ["swap", "InsufficientLiquidity", "insufficient_liquidity"],
-  ["swap", "SlippageTooHigh", "insufficient_liquidity"],
   ["swap", "PriceLimitExceeded", "insufficient_liquidity"],
   ["swap", "ReservesTooLow", "insufficient_liquidity"],
   ["swap", "InsufficientBalance", "insufficient_balance"],
@@ -57,6 +56,15 @@ describe("decodeModuleError", () => {
     expect(decoded.category).toBe("unknown");
     expect(decoded.source).toBe("someOtherPallet.SomeWeirdError");
     expect(decoded.message).toContain("someOtherPallet.SomeWeirdError");
+  });
+
+  it("falls through to unknown for swap.SlippageTooHigh -- it isn't a real swap-pallet Error<T> variant", () => {
+    // Regression: #5251's re-verification pass found this key was never a
+    // real variant (pallets/swap/src/pallet/mod.rs has no such name at all)
+    // -- swap.PriceLimitExceeded already covers the identical failure mode
+    // ("the operation would exceed the price limit"), so removing the dead
+    // entry loses no real coverage.
+    expect(decodeModuleError("swap", "SlippageTooHigh").category).toBe("unknown");
   });
 });
 

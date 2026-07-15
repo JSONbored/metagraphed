@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import {
@@ -80,6 +80,17 @@ export function StakeUnstakeModal({
 }: StakeUnstakeModalProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // A ref, not just the `submitting` state: React batches the state update
+  // from a click handler, so the DOM button's `disabled` attribute doesn't
+  // actually flip until the next render -- a genuine double-click can fire a
+  // second handler invocation before that happens. A ref mutates immediately,
+  // synchronously, closing that window at the earliest possible point.
+  // broadcast.ts's idempotency-key check is still the real, provable
+  // fund-safety guard underneath this (see submitStakeExtrinsic's own
+  // concurrent-race test) -- this ref only prevents the confusing UX of a
+  // benign duplicate click surfacing as a transient "submit-error" flash
+  // while the real submission is still awaiting a signature.
+  const confirmInFlightRef = useRef(false);
   const flow = useStakeFlow(hotkey, netuid);
 
   const handleOpenChange = (next: boolean) => {
@@ -93,10 +104,13 @@ export function StakeUnstakeModal({
   };
 
   const handleConfirm = async () => {
+    if (confirmInFlightRef.current) return;
+    confirmInFlightRef.current = true;
     setSubmitting(true);
     try {
       await flow.submit();
     } finally {
+      confirmInFlightRef.current = false;
       setSubmitting(false);
     }
   };
