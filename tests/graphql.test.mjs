@@ -3436,6 +3436,338 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
   });
 });
 
+describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", () => {
+  function weightsQuery(argsClause) {
+    return `{ chain_weights${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_setters weight_sets sets_per_setter }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_setters weight_sets sets_per_setter }
+    } }`;
+  }
+
+  // The network aggregate (COUNT/COUNT DISTINCT/MAX(observed_at)) has no GROUP
+  // BY; the per-subnet leaderboard is GROUP BY netuid -- same two-query shape
+  // loadChainWeights always issues (mirrors the mcp-server.test.mjs fixture).
+  function chainWeightsD1({ network, subnets = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY netuid")) {
+                  return { results: subnets };
+                }
+                return { results: network ? [network] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard", async () => {
+    const { status, body } = await gql(weightsQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_weights, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: { distinct_setters: 0, weight_sets: 0, sets_per_setter: null },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_setters: 4,
+              weight_sets: 40,
+              sets_per_setter: 10,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 10,
+              min: 10,
+              p25: 10,
+              median: 10,
+              p75: 10,
+              p90: 10,
+              max: 10,
+            },
+            subnets: [
+              {
+                netuid: 3,
+                distinct_setters: 4,
+                weight_sets: 40,
+                sets_per_setter: 10,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      weightsQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/weights");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_weights.window, "30d");
+    assert.equal(body.data.chain_weights.subnet_count, 1);
+    assert.equal(body.data.chain_weights.network.weight_sets, 40);
+    assert.equal(body.data.chain_weights.intensity_distribution.median, 10);
+    assert.equal(body.data.chain_weights.subnets[0].netuid, 3);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(weightsQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_weights.window, "7d");
+    assert.equal(body.data.chain_weights.subnet_count, 0);
+    assert.equal(body.data.chain_weights.network.weight_sets, 0);
+    assert.equal(body.data.chain_weights.intensity_distribution, null);
+    assert.deepEqual(body.data.chain_weights.subnets, []);
+  });
+
+  test("no Postgres tier flag: rolls up the account_events WeightsSet stream straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainWeightsD1({
+        network: {
+          weight_sets: 40,
+          distinct_setters: 4,
+          newest_observed: 1_750_000_000_000,
+        },
+        subnets: [{ netuid: 3, weight_sets: 40, distinct_setters: 4 }],
+      }),
+    };
+    const { status, body } = await gql(weightsQuery('(window: "7d")'), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_weights.window, "7d");
+    assert.equal(body.data.chain_weights.subnet_count, 1);
+    assert.equal(body.data.chain_weights.network.distinct_setters, 4);
+    assert.equal(body.data.chain_weights.network.weight_sets, 40);
+    assert.equal(body.data.chain_weights.network.sets_per_setter, 10);
+    assert.equal(body.data.chain_weights.subnets[0].netuid, 3);
+    assert.equal(body.data.chain_weights.intensity_distribution.count, 1);
+    assert.ok(body.data.chain_weights.observed_at);
+  });
+
+  test("a D1 query error degrades to a schema-stable empty leaderboard (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(weightsQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_weights.subnet_count, 0);
+    assert.deepEqual(body.data.chain_weights.subnets, []);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(weightsQuery('(window: "99d")'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /99d/);
+  });
+
+  test("chain_weights is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_weights, 5);
+  });
+});
+
+describe("graphql — chain_weight_setters (#5689, Postgres-tier + D1-live fallback)", () => {
+  function weightSettersQuery(argsClause) {
+    return `{ chain_weight_setters${argsClause} {
+      schema_version window observed_at distinct_setters weight_sets setter_count
+      setters { hotkey netuid uid weight_sets share first_set_at last_set_at }
+    } }`;
+  }
+
+  // The per-setter leaderboard is GROUP BY the hotkey-or-(netuid,uid) identity
+  // and ORDER BY weight_sets DESC; the network-wide totals query has no GROUP
+  // BY -- same two-query shape loadChainWeightSetters always issues.
+  function chainWeightSettersD1({ rows = [], totals } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("ORDER BY weight_sets DESC")) {
+                  return { results: rows };
+                }
+                return { results: totals ? [totals] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard", async () => {
+    const { status, body } = await gql(weightSettersQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_weight_setters, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      distinct_setters: 0,
+      weight_sets: 0,
+      setter_count: 0,
+      setters: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            distinct_setters: 2,
+            weight_sets: 40,
+            setter_count: 1,
+            setters: [
+              {
+                hotkey: "5Setter",
+                netuid: null,
+                uid: null,
+                weight_sets: 40,
+                share: 1,
+                first_set_at: "2026-06-20T00:00:00.000Z",
+                last_set_at: "2026-07-10T00:00:00.000Z",
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      weightSettersQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/weights/setters");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_weight_setters.window, "30d");
+    assert.equal(body.data.chain_weight_setters.setter_count, 1);
+    assert.equal(body.data.chain_weight_setters.setters[0].hotkey, "5Setter");
+    assert.equal(body.data.chain_weight_setters.setters[0].share, 1);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(weightSettersQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_weight_setters.window, "7d");
+    assert.equal(body.data.chain_weight_setters.distinct_setters, 0);
+    assert.equal(body.data.chain_weight_setters.weight_sets, 0);
+    assert.equal(body.data.chain_weight_setters.setter_count, 0);
+    assert.deepEqual(body.data.chain_weight_setters.setters, []);
+  });
+
+  test("no Postgres tier flag: rolls up the account_events WeightsSet stream straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainWeightSettersD1({
+        rows: [
+          {
+            hotkey: "5Setter",
+            netuid: null,
+            uid: null,
+            weight_sets: 40,
+            first_set: 1_749_000_000_000,
+            last_set: 1_750_000_000_000,
+          },
+        ],
+        totals: {
+          weight_sets: 40,
+          distinct_setters: 1,
+          newest_observed: 1_750_000_000_000,
+        },
+      }),
+    };
+    const { status, body } = await gql(
+      weightSettersQuery('(window: "7d")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_weight_setters.window, "7d");
+    assert.equal(body.data.chain_weight_setters.distinct_setters, 1);
+    assert.equal(body.data.chain_weight_setters.weight_sets, 40);
+    assert.equal(body.data.chain_weight_setters.setter_count, 1);
+    assert.equal(body.data.chain_weight_setters.setters[0].hotkey, "5Setter");
+    assert.equal(body.data.chain_weight_setters.setters[0].share, 1);
+    assert.ok(body.data.chain_weight_setters.observed_at);
+  });
+
+  test("a D1 query error degrades to a schema-stable empty leaderboard (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(weightSettersQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_weight_setters.setter_count, 0);
+    assert.deepEqual(body.data.chain_weight_setters.setters, []);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(weightSettersQuery('(window: "99d")'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /99d/);
+  });
+
+  test("chain_weight_setters is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_weight_setters, 5);
+  });
+});
+
 describe("Subscription.chainEvents", () => {
   test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
     const hub = fakeChainFirehose((repeater) => {

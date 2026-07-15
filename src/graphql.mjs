@@ -66,6 +66,20 @@ import {
   MOVERS_WINDOWS,
   buildMovers,
 } from "./movers.mjs";
+import {
+  CHAIN_WEIGHTS_LIMIT_DEFAULT,
+  CHAIN_WEIGHTS_LIMIT_MAX,
+  CHAIN_WEIGHTS_WINDOWS,
+  DEFAULT_CHAIN_WEIGHTS_WINDOW,
+  loadChainWeights,
+} from "./chain-weights.mjs";
+import {
+  CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+  CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+  CHAIN_WEIGHT_SETTERS_WINDOWS,
+  DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
+  loadChainWeightSetters,
+} from "./chain-weight-setters.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
@@ -126,6 +140,10 @@ export const SDL = `
     economics_trends(window: String): EconomicsTrends!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
     subnet_movers(window: String, sort: String, limit: Int): SubnetMovers!
+    "Network-wide validator weight-setting activity leaderboard over a 7d/30d window (default 7d): subnets ranked by WeightsSet events with each's distinct-setter count and sets-per-setter update intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. Mirrors GET /api/v1/chain/weights."
+    chain_weights(window: String, limit: Int): ChainWeights!
+    "Network-wide weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators driving consensus network-wide, each with its total WeightsSet count, share of the network total, and first/last set times, ranked by activity. The setter-level drill-in behind chain_weights. Mirrors GET /api/v1/chain/weights/setters."
+    chain_weight_setters(window: String, limit: Int): ChainWeightSetters!
   }
 
   type SubnetList {
@@ -292,6 +310,68 @@ export const SDL = `
     neurons_start: Int!
     neurons_end: Int!
     neurons_delta: Int!
+  }
+
+  "Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights."
+  type ChainWeights {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    subnet_count: Int!
+    network: ChainWeightsNetwork!
+    intensity_distribution: ChainWeightsIntensityDistribution
+    subnets: [ChainWeightsSubnet!]!
+  }
+
+  "Network-wide weight-setting rollup: every subnet that set weights in the window, combined."
+  type ChainWeightsNetwork {
+    distinct_setters: Int!
+    weight_sets: Int!
+    "Null when distinct_setters is 0 (no defined intensity without setters)."
+    sets_per_setter: Float
+  }
+
+  "Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window."
+  type ChainWeightsIntensityDistribution {
+    count: Int!
+    mean: Float!
+    min: Float!
+    p25: Float!
+    median: Float!
+    p75: Float!
+    p90: Float!
+    max: Float!
+  }
+
+  "One subnet's weight-setting activity in the window, ranked by weight_sets."
+  type ChainWeightsSubnet {
+    netuid: Int!
+    distinct_setters: Int!
+    weight_sets: Int!
+    sets_per_setter: Float
+  }
+
+  "Network-wide weight-setter leaderboard over a lookback window, summed live from the account_events WeightsSet stream. The setter-level drill-in behind ChainWeights. Mirrors GET /api/v1/chain/weights/setters."
+  type ChainWeightSetters {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    distinct_setters: Int!
+    weight_sets: Int!
+    setter_count: Int!
+    setters: [ChainWeightSetter!]!
+  }
+
+  "One validator's network-wide weight-setting activity in the window. netuid is set only when hotkey is null (a uid-only identity has no meaning outside its own subnet)."
+  type ChainWeightSetter {
+    hotkey: String
+    netuid: Int
+    uid: Int
+    weight_sets: Int!
+    "This setter's share of the network total weight_sets; null when the network total is 0."
+    share: Float
+    first_set_at: String
+    last_set_at: String
   }
 
   type SurfaceList {
@@ -891,6 +971,8 @@ export const FIELD_COMPLEXITY = {
   block: RELATIONSHIP_FIELD_COMPLEXITY,
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -1898,6 +1980,89 @@ const rootValue = {
         unchanged: network.unchanged ?? 0,
       },
       movers: data.movers || [],
+    };
+  },
+
+  async chain_weights({ window, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_WEIGHTS_WINDOW;
+    if (!Object.hasOwn(CHAIN_WEIGHTS_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, CHAIN_WEIGHTS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_WEIGHTS_LIMIT_DEFAULT,
+      maxLimit: CHAIN_WEIGHTS_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainWeights
+    // fallback contract REST's handleChainWeights uses -- a cold store yields a
+    // schema-stable empty leaderboard, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/weights", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      (await loadChainWeights(graphqlD1(context), {
+        windowLabel: requestedWindow,
+        windowDays: CHAIN_WEIGHTS_WINDOWS[requestedWindow],
+        limit: safeLimit,
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      observed_at: data.observed_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      network: data.network ?? {
+        distinct_setters: 0,
+        weight_sets: 0,
+        sets_per_setter: null,
+      },
+      intensity_distribution: data.intensity_distribution ?? null,
+      subnets: data.subnets || [],
+    };
+  },
+
+  async chain_weight_setters({ window, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW;
+    if (!Object.hasOwn(CHAIN_WEIGHT_SETTERS_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, CHAIN_WEIGHT_SETTERS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+      maxLimit: CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainWeightSetters
+    // fallback contract REST's handleChainWeightSetters uses.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/weights/setters", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      (await loadChainWeightSetters(graphqlD1(context), {
+        windowLabel: requestedWindow,
+        windowDays: CHAIN_WEIGHT_SETTERS_WINDOWS[requestedWindow],
+        limit: safeLimit,
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      observed_at: data.observed_at ?? null,
+      distinct_setters: data.distinct_setters ?? 0,
+      weight_sets: data.weight_sets ?? 0,
+      setter_count: data.setter_count ?? 0,
+      setters: data.setters || [],
     };
   },
 };
