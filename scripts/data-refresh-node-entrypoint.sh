@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 # Runs one step of the box-side Node-only data-refresh jobs (registry-sync,
-# registry-sync-fast, testnet-discovery, export-parquet) -- see
-# deploy/data-refresh-node.Dockerfile's header. Unlike deploy/economics-
-# refresh.Dockerfile's two-container split, none of these need a separate
-# untrusted-fetch step: all are pure JS with no PyPI/uvx involved, so npm
-# ci's own --ignore-scripts + integrity check (below) is the only
-# supply-chain guard needed, in ONE container.
+# registry-sync-fast, testnet-discovery, export-parquet, reconcile-neurons)
+# -- see deploy/data-refresh-node.Dockerfile's header. Unlike deploy/
+# economics-refresh.Dockerfile's two-container split, none of THIS
+# container's own work needs a separate untrusted-fetch step: everything
+# below is pure JS with no PyPI/uvx involved, so npm ci's own
+# --ignore-scripts + integrity check is the only supply-chain guard needed,
+# in ONE container. reconcile-neurons is the one exception to "no separate
+# fetch step needed" at the JOB level, not the container level: its chain
+# read runs in a DIFFERENT container entirely (the existing untrusted
+# metagraph-fetch image, unmodified) orchestrated by the infra role's
+# custom wrapper script -- this container only ever sees the fetch's
+# already-written JSON output, never runs bittensor/PyPI itself.
 set -euo pipefail
 
-: "${STEP:?STEP env var required (registry-sync|registry-sync-fast|testnet-discovery|export-parquet)}"
+: "${STEP:?STEP env var required (registry-sync|registry-sync-fast|testnet-discovery|export-parquet|reconcile-neurons)}"
 
 REPO_DIR=/repo
 GIT_REPO_URL="https://github.com/JSONbored/metagraphed.git"
@@ -162,8 +168,14 @@ case "$STEP" in
     echo "entrypoint: nightly Parquet bulk export to R2"
     exec node scripts/export-parquet.mjs
     ;;
+  reconcile-neurons)
+    : "${LIVE_SNAPSHOT_JSON:?LIVE_SNAPSHOT_JSON env var required for the reconcile-neurons step}"
+    : "${DATABASE_URL:?DATABASE_URL env var required for the reconcile-neurons step}"
+    echo "entrypoint: reconciling neurons against a fresh chain snapshot"
+    exec node scripts/reconcile-neurons.mjs
+    ;;
   *)
-    echo "entrypoint: unknown STEP '$STEP' (want registry-sync|registry-sync-fast|testnet-discovery|export-parquet)" >&2
+    echo "entrypoint: unknown STEP '$STEP' (want registry-sync|registry-sync-fast|testnet-discovery|export-parquet|reconcile-neurons)" >&2
     exit 1
     ;;
 esac
