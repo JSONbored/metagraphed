@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 221,
+  "surface_count": 224,
   "surfaces": [
     {
       "auth_required": false,
@@ -1581,6 +1581,42 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 18,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "subnet_name": "Zeus",
+      "subnet_slug": "sn-18",
+      "surface_id": "sn-18-zeus-data-artifact",
+      "surface_key": "srf-b2b48c1a1208f787",
+      "url": "https://raw.githubusercontent.com/Orpheus-AI/Zeus/8b79e8ea117d085f959decd6fea9ae17da1b1494/zeus/data/weights/latitude_weights_for_rmse.npy"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 18,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "subnet_name": "Zeus",
+      "subnet_slug": "sn-18",
+      "surface_id": "sn-18-zeus-health",
+      "surface_key": "srf-65e3740b96a293dc",
+      "url": "https://api.zeussubnet.com/v1/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 18,
       "probe": {
@@ -1595,6 +1631,24 @@
       "surface_id": "sn-18-zeus-ready",
       "surface_key": "srf-4911085047e7584f",
       "url": "https://api.zeussubnet.com/v1/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 18,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "subnet_name": "Zeus",
+      "subnet_slug": "sn-18",
+      "surface_id": "sn-18-zeus-subnet-api",
+      "surface_key": "srf-f1ec4a119075ec61",
+      "url": "https://api.zeussubnet.com/v1/meta"
     },
     {
       "auth_required": false,

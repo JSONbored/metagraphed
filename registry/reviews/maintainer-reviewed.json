@@ -260,6 +260,20 @@
       "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite the top-level fields already being set). Verified the official website, source repository, and the separate live 404-active-competition state repository; confirmed the gateway API's task-submission endpoints require x-api-key and the portal's docs/OpenAPI routes are deliberately disabled in production (HTTP 200, empty body) rather than missing."
     },
     {
+      "netuid": 18,
+      "slug": "sn-18",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T22:50:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.zeussubnet.com/",
+        "https://github.com/Orpheus-AI/Zeus",
+        "https://docs.zeussubnet.com/docs/introduction",
+        "https://api.zeussubnet.com/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo/docs surfaces despite the top-level fields already being set). Verified the official website, source repository, and docs; confirmed the BOREAS Edge API's forecast endpoints require a real API key (401 Invalid API key, live-tested) despite the OpenAPI schema marking the key optional, and /metrics is WAF-blocked."
+    },
+    {
       "netuid": 19,
       "slug": "sn-19",
       "decision": "maintainer-reviewed",
