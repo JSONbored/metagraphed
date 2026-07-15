@@ -34,7 +34,7 @@
     "verified_at": "2026-06-08T20:25:00.000Z",
     "source_count": 5,
     "gap_notes": [
-      "Official TaoFi pool page, docs, and Swap source repository are verified live.",
+      "TaoFi docs and Swap source repository are verified live; the TaoFi pool page (www.taofi.com/pool) currently returns HTTP 402 and should appear degraded until it recovers.",
       "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
       "No verified safe public subnet API endpoint yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -57,12 +57,13 @@
         "https://github.com/Swap-Subnet/swap-subnet"
       ],
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "method": "HEAD",
         "expect": "html",
         "timeout_ms": 10000
       },
-      "notes": "Official TaoFi pool page for SN10 Swap."
+      "notes": "Official TaoFi pool page for SN10 Swap.",
+      "rate_limit_notes": "Not probe-enabled: https://www.taofi.com/pool currently returns HTTP 402 to simple and browser-UA probes (re-verified twice ~2026-07-15) and should appear degraded until it recovers."
     },
     {
       "id": "sn-10-taofi-docs",

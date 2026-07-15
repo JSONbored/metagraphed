@@ -26,7 +26,7 @@
     "source_count": 6,
     "gap_notes": [
       "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
-      "Official website, dashboard, and source repository are verified live.",
+      "Source repository is verified live; the official website and dashboard (tensorclaw.ai) currently return Cloudflare 521 (web server is down) and should appear degraded until they recover.",
       "No verified docs site yet beyond directory pages.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
@@ -84,12 +84,13 @@
       "public_safe": true,
       "source_urls": ["https://www.tensorclaw.ai/"],
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "method": "HEAD",
         "expect": "html",
         "timeout_ms": 10000
       },
-      "notes": "Website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92 and describes a decentralized LLM inference subnet for autonomous agents."
+      "notes": "Website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92 and describes a decentralized LLM inference subnet for autonomous agents.",
+      "rate_limit_notes": "Not probe-enabled: https://www.tensorclaw.ai/ currently returns Cloudflare 521 (web server is down) to simple and browser-UA probes (re-verified twice ~2026-07-15) and should appear degraded until it recovers."
     },
     {
       "id": "sn-92-tensorclaw-source-repo",
@@ -123,12 +124,13 @@
       "public_safe": true,
       "source_urls": ["https://www.tensorclaw.ai/"],
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "method": "HEAD",
         "expect": "html",
         "timeout_ms": 10000
       },
-      "notes": "Public live-demo page for SN92. The page uses Cloudflare Turnstile to unlock trial requests, so it is listed as an auth-gated dashboard surface rather than a public API."
+      "notes": "Public live-demo page for SN92. The page uses Cloudflare Turnstile to unlock trial requests, so it is listed as an auth-gated dashboard surface rather than a public API.",
+      "rate_limit_notes": "Not probe-enabled: https://www.tensorclaw.ai/dashboard currently returns Cloudflare 521 (web server is down) to simple and browser-UA probes (re-verified twice ~2026-07-15) and should appear degraded until it recovers."
     },
     {
       "auth_required": false,

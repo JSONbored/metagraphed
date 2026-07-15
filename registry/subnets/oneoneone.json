@@ -23,6 +23,7 @@
     "verified_at": "2026-06-08T10:35:00.000Z",
     "source_count": 4,
     "gap_notes": [
+      "Official oneoneone website (oneoneone.io) currently returns Cloudflare 530 to simple and browser-UA probes and should appear degraded until it recovers.",
       "No verified official docs URL yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
@@ -42,12 +43,13 @@
       "public_safe": true,
       "source_urls": ["https://oneoneone.io/"],
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "method": "HEAD",
         "expect": "html",
         "timeout_ms": 10000
       },
-      "notes": "Official oneoneone website."
+      "notes": "Official oneoneone website.",
+      "rate_limit_notes": "Not probe-enabled: https://oneoneone.io/ currently returns Cloudflare 530 to simple and browser-UA probes (re-verified twice ~2026-07-15) and should appear degraded until it recovers."
     },
     {
       "id": "sn-111-oneoneone-source",

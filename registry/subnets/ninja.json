@@ -12,6 +12,7 @@
   "contact": "tau@arbos.life",
   "curation": {
     "gap_notes": [
+      "Official Ninja/Unarbos website (ninja.arbos.life) currently returns HTTP 404 to simple and browser-UA probes and should appear degraded until it recovers.",
       "Swagger/OpenAPI routes currently serve HTML UI only; no verified machine-readable schema URL yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
@@ -47,7 +48,7 @@
       "name": "Ninja website",
       "notes": "Official Ninja SN66 public website.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -55,7 +56,8 @@
       "provider": "unarbos",
       "public_safe": true,
       "source_urls": ["https://ninja.arbos.life/"],
-      "url": "https://ninja.arbos.life/"
+      "url": "https://ninja.arbos.life/",
+      "rate_limit_notes": "Not probe-enabled: https://ninja.arbos.life/ currently returns HTTP 404 to simple and browser-UA probes (re-verified twice ~2026-07-15) and should appear degraded until it recovers."
     },
     {
       "auth_required": false,
