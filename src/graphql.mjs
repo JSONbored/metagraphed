@@ -105,6 +105,7 @@ import { composeLeaderboardsData } from "../workers/request-handlers/analytics-r
 import {
   loadCompareSubnets,
   loadSubnetHealthTrends,
+  loadSubnetIncidents,
   parseCompareDimensionList,
   parseCompareNetuidList,
 } from "./analytics-live.mjs";
@@ -294,6 +295,8 @@ export const SDL = `
     subnet_serving(netuid: Int!, window: String): SubnetServing!
     "One subnet's uptime + success-only latency trend windows (7d/30d) from the live health-probe history: per-window samples, uptime_ratio, latency sample count, and the per-surface uptime/latency series. A subnet with no probe history resolves to a schema-stable zeroed-windows card, never null. Mirrors GET /api/v1/subnets/{netuid}/health/trends."
     subnet_health_trends(netuid: Int!): SubnetHealthTrends!
+    "One subnet's per-surface SLA (uptime ratio) and reconstructed downtime incidents over a 7d/30d window (default 7d), computed live from the health-probe history: each surface's sample count, uptime_ratio, incident_count, total downtime_ms, and the gap-island incident list. A subnet with no probe history resolves to a schema-stable empty surfaces list, never null. Mirrors GET /api/v1/subnets/{netuid}/health/incidents."
+    subnet_health_incidents(netuid: Int!, window: String): SubnetHealthIncidents!
     "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
     subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
     "Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights."
@@ -1716,6 +1719,17 @@ export const SDL = `
     user_reported: Boolean
   }
 
+  "One subnet's per-surface SLA + reconstructed downtime incidents over the window. Mirrors GET /api/v1/subnets/{netuid}/health/incidents's data envelope."
+  type SubnetHealthIncidents {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    source: String
+    "Per operational surface: its sample count, uptime_ratio, incident_count, total downtime_ms, and gap-island incident list (started_at/ended_at/duration_ms/failed_samples, epoch-ms). Opaque JSON passed through verbatim, matching the get_subnet_health_incidents MCP/REST shape (like SubnetHealthTrends.windows)."
+    surfaces: JSON!
+  }
+
   type ExtrinsicList {
     items: [Extrinsic!]!
     "Page count -- this feed has no cheap grand total, matching REST's extrinsic_count."
@@ -2597,6 +2611,7 @@ export const FIELD_COMPLEXITY = {
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_health_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3879,6 +3894,50 @@ const rootValue = {
       observed_at: data.observed_at ?? null,
       source: data.source ?? null,
       summary: data.summary ?? null,
+      surfaces: data.surfaces ?? [],
+    };
+  },
+
+  async subnet_health_incidents({ netuid, window }, context) {
+    // Reuse the exact analyticsWindow parse/validate REST's handleHealthIncidents
+    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
+    // BAD_USER_INPUT error, not a silent empty result.
+    const windowUrl = new URL(context.request.url);
+    windowUrl.search = "";
+    if (window != null) windowUrl.searchParams.set("window", window);
+    const { label, error } = analyticsWindow(windowUrl);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetIncidents D1
+    // fallback contract handleHealthIncidents and the get_subnet_health_incidents
+    // MCP tool share -- the tier owns the gap-island incident reconstruction, so
+    // nothing is duplicated here, and a subnet with no probe history yields a
+    // schema-stable empty surfaces list, never a GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", label);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/health/incidents`,
+          params,
+        ),
+        "METAGRAPH_HEALTH_SOURCE",
+      )) ??
+      (await loadSubnetIncidents(graphqlD1(context), netuid, {
+        window: label,
+        observedAt: await loadObservedAt(context),
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? label,
+      observed_at: data.observed_at ?? null,
+      source: data.source ?? null,
       surfaces: data.surfaces ?? [],
     };
   },
