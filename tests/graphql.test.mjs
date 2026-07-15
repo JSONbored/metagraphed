@@ -7498,6 +7498,102 @@ describe("graphql — chain_performance (#5688, Postgres-tier + zeroed-card fall
   });
 });
 
+describe("graphql — chain_concentration (#5872, Postgres-tier + zeroed-card fallback)", () => {
+  const CONCENTRATION_QUERY = `{ chain_concentration {
+    schema_version subnet_count neuron_count entity_count uids_per_entity captured_at
+    stake { holders total gini hhi hhi_normalized nakamoto_coefficient top_1pct_share top_5pct_share top_10pct_share top_20pct_share entropy entropy_normalized }
+    emission { holders gini nakamoto_coefficient }
+    entity_stake { holders gini }
+    entity_emission { holders gini }
+    validator_stake { holders total gini }
+  } }`;
+
+  test("cold store: schema-stable zeroed card with every metric block null", async () => {
+    const { status, body } = await gql(CONCENTRATION_QUERY);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_concentration, {
+      schema_version: 1,
+      subnet_count: 0,
+      neuron_count: 0,
+      entity_count: 0,
+      uids_per_entity: null,
+      captured_at: null,
+      stake: null,
+      emission: null,
+      entity_stake: null,
+      entity_emission: null,
+      validator_stake: null,
+    });
+  });
+
+  test("resolves Postgres-tier data, requesting the mirrored REST path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            subnet_count: 2,
+            neuron_count: 3,
+            entity_count: 2,
+            uids_per_entity: 1.5,
+            captured_at: "2026-07-10T00:00:00.000Z",
+            stake: {
+              holders: 3,
+              total: 6,
+              gini: 0.22,
+              hhi: 0.38,
+              hhi_normalized: 0.07,
+              nakamoto_coefficient: 2,
+              top_1pct_share: 0.5,
+              top_5pct_share: 0.5,
+              top_10pct_share: 0.5,
+              top_20pct_share: 0.5,
+              entropy: 1.46,
+              entropy_normalized: 0.92,
+            },
+            emission: { holders: 3, gini: 0.11, nakamoto_coefficient: 1 },
+            entity_stake: { holders: 2, gini: 0.33 },
+            entity_emission: { holders: 2, gini: 0.25 },
+            validator_stake: { holders: 2, total: 4, gini: 0.15 },
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(CONCENTRATION_QUERY, env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/concentration");
+    assert.equal(body.data.chain_concentration.subnet_count, 2);
+    assert.equal(body.data.chain_concentration.neuron_count, 3);
+    assert.equal(body.data.chain_concentration.entity_count, 2);
+    assert.equal(body.data.chain_concentration.uids_per_entity, 1.5);
+    assert.equal(body.data.chain_concentration.stake.nakamoto_coefficient, 2);
+    assert.equal(body.data.chain_concentration.emission.holders, 3);
+    assert.equal(body.data.chain_concentration.entity_stake.gini, 0.33);
+    assert.equal(body.data.chain_concentration.entity_emission.gini, 0.25);
+    assert.equal(body.data.chain_concentration.validator_stake.total, 4);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(CONCENTRATION_QUERY, env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_concentration.schema_version, 1);
+    assert.equal(body.data.chain_concentration.subnet_count, 0);
+    assert.equal(body.data.chain_concentration.entity_count, 0);
+    assert.equal(body.data.chain_concentration.uids_per_entity, null);
+    assert.equal(body.data.chain_concentration.captured_at, null);
+    assert.equal(body.data.chain_concentration.stake, null);
+    assert.equal(body.data.chain_concentration.entity_stake, null);
+    assert.equal(body.data.chain_concentration.validator_stake, null);
+  });
+});
+
 describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

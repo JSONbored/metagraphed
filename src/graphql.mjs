@@ -175,6 +175,7 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "./chain-turnover.mjs";
 import { buildChainPerformance } from "./chain-performance.mjs";
+import { buildChainConcentration } from "./concentration.mjs";
 import {
   DEFAULT_NOMINATOR_SORT,
   DEFAULT_NOMINATOR_WINDOW,
@@ -319,6 +320,8 @@ export const SDL = `
     chain_performance: ChainPerformance!
     "Network-wide emission-yield (return rate) aggregated across every subnet's neurons -- the aggregate network return, the same split by validator vs miner role, and the distribution of the per-neuron return rate. Every aggregate is null (never a GraphQL error) on a cold store. Mirrors GET /api/v1/chain/yield."
     chain_yield: ChainYield!
+    "Network-wide stake & emission decentralization across every subnet's neurons at once: the raw stake/emission distribution, the same two lenses collapsed per controlling entity (an operator running hotkeys in ten subnets counts once, not ten times), and the permitted-validator stake distribution -- each as gini/HHI/Nakamoto/top-share/entropy. uids_per_entity is the network consolidation signal (1.0 = every UID a distinct owner). Current snapshot only (no window/params). Every metric block is null (never a GraphQL error) on a cold store. The network analog of subnet concentration. Mirrors GET /api/v1/chain/concentration."
+    chain_concentration: ChainConcentration!
     "Network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet with StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by total_volume_tao, each carrying its full buy/sell/total volume + sentiment scorecard (vol_mcap_ratio always null here -- no per-subnet market-cap input at the network level), plus a network rollup with its own net/gross sentiment reading and the per-subnet total-volume spread, summed live from the account_events stream. Fixed 24h window (no window arg); limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/alpha-volume."
     chain_alpha_volume(limit: Int): ChainAlphaVolume!
     "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC (not the Postgres tier). recycled_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/recycled."
@@ -1132,6 +1135,29 @@ export const SDL = `
     validator_trust: ScoreDistribution
   }
 
+  "Network-wide stake & emission decentralization card (#5872). Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/concentration."
+  type ChainConcentration {
+    schema_version: Int!
+    "Distinct subnets the snapshot spans."
+    subnet_count: Int!
+    neuron_count: Int!
+    "Distinct controlling entities (coldkeys) network-wide, collapsed across subnets."
+    entity_count: Int!
+    "UIDs per controlling entity network-wide -- a consolidation signal (1.0 = every UID a distinct owner; higher = fewer operators each running many). Null when no entities."
+    uids_per_entity: Float
+    captured_at: String
+    "Raw stake concentration across every neuron network-wide."
+    stake: ConcentrationMetrics
+    "Raw emission concentration across every neuron network-wide."
+    emission: ConcentrationMetrics
+    "Stake concentration per controlling entity -- hotkeys collapsed across subnets, so one operator counts once."
+    entity_stake: ConcentrationMetrics
+    "Emission concentration per controlling entity -- hotkeys collapsed across subnets."
+    entity_emission: ConcentrationMetrics
+    "Stake concentration across permitted validators network-wide only."
+    validator_stake: ConcentrationMetrics
+  }
+
   "Per-subnet reward-distribution & score-spread card (#5714). Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/performance."
   type SubnetPerformance {
     schema_version: Int!
@@ -1897,6 +1923,7 @@ export const FIELD_COMPLEXITY = {
   validator_nominators: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_performance: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_yield: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_concentration: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_alpha_volume: RELATIONSHIP_FIELD_COMPLEXITY,
   account_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
   account_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4262,6 +4289,35 @@ const rootValue = {
             p90: distribution.p90 ?? 0,
           }
         : null,
+    };
+  },
+
+  async chain_concentration(_args, context) {
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainConcentration([])
+    // cold fallback contract handleChainConcentration / MCP get_chain_concentration
+    // use: a cold/absent tier yields a schema-stable zeroed card (every metric
+    // block null), never a GraphQL error. handleChainConcentration reads every
+    // subnet's neurons with no netuid filter and validates against an EMPTY
+    // param allowlist, so there is no window/limit arg to mirror -- current
+    // snapshot only.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/concentration"),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildChainConcentration([]);
+    return {
+      schema_version: data.schema_version ?? 1,
+      subnet_count: data.subnet_count ?? 0,
+      neuron_count: data.neuron_count ?? 0,
+      entity_count: data.entity_count ?? 0,
+      uids_per_entity: data.uids_per_entity ?? null,
+      captured_at: data.captured_at ?? null,
+      stake: data.stake ?? null,
+      emission: data.emission ?? null,
+      entity_stake: data.entity_stake ?? null,
+      entity_emission: data.entity_emission ?? null,
+      validator_stake: data.validator_stake ?? null,
     };
   },
 
