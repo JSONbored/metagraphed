@@ -61,8 +61,7 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
       <ol className="space-y-0.5">
         {rows.map((row, i) => {
           const repoUrl = `https://github.com/${row.repository}`;
-          const sharePct =
-            typeof row.emission_share === "number" ? row.emission_share * 100 : null;
+          const sharePct = typeof row.emission_share === "number" ? row.emission_share * 100 : null;
           return (
             <li key={row.repository}>
               <a
