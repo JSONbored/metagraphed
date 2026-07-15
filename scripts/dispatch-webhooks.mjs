@@ -20,6 +20,7 @@ import {
   repoRoot,
   stableStringify,
 } from "./lib.mjs";
+import { selectDispatchKeys } from "./lib/webhook-dispatch-selection.mjs";
 import {
   buildChangeEvent,
   dispatchWithRedelivery,
@@ -81,7 +82,14 @@ if (allKeys.length > MAX_DISPATCH_SUBSCRIPTIONS) {
     `::warning::webhook dispatch capped at ${MAX_DISPATCH_SUBSCRIPTIONS} of ${allKeys.length} registered subscriptions`,
   );
 }
-const keys = allKeys.slice(0, MAX_DISPATCH_SUBSCRIPTIONS);
+// Fair rotation across runs (#5546): once the total exceeds the cap, a fixed
+// lexicographic slice would starve every subscription sorting after the cap
+// forever. Seed the selection with the wall-clock so each run rotates the
+// window; every subscription is dispatched within a bounded number of runs.
+const keys = selectDispatchKeys(allKeys, {
+  max: MAX_DISPATCH_SUBSCRIPTIONS,
+  seed: Date.now(),
+});
 if (keys.length === 0) {
   console.log("No webhook subscriptions registered; nothing to dispatch.");
   process.exit(0);
