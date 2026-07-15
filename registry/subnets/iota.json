@@ -22,7 +22,7 @@
   "dashboard_url": "https://iota.macrocosmos.ai/dashboard/mainnet",
   "name": "iota",
   "netuid": 9,
-  "notes": "Reviewed overlay for SN9 using the official IOTA website, public dashboard, and source repository. The previously discovered Macrocosmos IOTA mining setup URL currently returns 404 and is intentionally not promoted.",
+  "notes": "Reviewed overlay for SN9 using the official IOTA website, public dashboard, and source repository. The previously discovered Macrocosmos IOTA mining setup URL currently returns 404 and is intentionally not promoted. The orchestrator OpenAPI schema documents 35 total paths; 5 are tracked here (healthcheck, openapi.json, metrics, run info) plus the codeparrot dataset. Of the rest: most are miner/validator protocol endpoints (register, submit_weights, heartbeat, and similar) meant for a specific registered hotkey, not public dashboard consumption -- global_miner_scores returned HTTP 400 unsigned, consistent with requiring Epistula request signing despite no OpenAPI-declared security scheme. get_run_epoch needs a specific run_id and isn't tracked for the same staleness reason as Numinous's (#5914) per-miner endpoints; get_run_info (tracked, zero params) is how a client discovers the current run_id instead.",
   "schema_version": 1,
   "slug": "sn-9",
   "source_repo": "https://github.com/macrocosm-os/iota",
@@ -136,6 +136,42 @@
       },
       "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
       "url": "https://iota.api.macrocosmos.ai/healthcheck"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-9-iota-metrics",
+      "kind": "subnet-api",
+      "name": "IOTA orchestrator Prometheus metrics",
+      "notes": "Public no-auth GET returning Prometheus text-exposition-format process/runtime metrics (python_gc_objects_collected_total and similar). Documented in the subnet's own OpenAPI schema (path /metrics); plain-text response, not JSON, so tracked with expect: any. Same pattern as the SN1 Apex orchestrator's own /metrics surface (same macrocosm-os org).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
+      "url": "https://iota.api.macrocosmos.ai/metrics"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-9-iota-run-info",
+      "kind": "subnet-api",
+      "name": "IOTA training run info",
+      "notes": "Public no-auth GET /common/get_run_info on the IOTA orchestrator, returning the current decentralized pre-training run's configuration (run_id, num_miners, incentive_perc, run_flags) with no parameters required. Distinct from /common/get_run_epoch, which needs a specific run_id and is not tracked here since the current run_id changes over time (this endpoint is how a client discovers it).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
+      "url": "https://iota.api.macrocosmos.ai/common/get_run_info"
     }
   ],
   "website_url": "https://iota.macrocosmos.ai/"

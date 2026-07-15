@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 201,
+  "surface_count": 204,
   "surfaces": [
     {
       "auth_required": false,
@@ -950,6 +950,42 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 9,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "iota",
+      "subnet_slug": "sn-9",
+      "surface_id": "sn-9-iota-metrics",
+      "surface_key": "srf-08b192cbe61bfd12",
+      "url": "https://iota.api.macrocosmos.ai/metrics"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 9,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "iota",
+      "subnet_slug": "sn-9",
+      "surface_id": "sn-9-iota-run-info",
+      "surface_key": "srf-6ec629d96674b06d",
+      "url": "https://iota.api.macrocosmos.ai/common/get_run_info"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
       "netuid": 10,
@@ -1703,6 +1739,24 @@
       "surface_id": "sn-45-alpharidge-price-tao-usd",
       "surface_key": "srf-cf17396684e450d9",
       "url": "https://api.alpharidge.ai/price/tao-usd"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 46,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "subnet_name": "Zipcode",
+      "subnet_slug": "sn-46",
+      "surface_id": "sn-46-zipcode-real-estate-validation-set",
+      "surface_key": "srf-be800cb48c735c6f",
+      "url": "https://zipcode.ai/api/dashboard/validation-set/real_estate/download"
     },
     {
       "auth_required": false,
