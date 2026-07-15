@@ -212,11 +212,15 @@ test("formatExtrinsic preserves a U256 value past Number.MAX_SAFE_INTEGER throug
   assert.equal(out.call_args.transaction.EIP1559.nonce, "69392");
 });
 
-test("formatExtrinsic does NOT extend the big-int-safe parse to call types outside indexer-rs-ethereum-decode.mjs's dispatch table -- preserves existing (already-imprecise) D1-serving behavior for out-of-scope call types", () => {
-  // Scoping the fix to hasEthereumEvmDecoder's 4 call types is deliberate:
-  // SubtensorModule.register's PoW nonce precision loss is an existing,
-  // already-accepted issue (#4693's scope) -- this must not silently change
-  // that field's type from number to string as a side effect of #4692.
+test("formatExtrinsic extends the big-int-safe parse to EVERY call type, not just indexer-rs-ethereum-decode.mjs's dispatch table (fixed 2026-07-15, was previously scoped narrow)", () => {
+  // An exhaustive live audit found the plain-JSON.parse rounding bug reaches
+  // far more call types than the handful indexer-rs-ethereum-decode.mjs
+  // names -- SubtensorModule.register's PoW nonce is exactly one instance of
+  // a general problem, not a special case. parseJsonPreservingBigInts now
+  // runs unconditionally in formatExtrinsic, so this out-of-scope call type
+  // gets exact precision too, matching how U256 fields already work
+  // (a JS number that would lose precision arrives as a decimal string
+  // instead).
   const out = formatExtrinsic({
     block_number: 1,
     extrinsic_index: 0,
@@ -224,8 +228,8 @@ test("formatExtrinsic does NOT extend the big-int-safe parse to call types outsi
     call_function: "register",
     call_args: '{"nonce":[9131459485341369597]}',
   });
-  assert.equal(typeof out.call_args.nonce, "number");
-  assert.equal(out.call_args.nonce, 9131459485341369000);
+  assert.equal(typeof out.call_args.nonce, "string");
+  assert.equal(out.call_args.nonce, "9131459485341369597");
 });
 
 test("formatExtrinsic unwraps a single-element BTreeSet (real SubtensorModule.claim_root, block 8587445/19, #4693)", () => {
@@ -272,13 +276,11 @@ test("formatExtrinsic correctly unwraps a BTreeSet nested inside Utility.batch, 
   assert.deepEqual(nestedCall.call_args.subnets, [1, 2, 3, 4, 5]);
 });
 
-test("formatExtrinsic pins SubtensorModule.register's PoW nonce precision as an accepted, tested invariant (real block 8556317/20, #4693) -- Postgres's exact literal converges on the same value D1 already serves, not a regression to fix here", () => {
+test("formatExtrinsic preserves SubtensorModule.register's PoW nonce precision exactly (real block 8556317/20, fixed 2026-07-15)", () => {
   // nonce is a BARE u64 scalar in the real Postgres row (confirmed via
-  // direct query -- not newtype-wrapped like most other fields), and
-  // formatExtrinsic deliberately does NOT route SubtensorModule.register
-  // through the big-int-safe parse (#4692's hasEthereumEvmDecoder gate) --
-  // per #4693's explicit requirement, this ticket pins the current
-  // convergent-but-lossy behavior rather than fixing it.
+  // direct query -- not newtype-wrapped like most other fields).
+  // parseJsonPreservingBigInts now runs unconditionally in formatExtrinsic,
+  // so this arrives as the exact decimal string instead of a rounded number.
   const out = formatExtrinsic({
     block_number: 8556317,
     extrinsic_index: 20,
@@ -287,14 +289,14 @@ test("formatExtrinsic pins SubtensorModule.register's PoW nonce precision as an 
     call_args:
       '{"work":[16,64,112,106],"nonce":9131459485341369597,"netuid":21}',
   });
-  assert.equal(out.call_args.nonce, 9131459485341369000);
+  assert.equal(out.call_args.nonce, "9131459485341369597");
 });
 
-test("formatExtrinsic pins SubtensorModule.set_children's near-u64::MAX sentinel precision as an accepted, tested invariant (real block 8585337/19, #4693)", () => {
+test("formatExtrinsic preserves SubtensorModule.set_children's near-u64::MAX sentinel precision exactly (real block 8585337/19, fixed 2026-07-15)", () => {
   // children is Vec<(u64, AccountId32)> -- children[0][0] is the proportion
   // (here the true u64::MAX "take-all" sentinel), children[0][1] the child's
   // AccountId32 (untouched here -- top-level AccountId32 decode is a
-  // separate, not-yet-covered gap, out of #4693's scope).
+  // separate gap).
   const out = formatExtrinsic({
     block_number: 8585337,
     extrinsic_index: 19,
@@ -303,7 +305,54 @@ test("formatExtrinsic pins SubtensorModule.set_children's near-u64::MAX sentinel
     call_args:
       '{"netuid":121,"children":[[18446744073709551615,[[100,65,10,124,236,80,140,19,181,73,132,35,107,50,57,120,44,20,174,42,203,246,252,17,211,55,209,239,75,249,82,33]]]]}',
   });
-  assert.equal(out.call_args.children[0][0], 18446744073709552000);
+  assert.equal(out.call_args.children[0][0], "18446744073709551615");
+});
+
+test("formatExtrinsic preserves SubtensorModule.set_root_weights's version_key precision exactly (real block 4633973/7, found by 2026-07-15 exhaustive audit)", () => {
+  const out = formatExtrinsic({
+    block_number: 4633973,
+    extrinsic_index: 7,
+    call_module: "SubtensorModule",
+    call_function: "set_root_weights",
+    call_args:
+      '{"hotkey":"5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y","netuid":0,"dests":[1],"weights":[65535],"version_key":18446744073709551615}',
+  });
+  assert.equal(out.call_args.version_key, "18446744073709551615");
+});
+
+test("formatExtrinsic preserves SubtensorModule.faucet's PoW nonce precision exactly (real block 2351609/48, found by 2026-07-15 exhaustive audit)", () => {
+  const out = formatExtrinsic({
+    block_number: 2351609,
+    extrinsic_index: 48,
+    call_module: "SubtensorModule",
+    call_function: "faucet",
+    call_args:
+      '{"work":[16,64,112,106],"nonce":13306593199926106273,"netuid":1,"block_number":2351600}',
+  });
+  assert.equal(out.call_args.nonce, "13306593199926106273");
+});
+
+test("formatExtrinsic preserves a large u64 nested inside Proxy.proxy -> Utility.force_batch -> SubtensorModule.remove_stake (found by 2026-07-15 exhaustive audit, block 8623242/13)", () => {
+  // Built as a raw JSON TEXT string (not JSON.stringify of a JS object) --
+  // same reason as the U256 test above: a JS number literal this large is
+  // already rounded by V8 before JSON.stringify ever runs, which would test
+  // nothing.
+  const callArgsText =
+    '[{"name":"real","type":"MultiAddress","value":{"name":"Id","values":[[1,2,3]]}},' +
+    '{"name":"force_proxy_type","type":"Option<ProxyType>","value":null},' +
+    '{"name":"call","type":"RuntimeCall","value":{"name":"Utility","values":[' +
+    '{"name":"force_batch","values":[[{"name":"SubtensorModule","values":[' +
+    '{"name":"remove_stake","values":{"hotkey":[[4,5,6]],"netuid":1,' +
+    '"amount_unstaked":18446744073709551615}}]}]]}]}}]';
+  const out = formatExtrinsic({
+    block_number: 8623242,
+    extrinsic_index: 13,
+    call_module: "Proxy",
+    call_function: "proxy",
+    call_args: callArgsText,
+  });
+  const nestedCall = out.call_args[2].value.call_args[0][0];
+  assert.equal(nestedCall.call_args.amount_unstaked, "18446744073709551615");
 });
 
 test("formatExtrinsic normalizes success (0->false, null->null)", () => {

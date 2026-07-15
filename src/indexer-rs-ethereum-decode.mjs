@@ -400,15 +400,3 @@ export function decodeEthereumEvmCallArgs(callModule, callFunction, callArgs) {
   const decoder = DECODERS[`${callModule}.${callFunction}`];
   return decoder ? decoder(callArgs) : callArgs;
 }
-
-/** True for exactly the 4 call types this module decodes. Lets
- * formatExtrinsic route ONLY these through the big-int-safe JSON parse
- * (src/big-int-safe-json.mjs) instead of every extrinsic -- deliberately
- * narrow: applying that parse globally would ALSO silently change other
- * call types' already-known-imprecise large-integer fields (e.g.
- * SubtensorModule.register's PoW nonce) from a number to a string, which is
- * #4693's scope to fix, not a side effect to smuggle in here. Reuses this
- * module's own dispatch table so the two lists can't drift apart. */
-export function hasEthereumEvmDecoder(callModule, callFunction) {
-  return `${callModule}.${callFunction}` in DECODERS;
-}

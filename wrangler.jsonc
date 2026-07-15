@@ -144,22 +144,25 @@
     // byte-blob-shaped wrappers with no changes needed (verified against
     // LimitOrders.execute_batched_orders' fee_rate).
     //
-    // u64/u128 precision (SubtensorModule.register's PoW nonce,
-    // set_children's near-u64::MAX sentinel): ACCEPTED, not fixed, per
-    // #4693's explicit requirement. Traced the mechanism during #4692:
-    // fetch-events.py's stored D1 text is itself lossless (Python's
-    // arbitrary-precision int via json.dumps); the rounding happens in the
-    // SHARED formatExtrinsic's plain JSON.parse(row.call_args), applied
-    // identically to both tiers. Verified the two confirmed fixtures
-    // (register nonce, set_children children[0][0]) converge on the exact
-    // same IEEE-754 double D1 already serves -- so flipping the flag would
-    // not change what's served for these two fields today; pinned as tested
-    // invariants in tests/extrinsics.test.mjs rather than "fixed," since a
-    // real fix would need the same big-int-safe parse #4692 built for
-    // Ethereum/EVM, applied more broadly -- deliberately out of scope here
-    // to avoid an uncontrolled type-change blast radius (number -> string)
-    // across every call type; a real investigation into that broader
-    // question is tracked separately.
+    // u64/u128 precision: FIXED 2026-07-15 (was ACCEPTED-not-fixed per
+    // #4693's original requirement, superseded). An exhaustive live audit of
+    // all 90 real on-chain call types found the plain-JSON.parse rounding bug
+    // -- previously pinned as an accepted invariant for just two fixtures
+    // (SubtensorModule.register's PoW nonce, set_children's near-u64::MAX
+    // sentinel) -- reaches far more call types than that: also confirmed on
+    // set_root_weights.version_key, faucet's nonce, and a nested
+    // Utility.force_batch -> remove_stake.amount_unstaked reached through
+    // Proxy.proxy. Fixed exactly the way this comment originally predicted:
+    // src/extrinsics.mjs now routes EVERY extrinsic's call_args through
+    // parseJsonPreservingBigInts (#4692's big-int-safe parse), not just the
+    // narrow Ethereum/EVM dispatch table -- safe because that parse is a
+    // documented no-op on any JSON text with no integer literal past
+    // Number.MAX_SAFE_INTEGER. The previously-accepted "type-change blast
+    // radius" concern is real but intentional: a field large enough to have
+    // been silently losing precision now arrives as an exact decimal STRING
+    // instead of a rounded number, matching how U256 fields already work.
+    // tests/extrinsics.test.mjs's old precision-pinning tests were inverted
+    // to assert the correct value instead of the accepted-lossy one.
     //
     // MCP's extrinsics tools (list_extrinsics/get_extrinsic) are wired
     // through this same flag as of #4694 -- no longer D1-only.

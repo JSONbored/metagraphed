@@ -13,10 +13,7 @@ import {
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { normalizePostgresValue } from "./scale-normalize.mjs";
 import { decodePostgresCallArgs } from "./postgres-call-args.mjs";
-import {
-  decodeEthereumEvmCallArgs,
-  hasEthereumEvmDecoder,
-} from "./indexer-rs-ethereum-decode.mjs";
+import { decodeEthereumEvmCallArgs } from "./indexer-rs-ethereum-decode.mjs";
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.mjs";
 import { decodeBTreeSetFields } from "./postgres-collection-normalize.mjs";
 
@@ -107,30 +104,28 @@ export function formatExtrinsic(row) {
       // {fieldName: value} object shape that function's own Array.isArray
       // early-return requires it to skip.
       //
-      // u64/u128 precision (SubtensorModule.register's PoW nonce,
-      // set_children's near-u64::MAX sentinel) is DELIBERATELY left as-is
-      // here -- #4693 pins this as an accepted, tested invariant (Postgres's
-      // exact literal converges on the same IEEE-754 double D1 already
-      // serves for the two confirmed fixtures) rather than attempting a fix;
-      // see tests/extrinsics.test.mjs's precision-pinning tests and
-      // wrangler.jsonc's METAGRAPH_EXTRINSICS_SOURCE comment.
-      //
-      // parseJsonPreservingBigInts (#4692 review fix) is gated to ONLY the
-      // call types indexer-rs-ethereum-decode.mjs actually decodes: plain
-      // JSON.parse would ALREADY silently round a U256 limb past
-      // Number.MAX_SAFE_INTEGER before decodeU256Limbs ever saw it (caught by
-      // Gittensory review on the original #4692 PR -- see that module's
-      // header). Scoping to hasEthereumEvmDecoder's 4 call types, rather than
-      // applying it to every extrinsic, avoids ALSO silently changing other
-      // call types' already-known-imprecise large-integer fields (e.g.
-      // SubtensorModule.register's PoW nonce) from a number to a string --
-      // that's #4693's scope, not a side effect to smuggle in here.
-      const parseCallArgs = hasEthereumEvmDecoder(
-        row.call_module,
-        row.call_function,
-      )
-        ? parseJsonPreservingBigInts
-        : JSON.parse;
+      // u64/u128 precision: parseJsonPreservingBigInts now runs for EVERY
+      // extrinsic, not just the call types indexer-rs-ethereum-decode.mjs
+      // decodes -- widening the #4692 review fix that was deliberately
+      // scoped narrow at the time (see wrangler.jsonc's
+      // METAGRAPH_EXTRINSICS_SOURCE comment for the original reasoning). An
+      // exhaustive live audit (2026-07-14/15) found the plain-JSON.parse
+      // rounding bug reaches far more call types than the one "accepted"
+      // fixture (SubtensorModule.register's PoW nonce) previously pinned:
+      // confirmed live on SubtensorModule.set_children's per-child
+      // proportion, SubtensorModule.set_root_weights.version_key,
+      // SubtensorModule.faucet's nonce, and a nested Utility.force_batch ->
+      // SubtensorModule.remove_stake.amount_unstaked reached through
+      // Proxy.proxy -- i.e. any u64-shaped field on any call type can hit
+      // this, not a fixed known set. parseJsonPreservingBigInts is a
+      // documented no-op on any JSON text with no integer literal past
+      // Number.MAX_SAFE_INTEGER (see its own header) -- safe to apply
+      // unconditionally; the only real effect is that a field large enough
+      // to have been silently losing precision now arrives as an exact
+      // decimal STRING instead of a rounded number, matching how
+      // decodeU256Limbs already represents U256 values for exactly this
+      // reason. See tests/extrinsics.test.mjs for the fixtures this fix
+      // resolves.
       call_args = decodeBTreeSetFields(
         row.call_module,
         row.call_function,
@@ -138,7 +133,7 @@ export function formatExtrinsic(row) {
           row.call_module,
           row.call_function,
           normalizePostgresValue(
-            decodePostgresCallArgs(parseCallArgs(row.call_args), {
+            decodePostgresCallArgs(parseJsonPreservingBigInts(row.call_args), {
               call_module: row.call_module,
               call_function: row.call_function,
             }),
