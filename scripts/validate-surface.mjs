@@ -34,6 +34,21 @@ const providerIds = new Set(
 // PR gap) without touching the probe-derived endpoint pipeline. See issue #1680.
 const BASE_LAYER_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 
+// Pre-existing duplicate-URL registrations, grandfathered so the new
+// duplicate-URL check below (added for #5737) only fails a contributor PR
+// that introduces a NEW duplicate rather than breaking `validate:surface`
+// repo-wide on debt this check wasn't around to prevent. The data-fix for
+// the first 3 (#5736) is blocked behind a maintainer-only registry-deletion
+// review gate, not something a contributor PR can land; 8-ball.json's is a
+// 4th instance this check additionally surfaced. Remove an entry here once
+// its underlying duplicate is actually resolved in the registry file.
+const GRANDFATHERED_DUPLICATE_URLS = new Set([
+  "8-ball.json|https://github.com/Barbariandev/8Ball_miner",
+  "allways.json|https://api.all-ways.io/miners/leaderboard",
+  "bitmind.json|https://api.bitmind.ai/health",
+  "gradients.json|https://api.gradients.io/v1/network/status",
+]);
+
 // Build the set of (netuid, normalized-url) keys for native-chain candidates that
 // are already machine-promoted (classification live or redirected). A community
 // surface duplicating one of these adds no signal — the build pipeline injects it
@@ -103,9 +118,22 @@ for (const file of files) {
         'set a real curated display name, or tag the subnet "identity-placeholder" if it genuinely has no on-chain identity.',
     );
   }
+  // Track normalized-URL -> surface ids so the exact-same-URL-under-two-kinds
+  // mistake (e.g. a subnet-api and a data-artifact surface both pointing at
+  // the same endpoint) fails here instead of silently landing in the
+  // registry — see #5736 for 3 confirmed live instances this would have caught.
+  const surfaceIdsByUrl = new Map();
   for (const surface of document.surfaces || []) {
     surfaceCount += 1;
     const label = `${path.basename(file)} (${surface.id})`;
+    if (surface.url) {
+      const normalized = normalizePublicUrl(surface.url);
+      if (normalized) {
+        const ids = surfaceIdsByUrl.get(normalized) || [];
+        ids.push(surface.id);
+        surfaceIdsByUrl.set(normalized, ids);
+      }
+    }
     if (surface.provider && !providerIds.has(surface.provider)) {
       errors.push(
         `${label}: provider "${surface.provider}" is not a registered slug — ` +
@@ -143,6 +171,19 @@ for (const file of files) {
         `${label}: base-layer endpoint kind "${surface.kind}" is only allowed on the ` +
           "root subnet (netuid 0) — these are maintainer-curated network infrastructure " +
           "(the /rpc endpoint lane), not per-subnet contributor surfaces.",
+      );
+    }
+  }
+  for (const [normalizedUrl, ids] of surfaceIdsByUrl) {
+    if (
+      ids.length > 1 &&
+      !GRANDFATHERED_DUPLICATE_URLS.has(
+        `${path.basename(file)}|${normalizedUrl}`,
+      )
+    ) {
+      errors.push(
+        `${path.basename(file)}: "${normalizedUrl}" is registered by ${ids.length} surfaces (${ids.join(", ")}) — ` +
+          "dedupe to the one surface kind that accurately describes the endpoint.",
       );
     }
   }
