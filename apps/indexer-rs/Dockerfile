@@ -8,8 +8,13 @@ COPY src ./src
 RUN cargo build --release --locked
 
 FROM debian:bookworm-slim
+# curl: run_live's stuck-block alert (metagraphed-indexer-rs#4) shells out to
+# it via tokio::process::Command rather than adding an HTTP client crate --
+# without it here, alert_stuck_block would silently fail at runtime (a
+# missing binary is a caught, logged error, not a crash, but the whole
+# point of that fix is the alert actually firing).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/target/release/backfill-rs /app/backfill-rs
