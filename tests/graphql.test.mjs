@@ -7296,6 +7296,142 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   });
 });
 
+describe("graphql — account_history (#5888, Postgres-tier day feed)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  function dataApi(response, capture) {
+    return {
+      fetch: async (req) => {
+        if (capture) capture.url = new URL(req.url);
+        return response;
+      },
+    };
+  }
+
+  const HISTORY_QUERY = `{ account_history(ss58: "${SS58}") {
+      schema_version ss58 day_count limit offset next_cursor
+      days { day netuid event_count event_kinds first_block last_block }
+    } }`;
+
+  test("cold store: no Postgres flag returns a schema-stable empty feed, never null", async () => {
+    const { status, body } = await gql(HISTORY_QUERY);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_history, {
+      schema_version: 1,
+      ss58: SS58,
+      day_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      days: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      '{ account_history(ss58: "not-a-valid-address") { ss58 } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("resolves the Postgres-tier envelope, preserving each day's event_kinds list", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          day_count: 1,
+          limit: 50,
+          offset: 0,
+          next_cursor: "20260715:3",
+          days: [
+            {
+              day: "2026-07-15",
+              netuid: 3,
+              event_count: 12,
+              event_kinds: ["NeuronRegistered", "AxonServed"],
+              first_block: 1000,
+              last_block: 1050,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(HISTORY_QUERY, env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.account_history.day_count, 1);
+    assert.equal(body.data.account_history.next_cursor, "20260715:3");
+    const d = body.data.account_history.days[0];
+    assert.equal(d.day, "2026-07-15");
+    assert.equal(d.netuid, 3);
+    assert.equal(d.event_count, 12);
+    assert.deepEqual(d.event_kinds, ["NeuronRegistered", "AxonServed"]);
+    assert.equal(d.first_block, 1000);
+  });
+
+  test("hits /api/v1/accounts/{ss58}/history and forwards every filter", async () => {
+    const cap = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          day_count: 0,
+          limit: 5,
+          offset: 2,
+          next_cursor: null,
+          days: [],
+        }),
+        cap,
+      ),
+    };
+    await gql(
+      `{ account_history(ss58: "${SS58}", limit: 5, offset: 2, cursor: "abc", netuid: 7, from: "2026-07-01", to: "2026-07-15") { day_count } }`,
+      env,
+    );
+    assert.equal(cap.url.pathname, `/api/v1/accounts/${SS58}/history`);
+    assert.equal(cap.url.searchParams.get("limit"), "5");
+    assert.equal(cap.url.searchParams.get("offset"), "2");
+    assert.equal(cap.url.searchParams.get("cursor"), "abc");
+    assert.equal(cap.url.searchParams.get("netuid"), "7");
+    assert.equal(cap.url.searchParams.get("from"), "2026-07-01");
+    assert.equal(cap.url.searchParams.get("to"), "2026-07-15");
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty feed", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(HISTORY_QUERY, env);
+    assert.equal(status, 200);
+    assert.equal(body.data.account_history.day_count, 0);
+    assert.deepEqual(body.data.account_history.days, []);
+  });
+
+  test("account_history is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_history, 5);
+  });
+});
+
 describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
   const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";

@@ -135,6 +135,7 @@ import {
   buildAccountsList,
 } from "./accounts-list.mjs";
 import {
+  buildAccountHistory,
   buildAccountSubnets,
   buildAccountSummary,
   buildAccountTransfers,
@@ -375,6 +376,8 @@ export const SDL = `
     account_counterparties(ss58: String!, counterparty: String, limit: Int): AccountCounterparties!
     "One account's native-TAO transfer feed from the Balances.Transfer event stream, newest first -- each event's block/index, from/to, amount_tao, a direction relative to the queried address (sent = it paid, received = it was paid), and observed_at. direction narrows to sent | received only (default both); block_start/block_end bound the block-height range; page with limit/offset or cursor (opaque keyset from a prior response's next_cursor). An address with no transfers resolves to a schema-stable empty feed, never null. Mirrors GET /api/v1/accounts/{ss58}/transfers."
     account_transfers(ss58: String!, limit: Int, offset: Int, cursor: String, direction: String, block_start: Int, block_end: Int): AccountTransfers!
+    "One account's per-day activity history by ss58 (newest first): each day the account's hotkey had account_events, with the event count, the distinct event kinds, and the first/last block that day, keyset-paginated. Optional netuid scopes to one subnet; from/to (YYYY-MM-DD) bound the day range. A malformed ss58 is a GraphQL error; an address with no history resolves to a schema-stable empty feed, never null. Mirrors GET /api/v1/accounts/{ss58}/history."
+    account_history(ss58: String!, limit: Int, offset: Int, cursor: String, netuid: Int, from: String, to: String): AccountHistory!
     "One account's signed-extrinsic feed, newest first -- the extrinsics whose signer is this address (matched by signer only, not the hotkey/coldkey union account_events uses), each carrying its block/index, hash, call_module/call_function, decoded call_args, success flag, fee and tip. block_start/block_end bound the block-height range; page with limit/offset or cursor (opaque keyset from a prior response's next_cursor). extrinsic_count is the page count, not a grand total. An address that signed nothing resolves to a schema-stable empty feed, never null. Mirrors GET /api/v1/accounts/{ss58}/extrinsics."
     account_extrinsics(ss58: String!, limit: Int, offset: Int, cursor: String, block_start: Int, block_end: Int): AccountExtrinsics!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
@@ -2169,6 +2172,27 @@ export const SDL = `
     transfers: [AccountTransfer!]!
   }
 
+  "One day of an account's activity, aggregated from account_events_daily for the queried hotkey (optionally one subnet)."
+  type AccountHistoryDay {
+    day: String
+    netuid: Int
+    event_count: Int
+    event_kinds: [String!]!
+    first_block: Int
+    last_block: Int
+  }
+
+  "One account's per-day activity history, keyset-paginated newest-first. Mirrors GET /api/v1/accounts/{ss58}/history' data envelope."
+  type AccountHistory {
+    schema_version: Int!
+    ss58: String!
+    day_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    days: [AccountHistoryDay!]!
+  }
+
   "One account's signed-extrinsic feed (newest first), backing account_extrinsics. Matched by the extrinsic signer only. extrinsic_count is the page count, matching the REST feed convention. Each item is a full Extrinsic (block/index/hash/call/success/fee/tip)."
   type AccountExtrinsics {
     schema_version: Int!
@@ -2487,6 +2511,7 @@ export const FIELD_COMPLEXITY = {
   account_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   account_counterparties: RELATIONSHIP_FIELD_COMPLEXITY,
   account_transfers: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_history: RELATIONSHIP_FIELD_COMPLEXITY,
   account_extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   // A single latest-only row -- but it fans out into the full hyperparameter
@@ -4905,6 +4930,58 @@ const rootValue = {
         direction: t.direction ?? null,
         observed_at: t.observed_at ?? null,
       })),
+    };
+  },
+
+  async account_history(
+    { ss58, limit, offset, cursor, netuid, from, to },
+    context,
+  ) {
+    // Same SS58 validation every account_* resolver uses -- a malformed address
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty feed.
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same FEED_PAGINATION bounds parsePagination applies for REST; netuid/from/
+    // to/cursor are forwarded verbatim for the /history route to re-parse.
+    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (cursor != null) params.set("cursor", cursor);
+    if (netuid != null) params.set("netuid", String(netuid));
+    if (from != null) params.set("from", from);
+    if (to != null) params.set("to", to);
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
+    // MCP get_account_history tool use. The account_events D1 write path is
+    // retired (#4772), so a tier miss resolves through buildAccountHistory over
+    // an empty scan -- a schema-stable empty feed, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/history`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildAccountHistory([], ss58, {
+        limit: safeLimit,
+        offset: safeOffset,
+        nextCursor: null,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      ss58: data.ss58 ?? ss58,
+      day_count: data.day_count ?? 0,
+      limit: data.limit ?? safeLimit,
+      offset: data.offset ?? safeOffset,
+      next_cursor: data.next_cursor ?? null,
+      days: data.days ?? [],
     };
   },
 
