@@ -413,6 +413,17 @@ const ACCOUNT_TRANSFERS_CSV_COLUMNS = [
   "direction",
   "observed_at",
 ];
+// The buildCounterparties row shape (list mode only -- the relationship
+// drilldown's single-object shape doesn't map onto CSV rows, see
+// handleAccountCounterparties).
+const ACCOUNT_COUNTERPARTIES_CSV_COLUMNS = [
+  "address",
+  "sent_tao",
+  "received_tao",
+  "net_tao",
+  "transfer_count",
+  "last_block",
+];
 // Shared column order for the subnet + account event-stream feeds — the
 // formatAccountEvent row shape, stable so a CSV consumer's columns never shift.
 const EVENTS_CSV_COLUMNS = [
@@ -3018,9 +3029,15 @@ export async function handleAccountTransfers(request, env, ss58, url) {
 
 // GET /api/v1/accounts/{ss58}/counterparties?limit=N: who this account transacts
 // with. Add ?counterparty=<ss58> to return a focused relationship drilldown on
-// the same route without expanding the public path surface.
+// the same route without expanding the public path surface. ?format=csv exports
+// the list-mode leaderboard (mirrors handleAccountsList); it's rejected alongside
+// ?counterparty since the drilldown's single composite object has no CSV rows.
 export async function handleAccountCounterparties(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["counterparty", "limit"]);
+  const validationError = validateEntityQuery(url, [
+    "counterparty",
+    "limit",
+    "format",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const counterparty = url.searchParams.get("counterparty");
   const parsedLimit = parseBoundedIntParam(url, "limit", {
@@ -3031,6 +3048,15 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
   if (parsedLimit.error) return analyticsQueryError(parsedLimit.error);
   const limit = parsedLimit.value;
   if (counterparty != null) {
+    // CSV export only covers the list-mode leaderboard below -- the
+    // relationship drilldown returns a single composite object, not rows.
+    if (csvRequested(url, request)) {
+      return analyticsQueryError({
+        parameter: "format",
+        message:
+          "format=csv is not supported with counterparty; remove counterparty to export the list-mode counterparties CSV.",
+      });
+    }
     if (!SS58_ADDRESS_PATTERN.test(counterparty)) {
       return analyticsQueryError({
         parameter: "counterparty",
@@ -3085,6 +3111,15 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
     buildCounterparties([], ss58, { limit });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.counterparties,
+      "account-counterparties",
+      "short",
+      request,
+      ACCOUNT_COUNTERPARTIES_CSV_COLUMNS,
+    );
+  }
   return accountEnvelopeResponse(
     request,
     {

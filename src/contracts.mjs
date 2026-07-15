@@ -1190,7 +1190,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "account-counterparties",
     "/metagraph/accounts/{ss58}/counterparties.json",
-    "Per-counterparty fund-flow rollup for one account, with optional ?counterparty=<ss58> relationship evidence — native-TAO transfers from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties (no static file).",
+    "Per-counterparty fund-flow rollup for one account, with optional ?counterparty=<ss58> relationship evidence — native-TAO transfers from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties; pass ?format=csv to download the list-mode rollup as CSV (no static file).",
     "AccountCounterpartiesArtifact",
   ),
   artifact(
@@ -2767,10 +2767,10 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/counterparties",
     "/metagraph/accounts/{ss58}/counterparties.json",
-    "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present.",
+    "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. Pass ?format=csv to download the list-mode leaderboard as CSV; it's rejected alongside ?counterparty since the drilldown returns a single composite object, not rows.",
     "short",
     ["accounts", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "counterparty",
         schema: {
@@ -2790,7 +2790,7 @@ export const API_ROUTES = [
             "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
         },
       },
-    ],
+    ]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -4487,6 +4487,12 @@ function csvExampleForRoute(entry) {
     return [
       "block_number,event_index,from,to,amount_tao,direction,observed_at",
       "6702485,3,5F_sample,5G_sample,12.5,sent,2026-06-02T00:00:00.000Z",
+    ].join("\r\n");
+  }
+  if (entry.id === "account-counterparties") {
+    return [
+      "address,sent_tao,received_tao,net_tao,transfer_count,last_block",
+      "5G_sample,12.5,4.25,-8.25,3,6702485",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";

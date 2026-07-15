@@ -22875,6 +22875,19 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -22969,9 +22982,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "address,sent_tao,received_tao,net_tao,transfer_count,last_block\r\n5G_sample,12.5,4.25,-8.25,3,6702485",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -23028,7 +23047,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present.",
+        "summary": "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. Pass ?format=csv to download the list-mode leaderboard as CSV; it's rejected alongside ?counterparty since the drilldown returns a single composite object, not rows.",
         "tags": [
           "accounts",
           "analytics"

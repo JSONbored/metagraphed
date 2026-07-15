@@ -2996,6 +2996,108 @@ describe("handleAccountCounterparties", () => {
     assert.equal(body.data.counterparty_count, 0);
     assert.deepEqual(body.data.counterparties, []);
   });
+
+  test("rejects an unsupported format value with 400", async () => {
+    const res = await handleAccountCounterparties(
+      req(`/api/v1/accounts/${SS58}/counterparties?format=xml`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/counterparties?format=xml`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "format");
+  });
+
+  test("?format=csv exports the list-mode leaderboard as CSV", async () => {
+    const { env } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          counterparty_count: 1,
+          transfers_scanned: 1,
+          scan_capped: false,
+          total_sent_tao: 4.2,
+          total_received_tao: 0,
+          counterparties: [
+            {
+              address: COUNTERPARTY,
+              sent_tao: 4.2,
+              received_tao: 0,
+              net_tao: -4.2,
+              transfer_count: 1,
+              last_block: BLOCK_NUM,
+            },
+          ],
+        }),
+    };
+    const res = await handleAccountCounterparties(
+      req(`/api/v1/accounts/${SS58}/counterparties?format=csv`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/counterparties?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      await res.text(),
+      [
+        "address,sent_tao,received_tao,net_tao,transfer_count,last_block",
+        `${COUNTERPARTY},4.2,0,'-4.2,1,${BLOCK_NUM}`,
+      ].join("\r\n"),
+    );
+  });
+
+  test("empty CSV export still emits the header row", async () => {
+    const res = await handleAccountCounterparties(
+      req(`/api/v1/accounts/${SS58}/counterparties?format=csv`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/counterparties?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      await res.text(),
+      "address,sent_tao,received_tao,net_tao,transfer_count,last_block",
+    );
+  });
+
+  test("?format=csv combined with counterparty is rejected, not silently ignored", async () => {
+    const res = await handleAccountCounterparties(
+      req(
+        `/api/v1/accounts/${SS58}/counterparties?format=csv&counterparty=${COUNTERPARTY}`,
+      ),
+      emptyEnv(),
+      SS58,
+      url(
+        `/api/v1/accounts/${SS58}/counterparties?format=csv&counterparty=${COUNTERPARTY}`,
+      ),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "format");
+  });
+
+  test("Accept: text/csv combined with counterparty is rejected the same as ?format=csv", async () => {
+    const res = await handleAccountCounterparties(
+      new Request(
+        `https://api.metagraph.sh/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+        { headers: { accept: "text/csv" } },
+      ),
+      emptyEnv(),
+      SS58,
+      url(
+        `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+      ),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "format");
+  });
 });
 
 describe("handleAccountCounterparties relationship drilldown", () => {

@@ -96,7 +96,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. */
+        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. Pass ?format=csv to download the list-mode leaderboard as CSV; it's rejected alongside ?counterparty since the drilldown returns a single composite object, not rows. */
         get: operations["accountCounterparties"];
         put?: never;
         post?: never;
@@ -8661,6 +8661,8 @@ export interface operations {
             query?: {
                 counterparty?: string;
                 limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path: {
@@ -8670,7 +8672,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -8757,6 +8759,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountCounterpartiesArtifact"];
                     };
+                    /**
+                     * @example address,sent_tao,received_tao,net_tao,transfer_count,last_block
+                     *     5G_sample,12.5,4.25,-8.25,3,6702485
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
