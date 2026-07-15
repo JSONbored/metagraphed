@@ -1309,6 +1309,112 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
   });
 });
 
+describe("graphql — registry_leaderboards (#5661, reuse the shared leaderboard loader)", () => {
+  const env = () =>
+    fixtureEnv({
+      "/metagraph/profiles.json": {
+        profiles: [
+          {
+            netuid: 1,
+            slug: "a",
+            name: "A",
+            completeness_score: 90,
+            surface_count: 4,
+            operational_interface_count: 2,
+          },
+          {
+            netuid: 2,
+            slug: "b",
+            name: "B",
+            completeness_score: 50,
+            surface_count: 1,
+            operational_interface_count: 0,
+          },
+        ],
+      },
+      "/metagraph/economics.json": {
+        captured_at: "2026-06-23T00:00:00.000Z",
+        subnets: [
+          {
+            netuid: 1,
+            slug: "a",
+            name: "A",
+            open_slots: 5,
+            registration_cost_tao: 0.5,
+            registration_allowed: true,
+            emission_share: 0.1,
+          },
+        ],
+      },
+    });
+
+  test("no board filter: every board is populated, D1-backed boards degrade to [] with no D1 binding", async () => {
+    const { status, body } = await gql(
+      `{ registry_leaderboards {
+          schema_version board source
+          most_complete { netuid completeness_score }
+          most_enriched { netuid surface_count operational_interface_count }
+          open_slots { netuid open_slots }
+          healthiest { netuid }
+          fastest_rpc { netuid }
+          fastest_growing { netuid }
+          most_reliable { netuid }
+        } }`,
+      env(),
+    );
+    assert.equal(status, 200);
+    const rl = body.data.registry_leaderboards;
+    assert.equal(rl.schema_version, 1);
+    assert.equal(rl.board, null);
+    assert.equal(rl.most_complete[0].netuid, 1);
+    assert.equal(rl.most_complete[0].completeness_score, 90);
+    assert.equal(rl.most_enriched[0].surface_count, 4);
+    assert.equal(rl.open_slots[0].open_slots, 5);
+    // No METAGRAPH_HEALTH_DB binding -> the D1-backed boards degrade to [].
+    assert.deepEqual(rl.healthiest, []);
+    assert.deepEqual(rl.fastest_rpc, []);
+    assert.deepEqual(rl.fastest_growing, []);
+    assert.deepEqual(rl.most_reliable, []);
+  });
+
+  test("a valid board filter narrows the response to that one board", async () => {
+    const { status, body } = await gql(
+      `{ registry_leaderboards(board: "most-complete", limit: 1) {
+          board most_complete { netuid } open_slots { netuid }
+        } }`,
+      env(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.registry_leaderboards.board, "most-complete");
+    assert.equal(body.data.registry_leaderboards.most_complete.length, 1);
+    // Every OTHER board key is absent from the filtered response -> [] fallback.
+    assert.deepEqual(body.data.registry_leaderboards.open_slots, []);
+  });
+
+  test("an unknown board is BAD_USER_INPUT and never reaches the profiles/economics reads", async () => {
+    const reads = new Map();
+    const badEnv = fixtureEnv({}, { reads });
+    const { status, body } = await gql(
+      '{ registry_leaderboards(board: "not-a-real-board") { board } }',
+      badEnv,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(reads.size, 0);
+  });
+
+  test("registry_leaderboards degrades to empty boards on a fully cold store", async () => {
+    const { status, body } = await gql(
+      "{ registry_leaderboards { open_slots { netuid } most_complete { netuid } } }",
+      emptyEnv,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.registry_leaderboards.open_slots, []);
+    assert.deepEqual(body.data.registry_leaderboards.most_complete, []);
+  });
+});
+
 describe("graphql — complexity weights keep the guard meaningful", () => {
   test("FIELD_COMPLEXITY weights the read/fan-out fields above scalars", () => {
     for (const field of [
@@ -1321,6 +1427,7 @@ describe("graphql — complexity weights keep the guard meaningful", () => {
       "endpoints",
       "health",
       "opportunity_boards",
+      "registry_leaderboards",
     ]) {
       assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
     }

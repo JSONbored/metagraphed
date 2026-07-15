@@ -15,6 +15,7 @@ import {
   clampOffset,
 } from "../workers/request-params.mjs";
 import {
+  LEADERBOARD_BOARDS,
   buildGlobalHealth,
   formatLeaderboards,
   resolveLiveEconomics,
@@ -23,6 +24,7 @@ import {
 } from "./health-serving.mjs";
 import {
   loadCompareSubnets,
+  loadRegistryLeaderboards,
   parseCompareDimensionList,
   parseCompareNetuidList,
 } from "./analytics-live.mjs";
@@ -93,6 +95,8 @@ export const SDL = `
     health: GlobalHealth
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
     opportunity_boards(limit: Int): OpportunityBoards!
+    "Registry-wide leaderboards (health, RPC latency, completeness, enrichment depth, growth, reliability, plus the economic opportunity boards), optionally narrowed to one board. Mirrors GET /api/v1/registry/leaderboards."
+    registry_leaderboards(board: String, limit: Int): RegistryLeaderboards!
     "Cross-subnet comparison: registry structure, live economics, and live health placed side by side for the requested netuids, in requested order. Mirrors GET /api/v1/compare."
     compare(netuids: [Int!]!, dimensions: [String!]): Compare!
     "Recent-extrinsic feed (newest first), optionally filtered. Mirrors GET /api/v1/extrinsics."
@@ -396,6 +400,54 @@ export const SDL = `
     netuid: Int!
     slug: String
     name: String
+    open_slots: Int
+    max_uids: Int
+    registration_cost_tao: Float
+    registration_allowed: Boolean
+    emission_share: Float
+    total_stake_tao: Float
+    validator_count: Int
+    miner_count: Int
+    validator_headroom: Int
+    max_validators: Int
+  }
+
+  type RegistryLeaderboards {
+    schema_version: Int!
+    "The single board requested, or null when every board was returned."
+    board: String
+    observed_at: String
+    source: String
+    healthiest: [LeaderboardEntry!]!
+    fastest_rpc: [LeaderboardEntry!]!
+    most_complete: [LeaderboardEntry!]!
+    most_enriched: [LeaderboardEntry!]!
+    fastest_growing: [LeaderboardEntry!]!
+    most_reliable: [LeaderboardEntry!]!
+    open_slots: [LeaderboardEntry!]!
+    cheapest_registration: [LeaderboardEntry!]!
+    highest_emission: [LeaderboardEntry!]!
+    validator_headroom: [LeaderboardEntry!]!
+  }
+
+  "Union of every board's fields (RegistryLeaderboards' entry shape is board-specific); only the fields relevant to the board an entry came from are populated, the rest are null."
+  type LeaderboardEntry {
+    netuid: Int!
+    slug: String
+    name: String
+    uptime_ratio: Float
+    surfaces_ok: Int
+    surfaces_total: Int
+    avg_latency_ms: Int
+    latency_ms: Int
+    completeness_score: Int
+    surface_count: Int
+    operational_interface_count: Int
+    completeness_delta: Int
+    score: Int
+    grade: String
+    sample_count: Int
+    latency_sample_count: Int
     open_slots: Int
     max_uids: Int
     registration_cost_tao: Float
@@ -830,6 +882,7 @@ export const FIELD_COMPLEXITY = {
   endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
+  registry_leaderboards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1430,6 +1483,44 @@ const rootValue = {
     return {
       observed_at: ranked.observed_at,
       with_economics_count: rows.length,
+      open_slots: boards["open-slots"] || [],
+      cheapest_registration: boards["cheapest-registration"] || [],
+      highest_emission: boards["highest-emission"] || [],
+      validator_headroom: boards["validator-headroom"] || [],
+    };
+  },
+
+  async registry_leaderboards({ board, limit }, context) {
+    if (board != null && !LEADERBOARD_BOARDS.includes(board)) {
+      throw new GraphQLError(
+        `Unknown board "${board}". Valid boards: ${LEADERBOARD_BOARDS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, { defaultLimit: 20, maxLimit: 100 });
+    const profilesData = await loadArtifact(context, ARTIFACT.profiles);
+    const profiles = Array.isArray(profilesData?.profiles)
+      ? profilesData.profiles
+      : [];
+    const data = await loadRegistryLeaderboards(graphqlD1(context), {
+      profiles,
+      economicsRows: await loadEconomicsRows(context),
+      board: board || null,
+      limit: safeLimit,
+      observedAt: await loadObservedAt(context),
+    });
+    const boards = data.boards;
+    return {
+      schema_version: data.schema_version,
+      board: data.board,
+      observed_at: data.observed_at,
+      source: data.source,
+      healthiest: boards.healthiest || [],
+      fastest_rpc: boards["fastest-rpc"] || [],
+      most_complete: boards["most-complete"] || [],
+      most_enriched: boards["most-enriched"] || [],
+      fastest_growing: boards["fastest-growing"] || [],
+      most_reliable: boards["most-reliable"] || [],
       open_slots: boards["open-slots"] || [],
       cheapest_registration: boards["cheapest-registration"] || [],
       highest_emission: boards["highest-emission"] || [],
