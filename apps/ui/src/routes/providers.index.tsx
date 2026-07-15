@@ -76,8 +76,7 @@ type ProvidersSearch = z.infer<typeof providersSearchSchema>;
 
 /** Server-backed params for CSV export — client-only filters (q, high, count sorts) stay UI-side. */
 function providersQueryParams(search: ProvidersSearch) {
-  const authority =
-    search.authority && search.authority !== "high" ? search.authority : undefined;
+  const authority = search.authority && search.authority !== "high" ? search.authority : undefined;
   return {
     kind: search.kind || undefined,
     authority,
