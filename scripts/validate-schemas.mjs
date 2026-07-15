@@ -310,7 +310,16 @@ async function artifactValidationTargets() {
                 templatedArtifactDirectory(artifact.id),
               )
             ).filter((filePath) => path.basename(filePath) === "endpoints.json")
-          : await listJsonFiles(templatedArtifactDirectory(artifact.id));
+          : (
+              await listJsonFiles(templatedArtifactDirectory(artifact.id))
+            ).filter(
+              // capture-fixtures.mjs writes this report/summary file alongside
+              // the real per-surface fixture-detail records in the same
+              // directory (build-artifacts.mjs already excludes it the same
+              // way when reading fixtures back in) -- it has no request/
+              // response and was never meant to validate as one.
+              (filePath) => path.basename(filePath) !== "_capture-report.json",
+            );
       for (const filePath of filePaths) {
         targets.push({
           file_path: filePath,
