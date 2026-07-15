@@ -404,6 +404,17 @@ const ACCOUNT_EXTRINSICS_CSV_COLUMNS = [
   "tip_tao",
   "observed_at",
 ];
+// formatAccountDay row shape (#5741); event_kinds is a string[] that
+// csvResponse serializes as a single cell, like the nested `subnets` column on
+// the leaderboard exports.
+const ACCOUNT_HISTORY_CSV_COLUMNS = [
+  "day",
+  "netuid",
+  "event_count",
+  "event_kinds",
+  "first_block",
+  "last_block",
+];
 const ACCOUNT_TRANSFERS_CSV_COLUMNS = [
   "block_number",
   "event_index",
@@ -2759,13 +2770,14 @@ const ACCOUNT_DAY_COLUMNS =
   "day, netuid, event_count, event_kinds, first_block, last_block";
 
 export async function handleAccountHistory(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, [
+  const validationError = validateEntityQuery(url, [
     "netuid",
     "from",
     "to",
     "limit",
     "offset",
     "cursor",
+    "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const range = parseDateRange(url);
@@ -2791,6 +2803,17 @@ export async function handleAccountHistory(request, env, ss58, url) {
       offset,
       nextCursor: null,
     });
+    // Honour ?format=csv on the short-circuit too, so an inverted range yields
+    // a header-only CSV rather than a JSON body for a CSV request (#5741).
+    if (csvRequested(url, request)) {
+      return csvResponse(
+        data.days,
+        "account-history",
+        "short",
+        request,
+        ACCOUNT_HISTORY_CSV_COLUMNS,
+      );
+    }
     // Use the account envelope so this short-circuit exposes the
     // x-metagraph-artifact-source header too — the normal path below does (#2618),
     // and the payload stamps the same meta.source, so a browser must not lose the
@@ -2860,6 +2883,18 @@ export async function handleAccountHistory(request, env, ss58, url) {
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
     (await fromD1());
+  // CSV export mirrors handleAccountEvents/Extrinsics/Transfers: the rows are
+  // already range/netuid-filtered and paginated, so the CSV path carries the
+  // identical set the JSON path would (#5741). Cold → empty array → header-only.
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.days,
+      "account-history",
+      "short",
+      request,
+      ACCOUNT_HISTORY_CSV_COLUMNS,
+    );
+  }
   return accountEnvelopeResponse(
     request,
     {
