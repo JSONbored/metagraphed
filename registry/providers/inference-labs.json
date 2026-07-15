@@ -6,6 +6,7 @@
   "website_url": "https://subnet2.inferencelabs.com/",
   "docs_url": "https://sn2-docs.inferencelabs.com/",
   "github_url": "https://github.com/inference-labs-inc/subnet-2",
+  "logo_url": "https://subnet2.inferencelabs.com/logo.png",
   "authority": "official",
   "public_notes": "Provider profile for Inference Labs / DSperse SN2. Public surfaces include the DSperse website, GitBook docs, and source repository.",
   "notes": "Common API/OpenAPI probe paths currently serve the public SPA shell, so they are not promoted as machine-readable API/schema surfaces."

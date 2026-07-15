@@ -3,6 +3,7 @@
   "github_url": "https://github.com/resi-labs-ai/RESI-models",
   "id": "zipcode",
   "kind": "subnet-team",
+  "logo_url": "https://zipcode.ai/favicons/android-chrome-512.png",
   "name": "Zipcode",
   "public_notes": "Subnet 46 (Zipcode) team profile — the real estate intelligence network. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
   "schema_version": 1,
