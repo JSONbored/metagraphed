@@ -96,6 +96,7 @@ import {
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.mjs";
 import {
   loadCompareSubnets,
+  loadSubnetHealthTrends,
   parseCompareDimensionList,
   parseCompareNetuidList,
 } from "./analytics-live.mjs";
@@ -276,6 +277,8 @@ export const SDL = `
     subnet_deregistrations(netuid: Int!, window: String): SubnetDeregistrations!
     "Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving."
     subnet_serving(netuid: Int!, window: String): SubnetServing!
+    "One subnet's uptime + success-only latency trend windows (7d/30d) from the live health-probe history: per-window samples, uptime_ratio, latency sample count, and the per-surface uptime/latency series. A subnet with no probe history resolves to a schema-stable zeroed-windows card, never null. Mirrors GET /api/v1/subnets/{netuid}/health/trends."
+    subnet_health_trends(netuid: Int!): SubnetHealthTrends!
     "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
     subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
     "Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights."
@@ -931,6 +934,16 @@ export const SDL = `
     observed_at: String
     source: String
     "The 7d/30d windows keyed by window label (7d, 30d), each holding days/granularity/subnet_count and the per-subnet daily point series. Opaque JSON: dynamic-keyed by window label, matching the get_health_trends MCP/REST shape."
+    windows: JSON!
+  }
+
+  "One subnet's uptime + latency trend windows. Mirrors GET /api/v1/subnets/{netuid}/health/trends's data envelope."
+  type SubnetHealthTrends {
+    schema_version: Int!
+    netuid: Int!
+    observed_at: String
+    source: String
+    "The 7d/30d windows keyed by window label, each holding this subnet's samples, uptime_ratio, latency_sample_count and the per-surface uptime/latency series. Opaque JSON: dynamic-keyed by window label, matching the get_subnet_health_trends MCP/REST shape."
     windows: JSON!
   }
 
@@ -2450,6 +2463,7 @@ export const FIELD_COMPLEXITY = {
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_serving: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5470,6 +5484,32 @@ const rootValue = {
       ).data;
     return {
       schema_version: data.schema_version ?? 1,
+      observed_at: data.observed_at ?? null,
+      source: data.source ?? null,
+      windows: data.windows ?? {},
+    };
+  },
+
+  async subnet_health_trends({ netuid }, context) {
+    // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetHealthTrends D1
+    // fallback contract REST's handleHealthTrends and the
+    // get_subnet_health_trends MCP tool share -- the route takes no window arg
+    // (it returns every configured window), and a subnet with no probe history
+    // yields a schema-stable zeroed-windows card, never a GraphQL error. The
+    // tier owns the per-surface uptime/latency aggregation; nothing is
+    // duplicated here.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, `/api/v1/subnets/${netuid}/health/trends`),
+        "METAGRAPH_HEALTH_SOURCE",
+      )) ??
+      (await loadSubnetHealthTrends(graphqlD1(context), netuid, {
+        observedAt: await loadObservedAt(context),
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
       observed_at: data.observed_at ?? null,
       source: data.source ?? null,
       windows: data.windows ?? {},
