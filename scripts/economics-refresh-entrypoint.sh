@@ -22,6 +22,29 @@ GIT_REPO_URL="https://github.com/JSONbored/metagraphed.git"
 # worth fixing from that same review.)
 GIT_REF="main"
 
+# npm ci runs in the SAME shared /repo volume the economics step later reads
+# scripts/refresh-economics.mjs (and node_modules/.bin/wrangler, the exact
+# binary that makes the authenticated Cloudflare API call) from -- a
+# security review correctly pointed out that this breaks the stated trust
+# boundary between the snapshot step (untrusted, no secrets) and the
+# economics step (holds CLOUDFLARE_API_TOKEN): a malicious postinstall/
+# preinstall/prepare script from any of ~600 npm packages, running during
+# the SNAPSHOT step's npm ci, could plant or modify a file the ECONOMICS
+# step later executes with the real token in scope. --ignore-scripts closes
+# the install-time-arbitrary-code vector (this repo's own package.json has
+# no lifecycle scripts of its own, confirmed); the git diff check below is
+# defense in depth against anything that still wrote to the tracked source
+# tree some other way.
+install_deps() {
+  echo "entrypoint: npm ci --ignore-scripts"
+  npm ci --ignore-scripts --no-audit --no-fund
+  if ! git diff --quiet -- . ':(exclude)node_modules'; then
+    echo "entrypoint: npm ci modified tracked source files -- aborting" >&2
+    git diff --stat -- . ':(exclude)node_modules' >&2
+    exit 1
+  fi
+}
+
 if [ ! -d "$REPO_DIR/.git" ]; then
   # Clone into a temp dir, THEN copy its contents into $REPO_DIR -- an
   # interrupted clone straight into $REPO_DIR would leave a partial .git
@@ -39,8 +62,7 @@ if [ ! -d "$REPO_DIR/.git" ]; then
   cp -a "$CLONE_TMP"/. "$REPO_DIR"/
   rm -rf "$CLONE_TMP"
   cd "$REPO_DIR"
-  echo "entrypoint: npm ci"
-  npm ci --no-audit --no-fund
+  install_deps
 elif [ "$STEP" = "snapshot" ]; then
   # Only the snapshot step re-syncs the checkout -- it always runs FIRST (see
   # roles/data-refresh-economics/files/refresh-economics.sh in
@@ -56,8 +78,7 @@ elif [ "$STEP" = "snapshot" ]; then
   git -C "$REPO_DIR" reset --hard "origin/${GIT_REF}"
   git -C "$REPO_DIR" clean -fdx
   cd "$REPO_DIR"
-  echo "entrypoint: npm ci"
-  npm ci --no-audit --no-fund
+  install_deps
 else
   echo "entrypoint: reusing existing checkout as-is (economics step runs right after snapshot, same volume)"
   cd "$REPO_DIR"
