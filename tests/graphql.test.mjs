@@ -6315,6 +6315,150 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
   });
 });
 
+describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fallback)", () => {
+  const NETUID = 3;
+
+  function incidentsQuery(argsClause) {
+    return `{ subnet_health_incidents${argsClause} {
+      schema_version netuid window observed_at source
+      surfaces { surface_id samples uptime_ratio incident_count downtime_ms
+        incidents { started_at ended_at duration_ms failed_samples } }
+    } }`;
+  }
+
+  test("cold store: schema-stable empty surfaces via the D1-live loader", async () => {
+    const { status, body } = await gql(incidentsQuery(`(netuid: ${NETUID})`));
+    assert.equal(status, 200);
+    const d = body.data.subnet_health_incidents;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.netuid, NETUID);
+    assert.equal(d.window, "7d");
+    assert.equal(d.observed_at, null);
+    assert.equal(d.source, "live-cron-prober");
+    assert.deepEqual(d.surfaces, []);
+  });
+
+  test("resolves Postgres-tier data, forwarding netuid in the path + window param", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: NETUID,
+            window: "30d",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            source: "live-cron-prober",
+            surfaces: [
+              {
+                surface_id: "srf-1",
+                samples: 100,
+                uptime_ratio: 0.98,
+                incident_count: 1,
+                downtime_ms: 60000,
+                incidents: [
+                  {
+                    started_at: 1000,
+                    ended_at: 61000,
+                    duration_ms: 60000,
+                    failed_samples: 3,
+                  },
+                ],
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      incidentsQuery(`(netuid: ${NETUID}, window: "30d")`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(
+      capturedUrl.pathname,
+      `/api/v1/subnets/${NETUID}/health/incidents`,
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    const d = body.data.subnet_health_incidents;
+    assert.equal(d.window, "30d");
+    const s = d.surfaces[0];
+    assert.equal(s.surface_id, "srf-1");
+    assert.equal(s.uptime_ratio, 0.98);
+    assert.equal(s.incident_count, 1);
+    assert.equal(s.incidents[0].duration_ms, 60000);
+    assert.equal(s.incidents[0].failed_samples, 3);
+  });
+
+  test("partial surface/incident rows degrade missing fields to their defaults", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      // First surface omits everything (surface_id + incidents absent); second
+      // has one fully-empty incident. Together they fire every per-surface and
+      // per-incident ?? default / || [] fallback.
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ surfaces: [{}, { incidents: [{}] }] }),
+      },
+    };
+    const { status, body } = await gql(
+      incidentsQuery(`(netuid: ${NETUID})`),
+      env,
+    );
+    assert.equal(status, 200);
+    const d = body.data.subnet_health_incidents;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.netuid, NETUID);
+    assert.equal(d.window, "7d");
+    assert.equal(d.source, null);
+    const s0 = d.surfaces[0];
+    assert.equal(s0.surface_id, null);
+    assert.equal(s0.samples, 0);
+    assert.equal(s0.uptime_ratio, null);
+    assert.equal(s0.incident_count, 0);
+    assert.equal(s0.downtime_ms, null);
+    assert.deepEqual(s0.incidents, []);
+    const i = d.surfaces[1].incidents[0];
+    assert.equal(i.started_at, null);
+    assert.equal(i.ended_at, null);
+    assert.equal(i.duration_ms, null);
+    assert.equal(i.failed_samples, 0);
+  });
+
+  test("an empty Postgres-tier body degrades to schema-stable defaults with empty surfaces", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      incidentsQuery(`(netuid: ${NETUID})`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_health_incidents, {
+      schema_version: 1,
+      netuid: NETUID,
+      window: "7d",
+      observed_at: null,
+      source: null,
+      surfaces: [],
+    });
+  });
+
+  test("rejects an unsupported window with BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      incidentsQuery(`(netuid: ${NETUID}, window: "99d")`),
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("subnet_health_incidents is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_health_incidents, 5);
+  });
+});
+
 describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
