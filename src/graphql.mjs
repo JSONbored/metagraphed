@@ -10,6 +10,10 @@ import { readArtifact, readHealthKv } from "../workers/storage.mjs";
 import { contractVersion } from "../workers/responses.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import {
+  analyticsWindow,
+  loadGlobalIncidentsLedger,
+} from "../workers/request-handlers/analytics.mjs";
+import {
   BLOCK_PAGINATION,
   clampLimit,
   clampOffset,
@@ -117,6 +121,8 @@ export const SDL = `
     economics_trends(window: String): EconomicsTrends!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
     subnet_movers(window: String, sort: String, limit: Int): SubnetMovers!
+    "Cross-subnet incident ledger: surfaces with a probe-failure gap-island in the window, newest-started first per surface; surfaces is empty on a cold store, never null. Mirrors GET /api/v1/incidents."
+    incidents(window: String): GlobalIncidents!
   }
 
   type SubnetList {
@@ -283,6 +289,37 @@ export const SDL = `
     neurons_start: Int!
     neurons_end: Int!
     neurons_delta: Int!
+  }
+
+  type GlobalIncidents {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    summary: GlobalIncidentsSummary!
+    surfaces: [GlobalIncidentSurface!]!
+  }
+
+  "Ledger-wide totals for the window."
+  type GlobalIncidentsSummary {
+    incident_count: Int!
+    affected_surface_count: Int!
+  }
+
+  "One surface's incident history within the window."
+  type GlobalIncidentSurface {
+    netuid: Int!
+    surface_id: String
+    incident_count: Int!
+    downtime_ms: Float!
+    incidents: [GlobalIncident!]!
+  }
+
+  "One probe-failure gap-island (a contiguous run of failed checks) for a surface. started_at/ended_at/duration_ms are raw epoch-ms, not ISO -- mirrors the REST ledger's own D1 checked_at values rather than the toIso-formatted timestamps elsewhere in this schema."
+  type GlobalIncident {
+    started_at: Float!
+    ended_at: Float!
+    duration_ms: Float!
+    failed_samples: Int!
   }
 
   type SurfaceList {
@@ -842,6 +879,7 @@ export const FIELD_COMPLEXITY = {
   block: RELATIONSHIP_FIELD_COMPLEXITY,
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
+  incidents: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -1814,6 +1852,43 @@ const rootValue = {
         unchanged: network.unchanged ?? 0,
       },
       movers: data.movers || [],
+    };
+  },
+
+  async incidents({ window }, context) {
+    // Same analyticsWindow label/days parsing REST's handleGlobalIncidents
+    // uses, so accepted window labels stay identical between REST and GraphQL.
+    const windowUrl = new URL(context.request.url);
+    windowUrl.search = "";
+    if (window != null) windowUrl.searchParams.set("window", window);
+    const { label, days, error } = analyticsWindow(windowUrl);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("window", label);
+    // Same tryPostgresTier + loadGlobalIncidentsLedger fallback contract
+    // REST's handleGlobalIncidents uses -- a cold/absent tier yields a
+    // schema-stable empty ledger, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/incidents", params),
+        "METAGRAPH_HEALTH_SOURCE",
+      )) ??
+      (await loadGlobalIncidentsLedger(context.env, { label, days })).data;
+    const summary = data.summary ?? {};
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? label,
+      observed_at: data.observed_at ?? null,
+      summary: {
+        incident_count: summary.incident_count ?? 0,
+        affected_surface_count: summary.affected_surface_count ?? 0,
+      },
+      surfaces: data.surfaces || [],
     };
   },
 };

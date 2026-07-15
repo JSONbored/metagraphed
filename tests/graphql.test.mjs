@@ -3321,6 +3321,186 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
   });
 });
 
+describe("graphql — incidents (#5660, Postgres-tier + D1-fallback global gap-island ledger)", () => {
+  function incidentsQuery(argsClause) {
+    return `{ incidents${argsClause} {
+      schema_version window observed_at
+      summary { incident_count affected_surface_count }
+      surfaces {
+        netuid surface_id incident_count downtime_ms
+        incidents { started_at ended_at duration_ms failed_samples }
+      }
+    } }`;
+  }
+
+  test("cold store, default window: schema-stable empty ledger", async () => {
+    const { status, body } = await gql(incidentsQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.incidents, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      summary: { incident_count: 0, affected_surface_count: 0 },
+      surfaces: [],
+    });
+  });
+
+  test("resolves Postgres-tier incidents for a valid non-default window", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            summary: { incident_count: 1, affected_surface_count: 1 },
+            surfaces: [
+              {
+                netuid: 5,
+                surface_id: "sn-5-api",
+                incident_count: 1,
+                downtime_ms: 4000,
+                incidents: [
+                  {
+                    started_at: 1000,
+                    ended_at: 5000,
+                    duration_ms: 4000,
+                    failed_samples: 3,
+                  },
+                ],
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(incidentsQuery('(window: "30d")'), env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/incidents");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(body.data.incidents.window, "30d");
+    assert.equal(body.data.incidents.observed_at, "2026-07-10T00:00:00.000Z");
+    assert.equal(body.data.incidents.summary.incident_count, 1);
+    assert.equal(body.data.incidents.summary.affected_surface_count, 1);
+    assert.equal(body.data.incidents.surfaces.length, 1);
+    assert.equal(body.data.incidents.surfaces[0].netuid, 5);
+    assert.equal(body.data.incidents.surfaces[0].downtime_ms, 4000);
+    assert.equal(
+      body.data.incidents.surfaces[0].incidents[0].failed_samples,
+      3,
+    );
+  });
+
+  test("a bare (window-omitted) request forwards the default label to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({ schema_version: 1, surfaces: [] });
+        },
+      },
+    };
+    await gql(incidentsQuery(""), env);
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+  });
+
+  test("a malformed Postgres-tier body degrades to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(incidentsQuery(""), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.incidents, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      summary: { incident_count: 0, affected_surface_count: 0 },
+      surfaces: [],
+    });
+  });
+
+  test("no Postgres tier flag: rolls up the D1 gap-island ledger", async () => {
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          return key === KV_HEALTH_META
+            ? { last_run_at: "2026-06-23T00:00:00.000Z" }
+            : null;
+        },
+      },
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return {
+                    results: [
+                      {
+                        netuid: 5,
+                        surface_id: "sn-5-api",
+                        surface_key: "sn-5-api",
+                        started_at: 1000,
+                        ended_at: 5000,
+                        failed_samples: 3,
+                      },
+                    ],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { status, body } = await gql(incidentsQuery('(window: "7d")'), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.incidents.window, "7d");
+    assert.equal(body.data.incidents.observed_at, "2026-06-23T00:00:00.000Z");
+    assert.equal(body.data.incidents.summary.incident_count, 1);
+    assert.equal(body.data.incidents.surfaces[0].netuid, 5);
+    assert.equal(
+      body.data.incidents.surfaces[0].incidents[0].duration_ms,
+      4000,
+    );
+  });
+
+  test("a D1 query error degrades to a schema-stable empty ledger (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(incidentsQuery(""), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.incidents.surfaces, []);
+    assert.equal(body.data.incidents.summary.incident_count, 0);
+  });
+
+  test("an unsupported window is a GraphQL error, matching REST's own validation shape", async () => {
+    const { status, body } = await gql(incidentsQuery('(window: "1y")'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /1y/);
+  });
+
+  test("incidents is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.incidents, 5);
+  });
+});
+
 describe("Subscription.chainEvents", () => {
   test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
     const hub = fakeChainFirehose((repeater) => {
