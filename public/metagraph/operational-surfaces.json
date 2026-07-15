@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 205,
+  "surface_count": 215,
   "surfaces": [
     {
       "auth_required": false,
@@ -1178,6 +1178,42 @@
       "public_safe": true,
       "subnet_name": "ORO",
       "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-current-suite-api",
+      "surface_key": "srf-6e0db30048e9f1f5",
+      "url": "https://api.oroagents.com/v1/public/suites/current"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 15,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-data-artifact",
+      "surface_key": "srf-b6237bb2eb9a7851",
+      "url": "https://api.oroagents.com/v1/public/top"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 15,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
       "surface_id": "sn-15-oro-evaluations-pending",
       "surface_key": "srf-23133a11c7c7087d",
       "url": "https://api.oroagents.com/v1/public/evaluations/pending"
@@ -1214,6 +1250,42 @@
       "public_safe": true,
       "subnet_name": "ORO",
       "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-health",
+      "surface_key": "srf-81be83ff67a2d74b",
+      "url": "https://api.oroagents.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 15,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-health-deep",
+      "surface_key": "srf-ef67e23327810f35",
+      "url": "https://api.oroagents.com/health/deep"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 15,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
       "surface_id": "sn-15-oro-public-inference-models",
       "surface_key": "srf-1d9e3afff1f4f5a7",
       "url": "https://api.oroagents.com/v1/public/inference/models"
@@ -1235,6 +1307,114 @@
       "surface_id": "sn-15-oro-public-top-history",
       "surface_key": "srf-57ea439895d9faf9",
       "url": "https://api.oroagents.com/v1/public/top/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 15,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-races-current-api",
+      "surface_key": "srf-788c7b31d899d584",
+      "url": "https://api.oroagents.com/v1/public/races/current"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 15,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-races-history-api",
+      "surface_key": "srf-2a7242a1a6718a88",
+      "url": "https://api.oroagents.com/v1/public/races/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 15,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-shoppingbench-sft",
+      "surface_key": "srf-969ab12e56ca1aa2",
+      "url": "https://huggingface.co/datasets/oro-ai/sn15-shoppingbench-sft-15k"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 15,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-shoppingbench-traces",
+      "surface_key": "srf-b76c17ff20f5711a",
+      "url": "https://huggingface.co/datasets/oro-ai/sn15-shoppingbench-traces-18k"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 15,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-subnet-api",
+      "surface_key": "srf-e47c4ed311daea8f",
+      "url": "https://api.oroagents.com/v1/public/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 15,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-subnet-api-api-oroagents-com",
+      "surface_key": "srf-4210ffeab337cec8",
+      "url": "https://api.oroagents.com/v1/public/suites"
     },
     {
       "auth_required": false,
