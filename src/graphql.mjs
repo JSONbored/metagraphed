@@ -27,6 +27,7 @@ import {
   parseCompareNetuidList,
 } from "./analytics-live.mjs";
 import { buildExtrinsic, buildExtrinsicFeed } from "./extrinsics.mjs";
+import { buildBlock, buildBlockFeed } from "./blocks.mjs";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -83,6 +84,10 @@ export const SDL = `
     extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
     "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
     extrinsic(ref: String!): ExtrinsicDetail
+    "Recent-block feed (newest first). Mirrors GET /api/v1/blocks."
+    blocks(limit: Int, offset: Int, cursor: String): BlockList!
+    "One block by numeric height or 0x block hash; block is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/{ref}."
+    block(ref: String!): BlockDetail
     "Network-wide validator/operator leaderboard, grouped by hotkey across every subnet it operates in. Mirrors GET /api/v1/validators."
     validators(sort: String, limit: Int): ValidatorList!
     "One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}."
@@ -381,6 +386,33 @@ export const SDL = `
     extrinsic: Extrinsic
   }
 
+  type BlockList {
+    items: [Block!]!
+    "Page count -- this feed has no cheap grand total, matching REST's block_count."
+    total: Int!
+    next_cursor: String
+  }
+
+  type Block {
+    block_number: Int
+    block_hash: String
+    parent_hash: String
+    author: String
+    extrinsic_count: Int
+    event_count: Int
+    spec_version: Int
+    observed_at: String
+  }
+
+  type BlockDetail {
+    ref: String
+    block: Block
+    "Nearest STORED lower block height for chain-walk nav (detail only); null at the start of the retained window or when the ref didn't resolve."
+    prev_block_number: Int
+    "Nearest STORED higher block height for chain-walk nav (detail only); null at the head of the retained window or when the ref didn't resolve."
+    next_block_number: Int
+  }
+
   type ValidatorList {
     items: [Validator!]!
     total: Int!
@@ -662,6 +694,8 @@ export const FIELD_COMPLEXITY = {
   validator: RELATIONSHIP_FIELD_COMPLEXITY,
   accounts: RELATIONSHIP_FIELD_COMPLEXITY,
   account: RELATIONSHIP_FIELD_COMPLEXITY,
+  blocks: RELATIONSHIP_FIELD_COMPLEXITY,
+  block: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -1350,6 +1384,52 @@ const rootValue = {
     return {
       ref: data.ref ?? ref,
       extrinsic: extrinsicNode(data.extrinsic),
+    };
+  },
+
+  async blocks({ limit, offset, cursor }, context) {
+    const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (cursor) params.set("cursor", cursor);
+    // #4909: blocks' D1 write path is retired and the table is dropped in
+    // production, so the Postgres tier being cold is the expected steady state —
+    // fall back to the same pure builder REST uses, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/blocks", params),
+        "METAGRAPH_BLOCKS_SOURCE",
+      )) ??
+      buildBlockFeed([], {
+        limit: safeLimit,
+        offset: safeOffset,
+        nextCursor: null,
+      });
+    return {
+      items: data.blocks || [],
+      total: data.block_count ?? 0,
+      next_cursor: data.next_cursor ?? null,
+    };
+  },
+
+  async block({ ref }, context) {
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/blocks/${encodeURIComponent(ref)}`,
+        ),
+        "METAGRAPH_BLOCKS_SOURCE",
+      )) ?? buildBlock(undefined, ref);
+    return {
+      ref: data.ref ?? ref,
+      block: data.block ?? null,
+      prev_block_number: data.prev_block_number ?? null,
+      next_block_number: data.next_block_number ?? null,
     };
   },
 

@@ -1987,6 +1987,212 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 });
 
+describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("blocks: cold/no-tier store returns a schema-stable empty page (fallback builder, production steady state)", async () => {
+    const { status, body } = await gql(
+      "{ blocks { items { block_number } total next_cursor } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.blocks, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("blocks: resolves Postgres-tier rows into the block feed", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          block_count: 1,
+          limit: 20,
+          offset: 0,
+          next_cursor: "cursor-1",
+          blocks: [
+            {
+              block_number: 123,
+              block_hash: `0x${"b".repeat(64)}`,
+              parent_hash: `0x${"a".repeat(64)}`,
+              author: "5Author",
+              extrinsic_count: 3,
+              event_count: 7,
+              spec_version: 200,
+              observed_at: "2026-07-14T00:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ blocks { items { block_number block_hash extrinsic_count event_count } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.blocks.total, 1);
+    assert.equal(body.data.blocks.next_cursor, "cursor-1");
+    const item = body.data.blocks.items[0];
+    assert.equal(item.block_number, 123);
+    assert.equal(item.extrinsic_count, 3);
+    assert.equal(item.event_count, 7);
+  });
+
+  test("blocks: limit/offset/cursor are forwarded as query params to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            block_count: 0,
+            limit: 5,
+            offset: 10,
+            next_cursor: null,
+            blocks: [],
+          });
+        },
+      },
+    };
+    await gql(
+      `{ blocks(limit: 5, offset: 10, cursor: "abc123") { total } }`,
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/blocks");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("offset"), "10");
+    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+  });
+
+  test("blocks: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      "{ blocks { items { block_number } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.blocks, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("block: resolves a Postgres-tier row by numeric height, with chain-walk nav", async () => {
+    const ref = "123";
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ref,
+          block: {
+            block_number: 123,
+            block_hash: `0x${"b".repeat(64)}`,
+            parent_hash: `0x${"a".repeat(64)}`,
+            author: "5Author",
+            extrinsic_count: 3,
+            event_count: 7,
+            spec_version: 200,
+            observed_at: "2026-07-14T00:00:00.000Z",
+          },
+          prev_block_number: 122,
+          next_block_number: 124,
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ block(ref: "${ref}") { ref block { block_number spec_version } prev_block_number next_block_number } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.block.ref, ref);
+    assert.equal(body.data.block.block.block_number, 123);
+    assert.equal(body.data.block.block.spec_version, 200);
+    assert.equal(body.data.block.prev_block_number, 122);
+    assert.equal(body.data.block.next_block_number, 124);
+  });
+
+  test("block: resolves a Postgres-tier row by 0x block hash", async () => {
+    const ref = `0x${"b".repeat(64)}`;
+    let capturedUrl;
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            ref,
+            block: {
+              block_number: 123,
+              block_hash: ref,
+              parent_hash: null,
+              author: null,
+              extrinsic_count: 0,
+              event_count: 0,
+              spec_version: 200,
+              observed_at: "2026-07-14T00:00:00.000Z",
+            },
+            prev_block_number: null,
+            next_block_number: null,
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ block(ref: "${ref}") { ref block { block_number block_hash } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, `/api/v1/blocks/${ref}`);
+    assert.equal(body.data.block.block.block_number, 123);
+    assert.equal(body.data.block.block.block_hash, ref);
+  });
+
+  test("block: unresolved ref returns block:null, never a GraphQL error", async () => {
+    const ref = `0x${"c".repeat(64)}`;
+    const { status, body } = await gql(
+      `{ block(ref: "${ref}") { ref block { block_number } prev_block_number next_block_number } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.block.ref, ref);
+    assert.equal(body.data.block.block, null);
+    assert.equal(body.data.block.prev_block_number, null);
+    assert.equal(body.data.block.next_block_number, null);
+  });
+
+  test("block: a malformed Postgres-tier body falls back to the requested ref", async () => {
+    const ref = "123";
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      `{ block(ref: "${ref}") { ref block { block_number } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.block.ref, ref);
+    assert.equal(body.data.block.block, null);
+  });
+
+  test("blocks / block are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.blocks, 5);
+    assert.equal(FIELD_COMPLEXITY.block, 5);
+  });
+});
+
 describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
