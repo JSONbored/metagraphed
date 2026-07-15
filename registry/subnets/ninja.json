@@ -14,7 +14,8 @@
     "gap_notes": [
       "Swagger/OpenAPI routes currently serve HTML UI only; no verified machine-readable schema URL yet.",
       "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified standalone static data artifact yet.",
+      "Official website and Swagger UI (https://ninja.arbos.life/) currently return HTTP 404 to simple probes and should appear degraded until they recover."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -47,7 +48,7 @@
       "name": "Ninja website",
       "notes": "Official Ninja SN66 public website.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -55,7 +56,8 @@
       "provider": "unarbos",
       "public_safe": true,
       "source_urls": ["https://ninja.arbos.life/"],
-      "url": "https://ninja.arbos.life/"
+      "url": "https://ninja.arbos.life/",
+      "rate_limit_notes": "Not probe-enabled because the origin currently returns HTTP 404 to simple probes."
     },
     {
       "auth_required": false,
@@ -146,7 +148,7 @@
       "name": "Ninja Swagger UI",
       "notes": "Swagger UI route for Ninja. Obvious JSON schema paths currently serve HTML and are not treated as machine-readable OpenAPI.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -155,7 +157,8 @@
       "public_safe": true,
       "schema_status": "ui-only",
       "source_urls": ["https://ninja.arbos.life/swagger"],
-      "url": "https://ninja.arbos.life/swagger"
+      "url": "https://ninja.arbos.life/swagger",
+      "rate_limit_notes": "Not probe-enabled because the origin currently returns HTTP 404 to simple probes."
     },
     {
       "auth_required": false,

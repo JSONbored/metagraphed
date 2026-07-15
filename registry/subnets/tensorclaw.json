@@ -17,7 +17,7 @@
   "dashboard_url": "https://www.tensorclaw.ai/dashboard",
   "website_url": "https://www.tensorclaw.ai/",
   "baseline_excluded_surface_ids": ["sn-92-taomarketcap-website"],
-  "notes": "Reviewed overlay for SN92 using the live Tensorclaw Network website, dashboard, and source repository. Native chain identity currently reports luis, so this remains an explicit identity-drift entry rather than a silent rename. The website links https://github.com/tensorclaw/tensorclaw and the repository README identifies it as Bittensor Tensorclaw Subnet 92.",
+  "notes": "Reviewed overlay for SN92 using the Tensorclaw Network website, dashboard, and source repository. Native chain identity currently reports luis, so this remains an explicit identity-drift entry rather than a silent rename. The website links https://github.com/tensorclaw/tensorclaw and the repository README identifies it as Bittensor Tensorclaw Subnet 92.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -26,12 +26,13 @@
     "source_count": 6,
     "gap_notes": [
       "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
-      "Official website, dashboard, and source repository are verified live.",
+      "Official source repository is verified live.",
       "No verified docs site yet beyond directory pages.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified standalone static data artifact yet.",
+      "Official website and dashboard (https://www.tensorclaw.ai/) currently return Cloudflare HTTP 521 (web server is down) to simple probes and should appear degraded until they recover."
     ]
   },
   "surfaces": [
@@ -84,12 +85,13 @@
       "public_safe": true,
       "source_urls": ["https://www.tensorclaw.ai/"],
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "method": "HEAD",
         "expect": "html",
         "timeout_ms": 10000
       },
-      "notes": "Website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92 and describes a decentralized LLM inference subnet for autonomous agents."
+      "notes": "Website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92 and describes a decentralized LLM inference subnet for autonomous agents.",
+      "rate_limit_notes": "Not probe-enabled because the origin currently returns Cloudflare HTTP 521 (web server is down) to simple probes."
     },
     {
       "id": "sn-92-tensorclaw-source-repo",
@@ -123,12 +125,13 @@
       "public_safe": true,
       "source_urls": ["https://www.tensorclaw.ai/"],
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "method": "HEAD",
         "expect": "html",
         "timeout_ms": 10000
       },
-      "notes": "Public live-demo page for SN92. The page uses Cloudflare Turnstile to unlock trial requests, so it is listed as an auth-gated dashboard surface rather than a public API."
+      "notes": "Public live-demo page for SN92. The page uses Cloudflare Turnstile to unlock trial requests, so it is listed as an auth-gated dashboard surface rather than a public API.",
+      "rate_limit_notes": "Not probe-enabled because the origin currently returns Cloudflare HTTP 521 (web server is down) to simple probes."
     },
     {
       "auth_required": false,
