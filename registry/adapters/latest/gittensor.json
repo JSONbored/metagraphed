@@ -1,5 +1,5 @@
 {
-  "contract_version": "2026-06-06.1",
+  "contract_version": "2026-07-03.2",
   "dimensions": {
     "bounties": {
       "notes": "Bounty state is documented through CLI flows; no unauthenticated public API surface has been verified.",
@@ -12,154 +12,122 @@
       "status": "docs-only"
     },
     "master_repositories": {
-      "captured_at": "2026-06-14T09:09:39.563Z",
-      "config_hash": "b01218e778bbe3ca0cb432e87470c8c10c47e23ec9682bf6b6ec5d29944b9fe5",
+      "captured_at": "2026-07-15T09:35:35.029Z",
+      "config_hash": "bc98828f01f21bca3c7d2dc213c9a3b4f483173495b317c5ddf4cdb0fddbda42",
       "content_type": "text/plain; charset=utf-8",
-      "issue_discovery_enabled_count": 3,
-      "latency_ms": 128,
-      "maintainer_cut_repo_count": 9,
-      "max_maintainer_cut": 0.6,
+      "issue_discovery_enabled_count": 1,
+      "latency_ms": 165,
+      "maintainer_cut_repo_count": 15,
+      "max_maintainer_cut": 0.66,
       "repository_count": 19,
       "status": "captured",
       "status_code": 200,
       "top_emission_repositories": [
         {
-          "emission_share": 0.08,
+          "emission_share": 0.319339,
           "issue_discovery_share": 0,
-          "maintainer_cut": 0,
-          "repository": "entrius/gittensor"
+          "maintainer_cut": 0.5,
+          "repository": "gittensor-ai-lab/sparkinfer"
         },
         {
-          "emission_share": 0.055,
+          "emission_share": 0.198785,
           "issue_discovery_share": 0,
-          "maintainer_cut": 0,
-          "repository": "infiniflow/ragflow"
+          "maintainer_cut": 0.66,
+          "repository": "JSONbored/metagraphed"
         },
         {
-          "emission_share": 0.05,
-          "issue_discovery_share": 1,
-          "maintainer_cut": 0,
-          "repository": "entrius/allways"
+          "emission_share": 0.106932,
+          "issue_discovery_share": 0,
+          "maintainer_cut": 0.5,
+          "repository": "JSONbored/loopover"
         },
         {
-          "emission_share": 0.033,
+          "emission_share": 0.1,
+          "issue_discovery_share": 0,
+          "maintainer_cut": 0.3,
+          "repository": "gittensor-model-hub/SparkDistill"
+        },
+        {
+          "emission_share": 0.099211,
+          "issue_discovery_share": 0,
+          "maintainer_cut": 0.5,
+          "repository": "gittensor-vanguard/vanguarstew"
+        },
+        {
+          "emission_share": 0.062157,
+          "issue_discovery_share": 0,
+          "maintainer_cut": 0.5,
+          "repository": "Autovara/kata"
+        },
+        {
+          "emission_share": 0.019442,
+          "issue_discovery_share": 0,
+          "maintainer_cut": 0.5,
+          "repository": "vouchdev/vouch"
+        },
+        {
+          "emission_share": 0.017708,
           "issue_discovery_share": 0,
           "maintainer_cut": 0.3,
           "repository": "Geniepod/genie-claw"
         },
         {
-          "emission_share": 0.03,
+          "emission_share": 0.012964,
           "issue_discovery_share": 0,
-          "maintainer_cut": 0.3,
-          "repository": "we-promise/sure"
-        },
-        {
-          "emission_share": 0.025,
-          "issue_discovery_share": 0,
-          "maintainer_cut": 0,
-          "repository": "e35ventura/taopedia"
-        },
-        {
-          "emission_share": 0.025,
-          "issue_discovery_share": 0,
-          "maintainer_cut": 0,
-          "repository": "e35ventura/taopedia-articles"
-        },
-        {
-          "emission_share": 0.018,
-          "issue_discovery_share": 0,
-          "maintainer_cut": 0.6,
+          "maintainer_cut": 0.4,
           "repository": "phase-rs/phase"
         },
         {
-          "emission_share": 0.012,
-          "issue_discovery_share": 0,
-          "maintainer_cut": 0.3,
-          "repository": "MkDev11/gittensor-hub"
-        },
-        {
-          "emission_share": 0.011,
+          "emission_share": 0.0125,
           "issue_discovery_share": 0,
           "maintainer_cut": 0,
-          "repository": "seroperson/jvm-live-reload"
+          "repository": "entrius/gittensor"
         }
       ],
-      "total_emission_share": 0.398,
+      "total_emission_share": 1,
       "url": "https://raw.githubusercontent.com/entrius/gittensor/main/gittensor/validator/weights/master_repositories.json",
-      "zero_emission_count": 1
+      "zero_emission_count": 2
     },
     "mirror_freshness": {
-      "archived": false,
-      "captured_at": "2026-06-14T09:09:40.098Z",
-      "default_branch": "test",
-      "disabled": false,
+      "captured_at": "2026-07-15T09:35:36.233Z",
+      "error": "API rate limit exceeded for 74.244.177.239. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)",
+      "fallback_latency_ms": 890,
+      "fallback_reason": "rate-limited-or-forbidden",
+      "fallback_status_code": 200,
       "full_name": "entrius/das-github-mirror",
       "html_url": "https://github.com/entrius/das-github-mirror",
-      "latency_ms": 205,
-      "open_issues_count": 6,
-      "pushed_at": "2026-06-14T00:29:19Z",
-      "status": "captured",
-      "topics": [],
-      "updated_at": "2026-06-14T00:17:51Z"
+      "latency_ms": 75,
+      "status": "html-fallback",
+      "status_code": 403
     },
     "repository_metadata": {
       "archived_count": 0,
-      "auth_status": "ok",
-      "captured_at": "2026-06-14T09:09:40.513Z",
-      "captured_count": 19,
-      "carried_forward_count": 0,
-      "html_fallback_count": 0,
+      "auth_status": "unauthenticated",
+      "captured_at": "2026-07-15T09:35:38.912Z",
+      "captured_count": 0,
+      "carried_forward_count": 7,
+      "html_fallback_count": 12,
       "latest_push_at": "2026-06-14T09:06:21Z",
       "rate_limited_or_forbidden_count": 0,
       "repositories": [
         {
-          "archived": false,
-          "default_branch": "main",
-          "full_name": "anderdc/social-media-manager",
-          "html_url": "https://github.com/anderdc/social-media-manager",
-          "metadata_level": "github-api",
-          "open_issues_count": 0,
-          "pushed_at": "2026-06-12T21:15:59Z",
+          "archived": null,
+          "default_branch": null,
+          "full_name": "Autovara/kata",
+          "html_url": "https://github.com/Autovara/kata",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
           "topic_count": 0
         },
         {
-          "archived": false,
-          "default_branch": "main",
-          "full_name": "cogniax/tao-pulse-app",
-          "html_url": "https://github.com/cogniax/tao-pulse-app",
-          "metadata_level": "github-api",
-          "open_issues_count": 63,
-          "pushed_at": "2026-06-09T17:54:15Z",
-          "topic_count": 0
-        },
-        {
-          "archived": false,
-          "default_branch": "test",
-          "full_name": "e35ventura/taopedia",
-          "html_url": "https://github.com/e35ventura/taopedia",
-          "metadata_level": "github-api",
-          "open_issues_count": 4,
-          "pushed_at": "2026-06-14T08:42:35Z",
-          "topic_count": 5
-        },
-        {
-          "archived": false,
-          "default_branch": "test",
-          "full_name": "e35ventura/taopedia-articles",
-          "html_url": "https://github.com/e35ventura/taopedia-articles",
-          "metadata_level": "github-api",
-          "open_issues_count": 0,
-          "pushed_at": "2026-06-14T03:58:25Z",
-          "topic_count": 5
-        },
-        {
-          "archived": false,
-          "default_branch": "test",
-          "full_name": "entrius/allways",
-          "html_url": "https://github.com/entrius/allways",
-          "metadata_level": "github-api",
-          "open_issues_count": 12,
-          "pushed_at": "2026-06-11T00:47:10Z",
+          "archived": null,
+          "default_branch": null,
+          "full_name": "DPBG/Engram.AI",
+          "html_url": "https://github.com/DPBG/Engram.AI",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
           "topic_count": 0
         },
         {
@@ -167,7 +135,8 @@
           "default_branch": "test",
           "full_name": "entrius/das-github-mirror",
           "html_url": "https://github.com/entrius/das-github-mirror",
-          "metadata_level": "github-api",
+          "metadata_as_of": "2026-06-14T09:09:40.513Z",
+          "metadata_level": "github-api-cached",
           "open_issues_count": 6,
           "pushed_at": "2026-06-14T00:29:19Z",
           "topic_count": 0
@@ -177,87 +146,120 @@
           "default_branch": "test",
           "full_name": "entrius/gittensor",
           "html_url": "https://github.com/entrius/gittensor",
-          "metadata_level": "github-api",
+          "metadata_as_of": "2026-06-14T09:09:40.513Z",
+          "metadata_level": "github-api-cached",
           "open_issues_count": 21,
           "pushed_at": "2026-06-11T21:14:55Z",
           "topic_count": 0
         },
         {
-          "archived": false,
-          "default_branch": "test",
-          "full_name": "entrius/gittensor-ui",
-          "html_url": "https://github.com/entrius/gittensor-ui",
-          "metadata_level": "github-api",
-          "open_issues_count": 17,
-          "pushed_at": "2026-06-11T17:40:36Z",
+          "archived": null,
+          "default_branch": null,
+          "full_name": "Geniepod/genie-claw",
+          "html_url": "https://github.com/Geniepod/genie-claw",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
           "topic_count": 0
         },
         {
-          "archived": false,
-          "default_branch": "main",
-          "full_name": "entrius/OC-1",
-          "html_url": "https://github.com/entrius/OC-1",
-          "metadata_level": "github-api",
-          "open_issues_count": 0,
-          "pushed_at": "2026-05-01T03:11:56Z",
+          "archived": null,
+          "default_branch": null,
+          "full_name": "gittensor-agent-forge/gt-imagent",
+          "html_url": "https://github.com/gittensor-agent-forge/gt-imagent",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
           "topic_count": 0
         },
         {
-          "archived": false,
-          "default_branch": "main",
-          "full_name": "GeniePod/genie-claw",
-          "html_url": "https://github.com/GeniePod/genie-claw",
-          "metadata_level": "github-api",
-          "open_issues_count": 17,
-          "pushed_at": "2026-06-12T21:43:32Z",
-          "topic_count": 11
+          "archived": null,
+          "default_branch": null,
+          "full_name": "gittensor-ai-lab/sparkinfer",
+          "html_url": "https://github.com/gittensor-ai-lab/sparkinfer",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
         },
         {
-          "archived": false,
-          "default_branch": "main",
-          "full_name": "infiniflow/ragflow",
-          "html_url": "https://github.com/infiniflow/ragflow",
-          "metadata_level": "github-api",
-          "open_issues_count": 3274,
-          "pushed_at": "2026-06-13T13:37:31Z",
-          "topic_count": 10
+          "archived": null,
+          "default_branch": null,
+          "full_name": "gittensor-model-hub/SparkDistill",
+          "html_url": "https://github.com/gittensor-model-hub/SparkDistill",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "gittensor-vanguard/vanguarstew",
+          "html_url": "https://github.com/gittensor-vanguard/vanguarstew",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "James-CUDA/Gittensor-TinyRouter",
+          "html_url": "https://github.com/James-CUDA/Gittensor-TinyRouter",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
         },
         {
           "archived": false,
           "default_branch": "main",
           "full_name": "JSONbored/awesome-claude",
           "html_url": "https://github.com/JSONbored/awesome-claude",
-          "metadata_level": "github-api",
+          "metadata_as_of": "2026-06-14T09:09:40.513Z",
+          "metadata_level": "github-api-cached",
           "open_issues_count": 228,
           "pushed_at": "2026-06-14T09:05:07Z",
           "topic_count": 20
         },
         {
-          "archived": false,
-          "default_branch": "main",
-          "full_name": "JSONbored/gittensory",
-          "html_url": "https://github.com/JSONbored/gittensory",
-          "metadata_level": "github-api",
-          "open_issues_count": 82,
-          "pushed_at": "2026-06-14T08:51:09Z",
+          "archived": null,
+          "default_branch": null,
+          "full_name": "JSONbored/loopover",
+          "html_url": "https://github.com/JSONbored/loopover",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
           "topic_count": 0
         },
         {
-          "archived": false,
-          "default_branch": "main",
-          "full_name": "MkDev11/gittensor-hub",
-          "html_url": "https://github.com/MkDev11/gittensor-hub",
-          "metadata_level": "github-api",
-          "open_issues_count": 0,
-          "pushed_at": "2026-06-12T15:27:45Z",
-          "topic_count": 6
+          "archived": null,
+          "default_branch": null,
+          "full_name": "JSONbored/metagraphed",
+          "html_url": "https://github.com/JSONbored/metagraphed",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "mini-router/minirouter",
+          "html_url": "https://github.com/mini-router/minirouter",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
         },
         {
           "archived": false,
           "default_branch": "main",
           "full_name": "phase-rs/phase",
           "html_url": "https://github.com/phase-rs/phase",
-          "metadata_level": "github-api",
+          "metadata_as_of": "2026-06-14T09:09:40.513Z",
+          "metadata_level": "github-api-cached",
           "open_issues_count": 444,
           "pushed_at": "2026-06-14T09:06:21Z",
           "topic_count": 8
@@ -265,19 +267,10 @@
         {
           "archived": false,
           "default_branch": "main",
-          "full_name": "seroperson/jvm-live-reload",
-          "html_url": "https://github.com/seroperson/jvm-live-reload",
-          "metadata_level": "github-api",
-          "open_issues_count": 20,
-          "pushed_at": "2026-06-11T15:21:04Z",
-          "topic_count": 6
-        },
-        {
-          "archived": false,
-          "default_branch": "main",
           "full_name": "touchpilot/touchpilot",
           "html_url": "https://github.com/touchpilot/touchpilot",
-          "metadata_level": "github-api",
+          "metadata_as_of": "2026-06-14T09:09:40.513Z",
+          "metadata_level": "github-api-cached",
           "open_issues_count": 44,
           "pushed_at": "2026-06-12T13:20:42Z",
           "topic_count": 0
@@ -287,7 +280,8 @@
           "default_branch": "main",
           "full_name": "vouchdev/vouch",
           "html_url": "https://github.com/vouchdev/vouch",
-          "metadata_level": "github-api",
+          "metadata_as_of": "2026-06-14T09:09:40.513Z",
+          "metadata_level": "github-api-cached",
           "open_issues_count": 70,
           "pushed_at": "2026-06-12T09:13:04Z",
           "topic_count": 0
@@ -297,9 +291,20 @@
           "default_branch": "main",
           "full_name": "we-promise/sure",
           "html_url": "https://github.com/we-promise/sure",
-          "metadata_level": "github-api",
+          "metadata_as_of": "2026-06-14T09:09:40.513Z",
+          "metadata_level": "github-api-cached",
           "open_issues_count": 387,
           "pushed_at": "2026-06-13T16:45:00Z",
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "zeokin/Cuda-Compute-OSS",
+          "html_url": "https://github.com/zeokin/Cuda-Compute-OSS",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
           "topic_count": 0
         }
       ],
@@ -313,7 +318,7 @@
     "private_dashboards",
     "wallet_data"
   ],
-  "generated_at": "2026-06-14T09:03:05.163Z",
+  "generated_at": "2026-07-15T09:35:34.000Z",
   "netuid": 74,
   "notes": [
     "Gittensor adapter publishes public repository/config aggregates only.",
