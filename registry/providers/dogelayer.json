@@ -4,6 +4,7 @@
   "id": "dogelayer",
   "kind": "subnet-team",
   "name": "dogelayer",
+  "notes": "The dogelayer.ai marketing domain currently returns a Cloudflare 530 origin error to simple probes, so the GitHub repository is the verified public source surface.",
   "public_notes": "Subnet 80 (dogelayer) team profile — decentralized mining pool infrastructure. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
   "schema_version": 1,
   "social": {
