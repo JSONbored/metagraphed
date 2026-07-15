@@ -26,6 +26,7 @@ import {
   parseCompareDimensionList,
   parseCompareNetuidList,
 } from "./analytics-live.mjs";
+import { buildBlock, buildBlockFeed } from "./blocks.mjs";
 import { buildExtrinsic, buildExtrinsicFeed } from "./extrinsics.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 
@@ -65,6 +66,10 @@ export const SDL = `
     extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
     "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
     extrinsic(ref: String!): ExtrinsicDetail
+    "Recent-block feed (newest first). Mirrors GET /api/v1/blocks."
+    blocks(limit: Int, offset: Int, cursor: String): BlockList!
+    "One block by number or 0x block_hash; block is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/{ref}."
+    block(ref: String!): BlockDetail
   }
 
   type SubnetList {
@@ -355,6 +360,34 @@ export const SDL = `
     extrinsic: Extrinsic
   }
 
+  type BlockList {
+    items: [Block!]!
+    "Page count -- this feed has no cheap grand total, matching REST's block_count."
+    total: Int!
+    next_cursor: String
+  }
+
+  "Field names reuse the vocabulary Subscription.chainEvents already established for blocks (block_number, block_hash, extrinsic_count, event_count)."
+  type Block {
+    block_number: Int
+    block_hash: String
+    parent_hash: String
+    author: String
+    extrinsic_count: Int
+    event_count: Int
+    spec_version: Int
+    observed_at: String
+  }
+
+  type BlockDetail {
+    ref: String
+    block: Block
+    "Nearest stored lower block_number (chain-walk nav); null when block is null or at the window edge."
+    prev_block_number: Int
+    "Nearest stored higher block_number (chain-walk nav); null when block is null or at the window edge."
+    next_block_number: Int
+  }
+
   # Realtime chain-event firehose (#4983, ADR 0015) -- a thin protocol adapter
   # over the SAME ChainFirehoseHub Durable Object connection #4982's SSE/WS
   # transports use, not a second event pipeline. Reached over WebSocket only
@@ -489,6 +522,8 @@ export const FIELD_COMPLEXITY = {
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
+  blocks: RELATIONSHIP_FIELD_COMPLEXITY,
+  block: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -1132,6 +1167,49 @@ const rootValue = {
     return {
       ref: data.ref ?? ref,
       extrinsic: extrinsicNode(data.extrinsic),
+    };
+  },
+
+  async blocks({ limit, offset, cursor }, context) {
+    const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (cursor) params.set("cursor", cursor);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/blocks", params),
+        "METAGRAPH_BLOCKS_SOURCE",
+      )) ??
+      buildBlockFeed([], {
+        limit: safeLimit,
+        offset: safeOffset,
+        nextCursor: null,
+      });
+    return {
+      items: data.blocks || [],
+      total: data.block_count ?? 0,
+      next_cursor: data.next_cursor ?? null,
+    };
+  },
+
+  async block({ ref }, context) {
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/blocks/${encodeURIComponent(ref)}`,
+        ),
+        "METAGRAPH_BLOCKS_SOURCE",
+      )) ?? buildBlock(undefined, ref);
+    return {
+      ref: data.ref ?? ref,
+      block: data.block ?? null,
+      prev_block_number: data.prev_block_number ?? null,
+      next_block_number: data.next_block_number ?? null,
     };
   },
 };
