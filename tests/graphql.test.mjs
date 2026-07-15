@@ -2853,6 +2853,176 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
   });
 });
 
+describe("graphql — account_prometheus (#5703, Postgres-tier { data, generatedAt } + zeroed-card fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function query(argsClause) {
+    return `{ account_prometheus${argsClause} {
+      schema_version address window total_announcements subnet_count concentration dominant_netuid
+      subnets { netuid announcements first_announced_at last_announced_at }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed footprint, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_prometheus, {
+      schema_version: 1,
+      address: SS58,
+      window: "30d",
+      total_announcements: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves the Postgres-tier footprint for the requested window", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: {
+              schema_version: 1,
+              address: SS58,
+              window: "7d",
+              total_announcements: 5,
+              subnet_count: 2,
+              concentration: 0.68,
+              dominant_netuid: 3,
+              subnets: [
+                {
+                  netuid: 3,
+                  announcements: 4,
+                  first_announced_at: "2026-07-01T00:00:00.000Z",
+                  last_announced_at: "2026-07-10T00:00:00.000Z",
+                },
+                {
+                  netuid: 7,
+                  announcements: 1,
+                  first_announced_at: "2026-07-05T00:00:00.000Z",
+                  last_announced_at: "2026-07-05T00:00:00.000Z",
+                },
+              ],
+            },
+            generatedAt: "2026-07-10T00:00:00.000Z",
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "7d")`),
+      env,
+    );
+    assert.equal(status, 200);
+    const p = body.data.account_prometheus;
+    assert.equal(p.window, "7d");
+    assert.equal(p.total_announcements, 5);
+    assert.equal(p.subnet_count, 2);
+    assert.equal(p.concentration, 0.68);
+    assert.equal(p.dominant_netuid, 3);
+    assert.equal(p.subnets[0].netuid, 3);
+    assert.equal(p.subnets[0].announcements, 4);
+    assert.equal(p.subnets[1].netuid, 7);
+  });
+
+  test("window is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            data: { schema_version: 1, address: SS58, subnets: [] },
+            generatedAt: null,
+          });
+        },
+      },
+    };
+    await gql(query(`(ss58: "${SS58}", window: "90d")`), env);
+    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/prometheus`);
+    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+  });
+
+  test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed footprint", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_prometheus, {
+      schema_version: 1,
+      address: SS58,
+      window: "30d",
+      total_announcements: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("a partial data envelope degrades missing fields to their defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => Response.json({ data: {}, generatedAt: null }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_prometheus, {
+      schema_version: 1,
+      address: SS58,
+      window: "30d",
+      total_announcements: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query('(ss58: "not-a-valid-address")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "99d")`),
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|30d/i.test(body.errors[0].message));
+    assert.equal(body.data, null);
+  });
+
+  test("account_prometheus is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_prometheus, 5);
+  });
+});
+
 // --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
 //
 // The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,

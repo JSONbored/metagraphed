@@ -71,6 +71,11 @@ import {
   buildAccountsList,
 } from "./accounts-list.mjs";
 import { buildAccountSummary } from "./account-events.mjs";
+import {
+  DEFAULT_PROMETHEUS_WINDOW,
+  PROMETHEUS_WINDOWS,
+  buildAccountPrometheus,
+} from "./account-prometheus.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import {
@@ -169,6 +174,8 @@ export const SDL = `
     accounts(sort: String, limit: Int): AccountList!
     "One account's cross-subnet event-history summary by ss58 address; an address with no matching account_events rows resolves to a schema-stable zero summary, never null. Mirrors GET /api/v1/accounts/{ss58}."
     account(ss58: String!): AccountSummary
+    "One account's Prometheus telemetry-serving footprint across subnets over a 7d/30d/90d window (default 30d) -- which subnets it announces a Prometheus endpoint on, how often, first/last announcement times, and an HHI concentration of where that activity is focused. An address with no matching announcements resolves to a schema-stable zeroed footprint, never null. Mirrors GET /api/v1/accounts/{ss58}/prometheus."
+    account_prometheus(ss58: String!, window: String): AccountPrometheus!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
@@ -962,6 +969,27 @@ export const SDL = `
     count: Int!
   }
 
+  "One account's Prometheus telemetry-serving footprint (#5703) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/prometheus."
+  type AccountPrometheus {
+    schema_version: Int!
+    address: String!
+    window: String
+    total_announcements: Int!
+    subnet_count: Int!
+    "Herfindahl-Hirschman index of announcements across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no announcements."
+    concentration: Float
+    dominant_netuid: Int
+    subnets: [AccountPrometheusSubnet!]!
+  }
+
+  "One subnet's Prometheus-announcement activity in an account's footprint, ranked most-active-first."
+  type AccountPrometheusSubnet {
+    netuid: Int!
+    announcements: Int!
+    first_announced_at: String
+    last_announced_at: String
+  }
+
   # Realtime chain-event firehose (#4983, ADR 0015) -- a thin protocol adapter
   # over the SAME ChainFirehoseHub Durable Object connection #4982's SSE/WS
   # transports use, not a second event pipeline. Reached over WebSocket only
@@ -1115,6 +1143,7 @@ export const FIELD_COMPLEXITY = {
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_yield: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -2195,6 +2224,49 @@ const rootValue = {
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) ?? buildAccountSummary(ss58, {});
     return accountSummaryNode(data, ss58);
+  },
+
+  async account_prometheus({ ss58, window }, context) {
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const requestedWindow = window ?? DEFAULT_PROMETHEUS_WINDOW;
+    if (!Object.hasOwn(PROMETHEUS_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, PROMETHEUS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    // This account-footprint route's Postgres-tier body is { data, generatedAt }
+    // (unlike account's own flat body) -- same shape REST's makeAccountEventHandler
+    // destructures. No live D1 fallback exists for this route family (the account
+    // event footprints' D1 write path is retired); a cold/absent tier degrades to
+    // the pure builder over an empty row set, same as REST's own fallback.
+    const pg = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/accounts/${encodeURIComponent(ss58)}/prometheus`,
+        params,
+      ),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
+    const data =
+      pg?.data ?? buildAccountPrometheus([], ss58, { window: requestedWindow });
+    return {
+      schema_version: data.schema_version ?? 1,
+      address: data.address ?? ss58,
+      window: data.window ?? requestedWindow,
+      total_announcements: data.total_announcements ?? 0,
+      subnet_count: data.subnet_count ?? 0,
+      concentration: data.concentration ?? null,
+      dominant_netuid: data.dominant_netuid ?? null,
+      subnets: data.subnets || [],
+    };
   },
 
   async economics_trends({ window }, context) {
