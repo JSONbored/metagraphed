@@ -4208,6 +4208,291 @@ describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fal
   });
 });
 
+describe("graphql — subnet_concentration (#5901, Postgres-tier + zeroed-card fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_concentration(netuid: 5) {
+          schema_version netuid neuron_count entity_count uids_per_entity captured_at
+          stake { holders gini } emission { holders }
+          entity_stake { holders } entity_emission { holders } validator_stake { holders }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_concentration, {
+      schema_version: 1,
+      netuid: 5,
+      neuron_count: 0,
+      entity_count: 0,
+      uids_per_entity: null,
+      captured_at: null,
+      stake: null,
+      emission: null,
+      entity_stake: null,
+      entity_emission: null,
+      validator_stake: null,
+    });
+  });
+
+  test("resolves the Postgres-tier stake + emission concentration blocks", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          neuron_count: 4,
+          entity_count: 3,
+          uids_per_entity: 1.3333,
+          captured_at: "2026-07-01T00:00:00.000Z",
+          stake: {
+            holders: 4,
+            total: 1000,
+            gini: 0.4,
+            hhi: 0.5,
+            hhi_normalized: 0.25,
+            nakamoto_coefficient: 1,
+            top_1pct_share: 0.6,
+            top_5pct_share: 0.6,
+            top_10pct_share: 0.6,
+            top_20pct_share: 0.9,
+            entropy: 1.4,
+            entropy_normalized: 0.8,
+          },
+          emission: {
+            holders: 3,
+            total: 12.5,
+            gini: 0.2,
+            hhi: 0.7,
+            hhi_normalized: 0.4,
+            nakamoto_coefficient: 1,
+            top_1pct_share: 0.83,
+            top_5pct_share: 0.83,
+            top_10pct_share: 0.83,
+            top_20pct_share: 1,
+            entropy: 0.9,
+            entropy_normalized: 0.9,
+          },
+          validator_stake: {
+            holders: 2,
+            total: 800,
+            gini: 0.1,
+            hhi: 0.55,
+            hhi_normalized: 0.1,
+            nakamoto_coefficient: 1,
+            top_1pct_share: 0.7,
+            top_5pct_share: 0.7,
+            top_10pct_share: 0.7,
+            top_20pct_share: 1,
+            entropy: 0.8,
+            entropy_normalized: 0.8,
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_concentration(netuid: 7) {
+          netuid neuron_count entity_count uids_per_entity captured_at
+          stake { holders gini nakamoto_coefficient top_10pct_share }
+          emission { holders total }
+          validator_stake { holders gini }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const c = body.data.subnet_concentration;
+    assert.equal(c.netuid, 7);
+    assert.equal(c.neuron_count, 4);
+    assert.equal(c.entity_count, 3);
+    assert.equal(c.uids_per_entity, 1.3333);
+    assert.equal(c.captured_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(c.stake.holders, 4);
+    assert.equal(c.stake.nakamoto_coefficient, 1);
+    assert.equal(c.stake.top_10pct_share, 0.6);
+    assert.equal(c.emission.holders, 3);
+    assert.equal(c.emission.total, 12.5);
+    assert.equal(c.validator_stake.holders, 2);
+    assert.equal(c.validator_stake.gini, 0.1);
+  });
+
+  test("forwards the concentration path to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql("{ subnet_concentration(netuid: 3) { neuron_count } }", env);
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/concentration"));
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_concentration(netuid: 9) {
+          schema_version netuid neuron_count entity_count uids_per_entity
+          stake { holders } validator_stake { holders }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_concentration, {
+      schema_version: 1,
+      netuid: 9,
+      neuron_count: 0,
+      entity_count: 0,
+      uids_per_entity: null,
+      stake: null,
+      validator_stake: null,
+    });
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty card", async () => {
+    const { body } = await gql(
+      "{ subnet_concentration(netuid: -1) { neuron_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_concentration ?? null, null);
+  });
+
+  test("subnet_concentration is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_concentration, 5);
+  });
+});
+
+describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + window validation)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty series, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_concentration_history(netuid: 5) {
+          schema_version netuid window point_count points { snapshot_date stake_gini }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_concentration_history, {
+      schema_version: 1,
+      netuid: 5,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("resolves the Postgres-tier per-day trend points", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          window: "7d",
+          point_count: 2,
+          points: [
+            {
+              snapshot_date: "2026-07-02",
+              neuron_count: 4,
+              stake_gini: 0.42,
+              stake_nakamoto_coefficient: 2,
+              stake_top_10pct_share: 0.55,
+              emission_gini: 0.3,
+              emission_nakamoto_coefficient: 1,
+              emission_top_10pct_share: 0.7,
+            },
+            {
+              snapshot_date: "2026-07-01",
+              neuron_count: 3,
+              stake_gini: 0.4,
+              stake_nakamoto_coefficient: 2,
+              stake_top_10pct_share: 0.5,
+              emission_gini: 0.28,
+              emission_nakamoto_coefficient: 1,
+              emission_top_10pct_share: 0.68,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_concentration_history(netuid: 7, window: "7d") {
+          netuid window point_count
+          points { snapshot_date neuron_count stake_gini stake_nakamoto_coefficient emission_top_10pct_share }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const h = body.data.subnet_concentration_history;
+    assert.equal(h.netuid, 7);
+    assert.equal(h.window, "7d");
+    assert.equal(h.point_count, 2);
+    assert.equal(h.points.length, 2);
+    assert.equal(h.points[0].snapshot_date, "2026-07-02");
+    assert.equal(h.points[0].stake_gini, 0.42);
+    assert.equal(h.points[0].stake_nakamoto_coefficient, 2);
+    assert.equal(h.points[1].emission_top_10pct_share, 0.68);
+  });
+
+  test("forwards the window to the concentration/history Postgres path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ subnet_concentration_history(netuid: 3, window: "90d") { point_count } }',
+      env,
+    );
+    assert.ok(
+      capturedUrl.pathname.endsWith("/subnets/3/concentration/history"),
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent series", async () => {
+    const { body } = await gql(
+      '{ subnet_concentration_history(netuid: 5, window: "5d") { point_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_concentration_history ?? null, null);
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty series", async () => {
+    const { body } = await gql(
+      "{ subnet_concentration_history(netuid: -1) { point_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_concentration_history ?? null, null);
+  });
+
+  test("subnet_concentration_history is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_concentration_history, 5);
+  });
+});
+
 describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
