@@ -4268,6 +4268,152 @@ describe("graphql — subnet_weights (#5711, Postgres-tier + zeroed-card fallbac
   });
 });
 
+describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leaderboard fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty leaderboard, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_weight_setters(netuid: 5) {
+          schema_version netuid window observed_at
+          distinct_setters weight_sets setter_count
+          setters { hotkey uid weight_sets share }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_weight_setters, {
+      schema_version: 1,
+      netuid: 5,
+      window: "7d",
+      observed_at: null,
+      distinct_setters: 0,
+      weight_sets: 0,
+      setter_count: 0,
+      setters: [],
+    });
+  });
+
+  test("resolves the Postgres-tier leaderboard for the requested window", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          window: "30d",
+          observed_at: "2026-07-01T00:00:00.000Z",
+          distinct_setters: 2,
+          weight_sets: 10,
+          setter_count: 2,
+          setters: [
+            {
+              hotkey: "5SetterA",
+              uid: 1,
+              weight_sets: 7,
+              share: 0.7,
+              first_set_at: "2026-06-20T00:00:00.000Z",
+              last_set_at: "2026-07-01T00:00:00.000Z",
+            },
+            {
+              hotkey: null,
+              uid: 2,
+              weight_sets: 3,
+              share: 0.3,
+              first_set_at: "2026-06-25T00:00:00.000Z",
+              last_set_at: "2026-06-30T00:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_weight_setters(netuid: 5, window: "30d") {
+          netuid window observed_at distinct_setters weight_sets setter_count
+          setters { hotkey uid weight_sets share first_set_at last_set_at }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const w = body.data.subnet_weight_setters;
+    assert.equal(w.window, "30d");
+    assert.equal(w.weight_sets, 10);
+    assert.equal(w.setter_count, 2);
+    assert.equal(w.setters[0].hotkey, "5SetterA");
+    assert.equal(w.setters[0].share, 0.7);
+    assert.equal(w.setters[1].hotkey, null);
+    assert.equal(w.setters[1].uid, 2);
+  });
+
+  test("window is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ subnet_weight_setters(netuid: 3, window: "30d") { setter_count } }',
+      env,
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/weights/setters"));
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_weight_setters(netuid: 9, window: "30d") {
+          schema_version netuid window observed_at
+          distinct_setters weight_sets setter_count setters { hotkey }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_weight_setters, {
+      schema_version: 1,
+      netuid: 9,
+      window: "30d",
+      observed_at: null,
+      distinct_setters: 0,
+      weight_sets: 0,
+      setter_count: 0,
+      setters: [],
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ subnet_weight_setters(netuid: 5, window: "99d") { setter_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|7d/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_weight_setters ?? null, null);
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty card", async () => {
+    const { body } = await gql(
+      "{ subnet_weight_setters(netuid: -1) { setter_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_weight_setters ?? null, null);
+  });
+
+  test("subnet_weight_setters is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_weight_setters, 5);
+  });
+});
+
 describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

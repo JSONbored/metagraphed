@@ -34,6 +34,11 @@ import {
   SUBNET_WEIGHTS_WINDOWS,
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
 } from "./subnet-weights.mjs";
+import {
+  buildSubnetWeightSetters,
+  SUBNET_WEIGHT_SETTERS_WINDOWS,
+  DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+} from "./subnet-weight-setters.mjs";
 import { buildSubnetYield } from "./subnet-yield.mjs";
 import { buildSubnetPerformance } from "./subnet-performance.mjs";
 import {
@@ -182,6 +187,8 @@ export const SDL = `
     subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
     "Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights."
     subnet_weights(netuid: Int!, window: String): SubnetWeights!
+    "Per-subnet weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators behind /weights ranked by WeightsSet activity, each with count, share, and first/last set times; a subnet with no events resolves to a schema-stable empty leaderboard, never null. Mirrors GET /api/v1/subnets/{netuid}/weights/setters."
+    subnet_weight_setters(netuid: Int!, window: String): SubnetWeightSetters!
     "Per-subnet emission-per-stake yield over the current metagraph snapshot: each UID's yield plus the subnet-wide aggregate and p25/median/p75/p90 distribution; a subnet with no neurons resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/yield."
     subnet_yield(netuid: Int!): SubnetYield!
     "Per-subnet reward-distribution and score-spread card over the current neurons snapshot: incentive/dividends concentration plus p10–p90 trust/consensus/validator_trust; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/performance."
@@ -734,6 +741,29 @@ export const SDL = `
     distinct_setters: Int!
     weight_sets: Int!
     sets_per_setter: Float
+  }
+
+  "Per-subnet weight-setter leaderboard (#5712). Empty setters on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/weights/setters."
+  type SubnetWeightSetters {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    distinct_setters: Int!
+    weight_sets: Int!
+    setter_count: Int!
+    setters: [SubnetWeightSetter!]!
+  }
+
+  "One validator's weight-setting activity within one subnet over the lookback window."
+  type SubnetWeightSetter {
+    hotkey: String
+    uid: Int
+    weight_sets: Int!
+    "This setter's share of the subnet total weight_sets; null when the subnet total is 0."
+    share: Float
+    first_set_at: String
+    last_set_at: String
   }
 
   "One UID's emission-per-stake yield within a subnet's current metagraph snapshot."
@@ -1446,6 +1476,7 @@ export const FIELD_COMPLEXITY = {
   subnet_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_performance: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2267,6 +2298,48 @@ const rootValue = {
       distinct_setters: data.distinct_setters ?? 0,
       weight_sets: data.weight_sets ?? 0,
       sets_per_setter: data.sets_per_setter ?? null,
+    };
+  },
+
+  async subnet_weight_setters({ netuid, window }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same 7d/30d window validation handleSubnetWeightSetters uses -- an
+    // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
+    if (!Object.hasOwn(SUBNET_WEIGHT_SETTERS_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SUBNET_WEIGHT_SETTERS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // buildSubnetWeightSetters([], null, ...) empty-leaderboard fallback
+    // contract handleSubnetWeightSetters / MCP get_subnet_weight_setters use.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/weights/setters`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? buildSubnetWeightSetters([], null, netuid, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      observed_at: data.observed_at ?? null,
+      distinct_setters: data.distinct_setters ?? 0,
+      weight_sets: data.weight_sets ?? 0,
+      setter_count: data.setter_count ?? 0,
+      setters: data.setters || [],
     };
   },
 
