@@ -5,7 +5,7 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import { PageHero, ShareButton, DownloadCsvButton } from "@jsonbored/ui-kit";
+import { PageHero, ShareButton, DownloadCsvButton, ActionBar } from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { governanceConfigChangesQuery } from "@/lib/metagraphed/queries";
@@ -68,8 +68,10 @@ function AdminChangesPage() {
         description="AdminUtils root-origin config changes — subtensor's own admin pallet for subnet hyperparameters and network-wide config, newest first."
         actions={
           <>
-            <DownloadCsvButton url={adminChangesCsvUrl} />
-            <ShareButton />
+            <ActionBar>
+              <DownloadCsvButton url={adminChangesCsvUrl} bare />
+              <ShareButton bare />
+            </ActionBar>
           </>
         }
       />

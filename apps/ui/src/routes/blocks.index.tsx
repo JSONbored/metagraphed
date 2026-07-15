@@ -15,6 +15,7 @@ import {
   ListShell,
   ShareButton,
   DownloadCsvButton,
+  ActionBar,
   StatTile,
   Sparkline,
   CopyButton,
@@ -96,8 +97,10 @@ function BlocksPage() {
         description="Recent Bittensor blocks indexed directly from the chain — newest first, with author, extrinsic, and event counts."
         actions={
           <>
-            <DownloadCsvButton url={blocksCsvUrl} />
-            <ShareButton />
+            <ActionBar>
+              <DownloadCsvButton url={blocksCsvUrl} bare />
+              <ShareButton bare />
+            </ActionBar>
           </>
         }
       />

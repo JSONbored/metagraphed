@@ -4,7 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import { PageHero, ShareButton, TableState, TimeAgo } from "@jsonbored/ui-kit";
+import { PageHero, ShareButton, ActionBar, TableState, TimeAgo } from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { runtimeVersionHistoryQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -38,7 +38,11 @@ function RuntimePage() {
         live
         title="Runtime"
         description="Spec-version upgrade history for the Bittensor chain, tracked from the first-party blocks tier — every observed runtime upgrade, newest first."
-        actions={<ShareButton />}
+        actions={
+          <ActionBar>
+            <ShareButton bare />
+          </ActionBar>
+        }
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>

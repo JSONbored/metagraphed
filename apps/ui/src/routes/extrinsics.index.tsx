@@ -21,6 +21,7 @@ import {
   PageHero,
   ListShell,
   ShareButton,
+  ActionBar,
   CopyableCode,
   CopyButton,
   DownloadCsvButton,
@@ -92,8 +93,10 @@ function ExtrinsicsPage() {
         description="Recent Bittensor extrinsics (transactions) indexed directly from the chain — newest first, with call, signer, and success."
         actions={
           <>
-            <DownloadCsvButton url={extrinsicsCsvUrl} />
-            <ShareButton />
+            <ActionBar>
+              <DownloadCsvButton url={extrinsicsCsvUrl} bare />
+              <ShareButton bare />
+            </ActionBar>
           </>
         }
       />

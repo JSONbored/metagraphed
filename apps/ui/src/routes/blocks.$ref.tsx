@@ -12,6 +12,7 @@ import {
   TimeAgo,
   PageHero,
   ShareButton,
+  ActionBar,
   SectionAnchor,
   StatTile,
 } from "@jsonbored/ui-kit";
@@ -170,7 +171,11 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
             <span className="text-ink-muted">—</span>
           )
         }
-        actions={<ShareButton />}
+        actions={
+          <ActionBar>
+            <ShareButton bare />
+          </ActionBar>
+        }
         caption="explorer / v1"
       />
 

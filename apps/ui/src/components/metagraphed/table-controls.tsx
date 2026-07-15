@@ -228,13 +228,26 @@ export function PageSizeSelect({
  * Calls `onReset` to let the route decide which keys to clear (typically
  * search, sort, filters, and cursor; preserves user's page-size choice).
  */
-export function ResetFiltersButton({ active, onReset }: { active: boolean; onReset: () => void }) {
+export function ResetFiltersButton({
+  active,
+  onReset,
+  bare,
+}: {
+  active: boolean;
+  onReset: () => void;
+  /** Borderless variant for grouping inside an `ActionBar` segmented pill. */
+  bare?: boolean;
+}) {
   if (!active) return null;
   return (
     <button
       type="button"
       onClick={onReset}
-      className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[11px] font-medium text-ink hover:border-ink/30 min-h-7"
+      className={
+        bare
+          ? "inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+          : "inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[11px] font-medium text-ink hover:border-ink/30 min-h-7"
+      }
       title="Clear search, filters, and pagination"
     >
       <X className="size-3" /> Reset filters

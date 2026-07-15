@@ -15,6 +15,7 @@ import {
   HealthPill,
   TableState,
   PageHero,
+  ActionBar,
   PageSection,
   TimeAgo,
   AnimatedNumber,
@@ -133,13 +134,15 @@ function HealthPage() {
             interval={effectiveInterval}
             controls={
               <>
-                <Link
-                  to="/status"
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
-                >
-                  Public status
-                  <ArrowUpRight className="size-3" aria-hidden="true" />
-                </Link>
+                <ActionBar>
+                  <Link
+                    to="/status"
+                    className="inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+                  >
+                    Public status
+                    <ArrowUpRight className="size-3" aria-hidden="true" />
+                  </Link>
+                </ActionBar>
                 <AutoRefreshControl
                   enabled={enabled}
                   visible={visible}

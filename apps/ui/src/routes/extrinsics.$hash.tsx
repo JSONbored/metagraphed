@@ -11,6 +11,7 @@ import {
   TimeAgo,
   PageHero,
   ShareButton,
+  ActionBar,
   SectionAnchor,
   StatTile,
 } from "@jsonbored/ui-kit";
@@ -177,7 +178,11 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
           </span>
         }
-        actions={<ShareButton />}
+        actions={
+          <ActionBar>
+            <ShareButton bare />
+          </ActionBar>
+        }
         caption="explorer / v1"
       />
 
