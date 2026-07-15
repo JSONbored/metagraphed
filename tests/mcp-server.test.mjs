@@ -7912,6 +7912,106 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /insufficient_liquidity/);
   });
 
+  test("get_stake_action_preview returns a human-readable summary reusing the quote math", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 1000, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, 64);
+    assert.equal(out.direction, "stake");
+    assert.equal(out.estimated_out_unit, "alpha");
+    assert.equal(out.is_root, false);
+    assert.ok(out.estimated_out > 0);
+    assert.ok(out.price_impact_pct > 0);
+    // The preview must be human-readable and carry an explicit read-only disclaimer.
+    assert.match(out.summary, /Staking 1000 TAO into subnet 64/);
+    assert.match(out.disclaimer, /read-only/i);
+    assert.match(out.disclaimer, /does NOT build, prepare, sign, or submit/);
+  });
+
+  test("get_stake_action_preview output carries NO signable/transaction artifact, only summary fields", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 500, direction: "unstake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.direction, "unstake");
+    assert.equal(out.estimated_out_unit, "tao");
+    // Guard the ADR-0018 boundary: no unsigned-tx / extrinsic / call-data payload,
+    // by field name or value — the response is a read-only summary only.
+    const keys = Object.keys(out);
+    for (const banned of [
+      "extrinsic",
+      "call",
+      "call_data",
+      "callData",
+      "unsigned",
+      "unsigned_tx",
+      "payload",
+      "signature",
+      "signed",
+      "tx",
+      "raw",
+      "hex",
+    ]) {
+      assert.ok(
+        !keys.includes(banned),
+        `preview must not expose a ${banned} field`,
+      );
+    }
+    assert.deepEqual(Object.keys(out).sort(), [
+      "amount",
+      "direction",
+      "disclaimer",
+      "effective_price_tao",
+      "estimated_out",
+      "estimated_out_unit",
+      "is_root",
+      "netuid",
+      "price_impact_pct",
+      "schema_version",
+      "summary",
+    ]);
+  });
+
+  test("get_stake_action_preview previews a 1:1 zero-impact action for root (netuid 0)", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 0, amount: 42, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.is_root, true);
+    assert.equal(out.estimated_out, 42);
+    assert.equal(out.price_impact_pct, 0);
+  });
+
+  test("get_stake_action_preview rejects a non-positive amount as invalid_amount", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: -5, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_amount/);
+  });
+
   test("get_economics serves the live KV economics tier with REST list-query filters", async () => {
     const blob = {
       ...ECON_BLOB,

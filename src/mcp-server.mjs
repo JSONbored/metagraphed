@@ -2710,6 +2710,86 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_stake_action_preview",
+    title: "Preview a hypothetical stake/unstake action (read-only)",
+    description:
+      "READ-ONLY, INFORMATIONAL preview of what a hypothetical stake or unstake " +
+      "against one subnet would look like, computed from the same live AMM pool " +
+      "reserves get_subnet_stake_quote reads. Returns a human-readable summary -- " +
+      "estimated resulting amount, effective price, and price impact -- plus an " +
+      "explicit disclaimer. It builds NO transaction, signs nothing, touches no " +
+      "key or wallet, and produces NO signable or submittable artifact of any " +
+      "kind: the response cannot be executed on-chain and must not be treated as " +
+      "something to submit. Same inputs as get_subnet_stake_quote. direction " +
+      "stake (default) previews spending amount TAO for alpha; unstake previews " +
+      "spending amount alpha for TAO. Root (netuid 0) has no AMM pool and previews " +
+      "a 1:1, zero-impact action. Mirrors GET /api/v1/subnets/{netuid}/stake-quote's " +
+      "data, reframed as a preview.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        amount: {
+          type: "number",
+          description:
+            "Amount to preview, in TAO for direction=stake or alpha for " +
+            "direction=unstake. Must be a finite number greater than 0.",
+          exclusiveMinimum: 0,
+        },
+        direction: {
+          type: "string",
+          enum: STAKE_QUOTE_DIRECTIONS,
+          description: 'Swap direction: stake or unstake (default "stake").',
+        },
+      },
+      required: ["netuid", "amount"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const amount = args?.amount;
+      const direction = optionalString(args, "direction") ?? "stake";
+      const { economics } = await loadSubnetEconomics(ctx, netuid);
+      // Reuse the exact stake-quote calculation -- no duplicated pool math.
+      const result = computeStakeQuote({
+        netuid,
+        taoInPool: economics?.tao_in_pool_tao,
+        alphaInPool: economics?.alpha_in_pool,
+        amount,
+        direction,
+      });
+      if (!result.ok) {
+        throw toolError(result.code, result.error);
+      }
+      const q = result.quote;
+      const inUnit = direction === "stake" ? "TAO" : "alpha";
+      const verb = direction === "stake" ? "Staking" : "Unstaking";
+      const prep = direction === "stake" ? "into" : "from";
+      const summary =
+        `${verb} ${amount} ${inUnit} ${prep} subnet ${netuid} would yield ` +
+        `approximately ${q.expected_out} ${q.expected_out_unit} at an effective ` +
+        `price of ${q.effective_price_tao} TAO/alpha ` +
+        `(${q.price_impact_pct}% price impact). Informational preview only.`;
+      return {
+        schema_version: 1,
+        netuid: q.netuid,
+        direction: q.direction,
+        amount: q.amount,
+        summary,
+        estimated_out: q.expected_out,
+        estimated_out_unit: q.expected_out_unit,
+        effective_price_tao: q.effective_price_tao,
+        price_impact_pct: q.price_impact_pct,
+        is_root: q.is_root,
+        disclaimer:
+          "This is a read-only, informational estimate computed from live pool " +
+          "reserves. It does NOT build, prepare, sign, or submit any transaction, " +
+          "and produces no signable or executable artifact. Actual on-chain " +
+          "results may differ.",
+      };
+    },
+  },
+  {
     ...GET_ECONOMICS_MCP_TOOL,
     async handler(args, ctx) {
       try {
@@ -10200,6 +10280,36 @@ const TOOL_OUTPUT_SCHEMAS = {
       tao_in_pool_tao: { type: ["number", "null"] },
       alpha_in_pool: { type: ["number", "null"] },
       is_root: { type: "boolean" },
+    },
+  },
+  get_stake_action_preview: {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "schema_version",
+      "netuid",
+      "direction",
+      "amount",
+      "summary",
+      "estimated_out",
+      "estimated_out_unit",
+      "effective_price_tao",
+      "price_impact_pct",
+      "is_root",
+      "disclaimer",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      direction: { type: "string", enum: STAKE_QUOTE_DIRECTIONS },
+      amount: { type: "number" },
+      summary: { type: "string" },
+      estimated_out: { type: "number" },
+      estimated_out_unit: { type: "string", enum: ["alpha", "tao"] },
+      effective_price_tao: { type: "number" },
+      price_impact_pct: { type: "number" },
+      is_root: { type: "boolean" },
+      disclaimer: { type: "string" },
     },
   },
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
