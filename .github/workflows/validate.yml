@@ -402,6 +402,23 @@ jobs:
       - name: Install
         run: npm ci
 
+      # Report-only SCA for the ROOT workspace — workers/** (the Worker API, MCP
+      # server, webhook dispatcher), src/**, and scripts/** — the repo's larger,
+      # more security-sensitive dependency surface, which until now had strictly
+      # less CI coverage than apps/ui (#5543). Same posture as the apps/ui CVE
+      # scan in the `ui` job below and the gate #1772 established: surface
+      # high/critical runtime advisories at PR time without failing the job
+      # (Renovate is async/non-blocking, so a feature PR can still merge a
+      # vulnerable transitive dep between Renovate runs). No `--workspace` flag,
+      # so this audits the whole lockfile — a superset that necessarily covers
+      # the root deps this gap is about; the minor overlap with the apps/ui-
+      # scoped scan is harmless since both are report-only. Never `--force`.
+      # Tighten to blocking once it stays clean.
+      - name: Dependency CVE scan (SCA, report-only)
+        run: |
+          npm audit --audit-level=high --omit=dev \
+            || echo "::warning::npm audit found high/critical advisories in the root workspace's runtime dependencies — review above (report-only; not failing CI yet)"
+
       # Lint + format + the documentation/intake/safety/security scans below
       # run UNCONDITIONALLY, docs fast lane or not — they're cheap (no build,
       # no network), and directly relevant to a docs-only diff (a stray secret,
