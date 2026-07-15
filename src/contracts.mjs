@@ -1823,7 +1823,8 @@ export const API_ROUTES = [
     "List providers and sources.",
     "standard",
     ["providers"],
-    listQuery("providers"),
+    // CSV export mirrors subnets/candidates (#5665) — generic list serializer.
+    csvListQuery("providers"),
   ),
   route(
     "provider-detail",

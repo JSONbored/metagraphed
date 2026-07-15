@@ -30,6 +30,7 @@ import {
   PageHero,
   ViewModeToggle,
   ShareButton,
+  DownloadCsvButton,
   TimeAgo,
   ActionBar,
   Donut,
@@ -37,6 +38,8 @@ import {
   Sparkline,
 } from "@jsonbored/ui-kit";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
+import { buildUrl } from "@/lib/metagraphed/client";
+import { providersCsvQueryParams } from "@/lib/metagraphed/providers-csv-params";
 import type { Provider } from "@/lib/metagraphed/types";
 
 const providerSortKeys = ["name", "surfaces", "endpoints", "subnets", "updated"] as const;
@@ -78,6 +81,8 @@ function ProvidersPage() {
     search.q || search.kind || search.authority || (search.sort && search.sort !== "name"),
   );
   const onReset = () => navigate({ search: { view: search.view } as never, replace: true });
+  // DownloadCsvButton appends format=csv; only pass filters the API list honors.
+  const providersCsvUrl = buildUrl("/api/v1/providers", providersCsvQueryParams(search));
   return (
     <AppShell>
       <PageHero
@@ -99,6 +104,7 @@ function ProvidersPage() {
             />
             <ActionBar>
               <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+              <DownloadCsvButton url={providersCsvUrl} bare />
               <ShareButton bare />
             </ActionBar>
           </>
