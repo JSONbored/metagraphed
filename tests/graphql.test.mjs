@@ -3066,6 +3066,94 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
   });
 });
 
+describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_registrations(netuid: 5) {
+          schema_version netuid window observed_at
+          distinct_registrants registrations registrations_per_registrant
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_registrations, {
+      schema_version: 1,
+      netuid: 5,
+      window: "7d",
+      observed_at: null,
+      distinct_registrants: 0,
+      registrations: 0,
+      registrations_per_registrant: null,
+    });
+  });
+
+  test("resolves the Postgres-tier card for the requested window", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          window: "30d",
+          observed_at: "2026-07-01T00:00:00.000Z",
+          distinct_registrants: 3,
+          registrations: 7,
+          registrations_per_registrant: 2.33,
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_registrations(netuid: 5, window: "30d") {
+          netuid window observed_at distinct_registrants registrations registrations_per_registrant
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.subnet_registrations;
+    assert.equal(r.window, "30d");
+    assert.equal(r.observed_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(r.distinct_registrants, 3);
+    assert.equal(r.registrations, 7);
+    assert.equal(r.registrations_per_registrant, 2.33);
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_registrations(netuid: 9, window: "30d") {
+          schema_version netuid window observed_at distinct_registrants registrations registrations_per_registrant
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_registrations, {
+      schema_version: 1,
+      netuid: 9,
+      window: "30d",
+      observed_at: null,
+      distinct_registrants: 0,
+      registrations: 0,
+      registrations_per_registrant: null,
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ subnet_registrations(netuid: 5, window: "99d") { registrations } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|7d/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_registrations ?? null, null);
+  });
+});
+
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

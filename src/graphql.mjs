@@ -10,6 +10,11 @@ import { readArtifact, readHealthKv } from "../workers/storage.mjs";
 import { contractVersion } from "../workers/responses.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import {
+  buildSubnetRegistrations,
+  SUBNET_REGISTRATIONS_WINDOWS,
+  DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
+} from "./subnet-registrations.mjs";
+import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
 } from "../workers/request-handlers/analytics.mjs";
@@ -86,6 +91,8 @@ export const SDL = `
     subnets(limit: Int, cursor: String): SubnetList!
     "One subnet with its health, surfaces, endpoints, and economics."
     subnet(netuid: Int!): Subnet
+    "Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations."
+    subnet_registrations(netuid: Int!, window: String): SubnetRegistrations!
     "Paginated provider/source registry."
     providers(limit: Int, cursor: String): ProviderList!
     "One provider with its subnets."
@@ -458,6 +465,17 @@ export const SDL = `
     surface_count: Int
     ok_count: Int
     avg_latency_ms: Int
+  }
+
+  "Per-subnet neuron-registration activity over a window (#5720). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/registrations."
+  type SubnetRegistrations {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    distinct_registrants: Int!
+    registrations: Int!
+    registrations_per_registrant: Float
   }
 
   "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope."
@@ -886,6 +904,7 @@ export const FIELD_COMPLEXITY = {
   accounts: RELATIONSHIP_FIELD_COMPLEXITY,
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1399,6 +1418,43 @@ const rootValue = {
       surfaces: data.surfaces,
       endpoints: data.endpoints,
     });
+  },
+
+  async subnet_registrations({ netuid, window }, context) {
+    // Same 7d/30d window validation handleSubnetRegistrations uses -- an
+    // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
+    if (!Object.hasOwn(SUBNET_REGISTRATIONS_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SUBNET_REGISTRATIONS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetRegistrations
+    // zeroed-card fallback contract handleSubnetRegistrations uses; a subnet with no
+    // NeuronRegistered events in the window is a schema-stable zeroed card, never a
+    // GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/registrations`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? buildSubnetRegistrations(null, netuid, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      observed_at: data.observed_at ?? null,
+      distinct_registrants: data.distinct_registrants ?? 0,
+      registrations: data.registrations ?? 0,
+      registrations_per_registrant: data.registrations_per_registrant ?? null,
+    };
   },
 
   providers({ limit, cursor }, context) {
