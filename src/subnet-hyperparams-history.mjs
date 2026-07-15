@@ -15,8 +15,8 @@
 // against, so history rows stay hash-identical no matter which tier wrote
 // them. D1's own diff-and-append (recordSubnetHyperparamsChanges) and
 // paginated read (loadSubnetHyperparamsHistory) are retired alongside D1's
-// subnet_hyperparams write path — see workers/request-handlers/staging.mjs's
-// header and workers/request-handlers/entities.mjs's
+// subnet_hyperparams write path — see workers/api.mjs's staged-loader
+// retirement note (#4772) and workers/request-handlers/entities.mjs's
 // handleSubnetHyperparamsHistory.
 
 import { formatSubnetHyperparams } from "./subnet-hyperparams.mjs";

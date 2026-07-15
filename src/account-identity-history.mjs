@@ -4,9 +4,10 @@
 // src/subnet-identity-history.mjs's diff-and-append shape (subnet_hyperparams's
 // own D1-side diff-and-append, recordSubnetHyperparamsChanges, was retired
 // alongside its D1 write path -- see src/subnet-hyperparams-history.mjs's
-// header), keyed by account instead of netuid, running as an additional step
-// inside the same staged load rather than a separate pipeline
-// (workers/request-handlers/staging.mjs's loadStagedAccountIdentity).
+// header), keyed by account instead of netuid, and originally run as an
+// additional step inside the retired staged load (loadStagedAccountIdentity,
+// removed in the D1→Postgres cutover #4772 — see workers/api.mjs's
+// staged-loader note) rather than a separate pipeline.
 //
 // Read/format/build functions land here with the serving route (#4328/5.4),
 // mirroring src/subnet-identity-history.mjs's read side exactly (keyed by
