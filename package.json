@@ -115,6 +115,7 @@
     "test:ci": "vitest run --coverage --fileParallelism --testTimeout=30000 --exclude '**/artifacts.test.mjs' --exclude '**/discovery-artifacts.test.mjs' --exclude '**/public-safety.test.mjs'",
     "test:ci:artifacts": "vitest run tests/artifacts.test.mjs tests/discovery-artifacts.test.mjs tests/public-safety.test.mjs",
     "curation:brief": "node scripts/curation-brief.mjs",
+    "curation:stale-notes": "node scripts/stale-gap-notes.mjs",
     "endpoint:brief": "node scripts/endpoint-ops-brief.mjs"
   },
   "dependencies": {
