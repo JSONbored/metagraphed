@@ -158,7 +158,12 @@ import {
   buildCounterpartyRelationship,
 } from "./counterparties.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
-import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
+import {
+  ANALYTICS_WINDOWS,
+  DEFAULT_ANALYTICS_WINDOW,
+  SS58_ADDRESS_PATTERN,
+} from "../workers/config.mjs";
+import { loadRpcUsage } from "./rpc-usage-loader.mjs";
 import {
   parseHistoryWindow,
   unsupportedWindowMessage,
@@ -349,6 +354,8 @@ export const SDL = `
     chain_weight_setters(window: String, limit: Int): ChainWeightSetters!
     "Compact all-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history (probed every ~15 minutes); a cold store still returns both windows, schema-stable and zeroed, never a GraphQL error. Mirrors GET /api/v1/health/trends."
     health_trends: HealthTrends!
+    "RPC reverse-proxy usage analytics over a 7d/30d window (default 7d): total request volume, error + failover rates, cache-hit rate, latency p50/p95/avg, the per-endpoint and per-network request distribution, and bounded time buckets (1h for 7d, 6h for 30d), computed live from the rpc_proxy_events telemetry. A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/rpc/usage."
+    rpc_usage(window: String): RpcUsage!
     "Network-wide reward-distribution & score-spread card across every subnet's neurons: incentive/dividends concentration (who actually captures rewards network-wide) plus the trust/consensus/validator_trust score spread. Current snapshot only (no window/params). Every metric block is null (never a GraphQL error) on a cold store. The network analog of subnet_performance. Mirrors GET /api/v1/chain/performance."
     chain_performance: ChainPerformance!
     "Network-wide emission-yield (return rate) aggregated across every subnet's neurons -- the aggregate network return, the same split by validator vs miner role, and the distribution of the per-neuron return rate. Every aggregate is null (never a GraphQL error) on a cold store. Mirrors GET /api/v1/chain/yield."
@@ -756,6 +763,75 @@ export const SDL = `
     source: String
     "The 7d/30d windows keyed by window label (7d, 30d), each holding days/granularity/subnet_count and the per-subnet daily point series. Opaque JSON: dynamic-keyed by window label, matching the get_health_trends MCP/REST shape."
     windows: JSON!
+  }
+
+  "RPC reverse-proxy usage analytics over a 7d/30d window. Mirrors GET /api/v1/rpc/usage's data envelope."
+  type RpcUsage {
+    schema_version: Int!
+    window: String
+    "Time-bucket granularity for buckets: 1h for the 7d window, 6h for 30d. Null on a cold store."
+    bucket_granularity: String
+    observed_at: String
+    source: String
+    summary: RpcUsageSummary!
+    "Per-endpoint request distribution, ranked by request volume (top 50)."
+    endpoints: [RpcUsageEndpoint!]!
+    "Per-network request breakdown, ordered by request volume."
+    networks: [RpcUsageNetwork!]!
+    "Bounded time buckets over the window for heatmaps, oldest-first."
+    buckets: [RpcUsageBucket!]!
+  }
+
+  "Window-total rollup for RPC reverse-proxy traffic."
+  type RpcUsageSummary {
+    total_requests: Int!
+    ok_requests: Int!
+    error_requests: Int!
+    "Null when there are no requests in the window (no defined rate)."
+    error_rate: Float
+    failover_requests: Int!
+    "Null when there are no requests in the window."
+    failover_rate: Float
+    cache_hits: Int!
+    "Null when there are no requests in the window."
+    cache_hit_rate: Float
+    latency_ms: RpcUsageLatency!
+  }
+
+  "Window latency percentiles + average for RPC reverse-proxy traffic; each is null on a cold store."
+  type RpcUsageLatency {
+    p50: Int
+    p95: Int
+    avg: Int
+  }
+
+  "One endpoint's share of RPC reverse-proxy traffic in the window."
+  type RpcUsageEndpoint {
+    rank: Int!
+    endpoint_id: String
+    provider: String
+    requests: Int!
+    ok_requests: Int!
+    "Null when the endpoint had no requests in the window."
+    error_rate: Float
+    avg_latency_ms: Int
+  }
+
+  "One network's share of RPC reverse-proxy traffic in the window."
+  type RpcUsageNetwork {
+    network: String
+    requests: Int!
+    ok_requests: Int!
+    "Null when the network had no requests in the window."
+    error_rate: Float
+  }
+
+  "One bounded time bucket of RPC reverse-proxy traffic (bucket_granularity wide)."
+  type RpcUsageBucket {
+    ts: Float!
+    requests: Int!
+    errors: Int!
+    avg_latency_ms: Int
   }
 
   "Registry leaderboards over the operational + economic-opportunity boards. Mirrors GET /api/v1/registry/leaderboards."
@@ -2160,6 +2236,7 @@ export const FIELD_COMPLEXITY = {
   chain_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
+  rpc_usage: RELATIONSHIP_FIELD_COMPLEXITY,
   validator_nominators: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_performance: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_yield: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4721,6 +4798,58 @@ const rootValue = {
       observed_at: data.observed_at ?? null,
       source: data.source ?? null,
       windows: data.windows ?? {},
+    };
+  },
+
+  async rpc_usage({ window }, context) {
+    const requestedWindow = window ?? DEFAULT_ANALYTICS_WINDOW;
+    if (!Object.hasOwn(ANALYTICS_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, ANALYTICS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    // Same tryPostgresTier(METAGRAPH_RPC_USAGE_SOURCE) -> loadRpcUsage fallback
+    // contract REST's handleRpcUsage and the get_rpc_usage MCP tool share -- a
+    // cold store yields a schema-stable zeroed card, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/rpc/usage", params),
+        "METAGRAPH_RPC_USAGE_SOURCE",
+      )) ??
+      (await loadRpcUsage(graphqlD1(context), {
+        window: requestedWindow,
+        observedAt: await loadObservedAt(context),
+      }));
+    const summary = data.summary ?? {};
+    const latency = summary.latency_ms ?? {};
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      bucket_granularity: data.bucket_granularity ?? null,
+      observed_at: data.observed_at ?? null,
+      source: data.source ?? null,
+      summary: {
+        total_requests: summary.total_requests ?? 0,
+        ok_requests: summary.ok_requests ?? 0,
+        error_requests: summary.error_requests ?? 0,
+        error_rate: summary.error_rate ?? null,
+        failover_requests: summary.failover_requests ?? 0,
+        failover_rate: summary.failover_rate ?? null,
+        cache_hits: summary.cache_hits ?? 0,
+        cache_hit_rate: summary.cache_hit_rate ?? null,
+        latency_ms: {
+          p50: latency.p50 ?? null,
+          p95: latency.p95 ?? null,
+          avg: latency.avg ?? null,
+        },
+      },
+      endpoints: data.endpoints ?? [],
+      networks: data.networks ?? [],
+      buckets: data.buckets ?? [],
     };
   },
 
