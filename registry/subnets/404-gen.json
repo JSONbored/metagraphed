@@ -1,12 +1,31 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "3d-generation",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
   "contact": "404@404.xyz",
   "curation": {
-    "level": "candidate-discovered",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No docs subdomain found (docs.404.xyz unresolvable).",
+      "No dedicated dashboard found beyond the account-management page at gen.404.xyz/account.",
+      "The gateway API (api.dns.404.xyz and regional hosts) requires an x-api-key for all task-submission endpoints; only the separate portal host's /api/health is public.",
+      "The portal's own /docs, /redoc, and /api/openapi.json routes exist but return HTTP 200 with an empty body (content-length: 0) -- deliberately disabled in production, not a missing-schema gap.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T22:35:00.000Z",
+    "source_count": 7,
+    "verified_at": "2026-07-15T22:35:00.000Z"
   },
+  "dashboard_url": null,
+  "docs_url": null,
   "name": "404—GEN",
   "netuid": 17,
+  "notes": "First maintainer-reviewed pass for SN17 (previously unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). 404-GEN is a text/image-to-3D generation competition (\"winner-stays-in\" format): miners submit 3D generation solutions, validators run VLM-judged pairwise duels and Docker-image verification. Confirmed live: the official website, source repository, and the public competition-state repository (404-Repo/404-active-competition, distinct from the code repo, updated continuously with the current round/stage and leader history) that the source repo's own README describes as the auditable record of every competition decision. Added website + source-repo surfaces (missing despite the top-level fields already being set) and two new data-artifacts from the live competition-state repo.",
   "schema_version": 1,
   "slug": "sn-17",
   "social": {
@@ -17,11 +36,95 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-17-404-gen-website",
+      "kind": "website",
+      "name": "404-GEN website",
+      "notes": "Official 404-GEN website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "404-gen",
+      "public_safe": true,
+      "source_urls": ["https://github.com/404-Repo/404-gen-subnet"],
+      "url": "https://www.404.xyz/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-17-404-gen-source-repo",
+      "kind": "source-repo",
+      "name": "404-GEN source repository",
+      "notes": "Official 404-GEN competition system source repository (Bittensor Subnet 17, per the README's own first line).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "404-gen",
+      "public_safe": true,
+      "source_urls": ["https://www.404.xyz/"],
+      "url": "https://github.com/404-Repo/404-gen-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-17-404-gen-competition-state",
+      "kind": "data-artifact",
+      "name": "404-GEN live competition state",
+      "notes": "Public no-auth GET state.json from the 404-Repo/404-active-competition repository -- a SEPARATE, continuously-updated public git repo (distinct from the 404-gen-subnet code repo) that the source repo's own README describes as storing all competition state, \"making every decision auditable and every transition traceable.\" Returns the current round number, stage (open/miner_generation/downloading/duels/finalizing/finished/paused), and the next-stage ETA. Confirmed live and current (round 25 at review time).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "404-gen",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/404-Repo/404-active-competition",
+        "https://github.com/404-Repo/404-gen-subnet"
+      ],
+      "url": "https://raw.githubusercontent.com/404-Repo/404-active-competition/main/state.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-17-404-gen-leader",
+      "kind": "data-artifact",
+      "name": "404-GEN leader history",
+      "notes": "Public no-auth GET leader.json from the 404-Repo/404-active-competition repository, alongside the registered live competition-state surface. Leader transition history: hotkey, submitted repo/commit, Docker image, declared hardware, on-chain weight, and effective block for each leadership change.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "404-gen",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/404-Repo/404-active-competition",
+        "https://github.com/404-Repo/404-gen-subnet"
+      ],
+      "url": "https://raw.githubusercontent.com/404-Repo/404-active-competition/main/leader.json"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-17-404-gen-sdk",
       "kind": "sdk",
       "name": "404—GEN Blender add-on",
       "notes": "Official 404-Repo Blender add-on to generate SN17 3D assets directly in Blender; its README links the canonical 404-gen-subnet project repo.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "404-gen",
       "public_safe": true,
       "review": {
@@ -41,6 +144,12 @@
       "kind": "data-artifact",
       "name": "404—GEN Mini 3D dataset",
       "notes": "Official 404-Gen HuggingFace dataset of 20k+ text-to-3D assets generated on SN17 (MIT-licensed, public); the 404-Gen org profile used as the source declares it operates Subnet 17 and links the on-chain 404.xyz website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "404-gen",
       "public_safe": true,
       "review": {
@@ -57,6 +166,12 @@
       "kind": "subnet-api",
       "name": "404—GEN portal health",
       "notes": "Public no-auth GET /api/health on gen.404.xyz returning portal liveness JSON (observed: {\"status\":\"ok\",\"time\":\"...\"}). Same host where users obtain gateway API keys (gen.404.xyz/account); gateway client docs in 404-Repo/gateway-rs reference this portal.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "404-gen",
       "public_safe": true,
       "review": {

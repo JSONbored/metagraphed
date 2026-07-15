@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 217,
+  "surface_count": 221,
   "surfaces": [
     {
       "auth_required": false,
@@ -1505,6 +1505,78 @@
       "surface_id": "sn-17-404-gen-competition-config",
       "surface_key": "srf-d208df0264b87eed",
       "url": "https://raw.githubusercontent.com/404-Repo/404-gen-subnet/92cee1043741edf5f76ba86f9d8e6a10aca6e84e/shared/subnet_common/competition/config.py"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 17,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "404-gen",
+      "public_safe": true,
+      "subnet_name": "404—GEN",
+      "subnet_slug": "sn-17",
+      "surface_id": "sn-17-404-gen-competition-state",
+      "surface_key": "srf-104ad57a88afc669",
+      "url": "https://raw.githubusercontent.com/404-Repo/404-active-competition/main/state.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 17,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "404-gen",
+      "public_safe": true,
+      "subnet_name": "404—GEN",
+      "subnet_slug": "sn-17",
+      "surface_id": "sn-17-404-gen-data-artifact",
+      "surface_key": "srf-54b2344f1ff254c3",
+      "url": "https://huggingface.co/datasets/404-Gen/404mini"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 17,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "404-gen",
+      "public_safe": true,
+      "subnet_name": "404—GEN",
+      "subnet_slug": "sn-17",
+      "surface_id": "sn-17-404-gen-health",
+      "surface_key": "srf-5348bc50f33de160",
+      "url": "https://gen.404.xyz/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 17,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "404-gen",
+      "public_safe": true,
+      "subnet_name": "404—GEN",
+      "subnet_slug": "sn-17",
+      "surface_id": "sn-17-404-gen-leader",
+      "surface_key": "srf-b7620e5750060b03",
+      "url": "https://raw.githubusercontent.com/404-Repo/404-active-competition/main/leader.json"
     },
     {
       "auth_required": false,
