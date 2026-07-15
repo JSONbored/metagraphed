@@ -125,6 +125,72 @@
       },
       "source_urls": ["https://cycle-api.connito.ai/openapi.json"],
       "url": "https://cycle-api.connito.ai/previous_phase_blocks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-102-connito-blocks-until-next-phase",
+      "kind": "subnet-api",
+      "name": "Connito phase countdown",
+      "notes": "Public no-auth GET returning the training-cycle phase schedule (Distribute, Train, MinerCommit1/2, Submission block ranges). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "connito",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://cycle-api.connito.ai/blocks_until_next_phase"],
+      "url": "https://cycle-api.connito.ai/blocks_until_next_phase"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-102-connito-init-peer-id",
+      "kind": "subnet-api",
+      "name": "Connito init peer ID",
+      "notes": "Public no-auth GET returning the current initial peer ID list for the training swarm. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "connito",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://cycle-api.connito.ai/get_init_peer_id"],
+      "url": "https://cycle-api.connito.ai/get_init_peer_id"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-102-connito-validator-whitelist",
+      "kind": "subnet-api",
+      "name": "Connito validator whitelist",
+      "notes": "Public no-auth GET returning the current list of whitelisted validator hotkeys. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "connito",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://cycle-api.connito.ai/get_validator_whitelist"],
+      "url": "https://cycle-api.connito.ai/get_validator_whitelist"
     }
   ],
   "website_url": "https://connito.ai/"

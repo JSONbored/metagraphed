@@ -260,6 +260,94 @@
         "https://cacheon.ai/docs/miners/api-contract"
       ],
       "url": "https://api.cacheon.ai/api/leader/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-evaluations",
+      "kind": "subnet-api",
+      "name": "Cacheon evaluations",
+      "notes": "Public no-auth GET returning current miner evaluation entries (uid, hotkey, commit_block, image). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.cacheon.ai/api/evaluations"],
+      "url": "https://api.cacheon.ai/api/evaluations"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-eval-progress",
+      "kind": "subnet-api",
+      "name": "Cacheon eval progress",
+      "notes": "Public no-auth GET returning live evaluation round progress (status, phase, round_block, challengers). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.cacheon.ai/api/eval-progress"],
+      "url": "https://api.cacheon.ai/api/eval-progress"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-validator-logs",
+      "kind": "subnet-api",
+      "name": "Cacheon validator logs",
+      "notes": "Public no-auth GET returning a list of available validator GPU evaluation log files (label, filename, size_bytes). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.cacheon.ai/api/validator-logs"],
+      "url": "https://api.cacheon.ai/api/validator-logs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-eval-job",
+      "kind": "subnet-api",
+      "name": "Cacheon current eval job",
+      "notes": "Public no-auth GET returning the current evaluation job detail (block, block_hash, challengers). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.cacheon.ai/api/eval-job"],
+      "url": "https://api.cacheon.ai/api/eval-job"
     }
   ],
   "website_url": "https://cacheon.ai/"

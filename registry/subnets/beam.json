@@ -1,17 +1,19 @@
 {
-  "schema_version": 1,
-  "netuid": 105,
-  "name": "Beam",
-  "slug": "sn-105",
-  "status": "active",
   "categories": [],
+  "contact": "info@b1m.ai",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "Beam",
+  "netuid": 105,
+  "schema_version": 1,
+  "slug": "sn-105",
   "social": {
     "x": "https://x.com/b1m_ai"
   },
+  "source_repo": "https://github.com/orgs/Beam-Network/repositories",
+  "status": "active",
   "surfaces": [
     {
       "auth_required": false,
@@ -68,9 +70,51 @@
       },
       "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
       "url": "https://beamcore.b1m.ai/config/uid-ranges"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-105-beam-routing-orchestrators",
+      "kind": "subnet-api",
+      "name": "Beam routing orchestrators",
+      "notes": "Public no-auth GET returning active orchestrator nodes (hotkey, url, region). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/routing/orchestrators"],
+      "url": "https://beamcore.b1m.ai/routing/orchestrators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-105-beam-worker-capacity",
+      "kind": "subnet-api",
+      "name": "Beam worker capacity",
+      "notes": "Public no-auth GET returning total and per-orchestrator worker capacity. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/routing/worker-capacity"],
+      "url": "https://beamcore.b1m.ai/routing/worker-capacity"
     }
   ],
-  "source_repo": "https://github.com/orgs/Beam-Network/repositories",
-  "website_url": "https://b1m.ai/",
-  "contact": "info@b1m.ai"
+  "website_url": "https://b1m.ai/"
 }

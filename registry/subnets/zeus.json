@@ -86,6 +86,28 @@
         "https://github.com/Orpheus-AI/Zeus/blob/8b79e8ea117d085f959decd6fea9ae17da1b1494/zeus/data/weights/latitude_weights_for_rmse.npy"
       ],
       "url": "https://raw.githubusercontent.com/Orpheus-AI/Zeus/8b79e8ea117d085f959decd6fea9ae17da1b1494/zeus/data/weights/latitude_weights_for_rmse.npy"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-18-zeus-ready",
+      "kind": "subnet-api",
+      "name": "Zeus readiness check",
+      "notes": "Public no-auth GET returning readiness status including vault and database connectivity. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.zeussubnet.com/v1/ready"],
+      "url": "https://api.zeussubnet.com/v1/ready"
     }
   ],
   "website_url": "https://www.zeussubnet.com/"

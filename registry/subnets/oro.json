@@ -343,6 +343,98 @@
         "https://oroagents.com/"
       ],
       "url": "https://api.oroagents.com/v1/public/inference/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-top-miner-payout",
+      "kind": "subnet-api",
+      "name": "Oro top miner payout",
+      "notes": "Public no-auth GET returning the current top-paid miner (hotkey, agent_name, tao_per_day, usd_per_day). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.oroagents.com/v1/public/top-miner-payout"],
+      "url": "https://api.oroagents.com/v1/public/top-miner-payout"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-validators",
+      "kind": "subnet-api",
+      "name": "Oro validators",
+      "notes": "Public no-auth GET returning the list of active validators (hotkey, name, status, registered_at). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.oroagents.com/v1/public/validators"],
+      "url": "https://api.oroagents.com/v1/public/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-evaluations-running",
+      "kind": "subnet-api",
+      "name": "Oro running evaluations",
+      "notes": "Public no-auth GET returning currently-running agent evaluation runs. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.oroagents.com/v1/public/evaluations/running"
+      ],
+      "url": "https://api.oroagents.com/v1/public/evaluations/running"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-evaluations-pending",
+      "kind": "subnet-api",
+      "name": "Oro pending evaluations",
+      "notes": "Public no-auth GET returning pending evaluation queue summary and items (total_pending, total_runs_needed, projected_completion_at). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.oroagents.com/v1/public/evaluations/pending"
+      ],
+      "url": "https://api.oroagents.com/v1/public/evaluations/pending"
     }
   ],
   "website_url": "https://oroagents.com/"

@@ -123,6 +123,28 @@
         "https://github.com/Team-Rizzo/talisman-ai"
       ],
       "url": "https://api.alpharidge.ai/dashboard/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-45-alpharidge-price-tao-usd",
+      "kind": "subnet-api",
+      "name": "Talisman AI TAO/USD price",
+      "notes": "Public no-auth GET returning the current TAO/USD price (price_usd, last_updated, source, stale). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.alpharidge.ai/price/tao-usd"],
+      "url": "https://api.alpharidge.ai/price/tao-usd"
     }
   ],
   "website_url": "https://ai.talisman.xyz/"

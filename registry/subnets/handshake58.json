@@ -306,6 +306,28 @@
         "https://handshake58.com/skill.md"
       ],
       "url": "https://handshake58.com/api/validator/registry"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-58-handshake58-directory-providers",
+      "kind": "subnet-api",
+      "name": "Handshake58 provider directory",
+      "notes": "Public no-auth GET returning the directory of registered miner providers (id, name, apiUrl). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://handshake58.com/api/directory/providers"],
+      "url": "https://handshake58.com/api/directory/providers"
     }
   ],
   "website_url": "https://handshake58.com"

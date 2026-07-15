@@ -1,80 +1,85 @@
 {
-  "schema_version": 1,
-  "netuid": 35,
-  "name": "OxMarkets",
-  "slug": "sn-35",
-  "status": "active",
   "categories": [],
+  "contact": "contact@0xmarkets.io",
   "curation": {
     "level": "candidate-discovered",
     "review_state": "unreviewed"
   },
+  "name": "OxMarkets",
+  "netuid": 35,
+  "schema_version": 1,
+  "slug": "sn-35",
+  "social": {
+    "x": "https://x.com/0x_Markets"
+  },
+  "source_repo": "https://github.com/General-Tao-Ventures/cartha-validator",
+  "status": "active",
   "surfaces": [
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-35-oxmarkets-docs",
-      "name": "0xMarkets / Cartha documentation",
       "kind": "docs",
-      "url": "https://docs.0xmarkets.io/",
+      "name": "0xMarkets / Cartha documentation",
+      "notes": "Official 0xMarkets / Cartha documentation, linked from the project website (www.0xmarkets.io).",
       "provider": "oxmarkets",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "source_urls": ["https://www.0xmarkets.io/"],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Official 0xMarkets / Cartha documentation, linked from the project website (www.0xmarkets.io)."
+      "url": "https://docs.0xmarkets.io/"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-35-oxmarkets-cartha-cli",
-      "name": "Cartha CLI (PyPI)",
       "kind": "sdk",
-      "url": "https://pypi.org/project/cartha-cli/",
+      "name": "Cartha CLI (PyPI)",
+      "notes": "Published PyPI package `cartha-cli` — the official CLI for Cartha subnet (SN35) miners; built from the team's General-Tao-Ventures/cartha-cli repo.",
       "provider": "oxmarkets",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
-      "source_urls": ["https://github.com/General-Tao-Ventures/cartha-cli"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Published PyPI package `cartha-cli` — the official CLI for Cartha subnet (SN35) miners; built from the team's General-Tao-Ventures/cartha-cli repo."
+      "source_urls": ["https://github.com/General-Tao-Ventures/cartha-cli"],
+      "url": "https://pypi.org/project/cartha-cli/"
     },
     {
-      "id": "sn-35-oxmarkets-miner-template",
-      "name": "Cartha principal miner template",
-      "kind": "example",
-      "url": "https://github.com/General-Tao-Ventures/cartha-principal-miner-template",
-      "provider": "oxmarkets",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-35-oxmarkets-miner-template",
+      "kind": "example",
+      "name": "Cartha principal miner template",
+      "notes": "Official backend template for running a Cartha (SN35) principal miner; in the team's General-Tao-Ventures org.",
+      "provider": "oxmarkets",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "source_urls": [
         "https://github.com/General-Tao-Ventures/cartha-principal-miner-template"
       ],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Official backend template for running a Cartha (SN35) principal miner; in the team's General-Tao-Ventures org."
+      "url": "https://github.com/General-Tao-Ventures/cartha-principal-miner-template"
     },
     {
-      "id": "sn-35-oxmarkets-docs-repo",
-      "name": "0xMarkets docs source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/General-Tao-Ventures/0xmarkets-docs",
-      "provider": "oxmarkets",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-35-oxmarkets-docs-repo",
+      "kind": "source-repo",
+      "name": "0xMarkets docs source repository",
+      "notes": "Source repository for the 0xMarkets documentation; README states the project is \"built on the Cartha Subnet (SN35)\". Distinct from the cartha-validator repo at the top level.",
+      "provider": "oxmarkets",
       "public_safe": true,
-      "source_urls": ["https://github.com/General-Tao-Ventures/0xmarkets-docs"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Source repository for the 0xMarkets documentation; README states the project is \"built on the Cartha Subnet (SN35)\". Distinct from the cartha-validator repo at the top level."
+      "source_urls": ["https://github.com/General-Tao-Ventures/0xmarkets-docs"],
+      "url": "https://github.com/General-Tao-Ventures/0xmarkets-docs"
     },
     {
       "auth_required": false,
@@ -131,12 +136,51 @@
       },
       "source_urls": ["https://api.cartha.finance/openapi.json"],
       "url": "https://api.cartha.finance/v1/lp-stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-cartha-deregistered-hotkeys",
+      "kind": "subnet-api",
+      "name": "Cartha deregistered hotkeys",
+      "notes": "Public no-auth GET returning the current epoch's deregistered hotkey list. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.cartha.finance/v1/deregistered-hotkeys"],
+      "url": "https://api.cartha.finance/v1/deregistered-hotkeys"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-cartha-parent-vaults",
+      "kind": "subnet-api",
+      "name": "Cartha parent vaults",
+      "notes": "Public no-auth GET returning the list of registered parent vaults (address, chainId, name, category). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.cartha.finance/v1/parent-vaults"],
+      "url": "https://api.cartha.finance/v1/parent-vaults"
     }
   ],
-  "contact": "contact@0xmarkets.io",
-  "source_repo": "https://github.com/General-Tao-Ventures/cartha-validator",
-  "website_url": "https://www.0xmarkets.io/",
-  "social": {
-    "x": "https://x.com/0x_Markets"
-  }
+  "website_url": "https://www.0xmarkets.io/"
 }
