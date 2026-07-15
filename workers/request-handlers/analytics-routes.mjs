@@ -80,6 +80,41 @@ const TRAJECTORY_CSV_COLUMNS = [
   "subnet_volume_tao",
 ];
 
+// formatUptime nests per-day rows under each surface (data.surfaces[].days[]),
+// since one subnet can have several probed surfaces. The CSV flattens that to
+// one row per (surface, day) pair, tagged with surface_id since a subnet's
+// rows would otherwise be indistinguishable across its surfaces, and unnests
+// latency_ms.{p50,p95,p99} into their own columns.
+const UPTIME_CSV_COLUMNS = [
+  "surface_id",
+  "day",
+  "samples",
+  "uptime_ratio",
+  "avg_latency_ms",
+  "latency_sample_count",
+  "p50",
+  "p95",
+  "p99",
+  "status",
+];
+
+function uptimeCsvRows(surfaces) {
+  return (Array.isArray(surfaces) ? surfaces : []).flatMap((surface) =>
+    (Array.isArray(surface?.days) ? surface.days : []).map((d) => ({
+      surface_id: surface.surface_id,
+      day: d.day,
+      samples: d.samples,
+      uptime_ratio: d.uptime_ratio,
+      avg_latency_ms: d.avg_latency_ms,
+      latency_sample_count: d.latency_sample_count,
+      p50: d.latency_ms?.p50 ?? null,
+      p95: d.latency_ms?.p95 ?? null,
+      p99: d.latency_ms?.p99 ?? null,
+      status: d.status,
+    })),
+  );
+}
+
 function validateFormatParam(url) {
   const raw = url.searchParams.get("format");
   if (raw === null && !url.searchParams.has("format")) return null;
@@ -106,6 +141,15 @@ function trajectoryCacheVariant(url, request, canonicalPath) {
     format === "csv" || (request != null && csvRequested(url, request));
   if (!wantsCsv) return canonicalPath;
   return `${canonicalPath}?format=csv`;
+}
+
+function uptimeCacheVariant(url, request, canonicalPath) {
+  const format = url.searchParams.get("format")?.toLowerCase();
+  const wantsCsv =
+    format === "csv" || (request != null && csvRequested(url, request));
+  if (!wantsCsv) return canonicalPath;
+  // canonicalUptimeCachePath always supplies ?window=…, so & is safe.
+  return `${canonicalPath}&format=csv`;
 }
 
 export function configureAnalyticsRoutes(deps) {
@@ -238,8 +282,14 @@ export async function handleEconomicsTrends(request, env, url) {
 
 // Long-term daily uptime history for one subnet's operational surfaces.
 export async function handleUptime(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["window", "min_samples"]);
+  const validationError = validateQueryParams(url, [
+    "window",
+    "min_samples",
+    "format",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const windowParam = url.searchParams.get("window") || "90d";
   if (!Object.hasOwn(UPTIME_WINDOWS, windowParam)) {
     return analyticsQueryError({
@@ -306,6 +356,16 @@ export async function handleUptime(request, env, netuid, url) {
     });
     isFallback = hasD1FallbackRows(rows);
   }
+  if (csvRequested(url, request)) {
+    const csvRes = csvResponse(
+      uptimeCsvRows(data.surfaces),
+      `subnet-${netuid}-uptime`,
+      "short",
+      request,
+      UPTIME_CSV_COLUMNS,
+    );
+    return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
+  }
   const response = await envelopeResponse(
     request,
     {
@@ -324,9 +384,15 @@ export async function handleUptime(request, env, netuid, url) {
 // Normalises the uptime URL so that a bare ?-free request and an explicit
 // ?window=90d request both resolve to the same edge-cache entry — mirrors
 // canonicalSubnetConcentrationHistoryCachePath in entities.mjs.
-export function canonicalUptimeCachePath(url) {
-  const validationError = validateQueryParams(url, ["window", "min_samples"]);
+export function canonicalUptimeCachePath(url, request = null) {
+  const validationError = validateQueryParams(url, [
+    "window",
+    "min_samples",
+    "format",
+  ]);
   if (validationError) return `${url.pathname}${url.search}`;
+  const formatError = validateFormatParam(url);
+  if (formatError) return `${url.pathname}${url.search}`;
   const windowParam = url.searchParams.get("window") || "90d";
   if (!Object.hasOwn(UPTIME_WINDOWS, windowParam))
     return `${url.pathname}${url.search}`;
@@ -341,7 +407,11 @@ export function canonicalUptimeCachePath(url) {
   if (minSamples.error) return `${url.pathname}${url.search}`;
   const params = [`window=${encodeURIComponent(windowParam)}`];
   if (minSamples.value !== null) params.push(`min_samples=${minSamples.value}`);
-  return `${url.pathname}?${params.join("&")}`;
+  return uptimeCacheVariant(
+    url,
+    request,
+    `${url.pathname}?${params.join("&")}`,
+  );
 }
 
 // Normalises the economics-trends URL so that a bare ?-free request and an explicit

@@ -1673,7 +1673,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         "uptime",
         () => handleUptime(request, env, Number(uptimeMatch[1]), resolved.url),
-        canonicalUptimeCachePath(resolved.url),
+        canonicalUptimeCachePath(resolved.url, request),
       );
     }
     const concentrationHistoryMatch =

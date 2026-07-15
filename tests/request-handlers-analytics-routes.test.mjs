@@ -700,6 +700,93 @@ describe("handleUptime", () => {
     assert.equal(body.data.netuid, NETUID);
     assert.deepEqual(body.data.surfaces, []);
   });
+
+  test("returns CSV response when ?format=csv is present, flattening surfaces into one row per (surface, day)", async () => {
+    const env = d1Env({
+      "FROM surface_uptime_daily": [
+        {
+          surface_id: "sn-7-acme-subnet-api",
+          surface_key: "subnet-api",
+          day: "2026-06-01",
+          samples: 10,
+          ok_count: 9,
+          uptime_ratio: 0.9,
+          avg_latency_ms: 120,
+          latency_samples: 10,
+          p50: 100,
+          p95: 200,
+          p99: 250,
+          status: "degraded",
+        },
+      ],
+    });
+    const res = await handleUptime(
+      req("/"),
+      env,
+      NETUID,
+      url("/?window=1y&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(
+      res.headers
+        .get("content-disposition")
+        .includes(`filename="subnet-${NETUID}-uptime.csv"`),
+    );
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(
+      lines[0],
+      "surface_id,day,samples,uptime_ratio,avg_latency_ms,latency_sample_count,p50,p95,p99,status",
+    );
+    assert.equal(
+      lines[1],
+      "sn-7-acme-subnet-api,2026-06-01,10,0.9,120,10,100,200,250,degraded",
+    );
+  });
+
+  test("returns CSV response when Accept: text/csv header is present", async () => {
+    const env = d1Env({
+      "FROM surface_uptime_daily": [
+        {
+          surface_id: "sn-7-acme-subnet-api",
+          surface_key: "subnet-api",
+          day: "2026-06-01",
+          samples: 10,
+          ok_count: 9,
+          avg_latency_ms: 120,
+          latency_samples: 10,
+          p50: 100,
+          p95: 200,
+          p99: 250,
+          status: "ok",
+        },
+      ],
+    });
+    const request = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const res = await handleUptime(request, env, NETUID, url("/"));
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+  });
+
+  test("returns a header-only CSV on cold D1, with no surfaces to flatten", async () => {
+    const res = await handleUptime(req("/"), {}, NETUID, url("/?format=csv"));
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(
+      lines[0],
+      "surface_id,day,samples,uptime_ratio,avg_latency_ms,latency_sample_count,p50,p95,p99,status",
+    );
+    assert.equal(lines.length, 1);
+  });
+
+  test("rejects an unsupported format value", async () => {
+    const res = await handleUptime(req("/"), {}, NETUID, url("/?format=pdf"));
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
 });
 
 describe("handleLeaderboards", () => {
@@ -1075,6 +1162,35 @@ describe("canonicalUptimeCachePath", () => {
   test("falls back to raw search on an invalid min_samples value", () => {
     const raw = "/api/v1/subnets/7/uptime?min_samples=-1";
     assert.equal(canonicalUptimeCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw search on an unsupported format value", () => {
+    const raw = "/api/v1/subnets/7/uptime?format=pdf";
+    assert.equal(canonicalUptimeCachePath(url(raw)), raw);
+  });
+
+  test("?format=csv gets a distinct cache key from the JSON default", () => {
+    const json = canonicalUptimeCachePath(url("/api/v1/subnets/7/uptime"));
+    const csv = canonicalUptimeCachePath(
+      url("/api/v1/subnets/7/uptime?format=csv"),
+    );
+    assert.equal(json, "/api/v1/subnets/7/uptime?window=90d");
+    assert.equal(csv, "/api/v1/subnets/7/uptime?window=90d&format=csv");
+    assert.notEqual(json, csv);
+  });
+
+  test("an Accept: text/csv request gets the same cache key as ?format=csv", () => {
+    const request = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const viaHeader = canonicalUptimeCachePath(
+      url("/api/v1/subnets/7/uptime"),
+      request,
+    );
+    const viaParam = canonicalUptimeCachePath(
+      url("/api/v1/subnets/7/uptime?format=csv"),
+    );
+    assert.equal(viaHeader, viaParam);
   });
 });
 
