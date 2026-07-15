@@ -308,8 +308,8 @@
       "name": "Chutes community data-artifact",
       "probe": {
         "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
+        "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "chutes",
@@ -330,8 +330,8 @@
       "name": "Chutes community boosted data-artifact",
       "probe": {
         "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
+        "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "chutes",
@@ -352,8 +352,8 @@
       "name": "Chutes utilization data-artifact",
       "probe": {
         "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
+        "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "chutes",
