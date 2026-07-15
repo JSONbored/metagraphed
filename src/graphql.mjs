@@ -97,6 +97,11 @@ import {
   DEREGISTRATION_WINDOWS,
   DEFAULT_DEREGISTRATION_WINDOW,
 } from "./account-deregistrations.mjs";
+import {
+  buildAccountServing,
+  SERVING_WINDOWS,
+  DEFAULT_SERVING_WINDOW,
+} from "./account-serving.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import {
@@ -205,6 +210,8 @@ export const SDL = `
     account_deregistrations(ss58: String!, window: String): AccountDeregistrations!
     "One account's StakeAdded/StakeRemoved flow per subnet over a 7d/30d/90d window (default 30d) -- net + gross flow, a direction label (accumulating/exiting/churning/idle), and an HHI concentration of where its flow is focused. direction narrows to inflow (in) or outflow (out) only; all (default) reports both sides. An address with no flow in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/stake-flow."
     account_stake_flow(ss58: String!, window: String, direction: String): AccountStakeFlow!
+    "One account's per-subnet axon-serving footprint over a 7d/30d/90d window (default 30d): AxonServed announcement count and first/last timestamps per subnet, an HHI concentration of where its serving activity is focused, and the dominant subnet; an address with no announcements in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/serving."
+    account_serving(ss58: String!, window: String): AccountServing!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
@@ -1047,6 +1054,25 @@ export const SDL = `
     subnets: [AccountDeregistrationSubnet!]!
   }
 
+  "One subnet's slice of an account's axon-serving footprint over the window."
+  type AccountServingSubnet {
+    netuid: Int!
+    announcements: Int!
+    first_served_at: String
+    last_served_at: String
+  }
+
+  type AccountServing {
+    schema_version: Int!
+    address: String!
+    window: String
+    total_announcements: Int!
+    subnet_count: Int!
+    concentration: Float
+    dominant_netuid: Int
+    subnets: [AccountServingSubnet!]!
+  }
+
   type AccountEvent {
     block_number: Int
     event_index: Int
@@ -1275,6 +1301,7 @@ export const FIELD_COMPLEXITY = {
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   account_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   account_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2611,6 +2638,56 @@ const rootValue = {
         deregistrations: s.deregistrations,
         first_deregistered_at: s.first_deregistered_at ?? null,
         last_deregistered_at: s.last_deregistered_at ?? null,
+      })),
+    };
+  },
+
+  async account_serving({ ss58, window }, context) {
+    // Same SS58 + window validation handleAccountServing (via
+    // makeAccountEventHandler) uses -- a malformed address or unsupported
+    // window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const windowParam = window ?? DEFAULT_SERVING_WINDOW;
+    if (!Object.hasOwn(SERVING_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SERVING_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
+    // (with the buildAccountServing([], ...) zeroed-card cold fallback) the REST
+    // handler uses; an account with no AxonServed events in the window is a
+    // schema-stable zeroed card, never a GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const tier = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/accounts/${encodeURIComponent(ss58)}/serving`,
+        params,
+      ),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
+    const data =
+      tier?.data ?? buildAccountServing([], ss58, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      address: data.address ?? ss58,
+      window: data.window ?? windowParam,
+      total_announcements: data.total_announcements ?? 0,
+      subnet_count: data.subnet_count ?? 0,
+      concentration: data.concentration ?? null,
+      dominant_netuid: data.dominant_netuid ?? null,
+      subnets: (data.subnets ?? []).map((s) => ({
+        netuid: s.netuid,
+        announcements: s.announcements,
+        first_served_at: s.first_served_at ?? null,
+        last_served_at: s.last_served_at ?? null,
       })),
     };
   },
