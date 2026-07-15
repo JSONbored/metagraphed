@@ -40,6 +40,11 @@ import {
   DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
 } from "./subnet-stake-moves.mjs";
 import {
+  buildSubnetStakeTransfers,
+  SUBNET_STAKE_TRANSFERS_WINDOWS,
+  DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
+} from "./subnet-stake-transfers.mjs";
+import {
   buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
@@ -212,6 +217,8 @@ export const SDL = `
     subnet_weights(netuid: Int!, window: String): SubnetWeights!
     "Per-subnet stake-movement (re-delegation) activity over a 7d/30d window (distinct movers, StakeMoved count, and movements per mover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-moves."
     subnet_stake_moves(netuid: Int!, window: String): SubnetStakeMoves!
+    "Per-subnet stake-transfer activity over a 7d/30d window (distinct senders, StakeTransferred count, and transfers per sender); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers."
+    subnet_stake_transfers(netuid: Int!, window: String): SubnetStakeTransfers!
     "Per-subnet weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators behind /weights ranked by WeightsSet activity, each with count, share, and first/last set times; a subnet with no events resolves to a schema-stable empty leaderboard, never null. Mirrors GET /api/v1/subnets/{netuid}/weights/setters."
     subnet_weight_setters(netuid: Int!, window: String): SubnetWeightSetters!
     "Per-subnet emission-per-stake yield over the current metagraph snapshot: each UID's yield plus the subnet-wide aggregate and p25/median/p75/p90 distribution; a subnet with no neurons resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/yield."
@@ -916,6 +923,18 @@ export const SDL = `
     distinct_movers: Int!
     movements: Int!
     movements_per_mover: Float
+  }
+
+  "Per-subnet stake-transfer activity over a window (#5717). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers."
+  type SubnetStakeTransfers {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    distinct_senders: Int!
+    transfers: Int!
+    "Transfers per distinct sender; null when the subnet had no senders in the window."
+    transfers_per_sender: Float
   }
 
   "Per-subnet weight-setter leaderboard (#5712). Empty setters on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/weights/setters."
@@ -1732,6 +1751,7 @@ export const FIELD_COMPLEXITY = {
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_stake_transfers: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_performance: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2598,6 +2618,43 @@ const rootValue = {
       distinct_movers: data.distinct_movers ?? 0,
       movements: data.movements ?? 0,
       movements_per_mover: data.movements_per_mover ?? null,
+    };
+  },
+
+  async subnet_stake_transfers({ netuid, window }, context) {
+    // Same 7d/30d window validation handleSubnetStakeTransfers uses -- an
+    // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
+    if (!Object.hasOwn(SUBNET_STAKE_TRANSFERS_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SUBNET_STAKE_TRANSFERS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetStakeTransfers
+    // zeroed-card fallback contract handleSubnetStakeTransfers uses; a subnet with no
+    // StakeTransferred events in the window is a schema-stable zeroed card, never a
+    // GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/stake-transfers`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? buildSubnetStakeTransfers(null, netuid, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      observed_at: data.observed_at ?? null,
+      distinct_senders: data.distinct_senders ?? 0,
+      transfers: data.transfers ?? 0,
+      transfers_per_sender: data.transfers_per_sender ?? null,
     };
   },
 
