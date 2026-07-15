@@ -7137,6 +7137,179 @@ describe("Subscription.chainEvents", () => {
   });
 });
 
+describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallback)", () => {
+  const HOTKEY = "5FTestValidatorHotkeyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+  function nominatorsQuery(argsClause) {
+    return `{ validator_nominators${argsClause} {
+      schema_version hotkey window sort limit offset nominator_count
+      nominators { coldkey staked_tao unstaked_tao net_staked_tao gross_staked_tao event_count last_observed_at }
+    } }`;
+  }
+
+  // loadValidatorNominators issues TWO queries: a COUNT(DISTINCT coldkey) total
+  // (paging-independent) and the per-coldkey GROUP BY rows -- same two-query shape
+  // the chainWeightsD1 fixture above models, so branch on the SQL.
+  function nominatorsD1(rows = [], nominatorCount = rows.length) {
+    return {
+      prepare(sql) {
+        return {
+          bind: () => ({
+            all: async () =>
+              sql.includes("COUNT(DISTINCT coldkey)")
+                ? { results: [{ nominator_count: nominatorCount }] }
+                : { results: rows },
+          }),
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty list (never a GraphQL error)", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}")`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.validator_nominators.hotkey, HOTKEY);
+    assert.equal(body.data.validator_nominators.window, "30d");
+    assert.equal(body.data.validator_nominators.sort, "net_staked");
+    assert.equal(body.data.validator_nominators.nominator_count, 0);
+    assert.deepEqual(body.data.validator_nominators.nominators, []);
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/sort, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            data: {
+              schema_version: 1,
+              hotkey: HOTKEY,
+              window: "7d",
+              sort: "gross_staked",
+              limit: 20,
+              offset: 0,
+              nominator_count: 1,
+              nominators: [
+                {
+                  coldkey: "5FNominatorColdkeyBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+                  staked_tao: 12.5,
+                  unstaked_tao: 2.5,
+                  net_staked_tao: 10,
+                  gross_staked_tao: 15,
+                  event_count: 3,
+                  last_observed_at: "2026-07-10T00:00:00.000Z",
+                },
+              ],
+            },
+            generatedAt: "2026-07-10T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      nominatorsQuery(
+        `(hotkey: "${HOTKEY}", window: "7d", sort: "gross_staked")`,
+      ),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(
+      capturedUrl.pathname,
+      `/api/v1/validators/${HOTKEY}/nominators`,
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl.searchParams.get("sort"), "gross_staked");
+    assert.equal(body.data.validator_nominators.window, "7d");
+    assert.equal(body.data.validator_nominators.sort, "gross_staked");
+    assert.equal(body.data.validator_nominators.nominator_count, 1);
+    assert.equal(
+      body.data.validator_nominators.nominators[0].net_staked_tao,
+      10,
+    );
+    assert.equal(body.data.validator_nominators.nominators[0].event_count, 3);
+  });
+
+  test("no Postgres tier flag: buckets the account_events stake stream straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: nominatorsD1([
+        {
+          coldkey: "5FNominatorColdkeyBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          staked_tao: 12.5,
+          unstaked_tao: 2.5,
+          event_count: 3,
+          last_observed: 1_750_000_000_000,
+        },
+      ]),
+    };
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}")`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.validator_nominators.nominator_count, 1);
+    const first = body.data.validator_nominators.nominators[0];
+    assert.equal(
+      first.coldkey,
+      "5FNominatorColdkeyBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    );
+    assert.equal(first.net_staked_tao, 10);
+    assert.equal(first.gross_staked_tao, 15);
+    assert.ok(first.last_observed_at);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    // The tier answers with the right { data, generatedAt } envelope but an empty
+    // data object -- every field falls through to its own default rather than
+    // surfacing undefined or throwing.
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => Response.json({ data: {}, generatedAt: null }),
+      },
+    };
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}")`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.validator_nominators, {
+      schema_version: 1,
+      hotkey: HOTKEY,
+      window: "30d",
+      sort: "net_staked",
+      limit: 0,
+      offset: 0,
+      nominator_count: 0,
+      nominators: [],
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", window: "99d")`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.match(body.errors[0].message, /99d/);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("an unsupported sort is a GraphQL error listing the supported values", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", sort: "bogus")`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.match(body.errors[0].message, /not a supported sort/);
+    assert.match(body.errors[0].message, /net_staked/);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+});
+
 describe("graphql — chain_performance (#5688, Postgres-tier + zeroed-card fallback)", () => {
   const PERFORMANCE_QUERY = `{ chain_performance {
     schema_version subnet_count neuron_count validator_count active_count captured_at

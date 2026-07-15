@@ -168,6 +168,13 @@ import {
 } from "./chain-turnover.mjs";
 import { buildChainPerformance } from "./chain-performance.mjs";
 import {
+  DEFAULT_NOMINATOR_SORT,
+  DEFAULT_NOMINATOR_WINDOW,
+  loadValidatorNominators,
+  NOMINATOR_SORTS,
+  NOMINATOR_WINDOWS,
+} from "./validator-nominators.mjs";
+import {
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
   loadChainAlphaVolume,
@@ -252,6 +259,8 @@ export const SDL = `
     validators(sort: String, limit: Int): ValidatorList!
     "One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}."
     validator(hotkey: String!): Validator
+    "One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked). An unsupported window/sort is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators."
+    validator_nominators(hotkey: String!, window: String, sort: String): NominatorList!
     "One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history."
     validator_history(hotkey: String!, window: String): ValidatorHistory!
     "Site-wide accounts leaderboard -- every currently-registered hotkey, aggregated cross-subnet from the current neurons snapshot. Mirrors GET /api/v1/accounts."
@@ -981,6 +990,35 @@ export const SDL = `
     p50: Float
     p75: Float
     p90: Float
+  }
+
+  "One validator's nominator leaderboard (#5692). Mirrors GET /api/v1/validators/{hotkey}/nominators' data envelope."
+  type NominatorList {
+    schema_version: Int!
+    hotkey: String!
+    "The resolved window label; null only if the builder was handed no window."
+    window: String
+    "The resolved sort actually applied (an omitted sort resolves to net_staked)."
+    sort: String!
+    limit: Int!
+    offset: Int!
+    "Total distinct nominating coldkeys in the window, before limit/offset paging."
+    nominator_count: Int!
+    nominators: [Nominator!]!
+  }
+
+  "One nominating coldkey's staking activity toward a validator within the window."
+  type Nominator {
+    coldkey: String!
+    staked_tao: Float!
+    unstaked_tao: Float!
+    "staked_tao - unstaked_tao."
+    net_staked_tao: Float!
+    "staked_tao + unstaked_tao (total churn, regardless of direction)."
+    gross_staked_tao: Float!
+    event_count: Int!
+    "Most recent StakeAdded/StakeRemoved time for this coldkey; null when unstamped."
+    last_observed_at: String
   }
 
   "Network-wide reward-distribution & score-spread card (#5688) -- the network analog of SubnetPerformance, spanning every subnet's neurons in one snapshot. Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/performance."
@@ -1745,6 +1783,7 @@ export const FIELD_COMPLEXITY = {
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
+  validator_nominators: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_performance: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_alpha_volume: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2965,6 +3004,59 @@ const rootValue = {
       sort: data.sort ?? requestedSort,
       captured_at: data.captured_at ?? null,
       block_number: data.block_number ?? null,
+    };
+  },
+
+  async validator_nominators({ hotkey, window, sort }, context) {
+    // Same window/sort allow-lists handleValidatorNominators validates against --
+    // an unsupported value is a GraphQL BAD_USER_INPUT error, not a silently
+    // substituted default. `sort` is optional: omitted resolves to
+    // DEFAULT_NOMINATOR_SORT inside the builder, so only a SUPPLIED bad value errors.
+    const requestedWindow = window ?? DEFAULT_NOMINATOR_WINDOW;
+    if (!Object.hasOwn(NOMINATOR_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, NOMINATOR_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (sort != null && !NOMINATOR_SORTS.includes(sort)) {
+      throw new GraphQLError(
+        `"${sort}" is not a supported sort. Supported: ${NOMINATOR_SORTS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    if (sort != null) params.set("sort", sort);
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadValidatorNominators
+    // fallback contract REST uses. Both sides return the SAME { data, generatedAt }
+    // envelope, so the destructure covers either tier; `generatedAt` is REST
+    // envelope meta with no GraphQL field to carry it. A hotkey with no nominators
+    // yields a schema-stable empty list, never a GraphQL error. limit/offset are
+    // deliberately not GraphQL args, so the module's own defaults apply.
+    const { data } =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/validators/${encodeURIComponent(hotkey)}/nominators`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      (await loadValidatorNominators(graphqlD1(context), hotkey, {
+        windowLabel: requestedWindow,
+        sort: sort ?? undefined,
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      hotkey: data.hotkey ?? hotkey,
+      window: data.window ?? requestedWindow,
+      sort: data.sort ?? sort ?? DEFAULT_NOMINATOR_SORT,
+      limit: data.limit ?? 0,
+      offset: data.offset ?? 0,
+      nominator_count: data.nominator_count ?? 0,
+      nominators: data.nominators || [],
     };
   },
 
