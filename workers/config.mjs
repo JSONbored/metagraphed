@@ -15,11 +15,6 @@ export const HEALTH_PRUNE_CRON = "0 * * * *";
 // Distinct minute (odd) so it never collides with the 15-minute probe or the
 // top-of-hour prune. Must match a wrangler.jsonc `triggers.crons` entry.
 export const EMBEDDING_SYNC_CRON = "37 3 * * *";
-// Daily neuron-history rollup (#1345 Tier-1): snapshots the current `neurons`
-// table into the dated neuron_daily table once a day, on its own minute (distinct
-// from the probe/prune/embed/fast crons) so the ~33k-row INSERT...SELECT runs
-// exactly once/day, not on every tick. Must match a wrangler.jsonc cron entry.
-export const NEURON_HISTORY_ROLLUP_CRON = "47 5 * * *";
 // Hourly account_events_daily rollup (#4832 gap-closure), moved off the
 // former rollup-account-events-daily.yml GitHub Actions workflow onto this
 // Worker-native cron -- offset from the top-of-hour prune (0) so the two

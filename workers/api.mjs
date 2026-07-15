@@ -317,7 +317,6 @@ import {
   MAX_BACKFILL_INGEST_BODY_BYTES,
   MAX_BACKFILL_INGEST_ROWS,
   MAX_WEBHOOK_BODY_BYTES,
-  NEURON_HISTORY_ROLLUP_CRON,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
   resolveClientIp,
@@ -625,37 +624,6 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
-  }
-  if (cron === NEURON_HISTORY_ROLLUP_CRON) {
-    // #4772 D1 chain-data retirement: the neuron_daily rollup/archive/prune
-    // (rollupNeuronDaily/archiveNeuronDaily/archivePrunableNeuronDaily/
-    // pruneNeuronDaily) that used to run here are removed alongside D1's
-    // neuron_daily table. #4771's Postgres write path (handleNeuronsSync,
-    // called by refresh-metagraph.yml alongside the D1 stage) already populates
-    // Postgres's neuron_daily directly, and Postgres has no D1-style capacity
-    // cap forcing an archive-then-prune dance, so this cron no longer needs
-    // either step.
-    //
-    // account_position_daily's own rollupAccountPositionDaily/
-    // pruneAccountPositionDaily (src/account-position-history.mjs), previously
-    // called from here, are retired too: #4908 dropped D1's `neurons` table
-    // entirely (confirmed live: `SELECT ... FROM neurons` now errors "no such
-    // table: neurons"), so rollupAccountPositionDaily's `FROM neurons` query
-    // has been throwing -- silently swallowed by its own .catch() -- every
-    // tick since #4908 merged (2026-07-11); D1's account_position_daily table
-    // has been frozen at that same date ever since (confirmed via `wrangler
-    // d1 execute`). #4839 already gave this table its own independent
-    // Postgres write path (handleNeuronsSync, the same transaction as
-    // neurons/neuron_daily) and read route (tryPostgresTier +
-    // METAGRAPH_NEURONS_SOURCE, live in production per wrangler.jsonc), so
-    // nothing depends on the D1 side continuing to run. #4910, which asked
-    // for a Postgres read route believing none existed, was stale -- #4839
-    // already shipped it.
-    //
-    // This cron trigger (47 5 * * *, wrangler.jsonc) has no remaining work;
-    // left wired but inert rather than also retiring the schedule trigger
-    // itself, which is a separate deploy-config decision.
-    return { ok: true, retired: true };
   }
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) {
     // #4832 gap-closure, moved off GitHub Actions (rollup-account-events-daily.yml,

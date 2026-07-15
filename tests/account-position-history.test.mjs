@@ -4,35 +4,11 @@ import {
   formatAccountPosition,
   buildAccountPositionHistory,
 } from "../src/account-position-history.mjs";
-import { handleRequest, handleScheduled } from "../workers/api.mjs";
-import { NEURON_HISTORY_ROLLUP_CRON } from "../workers/config.mjs";
+import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 const ctx = { waitUntil: (p) => p };
 const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
-
-// account_position_daily's D1 rollup/prune (formerly rollupAccountPositionDaily/
-// pruneAccountPositionDaily, src/account-position-history.mjs, wired from this
-// cron) are retired: #4908 dropped D1's `neurons` table entirely, and #4839
-// already gave this table its own independent, live-verified Postgres write +
-// read path. This cron tick now has no remaining work.
-describe("handleScheduled NEURON_HISTORY_ROLLUP_CRON (retired, #4329/6.1)", () => {
-  test("is a pure no-op — never touches D1", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          throw new Error("D1 must not be queried by a retired cron branch");
-        },
-      },
-    };
-    const result = await handleScheduled(
-      { cron: NEURON_HISTORY_ROLLUP_CRON },
-      env,
-      ctx,
-    );
-    assert.deepEqual(result, { ok: true, retired: true });
-  });
-});
 
 // An ACCOUNT_POSITION_DAILY_READ_COLUMNS-shaped row.
 function positionRow(overrides = {}) {
