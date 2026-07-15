@@ -4359,3 +4359,90 @@ describe("Subscription.chainEvents", () => {
     assert.ok(body.errors?.length);
   });
 });
+
+describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.mjs)", () => {
+  // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
+  // in tests/subnet-recycled.test.mjs.
+  function withFetchStub(stub, fn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  test("resolves recycled_tao from a live RPC hit", async () => {
+    await withFetchStub(
+      async () => ({
+        ok: true,
+        json: async () => ({
+          jsonrpc: "2.0",
+          id: 1,
+          result: "0x626ac0f623000000", // little-endian u64 for 154463660642 rao
+        }),
+      }),
+      async () => {
+        const { status, body } = await gql(
+          "{ subnet_recycled(netuid: 101) { schema_version netuid recycled_tao queried_at } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.subnet_recycled;
+        assert.equal(r.schema_version, 1);
+        assert.equal(r.netuid, 101);
+        assert.equal(r.recycled_tao, 154.463660642);
+        assert.ok(r.queried_at);
+      },
+    );
+  });
+
+  test("RPC failure degrades recycled_tao to null, never a GraphQL error", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("network unreachable");
+      },
+      async () => {
+        const { status, body } = await gql(
+          "{ subnet_recycled(netuid: 1) { recycled_tao } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.subnet_recycled.recycled_tao, null);
+      },
+    );
+  });
+
+  test("an out-of-range netuid is BAD_USER_INPUT and never reaches the RPC", async () => {
+    let called = false;
+    await withFetchStub(
+      async () => {
+        called = true;
+        return { ok: true, json: async () => ({ result: "0x0" }) };
+      },
+      async () => {
+        const { status, body } = await gql(
+          "{ subnet_recycled(netuid: 99999) { recycled_tao } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.data.subnet_recycled, null);
+        assert.ok(
+          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+        );
+        assert.equal(called, false);
+      },
+    );
+  });
+
+  test("a negative netuid is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      "{ subnet_recycled(netuid: -1) { recycled_tao } }",
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("subnet_recycled is weighted heavier than a Postgres-tier relationship field, since it hits live chain RPC", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_recycled, 10);
+    assert.ok(FIELD_COMPLEXITY.subnet_recycled > FIELD_COMPLEXITY.chain_weights);
+  });
+});

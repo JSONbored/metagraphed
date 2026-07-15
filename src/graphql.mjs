@@ -48,6 +48,7 @@ import {
 import { buildExtrinsic, buildExtrinsicFeed } from "./extrinsics.mjs";
 import { buildBlock, buildBlockFeed } from "./blocks.mjs";
 import { buildBlocksSummary } from "./blocks-summary.mjs";
+import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -168,6 +169,8 @@ export const SDL = `
     chain_weight_setters(window: String, limit: Int): ChainWeightSetters!
     "Compact all-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history (probed every ~15 minutes); a cold store still returns both windows, schema-stable and zeroed, never a GraphQL error. Mirrors GET /api/v1/health/trends."
     health_trends: HealthTrends!
+    "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC (not the Postgres tier). recycled_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/recycled."
+    subnet_recycled(netuid: Int!): SubnetRecycled
   }
 
   type SubnetList {
@@ -689,6 +692,14 @@ export const SDL = `
     observed_at: String
   }
 
+  "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC. recycled_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/recycled."
+  type SubnetRecycled {
+    schema_version: Int!
+    netuid: Int!
+    recycled_tao: Float
+    queried_at: String!
+  }
+
   "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary."
   type BlocksSummary {
     schema_version: Int!
@@ -1013,6 +1024,9 @@ schema.getSubscriptionType().getFields().chainEvents.subscribe =
 // trips it. Keyed by field name; everything else defaults to 1.
 export const DEFAULT_FIELD_COMPLEXITY = 1;
 const RELATIONSHIP_FIELD_COMPLEXITY = 5;
+// Live chain RPC (not the cached Postgres tier) -- costs more per-call than a
+// relationship read, so it's weighted double.
+const LIVE_RPC_FIELD_COMPLEXITY = 10;
 export const FIELD_COMPLEXITY = {
   subnets: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1042,6 +1056,7 @@ export const FIELD_COMPLEXITY = {
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_recycled: LIVE_RPC_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -2268,6 +2283,21 @@ const rootValue = {
       source: data.source ?? null,
       windows: data.windows ?? {},
     };
+  },
+
+  async subnet_recycled({ netuid }, context) {
+    if (!isU16Netuid(netuid)) {
+      throw new GraphQLError(
+        "netuid must be an integer in the u16 range 0..65535.",
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Live chain RPC, not the Postgres tier -- reuses loadSubnetRecycled's own
+    // KV cache/TTL, matching REST's handleSubnetRecycled exactly. recycled_tao
+    // stays null on RPC failure (schema-stable), never a GraphQL error.
+    // loadSubnetRecycled always sets schema_version/netuid/queried_at
+    // unconditionally, so no `??` fallback is needed for those.
+    return loadSubnetRecycled(context.env, netuid);
   },
 };
 
