@@ -13,7 +13,9 @@ name: Publish Cloudflare Backend
 #     re-probe (the original decoupling intent is preserved).
 #   - schedule: once daily → a floor for slow chain/registry drift. The volatile
 #     tiers are already served LIVE and refresh independently: surface health via
-#     the 15m prober (src/health-prober.mjs), economics via refresh-economics.yml.
+#     the 15m prober (src/health-prober.mjs), economics via the indexer-box
+#     data-refresh-economics systemd timer (JSONbored/metagraphed-infra, moved
+#     off the former GitHub Actions refresh-economics.yml 2026-07-15).
 #   - workflow_dispatch (publish_mode=dry-run validates without writing R2/KV).
 #
 # No stale-pointer hazard: every run fresh-fetches the chain snapshot FIRST

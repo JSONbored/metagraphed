@@ -171,8 +171,8 @@ def main():
     # unset -> "finney", set -> route through our own node without exposing it.
     # This was the last chain-fetch script still hardcoded to the public
     # "finney" alias -- callers are refresh-native-snapshot.mjs (production
-    # publish + refresh-economics.yml) and sync-subnets.yml via
-    # scripts/sync-subnets.mjs's fetchNativeSnapshot().
+    # publish + the indexer-box data-refresh-economics systemd timer) and
+    # sync-subnets.yml via scripts/sync-subnets.mjs's fetchNativeSnapshot().
     parser.add_argument(
         "--network", default=os.environ.get("SUBTENSOR_RPC_URL") or "finney"
     )

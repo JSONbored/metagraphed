@@ -1493,7 +1493,9 @@ export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
 }
 
 // Live economics freshness window. Economics is refreshed on its own schedule
-// (refresh-economics.yml, ~3h), independent of the DATA publish, so its acceptable
+// (the indexer-box data-refresh-economics systemd timer, ~3h -- moved off the
+// former GitHub Actions refresh-economics.yml 2026-07-15), independent of the
+// DATA publish, so its acceptable
 // age is sized to that cadence (~hours) — NOT the 25-minute health window. A KV blob
 // older than this is treated as cold and the committed R2 economics.json serves.
 export const ECONOMICS_FRESHNESS_MAX_AGE_MS = 8 * 60 * 60 * 1000;

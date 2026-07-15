@@ -56,7 +56,9 @@ trigger to carry freshness.** `publish-cloudflare.yml` is repurposed:
 
 The two volatile tiers stay decoupled and refresh independently: operational
 health via the 15-minute prober (`src/health-prober.mjs`, ADR 0002), economics
-via `refresh-economics.yml` (~3h KV tier). `operational-surfaces.json` is
+via the indexer-box `data-refresh-economics` systemd timer (~3h KV tier,
+JSONbored/metagraphed-infra -- moved off the former GitHub Actions
+refresh-economics.yml 2026-07-15). `operational-surfaces.json` is
 DUAL/committed (#1247) so the live prober survives a publish outage.
 
 ## Consequences

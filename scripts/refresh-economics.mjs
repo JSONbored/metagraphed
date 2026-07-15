@@ -8,8 +8,10 @@
 // KV-only: a single atomic PUT of the JSON blob via the same arg-array wrangler
 // idiom as kv-publish-pointer.mjs (no shell, no hand-built SQL). Tolerant — a
 // wrangler failure is a warning, never a hard error (the serve path falls back to
-// R2). Run by .github/workflows/refresh-economics.yml AFTER a fresh native-snapshot
-// refresh. Gated: --write performs the remote PUT; default is dry-run.
+// R2). Run by the indexer-box data-refresh-economics systemd timer
+// (JSONbored/metagraphed-infra, moved off the former GitHub Actions
+// refresh-economics.yml 2026-07-15) AFTER a fresh native-snapshot refresh.
+// Gated: --write performs the remote PUT; default is dry-run.
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
