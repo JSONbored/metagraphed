@@ -1238,3 +1238,43 @@ describe("list-query string filter excludes rows missing the field", () => {
     });
   });
 });
+
+describe("list-query free-text maxLength (#5544)", () => {
+  test("a filter value at the 200-char cap is accepted", () => {
+    const result = applyQueryFilters(
+      { candidates: [] },
+      query(`/api/v1/candidates?provider=${"a".repeat(200)}`),
+      "candidates",
+    );
+    assert.equal(result.error, undefined);
+  });
+
+  test("a filter value over the cap is rejected", () => {
+    const result = applyQueryFilters(
+      { candidates: [] },
+      query(`/api/v1/candidates?provider=${"a".repeat(201)}`),
+      "candidates",
+    );
+    assert.equal(result.error?.parameter, "provider");
+    assert.match(result.error?.message, /is too long/);
+  });
+
+  test("the q search term at the 200-char cap is accepted", () => {
+    const result = applyQueryFilters(
+      { documents: [] },
+      query(`/api/v1/documents?q=${"a".repeat(200)}`),
+      "documents",
+    );
+    assert.equal(result.error, undefined);
+  });
+
+  test("the q search term over the cap is rejected", () => {
+    const result = applyQueryFilters(
+      { documents: [] },
+      query(`/api/v1/documents?q=${"a".repeat(201)}`),
+      "documents",
+    );
+    assert.equal(result.error?.parameter, "q");
+    assert.match(result.error?.message, /is too long/);
+  });
+});

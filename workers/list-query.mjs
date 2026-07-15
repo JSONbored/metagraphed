@@ -4,7 +4,10 @@
 // the query-collection contract and nothing from api.mjs, so there is no cycle.
 // `applyQueryFilters` is the main public entry; route preflight uses the same
 // validator before artifact/cache reads.
-import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
+import {
+  API_QUERY_COLLECTIONS,
+  FREE_TEXT_MAX_LENGTH,
+} from "../src/contracts.mjs";
 import { linkHeader } from "./http.mjs";
 import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.mjs";
 
@@ -438,6 +441,19 @@ function validateListQuery(params, config, { csvResponse = false } = {}) {
       parameter: "sort",
       message: `sort is not supported for ${config.data_key}.`,
     };
+  }
+
+  // `q` is a search term, not a configured filter, so the filters loop below
+  // never sees it — cap it explicitly with the same bound as the free-text
+  // filter params (openapi documents it via the shared textSchema maxLength).
+  if ((config.search_keys || []).length > 0) {
+    const searchValue = params.get("q");
+    if (searchValue !== null && searchValue.length > FREE_TEXT_MAX_LENGTH) {
+      return {
+        parameter: "q",
+        message: "q is too long.",
+      };
+    }
   }
 
   for (const [key, schema] of Object.entries(config.filters)) {

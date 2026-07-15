@@ -130,7 +130,11 @@ export const QUERY_ENUMS = {
 };
 
 const integerSchema = { type: "integer", minimum: 0 };
-const textSchema = { type: "string" };
+// Free-text query params (filters like `provider`/`id`/`review_state` and the
+// `q` search term) are unbounded strings otherwise — cap them so an oversized
+// value is rejected at the edge instead of scanned against every row.
+export const FREE_TEXT_MAX_LENGTH = 200;
+const textSchema = { type: "string", maxLength: FREE_TEXT_MAX_LENGTH };
 const fieldListSchema = {
   type: "string",
   pattern: "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
