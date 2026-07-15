@@ -33,6 +33,7 @@ import {
 import { buildExtrinsic, buildExtrinsicFeed } from "./extrinsics.mjs";
 import { buildBlock, buildBlockFeed } from "./blocks.mjs";
 import { buildBlocksSummary } from "./blocks-summary.mjs";
+import { buildChainPerformance } from "./chain-performance.mjs";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -126,6 +127,8 @@ export const SDL = `
     economics_trends(window: String): EconomicsTrends!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
     subnet_movers(window: String, sort: String, limit: Int): SubnetMovers!
+    "Network-wide reward-distribution & score-spread aggregate over every subnet's neurons -- Gini/HHI/Nakamoto/top-share concentration of incentive across all neurons and dividends across validators, plus the p10-p90 spread of the 0-1 trust/consensus/validator_trust scores. Every metric block is null (never a GraphQL error) on a cold neurons store. Mirrors GET /api/v1/chain/performance."
+    chain_performance: ChainPerformance!
   }
 
   type SubnetList {
@@ -595,6 +598,34 @@ export const SDL = `
     entropy_normalized: Float
   }
 
+  "Network-wide reward-distribution & score-spread aggregate (#5688) across every subnet's neurons -- the reward-flow companion to chain concentration. Every metric block is null on a cold neurons store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/chain/performance."
+  type ChainPerformance {
+    schema_version: Int!
+    subnet_count: Int!
+    neuron_count: Int!
+    validator_count: Int!
+    active_count: Int!
+    captured_at: String
+    incentive: ConcentrationMetrics
+    dividends: ConcentrationMetrics
+    trust: ScoreDistribution
+    consensus: ScoreDistribution
+    validator_trust: ScoreDistribution
+  }
+
+  "Distribution summary for a bounded 0..1 performance score across the whole network -- count, mean, min/max, and the p10..p90 percentile spread."
+  type ScoreDistribution {
+    count: Int!
+    mean: Float
+    min: Float
+    max: Float
+    p10: Float
+    p25: Float
+    p50: Float
+    p75: Float
+    p90: Float
+  }
+
   type BlockDetail {
     ref: String
     block: Block
@@ -891,6 +922,7 @@ export const FIELD_COMPLEXITY = {
   block: RELATIONSHIP_FIELD_COMPLEXITY,
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_performance: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -1898,6 +1930,32 @@ const rootValue = {
         unchanged: network.unchanged ?? 0,
       },
       movers: data.movers || [],
+    };
+  },
+
+  async chain_performance(_args, context) {
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainPerformance([])
+    // fallback contract handleChainPerformance uses -- a cold/absent neurons
+    // store degrades to the schema-stable empty aggregate (every metric block
+    // null), never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/performance"),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildChainPerformance([]);
+    return {
+      schema_version: data.schema_version ?? 1,
+      subnet_count: data.subnet_count ?? 0,
+      neuron_count: data.neuron_count ?? 0,
+      validator_count: data.validator_count ?? 0,
+      active_count: data.active_count ?? 0,
+      captured_at: data.captured_at ?? null,
+      incentive: data.incentive ?? null,
+      dividends: data.dividends ?? null,
+      trust: data.trust ?? null,
+      consensus: data.consensus ?? null,
+      validator_trust: data.validator_trust ?? null,
     };
   },
 };

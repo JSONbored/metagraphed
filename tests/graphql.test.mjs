@@ -3066,6 +3066,194 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
   });
 });
 
+describe("graphql — chain_performance (#5688, Postgres-tier + buildChainPerformance fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty aggregate, never null", async () => {
+    const { status, body } = await gql(
+      `{ chain_performance {
+          schema_version subnet_count neuron_count validator_count active_count
+          captured_at
+          incentive { gini } dividends { gini }
+          trust { count } consensus { count } validator_trust { count }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_performance, {
+      schema_version: 1,
+      subnet_count: 0,
+      neuron_count: 0,
+      validator_count: 0,
+      active_count: 0,
+      captured_at: null,
+      incentive: null,
+      dividends: null,
+      trust: null,
+      consensus: null,
+      validator_trust: null,
+    });
+  });
+
+  test("resolves the Postgres-tier aggregate, including nested concentration/score-distribution blocks", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          subnet_count: 3,
+          neuron_count: 500,
+          validator_count: 40,
+          active_count: 480,
+          captured_at: "2026-07-01T00:00:00.000Z",
+          incentive: {
+            holders: 500,
+            total: 1000,
+            gini: 0.4,
+            hhi: 0.02,
+            hhi_normalized: 0.01,
+            nakamoto_coefficient: 50,
+            top_1pct_share: 0.1,
+            top_5pct_share: 0.2,
+            top_10pct_share: 0.3,
+            top_20pct_share: 0.4,
+            entropy: 8.5,
+            entropy_normalized: 0.95,
+          },
+          dividends: {
+            holders: 40,
+            total: 200,
+            gini: 0.3,
+            hhi: 0.05,
+            hhi_normalized: 0.03,
+            nakamoto_coefficient: 10,
+            top_1pct_share: 0.2,
+            top_5pct_share: 0.3,
+            top_10pct_share: 0.4,
+            top_20pct_share: 0.5,
+            entropy: 5.2,
+            entropy_normalized: 0.8,
+          },
+          trust: {
+            count: 500,
+            mean: 0.6,
+            min: 0.1,
+            max: 0.9,
+            p10: 0.2,
+            p25: 0.35,
+            p50: 0.6,
+            p75: 0.75,
+            p90: 0.85,
+          },
+          consensus: {
+            count: 500,
+            mean: 0.55,
+            min: 0.05,
+            max: 0.95,
+            p10: 0.15,
+            p25: 0.3,
+            p50: 0.55,
+            p75: 0.7,
+            p90: 0.9,
+          },
+          validator_trust: {
+            count: 40,
+            mean: 0.7,
+            min: 0.3,
+            max: 0.99,
+            p10: 0.4,
+            p25: 0.5,
+            p50: 0.7,
+            p75: 0.85,
+            p90: 0.95,
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ chain_performance {
+          subnet_count neuron_count validator_count active_count captured_at
+          incentive { gini nakamoto_coefficient top_1pct_share entropy_normalized }
+          dividends { holders total hhi_normalized }
+          trust { count mean p50 p90 }
+          consensus { count mean min max }
+          validator_trust { count p10 p90 }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const c = body.data.chain_performance;
+    assert.equal(c.subnet_count, 3);
+    assert.equal(c.neuron_count, 500);
+    assert.equal(c.validator_count, 40);
+    assert.equal(c.active_count, 480);
+    assert.equal(c.captured_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(c.incentive.gini, 0.4);
+    assert.equal(c.incentive.nakamoto_coefficient, 50);
+    assert.equal(c.incentive.top_1pct_share, 0.1);
+    assert.equal(c.dividends.holders, 40);
+    assert.equal(c.dividends.hhi_normalized, 0.03);
+    assert.equal(c.trust.count, 500);
+    assert.equal(c.trust.mean, 0.6);
+    assert.equal(c.trust.p90, 0.85);
+    assert.equal(c.consensus.min, 0.05);
+    assert.equal(c.consensus.max, 0.95);
+    assert.equal(c.validator_trust.p10, 0.4);
+  });
+
+  test("forwards to /api/v1/chain/performance with no query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({ schema_version: 1, subnet_count: 0 });
+        },
+      },
+    };
+    await gql("{ chain_performance { subnet_count } }", env);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/performance");
+    assert.equal(capturedUrl.search, "");
+  });
+
+  test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      // Every field absent -- the resolver's own ?? defaults must fill them in.
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ chain_performance {
+          schema_version subnet_count neuron_count validator_count active_count
+          captured_at
+          incentive { gini } dividends { gini }
+          trust { count } consensus { count } validator_trust { count }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_performance, {
+      schema_version: 1,
+      subnet_count: 0,
+      neuron_count: 0,
+      validator_count: 0,
+      active_count: 0,
+      captured_at: null,
+      incentive: null,
+      dividends: null,
+      trust: null,
+      consensus: null,
+      validator_trust: null,
+    });
+  });
+
+  test("chain_performance is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_performance, 5);
+  });
+});
+
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
