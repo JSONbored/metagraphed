@@ -136,6 +136,7 @@ import {
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
 } from "./account-stake-moves.mjs";
+import { loadAccountIdentity } from "./account-identity.mjs";
 import { loadAccountIdentityHistory } from "./account-identity-history.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
@@ -289,6 +290,8 @@ export const SDL = `
     account_axon_removals(ss58: String!, window: String): AccountAxonRemovals!
     "One account's per-subnet StakeMoved footprint over a 7d/30d/90d window (default 30d): movement count, first/last timestamps, and the alpha price (TAO) at its most recent move per subnet, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet; an address with no moves in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/stake-moves."
     account_stake_moves(ss58: String!, window: String): AccountStakeMoves!
+    "One account's on-chain identity (its latest set_identity values, sanitized at serve time). has_identity is false with every field null for an account that never set one -- the common case, so this is a schema-stable card, never null and never a GraphQL error. Mirrors GET /api/v1/accounts/{ss58}/identity."
+    account_identity(ss58: String!): AccountIdentity!
     "One account's on-chain identity change history, newest first -- an append-only diff-tracking timeline (name/url/github/image/discord/description/additional plus a stable hash per entry). Page with limit/offset or cursor (opaque keyset from a prior response's next_cursor). An address with no identity-history rows resolves to a schema-stable empty timeline, never null. Mirrors GET /api/v1/accounts/{ss58}/identity-history."
     account_identity_history(ss58: String!, limit: Int, offset: Int, cursor: String): AccountIdentityHistory!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
@@ -1556,6 +1559,20 @@ export const SDL = `
     identity_hash: String
   }
 
+  type AccountIdentity {
+    schema_version: Int!
+    account: String!
+    has_identity: Boolean!
+    name: String
+    url: String
+    github: String
+    image: String
+    discord: String
+    description: String
+    additional: String
+    captured_at: String
+  }
+
   type AccountIdentityHistory {
     schema_version: Int!
     account: String!
@@ -1831,6 +1848,7 @@ export const FIELD_COMPLEXITY = {
   account_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   account_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   account_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_identity: RELATIONSHIP_FIELD_COMPLEXITY,
   account_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   // A single latest-only row -- but it fans out into the full hyperparameter
@@ -3679,6 +3697,42 @@ const rootValue = {
         last_moved_at: s.last_moved_at ?? null,
         price_tao_at_last_move: s.price_tao_at_last_move ?? null,
       })),
+    };
+  },
+
+  async account_identity({ ss58 }, context) {
+    // Same SS58 validation every account_* resolver uses -- a malformed address
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty card.
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_IDENTITY_SOURCE) -> D1
+    // (loadAccountIdentity) fallback handleAccountIdentity uses. Most accounts
+    // have never called set_identity, so a row-less account is the common case:
+    // has_identity:false with every field null, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/identity`,
+        ),
+        "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+      )) ?? (await loadAccountIdentity(d1Runner(context.env), ss58));
+    return {
+      schema_version: data.schema_version ?? 1,
+      account: data.account ?? ss58,
+      has_identity: data.has_identity ?? false,
+      name: data.name ?? null,
+      url: data.url ?? null,
+      github: data.github ?? null,
+      image: data.image ?? null,
+      discord: data.discord ?? null,
+      description: data.description ?? null,
+      additional: data.additional ?? null,
+      captured_at: data.captured_at ?? null,
     };
   },
 

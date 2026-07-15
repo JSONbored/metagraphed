@@ -7990,3 +7990,168 @@ describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => 
     );
   });
 });
+
+describe("Query.account_identity", () => {
+  const AI_SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+  const AI_FIELDS =
+    "schema_version account has_identity name url github image discord description additional captured_at";
+
+  // Same D1 stub shape the account_identity_history tests use.
+  function identityD1(rows) {
+    return {
+      prepare: () => ({
+        bind: () => ({ all: async () => ({ results: rows }) }),
+      }),
+    };
+  }
+
+  test("resolves an account's identity from D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: identityD1([
+        {
+          account: AI_SS58,
+          name: "Alice",
+          url: "https://example.com",
+          github: "https://github.com/alice",
+          image: "https://example.com/a.png",
+          discord: "alice#1",
+          description: "a validator",
+          additional: "extra",
+          captured_at: 1780000000000,
+        },
+      ]),
+    };
+    const { status, body } = await gql(
+      `{ account_identity(ss58: "${AI_SS58}") { ${AI_FIELDS} } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const got = body.data.account_identity;
+    assert.equal(got.schema_version, 1);
+    assert.equal(got.account, AI_SS58);
+    assert.equal(got.has_identity, true);
+    assert.equal(got.name, "Alice");
+    assert.equal(got.description, "a validator");
+    assert.equal(got.additional, "extra");
+    assert.equal(got.captured_at, new Date(1780000000000).toISOString());
+  });
+
+  test("an account that never set an identity resolves to has_identity:false with null fields, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_identity(ss58: "${AI_SS58}") { ${AI_FIELDS} } }`,
+      { METAGRAPH_HEALTH_DB: identityD1([]) },
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_identity, {
+      schema_version: 1,
+      account: AI_SS58,
+      has_identity: false,
+      name: null,
+      url: null,
+      github: null,
+      image: null,
+      discord: null,
+      description: null,
+      additional: null,
+      captured_at: null,
+    });
+  });
+
+  test("the Postgres tier takes precedence over D1", async () => {
+    let d1Called = false;
+    let seen = null;
+    const env = {
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          seen = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            account: AI_SS58,
+            has_identity: true,
+            name: "FromPostgres",
+            url: null,
+            github: null,
+            image: null,
+            discord: null,
+            description: null,
+            additional: null,
+            captured_at: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => {
+          d1Called = true;
+          return { bind: () => ({ all: async () => ({ results: [] }) }) };
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ account_identity(ss58: "${AI_SS58}") { ${AI_FIELDS} } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.account_identity.name, "FromPostgres");
+    assert.equal(body.data.account_identity.has_identity, true);
+    assert.equal(seen.pathname, `/api/v1/accounts/${AI_SS58}/identity`);
+    // The `??` short-circuits: D1 is only read when the tier returns nothing.
+    assert.equal(d1Called, false);
+  });
+
+  test("a sparse upstream payload still resolves a schema-stable card", async () => {
+    const { status, body } = await gql(
+      `{ account_identity(ss58: "${AI_SS58}") { ${AI_FIELDS} } }`,
+      {
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        DATA_API: { fetch: async () => Response.json({}) },
+      },
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_identity, {
+      schema_version: 1,
+      account: AI_SS58,
+      has_identity: false,
+      name: null,
+      url: null,
+      github: null,
+      image: null,
+      discord: null,
+      description: null,
+      additional: null,
+      captured_at: null,
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      '{ account_identity(ss58: "not-a-valid-address") { account } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.account_identity,
+      FIELD_COMPLEXITY.account_identity_history,
+    );
+  });
+});
