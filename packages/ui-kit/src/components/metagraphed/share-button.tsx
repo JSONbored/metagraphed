@@ -9,9 +9,16 @@ interface Props {
   url?: string;
   label?: string;
   className?: string;
+  /** Borderless variant for grouping inside an `ActionBar` segmented pill. */
+  bare?: boolean;
 }
 
-export function ShareButton({ url, label = "Share view", className }: Props) {
+export function ShareButton({
+  url,
+  label = "Share view",
+  className,
+  bare,
+}: Props) {
   // #3425: reuse the shared useCopy hook for the clipboard write, copied-state,
   // and reset timer (the app-wide primitive every other copy affordance uses),
   // keeping ShareButton's two extras it doesn't cover — the window.location.href
@@ -53,7 +60,9 @@ export function ShareButton({ url, label = "Share view", className }: Props) {
         aria-label="Copy link with current filters, sort, and page"
         title="Copy link with current filters, sort, and page"
         className={classNames(
-          "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors",
+          bare
+            ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+            : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors",
           className,
         )}
       >

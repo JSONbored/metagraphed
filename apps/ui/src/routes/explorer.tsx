@@ -11,6 +11,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
   PageHero,
   ShareButton,
+  ActionBar,
   ListShell,
   LoadMore,
   TimeAgo,
@@ -127,7 +128,9 @@ function ExplorerPage() {
         description="The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers."
         actions={
           <>
-            <ShareButton />
+            <ActionBar>
+              <ShareButton bare />
+            </ActionBar>
             <ChainHeadTip />
           </>
         }

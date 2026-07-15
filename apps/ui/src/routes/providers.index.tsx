@@ -31,6 +31,7 @@ import {
   ViewModeToggle,
   ShareButton,
   TimeAgo,
+  ActionBar,
   Donut,
   DonutLegend,
   Sparkline,
@@ -96,8 +97,10 @@ function ProvidersPage() {
                 })
               }
             />
-            <ResetFiltersButton active={filtersActive} onReset={onReset} />
-            <ShareButton />
+            <ActionBar>
+              <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+              <ShareButton bare />
+            </ActionBar>
           </>
         }
       />

@@ -17,6 +17,7 @@ import {
   BrandIcon,
   ShareButton,
   DownloadCsvButton,
+  ActionBar,
   ViewModeToggle,
   ListShell,
   LoadMore,
@@ -111,9 +112,11 @@ function SurfacesPage() {
                   })
                 }
               />
-              <ResetFiltersButton active={filtersActive} onReset={onReset} />
-              <DownloadCsvButton url={surfacesCsvUrl} />
-              <ShareButton />
+              <ActionBar>
+                <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+                <DownloadCsvButton url={surfacesCsvUrl} bare />
+                <ShareButton bare />
+              </ActionBar>
             </>
           }
         />

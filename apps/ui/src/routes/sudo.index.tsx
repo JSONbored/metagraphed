@@ -6,7 +6,14 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import { PageHero, ShareButton, DownloadCsvButton, CopyButton, TimeAgo } from "@jsonbored/ui-kit";
+import {
+  PageHero,
+  ShareButton,
+  DownloadCsvButton,
+  ActionBar,
+  CopyButton,
+  TimeAgo,
+} from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { sudoCallsQuery, sudoKeyQuery } from "@/lib/metagraphed/queries";
@@ -84,8 +91,10 @@ function SudoPage() {
         description="Root-origin (Sudo) calls on the Bittensor chain — subtensor has no Council or Senate, so Sudo is the whole root-origin surface, plus the account currently holding the Sudo key."
         actions={
           <>
-            <DownloadCsvButton url={sudoCsvUrl} />
-            <ShareButton />
+            <ActionBar>
+              <DownloadCsvButton url={sudoCsvUrl} bare />
+              <ShareButton bare />
+            </ActionBar>
           </>
         }
         kpis={[

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero, ShareButton, DownloadCsvButton } from "@jsonbored/ui-kit";
+import { PageHero, ShareButton, DownloadCsvButton, ActionBar } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -85,8 +85,10 @@ function ValidatorsPage() {
         description="Network-wide validator directory — hotkeys ranked across all Bittensor subnets, computed live from the chain-direct metagraph."
         actions={
           <>
-            <DownloadCsvButton url={validatorsCsvUrl} />
-            <ShareButton />
+            <ActionBar>
+              <DownloadCsvButton url={validatorsCsvUrl} bare />
+              <ShareButton bare />
+            </ActionBar>
           </>
         }
       />

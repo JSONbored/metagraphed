@@ -1526,7 +1526,8 @@ function buildCsvDownloadUrl(url) {
 function DownloadCsvButton({
   url,
   label = "Download CSV",
-  className
+  className,
+  bare
 }) {
   const exportUrl = buildCsvDownloadUrl(url);
   const onClick = () => {
@@ -1540,10 +1541,12 @@ function DownloadCsvButton({
       "aria-label": label,
       title: label,
       className: classNames(
-        // rounded-full matches the pill idiom shared by SectionBadge/FilterChip/
-        // other compact header controls it commonly sits next to — a plain
-        // `rounded` rectangle reads as a mismatched shape beside a pill.
-        "inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1.5 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5 sm:py-1",
+        bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : (
+          // rounded-full matches the pill idiom shared by SectionBadge/FilterChip/
+          // other compact header controls it commonly sits next to — a plain
+          // `rounded` rectangle reads as a mismatched shape beside a pill.
+          "inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1.5 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5 sm:py-1"
+        ),
         className
       ),
       children: [
@@ -2428,7 +2431,12 @@ function SectionHeading({
     }
   );
 }
-function ShareButton({ url, label = "Share view", className }) {
+function ShareButton({
+  url,
+  label = "Share view",
+  className,
+  bare
+}) {
   const { copied, copy } = useCopy({ toastOnSuccess: false });
   const [announcement, setAnnouncement] = useState("");
   useEffect(() => {
@@ -2456,7 +2464,7 @@ function ShareButton({ url, label = "Share view", className }) {
         "aria-label": "Copy link with current filters, sort, and page",
         title: "Copy link with current filters, sort, and page",
         className: classNames(
-          "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors",
+          bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors",
           className
         ),
         children: [
@@ -2467,6 +2475,21 @@ function ShareButton({ url, label = "Share view", className }) {
     ),
     /* @__PURE__ */ jsx("span", { role: "status", "aria-live": "polite", className: "sr-only", children: announcement })
   ] });
+}
+function ActionBar({
+  children,
+  className
+}) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      className: classNames(
+        "inline-flex items-center gap-0.5 rounded-md border border-border bg-card p-0.5",
+        className
+      ),
+      children
+    }
+  );
 }
 function timeAgoAbsoluteTitle(at) {
   if (!isUsableTimestamp(at)) return void 0;
@@ -3805,4 +3828,4 @@ function TreemapMini({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EntityHero, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SearchScopeChip, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, cn, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel, timeAgoAbsoluteTitle, visibleTools };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EntityHero, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SearchScopeChip, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, cn, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel, timeAgoAbsoluteTitle, visibleTools };

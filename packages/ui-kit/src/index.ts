@@ -133,6 +133,7 @@ export {
 } from "@/components/metagraphed/section-anchor";
 export { SectionHeading } from "@/components/metagraphed/section-heading";
 export { ShareButton } from "@/components/metagraphed/share-button";
+export { ActionBar } from "@/components/metagraphed/action-bar";
 export { TableState } from "@/components/metagraphed/table-state";
 export {
   timeAgoAbsoluteTitle,

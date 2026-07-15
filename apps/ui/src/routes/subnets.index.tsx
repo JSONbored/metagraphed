@@ -17,6 +17,7 @@ import {
   ViewModeToggle,
   ShareButton,
   DownloadCsvButton,
+  ActionBar,
   ListShell,
   LoadMore,
   StatTile,
@@ -175,9 +176,11 @@ function SubnetsPage() {
             {search.view === "table" ? (
               <DensityToggle value={effectiveDensity} onChange={setDensity} />
             ) : null}
-            <ResetFiltersButton active={filtersActive} onReset={onReset} />
-            <DownloadCsvButton url={subnetsCsvUrl} />
-            <ShareButton />
+            <ActionBar>
+              <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+              <DownloadCsvButton url={subnetsCsvUrl} bare />
+              <ShareButton bare />
+            </ActionBar>
           </>
         }
       />
