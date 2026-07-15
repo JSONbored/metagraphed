@@ -4,6 +4,7 @@
   "github_url": "https://github.com/orgs/ditto-assistant/repositories",
   "id": "ditto-assistant",
   "kind": "subnet-team",
+  "logo_url": "https://github.com/ditto-assistant.png",
   "name": "Ditto",
   "notes": "Provider entry for Ditto SN118. Public surfaces include the Ditto website, docs, assistant app, and GitHub organization repository listing; no specific live source repository has been confirmed yet.",
   "schema_version": 1,

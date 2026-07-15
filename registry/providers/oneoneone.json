@@ -5,6 +5,7 @@
   "kind": "subnet-team",
   "website_url": "https://oneoneone.io/",
   "github_url": "https://github.com/oneoneone-io/subnet-111",
+  "logo_url": "https://github.com/oneoneone-io.png",
   "authority": "official",
   "notes": "Provider entry for oneoneone SN111 official website and source repository."
 }
