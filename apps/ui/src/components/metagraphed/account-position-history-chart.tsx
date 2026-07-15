@@ -103,7 +103,12 @@ export function AccountPositionHistoryChart({ ss58, netuid }: { ss58: string; ne
             />
           ) : null}
           {series.yield.length > 0 ? (
-            <HistoryRow label="Yield" series={series.yield} color="#38bdf8" format={yieldStr} />
+            <HistoryRow
+              label="Yield"
+              series={series.yield}
+              color="var(--chart-1)"
+              format={yieldStr}
+            />
           ) : null}
         </div>
       )}
