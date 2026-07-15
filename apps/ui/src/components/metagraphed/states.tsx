@@ -153,6 +153,11 @@ export function ErrorState({
  *   specifically: carries a variant badge, a freshness/staleness row, and an
  *   evidence link. Keep it for surfaces/gaps-style panels where provenance is
  *   part of the empty message; it is not a general-purpose empty state.
+ *
+ * Prefer `StateBlock` (`./state-block`) for new call sites: it takes the
+ * `context` this rule keys on and resolves both the component and its prop
+ * type, so the compiler enforces the choice instead of convention (#5341).
+ * The three primitives above stay as-is — StateBlock only removes the pick.
  */
 export function EmptyState({
   title = "Nothing here yet",
