@@ -21,6 +21,8 @@ const uploadRetries =
 const uploadRetryBaseDelayMs =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_RETRY_BASE_DELAY_MS) ||
   1000;
+const uploadTimeoutMs =
+  parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_TIMEOUT_MS) || 45_000;
 const manifest = await readJson(
   path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
 );
@@ -52,6 +54,7 @@ if (!write) {
       upload_history: uploadHistory,
       upload_limit: uploadLimit,
       upload_retries: uploadRetries,
+      upload_timeout_ms: uploadTimeoutMs,
       planned_object_count: plannedObjectCount,
       remote_manifest_status: "not-checked",
     }),
@@ -181,6 +184,7 @@ console.log(
     upload_concurrency: uploadConcurrency,
     upload_limit: uploadLimit,
     upload_retries: uploadRetries,
+    upload_timeout_ms: uploadTimeoutMs,
     uploaded_control_count: uploadedControlCount,
     uploaded_history_count: uploadedHistoryCount,
     uploaded_latest_count: uploadedLatestCount,
@@ -370,6 +374,7 @@ function putObjectOnce({ localPath, key, bucketName, contentType }) {
     });
     let stdout = "";
     let stderr = "";
+    let settled = false;
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk) => {
@@ -378,8 +383,33 @@ function putObjectOnce({ localPath, key, bucketName, contentType }) {
     child.stderr.on("data", (chunk) => {
       stderr += chunk;
     });
-    child.on("error", reject);
+    // A single stalled wrangler call (network stall, hung TLS handshake, R2
+    // API wedge) previously had no ceiling and blocked this promise forever
+    // -- Promise.all in putObjects() then never resolves, wedging the whole
+    // publish job until GitHub Actions' job-level timeout-minutes kills it
+    // (up to 45m of stale production data). Force a bounded failure instead
+    // so the existing retry/backoff loop in putObject() can recover in
+    // seconds.
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill("SIGKILL");
+      reject(
+        new Error(
+          `wrangler r2 object put timed out after ${uploadTimeoutMs}ms for ${key}`,
+        ),
+      );
+    }, uploadTimeoutMs);
+    child.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
     child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       if (code === 0) {
         resolve();
         return;
