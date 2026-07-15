@@ -1713,7 +1713,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             Number(performanceHistoryMatch[1]),
             resolved.url,
           ),
-        canonicalSubnetPerformanceHistoryCachePath(resolved.url),
+        canonicalSubnetPerformanceHistoryCachePath(resolved.url, request),
       );
     }
     const yieldHistoryMatch = SUBNET_YIELD_HISTORY_PATH_PATTERN.exec(

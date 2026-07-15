@@ -21,6 +21,14 @@ export const ROUTE_CSV_EXAMPLES = {
     "snapshot_date,neuron_count,validator_count,yield_count,subnet_yield,mean_yield,median_yield,p25_yield,p75_yield,p90_yield",
     "2026-06-27,2,1,2,0.075,0.075,0.075,0.05,0.1,0.1",
   ].join("\r\n"),
+  "subnet-performance-history": [
+    "snapshot_date,neuron_count,validator_count,active_count,incentive_gini,incentive_nakamoto_coefficient,incentive_top_10pct_share,dividends_gini,dividends_nakamoto_coefficient,dividends_top_10pct_share,trust_mean,trust_median,consensus_mean,consensus_median,validator_trust_mean,validator_trust_median",
+    "2026-06-27,2,1,2,0.490099,1,0.990099,0.409091,1,0.909091,0.5,0.5,0.4,0.4,0.6,0.6",
+  ].join("\r\n"),
+  "subnet-hyperparameters-history": [
+    "block_number,observed_at,hyperparameters,hyperparams_hash",
+    '8454388,2026-06-27T00:00:00.000Z,"{""kappa"":0.5}",hash_sample',
+  ].join("\r\n"),
   "subnet-events": EVENTS_CSV_EXAMPLE,
   "account-events": EVENTS_CSV_EXAMPLE,
   // The Postgres all-events feed: flat scalar columns of each raw pallet.method

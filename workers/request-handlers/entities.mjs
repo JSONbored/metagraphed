@@ -403,6 +403,35 @@ const SUBNET_YIELD_HISTORY_CSV_COLUMNS = [
   "p75_yield",
   "p90_yield",
 ];
+// performanceHistoryPoint's flat row shape (src/subnet-performance.mjs) — the
+// reward-flow twin of SUBNET_CONCENTRATION_HISTORY_CSV_COLUMNS.
+const SUBNET_PERFORMANCE_HISTORY_CSV_COLUMNS = [
+  "snapshot_date",
+  "neuron_count",
+  "validator_count",
+  "active_count",
+  "incentive_gini",
+  "incentive_nakamoto_coefficient",
+  "incentive_top_10pct_share",
+  "dividends_gini",
+  "dividends_nakamoto_coefficient",
+  "dividends_top_10pct_share",
+  "trust_mean",
+  "trust_median",
+  "consensus_mean",
+  "consensus_median",
+  "validator_trust_mean",
+  "validator_trust_median",
+];
+// formatHyperparamsHistoryEntry's row shape (src/subnet-hyperparams-history.mjs);
+// `hyperparameters` is the nested 33-field object, serialized as one JSON cell
+// like the `axon` column on NEURON_CSV_COLUMNS.
+const SUBNET_HYPERPARAMS_HISTORY_CSV_COLUMNS = [
+  "block_number",
+  "observed_at",
+  "hyperparameters",
+  "hyperparams_hash",
+];
 const ACCOUNT_EXTRINSICS_CSV_COLUMNS = [
   "extrinsic_id",
   "block_number",
@@ -669,10 +698,11 @@ export async function handleSubnetHyperparamsHistory(
   netuid,
   url,
 ) {
-  const validationError = validateQueryParams(url, [
+  const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
     "cursor",
+    "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
@@ -687,6 +717,18 @@ export async function handleSubnetHyperparamsHistory(
       offset,
       nextCursor: null,
     });
+  // CSV mirrors handleAccountHistory: the page is already limit/offset-bounded,
+  // so the CSV path carries the identical page the JSON path would. Cold store
+  // -> empty entries -> header-only CSV.
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.entries,
+      `subnet-${netuid}-hyperparameters-history`,
+      "short",
+      request,
+      SUBNET_HYPERPARAMS_HISTORY_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -1362,8 +1404,23 @@ export function canonicalSubnetConcentrationHistoryCachePath(
   );
 }
 
-export function canonicalSubnetPerformanceHistoryCachePath(url) {
-  return canonicalWindowedCachePath(url, parseSubnetPerformanceHistoryWindow);
+export function canonicalSubnetPerformanceHistoryCachePath(
+  url,
+  request = null,
+) {
+  const validationError = validateQueryParams(url, ["window", "format"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const formatError = validateResponseFormat(url);
+  if (formatError) return `${url.pathname}${url.search}`;
+  const { label, error } = parseSubnetPerformanceHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return `${url.pathname}${url.search}`;
+  return csvCacheVariant(
+    url,
+    request,
+    `${url.pathname}?window=${encodeURIComponent(label)}`,
+  );
 }
 
 export function canonicalSubnetYieldHistoryCachePath(url, request = null) {
@@ -1636,8 +1693,10 @@ export async function handleSubnetPerformanceHistory(
   netuid,
   url,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return analyticsQueryError(validationError);
+  const formatError = validateResponseFormat(url);
+  if (formatError) return analyticsQueryError(formatError);
   const { label, error } = parseSubnetPerformanceHistoryWindow(
     url.searchParams.get("window"),
   );
@@ -1650,6 +1709,18 @@ export async function handleSubnetPerformanceHistory(
       window: label,
       capped: false,
     });
+  if (csvRequested(url, request)) {
+    const points = [...data.points].sort((a, b) =>
+      String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
+    );
+    return csvResponse(
+      points,
+      `subnet-${netuid}-performance-history`,
+      "short",
+      request,
+      SUBNET_PERFORMANCE_HISTORY_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
