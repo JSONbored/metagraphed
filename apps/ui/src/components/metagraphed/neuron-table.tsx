@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Download } from "lucide-react";
+import { CopyButton } from "@jsonbored/ui-kit";
 import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -210,25 +211,28 @@ export function NeuronTable({
                     <div className="flex items-center gap-1.5">
                       {n.featured ? <FeaturedBadge /> : null}
                       {n.hotkey ? (
-                        isValidator ? (
-                          <Link
-                            to="/validators/$hotkey"
-                            params={{ hotkey: n.hotkey }}
-                            className="text-ink-muted hover:text-ink hover:underline"
-                            title={n.hotkey}
-                          >
-                            {shortHash(n.hotkey) ?? n.hotkey}
-                          </Link>
-                        ) : (
-                          <Link
-                            to="/accounts/$ss58"
-                            params={{ ss58: n.hotkey }}
-                            className="text-ink-muted hover:text-ink hover:underline"
-                            title={n.hotkey}
-                          >
-                            {shortHash(n.hotkey) ?? n.hotkey}
-                          </Link>
-                        )
+                        <>
+                          {isValidator ? (
+                            <Link
+                              to="/validators/$hotkey"
+                              params={{ hotkey: n.hotkey }}
+                              className="text-ink-muted hover:text-ink hover:underline"
+                              title={n.hotkey}
+                            >
+                              {shortHash(n.hotkey) ?? n.hotkey}
+                            </Link>
+                          ) : (
+                            <Link
+                              to="/accounts/$ss58"
+                              params={{ ss58: n.hotkey }}
+                              className="text-ink-muted hover:text-ink hover:underline"
+                              title={n.hotkey}
+                            >
+                              {shortHash(n.hotkey) ?? n.hotkey}
+                            </Link>
+                          )}
+                          <CopyButton value={n.hotkey} label="hotkey" />
+                        </>
                       ) : (
                         "—"
                       )}
