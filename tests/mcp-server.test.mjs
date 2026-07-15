@@ -14697,6 +14697,193 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 });
 
+// Read-only MCP tools for webhook subscriptions + chain alert triggers, added
+// after the 2026-07-14/15 exhaustive audit found neither had any MCP
+// presence despite REST support -- deliberately scoped to GET-by-known-id
+// only (no create/delete), matching the exact auth posture of the REST
+// routes they mirror so no new exposure is introduced (#5589/#5590).
+describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)", () => {
+  function makeControlKv(records = {}) {
+    return {
+      async get(key, opts) {
+        const value = records[key];
+        if (value === undefined) return null;
+        return opts?.type === "json" ? value : JSON.stringify(value);
+      },
+      async list() {
+        return { keys: [] };
+      },
+    };
+  }
+
+  test("get_webhook_subscription returns the public view + delivery status for a known id, never the secret", async () => {
+    const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const env = {
+      METAGRAPH_CONTROL: makeControlKv({
+        [`webhooks:sub:${id}`]: {
+          id,
+          url: "https://hooks.example.com/mg",
+          secret: "should-never-be-returned",
+          filters: { kinds: ["subnet.updated"] },
+          created_at: "2026-07-01T00:00:00.000Z",
+          active: true,
+        },
+      }),
+    };
+    const res = await callTool("get_webhook_subscription", { id }, { env });
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.id, id);
+    assert.equal(out.url, "https://hooks.example.com/mg");
+    assert.equal(out.secret, undefined);
+    assert.equal(out.active, true);
+    assert.deepEqual(out.filters, { kinds: ["subnet.updated"] });
+    assert.equal(out.delivery.status, "ok");
+    assert.equal(out.delivery.pending, 0);
+    assert.equal(out.delivery.dead_letter, 0);
+  });
+
+  test("get_webhook_subscription treats a KV read failure the same as not-found rather than throwing", async () => {
+    const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get() {
+          throw new Error("KV unavailable");
+        },
+      },
+    };
+    const res = await callTool("get_webhook_subscription", { id }, { env });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
+  test("get_webhook_subscription surfaces a not_found tool error (not a thrown exception) for an unknown id", async () => {
+    const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const env = { METAGRAPH_CONTROL: makeControlKv({}) };
+    const res = await callTool("get_webhook_subscription", { id }, { env });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
+  test("get_webhook_subscription rejects a malformed id before touching KV", async () => {
+    const res = await callTool(
+      "get_webhook_subscription",
+      { id: "not-a-uuid" },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+  });
+
+  test("get_webhook_subscription returns webhooks_unavailable when METAGRAPH_CONTROL is unbound", async () => {
+    const res = await callTool(
+      "get_webhook_subscription",
+      { id: "3fa85f64-5717-4562-b3fc-2c963f66afa6" },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "webhooks_unavailable",
+    );
+  });
+
+  test("get_alert_trigger forwards the id + owner_token to DATA_API and relays the response", async () => {
+    let capturedPath;
+    let capturedToken;
+    const env = {
+      DATA_API: {
+        fetch: async (req) => {
+          const url = new URL(req.url);
+          capturedPath = url.pathname;
+          capturedToken = req.headers.get("x-alert-trigger-owner-token");
+          return Response.json({
+            id: "trigger-1",
+            name: "Big stake moves",
+            channel: "discord",
+            destination: "https://discord.example/webhook",
+            active: true,
+            match_count: 3,
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_alert_trigger",
+      { id: "trigger-1", owner_token: "owner-secret" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(capturedPath, "/api/v1/alerts/triggers/trigger-1");
+    assert.equal(capturedToken, "owner-secret");
+    assert.equal(res.body.result.structuredContent.name, "Big stake moves");
+    assert.equal(res.body.result.structuredContent.match_count, 3);
+  });
+
+  test("get_alert_trigger surfaces a not_found tool error for a wrong owner_token or unknown id (same 404 as REST, no enumeration oracle)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ error: "no such trigger" }, { status: 404 }),
+      },
+    };
+    const res = await callTool(
+      "get_alert_trigger",
+      { id: "trigger-1", owner_token: "wrong" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
+  test("get_alert_trigger returns alert_triggers_unavailable when the upstream response body is unreadable", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () => new Response("not json", { status: 200 }),
+      },
+    };
+    const res = await callTool(
+      "get_alert_trigger",
+      { id: "trigger-1", owner_token: "token" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "alert_triggers_unavailable",
+    );
+  });
+
+  test("get_alert_trigger returns alert_triggers_unavailable when DATA_API is unbound", async () => {
+    const res = await callTool(
+      "get_alert_trigger",
+      { id: "trigger-1", owner_token: "token" },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "alert_triggers_unavailable",
+    );
+  });
+
+  test("get_alert_trigger rejects a missing owner_token", async () => {
+    const res = await callTool(
+      "get_alert_trigger",
+      { id: "trigger-1" },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+  });
+});
+
 // MCP feature-parity tools (#5225): validator detail/nominators/history, subnet
 // hyperparameters/volume/recycled, account identity/position-history,
 // sudo/governance-config feeds, the runtime spec-version timeline, and the

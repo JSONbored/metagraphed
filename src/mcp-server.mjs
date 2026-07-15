@@ -28,6 +28,15 @@ import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import { handleRpcProxyRequest } from "../workers/request-handlers/rpc-proxy.mjs";
 import {
+  isValidSubscriptionId,
+  subscriptionStorageKey,
+  publicSubscriptionView,
+  deliveryStoragePrefix,
+  summarizeDeliveryRecords,
+  WEBHOOK_REDELIVERY_LIST_LIMIT,
+} from "./webhooks.mjs";
+import { ALERT_TRIGGER_OWNER_TOKEN_HEADER } from "./alert-triggers.mjs";
+import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   isValidMcpSessionId,
 } from "../workers/mcp-session-hub.mjs";
@@ -1121,6 +1130,33 @@ function mcpNeuronsTierRequest(pathname, params = {}) {
   }
   const q = qs.toString();
   return new Request(`https://d${pathname}${q ? `?${q}` : ""}`);
+}
+
+// Delivery health for get_webhook_subscription -- mirrors workers/api.mjs's
+// readDeliveryStatus (the same helper the public GET /api/v1/webhooks/
+// subscriptions/{id} route uses), best-effort: a list/get hiccup or a store
+// without `list` (local dev KV mock) degrades to "ok" rather than failing
+// the whole lookup.
+async function readMcpWebhookDeliveryStatus(env, id) {
+  try {
+    if (typeof env.METAGRAPH_CONTROL.list !== "function") {
+      return summarizeDeliveryRecords([]);
+    }
+    const { keys } = await env.METAGRAPH_CONTROL.list({
+      prefix: deliveryStoragePrefix(id),
+      limit: WEBHOOK_REDELIVERY_LIST_LIMIT,
+    });
+    const records = await Promise.all(
+      keys
+        .slice(0, WEBHOOK_REDELIVERY_LIST_LIMIT)
+        .map((entry) =>
+          env.METAGRAPH_CONTROL.get(entry.name, { type: "json" }),
+        ),
+    );
+    return summarizeDeliveryRecords(records);
+  } catch {
+    return summarizeDeliveryRecords([]);
+  }
 }
 
 // Synthetic GET /api/v1/accounts/{ss58}/identity-history{...} request, same
@@ -4742,6 +4778,118 @@ export const MCP_TOOLS = [
           "METAGRAPH_NEURONS_SOURCE",
         )) ?? buildValidatorDetail([], hotkey)
       );
+    },
+  },
+  {
+    name: "get_webhook_subscription",
+    title: "Get a webhook subscription's public status",
+    description:
+      "Fetch a webhook change-feed subscription's public status by id: its " +
+      "url, filters, active flag, created_at, and recent delivery health. " +
+      "Never returns the subscription's secret -- there is no way to " +
+      "enumerate subscriptions, only look one up by an id you already hold " +
+      "(the same id returned when it was created). Mirrors GET " +
+      "/api/v1/webhooks/subscriptions/{id}.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description:
+            "Subscription id (UUID v4), returned when the subscription was created.",
+        },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const id = requireString(args, "id");
+      if (!isValidSubscriptionId(id)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `id` must be a valid subscription id (UUID v4).",
+        );
+      }
+      if (!ctx.env.METAGRAPH_CONTROL?.get) {
+        throw toolError(
+          "webhooks_unavailable",
+          "The webhook subscription store is not configured on this deployment.",
+        );
+      }
+      let record;
+      try {
+        record = await ctx.env.METAGRAPH_CONTROL.get(
+          subscriptionStorageKey(id),
+          { type: "json" },
+        );
+      } catch {
+        record = null;
+      }
+      if (!record) {
+        throw toolError("not_found", `No such subscription: ${id}.`);
+      }
+      return {
+        ...publicSubscriptionView(record),
+        delivery: await readMcpWebhookDeliveryStatus(ctx.env, id),
+      };
+    },
+  },
+  {
+    name: "get_alert_trigger",
+    title: "Get a chain alert trigger by id",
+    description:
+      "Fetch a chain alert trigger's full configuration and status by id. " +
+      "Requires the owner_token returned when the trigger was created -- " +
+      "alert triggers have no public view, matching GET " +
+      "/api/v1/alerts/triggers/{id}'s own auth requirement exactly (the " +
+      "same 404 is returned for both a wrong token and a nonexistent id, " +
+      "so this can't be used to enumerate other callers' triggers).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Alert trigger id." },
+        owner_token: {
+          type: "string",
+          description:
+            "The owner token returned when this trigger was created.",
+        },
+      },
+      required: ["id", "owner_token"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const id = requireString(args, "id");
+      const ownerToken = requireString(args, "owner_token");
+      if (!ctx.env.DATA_API) {
+        throw toolError(
+          "alert_triggers_unavailable",
+          "The alert triggers tier is not bound to this deployment.",
+        );
+      }
+      const upstream = await ctx.env.DATA_API.fetch(
+        new Request(
+          `https://d/api/v1/alerts/triggers/${encodeURIComponent(id)}`,
+          { headers: { [ALERT_TRIGGER_OWNER_TOKEN_HEADER]: ownerToken } },
+        ),
+      );
+      let body;
+      try {
+        body = await upstream.json();
+      } catch {
+        throw toolError(
+          "alert_triggers_unavailable",
+          "The alert triggers tier returned an unreadable response.",
+        );
+      }
+      if (!upstream.ok) {
+        throw toolError(
+          upstream.status === 404 ? "not_found" : "alert_trigger_error",
+          typeof body?.error === "string"
+            ? body.error
+            : "The alert triggers tier returned an error.",
+        );
+      }
+      return body;
     },
   },
   {
@@ -11134,6 +11282,60 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       block_number: NULLABLE_INT,
       subnets: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_webhook_subscription: {
+    type: "object",
+    additionalProperties: true,
+    required: ["id", "url", "active"],
+    properties: {
+      id: { type: "string" },
+      url: { type: "string" },
+      filters: { type: "object" },
+      created_at: NULLABLE_STRING,
+      active: { type: "boolean" },
+      delivery: {
+        type: "object",
+        required: ["status", "pending", "dead_letter"],
+        properties: {
+          status: { type: "string", enum: ["ok", "retrying", "dead_letter"] },
+          pending: { type: "integer" },
+          dead_letter: { type: "integer" },
+          last_failure: {
+            type: ["object", "null"],
+            properties: {
+              event_id: { type: "string" },
+              attempts: { type: "integer" },
+              reason: NULLABLE_STRING,
+              status_code: NULLABLE_INT,
+              state: { type: "string" },
+              last_attempt_at: NULLABLE_STRING,
+              next_attempt_at: NULLABLE_STRING,
+            },
+          },
+        },
+      },
+    },
+  },
+  get_alert_trigger: {
+    type: "object",
+    additionalProperties: true,
+    required: ["id", "active"],
+    properties: {
+      id: { type: "string" },
+      name: NULLABLE_STRING,
+      table_filter: NULLABLE_STRING,
+      netuid: NULLABLE_INT,
+      event_kind: NULLABLE_STRING,
+      account: NULLABLE_STRING,
+      min_amount_tao: { type: ["number", "null"] },
+      channel: { type: "string" },
+      destination: { type: "string" },
+      active: { type: "boolean" },
+      created_at: NULLABLE_STRING,
+      updated_at: NULLABLE_STRING,
+      last_matched_at: NULLABLE_STRING,
+      match_count: { type: "integer" },
     },
   },
   get_validator_nominators: {
