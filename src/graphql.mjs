@@ -88,6 +88,7 @@ import {
 import { buildExtrinsic, buildExtrinsicFeed } from "./extrinsics.mjs";
 import { buildBlock, buildBlockFeed } from "./blocks.mjs";
 import { buildBlocksSummary } from "./blocks-summary.mjs";
+import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import { buildChainYield } from "./chain-yield.mjs";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.mjs";
@@ -289,6 +290,8 @@ export const SDL = `
     block(ref: String!): BlockDetail
     "Block-production summary over the recent-block window -- counts, inter-block timing, throughput, and author-concentration. Every aggregate is null (never a GraphQL error) when the retired-D1 store is cold. Mirrors GET /api/v1/blocks/summary."
     blocks_summary: BlocksSummary!
+    "Site-wide runtime spec-version transition timeline: the earliest known block at each distinct spec_version observed (ascending), the current spec_version, and where coverage starts. The empty shape (transition_count 0, current_spec_version null) is schema-stable, never a GraphQL error, when the store has no reading yet. Mirrors GET /api/v1/runtime."
+    runtime: RuntimeVersionHistory!
     "Network-wide validator/operator leaderboard, grouped by hotkey across every subnet it operates in. Mirrors GET /api/v1/validators."
     validators(sort: String, limit: Int): ValidatorList!
     "One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}."
@@ -1438,6 +1441,23 @@ export const SDL = `
     latest_spec_version: Int
   }
 
+  "Site-wide runtime spec-version transition timeline. Mirrors GET /api/v1/runtime."
+  type RuntimeVersionHistory {
+    schema_version: Int!
+    transitions: [RuntimeTransition!]!
+    transition_count: Int!
+    current_spec_version: Int
+    coverage_from_block: Int
+    coverage_from_at: String
+  }
+
+  "One runtime spec-version's first-seen block in the transition timeline."
+  type RuntimeTransition {
+    spec_version: Int!
+    block_number: Int!
+    observed_at: String
+  }
+
   "Inter-block interval distribution in milliseconds, over genuinely consecutive in-window blocks."
   type BlockTimeDistribution {
     count: Int!
@@ -2038,6 +2058,7 @@ export const FIELD_COMPLEXITY = {
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
+  runtime: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3392,6 +3413,28 @@ const rootValue = {
       author_concentration: data.author_concentration ?? null,
       distinct_spec_versions: data.distinct_spec_versions ?? 0,
       latest_spec_version: data.latest_spec_version ?? null,
+    };
+  },
+
+  async runtime(_args, context) {
+    // Same tryPostgresTier(METAGRAPH_BLOCKS_SOURCE) -> buildRuntimeVersionHistory([])
+    // fallback contract GET /api/v1/runtime and the get_runtime MCP tool use; blocks'
+    // D1 write path is retired (#4909) so a cold Postgres tier is the steady state --
+    // the empty builder shape (transition_count 0, current_spec_version null) satisfies
+    // the non-null RuntimeVersionHistory! contract, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/runtime"),
+        "METAGRAPH_BLOCKS_SOURCE",
+      )) ?? buildRuntimeVersionHistory([]);
+    return {
+      schema_version: data.schema_version ?? 1,
+      transitions: data.transitions || [],
+      transition_count: data.transition_count ?? 0,
+      current_spec_version: data.current_spec_version ?? null,
+      coverage_from_block: data.coverage_from_block ?? null,
+      coverage_from_at: data.coverage_from_at ?? null,
     };
   },
 

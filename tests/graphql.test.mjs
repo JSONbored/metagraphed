@@ -3819,6 +3819,126 @@ describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback
   });
 });
 
+describe("graphql — runtime (#5898, Postgres-tier spec-version timeline + retired-D1 fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty timeline, never null", async () => {
+    const { status, body } = await gql(
+      `{ runtime {
+          schema_version transition_count current_spec_version
+          coverage_from_block coverage_from_at
+          transitions { spec_version block_number observed_at }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.runtime, {
+      schema_version: 1,
+      transition_count: 0,
+      current_spec_version: null,
+      coverage_from_block: null,
+      coverage_from_at: null,
+      transitions: [],
+    });
+  });
+
+  test("resolves the Postgres-tier spec-version transition timeline", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          transitions: [
+            {
+              spec_version: 200,
+              block_number: 100,
+              observed_at: "2026-06-25T00:00:00.000Z",
+            },
+            {
+              spec_version: 201,
+              block_number: 500,
+              observed_at: "2026-07-01T00:00:00.000Z",
+            },
+          ],
+          transition_count: 2,
+          current_spec_version: 201,
+          coverage_from_block: 100,
+          coverage_from_at: "2026-06-25T00:00:00.000Z",
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ runtime {
+          schema_version transition_count current_spec_version
+          coverage_from_block coverage_from_at
+          transitions { spec_version block_number observed_at }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.runtime, {
+      schema_version: 1,
+      transition_count: 2,
+      current_spec_version: 201,
+      coverage_from_block: 100,
+      coverage_from_at: "2026-06-25T00:00:00.000Z",
+      transitions: [
+        {
+          spec_version: 200,
+          block_number: 100,
+          observed_at: "2026-06-25T00:00:00.000Z",
+        },
+        {
+          spec_version: 201,
+          block_number: 500,
+          observed_at: "2026-07-01T00:00:00.000Z",
+        },
+      ],
+    });
+  });
+
+  test("forwards to /api/v1/runtime with no query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({ schema_version: 1, transition_count: 0 });
+        },
+      },
+    };
+    await gql("{ runtime { transition_count } }", env);
+    assert.equal(capturedUrl.pathname, "/api/v1/runtime");
+    assert.equal(capturedUrl.search, "");
+  });
+
+  test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      // Every field absent -- the resolver's own ?? / || defaults must fill them in.
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ runtime {
+          schema_version transition_count current_spec_version
+          coverage_from_block coverage_from_at transitions { spec_version }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.runtime, {
+      schema_version: 1,
+      transition_count: 0,
+      current_spec_version: null,
+      coverage_from_block: null,
+      coverage_from_at: null,
+      transitions: [],
+    });
+  });
+});
+
 describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledger)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
