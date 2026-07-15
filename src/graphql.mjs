@@ -54,6 +54,12 @@ import {
 import { buildSubnetYield } from "./subnet-yield.mjs";
 import { buildSubnetPerformance } from "./subnet-performance.mjs";
 import {
+  buildConcentration,
+  buildConcentrationHistory,
+  CONCENTRATION_HISTORY_WINDOWS,
+  DEFAULT_CONCENTRATION_HISTORY_WINDOW,
+} from "./concentration.mjs";
+import {
   analyticsWindow,
   d1Runner,
   loadGlobalIncidentsLedger,
@@ -240,6 +246,10 @@ export const SDL = `
     subnet_yield(netuid: Int!): SubnetYield!
     "Per-subnet reward-distribution and score-spread card over the current neurons snapshot: incentive/dividends concentration plus p10–p90 trust/consensus/validator_trust; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/performance."
     subnet_performance(netuid: Int!): SubnetPerformance!
+    "Per-subnet stake and emission concentration over the current neurons snapshot: raw-UID and per-entity Gini/HHI/Nakamoto/top-K share for stake and emission, validator-only stake concentration, and a uids-per-entity Sybil signal; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration."
+    subnet_concentration(netuid: Int!): SubnetConcentration!
+    "Per-subnet per-day stake and emission concentration trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's stake/emission Gini, Nakamoto coefficient, and top-10% share, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration/history."
+    subnet_concentration_history(netuid: Int!, window: String): SubnetConcentrationHistory!
     "Append-only on-chain SubnetIdentitiesV3 change timeline for one subnet (name, symbol, description, repo, website, discord, logo), newest first; page with limit/offset or follow next_cursor. A subnet with no matching events resolves to a schema-stable empty timeline (entry_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/identity-history."
     subnet_identity_history(netuid: Int!, limit: Int, offset: Int, cursor: String): SubnetIdentityHistory!
     "Paginated provider/source registry."
@@ -1178,6 +1188,50 @@ export const SDL = `
     validator_trust: ScoreDistribution
   }
 
+  "Per-subnet stake & emission concentration card (#5901) over the current neurons snapshot. Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/concentration."
+  type SubnetConcentration {
+    schema_version: Int!
+    netuid: Int!
+    neuron_count: Int!
+    "Distinct controlling entities (coldkeys) behind the subnet's UIDs."
+    entity_count: Int!
+    "UIDs per controlling entity -- a Sybil/consolidation signal (1.0 = every UID a distinct owner; higher = fewer operators each running many hotkeys). Null on an empty subnet."
+    uids_per_entity: Float
+    captured_at: String
+    "Stake concentration across all UIDs."
+    stake: ConcentrationMetrics
+    "Emission concentration across all UIDs."
+    emission: ConcentrationMetrics
+    "Stake concentration collapsed to one holder per controlling entity."
+    entity_stake: ConcentrationMetrics
+    "Emission concentration collapsed to one holder per controlling entity."
+    entity_emission: ConcentrationMetrics
+    "Stake concentration across permitted validators only."
+    validator_stake: ConcentrationMetrics
+  }
+
+  "One day's point in a subnet's concentration trend (#5901). Flattened (not nested) stake/emission metrics keep the series trivial to plot; each is null on a cold/empty day."
+  type SubnetConcentrationHistoryPoint {
+    snapshot_date: String!
+    neuron_count: Int!
+    stake_gini: Float
+    stake_nakamoto_coefficient: Int
+    stake_top_10pct_share: Float
+    emission_gini: Float
+    emission_nakamoto_coefficient: Int
+    emission_top_10pct_share: Float
+  }
+
+  "Per-subnet per-day concentration trend (#5901) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/concentration/history."
+  type SubnetConcentrationHistory {
+    schema_version: Int!
+    netuid: Int!
+    "The resolved window label (7d/30d/90d)."
+    window: String
+    point_count: Int!
+    points: [SubnetConcentrationHistoryPoint!]!
+  }
+
   "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope."
   type GlobalIncidents {
     schema_version: Int!
@@ -1910,6 +1964,8 @@ export const FIELD_COMPLEXITY = {
   subnet_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_performance: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_concentration: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_concentration_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2724,6 +2780,84 @@ const rootValue = {
       trust: data.trust ?? null,
       consensus: data.consensus ?? null,
       validator_trust: data.validator_trust ?? null,
+    };
+  },
+
+  async subnet_concentration({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildConcentration([])
+    // cold fallback contract handleSubnetConcentration / MCP get_subnet_concentration
+    // use: a subnet with no neurons is a schema-stable zeroed card (metric blocks
+    // null), never a GraphQL error. No window -- current snapshot only.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/concentration`,
+          new URLSearchParams(),
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildConcentration([], netuid);
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      neuron_count: data.neuron_count ?? 0,
+      entity_count: data.entity_count ?? 0,
+      uids_per_entity: data.uids_per_entity ?? null,
+      captured_at: data.captured_at ?? null,
+      stake: data.stake ?? null,
+      emission: data.emission ?? null,
+      entity_stake: data.entity_stake ?? null,
+      entity_emission: data.entity_emission ?? null,
+      validator_stake: data.validator_stake ?? null,
+    };
+  },
+
+  async subnet_concentration_history({ netuid, window }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same 7d/30d/90d window validation the REST route + MCP
+    // get_subnet_concentration_history use -- an unsupported window is a GraphQL
+    // BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_CONCENTRATION_HISTORY_WINDOW;
+    if (!Object.hasOwn(CONCENTRATION_HISTORY_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, CONCENTRATION_HISTORY_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildConcentrationHistory([])
+    // empty-series fallback the neuron_daily-derived REST route + MCP tool use.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/concentration/history`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ??
+      buildConcentrationHistory([], netuid, {
+        window: windowParam,
+        capped: false,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      point_count: data.point_count ?? 0,
+      points: data.points ?? [],
     };
   },
 
