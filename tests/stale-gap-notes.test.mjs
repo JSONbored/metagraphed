@@ -149,24 +149,68 @@ describe("findStaleGapNotes", () => {
   });
 });
 
-describe("collectStaleGapNotes (real registry)", () => {
-  test("reproduces the documented chutes.json and gittensor.json findings", async () => {
-    const report = await collectStaleGapNotes();
-    assert.ok(report.subnet_count > 0);
-    assert.ok(report.stale_note_count >= report.subnet_count);
+describe("findStaleGapNotes (fixtures reproducing real registry bugs)", () => {
+  const providersById = new Map([
+    ["chutes", { id: "chutes", kind: "subnet-team" }],
+    ["gittensor", { id: "gittensor", kind: "subnet-team" }],
+  ]);
 
-    const chutes = report.subnets.find((s) => s.file === "chutes.json");
-    assert.ok(chutes, "chutes.json should have stale notes");
-    const chutesKinds = chutes.stale_notes.map((n) => n.kind).sort();
-    assert.deepEqual(chutesKinds, ["openapi", "sse"]);
-
-    const gittensor = report.subnets.find((s) => s.file === "gittensor.json");
-    assert.ok(gittensor, "gittensor.json should have stale notes");
-    const gittensorKinds = gittensor.stale_notes.map((n) => n.kind).sort();
-    assert.ok(gittensorKinds.includes("dashboard"));
-    assert.ok(gittensorKinds.includes("openapi"));
+  // Frozen snapshots of the exact real chutes.json/gittensor.json shapes that
+  // motivated this script (both fixed in the same PR that added this
+  // regression case -- see #5815/#5849/#5851 and onward for the wider
+  // stale-note sweep). Synthetic on purpose: a live-registry read here would
+  // make this test fail the moment someone fixes the real file, which is
+  // exactly the outcome this tool exists to produce.
+  test("reproduces the documented chutes.json finding", () => {
+    const document = {
+      curation: {
+        gap_notes: [
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified SSE/event stream yet.",
+        ],
+      },
+      surfaces: [
+        { id: "sn-64-chutes-openapi", kind: "openapi", provider: "chutes" },
+        { id: "sn-64-chutes-sse", kind: "sse", provider: "chutes" },
+      ],
+    };
+    const kinds = findStaleGapNotes(document, providersById)
+      .map((n) => n.kind)
+      .sort();
+    assert.deepEqual(kinds, ["openapi", "sse"]);
   });
 
+  test("reproduces the documented gittensor.json finding", () => {
+    const document = {
+      curation: {
+        gap_notes: [
+          "No verified dashboard surface yet.",
+          "No verified OpenAPI/Swagger surface yet.",
+          "No verified SSE/event stream yet.",
+          "Bounty state is documented through public CLI flows, but no unauthenticated public API has been verified yet.",
+        ],
+      },
+      surfaces: [
+        {
+          id: "sn-74-gittensor-dashboard",
+          kind: "dashboard",
+          provider: "gittensor",
+        },
+        {
+          id: "sn-74-gittensor-openapi",
+          kind: "openapi",
+          provider: "gittensor",
+        },
+      ],
+    };
+    const kinds = findStaleGapNotes(document, providersById)
+      .map((n) => n.kind)
+      .sort();
+    assert.deepEqual(kinds, ["dashboard", "openapi"]);
+  });
+});
+
+describe("collectStaleGapNotes (real registry)", () => {
   test("does not flag oneoneone.json's third-party subnet-api note", async () => {
     const report = await collectStaleGapNotes();
     const oneoneone = report.subnets.find((s) => s.file === "oneoneone.json");

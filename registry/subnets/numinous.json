@@ -12,8 +12,7 @@
   "curation": {
     "gap_notes": [
       "Official website, source repository, Swagger UI, OpenAPI schema, and health endpoint are verified live.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",

@@ -1,69 +1,70 @@
 {
-  "schema_version": 1,
-  "netuid": 103,
-  "name": "Djinn",
-  "slug": "sn-103",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo",
     "official-website"
   ],
-  "source_repo": "https://github.com/Djinn-Inc/djinn",
-  "dashboard_url": "https://taomarketcap.com/subnets/103",
-  "website_url": "https://www.djinn.gg/",
-  "notes": "Reviewed overlay for SN103 using the official Djinn website and source repository.",
+  "contact": "info@djinn.gg",
   "curation": {
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
     "source_count": 4,
-    "gap_notes": [
-      "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-06-08T10:10:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/103",
+  "name": "Djinn",
+  "netuid": 103,
+  "notes": "Reviewed overlay for SN103 using the official Djinn website and source repository.",
+  "schema_version": 1,
+  "slug": "sn-103",
+  "social": {
+    "x": "https://x.com/djinn_gg"
+  },
+  "source_repo": "https://github.com/Djinn-Inc/djinn",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-103-djinn-website",
-      "name": "Djinn website",
-      "kind": "website",
-      "url": "https://www.djinn.gg/",
-      "provider": "djinn",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "id": "sn-103-djinn-website",
+      "kind": "website",
+      "name": "Djinn website",
+      "notes": "Official Djinn website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Djinn website."
+      "provider": "djinn",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://www.djinn.gg/"
     },
     {
-      "id": "sn-103-djinn-source",
-      "name": "Djinn source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/Djinn-Inc/djinn",
-      "provider": "djinn",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "id": "sn-103-djinn-source",
+      "kind": "source-repo",
+      "name": "Djinn source repository",
+      "notes": "Official Djinn source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Djinn source repository."
+      "provider": "djinn",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Djinn-Inc/djinn"],
+      "url": "https://github.com/Djinn-Inc/djinn"
     },
     {
       "auth_required": false,
@@ -120,8 +121,5 @@
       "url": "https://www.djinn.gg/api/leaderboard"
     }
   ],
-  "social": {
-    "x": "https://x.com/djinn_gg"
-  },
-  "contact": "info@djinn.gg"
+  "website_url": "https://www.djinn.gg/"
 }

@@ -11,10 +11,7 @@
   ],
   "contact": "support@chutes.ai",
   "curation": {
-    "gap_notes": [
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet."
-    ],
+    "gap_notes": [],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T07:45:00.000Z",

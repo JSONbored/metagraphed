@@ -10,12 +10,7 @@
   ],
   "contact": "support@macrocosmos.ai",
   "curation": {
-    "gap_notes": [
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ],
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T08:35:00.000Z",
@@ -310,8 +305,8 @@
       "notes": "Machine-readable OpenAPI 3.1.0 schema (title \"Data Universe Validator API\", version 1.0.0) served by the SN13 validator API on the macrocosmos-hosted sn13.api.macrocosmos.ai host. Documents the on-demand data-query, bucket, label-size, age-size, and desirability routes. Unauthenticated GET returns the full paths object.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "macrocosmos",
@@ -335,22 +330,22 @@
       "kind": "data-artifact",
       "name": "Data Universe default desirability list",
       "notes": "Public no-auth JSON default dynamic-desirability list (per-source label weights used to value Reddit and X data) published at dynamic_desirability/default.json in the official macrocosm-os/data-universe repository. Documents the SN13 baseline data-scoring configuration.",
-      "provider": "macrocosmos",
-      "public_safe": true,
-      "source_urls": [
-        "https://github.com/macrocosm-os/data-universe/blob/main/dynamic_desirability/default.json",
-        "https://github.com/macrocosm-os/data-universe"
-      ],
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "macrocosmos",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "davion-knight"
       },
+      "source_urls": [
+        "https://github.com/macrocosm-os/data-universe/blob/main/dynamic_desirability/default.json",
+        "https://github.com/macrocosm-os/data-universe"
+      ],
       "url": "https://raw.githubusercontent.com/macrocosm-os/data-universe/main/dynamic_desirability/default.json"
     }
   ],

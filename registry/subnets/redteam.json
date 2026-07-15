@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 61,
-  "name": "RedTeam",
-  "slug": "sn-61",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "cybersecurity",
@@ -13,100 +8,100 @@
     "official-source-repo",
     "official-website"
   ],
-  "docs_url": "https://docs.theredteam.io/",
-  "source_repo": "https://github.com/RedTeamSubnet/RedTeam",
-  "dashboard_url": "https://dashboard.theredteam.io/",
-  "website_url": "https://www.theredteam.io/",
-  "notes": "Reviewed overlay for SN61 using the official RedTeam website, dashboard, documentation, and source repository.",
+  "contact": "oscar@theredteam.io",
   "curation": {
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T09:50:00.000Z",
-    "verified_at": "2026-06-08T09:50:00.000Z",
     "source_count": 6,
-    "gap_notes": [
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-06-08T09:50:00.000Z"
   },
+  "dashboard_url": "https://dashboard.theredteam.io/",
+  "docs_url": "https://docs.theredteam.io/",
+  "name": "RedTeam",
+  "netuid": 61,
+  "notes": "Reviewed overlay for SN61 using the official RedTeam website, dashboard, documentation, and source repository.",
+  "schema_version": 1,
+  "slug": "sn-61",
+  "source_repo": "https://github.com/RedTeamSubnet/RedTeam",
+  "status": "active",
   "surfaces": [
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-61-redteam-website",
-      "name": "RedTeam website",
       "kind": "website",
-      "url": "https://www.theredteam.io/",
-      "provider": "redteam",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/RedTeamSubnet/RedTeam"],
+      "name": "RedTeam website",
+      "notes": "Official RedTeam website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official RedTeam website."
+      "provider": "redteam",
+      "public_safe": true,
+      "source_urls": ["https://github.com/RedTeamSubnet/RedTeam"],
+      "url": "https://www.theredteam.io/"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-61-redteam-dashboard",
-      "name": "RedTeam dashboard",
       "kind": "dashboard",
-      "url": "https://dashboard.theredteam.io/",
+      "name": "RedTeam dashboard",
+      "notes": "Official RedTeam dashboard.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "redteam",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
       "source_urls": [
         "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official RedTeam dashboard."
+      "url": "https://dashboard.theredteam.io/"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-61-redteam-docs",
-      "name": "RedTeam docs",
       "kind": "docs",
-      "url": "https://docs.theredteam.io/",
+      "name": "RedTeam docs",
+      "notes": "Official RedTeam documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "redteam",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
       "source_urls": [
         "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official RedTeam documentation."
+      "url": "https://docs.theredteam.io/"
     },
     {
-      "id": "sn-61-redteam-source",
-      "name": "RedTeam source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/RedTeamSubnet/RedTeam",
-      "provider": "redteam",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-61-redteam-source",
+      "kind": "source-repo",
+      "name": "RedTeam source repository",
+      "notes": "Official RedTeam source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "redteam",
       "public_safe": true,
       "source_urls": ["https://github.com/RedTeamSubnet/RedTeam"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official RedTeam source repository."
+      "url": "https://github.com/RedTeamSubnet/RedTeam"
     },
     {
       "auth_required": false,
@@ -168,5 +163,5 @@
       "url": "https://cdn.jsdelivr.net/gh/RedTeamSubnet/rest-dfp-proxy@main/docs/pages/api-docs/openapi.json"
     }
   ],
-  "contact": "oscar@theredteam.io"
+  "website_url": "https://www.theredteam.io/"
 }

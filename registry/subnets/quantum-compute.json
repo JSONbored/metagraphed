@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 48,
-  "name": "Quantum Compute",
-  "slug": "sn-48",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "compute",
@@ -12,60 +7,65 @@
     "official-website",
     "quantum"
   ],
-  "source_repo": "https://github.com/qbittensor-labs/quantum-compute",
-  "dashboard_url": "https://taomarketcap.com/subnets/48",
-  "website_url": "https://www.qbittensorlabs.com/",
-  "notes": "Reviewed overlay for SN48 using the official qBittensor Labs website and Quantum Compute source repository.",
+  "contact": "qbittensorlabs@gmail.com",
   "curation": {
+    "gap_notes": [
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
     "source_count": 4,
-    "gap_notes": [
-      "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-06-08T10:10:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/48",
+  "name": "Quantum Compute",
+  "netuid": 48,
+  "notes": "Reviewed overlay for SN48 using the official qBittensor Labs website and Quantum Compute source repository.",
+  "schema_version": 1,
+  "slug": "sn-48",
+  "social": {
+    "x": "https://x.com/qbittensorlabs"
+  },
+  "source_repo": "https://github.com/qbittensor-labs/quantum-compute",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-48-quantum-compute-website",
-      "name": "qBittensor Labs website",
-      "kind": "website",
-      "url": "https://www.qbittensorlabs.com/",
-      "provider": "qbittensor-labs",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/qbittensor-labs/quantum-compute"],
+      "id": "sn-48-quantum-compute-website",
+      "kind": "website",
+      "name": "qBittensor Labs website",
+      "notes": "Official qBittensor Labs website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official qBittensor Labs website."
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/qbittensor-labs/quantum-compute"],
+      "url": "https://www.qbittensorlabs.com/"
     },
     {
-      "id": "sn-48-quantum-compute-source",
-      "name": "Quantum Compute source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/qbittensor-labs/quantum-compute",
-      "provider": "qbittensor-labs",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/qbittensor-labs/quantum-compute"],
+      "id": "sn-48-quantum-compute-source",
+      "kind": "source-repo",
+      "name": "Quantum Compute source repository",
+      "notes": "Official Quantum Compute source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Quantum Compute source repository."
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/qbittensor-labs/quantum-compute"],
+      "url": "https://github.com/qbittensor-labs/quantum-compute"
     },
     {
       "auth_required": false,
@@ -125,8 +125,5 @@
       "url": "https://docs.openquantum.com/"
     }
   ],
-  "social": {
-    "x": "https://x.com/qbittensorlabs"
-  },
-  "contact": "qbittensorlabs@gmail.com"
+  "website_url": "https://www.qbittensorlabs.com/"
 }

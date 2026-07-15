@@ -1,18 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 5,
-  "name": "Hone",
-  "slug": "sn-5",
-  "status": "active",
-  "categories": [
-    "baseline-curated",
-    "identity-reviewed",
-    "official-source-repo",
-    "official-website"
-  ],
-  "website_url": "https://www.hone.training/",
-  "source_repo": "https://github.com/manifold-inc/hone",
-  "dashboard_url": "https://taomarketcap.com/subnets/5",
   "baseline_excluded_surface_ids": [
     "sn-5-taomarketcap-source-repo",
     "sn-5-taomarketcap-website",
@@ -27,163 +13,175 @@
     "sn-5-website-link-www-hone-training-website-3",
     "sn-5-website-subdomain-docs-docs-hone-training"
   ],
-  "notes": "Reviewed overlay for SN5 Hone using the official Hone website, source repository, and public network pages. Common docs/API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational interfaces.",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "contact": "devs@manifold.inc",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T20:25:00.000Z",
-    "verified_at": "2026-06-08T20:25:00.000Z",
-    "source_count": 6,
     "gap_notes": [
       "Official website, network pages, and source repository are verified live.",
       "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404.",
       "No verified docs site yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:25:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-06-08T20:25:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/5",
+  "name": "Hone",
+  "netuid": 5,
+  "notes": "Reviewed overlay for SN5 Hone using the official Hone website, source repository, and public network pages. Common docs/API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational interfaces.",
+  "schema_version": 1,
+  "slug": "sn-5",
+  "source_repo": "https://github.com/manifold-inc/hone",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-5-hone-website",
-      "name": "Hone website",
-      "kind": "website",
-      "url": "https://www.hone.training/",
-      "provider": "hone",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-5-hone-website",
+      "kind": "website",
+      "name": "Hone website",
+      "notes": "Official Hone website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hone",
       "public_safe": true,
       "source_urls": [
         "https://www.hone.training/",
         "https://github.com/manifold-inc/hone"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Hone website."
+      "url": "https://www.hone.training/"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-5-hone-network",
+      "kind": "dashboard",
       "name": "Hone network",
-      "kind": "dashboard",
-      "url": "https://www.hone.training/network",
-      "provider": "hone",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://www.hone.training/"],
+      "notes": "Official Hone public network page.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Hone public network page."
+      "provider": "hone",
+      "public_safe": true,
+      "source_urls": ["https://www.hone.training/"],
+      "url": "https://www.hone.training/network"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-5-hone-nodes",
+      "kind": "dashboard",
       "name": "Hone nodes",
-      "kind": "dashboard",
-      "url": "https://www.hone.training/nodes",
-      "provider": "hone",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://www.hone.training/"],
+      "notes": "Official Hone public nodes page.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Hone public nodes page."
+      "provider": "hone",
+      "public_safe": true,
+      "source_urls": ["https://www.hone.training/"],
+      "url": "https://www.hone.training/nodes"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-5-hone-projects",
-      "name": "Hone projects",
       "kind": "dashboard",
-      "url": "https://www.hone.training/projects",
-      "provider": "hone",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://www.hone.training/"],
+      "name": "Hone projects",
+      "notes": "Official Hone public projects page.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Hone public projects page."
+      "provider": "hone",
+      "public_safe": true,
+      "source_urls": ["https://www.hone.training/"],
+      "url": "https://www.hone.training/projects"
     },
     {
-      "id": "sn-5-hone-source",
-      "name": "Hone source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/manifold-inc/hone",
-      "provider": "hone",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-5-hone-source",
+      "kind": "source-repo",
+      "name": "Hone source repository",
+      "notes": "Official Hone source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hone",
       "public_safe": true,
       "source_urls": ["https://github.com/manifold-inc/hone"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Hone source repository."
+      "url": "https://github.com/manifold-inc/hone"
     },
     {
-      "id": "sn-5-hone-subnet-api",
-      "name": "Hone API health",
-      "kind": "subnet-api",
-      "url": "https://api.hone.training/health",
-      "provider": "hone",
       "auth_required": false,
       "authority": "community",
-      "public_safe": true,
-      "source_urls": ["https://www.hone.training/"],
+      "id": "sn-5-hone-subnet-api",
+      "kind": "subnet-api",
+      "name": "Hone API health",
+      "notes": "Public no-auth GET returning the Hone (SN5) backend API health as JSON ({\"status\":\"ok\"}). Served on the api.hone.training subdomain of the subnet's registered website hone.training — a live API host distinct from the website-host /health path noted as 404 in this file. Fills the noted missing public-API-endpoint gap.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "hone",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "nickmopen"
       },
-      "notes": "Public no-auth GET returning the Hone (SN5) backend API health as JSON ({\"status\":\"ok\"}). Served on the api.hone.training subdomain of the subnet's registered website hone.training — a live API host distinct from the website-host /health path noted as 404 in this file. Fills the noted missing public-API-endpoint gap."
+      "source_urls": ["https://www.hone.training/"],
+      "url": "https://api.hone.training/health"
     },
     {
-      "id": "sn-5-hone-projects-json",
-      "name": "Hone training projects data",
-      "kind": "data-artifact",
-      "url": "https://www.hone.training/api/proxy/runs/projects",
-      "provider": "hone",
       "auth_required": false,
       "authority": "community",
-      "public_safe": true,
-      "source_urls": [
-        "https://www.hone.training/projects",
-        "https://github.com/manifold-inc/hone"
-      ],
+      "id": "sn-5-hone-projects-json",
+      "kind": "data-artifact",
+      "name": "Hone training projects data",
+      "notes": "Public no-auth GET returning the Hone (SN5) training projects catalog as JSON (project, version, modelSize, runCount, lastSeen fields; 46 release entries observed at submission time). This is the machine-readable feed behind the registered hone.training /projects dashboard surface, served from the same first-party hone.training host as the subnet's registered website.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "hone",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "dalledajay-coder"
       },
-      "notes": "Public no-auth GET returning the Hone (SN5) training projects catalog as JSON (project, version, modelSize, runCount, lastSeen fields; 46 release entries observed at submission time). This is the machine-readable feed behind the registered hone.training /projects dashboard surface, served from the same first-party hone.training host as the subnet's registered website."
+      "source_urls": [
+        "https://www.hone.training/projects",
+        "https://github.com/manifold-inc/hone"
+      ],
+      "url": "https://www.hone.training/api/proxy/runs/projects"
     },
     {
       "auth_required": false,
@@ -205,5 +203,5 @@
       "url": "https://raw.githubusercontent.com/manifold-inc/hone/786d1d457b30319080885ce742c94b21185eaafc/sandbox_runner/config.yaml"
     }
   ],
-  "contact": "devs@manifold.inc"
+  "website_url": "https://www.hone.training/"
 }

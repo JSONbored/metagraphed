@@ -18,8 +18,6 @@
       "Level114/level114-subnet is live from Tensorplex evidence but is not promoted as the primary source repository.",
       "Common docs, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
       "The /api path currently fails simple safe fetch probes and is not promoted.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",

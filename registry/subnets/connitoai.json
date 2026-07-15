@@ -1,69 +1,69 @@
 {
-  "schema_version": 1,
-  "netuid": 102,
-  "name": "ConnitoAI",
-  "slug": "sn-102",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo",
     "official-website"
   ],
-  "source_repo": "https://github.com/Connito-AI/Connito",
-  "dashboard_url": "https://taomarketcap.com/subnets/102",
-  "website_url": "https://connito.ai/",
-  "notes": "Reviewed overlay for SN102 using the official ConnitoAI website and source repository. The previously discovered miner docs URL currently returns 404 and is not promoted.",
+  "contact": "isabella@connito.ai",
   "curation": {
+    "gap_notes": [
+      "Previously discovered Connito miner docs URL currently returns 404.",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T09:50:00.000Z",
-    "verified_at": "2026-06-08T09:50:00.000Z",
     "source_count": 4,
-    "gap_notes": [
-      "Previously discovered Connito miner docs URL currently returns 404.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-06-08T09:50:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/102",
+  "name": "ConnitoAI",
+  "netuid": 102,
+  "notes": "Reviewed overlay for SN102 using the official ConnitoAI website and source repository. The previously discovered miner docs URL currently returns 404 and is not promoted.",
+  "schema_version": 1,
+  "slug": "sn-102",
+  "social": {
+    "x": "https://x.com/connitoai"
+  },
+  "source_repo": "https://github.com/Connito-AI/Connito",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-102-connito-website",
-      "name": "ConnitoAI website",
-      "kind": "website",
-      "url": "https://connito.ai/",
-      "provider": "connito",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/Connito-AI/Connito"],
+      "id": "sn-102-connito-website",
+      "kind": "website",
+      "name": "ConnitoAI website",
+      "notes": "Official ConnitoAI website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official ConnitoAI website."
+      "provider": "connito",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Connito-AI/Connito"],
+      "url": "https://connito.ai/"
     },
     {
-      "id": "sn-102-connito-source",
-      "name": "ConnitoAI source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/Connito-AI/Connito",
-      "provider": "connito",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/Connito-AI/Connito"],
+      "id": "sn-102-connito-source",
+      "kind": "source-repo",
+      "name": "ConnitoAI source repository",
+      "notes": "Official ConnitoAI source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official ConnitoAI source repository."
+      "provider": "connito",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Connito-AI/Connito"],
+      "url": "https://github.com/Connito-AI/Connito"
     },
     {
       "auth_required": false,
@@ -127,8 +127,5 @@
       "url": "https://cycle-api.connito.ai/previous_phase_blocks"
     }
   ],
-  "social": {
-    "x": "https://x.com/connitoai"
-  },
-  "contact": "isabella@connito.ai"
+  "website_url": "https://connito.ai/"
 }

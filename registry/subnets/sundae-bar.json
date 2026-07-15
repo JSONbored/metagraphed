@@ -1,69 +1,70 @@
 {
-  "schema_version": 1,
-  "netuid": 121,
-  "name": "sundae_bar",
-  "slug": "sn-121",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo",
     "official-website"
   ],
-  "source_repo": "https://github.com/sundae-bar/bittensor-subnet",
-  "dashboard_url": "https://taomarketcap.com/subnets/121",
-  "website_url": "https://www.sundaebar.ai/",
-  "notes": "Reviewed overlay for SN121 using the official Sundae Bar website and source repository.",
+  "contact": "hello@sundaebar.ai",
   "curation": {
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
     "source_count": 4,
-    "gap_notes": [
-      "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-06-08T10:10:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/121",
+  "name": "sundae_bar",
+  "netuid": 121,
+  "notes": "Reviewed overlay for SN121 using the official Sundae Bar website and source repository.",
+  "schema_version": 1,
+  "slug": "sn-121",
+  "social": {
+    "x": "https://x.com/sundae_bar_"
+  },
+  "source_repo": "https://github.com/sundae-bar/bittensor-subnet",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-121-sundae-bar-website",
-      "name": "Sundae Bar website",
-      "kind": "website",
-      "url": "https://www.sundaebar.ai/",
-      "provider": "sundae-bar",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "id": "sn-121-sundae-bar-website",
+      "kind": "website",
+      "name": "Sundae Bar website",
+      "notes": "Official Sundae Bar website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Sundae Bar website."
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "url": "https://www.sundaebar.ai/"
     },
     {
-      "id": "sn-121-sundae-bar-source",
-      "name": "Sundae Bar source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/sundae-bar/bittensor-subnet",
-      "provider": "sundae-bar",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "id": "sn-121-sundae-bar-source",
+      "kind": "source-repo",
+      "name": "Sundae Bar source repository",
+      "notes": "Official Sundae Bar source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Sundae Bar source repository."
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "url": "https://github.com/sundae-bar/bittensor-subnet"
     },
     {
       "auth_required": false,
@@ -153,8 +154,5 @@
       "url": "https://www.sundaebar.ai/api/products"
     }
   ],
-  "social": {
-    "x": "https://x.com/sundae_bar_"
-  },
-  "contact": "hello@sundaebar.ai"
+  "website_url": "https://www.sundaebar.ai/"
 }

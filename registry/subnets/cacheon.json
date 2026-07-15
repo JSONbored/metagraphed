@@ -12,9 +12,7 @@
     "gap_notes": [
       "Official website, docs, source repository, and miner API contract documentation are verified live.",
       "The miner API contract describes required miner-hosted endpoints rather than a shared hosted public subnet API endpoint.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",

@@ -2,8 +2,6 @@
   "categories": ["developer-tools", "repositories", "pilot"],
   "curation": {
     "gap_notes": [
-      "No verified dashboard surface yet.",
-      "No verified OpenAPI/Swagger surface yet.",
       "No verified SSE/event stream yet.",
       "Bounty state is documented through public CLI flows, but no unauthenticated public API has been verified yet."
     ],

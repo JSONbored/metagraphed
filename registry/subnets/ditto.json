@@ -22,9 +22,7 @@
       "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
       "Canonical source repository verified: ditto-assistant/dittobench-starter-kit self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\" (not a fork, ditto-assistant org).",
       "No verified safe public subnet API endpoint yet.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",

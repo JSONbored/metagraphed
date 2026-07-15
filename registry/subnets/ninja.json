@@ -13,8 +13,7 @@
   "curation": {
     "gap_notes": [
       "Swagger/OpenAPI routes currently serve HTML UI only; no verified machine-readable schema URL yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",

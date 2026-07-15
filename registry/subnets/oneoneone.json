@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 111,
-  "name": "oneoneone",
-  "slug": "sn-111",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "data",
@@ -12,63 +7,67 @@
     "official-website",
     "ugc"
   ],
-  "website_url": "https://oneoneone.io/",
-  "source_repo": "https://github.com/oneoneone-io/subnet-111",
-  "dashboard_url": "https://taomarketcap.com/subnets/111",
-  "notes": "Reviewed overlay for SN111 using the official oneoneone website and source repository. No official docs/API/OpenAPI surface is verified yet.",
+  "contact": "support@oneoneone.io",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:35:00.000Z",
-    "verified_at": "2026-06-08T10:35:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "No verified official docs URL yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:35:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-06-08T10:35:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/111",
+  "name": "oneoneone",
+  "netuid": 111,
+  "notes": "Reviewed overlay for SN111 using the official oneoneone website and source repository. No official docs/API/OpenAPI surface is verified yet.",
+  "schema_version": 1,
+  "slug": "sn-111",
+  "source_repo": "https://github.com/oneoneone-io/subnet-111",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-111-oneoneone-website",
-      "name": "oneoneone website",
-      "kind": "website",
-      "url": "https://oneoneone.io/",
-      "provider": "oneoneone",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://oneoneone.io/"],
+      "id": "sn-111-oneoneone-website",
+      "kind": "website",
+      "name": "oneoneone website",
+      "notes": "Official oneoneone website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official oneoneone website."
+      "provider": "oneoneone",
+      "public_safe": true,
+      "source_urls": ["https://oneoneone.io/"],
+      "url": "https://oneoneone.io/"
     },
     {
-      "id": "sn-111-oneoneone-source",
-      "name": "oneoneone source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/oneoneone-io/subnet-111",
-      "provider": "oneoneone",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-111-oneoneone-source",
+      "kind": "source-repo",
+      "name": "oneoneone source repository",
+      "notes": "Official oneoneone source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "oneoneone",
       "public_safe": true,
       "source_urls": [
         "https://api.github.com/repos/oneoneone-io/subnet-111",
         "https://github.com/oneoneone-io/subnet-111"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official oneoneone source repository."
+      "url": "https://github.com/oneoneone-io/subnet-111"
     },
     {
       "auth_required": false,
@@ -148,5 +147,5 @@
       "url": "https://api.taomarketcap.com/public/v1/subnets/111"
     }
   ],
-  "contact": "support@oneoneone.io"
+  "website_url": "https://oneoneone.io/"
 }

@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 28,
-  "name": "gm",
-  "slug": "gm",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -11,28 +6,33 @@
     "marketplace",
     "tee"
   ],
-  "source_repo": "https://github.com/taostat/gm-miner",
-  "website_url": "https://saygm.com/",
-  "docs_url": null,
-  "dashboard_url": null,
-  "notes": "Reviewed overlay for SN28 gm. Public news/directory sources describe a TEE-enabled LLM inference marketplace, but no official public website, source repository, API, OpenAPI schema, or docs site has been verified.",
+  "contact": "hi@saygm.com",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:00:00.000Z",
-    "verified_at": "2026-06-08T15:00:00.000Z",
-    "source_count": 6,
     "gap_notes": [
       "No verified official website yet.",
       "No verified live source repository yet.",
       "No verified official docs site yet beyond public directory/community pages.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet.",
       "SubnetRadar published Discord-derived news about a TEE-enabled model routing marketplace, but that is not treated as an official operational interface."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-06-08T15:00:00.000Z"
   },
+  "dashboard_url": null,
+  "docs_url": null,
+  "name": "gm",
+  "netuid": 28,
+  "notes": "Reviewed overlay for SN28 gm. Public news/directory sources describe a TEE-enabled LLM inference marketplace, but no official public website, source repository, API, OpenAPI schema, or docs site has been verified.",
+  "schema_version": 1,
+  "slug": "gm",
+  "social": {
+    "x": "https://x.com/say_gm_"
+  },
+  "source_repo": "https://github.com/taostat/gm-miner",
+  "status": "active",
   "surfaces": [
     {
       "auth_required": false,
@@ -102,8 +102,5 @@
       "url": "https://raw.githubusercontent.com/taostat/gm-miner/refs/heads/main/image/envoy.yaml"
     }
   ],
-  "social": {
-    "x": "https://x.com/say_gm_"
-  },
-  "contact": "hi@saygm.com"
+  "website_url": "https://saygm.com/"
 }

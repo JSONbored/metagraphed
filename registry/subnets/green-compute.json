@@ -9,7 +9,6 @@
   "curation": {
     "gap_notes": [
       "No verified source repository has been promoted as official because the discovered repository identifies a different Rich Kids of TAO subnet identity.",
-      "No verified OpenAPI/Swagger surface yet.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
@@ -26,6 +25,9 @@
   "notes": "Reviewed overlay for SN110. The official Green Compute website advertises a public model directory and API host; the discovered Rich Kids of TAO repository is retained only as registry-observed evidence pending identity review.",
   "schema_version": 1,
   "slug": "sn-110",
+  "social": {
+    "x": "https://x.com/vocence_bt"
+  },
   "source_repo": "https://github.com/Rich-Kids-of-TAO/rkt-subnet",
   "status": "active",
   "surfaces": [
@@ -217,8 +219,5 @@
       "url": "https://api.green-compute.com/platform/billing/bonus-rates"
     }
   ],
-  "social": {
-    "x": "https://x.com/vocence_bt"
-  },
   "website_url": "https://www.green-compute.com/"
 }

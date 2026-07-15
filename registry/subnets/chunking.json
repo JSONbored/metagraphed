@@ -11,11 +11,9 @@
     "gap_notes": [
       "subnet.chunking.com appears to be the official Chunking website, but its TLS certificate is currently expired and probe-derived status should be degraded.",
       "Previously discovered VectorChat/chunking_subnet source repository currently returns 404.",
-      "No verified live source repository yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -122,6 +120,12 @@
       "kind": "data-artifact",
       "name": "Chunking subnet protocol definition",
       "notes": "Public no-auth machine-readable protocol module (chunking/protocol.py) committed in the official salahawk/chunking_subnet repository, defining the Bittensor synapse schema SN40 Chunking miners and validators communicate over — the document/chunk request and response contract for the subnet's text-chunking task. Pinned to an immutable commit. Verified 200, SS58-clean, no keys or secrets. Distinct from the min_compute spec already registered.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "vectorchat",
       "public_safe": true,
       "review": {
@@ -132,12 +136,6 @@
         "https://github.com/salahawk/chunking_subnet/blob/29ed38c60aac356717d3e1dfc3e7c3627158bff4/chunking/protocol.py",
         "https://github.com/salahawk/chunking_subnet"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
       "url": "https://raw.githubusercontent.com/salahawk/chunking_subnet/29ed38c60aac356717d3e1dfc3e7c3627158bff4/chunking/protocol.py"
     }
   ],
