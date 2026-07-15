@@ -13,14 +13,7 @@
     "zkml"
   ],
   "curation": {
-    "gap_notes": [
-      "Official website, docs, and source repository are verified live.",
-      "Common `/api`, `/health`, `/swagger`, and `/openapi.json` paths currently serve the public SPA shell, not API/schema data.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ],
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T16:10:00.000Z",
@@ -31,7 +24,7 @@
   "docs_url": "https://sn2-docs.inferencelabs.com/",
   "name": "DSperse",
   "netuid": 2,
-  "notes": "Reviewed overlay for SN2 DSperse / Inference Labs. Official website, docs, and source repository are verified live. Common API/OpenAPI probe paths currently serve the public SPA shell, so no machine-readable API or schema surface is promoted yet.",
+  "notes": "Reviewed overlay for SN2 DSperse / Inference Labs. Official website, docs, and source repository are verified live. The main sn2-api.inferencelabs.com host has no machine-readable schema (its /stats endpoint is tracked directly), but the circuit-repository host (repository.inferencelabs.com) publishes a full OpenAPI 3.1 schema with circuit/component/model list endpoints, all tracked. No verified SSE/event stream yet.",
   "schema_version": 1,
   "slug": "dsperse",
   "social": {
@@ -193,8 +186,19 @@
       "kind": "openapi",
       "name": "DSperse circuit repository OpenAPI",
       "notes": "Public no-auth OpenAPI 3.1 schema for the SN2 circuit repository API (title \"Circuit Repository API\", 11 paths) on repository.inferencelabs.com. Validators and miners fetch active ZK circuits from this host; the official subnet-2 client sets CIRCUIT_API_URL to https://repository.inferencelabs.com in crates/sn2-types/src/constants.rs.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
       "provider": "inference-labs",
       "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
       "schema_status": "machine-readable",
       "schema_url": "https://repository.inferencelabs.com/openapi.json",
       "source_urls": [
@@ -202,18 +206,73 @@
         "https://sn2-docs.inferencelabs.com/technical-roadmap.md",
         "https://repository.inferencelabs.com/docs"
       ],
+      "url": "https://repository.inferencelabs.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-2-dsperse-circuit-list",
+      "kind": "subnet-api",
+      "name": "DSperse circuit repository circuit list",
+      "notes": "Public no-auth GET returning the list of registered ZK circuits (observed: {\"circuits\":[]} when empty). Documented in the circuit repository's own OpenAPI schema (path /circuits); same host as the already-tracked openapi surface.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
-        "timeout_ms": 15000
+        "method": "GET",
+        "timeout_ms": 10000
       },
+      "provider": "inference-labs",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "bohdansolovie",
-        "confidence": "medium"
+        "submitted_by": "jsonbored"
       },
-      "url": "https://repository.inferencelabs.com/openapi.json"
+      "source_urls": ["https://repository.inferencelabs.com/openapi.json"],
+      "url": "https://repository.inferencelabs.com/circuits"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-2-dsperse-component-list",
+      "kind": "subnet-api",
+      "name": "DSperse circuit repository component list",
+      "notes": "Public no-auth GET returning registered circuit components (sha256, name, proof_system, file URLs). Documented in the circuit repository's own OpenAPI schema (path /components); same host as the already-tracked openapi surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "inference-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://repository.inferencelabs.com/openapi.json"],
+      "url": "https://repository.inferencelabs.com/components"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-2-dsperse-model-list",
+      "kind": "subnet-api",
+      "name": "DSperse circuit repository model list",
+      "notes": "Public no-auth GET returning registered ML models (id, name, author, version, input/output schema). Documented in the circuit repository's own OpenAPI schema (path /models); same host as the already-tracked openapi surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "inference-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://repository.inferencelabs.com/openapi.json"],
+      "url": "https://repository.inferencelabs.com/models"
     }
   ],
   "website_url": "https://subnet2.inferencelabs.com/"
