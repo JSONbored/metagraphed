@@ -272,6 +272,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/ohlc?interval=1h",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.interval, "1h");
+      assert.equal(Array.isArray(body.data.candles), true);
+      assert.equal(body.data.root_excluded, false);
+    },
+  ],
+  [
     "/api/v1/subnets/7/stake-quote?amount=1000&direction=stake",
     (body) => {
       assert.equal(body.data.netuid, 7);

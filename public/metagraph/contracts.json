@@ -624,6 +624,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "OHLC price/volume candlesticks for one subnet (#5655, Phase 1 of the OHLC epic #5304): open/high/low/close/volume candles bucketed by ?interval=1h|1d (default 1h), shaped in pure JS from the raw StakeAdded/StakeRemoved account_events stream the same /volume and /stake-flow read (per-trade price = amount_tao / alpha_amount), no static file. ?days= bounds the lookback window (default 90, max 365). Empty buckets are gaps, never synthesized flat candles. Root (netuid 0) has no AMM pool (1:1 TAO, no price impact) and returns an empty, root_excluded series rather than a meaningless flat line. Extends metagraphed's original developer-explorer scope fence (#2589's OHLC exclusion) per #4302's maintainer decision.",
+      "id": "subnet-ohlc",
+      "path": "/metagraph/subnets/{netuid}/ohlc.json",
+      "schema_ref": "#/components/schemas/SubnetOhlcArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between a window's start and end snapshots, with each subnet's share of network stake/emission and a network aggregate summary, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
       "id": "subnet-movers",
       "path": "/metagraph/subnets/movers.json",

@@ -1044,6 +1044,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetAlphaVolumeArtifact",
   ),
   artifact(
+    "subnet-ohlc",
+    "/metagraph/subnets/{netuid}/ohlc.json",
+    "OHLC price/volume candlesticks for one subnet (#5655, Phase 1 of the OHLC epic #5304): open/high/low/close/volume candles bucketed by ?interval=1h|1d (default 1h), shaped in pure JS from the raw StakeAdded/StakeRemoved account_events stream the same /volume and /stake-flow read (per-trade price = amount_tao / alpha_amount), no static file. ?days= bounds the lookback window (default 90, max 365). Empty buckets are gaps, never synthesized flat candles. Root (netuid 0) has no AMM pool (1:1 TAO, no price impact) and returns an empty, root_excluded series rather than a meaningless flat line. Extends metagraphed's original developer-explorer scope fence (#2589's OHLC exclusion) per #4302's maintainer decision.",
+    "SubnetOhlcArtifact",
+  ),
+  artifact(
     "subnet-movers",
     "/metagraph/subnets/movers.json",
     "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between a window's start and end snapshots, with each subnet's share of network stake/emission and a network aggregate summary, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
@@ -2321,6 +2327,20 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-ohlc",
+    "GET",
+    "/api/v1/subnets/{netuid}/ohlc",
+    "/metagraph/subnets/{netuid}/ohlc.json",
+    "Fetch open/high/low/close/volume candles for one subnet's alpha price, bucketed by ?interval= (1h or 1d, default 1h) from the same account_events StakeAdded/StakeRemoved stream as GET /api/v1/subnets/{netuid}/volume — each row is one executed trade, price = amount_tao / alpha_amount. Open/high/low/close are the first/max/min/last trade price in the bucket; volume_alpha/volume_tao are summed amounts. ?days= bounds the lookback window (default 90, max 365). Empty buckets are omitted (a gap, not a synthesized flat candle). The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candle array with root_excluded:true rather than a meaningless flat-line series.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "interval", schema: { type: "string", enum: ["1h", "1d"] } },
+      { name: "days", schema: { type: "integer", minimum: 1, maximum: 365 } },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

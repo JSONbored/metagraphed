@@ -61,6 +61,9 @@ export const R2_ONLY_PATTERNS = [
   // Rolling 24h buy/sell alpha volume (#4339/8.1): computed live from the same
   // account_events stream as stake-flow.
   /^subnets\/(?:\d+|\{netuid\})\/volume\.json$/,
+  // OHLC price/volume candlesticks (#5655, Phase 1 of #5304): bucketed in pure
+  // JS from the same account_events stream as volume/stake-flow, never a file.
+  /^subnets\/(?:\d+|\{netuid\})\/ohlc\.json$/,
   // Constant-product stake/unstake slippage quote (#5235): computed live from
   // the economics-tier AMM pool reserves.
   /^subnets\/(?:\d+|\{netuid\})\/stake-quote\.json$/,

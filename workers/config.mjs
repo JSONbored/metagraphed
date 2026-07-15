@@ -73,6 +73,10 @@ export const SUBNET_STAKE_FLOW_PATH_PATTERN =
 // account_events tier, no static file.
 export const SUBNET_ALPHA_VOLUME_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/volume$/;
+// OHLC price/volume candlesticks (#5655, Phase 1 of #5304) — open/high/low/
+// close/volume bucketed by ?interval=, computed live from the same
+// account_events tier as /volume and /stake-flow, no static file.
+export const SUBNET_OHLC_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/ohlc$/;
 // Read-only constant-product stake/unstake slippage quote (#5235) — pure math
 // over the subnet's live economics-artifact pool reserves, no chain write.
 export const SUBNET_STAKE_QUOTE_PATH_PATTERN =

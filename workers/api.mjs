@@ -100,6 +100,7 @@ import {
   handleSubnetStakeFlow,
   canonicalSubnetStakeFlowCachePath,
   handleSubnetAlphaVolume,
+  handleSubnetOhlc,
   handleSubnetStakeQuote,
   handleSubnetRecycled,
   handleSubnetWeights,
@@ -343,6 +344,7 @@ import {
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
   SUBNET_ALPHA_VOLUME_PATH_PATTERN,
+  SUBNET_OHLC_PATH_PATTERN,
   SUBNET_STAKE_QUOTE_PATH_PATTERN,
   SUBNET_RECYCLED_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
@@ -1840,6 +1842,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         ),
       );
     }
+    const ohlcMatch = SUBNET_OHLC_PATH_PATTERN.exec(resolved.url.pathname);
+    if (ohlcMatch) {
+      // OHLC candles summed live from account_events — deterministic per
+      // request (varies only on ?interval=/?days=, both carried in the raw
+      // path+search default cache key), edge-cache like the sibling
+      // analytics routes.
+      return withEdgeCache(request, ctx, env, "subnet-ohlc", () =>
+        handleSubnetOhlc(request, env, Number(ohlcMatch[1]), resolved.url),
+      );
+    }
     const stakeQuoteMatch = SUBNET_STAKE_QUOTE_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2736,6 +2748,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||
+    SUBNET_OHLC_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_QUOTE_PATH_PATTERN.test(pathname) ||
     SUBNET_RECYCLED_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||

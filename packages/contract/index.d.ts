@@ -2180,6 +2180,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/ohlc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch open/high/low/close/volume candles for one subnet's alpha price, bucketed by ?interval= (1h or 1d, default 1h) from the same account_events StakeAdded/StakeRemoved stream as GET /api/v1/subnets/{netuid}/volume — each row is one executed trade, price = amount_tao / alpha_amount. Open/high/low/close are the first/max/min/last trade price in the bucket; volume_alpha/volume_tao are summed amounts. ?days= bounds the lookback window (default 90, max 365). Empty buckets are omitted (a gap, not a synthesized flat candle). The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candle array with root_excluded:true rather than a meaningless flat-line series. */
+        get: operations["subnetOhlc"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/overview": {
         parameters: {
             query?: never;
@@ -7034,6 +7051,30 @@ export interface components {
             subnet_count: number;
             /** @enum {string|null} */
             window: "7d" | "30d" | "90d" | null;
+        };
+        /** @description OHLC price/volume candlesticks for one subnet (#5655, Phase 1 of the OHLC epic #5304): open/high/low/close/volume candles bucketed by interval (1h or 1d), shaped in pure JS from the raw StakeAdded/StakeRemoved account_events stream the same SubnetAlphaVolumeArtifact reads — each row is one executed trade, price = amount_tao / alpha_amount. Empty buckets are gaps, never synthesized flat candles. The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candles array with root_excluded:true instead of a meaningless flat-line series. */
+        SubnetOhlcArtifact: {
+            candles: components["schemas"]["SubnetOhlcCandle"][];
+            /** @enum {string} */
+            interval: "1h" | "1d";
+            netuid: number;
+            /** @description True only for the root subnet (netuid 0), whose 1:1 TAO pricing has no AMM/price impact to chart; candles is always empty in that case. */
+            root_excluded: boolean;
+            schema_version: number;
+        };
+        /** @description One OHLCV candle: open/high/low/close are the first/max/min/last trade price (amount_tao / alpha_amount) in the bucket; volume_alpha/volume_tao are the summed trade amounts; event_count is the trade count. Never synthesized for an empty bucket — a bucket with zero trades is simply absent from the candles array. */
+        SubnetOhlcCandle: {
+            /** @description Bucket start, epoch milliseconds. */
+            bucket_start: number;
+            /** Format: date-time */
+            bucket_start_iso: string;
+            close: number;
+            event_count: number;
+            high: number;
+            low: number;
+            open: number;
+            volume_alpha: number;
+            volume_tao: number;
         };
         SubnetOverviewArtifact: components["schemas"]["ArtifactBase"] & ({
             counts: {
@@ -25256,6 +25297,126 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["NeuronHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetOhlc: {
+        parameters: {
+            query?: {
+                interval?: "1h" | "1d";
+                days?: number;
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "candles": [
+                     *           {
+                     *             "bucket_start": 1,
+                     *             "bucket_start_iso": "2026-06-01T00:00:00.000Z",
+                     *             "close": 0.5,
+                     *             "event_count": 1,
+                     *             "high": 0.5,
+                     *             "low": 0.5,
+                     *             "open": 0.5,
+                     *             "volume_alpha": 0.5,
+                     *             "volume_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "interval": "1h",
+                     *         "netuid": 7,
+                     *         "root_excluded": false,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetOhlcArtifact"];
                     };
                 };
             };

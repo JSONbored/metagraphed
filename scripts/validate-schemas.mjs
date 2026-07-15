@@ -34,6 +34,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-turnover",
   "subnet-stake-flow",
   "subnet-alpha-volume",
+  "subnet-ohlc",
   "subnet-stake-quote",
   "subnet-weights",
   "subnet-weight-setters",

@@ -18105,6 +18105,93 @@
         ],
         "type": "object"
       },
+      "SubnetOhlcArtifact": {
+        "additionalProperties": false,
+        "description": "OHLC price/volume candlesticks for one subnet (#5655, Phase 1 of the OHLC epic #5304): open/high/low/close/volume candles bucketed by interval (1h or 1d), shaped in pure JS from the raw StakeAdded/StakeRemoved account_events stream the same SubnetAlphaVolumeArtifact reads — each row is one executed trade, price = amount_tao / alpha_amount. Empty buckets are gaps, never synthesized flat candles. The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candles array with root_excluded:true instead of a meaningless flat-line series.",
+        "properties": {
+          "candles": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetOhlcCandle"
+            },
+            "type": "array"
+          },
+          "interval": {
+            "enum": [
+              "1h",
+              "1d"
+            ],
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "root_excluded": {
+            "description": "True only for the root subnet (netuid 0), whose 1:1 TAO pricing has no AMM/price impact to chart; candles is always empty in that case.",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "interval",
+          "candles",
+          "root_excluded"
+        ],
+        "type": "object"
+      },
+      "SubnetOhlcCandle": {
+        "additionalProperties": false,
+        "description": "One OHLCV candle: open/high/low/close are the first/max/min/last trade price (amount_tao / alpha_amount) in the bucket; volume_alpha/volume_tao are the summed trade amounts; event_count is the trade count. Never synthesized for an empty bucket — a bucket with zero trades is simply absent from the candles array.",
+        "properties": {
+          "bucket_start": {
+            "description": "Bucket start, epoch milliseconds.",
+            "type": "integer"
+          },
+          "bucket_start_iso": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "close": {
+            "type": "number"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "high": {
+            "type": "number"
+          },
+          "low": {
+            "type": "number"
+          },
+          "open": {
+            "type": "number"
+          },
+          "volume_alpha": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "volume_tao": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "bucket_start",
+          "bucket_start_iso",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume_alpha",
+          "volume_tao",
+          "event_count"
+        ],
+        "type": "object"
+      },
       "SubnetOverviewArtifact": {
         "allOf": [
           {

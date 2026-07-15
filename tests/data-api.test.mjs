@@ -3073,6 +3073,76 @@ test("GET /api/v1/subnets/:netuid/volume shapes a buy/sell alpha rollup", async 
   expect(queryText()).toContain("event_kind IN (");
 });
 
+test("GET /api/v1/subnets/:netuid/ohlc shapes raw account_events rows into candles", async () => {
+  mockRows.current = [
+    {
+      event_kind: "StakeAdded",
+      alpha_amount: "10",
+      amount_tao: "20",
+      observed_at: "1783600000000",
+    },
+    {
+      event_kind: "StakeRemoved",
+      alpha_amount: "5",
+      amount_tao: "15",
+      observed_at: "1783600060000",
+    },
+  ];
+  const res = await req("/api/v1/subnets/4/ohlc");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.netuid).toBe(4);
+  expect(body.data.interval).toBe("1h");
+  expect(body.data.candles.length).toBe(1);
+  expect(body.data.candles[0].open).toBe(2); // 20/10
+  expect(body.data.candles[0].close).toBe(3); // 15/5
+  expect(body.data.candles[0].event_count).toBe(2);
+  // Raw-row query, not a GROUP BY/array_agg aggregation (src/subnet-ohlc.mjs
+  // does the bucketing in JS) -- the SQL itself stays a plain filtered
+  // SELECT ordered by observed_at.
+  expect(queryText()).toContain("event_kind IN (");
+  expect(queryText()).toContain("ORDER BY observed_at ASC");
+  expect(queryText()).not.toContain("GROUP BY");
+});
+
+test("GET /api/v1/subnets/:netuid/ohlc honors ?interval=1d", async () => {
+  mockRows.current = [
+    {
+      event_kind: "StakeAdded",
+      alpha_amount: "10",
+      amount_tao: "20",
+      observed_at: "1783600000000",
+    },
+  ];
+  const res = await req("/api/v1/subnets/4/ohlc?interval=1d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.interval).toBe("1d");
+});
+
+test("GET /api/v1/subnets/:netuid/ohlc with no rows returns an empty candle array, not a throw", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/4/ohlc");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.candles).toEqual([]);
+});
+
+test("GET /api/v1/subnets/0/ohlc (root) is schema-stable with root_excluded:true", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/0/ohlc");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.root_excluded).toBe(true);
+  expect(body.data.candles).toEqual([]);
+});
+
+test("GET /api/v1/subnets/:netuid/ohlc clamps an out-of-range ?days= to the max lookback rather than erroring", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/4/ohlc?days=99999");
+  expect(res.status).toBe(200);
+});
+
 test("GET /api/v1/subnets/:netuid/events returns the per-subnet feed and applies filters", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
   const res = await req(

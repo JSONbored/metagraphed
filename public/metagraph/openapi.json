@@ -18127,6 +18127,93 @@
         ],
         "type": "object"
       },
+      "SubnetOhlcArtifact": {
+        "additionalProperties": false,
+        "description": "OHLC price/volume candlesticks for one subnet (#5655, Phase 1 of the OHLC epic #5304): open/high/low/close/volume candles bucketed by interval (1h or 1d), shaped in pure JS from the raw StakeAdded/StakeRemoved account_events stream the same SubnetAlphaVolumeArtifact reads — each row is one executed trade, price = amount_tao / alpha_amount. Empty buckets are gaps, never synthesized flat candles. The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candles array with root_excluded:true instead of a meaningless flat-line series.",
+        "properties": {
+          "candles": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetOhlcCandle"
+            },
+            "type": "array"
+          },
+          "interval": {
+            "enum": [
+              "1h",
+              "1d"
+            ],
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "root_excluded": {
+            "description": "True only for the root subnet (netuid 0), whose 1:1 TAO pricing has no AMM/price impact to chart; candles is always empty in that case.",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "interval",
+          "candles",
+          "root_excluded"
+        ],
+        "type": "object"
+      },
+      "SubnetOhlcCandle": {
+        "additionalProperties": false,
+        "description": "One OHLCV candle: open/high/low/close are the first/max/min/last trade price (amount_tao / alpha_amount) in the bucket; volume_alpha/volume_tao are the summed trade amounts; event_count is the trade count. Never synthesized for an empty bucket — a bucket with zero trades is simply absent from the candles array.",
+        "properties": {
+          "bucket_start": {
+            "description": "Bucket start, epoch milliseconds.",
+            "type": "integer"
+          },
+          "bucket_start_iso": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "close": {
+            "type": "number"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "high": {
+            "type": "number"
+          },
+          "low": {
+            "type": "number"
+          },
+          "open": {
+            "type": "number"
+          },
+          "volume_alpha": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "volume_tao": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "bucket_start",
+          "bucket_start_iso",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume_alpha",
+          "volume_tao",
+          "event_count"
+        ],
+        "type": "object"
+      },
       "SubnetOverviewArtifact": {
         "allOf": [
           {
@@ -47613,6 +47700,172 @@
           }
         },
         "summary": "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/ohlc": {
+      "get": {
+        "operationId": "subnetOhlc",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1h",
+                "1d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "maximum": 365,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "candles": [
+                      {
+                        "bucket_start": 1,
+                        "bucket_start_iso": "2026-06-01T00:00:00.000Z",
+                        "close": 0.5,
+                        "event_count": 1,
+                        "high": 0.5,
+                        "low": 0.5,
+                        "open": 0.5,
+                        "volume_alpha": 0.5,
+                        "volume_tao": 0.5
+                      }
+                    ],
+                    "interval": "1h",
+                    "netuid": 7,
+                    "root_excluded": false,
+                    "schema_version": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetOhlcArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch open/high/low/close/volume candles for one subnet's alpha price, bucketed by ?interval= (1h or 1d, default 1h) from the same account_events StakeAdded/StakeRemoved stream as GET /api/v1/subnets/{netuid}/volume — each row is one executed trade, price = amount_tao / alpha_amount. Open/high/low/close are the first/max/min/last trade price in the bucket; volume_alpha/volume_tao are summed amounts. ?days= bounds the lookback window (default 90, max 365). Empty buckets are omitted (a gap, not a synthesized flat candle). The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candle array with root_excluded:true rather than a meaningless flat-line series.",
         "tags": [
           "subnets",
           "analytics"

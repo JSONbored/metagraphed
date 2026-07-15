@@ -15356,6 +15356,49 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
     assert.equal(res.body.result.isError, true);
   });
 
+  test("get_subnet_ohlc returns a schema-stable empty candle array with no Postgres tier bound", async () => {
+    const res = await callTool("get_subnet_ohlc", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.interval, "1h");
+    assert.deepEqual(out.candles, []);
+    assert.equal(out.root_excluded, false);
+  });
+
+  test("get_subnet_ohlc rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_ohlc", {});
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_ohlc rejects an unsupported interval", async () => {
+    const res = await callTool("get_subnet_ohlc", {
+      netuid: 7,
+      interval: "5m",
+    });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_ohlc accepts interval=1d", async () => {
+    const res = await callTool("get_subnet_ohlc", {
+      netuid: 7,
+      interval: "1d",
+    });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.interval, "1d");
+  });
+
+  test("get_subnet_ohlc rejects a days value beyond the max lookback", async () => {
+    const res = await callTool("get_subnet_ohlc", { netuid: 7, days: 9999 });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_ohlc reports root_excluded:true for netuid 0", async () => {
+    const res = await callTool("get_subnet_ohlc", { netuid: 0 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.root_excluded, true);
+    assert.deepEqual(out.candles, []);
+  });
+
   test("get_subnet_recycled returns recycled_tao:0 for genuinely unset storage", async () => {
     const orig = globalThis.fetch;
     globalThis.fetch = async () => ({
@@ -17154,6 +17197,67 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
       { env, deps },
     );
     assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+  });
+});
+
+// get_subnet_ohlc is also gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE and, like
+// get_subnet_stake_flow/get_subnet_volume above, entities.mjs's
+// handleSubnetOhlc destructures `{ data, generatedAt }` from
+// tryPostgresTier's result -- so the DATA_API mock here nests the marker
+// under `data` to exercise that unwrap.
+describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
+  test("flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            data: { schema_version: 1, marker: "from-postgres" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_ohlc",
+      { netuid: 7, interval: "1d", days: 30 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, "/api/v1/subnets/7/ohlc?interval=1d&days=30");
+  });
+
+  test("flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool("get_subnet_ohlc", { netuid: 7 }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+    assert.deepEqual(res.body.result.structuredContent.candles, []);
+  });
+
+  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: { schema_version: 1, marker: "should-not-be-used" },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool("get_subnet_ohlc", { netuid: 7 }, { env });
     assert.equal(res.body.result.structuredContent.marker, undefined);
   });
 });

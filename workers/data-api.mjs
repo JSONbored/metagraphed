@@ -47,6 +47,12 @@ import {
 } from "../src/account-events.mjs";
 import { buildAlphaVolume } from "../src/alpha-volume.mjs";
 import {
+  buildSubnetOhlc,
+  OHLC_INTERVAL_DEFAULT,
+  DEFAULT_OHLC_WINDOW_DAYS,
+  MAX_OHLC_WINDOW_DAYS,
+} from "../src/subnet-ohlc.mjs";
+import {
   buildBlocksSummary,
   BLOCKS_SUMMARY_SCAN_CAP,
 } from "../src/blocks-summary.mjs";
@@ -4304,6 +4310,47 @@ export default {
           return json({
             data: buildAlphaVolume(rows, netuid, { marketCapTao: null }),
             generatedAt: latestObservedIso(rows, "last_observed"),
+          });
+        }
+
+        // GET /api/v1/subnets/:netuid/ohlc?interval=1h|1d&days=1-365 (#5655,
+        // Phase 1 of #5304): OHLCV candles, bucketed in pure JS by
+        // buildSubnetOhlc -- deliberately NOT a SQL GROUP BY/array_agg
+        // aggregation (see src/subnet-ohlc.mjs's header), so this query stays
+        // a plain filtered raw-row SELECT ordered by observed_at ASC, the
+        // exact shape buildSubnetOhlc expects (it sorts defensively anyway,
+        // but ORDER BY here avoids trusting Postgres's unspecified default
+        // order for a query with no ORDER BY at all). ?days= bounds the
+        // lookback (default DEFAULT_OHLC_WINDOW_DAYS, clamped to
+        // MAX_OHLC_WINDOW_DAYS); a malformed value falls back to the default
+        // rather than erroring, matching this Worker's own no-query-
+        // validation convention (handleSubnetOhlc, the entities.mjs REST
+        // layer this route is reached through via tryPostgresTier, already
+        // validates both params with a 400 before forwarding).
+        const subnetOhlc = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/ohlc$/,
+        );
+        if (subnetOhlc) {
+          const netuid = Number(subnetOhlc[1]);
+          const interval =
+            url.searchParams.get("interval") || OHLC_INTERVAL_DEFAULT;
+          const daysParam = url.searchParams.get("days");
+          let days = DEFAULT_OHLC_WINDOW_DAYS;
+          if (daysParam !== null) {
+            const n = Number(daysParam);
+            if (Number.isFinite(n)) {
+              days = Math.min(Math.max(Math.floor(n), 1), MAX_OHLC_WINDOW_DAYS);
+            }
+          }
+          const cutoff = Date.now() - days * ANALYTICS_DAY_MS;
+          const rows = await sql`
+          SELECT event_kind, alpha_amount, amount_tao, observed_at
+          FROM account_events
+          WHERE netuid = ${netuid} AND event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND}) AND observed_at >= ${cutoff}
+          ORDER BY observed_at ASC`;
+          return json({
+            data: buildSubnetOhlc(rows, netuid, { interval }),
+            generatedAt: latestObservedIso(rows, "observed_at"),
           });
         }
 

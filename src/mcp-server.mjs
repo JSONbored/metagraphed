@@ -573,6 +573,13 @@ import {
 import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
 import { buildAlphaVolume } from "./alpha-volume.mjs";
+import {
+  buildSubnetOhlc,
+  OHLC_INTERVALS,
+  OHLC_INTERVAL_DEFAULT,
+  DEFAULT_OHLC_WINDOW_DAYS,
+  MAX_OHLC_WINDOW_DAYS,
+} from "./subnet-ohlc.mjs";
 import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
 import { buildAccountPositionHistory } from "./account-position-history.mjs";
 import { loadAccountIdentity } from "./account-identity.mjs";
@@ -5429,6 +5436,70 @@ export const MCP_TOOLS = [
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
         )?.data ?? buildAlphaVolume([], netuid, { marketCapTao })
+      );
+    },
+  },
+  {
+    name: "get_subnet_ohlc",
+    title: "Get a subnet's OHLC price/volume candles",
+    description:
+      "Fetch open/high/low/close/volume candles for one subnet's alpha " +
+      "price, bucketed by interval (1h or 1d, default 1h) from the same " +
+      "StakeAdded/StakeRemoved account_events stream get_subnet_volume reads " +
+      "— each row is one executed trade, price = amount_tao / alpha_amount. " +
+      "Empty buckets are gaps, never synthesized flat candles. days bounds " +
+      `the lookback window (1-${MAX_OHLC_WINDOW_DAYS}, default ${DEFAULT_OHLC_WINDOW_DAYS}). ` +
+      "Root (netuid 0) has no AMM pool (1:1 TAO, no price impact) and " +
+      "returns an empty, root_excluded series rather than a meaningless " +
+      "flat line. Mirrors GET /api/v1/subnets/{netuid}/ohlc.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        interval: {
+          type: "string",
+          enum: Object.keys(OHLC_INTERVALS),
+          description: `Candle width (default ${OHLC_INTERVAL_DEFAULT}).`,
+        },
+        days: {
+          type: "integer",
+          description: `Lookback window in days (default ${DEFAULT_OHLC_WINDOW_DAYS}).`,
+          minimum: 1,
+          maximum: MAX_OHLC_WINDOW_DAYS,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const interval =
+        optionalString(args, "interval") ?? OHLC_INTERVAL_DEFAULT;
+      if (!Object.hasOwn(OHLC_INTERVALS, interval)) {
+        throw toolError(
+          "invalid_params",
+          `interval must be one of: ${Object.keys(OHLC_INTERVALS).join(", ")}.`,
+        );
+      }
+      const days =
+        optionalPositiveInt(args, "days") ?? DEFAULT_OHLC_WINDOW_DAYS;
+      if (days > MAX_OHLC_WINDOW_DAYS) {
+        throw toolError(
+          "invalid_params",
+          `days must be at most ${MAX_OHLC_WINDOW_DAYS}.`,
+        );
+      }
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/ohlc`, {
+              interval,
+              days,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ?? buildSubnetOhlc([], netuid, { interval })
       );
     },
   },
@@ -11645,6 +11716,35 @@ const TOOL_OUTPUT_SCHEMAS = {
       sentiment_ratio: { type: ["number", "null"] },
       sentiment: NULLABLE_STRING,
       vol_mcap_ratio: { type: ["number", "null"] },
+    },
+  },
+  get_subnet_ohlc: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "interval", "candles", "root_excluded"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      interval: { type: "string" },
+      candles: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: true,
+          properties: {
+            bucket_start: { type: "integer" },
+            bucket_start_iso: { type: "string" },
+            open: ANY,
+            high: ANY,
+            low: ANY,
+            close: ANY,
+            volume_alpha: ANY,
+            volume_tao: ANY,
+            event_count: { type: "integer" },
+          },
+        },
+      },
+      root_excluded: { type: "boolean" },
     },
   },
   get_subnet_recycled: {

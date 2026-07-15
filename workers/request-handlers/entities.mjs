@@ -193,6 +193,13 @@ import {
   STAKE_FLOW_DIRECTIONS,
 } from "../../src/stake-flow.mjs";
 import { buildAlphaVolume } from "../../src/alpha-volume.mjs";
+import {
+  buildSubnetOhlc,
+  OHLC_INTERVALS,
+  OHLC_INTERVAL_DEFAULT,
+  DEFAULT_OHLC_WINDOW_DAYS,
+  MAX_OHLC_WINDOW_DAYS,
+} from "../../src/subnet-ohlc.mjs";
 import { resolveLiveEconomics } from "../../src/health-serving.mjs";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.mjs";
 import { readArtifact, readHealthKv } from "../storage.mjs";
@@ -2317,6 +2324,59 @@ export async function handleSubnetAlphaVolume(request, env, netuid, url) {
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/volume.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/ohlc?interval=1h|1d&days=1-365 (#5655, Phase 1 of
+// the OHLC epic #5304): open/high/low/close/volume candles for one subnet's
+// alpha price, bucketed by ?interval= (default 1h) from the same account_events
+// StakeAdded/StakeRemoved stream as /volume and /stake-flow -- each row is one
+// executed trade, price = amount_tao / alpha_amount. ?days= bounds the
+// Postgres-tier lookback window (default DEFAULT_OHLC_WINDOW_DAYS, max
+// MAX_OHLC_WINDOW_DAYS); a wider opt-in beyond that is out of scope for this v1
+// (#5304's scoping comment). Both params are validated here (a clear 400 for a
+// bad value) even though buildSubnetOhlc also normalizes defensively -- mirrors
+// handleSubnetStakeFlow's own window/direction validation. Root (netuid 0) has
+// no AMM -- buildSubnetOhlc returns its root_excluded degenerate shape (no
+// candles) rather than a meaningless flat-line series. Cold/absent store -> 200
+// with an empty candle array (schema-stable, never 404), mirroring the sibling
+// account_events routes.
+export async function handleSubnetOhlc(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["interval", "days"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const intervalParam = url.searchParams.get("interval");
+  if (intervalParam !== null && !Object.hasOwn(OHLC_INTERVALS, intervalParam)) {
+    return analyticsQueryError({
+      parameter: "interval",
+      message: `"${intervalParam}" is not a valid interval. Supported: ${Object.keys(OHLC_INTERVALS).join(", ")}.`,
+    });
+  }
+  const interval = intervalParam || OHLC_INTERVAL_DEFAULT;
+  const { error: daysError } = parseBoundedIntParam(url, "days", {
+    def: DEFAULT_OHLC_WINDOW_DAYS,
+    min: 1,
+    max: MAX_OHLC_WINDOW_DAYS,
+  });
+  if (daysError) return analyticsQueryError(daysError);
+  const { data, generatedAt } = (await tryPostgresTier(
+    env,
+    request,
+    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+  )) ?? {
+    data: buildSubnetOhlc([], netuid, { interval }),
+    generatedAt: null,
+  };
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/ohlc.json`,
         generatedAt,
       ),
     },

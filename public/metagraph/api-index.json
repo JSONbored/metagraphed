@@ -485,6 +485,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-ohlc",
+      "path": "/metagraph/subnets/{netuid}/ohlc.json",
+      "schema_ref": "#/components/schemas/SubnetOhlcArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-movers",
       "path": "/metagraph/subnets/movers.json",
       "schema_ref": "#/components/schemas/SubnetMoversArtifact",
@@ -5349,6 +5356,37 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/ohlc.json",
+      "cache": "short",
+      "description": "Fetch open/high/low/close/volume candles for one subnet's alpha price, bucketed by ?interval= (1h or 1d, default 1h) from the same account_events StakeAdded/StakeRemoved stream as GET /api/v1/subnets/{netuid}/volume — each row is one executed trade, price = amount_tao / alpha_amount. Open/high/low/close are the first/max/min/last trade price in the bucket; volume_alpha/volume_tao are summed amounts. ?days= bounds the lookback window (default 90, max 365). Empty buckets are omitted (a gap, not a synthesized flat candle). The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candle array with root_excluded:true rather than a meaningless flat-line series.",
+      "id": "subnet-ohlc",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/ohlc",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "interval",
+          "schema": {
+            "enum": [
+              "1h",
+              "1d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "days",
+          "schema": {
+            "maximum": 365,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/stake-quote.json",
