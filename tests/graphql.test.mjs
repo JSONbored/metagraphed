@@ -23,6 +23,7 @@ import {
 } from "../src/graphql.mjs";
 import { LEADERBOARD_BOARDS } from "../src/health-serving.mjs";
 import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.mjs";
+import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.mjs";
 import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { resolveClientIp } from "../workers/config.mjs";
@@ -11572,6 +11573,231 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   test("is priced at the relationship-field complexity weight", () => {
     assert.equal(
       FIELD_COMPLEXITY.chain_axon_removals,
+      FIELD_COMPLEXITY.chain_serving,
+    );
+  });
+});
+
+describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fallback)", () => {
+  function deregQuery(argsClause) {
+    return `{ chain_deregistrations${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey }
+    } }`;
+  }
+
+  // loadChainDeregistrations issues the network aggregate (COUNT DISTINCT hotkey
+  // / MAX(observed_at), no GROUP BY) and only then the GROUP BY netuid
+  // leaderboard, and only when newest_observed is non-null.
+  function chainDeregD1({ network, subnets = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY netuid")) {
+                  return { results: subnets };
+                }
+                return { results: network ? [network] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard, never an error", async () => {
+    const { status, body } = await gql(deregQuery(""));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_deregistrations, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_deregistered_hotkeys: 0,
+        deregistrations: 0,
+        deregistrations_per_hotkey: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves the D1-live tier: per-subnet leaderboard + network rollup", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainDeregD1({
+        network: {
+          distinct_deregistered_hotkeys: 3,
+          newest_observed: 1780000000000,
+        },
+        subnets: [
+          { netuid: 1, deregistrations: 9, distinct_deregistered_hotkeys: 3 },
+          { netuid: 7, deregistrations: 3, distinct_deregistered_hotkeys: 1 },
+        ],
+      }),
+    };
+    const { status, body } = await gql(deregQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const got = body.data.chain_deregistrations;
+    assert.equal(got.subnet_count, 2);
+    assert.equal(got.observed_at, new Date(1780000000000).toISOString());
+    // The rollup uses the true network-wide distinct count (3), not the sum of
+    // the per-subnet hotkeys (4) -- a hotkey deregistered from several subnets
+    // counts once.
+    assert.deepEqual(got.network, {
+      distinct_deregistered_hotkeys: 3,
+      deregistrations: 12,
+      deregistrations_per_hotkey: 4,
+    });
+    assert.deepEqual(got.subnets, [
+      {
+        netuid: 1,
+        distinct_deregistered_hotkeys: 3,
+        deregistrations: 9,
+        deregistrations_per_hotkey: 3,
+      },
+      {
+        netuid: 7,
+        distinct_deregistered_hotkeys: 1,
+        deregistrations: 3,
+        deregistrations_per_hotkey: 3,
+      },
+    ]);
+    assert.equal(got.intensity_distribution.count, 2);
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-01T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_deregistered_hotkeys: 5,
+              deregistrations: 20,
+              deregistrations_per_hotkey: 4,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 4,
+              min: 4,
+              p25: 4,
+              median: 4,
+              p75: 4,
+              p90: 4,
+              max: 4,
+            },
+            subnets: [
+              {
+                netuid: 3,
+                distinct_deregistered_hotkeys: 5,
+                deregistrations: 20,
+                deregistrations_per_hotkey: 4,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      deregQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/deregistrations");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_deregistrations.window, "30d");
+    assert.equal(
+      body.data.chain_deregistrations.network.distinct_deregistered_hotkeys,
+      5,
+    );
+  });
+
+  test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
+    // The tier's shape is upstream-controlled, so every field falls back rather
+    // than surfacing null through a non-null SDL field.
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(deregQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_deregistrations, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_deregistered_hotkeys: 0,
+        deregistrations: 0,
+        deregistrations_per_hotkey: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("clamps an over-max limit to the route's own ceiling", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(deregQuery("(limit: 99999)"), env);
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+  });
+
+  test("every documented window is accepted", async () => {
+    for (const window of Object.keys(CHAIN_DEREGISTRATIONS_WINDOWS)) {
+      const { status, body } = await gql(deregQuery(`(window: "${window}")`));
+      assert.equal(status, 200, window);
+      assert.equal(body.errors, undefined);
+      assert.equal(body.data.chain_deregistrations.window, window);
+    }
+  });
+
+  test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(deregQuery('(window: "1y")'), env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_deregistrations,
       FIELD_COMPLEXITY.chain_serving,
     );
   });
