@@ -5334,7 +5334,32 @@ test("health-uptime-rollup-sync rolls up each valid day via PERCENTILE_CONT", as
   expect(body).toEqual({ ok: true, days_rolled: ["2026-07-11", "2026-07-10"] });
   expect(queryText()).toMatch(/INSERT INTO surface_uptime_daily\b/);
   expect(queryText()).toMatch(/PERCENTILE_CONT\(0\.5\)/);
-  expect(queryText()).toMatch(/ON CONFLICT \(surface_id, day\) DO UPDATE/);
+  expect(queryText()).toMatch(
+    /ON CONFLICT \(surface_key, day\) WHERE surface_key IS NOT NULL DO UPDATE/,
+  );
+});
+
+test("health-uptime-rollup-sync upserts on the stable (surface_key, day) key and refreshes surface_id", async () => {
+  // surface_id churns across re-registrations; the unique index that actually
+  // guards this table is idx_surface_uptime_daily_key_day_unique on
+  // (surface_key, day). Conflicting on (surface_id, day) instead would let a
+  // same-day re-roll under a new surface_id fall through to a plain INSERT and
+  // hit a unique violation, aborting the whole sync with a 502. Assert the
+  // arbiter is the stable key and that surface_id is refreshed on update.
+  const res = await postHealthUptimeRollup(
+    {
+      days: [dayBounds("2026-07-11", 1780000000000, 1780086400000)],
+      updated_at: 1780086400000,
+    },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const sql = queryText();
+  expect(sql).toMatch(
+    /ON CONFLICT \(surface_key, day\) WHERE surface_key IS NOT NULL DO UPDATE/,
+  );
+  expect(sql).not.toMatch(/ON CONFLICT \(surface_id, day\)/);
+  expect(sql).toMatch(/surface_id = excluded\.surface_id/);
 });
 
 test("health-uptime-rollup-sync maps a DB failure to a clean 502 instead of throwing", async () => {

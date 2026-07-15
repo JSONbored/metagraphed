@@ -2285,6 +2285,14 @@ async function handleHealthUptimeRollupSync(request, env) {
     return await sql.begin(async (sql) => {
       await sql`SET statement_timeout = '20000ms'`;
       for (const { date, start, end } of validDays) {
+        // Dedup on (surface_key, day), not (surface_id, day): surface_id churns
+        // across re-registrations while surface_key is stable, so a same-day
+        // re-roll with a new surface_id must UPDATE the existing key's row
+        // (refreshing surface_id) rather than INSERT a second one that would
+        // violate idx_surface_uptime_daily_key_day_unique and abort the sync.
+        // Mirrors the D1 prober's primary ON CONFLICT arbiter (health-prober.mjs);
+        // Postgres allows a single arbiter, and the CTE's COALESCE guarantees
+        // surface_key is never null, so the partial index always applies.
         await sql`
         WITH ranked AS (
           SELECT
@@ -2325,7 +2333,8 @@ async function handleHealthUptimeRollupSync(request, env) {
           ${updatedAt} AS updated_at
         FROM ranked
         GROUP BY surface_key, netuid
-        ON CONFLICT (surface_id, day) DO UPDATE SET
+        ON CONFLICT (surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET
+          surface_id = excluded.surface_id,
           surface_key = excluded.surface_key,
           netuid = excluded.netuid,
           samples = excluded.samples,
