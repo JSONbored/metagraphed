@@ -5,6 +5,7 @@
   "kind": "subnet-team",
   "website_url": "https://its-ai.org/en",
   "github_url": "https://github.com/It-s-AI/llm-detection",
+  "logo_url": "https://github.com/It-s-AI.png",
   "authority": "official",
   "notes": "Provider entry for ItsAI SN32 website and source repository."
 }
