@@ -105,6 +105,7 @@ import type {
 import { IncidentTimeline } from "@/components/metagraphed/incident-timeline";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { SubnetMasthead } from "@/components/metagraphed/subnet-masthead";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { OperationalPanel } from "@/components/metagraphed/operational-panel";
 import { ResourceExplorer } from "@/components/metagraphed/resource-explorer";
 import { GittensorRegisteredRepos } from "@/components/metagraphed/gittensor-registered-repos";
@@ -336,6 +337,17 @@ function ProfileShell({ netuid }: { netuid: number }) {
           ) : null}
           {tab === "api" ? <ApiPanel netuid={netuid} /> : null}
         </div>
+
+        <ApiSourceFooter
+          paths={[
+            `/api/v1/subnets/${netuid}/profile`,
+            `/api/v1/subnets/${netuid}/overview`,
+            `/api/v1/subnets/${netuid}/surfaces`,
+            `/api/v1/subnets/${netuid}/endpoints`,
+            `/api/v1/subnets/${netuid}/health`,
+            `/api/v1/subnets/${netuid}/gaps`,
+          ]}
+        />
       </SubnetFilterProvider>
     </TimeRangeProvider>
   );

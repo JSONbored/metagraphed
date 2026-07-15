@@ -27,6 +27,7 @@ import {
   DotRow,
   NoDataSpark,
   Sparkline,
+  ShareButton,
 } from "@jsonbored/ui-kit";
 import {
   subnetEndpointsQuery,
@@ -395,56 +396,58 @@ export function SubnetMasthead({
               {description}
             </p>
           ) : null}
-          {links.length > 0 ? (
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              {links.map((l) => {
-                const Icon = l.icon;
-                const safeHref = safeExternalUrl(l.href);
-                const className =
-                  "group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors " +
-                  (safeHref
-                    ? "hover:border-accent/50 hover:text-accent"
-                    : "cursor-default opacity-70");
-                const content = (
-                  <>
-                    <Icon
-                      className={
-                        "size-3 text-ink-muted " + (safeHref ? "group-hover:text-accent" : "")
-                      }
-                    />
-                    <span>{l.label}</span>
-                    {safeHref ? (
-                      <ExternalLinkIcon className="size-2.5 text-ink-muted opacity-60" />
-                    ) : null}
-                  </>
-                );
+          {/* Links + actions row. Renders even with no external links so the
+              share affordance every other entity-detail hero has is present
+              here too (#5481). */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {links.map((l) => {
+              const Icon = l.icon;
+              const safeHref = safeExternalUrl(l.href);
+              const className =
+                "group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors " +
+                (safeHref
+                  ? "hover:border-accent/50 hover:text-accent"
+                  : "cursor-default opacity-70");
+              const content = (
+                <>
+                  <Icon
+                    className={
+                      "size-3 text-ink-muted " + (safeHref ? "group-hover:text-accent" : "")
+                    }
+                  />
+                  <span>{l.label}</span>
+                  {safeHref ? (
+                    <ExternalLinkIcon className="size-2.5 text-ink-muted opacity-60" />
+                  ) : null}
+                </>
+              );
 
-                return (
-                  <Tooltip key={l.label} delayDuration={150}>
-                    <TooltipTrigger asChild>
-                      {safeHref ? (
-                        <a
-                          href={safeHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={className}
-                        >
-                          {content}
-                        </a>
-                      ) : (
-                        <span className={className} title="Blocked unsafe external URL">
-                          {content}
-                        </span>
-                      )}
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-mono text-[11px]">
-                      {safeHref ? host(safeHref) : "Blocked unsafe external URL"}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </div>
-          ) : null}
+              return (
+                <Tooltip key={l.label} delayDuration={150}>
+                  <TooltipTrigger asChild>
+                    {safeHref ? (
+                      <a
+                        href={safeHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={className}
+                      >
+                        {content}
+                      </a>
+                    ) : (
+                      <span className={className} title="Blocked unsafe external URL">
+                        {content}
+                      </span>
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-mono text-[11px]">
+                    {safeHref ? host(safeHref) : "Blocked unsafe external URL"}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+            <ShareButton />
+          </div>
         </div>
         {/* Desktop/tablet: health + curation beside the identity block. Mobile
             counterpart lives in the status row above so the body column stays wide. */}
