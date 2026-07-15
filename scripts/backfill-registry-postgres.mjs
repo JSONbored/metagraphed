@@ -48,12 +48,13 @@ const operationalKindSet = new Set(OPERATIONAL_SURFACE_KINDS);
 
 async function main() {
   // Graceful no-op (not a failure) when unset -- this same script backs the
-  // scheduled resync-registry-postgres.yml workflow, which must be safe to
-  // merge before REGISTRY_SYNC_SECRET is actually provisioned (see that
-  // workflow's own comment). A manual one-time invocation with a genuinely
-  // missing REGISTRY_SYNC_SECRET still gets a clear message, just via exit 0
-  // so a scheduled run before provisioning doesn't show as a failing
-  // workflow.
+  // indexer-box registry-sync systemd timer (data-refresh-node role,
+  // JSONbored/metagraphed-infra -- moved off the former GitHub Actions
+  // resync-registry-postgres.yml 2026-07-15), which must be safe to merge
+  // before REGISTRY_SYNC_SECRET is actually provisioned. A manual one-time
+  // invocation with a genuinely missing REGISTRY_SYNC_SECRET still gets a
+  // clear message, just via exit 0 so a run before provisioning doesn't
+  // show as a failure.
   if (!dryRun && !process.env.REGISTRY_SYNC_SECRET) {
     console.log(
       "REGISTRY_SYNC_SECRET not set — registry-to-Postgres sync isn't provisioned yet, nothing to do.",
