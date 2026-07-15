@@ -33,7 +33,7 @@
   "docs_url": "https://docs.taofi.com/",
   "name": "Swap",
   "netuid": 10,
-  "notes": "Reviewed overlay for SN10 Swap using the TaoFi pool page, TaoFi docs, and Swap source repository. Common www.taofi.com API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
+  "notes": "Reviewed overlay for SN10 Swap using the TaoFi pool page, TaoFi docs, and Swap source repository. Common www.taofi.com API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces. As of this pass, the entire www.taofi.com domain (the registered website, including /pool) returns HTTP 402 with header x-vercel-error: DEPLOYMENT_DISABLED -- the team's Vercel deployment appears disabled (likely a billing lapse, not a code issue). docs.taofi.com is unaffected (separate host/platform, still live). Not a registry misconfiguration -- the website surface is correctly probed and the live health tracker will reflect this outage; left as-is rather than disabling the probe, since this looks recoverable rather than permanently broken.",
   "schema_version": 1,
   "slug": "sn-10",
   "source_repo": "https://github.com/Swap-Subnet/swap-subnet",
@@ -129,9 +129,9 @@
       "id": "sn-10-taofi-api",
       "kind": "subnet-api",
       "name": "TaoFi swap API",
-      "notes": "Public unauthenticated TaoFi (SN10 Swap) API — the servers host declared in the TaoFi OpenAPI schema. POST endpoints return live swap/bridge quotes and transaction call data (verified: getBuyQuote returned an HTTP 200 JSON quote). Documented at taofi-doc.web.app.",
+      "notes": "Public unauthenticated TaoFi (SN10 Swap) API — the servers host declared in the TaoFi OpenAPI schema. All 8 documented paths (getBuyQuote, getBuyCall, getSellQuote, getSellCall, getRefundCall, getBalance, getNativeTaoQuote, getNativeTaoCall) are POST-only; GET/HEAD to any of them returns 405, and the bare host root returns 404 (confirmed live). The registry's probe schema only supports GET/HEAD, so recurring read probes are intentionally disabled -- same pattern as gittensor.json's POST-only MCP surface. Documented at taofi-doc.web.app.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000

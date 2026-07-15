@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 204,
+  "surface_count": 203,
   "surfaces": [
     {
       "auth_required": false,
@@ -983,24 +983,6 @@
       "surface_id": "sn-9-iota-run-info",
       "surface_key": "srf-6ec629d96674b06d",
       "url": "https://iota.api.macrocosmos.ai/common/get_run_info"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 10,
-      "probe": {
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "taofi",
-      "public_safe": true,
-      "subnet_name": "Swap",
-      "subnet_slug": "sn-10",
-      "surface_id": "sn-10-taofi-api",
-      "surface_key": "srf-6bf50fe9203db27c",
-      "url": "https://taofi-api.web.app/"
     },
     {
       "auth_required": false,
