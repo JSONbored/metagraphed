@@ -7502,6 +7502,291 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 });
 
+describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () => {
+  function usageQuery(argsClause = "") {
+    return `{ rpc_usage${argsClause} {
+      schema_version window bucket_granularity observed_at source
+      summary {
+        total_requests ok_requests error_requests error_rate
+        failover_requests failover_rate cache_hits cache_hit_rate
+        latency_ms { p50 p95 avg }
+      }
+      endpoints { rank endpoint_id provider requests ok_requests error_rate avg_latency_ms }
+      networks { network requests ok_requests error_rate }
+      buckets { ts requests errors avg_latency_ms }
+    } }`;
+  }
+
+  // loadRpcUsage issues five parallel queries over rpc_proxy_events; the D1
+  // runner sees each SQL string, so route rows by the clause unique to each:
+  // the endpoint/network/bucket leaderboards GROUP BY their key, the latency
+  // query is the ROW_NUMBER percentile CTE, and the aggregate totals row has
+  // no GROUP BY at all.
+  function rpcUsageD1({
+    totals,
+    latency,
+    endpoints = [],
+    networks = [],
+    buckets = [],
+  } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY endpoint_id")) {
+                  return { results: endpoints };
+                }
+                if (sql.includes("GROUP BY network")) {
+                  return { results: networks };
+                }
+                if (sql.includes("GROUP BY ts")) {
+                  return { results: buckets };
+                }
+                if (sql.includes("ROW_NUMBER")) {
+                  return { results: latency ? [latency] : [] };
+                }
+                return { results: totals ? [totals] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable zeroed card", async () => {
+    const { status, body } = await gql(usageQuery());
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.rpc_usage, {
+      schema_version: 1,
+      window: "7d",
+      bucket_granularity: "1h",
+      observed_at: null,
+      source: "rpc-proxy",
+      summary: {
+        total_requests: 0,
+        ok_requests: 0,
+        error_requests: 0,
+        error_rate: null,
+        failover_requests: 0,
+        failover_rate: null,
+        cache_hits: 0,
+        cache_hit_rate: null,
+        latency_ms: { p50: null, p95: null, avg: null },
+      },
+      endpoints: [],
+      networks: [],
+      buckets: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window, forwarding it as a query param", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            bucket_granularity: "6h",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            source: "rpc-proxy",
+            summary: {
+              total_requests: 100,
+              ok_requests: 95,
+              error_requests: 5,
+              error_rate: 0.05,
+              failover_requests: 3,
+              failover_rate: 0.03,
+              cache_hits: 40,
+              cache_hit_rate: 0.4,
+              latency_ms: { p50: 20, p95: 80, avg: 30 },
+            },
+            endpoints: [
+              {
+                rank: 1,
+                endpoint_id: "ep-a",
+                provider: "prov-a",
+                requests: 60,
+                ok_requests: 58,
+                error_rate: 0.0333,
+                avg_latency_ms: 25,
+              },
+            ],
+            networks: [
+              {
+                network: "finney",
+                requests: 100,
+                ok_requests: 95,
+                error_rate: 0.05,
+              },
+            ],
+            buckets: [
+              {
+                ts: 1_750_000_000_000,
+                requests: 10,
+                errors: 1,
+                avg_latency_ms: 22,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(usageQuery('(window: "30d")'), env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/rpc/usage");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    const usage = body.data.rpc_usage;
+    assert.equal(usage.window, "30d");
+    assert.equal(usage.bucket_granularity, "6h");
+    assert.equal(usage.observed_at, "2026-07-10T00:00:00.000Z");
+    assert.equal(usage.summary.total_requests, 100);
+    assert.equal(usage.summary.error_rate, 0.05);
+    assert.equal(usage.summary.cache_hit_rate, 0.4);
+    assert.equal(usage.summary.latency_ms.p95, 80);
+    assert.equal(usage.endpoints[0].endpoint_id, "ep-a");
+    assert.equal(usage.endpoints[0].error_rate, 0.0333);
+    assert.equal(usage.networks[0].network, "finney");
+    assert.equal(usage.buckets[0].ts, 1_750_000_000_000);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(usageQuery(), env);
+    assert.equal(status, 200);
+    const usage = body.data.rpc_usage;
+    assert.equal(usage.schema_version, 1);
+    assert.equal(usage.window, "7d");
+    assert.equal(usage.bucket_granularity, null);
+    assert.equal(usage.observed_at, null);
+    assert.equal(usage.source, null);
+    assert.deepEqual(usage.summary, {
+      total_requests: 0,
+      ok_requests: 0,
+      error_requests: 0,
+      error_rate: null,
+      failover_requests: 0,
+      failover_rate: null,
+      cache_hits: 0,
+      cache_hit_rate: null,
+      latency_ms: { p50: null, p95: null, avg: null },
+    });
+    assert.deepEqual(usage.endpoints, []);
+    assert.deepEqual(usage.networks, []);
+    assert.deepEqual(usage.buckets, []);
+  });
+
+  test("no Postgres tier flag: computes the card straight off the rpc_proxy_events D1 telemetry", async () => {
+    const env = {
+      METAGRAPH_RPC_USAGE_SOURCE: "d1",
+      METAGRAPH_HEALTH_DB: rpcUsageD1({
+        totals: {
+          total: 200,
+          ok_count: 190,
+          failover_count: 8,
+          cache_hits: 120,
+          avg_latency_ms: 27,
+        },
+        latency: { p50: 18, p95: 70 },
+        endpoints: [
+          {
+            endpoint_id: "ep-1",
+            provider: "prov-1",
+            requests: 120,
+            ok_count: 116,
+            avg_latency_ms: 24,
+          },
+        ],
+        networks: [{ network: "finney", requests: 200, ok_count: 190 }],
+        buckets: [
+          {
+            ts: 1_750_000_000_000,
+            requests: 30,
+            errors: 2,
+            avg_latency_ms: 26,
+          },
+        ],
+      }),
+    };
+    const { status, body } = await gql(usageQuery('(window: "7d")'), env);
+    assert.equal(status, 200);
+    const usage = body.data.rpc_usage;
+    assert.equal(usage.window, "7d");
+    assert.equal(usage.bucket_granularity, "1h");
+    assert.equal(usage.source, "rpc-proxy");
+    assert.equal(usage.summary.total_requests, 200);
+    assert.equal(usage.summary.ok_requests, 190);
+    assert.equal(usage.summary.error_requests, 10);
+    assert.equal(usage.summary.error_rate, 0.05);
+    assert.equal(usage.summary.failover_requests, 8);
+    assert.equal(usage.summary.cache_hits, 120);
+    assert.equal(usage.summary.cache_hit_rate, 0.6);
+    assert.equal(usage.summary.latency_ms.p50, 18);
+    assert.equal(usage.summary.latency_ms.p95, 70);
+    assert.equal(usage.summary.latency_ms.avg, 27);
+    assert.equal(usage.endpoints[0].rank, 1);
+    assert.equal(usage.endpoints[0].endpoint_id, "ep-1");
+    assert.equal(usage.endpoints[0].error_rate, 0.0333);
+    assert.equal(usage.networks[0].network, "finney");
+    assert.equal(usage.networks[0].error_rate, 0.05);
+    assert.equal(usage.buckets[0].requests, 30);
+    assert.equal(usage.buckets[0].errors, 2);
+  });
+
+  test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          return key === KV_HEALTH_META
+            ? { last_run_at: "2026-06-23T00:00:00.000Z" }
+            : null;
+        },
+      },
+      METAGRAPH_HEALTH_DB: rpcUsageD1(),
+    };
+    const { body } = await gql(usageQuery(), env);
+    assert.equal(body.data.rpc_usage.observed_at, "2026-06-23T00:00:00.000Z");
+  });
+
+  test("a D1 query error degrades to a schema-stable zeroed card (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(usageQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.rpc_usage.summary.total_requests, 0);
+    assert.deepEqual(body.data.rpc_usage.endpoints, []);
+    assert.deepEqual(body.data.rpc_usage.buckets, []);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(usageQuery('(window: "99d")'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /99d/);
+  });
+
+  test("rpc_usage is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.rpc_usage, 5);
+  });
+});
+
 describe("Subscription.chainEvents", () => {
   test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
     const hub = fakeChainFirehose((repeater) => {
