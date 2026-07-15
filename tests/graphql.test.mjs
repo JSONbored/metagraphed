@@ -4142,6 +4142,154 @@ describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-ca
   });
 });
 
+describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function query(argsClause) {
+    return `{ account_extrinsics${argsClause} {
+      schema_version ss58 extrinsic_count limit offset next_cursor
+      extrinsics { block_number extrinsic_index call_module call_function call_args success fee_tao }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty page, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_extrinsics, {
+      schema_version: 1,
+      ss58: SS58,
+      extrinsic_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      extrinsics: [],
+    });
+  });
+
+  test("resolves the Postgres-tier feed, JSON-encoding call_args to the String field", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            extrinsic_count: 1,
+            limit: 100,
+            offset: 0,
+            next_cursor: "cursor-1",
+            extrinsics: [
+              {
+                block_number: 5,
+                extrinsic_index: 0,
+                extrinsic_hash: `0x${"a".repeat(64)}`,
+                signer: SS58,
+                call_module: "SubtensorModule",
+                call_function: "register",
+                call_args: [{ name: "netuid", value: 1 }],
+                success: true,
+                fee_tao: 0.001,
+                tip_tao: 0,
+                observed_at: "2026-07-14T00:00:00.000Z",
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    const s = body.data.account_extrinsics;
+    assert.equal(s.extrinsic_count, 1);
+    assert.equal(s.next_cursor, "cursor-1");
+    const item = s.extrinsics[0];
+    assert.equal(item.block_number, 5);
+    assert.equal(item.call_module, "SubtensorModule");
+    assert.equal(item.call_function, "register");
+    assert.equal(item.success, true);
+    assert.equal(
+      item.call_args,
+      JSON.stringify([{ name: "netuid", value: 1 }]),
+    );
+  });
+
+  test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            extrinsic_count: 0,
+            limit: 5,
+            offset: 10,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(
+      query(
+        `(ss58: "${SS58}", limit: 5, offset: 10, cursor: "abc123", block_start: 100, block_end: 200)`,
+      ),
+      env,
+    );
+    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/extrinsics`);
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("offset"), "10");
+    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+    assert.equal(capturedUrl.searchParams.get("block_start"), "100");
+    assert.equal(capturedUrl.searchParams.get("block_end"), "200");
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_extrinsics, {
+      schema_version: 1,
+      ss58: SS58,
+      extrinsic_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      extrinsics: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query('(ss58: "not-a-valid-address")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("account_extrinsics is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_extrinsics, 5);
+  });
+});
+
 // --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
 //
 // The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,

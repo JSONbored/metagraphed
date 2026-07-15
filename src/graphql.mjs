@@ -85,7 +85,11 @@ import {
   parseCompareDimensionList,
   parseCompareNetuidList,
 } from "./analytics-live.mjs";
-import { buildExtrinsic, buildExtrinsicFeed } from "./extrinsics.mjs";
+import {
+  buildAccountExtrinsics,
+  buildExtrinsic,
+  buildExtrinsicFeed,
+} from "./extrinsics.mjs";
 import { buildBlock, buildBlockFeed } from "./blocks.mjs";
 import { buildBlocksSummary } from "./blocks-summary.mjs";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
@@ -345,6 +349,8 @@ export const SDL = `
     account_counterparties(ss58: String!, counterparty: String, limit: Int): AccountCounterparties!
     "One account's native-TAO transfer feed from the Balances.Transfer event stream, newest first -- each event's block/index, from/to, amount_tao, a direction relative to the queried address (sent = it paid, received = it was paid), and observed_at. direction narrows to sent | received only (default both); block_start/block_end bound the block-height range; page with limit/offset or cursor (opaque keyset from a prior response's next_cursor). An address with no transfers resolves to a schema-stable empty feed, never null. Mirrors GET /api/v1/accounts/{ss58}/transfers."
     account_transfers(ss58: String!, limit: Int, offset: Int, cursor: String, direction: String, block_start: Int, block_end: Int): AccountTransfers!
+    "One account's signed-extrinsic feed, newest first -- the extrinsics whose signer is this address (matched by signer only, not the hotkey/coldkey union account_events uses), each carrying its block/index, hash, call_module/call_function, decoded call_args, success flag, fee and tip. block_start/block_end bound the block-height range; page with limit/offset or cursor (opaque keyset from a prior response's next_cursor). extrinsic_count is the page count, not a grand total. An address that signed nothing resolves to a schema-stable empty feed, never null. Mirrors GET /api/v1/accounts/{ss58}/extrinsics."
+    account_extrinsics(ss58: String!, limit: Int, offset: Int, cursor: String, block_start: Int, block_end: Int): AccountExtrinsics!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
     "Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom), composed live from the registry profiles projection plus D1 health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards."
@@ -1912,6 +1918,17 @@ export const SDL = `
     transfers: [AccountTransfer!]!
   }
 
+  "One account's signed-extrinsic feed (newest first), backing account_extrinsics. Matched by the extrinsic signer only. extrinsic_count is the page count, matching the REST feed convention. Each item is a full Extrinsic (block/index/hash/call/success/fee/tip)."
+  type AccountExtrinsics {
+    schema_version: Int!
+    ss58: String!
+    extrinsic_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    extrinsics: [Extrinsic!]!
+  }
+
   type AccountEvent {
     block_number: Int
     event_index: Int
@@ -2218,6 +2235,7 @@ export const FIELD_COMPLEXITY = {
   account_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   account_counterparties: RELATIONSHIP_FIELD_COMPLEXITY,
   account_transfers: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   // A single latest-only row -- but it fans out into the full hyperparameter
   // block, so it is priced with the other per-subnet relationship fields.
@@ -4591,6 +4609,61 @@ const rootValue = {
         direction: t.direction ?? null,
         observed_at: t.observed_at ?? null,
       })),
+    };
+  },
+
+  async account_extrinsics(
+    { ss58, limit, offset, cursor, block_start, block_end },
+    context,
+  ) {
+    // Same SS58 validation every account_* resolver uses -- a malformed address
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty feed.
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same FEED_PAGINATION bounds parsePagination applies for REST, so a GraphQL
+    // caller cannot request a wider page than the /extrinsics route allows;
+    // cursor/block_start/block_end are forwarded verbatim for the route to
+    // re-parse, matching account_transfers and the sibling feed resolvers.
+    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (cursor != null) params.set("cursor", cursor);
+    if (block_start != null) params.set("block_start", String(block_start));
+    if (block_end != null) params.set("block_end", String(block_end));
+    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) the REST handler and MCP
+    // get_account_extrinsics tool use. The extrinsics D1 write path is retired
+    // (#4772), so a tier miss resolves through buildAccountExtrinsics over an
+    // empty scan -- a schema-stable empty feed, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/extrinsics`,
+          params,
+        ),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      )) ??
+      buildAccountExtrinsics([], ss58, {
+        limit: safeLimit,
+        offset: safeOffset,
+        nextCursor: null,
+      });
+    // Reuse extrinsicNode (the same mapper the extrinsics feed uses) so
+    // call_args is JSON-encoded to the String field identically here.
+    return {
+      schema_version: data.schema_version ?? 1,
+      ss58: data.ss58 ?? ss58,
+      extrinsic_count: data.extrinsic_count ?? 0,
+      limit: data.limit ?? safeLimit,
+      offset: data.offset ?? safeOffset,
+      next_cursor: data.next_cursor ?? null,
+      extrinsics: (data.extrinsics || []).map(extrinsicNode),
     };
   },
 
