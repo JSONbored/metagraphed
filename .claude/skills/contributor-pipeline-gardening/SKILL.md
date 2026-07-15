@@ -46,7 +46,7 @@ scope-clarifying comment.
   rather than assuming either the old or new number still holds; if genuine orphans turn up (a
   real code/schema/data issue with no milestone, not Enrich-SNxx or the Dependency Dashboard), fold
   them into the closest fit (`Foundations & Infra`, `Wave 4 — Docs & Dev Surface`, `Partner Flywheel
-  Hardening`) same as before.
+Hardening`) same as before.
 - The **native-staking feature work** (`gittensor:feature`/`maintainer-only` issues in the low-5200s
   numbering, "take/commission management," "move/re-delegate stake flow," "risk disclosure copy") is
   active and security-sensitive — treat anything touching real stake movement, phishing surface, or
