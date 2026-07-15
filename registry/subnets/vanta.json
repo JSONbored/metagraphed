@@ -34,7 +34,7 @@
   "dashboard_url": "https://www.vantanetwork.io/dashboard",
   "name": "Vanta",
   "netuid": 8,
-  "notes": "Reviewed overlay for SN8 Vanta using the official Vanta Network website, dashboard, transparency, tokenomics, and source repository. Common docs/API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
+  "notes": "Reviewed overlay for SN8 Vanta using the official Vanta Network website, dashboard, transparency, tokenomics, source repository, and Taoshi documentation site (docs.taoshi.io, linked from the source repo README, confirmed SN8-specific in scope). Common docs/API/OpenAPI/Swagger paths on vantanetwork.io itself currently return 404 and are not promoted as operational API surfaces; docs.taoshi.io is a separate, live host and fills the docs gap. The README's dashboard.taoshi.io link 404s and is superseded by the already-tracked vantanetwork.io/dashboard.",
   "schema_version": 1,
   "slug": "sn-8",
   "social": {
@@ -117,6 +117,27 @@
       "public_safe": true,
       "source_urls": ["https://www.vantanetwork.io/"],
       "url": "https://www.vantanetwork.io/transparency"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-8-vanta-taoshi-docs",
+      "kind": "docs",
+      "name": "Taoshi documentation",
+      "notes": "Official Taoshi documentation site (docs.taoshi.io), linked from the source repository README. Confirmed in scope for SN8 Vanta specifically (not a broader multi-product hub) -- covers Bittensor/Vanta mechanics including carry fees, plagiarism/drawdown eliminations, and the scoring system referenced in the source repo. Distinct host from the tokenomics/transparency pages already tracked on the registered website (vantanetwork.io).",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/taoshidev/vanta-network",
+        "https://docs.taoshi.io/"
+      ],
+      "url": "https://docs.taoshi.io/"
     },
     {
       "auth_required": false,
