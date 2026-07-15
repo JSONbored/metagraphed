@@ -114,6 +114,13 @@ export async function loadChainTransfers(
     CHAIN_TRANSFER_WINDOWS[windowLabel] ??
     CHAIN_TRANSFER_WINDOWS[DEFAULT_CHAIN_TRANSFER_WINDOW];
   const cutoff = Date.now() - days * DAY_MS;
+  // Clamp limit to a whole number in [1, MAX] so a direct caller cannot make a
+  // negative/oversized value reach the LIMIT ? below (the HTTP layer already
+  // validates 1..MAX; this keeps the pure loader safe independent of that).
+  const flooredLimit = Math.floor(Number(limit));
+  const boundedLimit = Number.isFinite(flooredLimit)
+    ? Math.max(1, Math.min(flooredLimit, CHAIN_TRANSFER_LIMIT_MAX))
+    : CHAIN_TRANSFER_LIMIT_DEFAULT;
 
   const totalsRows = await d1(
     "SELECT COUNT(*) AS transfer_count, " +
@@ -128,14 +135,14 @@ export async function loadChainTransfers(
       "COUNT(*) AS transfer_count FROM account_events " +
       "WHERE event_kind = ? AND observed_at >= ? AND hotkey IS NOT NULL " +
       "GROUP BY hotkey ORDER BY volume_tao DESC, hotkey ASC LIMIT ?",
-    [TRANSFER_KIND, cutoff, limit],
+    [TRANSFER_KIND, cutoff, boundedLimit],
   );
   const receivers = await d1(
     "SELECT coldkey AS address, SUM(amount_tao) AS volume_tao, " +
       "COUNT(*) AS transfer_count FROM account_events " +
       "WHERE event_kind = ? AND observed_at >= ? AND coldkey IS NOT NULL " +
       "GROUP BY coldkey ORDER BY volume_tao DESC, coldkey ASC LIMIT ?",
-    [TRANSFER_KIND, cutoff, limit],
+    [TRANSFER_KIND, cutoff, boundedLimit],
   );
 
   return buildChainTransfers({

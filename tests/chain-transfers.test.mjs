@@ -5,6 +5,8 @@ import {
   loadChainTransfers,
   CHAIN_TRANSFER_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_WINDOW,
+  CHAIN_TRANSFER_LIMIT_DEFAULT,
+  CHAIN_TRANSFER_LIMIT_MAX,
 } from "../src/chain-transfers.mjs";
 
 const party = (address, volume, count = 1) => ({
@@ -216,5 +218,41 @@ describe("loadChainTransfers", () => {
     assert.equal(d.transfer_count, 0);
     assert.deepEqual(d.top_senders, []);
     assert.deepEqual(d.top_receivers, []);
+  });
+
+  test("a negative limit clamps to 1, not D1's 'no limit at all' behavior", async () => {
+    const calls = [];
+    const d1 = async (sql, params) => {
+      calls.push({ sql, params });
+      return [];
+    };
+    await loadChainTransfers(d1, { windowLabel: "7d", limit: -1 });
+    const senderCall = calls.find((c) => /GROUP BY hotkey/.test(c.sql));
+    const receiverCall = calls.find((c) => /GROUP BY coldkey/.test(c.sql));
+    assert.equal(senderCall.params.at(-1), 1);
+    assert.equal(receiverCall.params.at(-1), 1);
+  });
+
+  test("a limit above the max clamps; a non-numeric limit uses the default", async () => {
+    const calls = [];
+    const d1 = async (sql, params) => {
+      calls.push({ sql, params });
+      return [];
+    };
+    await loadChainTransfers(d1, {
+      windowLabel: "7d",
+      limit: CHAIN_TRANSFER_LIMIT_MAX + 500,
+    });
+    assert.equal(
+      calls.find((c) => /GROUP BY hotkey/.test(c.sql)).params.at(-1),
+      CHAIN_TRANSFER_LIMIT_MAX,
+    );
+
+    calls.length = 0;
+    await loadChainTransfers(d1, { windowLabel: "7d", limit: "bogus" });
+    assert.equal(
+      calls.find((c) => /GROUP BY hotkey/.test(c.sql)).params.at(-1),
+      CHAIN_TRANSFER_LIMIT_DEFAULT,
+    );
   });
 });

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { loadChainSigners } from "../src/chain-query-loaders.mjs";
+import {
+  loadChainSigners,
+  CHAIN_SIGNERS_LIMIT_DEFAULT,
+  CHAIN_SIGNERS_LIMIT_MAX,
+} from "../src/chain-query-loaders.mjs";
 
 describe("loadChainSigners", () => {
   test("builds a ranked leaderboard from extrinsic rows", async () => {
@@ -92,5 +96,42 @@ describe("loadChainSigners", () => {
     );
     assert.equal(data.sort, "tx_count");
     assert.match(sql, /ORDER BY tx_count DESC, signer ASC/);
+  });
+
+  test("a negative limit clamps to 1, not D1's 'no limit at all' behavior", async () => {
+    let params;
+    await loadChainSigners(
+      async (_query, bound) => {
+        params = bound;
+        return [];
+      },
+      { windowLabel: "7d", windowDays: 7, limit: -1 },
+    );
+    assert.equal(params.at(-1), 1);
+  });
+
+  test("a limit above the max clamps; a non-numeric limit uses the default", async () => {
+    let params;
+    await loadChainSigners(
+      async (_query, bound) => {
+        params = bound;
+        return [];
+      },
+      {
+        windowLabel: "7d",
+        windowDays: 7,
+        limit: CHAIN_SIGNERS_LIMIT_MAX + 500,
+      },
+    );
+    assert.equal(params.at(-1), CHAIN_SIGNERS_LIMIT_MAX);
+
+    await loadChainSigners(
+      async (_query, bound) => {
+        params = bound;
+        return [];
+      },
+      { windowLabel: "7d", windowDays: 7, limit: "bogus" },
+    );
+    assert.equal(params.at(-1), CHAIN_SIGNERS_LIMIT_DEFAULT);
   });
 });
