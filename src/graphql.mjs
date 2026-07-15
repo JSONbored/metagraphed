@@ -100,6 +100,7 @@ import {
   DEFAULT_STAKE_FLOW_DIRECTION,
   STAKE_FLOW_DIRECTIONS,
 } from "./stake-flow.mjs";
+import { buildAccountPortfolio } from "./account-portfolio.mjs";
 import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
@@ -248,6 +249,8 @@ export const SDL = `
     account_deregistrations(ss58: String!, window: String): AccountDeregistrations!
     "One account's StakeAdded/StakeRemoved flow per subnet over a 7d/30d/90d window (default 30d) -- net + gross flow, a direction label (accumulating/exiting/churning/idle), and an HHI concentration of where its flow is focused. direction narrows to inflow (in) or outflow (out) only; all (default) reports both sides. An address with no flow in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/stake-flow."
     account_stake_flow(ss58: String!, window: String, direction: String): AccountStakeFlow!
+    "One wallet's cross-subnet neuron portfolio: every subnet where the hotkey is a registered neuron, each position's economics (stake, emission, rank, trust, incentive, dividends, role) and emission/stake yield, plus wallet-level aggregates (totals, counts, overall return, stake concentration). Richer than account.registrations (registration footprint only). An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio."
+    account_portfolio(ss58: String!): AccountPortfolio!
     "One account's per-subnet axon-serving footprint over a 7d/30d/90d window (default 30d): AxonServed announcement count and first/last timestamps per subnet, an HHI concentration of where its serving activity is focused, and the dominant subnet; an address with no announcements in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/serving."
     account_serving(ss58: String!, window: String): AccountServing!
     "One account's per-subnet axon-removal footprint over a 7d/30d/90d window (default 30d): AxonInfoRemoved count and first/last timestamps per subnet, an HHI concentration of where its teardown activity is focused, and the dominant subnet; an address with no removals in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/axon-removals."
@@ -1384,6 +1387,40 @@ export const SDL = `
     unstake_events: Int!
   }
 
+  "One wallet's cross-subnet neuron portfolio (#5702): every subnet where the hotkey is a registered neuron, plus wallet-level aggregates. Mirrors GET /api/v1/accounts/{ss58}/portfolio."
+  type AccountPortfolio {
+    schema_version: Int!
+    ss58: String!
+    captured_at: String
+    subnet_count: Int!
+    position_count: Int!
+    validator_count: Int!
+    miner_count: Int!
+    total_stake_tao: Float!
+    total_emission_tao: Float!
+    "Total emission over total stake across every position; null when total stake is 0."
+    overall_yield: Float
+    "How concentrated the wallet's stake is across its subnets (Gini/HHI/etc); null with no positions."
+    stake_concentration: ConcentrationMetrics
+    positions: [AccountPortfolioPosition!]!
+  }
+
+  "One subnet position in a wallet's portfolio, ranked biggest-stake-first."
+  type AccountPortfolioPosition {
+    netuid: Int!
+    uid: Int
+    role: String!
+    active: Boolean!
+    stake_tao: Float!
+    emission_tao: Float!
+    rank: Float
+    trust: Float
+    incentive: Float
+    dividends: Float
+    "Emission over stake for this position; null when stake is 0."
+    yield: Float
+  }
+
   # Realtime chain-event firehose (#4983, ADR 0015) -- a thin protocol adapter
   # over the SAME ChainFirehoseHub Durable Object connection #4982's SSE/WS
   # transports use, not a second event pipeline. Reached over WebSocket only
@@ -1553,6 +1590,7 @@ export const FIELD_COMPLEXITY = {
   chain_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   account_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
   account_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_portfolio: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_recycled: LIVE_RPC_FIELD_COMPLEXITY,
 };
 
@@ -2927,6 +2965,41 @@ const rootValue = {
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
       subnets: data.subnets || [],
+    };
+  },
+
+  async account_portfolio({ ss58 }, context) {
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountPortfolio([])
+    // fallback contract handleAccountPortfolio uses. This route's Postgres-tier
+    // body is flat (like `account`'s own), not the { data, generatedAt } envelope
+    // the account-event-footprint family uses.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/portfolio`,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildAccountPortfolio([], ss58);
+    return {
+      schema_version: data.schema_version ?? 1,
+      ss58: data.ss58 ?? ss58,
+      captured_at: data.captured_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      position_count: data.position_count ?? 0,
+      validator_count: data.validator_count ?? 0,
+      miner_count: data.miner_count ?? 0,
+      total_stake_tao: data.total_stake_tao ?? 0,
+      total_emission_tao: data.total_emission_tao ?? 0,
+      overall_yield: data.overall_yield ?? null,
+      stake_concentration: data.stake_concentration ?? null,
+      positions: data.positions || [],
     };
   },
 

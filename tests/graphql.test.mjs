@@ -3441,6 +3441,165 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
   });
 });
 
+describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed-card fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function query(argsClause) {
+    return `{ account_portfolio${argsClause} {
+      schema_version ss58 captured_at subnet_count position_count validator_count
+      miner_count total_stake_tao total_emission_tao overall_yield
+      stake_concentration { holders gini hhi }
+      positions { netuid uid role active stake_tao emission_tao rank trust incentive dividends yield }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty card, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_portfolio, {
+      schema_version: 1,
+      ss58: SS58,
+      captured_at: null,
+      subnet_count: 0,
+      position_count: 0,
+      validator_count: 0,
+      miner_count: 0,
+      total_stake_tao: 0,
+      total_emission_tao: 0,
+      overall_yield: null,
+      stake_concentration: null,
+      positions: [],
+    });
+  });
+
+  test("resolves the Postgres-tier portfolio (flat body, unlike the account-event footprint family)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            captured_at: "2026-07-10T00:00:00.000Z",
+            subnet_count: 2,
+            position_count: 2,
+            validator_count: 1,
+            miner_count: 1,
+            total_stake_tao: 1500,
+            total_emission_tao: 6,
+            overall_yield: 0.004,
+            stake_concentration: { holders: 2, gini: 0.2, hhi: 0.52 },
+            positions: [
+              {
+                netuid: 3,
+                uid: 5,
+                role: "validator",
+                active: true,
+                stake_tao: 1000,
+                emission_tao: 4,
+                rank: 0.8,
+                trust: 0.9,
+                incentive: 0.1,
+                dividends: 0.05,
+                yield: 0.004,
+              },
+              {
+                netuid: 7,
+                uid: 9,
+                role: "miner",
+                active: true,
+                stake_tao: 500,
+                emission_tao: 2,
+                rank: 0.5,
+                trust: 0.5,
+                incentive: 0.2,
+                dividends: 0,
+                yield: 0.004,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    const p = body.data.account_portfolio;
+    assert.equal(p.subnet_count, 2);
+    assert.equal(p.total_stake_tao, 1500);
+    assert.equal(p.stake_concentration.holders, 2);
+    assert.equal(p.positions[0].netuid, 3);
+    assert.equal(p.positions[0].role, "validator");
+    assert.equal(p.positions[1].role, "miner");
+  });
+
+  test("ss58 is forwarded on the Postgres-tier request path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            positions: [],
+          });
+        },
+      },
+    };
+    await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/portfolio`);
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty card", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_portfolio, {
+      schema_version: 1,
+      ss58: SS58,
+      captured_at: null,
+      subnet_count: 0,
+      position_count: 0,
+      validator_count: 0,
+      miner_count: 0,
+      total_stake_tao: 0,
+      total_emission_tao: 0,
+      overall_yield: null,
+      stake_concentration: null,
+      positions: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query('(ss58: "not-a-valid-address")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("account_portfolio is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_portfolio, 5);
+  });
+});
+
 // --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
 //
 // The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,
