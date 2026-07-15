@@ -3154,6 +3154,94 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
   });
 });
 
+describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_deregistrations(netuid: 5) {
+          schema_version netuid window observed_at
+          distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_deregistrations, {
+      schema_version: 1,
+      netuid: 5,
+      window: "7d",
+      observed_at: null,
+      distinct_deregistered_hotkeys: 0,
+      deregistrations: 0,
+      deregistrations_per_hotkey: null,
+    });
+  });
+
+  test("resolves the Postgres-tier card for the requested window", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          window: "30d",
+          observed_at: "2026-07-01T00:00:00.000Z",
+          distinct_deregistered_hotkeys: 2,
+          deregistrations: 5,
+          deregistrations_per_hotkey: 2.5,
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_deregistrations(netuid: 5, window: "30d") {
+          netuid window observed_at distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.subnet_deregistrations;
+    assert.equal(r.window, "30d");
+    assert.equal(r.observed_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(r.distinct_deregistered_hotkeys, 2);
+    assert.equal(r.deregistrations, 5);
+    assert.equal(r.deregistrations_per_hotkey, 2.5);
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_deregistrations(netuid: 9, window: "30d") {
+          schema_version netuid window observed_at distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_deregistrations, {
+      schema_version: 1,
+      netuid: 9,
+      window: "30d",
+      observed_at: null,
+      distinct_deregistered_hotkeys: 0,
+      deregistrations: 0,
+      deregistrations_per_hotkey: null,
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ subnet_deregistrations(netuid: 5, window: "99d") { deregistrations } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|7d/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_deregistrations ?? null, null);
+  });
+});
+
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

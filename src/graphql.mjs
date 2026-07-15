@@ -15,6 +15,11 @@ import {
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
 } from "./subnet-registrations.mjs";
 import {
+  buildSubnetDeregistrations,
+  SUBNET_DEREGISTRATIONS_WINDOWS,
+  DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
+} from "./subnet-deregistrations.mjs";
+import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
 } from "../workers/request-handlers/analytics.mjs";
@@ -107,6 +112,8 @@ export const SDL = `
     subnet(netuid: Int!): Subnet
     "Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations."
     subnet_registrations(netuid: Int!, window: String): SubnetRegistrations!
+    "Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, NeuronDeregistered count, and deregistrations per hotkey); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/deregistrations."
+    subnet_deregistrations(netuid: Int!, window: String): SubnetDeregistrations!
     "Paginated provider/source registry."
     providers(limit: Int, cursor: String): ProviderList!
     "One provider with its subnets."
@@ -558,6 +565,17 @@ export const SDL = `
     registrations_per_registrant: Float
   }
 
+  "Per-subnet neuron-deregistration activity over a window (#5719). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/deregistrations."
+  type SubnetDeregistrations {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    distinct_deregistered_hotkeys: Int!
+    deregistrations: Int!
+    deregistrations_per_hotkey: Float
+  }
+
   "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope."
   type GlobalIncidents {
     schema_version: Int!
@@ -985,6 +1003,7 @@ export const FIELD_COMPLEXITY = {
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1536,6 +1555,43 @@ const rootValue = {
       distinct_registrants: data.distinct_registrants ?? 0,
       registrations: data.registrations ?? 0,
       registrations_per_registrant: data.registrations_per_registrant ?? null,
+    };
+  },
+
+  async subnet_deregistrations({ netuid, window }, context) {
+    // Same 7d/30d window validation handleSubnetDeregistrations uses -- an
+    // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
+    if (!Object.hasOwn(SUBNET_DEREGISTRATIONS_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SUBNET_DEREGISTRATIONS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetDeregistrations
+    // zeroed-card fallback contract handleSubnetDeregistrations uses; a subnet with no
+    // NeuronDeregistered events in the window is a schema-stable zeroed card, never a
+    // GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/deregistrations`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? buildSubnetDeregistrations(null, netuid, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      observed_at: data.observed_at ?? null,
+      distinct_deregistered_hotkeys: data.distinct_deregistered_hotkeys ?? 0,
+      deregistrations: data.deregistrations ?? 0,
+      deregistrations_per_hotkey: data.deregistrations_per_hotkey ?? null,
     };
   },
 
