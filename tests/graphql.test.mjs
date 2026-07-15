@@ -4994,6 +4994,173 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
   });
 });
 
+describe("graphql — account_identity (#5708, Postgres-tier + D1-fallback latest-only identity)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag / no D1 rows returns a schema-stable has_identity:false card, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_identity(ss58: "${SS58}") {
+          schema_version account has_identity
+          name url github image discord description additional captured_at
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_identity, {
+      schema_version: 1,
+      account: SS58,
+      has_identity: false,
+      name: null,
+      url: null,
+      github: null,
+      image: null,
+      discord: null,
+      description: null,
+      additional: null,
+      captured_at: null,
+    });
+  });
+
+  test("resolves the Postgres-tier flat identity body", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          account: SS58,
+          has_identity: true,
+          name: "Example Coldkey",
+          url: "https://example.com",
+          github: "https://github.com/example",
+          image: "https://example.com/logo.png",
+          discord: "example#1234",
+          description: "An example identity",
+          additional: "misc",
+          captured_at: "2026-07-01T00:00:00.000Z",
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_identity(ss58: "${SS58}") {
+          schema_version account has_identity
+          name url github image discord description additional captured_at
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_identity, {
+      schema_version: 1,
+      account: SS58,
+      has_identity: true,
+      name: "Example Coldkey",
+      url: "https://example.com",
+      github: "https://github.com/example",
+      image: "https://example.com/logo.png",
+      discord: "example#1234",
+      description: "An example identity",
+      additional: "misc",
+      captured_at: "2026-07-01T00:00:00.000Z",
+    });
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ account_identity(ss58: "${SS58}") {
+          schema_version account has_identity
+          name url github image discord description additional captured_at
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_identity, {
+      schema_version: 1,
+      account: SS58,
+      has_identity: false,
+      name: null,
+      url: null,
+      github: null,
+      image: null,
+      discord: null,
+      description: null,
+      additional: null,
+      captured_at: null,
+    });
+  });
+
+  test("D1 fallback path shapes a stored row through loadAccountIdentity", async () => {
+    const capturedAt = Date.parse("2026-06-15T12:00:00.000Z");
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return {
+                    results: [
+                      {
+                        account: SS58,
+                        name: "Alpha Coldkey",
+                        url: "https://metagraph.sh/about",
+                        github: "https://github.com/jsonbored/alpha",
+                        image: "https://metagraph.sh/logo.png",
+                        discord: "alpha#1234",
+                        description: "alpha desc",
+                        additional: null,
+                        captured_at: capturedAt,
+                      },
+                    ],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ account_identity(ss58: "${SS58}") {
+          schema_version account has_identity
+          name url github image discord description additional captured_at
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_identity, {
+      schema_version: 1,
+      account: SS58,
+      has_identity: true,
+      name: "Alpha Coldkey",
+      url: "https://metagraph.sh/about",
+      github: "https://github.com/jsonbored/alpha",
+      image: "https://metagraph.sh/logo.png",
+      discord: "alpha#1234",
+      description: "alpha desc",
+      additional: null,
+      captured_at: "2026-06-15T12:00:00.000Z",
+    });
+  });
+
+  test("a malformed ss58 address is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ account_identity(ss58: "not-an-address") { has_identity } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/ss58/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_identity ?? null, null);
+  });
+});
+
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
