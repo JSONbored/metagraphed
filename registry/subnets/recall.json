@@ -34,5 +34,22 @@
       "No verified standalone static data artifact yet."
     ]
   },
-  "surfaces": []
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-31-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Recall TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/31 on api.taomarketcap.com returning machine-readable JSON for SN31 Recall on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Recall has no verified first-party public subnet-state API; this indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jaytbarimbao-collab"
+      },
+      "source_urls": ["https://api.taomarketcap.com/developer/documentation/"],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/31"
+    }
+  ]
 }
