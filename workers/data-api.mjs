@@ -628,11 +628,20 @@ async function handleNeuronsSync(request, env) {
       413,
     );
   }
-  if (!incoming.length || !incoming.every(validNeuronSyncRow)) {
+  // Mirrors handleNeuronDailyBackfill's identical strip-before-validate: a
+  // client-provided snapshot_date isn't in NEURON_INSERT_COLUMNS, so
+  // validNeuronSyncRow's key allowlist would otherwise reject the whole row
+  // -- this handler had the exact same bug, just never patched alongside
+  // the backfill one.
+  const validatedIncoming = incoming.map(stripClientSnapshotDate);
+  if (
+    !validatedIncoming.length ||
+    !validatedIncoming.every(validNeuronSyncRow)
+  ) {
     return writeJson({ error: "rows must match the neuron row shape" }, 400);
   }
 
-  const rows = incoming.map(coerceNeuronSyncRow);
+  const rows = validatedIncoming.map(coerceNeuronSyncRow);
   // Per-netuid max captured_at, NOT one batch-wide value -- a global max would
   // let one netuid's later capture prune rows this SAME request just upserted
   // for a different, earlier-captured netuid in the same batch (the max would
@@ -911,7 +920,10 @@ async function handleNeuronDailyBackfill(request, env) {
     );
   }
   const validatedIncoming = incoming.map(stripClientSnapshotDate);
-  if (!validatedIncoming.length || !validatedIncoming.every(validNeuronSyncRow)) {
+  if (
+    !validatedIncoming.length ||
+    !validatedIncoming.every(validNeuronSyncRow)
+  ) {
     return writeJson({ error: "rows must match the neuron row shape" }, 400);
   }
 

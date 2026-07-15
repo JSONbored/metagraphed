@@ -2555,6 +2555,41 @@ test("neurons-sync rejects a row carrying an unknown column (400)", async () => 
   expect(res.status).toBe(400);
 });
 
+// #5163 follow-up: handleNeuronDailyBackfill was fixed to strip a
+// client-provided snapshot_date before validation, but handleNeuronsSync had
+// the exact same bug (snapshot_date isn't in NEURON_INSERT_COLUMNS, so
+// validNeuronSyncRow's key allowlist rejected the whole row) and was never
+// patched alongside it -- caught by review, fixed here too.
+test("neurons-sync ignores a client-provided snapshot_date instead of rejecting the row (400 bug, now fixed)", async () => {
+  const capturedAt = Date.parse("2026-05-29T12:34:56.000Z");
+  const res = await postNeurons(
+    [neuronSyncRow({ captured_at: capturedAt, snapshot_date: "1999-01-01" })],
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.neurons_written).toBe(1);
+  const neuronDailyInsert = sqlCalls.find((call) =>
+    /INSERT INTO neuron_daily\b/.test(call.text),
+  );
+  expect(neuronDailyInsert.values).toContain("2026-05-29");
+  expect(neuronDailyInsert.values).not.toContain("1999-01-01");
+});
+
+test.each([
+  ["null", null],
+  ["a non-object primitive", "not-a-row"],
+  ["a nested array", [1, 2, 3]],
+])(
+  "neurons-sync rejects a row that is %s (400, not a throw)",
+  async (_label, malformedRow) => {
+    const res = await postNeurons([neuronSyncRow(), malformedRow], {
+      secret: NEURONS_SYNC_SECRET,
+    });
+    expect(res.status).toBe(400);
+  },
+);
+
 test("neurons-sync rejects a row with a string field over the byte cap (400)", async () => {
   const res = await postNeurons([neuronSyncRow({ hotkey: "5".repeat(600) })], {
     secret: NEURONS_SYNC_SECRET,
@@ -2853,6 +2888,23 @@ test("backfill-neuron-daily ignores client snapshot_date and derives it from cap
   expect(neuronDailyInsert.values).toContain("2026-05-29");
   expect(neuronDailyInsert.values).not.toContain("1999-01-01");
 });
+
+// stripClientSnapshotDate's own null/non-object/array guard (mirrors
+// validNeuronSyncRow's identical guard, workers/data-api.mjs) -- each malformed
+// row still fails validation with the same 400, never a crash on destructuring.
+test.each([
+  ["null", null],
+  ["a non-object primitive", "not-a-row"],
+  ["a nested array", [1, 2, 3]],
+])(
+  "backfill-neuron-daily rejects a row that is %s (400, not a throw)",
+  async (_label, malformedRow) => {
+    const res = await postNeuronDailyBackfill([neuronSyncRow(), malformedRow], {
+      secret: NEURON_DAILY_BACKFILL_SECRET,
+    });
+    expect(res.status).toBe(400);
+  },
+);
 
 test("backfill-neuron-daily writes neuron_daily + account_position_daily but NEVER the latest-only neurons table", async () => {
   const res = await postNeuronDailyBackfill([neuronSyncRow()], {
