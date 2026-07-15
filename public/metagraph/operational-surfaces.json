@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 215,
+  "surface_count": 217,
   "surfaces": [
     {
       "auth_required": false,
@@ -1451,6 +1451,42 @@
       "surface_id": "sn-15-oro-validators",
       "surface_key": "srf-1417bc1a37a62f80",
       "url": "https://api.oroagents.com/v1/public/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 16,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitads",
+      "public_safe": true,
+      "subnet_name": "BitAds",
+      "subnet_slug": "sn-16",
+      "surface_id": "sn-16-bitads-min-compute",
+      "surface_key": "srf-95c25fd9f99e8706",
+      "url": "https://raw.githubusercontent.com/study-service/BitAds.ai/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 16,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "BitAds",
+      "subnet_slug": "sn-16",
+      "surface_id": "sn-16-taomarketcap-subnet-api",
+      "surface_key": "srf-e6c715c17db67d32",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/16"
     },
     {
       "auth_required": false,

@@ -19,7 +19,6 @@
   "curation": {
     "gap_notes": [
       "The bitads.ai website and docs domain currently fails to resolve (DNS lame delegation) and is nulled until it recovers or a replacement domain is confirmed.",
-      "The former FirstTensorLabs/BitAds source repository now returns 404; the live successor repository is study-service/BitAds.ai.",
       "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths return marketing-site HTML rather than API/schema payloads.",
       "No verified safe public subnet API endpoint yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -35,7 +34,7 @@
   "docs_url": null,
   "name": "BitAds",
   "netuid": 16,
-  "notes": "Reviewed overlay for SN16 BitAds. The former bitads.ai website/docs domain no longer resolves (DNS lame delegation — the domain's own nameservers refuse the query), so website_url/docs_url are nulled until a live domain is confirmed. The operator's active code has moved from FirstTensorLabs/BitAds (now 404) to study-service/BitAds.ai (live), which is now the registered source_repo. Common API/OpenAPI/Swagger paths previously returned website HTML instead of machine-readable API/schema responses, so they are excluded as content mismatches.",
+  "notes": "Reviewed overlay for SN16 BitAds. The former bitads.ai website/docs domain no longer resolves (DNS lame delegation — the domain's own nameservers refuse the query, re-confirmed this pass), so website_url/docs_url are nulled until a live domain is confirmed. The operator's active code has moved from FirstTensorLabs/BitAds (still 404) to study-service/BitAds.ai (live) -- the source-repo surface was still pointing at the dead URL with probing disabled despite the top-level source_repo field already being correct; fixed to point at the live repo with probing re-enabled. Two more community-submitted surfaces (min-compute, TaoMarketCap snapshot) had no probe config at all (the registry-wide gap tracked in #5932), fixed. Common API/OpenAPI/Swagger paths previously returned website HTML instead of machine-readable API/schema responses, so they are excluded as content mismatches.",
   "schema_version": 1,
   "slug": "sn-16",
   "social": {
@@ -89,17 +88,17 @@
       "id": "sn-16-bitads-source",
       "kind": "source-repo",
       "name": "BitAds source repository",
-      "notes": "Former BitAds source repository (FirstTensorLabs/BitAds now returns 404; live code has moved to study-service/BitAds.ai).",
+      "notes": "Current live BitAds source repository. The original FirstTensorLabs/BitAds returns 404 (confirmed still dead on this pass); code moved to study-service/BitAds.ai, matching this file's top-level source_repo field. Re-checked eseckft/BitAds.ai (referenced in this repo's own README as \"GitHub\") -- also 404, a stale link, not a further migration.",
       "probe": {
-        "enabled": false,
+        "enabled": true,
         "expect": "any",
-        "method": "HEAD"
+        "method": "HEAD",
+        "timeout_ms": 10000
       },
       "provider": "bitads",
       "public_safe": true,
-      "rate_limit_notes": "Not probe-enabled because github.com/FirstTensorLabs/BitAds now returns 404; the operator's live successor repository is study-service/BitAds.ai (the registered top-level source_repo).",
-      "source_urls": ["https://github.com/FirstTensorLabs/BitAds"],
-      "url": "https://github.com/FirstTensorLabs/BitAds"
+      "source_urls": ["https://github.com/study-service/BitAds.ai"],
+      "url": "https://github.com/study-service/BitAds.ai"
     },
     {
       "auth_required": false,
@@ -107,7 +106,13 @@
       "id": "sn-16-bitads-min-compute",
       "kind": "data-artifact",
       "name": "BitAds minimum compute requirements",
-      "notes": "Public no-auth machine-readable min_compute.yml specifying the minimum and recommended hardware (CPU/RAM/storage/OS and network bandwidth) to run an SN16 BitAds miner or validator, published in the official BitAds source repository study-service/BitAds.ai — whose README states 'netuid 16' and whose GitHub homepage is the registered bitads.ai website. A standalone machine-readable reference artifact the registry did not yet capture (the manifest's source_repo field points at the operator's older FirstTensorLabs/BitAds repo; the live code now lives at study-service/BitAds.ai).",
+      "notes": "Public no-auth machine-readable min_compute.yml specifying the minimum and recommended hardware (CPU/RAM/storage/OS and network bandwidth) to run an SN16 BitAds miner or validator, published in the official BitAds source repository study-service/BitAds.ai — whose README states 'netuid 16' and whose GitHub homepage is the registered bitads.ai website. A standalone machine-readable reference artifact the registry did not yet capture.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitads",
       "public_safe": true,
       "review": {
@@ -127,6 +132,12 @@
       "kind": "subnet-api",
       "name": "BitAds TaoMarketCap subnet snapshot API",
       "notes": "Public no-auth GET /public/v1/subnets/16 on api.taomarketcap.com returning machine-readable JSON for SN16 BitAds on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
