@@ -81,79 +81,80 @@ export function SubnetPriceTicker({ limit = 12 }: { limit?: number }) {
   const rendered = [...loop, ...loop];
 
   return (
-    <div
-      className="mg-ticker mg-fade-in mg-fade-in-delay-3 mt-3 relative overflow-hidden border-y border-border/60"
-      aria-label="Subnet alpha prices"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
+    <div className="mg-fade-in mg-fade-in-delay-3 mt-3 relative border-y border-border/60">
+      {/* The edge fade is painted as a mask on the scrolling element's own box, NOT as an
+          absolutely-positioned overlay inside it: .mg-ticker is `overflow-x: auto`, and an
+          abspos child of a scroll container scrolls away with the content — leaving the
+          cutoff bare at every offset but 0 (#5325). A mask paints in the element's box and
+          stays pinned to the visible edges. The border lives on the wrapper so it stays crisp. */}
       <div
-        className="mg-ticker-track flex items-center gap-6 py-2 whitespace-nowrap"
-        style={{ animationPlayState: paused ? "paused" : "running" }}
+        className="mg-ticker overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_4rem,#000_calc(100%_-_4rem),transparent)]"
+        aria-label="Subnet alpha prices"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
       >
-        {rendered.map(({ it, t }, i) => {
-          const arrow = t.dir > 0 ? "▲" : t.dir < 0 ? "▼" : "";
-          return (
-            <Link
-              key={`${it.netuid}-${i}`}
-              to="/subnets/$netuid"
-              params={{ netuid: it.netuid }}
-              className="inline-flex items-center gap-2 text-[11px] hover:text-ink-strong transition-colors"
-              title={`${it.name} · SN${it.netuid} · ${priceStr(it.price)}${
-                t.changePct != null
-                  ? ` · ${t.changePct >= 0 ? "+" : ""}${t.changePct.toFixed(1)}%`
-                  : ""
-              }`}
-            >
-              <BrandIcon
-                size={16}
-                name={it.name}
-                fallback={it.netuid}
-                url={it.website}
-                subnetSlug={it.slug}
-                netuid={it.netuid}
-              />
-              <span className="font-medium text-ink-strong truncate max-w-[16ch]">{it.name}</span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
-                SN{it.netuid}
-              </span>
-              <span className="font-display font-semibold tabular-nums text-ink-strong">
-                {priceStr(it.price)}
-              </span>
-              <span className="inline-block w-[44px] align-middle">
-                <Sparkline
-                  values={t.values}
-                  width={44}
-                  height={14}
-                  interactive={false}
-                  fill={false}
-                  color={t.color}
+        <div
+          className="mg-ticker-track flex items-center gap-6 py-2 whitespace-nowrap"
+          style={{ animationPlayState: paused ? "paused" : "running" }}
+        >
+          {rendered.map(({ it, t }, i) => {
+            const arrow = t.dir > 0 ? "▲" : t.dir < 0 ? "▼" : "";
+            return (
+              <Link
+                key={`${it.netuid}-${i}`}
+                to="/subnets/$netuid"
+                params={{ netuid: it.netuid }}
+                className="inline-flex items-center gap-2 text-[11px] hover:text-ink-strong transition-colors"
+                title={`${it.name} · SN${it.netuid} · ${priceStr(it.price)}${
+                  t.changePct != null
+                    ? ` · ${t.changePct >= 0 ? "+" : ""}${t.changePct.toFixed(1)}%`
+                    : ""
+                }`}
+              >
+                <BrandIcon
+                  size={16}
+                  name={it.name}
+                  fallback={it.netuid}
+                  url={it.website}
+                  subnetSlug={it.slug}
+                  netuid={it.netuid}
                 />
-              </span>
-              {t.changePct != null ? (
-                <span className="font-mono tabular-nums text-[10px]" style={{ color: t.color }}>
-                  {arrow} {t.changePct >= 0 ? "+" : ""}
-                  {t.changePct.toFixed(1)}%
+                <span className="font-medium text-ink-strong truncate max-w-[16ch]">{it.name}</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
+                  SN{it.netuid}
                 </span>
-              ) : null}
-              <span aria-hidden className="text-ink-subtle">
-                ·
-              </span>
-            </Link>
-          );
-        })}
+                <span className="font-display font-semibold tabular-nums text-ink-strong">
+                  {priceStr(it.price)}
+                </span>
+                <span className="inline-block w-[44px] align-middle">
+                  <Sparkline
+                    values={t.values}
+                    width={44}
+                    height={14}
+                    interactive={false}
+                    fill={false}
+                    color={t.color}
+                  />
+                </span>
+                {t.changePct != null ? (
+                  <span className="font-mono tabular-nums text-[10px]" style={{ color: t.color }}>
+                    {arrow} {t.changePct >= 0 ? "+" : ""}
+                    {t.changePct.toFixed(1)}%
+                  </span>
+                ) : null}
+                <span aria-hidden className="text-ink-subtle">
+                  ·
+                </span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
+      {/* Sits on the wrapper, outside the scroller: the badge is fixed chrome, so it must
+          neither scroll with the content nor be dimmed by the scroller's edge mask. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-paper to-transparent"
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-paper to-transparent"
-      />
-      <span
-        aria-hidden
-        className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted bg-paper px-1.5"
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted bg-paper px-1.5"
       >
         <Coins className="size-2.5" />
         alpha
