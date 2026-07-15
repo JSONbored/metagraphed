@@ -38,6 +38,7 @@ import {
 import { buildExtrinsic, buildExtrinsicFeed } from "./extrinsics.mjs";
 import { buildBlock, buildBlockFeed } from "./blocks.mjs";
 import { buildBlocksSummary } from "./blocks-summary.mjs";
+import { buildChainYield } from "./chain-yield.mjs";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -151,6 +152,8 @@ export const SDL = `
     chain_weights(window: String, limit: Int): ChainWeights!
     "Network-wide weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators driving consensus network-wide, each with its total WeightsSet count, share of the network total, and first/last set times, ranked by activity. The setter-level drill-in behind chain_weights. Mirrors GET /api/v1/chain/weights/setters."
     chain_weight_setters(window: String, limit: Int): ChainWeightSetters!
+    "Network-wide emission-yield (return rate) aggregated across every subnet's neurons -- the aggregate network return, the same split by validator vs miner role, and the distribution of the per-neuron return rate. Every aggregate is null (never a GraphQL error) on a cold store. Mirrors GET /api/v1/chain/yield."
+    chain_yield: ChainYield!
   }
 
   type SubnetList {
@@ -642,6 +645,35 @@ export const SDL = `
     observed_at: String
   }
 
+  "Network-wide emission-yield (return rate) card across every subnet's neurons. Aggregates are null on a cold store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/chain/yield."
+  type ChainYield {
+    schema_version: Int!
+    subnet_count: Int!
+    neuron_count: Int!
+    validator_count: Int!
+    miner_count: Int!
+    captured_at: String
+    total_stake_tao: Float!
+    total_emission_tao: Float!
+    network_yield: Float
+    validator_yield: Float
+    miner_yield: Float
+    distribution: YieldDistribution
+  }
+
+  "Distribution of the per-neuron emission/stake return rate across the network."
+  type YieldDistribution {
+    count: Int!
+    mean: Float!
+    median: Float!
+    min: Float!
+    max: Float!
+    p10: Float!
+    p25: Float!
+    p75: Float!
+    p90: Float!
+  }
+
   "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary."
   type BlocksSummary {
     schema_version: Int!
@@ -992,6 +1024,7 @@ export const FIELD_COMPLEXITY = {
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_yield: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -2119,6 +2152,45 @@ const rootValue = {
       weight_sets: data.weight_sets ?? 0,
       setter_count: data.setter_count ?? 0,
       setters: data.setters || [],
+    };
+  },
+
+  async chain_yield(_args, context) {
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainYield([])
+    // fallback contract handleChainYield uses -- a cold/absent tier yields a
+    // schema-stable zeroed card (every aggregate null), never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/yield"),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildChainYield([]);
+    const distribution = data.distribution ?? null;
+    return {
+      schema_version: data.schema_version ?? 1,
+      subnet_count: data.subnet_count ?? 0,
+      neuron_count: data.neuron_count ?? 0,
+      validator_count: data.validator_count ?? 0,
+      miner_count: data.miner_count ?? 0,
+      captured_at: data.captured_at ?? null,
+      total_stake_tao: data.total_stake_tao ?? 0,
+      total_emission_tao: data.total_emission_tao ?? 0,
+      network_yield: data.network_yield ?? null,
+      validator_yield: data.validator_yield ?? null,
+      miner_yield: data.miner_yield ?? null,
+      distribution: distribution
+        ? {
+            count: distribution.count ?? 0,
+            mean: distribution.mean ?? 0,
+            median: distribution.median ?? 0,
+            min: distribution.min ?? 0,
+            max: distribution.max ?? 0,
+            p10: distribution.p10 ?? 0,
+            p25: distribution.p25 ?? 0,
+            p75: distribution.p75 ?? 0,
+            p90: distribution.p90 ?? 0,
+          }
+        : null,
     };
   },
 };
