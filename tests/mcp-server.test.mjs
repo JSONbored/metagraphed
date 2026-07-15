@@ -5860,6 +5860,26 @@ describe("MCP query_graphql (#5591 — GraphQL bridge tool)", () => {
     assert.ok(/too large/i.test(JSON.stringify(out.errors)));
   });
 
+  test("applies the GraphQL rate limiter, surfacing a throttle as an error (never bypassing it)", async () => {
+    // A saturated RPC_RATE_LIMITER makes graphqlRateLimited return its 429, so
+    // the bridge is throttled identically to the REST route rather than
+    // bypassing the GraphQL-specific per-client limit.
+    // Saturate only the GraphQL bucket (key `gql:*`); the MCP-dispatch limiter
+    // uses a different key and must still pass so the request reaches the tool.
+    const env = {
+      RPC_RATE_LIMITER: {
+        limit: async ({ key }) => ({ success: !key.startsWith("gql:") }),
+      },
+    };
+    const res = await callTool(
+      "query_graphql",
+      { query: "{ __typename }" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(/too many|rate/i.test(res.body.result.content[0].text));
+  });
+
   test("requires a non-empty query string", async () => {
     const res = await callTool("query_graphql", { query: "   " });
     assert.equal(res.body.result.isError, true);

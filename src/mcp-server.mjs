@@ -39,7 +39,10 @@ import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
-import { handleRpcProxyRequest } from "../workers/request-handlers/rpc-proxy.mjs";
+import {
+  handleRpcProxyRequest,
+  graphqlRateLimited,
+} from "../workers/request-handlers/rpc-proxy.mjs";
 import { handleGraphQLRequest } from "./graphql.mjs";
 import {
   isValidSubscriptionId,
@@ -9180,13 +9183,28 @@ export const MCP_TOOLS = [
       }
       // Forward through the SAME handler REST callers hit, so the depth and
       // complexity validation rules (and any other GraphQL-side protection)
-      // apply identically -- this tool cannot bypass them. The MCP path already
-      // ran enforceMcpRateLimit before dispatch, so no extra limiter is needed.
+      // apply identically -- this tool cannot bypass them. cf-connecting-ip is
+      // forged from ctx.clientIp (the real inbound caller) so the GraphQL rate
+      // limiter below keys on that caller, not this synthetic request.
       const gqlRequest = new Request("https://d/api/v1/graphql", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "cf-connecting-ip": ctx.clientIp,
+        },
         body: JSON.stringify({ query, variables: args?.variables }),
       });
+      // Apply the SAME per-client GraphQL rate limiter the REST route runs
+      // before handleGraphQLRequest, so this bridge is throttled identically
+      // and cannot bypass GraphQL-specific limits (in addition to the MCP-path
+      // enforceMcpRateLimit that already ran before dispatch).
+      const limited = await graphqlRateLimited(gqlRequest, ctx.env);
+      if (limited) {
+        throw toolError(
+          "graphql_rate_limited",
+          "Too many GraphQL requests from this client; slow down.",
+        );
+      }
       const response = await handleGraphQLRequest(gqlRequest, ctx.env);
       // The POST path of handleGraphQLRequest always returns a JSON body -- the
       // execution result on success, or an errors[] envelope on a parse /
