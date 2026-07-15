@@ -29,6 +29,7 @@ import {
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
 } from "./subnet-axon-removals.mjs";
+import { buildSubnetYield } from "./subnet-yield.mjs";
 import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
@@ -136,6 +137,8 @@ export const SDL = `
     subnet_serving(netuid: Int!, window: String): SubnetServing!
     "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
     subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
+    "Per-subnet emission-per-stake yield over the current metagraph snapshot: each UID's yield plus the subnet-wide aggregate and p25/median/p75/p90 distribution; a subnet with no neurons resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/yield."
+    subnet_yield(netuid: Int!): SubnetYield!
     "Paginated provider/source registry."
     providers(limit: Int, cursor: String): ProviderList!
     "One provider with its subnets."
@@ -633,6 +636,35 @@ export const SDL = `
     distinct_removers: Int!
     removals: Int!
     removals_per_remover: Float
+  }
+
+  "One UID's emission-per-stake yield within a subnet's current metagraph snapshot."
+  type SubnetYieldNeuron {
+    uid: Int!
+    hotkey: String
+    role: String!
+    stake_tao: Float
+    emission_tao: Float
+    yield: Float
+  }
+
+  type SubnetYield {
+    schema_version: Int!
+    netuid: Int!
+    captured_at: String
+    block_number: Int
+    neuron_count: Int!
+    validator_count: Int!
+    miner_count: Int!
+    total_stake_tao: Float
+    total_emission_tao: Float
+    subnet_yield: Float
+    mean_yield: Float
+    median_yield: Float
+    p25_yield: Float
+    p75_yield: Float
+    p90_yield: Float
+    neurons: [SubnetYieldNeuron!]!
   }
 
   "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope."
@@ -1134,6 +1166,7 @@ export const FIELD_COMPLEXITY = {
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1799,6 +1832,43 @@ const rootValue = {
       distinct_removers: data.distinct_removers ?? 0,
       removals: data.removals ?? 0,
       removals_per_remover: data.removals_per_remover ?? null,
+    };
+  },
+
+  async subnet_yield({ netuid }, context) {
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetYield cold
+    // fallback contract handleSubnetYield uses: a subnet with no neurons is a
+    // schema-stable zeroed card, never a GraphQL error. No window param — the
+    // route reads the CURRENT metagraph snapshot.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/yield`,
+          new URLSearchParams(),
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildSubnetYield([], netuid);
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      captured_at: data.captured_at ?? null,
+      block_number: data.block_number ?? null,
+      neuron_count: data.neuron_count ?? 0,
+      validator_count: data.validator_count ?? 0,
+      miner_count: data.miner_count ?? 0,
+      total_stake_tao: data.total_stake_tao ?? null,
+      total_emission_tao: data.total_emission_tao ?? null,
+      subnet_yield: data.subnet_yield ?? null,
+      mean_yield: data.mean_yield ?? null,
+      median_yield: data.median_yield ?? null,
+      p25_yield: data.p25_yield ?? null,
+      p75_yield: data.p75_yield ?? null,
+      p90_yield: data.p90_yield ?? null,
+      // buildSubnetYield's neuron shape matches SubnetYieldNeuron field-for-field,
+      // so GraphQL resolves the nested selection off the raw rows directly.
+      neurons: data.neurons ?? [],
     };
   },
 

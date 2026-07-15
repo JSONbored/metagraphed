@@ -3444,6 +3444,138 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
   });
 });
 
+describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_yield(netuid: 5) {
+          schema_version netuid captured_at block_number
+          neuron_count validator_count miner_count
+          subnet_yield mean_yield median_yield p25_yield p75_yield p90_yield
+          neurons { uid }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const y = body.data.subnet_yield;
+    assert.equal(y.schema_version, 1);
+    assert.equal(y.netuid, 5);
+    assert.equal(y.neuron_count, 0);
+    assert.equal(y.validator_count, 0);
+    assert.equal(y.miner_count, 0);
+    assert.equal(y.subnet_yield, null);
+    assert.deepEqual(y.neurons, []);
+  });
+
+  test("resolves the Postgres-tier card, including the per-UID neuron rows", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          captured_at: "2026-07-01T00:00:00.000Z",
+          block_number: 8621331,
+          neuron_count: 2,
+          validator_count: 1,
+          miner_count: 1,
+          total_stake_tao: 1500.5,
+          total_emission_tao: 12.25,
+          subnet_yield: 0.0081,
+          mean_yield: 0.009,
+          median_yield: 0.009,
+          p25_yield: 0.005,
+          p75_yield: 0.013,
+          p90_yield: 0.02,
+          neurons: [
+            {
+              uid: 0,
+              hotkey: "5Val",
+              role: "validator",
+              stake_tao: 1000.5,
+              emission_tao: 9.1,
+              yield: 0.0091,
+            },
+            {
+              uid: 1,
+              hotkey: "5Min",
+              role: "miner",
+              stake_tao: 500,
+              emission_tao: null,
+              yield: null,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_yield(netuid: 5) {
+          netuid captured_at block_number neuron_count validator_count miner_count
+          total_stake_tao total_emission_tao subnet_yield mean_yield median_yield
+          p25_yield p75_yield p90_yield
+          neurons { uid hotkey role stake_tao emission_tao yield }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const y = body.data.subnet_yield;
+    assert.equal(y.block_number, 8621331);
+    assert.equal(y.neuron_count, 2);
+    assert.equal(y.validator_count, 1);
+    assert.equal(y.subnet_yield, 0.0081);
+    assert.equal(y.neurons.length, 2);
+    assert.deepEqual(y.neurons[0], {
+      uid: 0,
+      hotkey: "5Val",
+      role: "validator",
+      stake_tao: 1000.5,
+      emission_tao: 9.1,
+      yield: 0.0091,
+    });
+    // A stakeless/blank-emission neuron keeps its nulls, not a coerced 0.
+    assert.equal(y.neurons[1].emission_tao, null);
+    assert.equal(y.neurons[1].yield, null);
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_yield(netuid: 9) {
+          schema_version netuid captured_at block_number
+          neuron_count validator_count miner_count
+          subnet_yield mean_yield median_yield p25_yield p75_yield p90_yield
+          neurons { uid }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_yield, {
+      schema_version: 1,
+      netuid: 9,
+      captured_at: null,
+      block_number: null,
+      neuron_count: 0,
+      validator_count: 0,
+      miner_count: 0,
+      subnet_yield: null,
+      mean_yield: null,
+      median_yield: null,
+      p25_yield: null,
+      p75_yield: null,
+      p90_yield: null,
+      neurons: [],
+    });
+  });
+});
+
 describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
