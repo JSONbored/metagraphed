@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 141,
+  "surface_count": 158,
   "surfaces": [
     {
       "auth_required": false,
@@ -191,6 +191,96 @@
       "surface_id": "opentensor-lite-wss",
       "surface_key": "srf-dcf48d017826dc4b",
       "url": "wss://lite.chain.opentensor.ai:443"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 1,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "Apex",
+      "subnet_slug": "sn-1",
+      "surface_id": "sn-1-apex-healthcheck-ready",
+      "surface_key": "srf-fcd390d4676aeddd",
+      "url": "https://apex.api.macrocosmos.ai/healthcheck/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 1,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "Apex",
+      "subnet_slug": "sn-1",
+      "surface_id": "sn-1-apex-metrics",
+      "surface_key": "srf-efc1590639bd9f16",
+      "url": "https://apex.api.macrocosmos.ai/metrics"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 2,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "inference-labs",
+      "public_safe": true,
+      "subnet_name": "DSperse",
+      "subnet_slug": "dsperse",
+      "surface_id": "sn-2-dsperse-circuit-list",
+      "surface_key": "srf-06434934e964a608",
+      "url": "https://repository.inferencelabs.com/circuits"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 2,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "inference-labs",
+      "public_safe": true,
+      "subnet_name": "DSperse",
+      "subnet_slug": "dsperse",
+      "surface_id": "sn-2-dsperse-component-list",
+      "surface_key": "srf-342e021c20c4d950",
+      "url": "https://repository.inferencelabs.com/components"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 2,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "inference-labs",
+      "public_safe": true,
+      "subnet_name": "DSperse",
+      "subnet_slug": "dsperse",
+      "surface_id": "sn-2-dsperse-model-list",
+      "surface_key": "srf-43ce8d499d2a4e28",
+      "url": "https://repository.inferencelabs.com/models"
     },
     {
       "auth_required": false,
@@ -386,9 +476,99 @@
       "public_safe": true,
       "subnet_name": "Allways",
       "subnet_slug": "allways",
+      "surface_id": "allways-crown-history",
+      "surface_key": "srf-1c507e95e9b90ef3",
+      "url": "https://api.all-ways.io/crown/history?direction=SOL-BTC"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-crown-rate-history",
+      "surface_key": "srf-7d2a3a092e2f4288",
+      "url": "https://api.all-ways.io/crown/rate-history?direction=SOL-BTC"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-crown-time",
+      "surface_key": "srf-565238052b5d145d",
+      "url": "https://api.all-ways.io/crown/time?direction=SOL-BTC"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-events",
+      "surface_key": "srf-9f537fe97d9e4b4b",
+      "url": "https://api.all-ways.io/events"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": null
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
       "surface_id": "allways-events-latest",
       "surface_key": "srf-cc1a1ad8cf1170b7",
       "url": "https://api.all-ways.io/events/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-history-rate",
+      "surface_key": "srf-b12a1b63c48a3b03",
+      "url": "https://api.all-ways.io/history/rate?direction=SOL-BTC"
     },
     {
       "auth_required": false,
@@ -446,6 +626,24 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-network-halt-state",
+      "surface_key": "srf-f0a104b03ec0cb95",
+      "url": "https://api.all-ways.io/network/halt-state"
+    },
+    {
+      "auth_required": false,
       "authority": "provider-claimed",
       "kind": "subnet-api",
       "netuid": 7,
@@ -461,6 +659,42 @@
       "surface_id": "allways-network-overview",
       "surface_key": "srf-3517b995dfdb719a",
       "url": "https://api.all-ways.io/network/overview"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-network-scoring-state",
+      "surface_key": "srf-1c7162d58d41d2ac",
+      "url": "https://api.all-ways.io/network/scoring-state"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-network-stats",
+      "surface_key": "srf-be707e5c5525070f",
+      "url": "https://api.all-ways.io/stats"
     },
     {
       "auth_required": false,
@@ -500,6 +734,42 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-reservations",
+      "surface_key": "srf-22ad2af21ecd6626",
+      "url": "https://api.all-ways.io/reservations"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-reservations-active",
+      "surface_key": "srf-c81433df18ed23d4",
+      "url": "https://api.all-ways.io/reservations/active"
+    },
+    {
+      "auth_required": false,
       "authority": "provider-claimed",
       "kind": "sse",
       "netuid": 7,
@@ -515,6 +785,42 @@
       "surface_id": "allways-sse",
       "surface_key": "srf-9a3013f8b54338b4",
       "url": "https://api.all-ways.io/sse"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-swaps-active",
+      "surface_key": "srf-abf0965c49081975",
+      "url": "https://api.all-ways.io/swaps/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "allways-swaps-count",
+      "surface_key": "srf-b1738ebcc631a0d2",
+      "url": "https://api.all-ways.io/swaps/count"
     },
     {
       "auth_required": false,
@@ -1530,8 +1836,8 @@
       "kind": "data-artifact",
       "netuid": 64,
       "probe": {
-        "expect": "any",
-        "method": "HEAD",
+        "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "chutes",
@@ -1548,8 +1854,8 @@
       "kind": "data-artifact",
       "netuid": 64,
       "probe": {
-        "expect": "any",
-        "method": "HEAD",
+        "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "chutes",
@@ -1566,8 +1872,8 @@
       "kind": "data-artifact",
       "netuid": 64,
       "probe": {
-        "expect": "any",
-        "method": "HEAD",
+        "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "chutes",

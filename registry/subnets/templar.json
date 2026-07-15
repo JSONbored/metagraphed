@@ -4,7 +4,8 @@
     "decentralized-training",
     "identity-drift",
     "identity-reviewed",
-    "official-source-repo"
+    "official-source-repo",
+    "tournament"
   ],
   "curation": {
     "gap_notes": [
@@ -12,7 +13,7 @@
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
-    "review_state": "needs-review",
+    "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T11:05:00.000Z",
     "source_count": 6,
     "verified_at": "2026-06-08T11:05:00.000Z"
@@ -21,7 +22,7 @@
   "docs_url": "https://docs.tplr.ai/",
   "name": "Templar",
   "netuid": 3,
-  "notes": "Reviewed overlay for SN3 using the live One Covenant Templar repository, website, docs, and public dashboards. Native chain identity currently reports a deprecated placeholder, so this remains an explicit identity-drift entry rather than a silent rename.",
+  "notes": "Reviewed overlay for SN3 using the live One Covenant Templar repository, website, docs, and public dashboards. Native chain identity currently reports a deprecated placeholder, matching the source repository's own dormancy notice: the original Covenant-72B decentralized training run is complete and not currently active. Subnet 3 now runs Crusades, an MFU (Model FLOPs Utilization) optimization tournament by the same one-covenant team on the same netuid, tracked via a separate source-repo surface. The existing website/docs/dashboards remain live and serve both the dormant Templar protocol's history and Crusades' current activity (the Grafana eval-metrics dashboard doubles as the tournament leaderboard).",
   "schema_version": 1,
   "slug": "sn-3",
   "social": {
@@ -50,6 +51,24 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/3/subnet.json"
       ],
       "url": "https://github.com/one-covenant/templar"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-3-templar-crusades-source",
+      "kind": "source-repo",
+      "name": "Templar Crusades source repository",
+      "notes": "Public source repository for Crusades, the MFU (Model FLOPs Utilization) optimization tournament currently running on SN3 -- a distinct mechanism from the original (now dormant) Templar decentralized-training protocol, run by the same one-covenant team on the same netuid.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": ["https://github.com/one-covenant/crusades"],
+      "url": "https://github.com/one-covenant/crusades"
     },
     {
       "auth_required": false,
@@ -180,7 +199,7 @@
       "id": "sn-3-templar-min-compute-spec",
       "kind": "data-artifact",
       "name": "Templar minimum compute requirements",
-      "notes": "Public no-auth YAML miner and validator hardware specification (CPU, memory, storage, OS, and bandwidth) published at the root of the official one-covenant/templar repository as min_compute.yml. Documents SN3 Templar operator requirements for the decentralized pre-training run.",
+      "notes": "Public no-auth YAML miner and validator hardware specification (CPU, memory, storage, OS, and bandwidth) published at the root of the official one-covenant/templar repository as min_compute.yml. Documents requirements for the original (now dormant) Templar decentralized pre-training run -- substantially heavier than the currently-active Crusades tournament, which the Crusades README documents as needing 2x A100 80GB GPUs, not this file's 8x B200s.",
       "probe": {
         "enabled": true,
         "expect": "any",
