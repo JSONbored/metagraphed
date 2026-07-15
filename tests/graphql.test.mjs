@@ -9250,6 +9250,90 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 });
 
+describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallback)", () => {
+  const NETUID = 3;
+
+  function trendsQuery(netuid) {
+    return `{ subnet_health_trends(netuid: ${netuid}) { schema_version netuid observed_at source windows } }`;
+  }
+
+  test("cold store: schema-stable zeroed windows via the D1-live loader", async () => {
+    const { status, body } = await gql(trendsQuery(NETUID));
+    assert.equal(status, 200);
+    const d = body.data.subnet_health_trends;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.netuid, NETUID);
+    assert.equal(d.observed_at, null);
+    assert.equal(d.source, "live-cron-prober");
+    assert.equal(d.windows["7d"].samples, 0);
+    assert.deepEqual(d.windows["7d"].surfaces, []);
+    assert.equal(d.windows["30d"].samples, 0);
+  });
+
+  test("resolves Postgres-tier data, forwarding the netuid in the path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: NETUID,
+            observed_at: "2026-07-10T00:00:00.000Z",
+            source: "live-cron-prober",
+            windows: {
+              "7d": {
+                samples: 20,
+                uptime_ratio: 0.95,
+                latency_sample_count: 18,
+                surfaces: [{ surface_id: "srf-1", samples: 20 }],
+              },
+              "30d": {
+                samples: 80,
+                uptime_ratio: 0.9,
+                latency_sample_count: 70,
+                surfaces: [{ surface_id: "srf-1", samples: 80 }],
+              },
+            },
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(trendsQuery(NETUID), env);
+    assert.equal(status, 200);
+    assert.equal(
+      capturedUrl.pathname,
+      `/api/v1/subnets/${NETUID}/health/trends`,
+    );
+    const d = body.data.subnet_health_trends;
+    assert.equal(d.netuid, NETUID);
+    assert.equal(d.observed_at, "2026-07-10T00:00:00.000Z");
+    assert.equal(d.windows["7d"].uptime_ratio, 0.95);
+    assert.equal(d.windows["30d"].surfaces[0].surface_id, "srf-1");
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(trendsQuery(NETUID), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_health_trends, {
+      schema_version: 1,
+      netuid: NETUID,
+      observed_at: null,
+      source: null,
+      windows: {},
+    });
+  });
+
+  test("subnet_health_trends is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_health_trends, 5);
+  });
+});
+
 describe("Subscription.chainEvents", () => {
   test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
     const hub = fakeChainFirehose((repeater) => {
