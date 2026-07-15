@@ -71,6 +71,7 @@ import {
   parseHistoryWindow,
   unsupportedWindowMessage,
 } from "./neuron-history.mjs";
+import { buildValidatorHistory } from "./validator-history.mjs";
 import { loadEconomicsTrends } from "./economics-trends.mjs";
 import {
   DEFAULT_MOVERS_SORT,
@@ -154,6 +155,8 @@ export const SDL = `
     validators(sort: String, limit: Int): ValidatorList!
     "One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}."
     validator(hotkey: String!): Validator
+    "One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history."
+    validator_history(hotkey: String!, window: String): ValidatorHistory!
     "Site-wide accounts leaderboard -- every currently-registered hotkey, aggregated cross-subnet from the current neurons snapshot. Mirrors GET /api/v1/accounts."
     accounts(sort: String, limit: Int): AccountList!
     "One account's cross-subnet event-history summary by ss58 address; an address with no matching account_events rows resolves to a schema-stable zero summary, never null. Mirrors GET /api/v1/accounts/{ss58}."
@@ -781,6 +784,24 @@ export const SDL = `
     subnets: [ValidatorSubnet!]!
   }
 
+  "One validator's cross-subnet staked-over-time history. Mirrors GET /api/v1/validators/{hotkey}/history."
+  type ValidatorHistory {
+    schema_version: Int!
+    hotkey: String!
+    window: String
+    point_count: Int!
+    points: [ValidatorHistoryPoint!]!
+  }
+
+  "One day's cross-subnet rollup for a validator hotkey, summed across every subnet it validates in that day."
+  type ValidatorHistoryPoint {
+    snapshot_date: String!
+    subnet_count: Int
+    total_stake_tao: Float
+    total_emission_tao: Float
+    rewards_per_1000_tao: Float
+  }
+
   type ValidatorSubnet {
     netuid: Int!
     uid: Int
@@ -1028,6 +1049,7 @@ export const FIELD_COMPLEXITY = {
   extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
   validators: RELATIONSHIP_FIELD_COMPLEXITY,
   validator: RELATIONSHIP_FIELD_COMPLEXITY,
+  validator_history: RELATIONSHIP_FIELD_COMPLEXITY,
   accounts: RELATIONSHIP_FIELD_COMPLEXITY,
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1999,6 +2021,40 @@ const rootValue = {
         "METAGRAPH_NEURONS_SOURCE",
       )) ?? buildValidatorDetail([], hotkey);
     return validatorNode(data);
+  },
+
+  async validator_history({ hotkey, window }, context) {
+    // Same parseHistoryWindow REST's handleValidatorHistory uses, so accepted
+    // window labels (7d/30d/90d/1y/all, default 30d) match exactly.
+    const { label, error } = parseHistoryWindow(window);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("window", label);
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildValidatorHistory
+    // fallback contract handleValidatorHistory uses; a hotkey with no
+    // neuron_daily rows in the window is a schema-stable empty-points card,
+    // never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/validators/${encodeURIComponent(hotkey)}/history`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildValidatorHistory([], hotkey, { window: label });
+    return {
+      schema_version: data.schema_version ?? 1,
+      hotkey: data.hotkey ?? hotkey,
+      window: data.window ?? label,
+      point_count: data.point_count ?? 0,
+      points: data.points || [],
+    };
   },
 
   async accounts({ sort, limit }, context) {

@@ -2433,6 +2433,126 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
   });
 });
 
+describe("graphql — validator_history (#5710, Postgres-tier + empty-points fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag / no neuron_daily rows returns a schema-stable empty-points card, never null", async () => {
+    const { status, body } = await gql(
+      `{ validator_history(hotkey: "5NoRows") {
+          schema_version hotkey window point_count points { snapshot_date }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.validator_history, {
+      schema_version: 1,
+      hotkey: "5NoRows",
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("resolves the Postgres-tier points for the requested window", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          hotkey: "5Validator",
+          window: "90d",
+          point_count: 1,
+          points: [
+            {
+              snapshot_date: "2026-07-01",
+              subnet_count: 2,
+              total_stake_tao: 1000,
+              total_emission_tao: 4,
+              rewards_per_1000_tao: 4,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ validator_history(hotkey: "5Validator", window: "90d") {
+          hotkey window point_count
+          points { snapshot_date subnet_count total_stake_tao total_emission_tao rewards_per_1000_tao }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.validator_history;
+    assert.equal(r.hotkey, "5Validator");
+    assert.equal(r.window, "90d");
+    assert.equal(r.point_count, 1);
+    assert.deepEqual(r.points, [
+      {
+        snapshot_date: "2026-07-01",
+        subnet_count: 2,
+        total_stake_tao: 1000,
+        total_emission_tao: 4,
+        rewards_per_1000_tao: 4,
+      },
+    ]);
+  });
+
+  test("window is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ validator_history(hotkey: "5Validator", window: "7d") { window } }',
+      env,
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.ok(capturedUrl.pathname.endsWith("/validators/5Validator/history"));
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ validator_history(hotkey: "5Validator", window: "30d") {
+          schema_version hotkey window point_count points { snapshot_date }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.validator_history, {
+      schema_version: 1,
+      hotkey: "5Validator",
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ validator_history(hotkey: "5Validator", window: "99d") { point_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|30d/i.test(body.errors[0].message));
+    assert.equal(body.data?.validator_history ?? null, null);
+  });
+
+  test("validator_history is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.validator_history, 5);
+  });
+});
+
 describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderboard)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
