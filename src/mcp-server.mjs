@@ -21,6 +21,19 @@
 // Artifact/KV reads are injected (`deps.readArtifact`, `deps.readHealthKv`) so
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
+//
+// Native-staking epic (#5229, ADR 0018) decision, #5252: transaction-building
+// stays OUT of this server for v1 -- every "stake"-named tool here
+// (get_subnet_stake_quote, get_chain_stake_flow, get_subnet_stake_moves, etc.)
+// is a read against already-published data, none of them build or submit an
+// extrinsic. An agent-facing "build an unsigned add_stake extrinsic" tool has
+// no consent-UI surface (ADR 0018 §3's pre-sign confirmation screen is a
+// human-facing React component, not something an MCP client renders) and
+// would invite blind-signing risk from a compromised or prompt-injected
+// agent -- the exact failure mode the ADR's whole slippage-protection design
+// exists to prevent for a human clicking through a browser. Revisit only via
+// a dedicated ADR amendment with its own consent model, not as an incremental
+// tool addition.
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
