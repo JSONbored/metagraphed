@@ -2193,6 +2193,119 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
   });
 });
 
+describe("graphql — blocks_summary (#5664, Postgres-tier feed)", () => {
+  test("blocks_summary: cold/no-tier store returns the schema-stable zeroed card (fallback builder, production steady state)", async () => {
+    const { status, body } = await gql(
+      "{ blocks_summary { schema_version block_count first_block last_block block_time { count } throughput { total_extrinsics } distinct_authors author_concentration { holders } distinct_spec_versions latest_spec_version } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.blocks_summary, {
+      schema_version: 1,
+      block_count: 0,
+      first_block: null,
+      last_block: null,
+      block_time: null,
+      throughput: null,
+      distinct_authors: 0,
+      author_concentration: null,
+      distinct_spec_versions: 0,
+      latest_spec_version: null,
+    });
+  });
+
+  test("blocks_summary: resolves Postgres-tier rows into the production summary", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            block_count: 2,
+            first_block: 100,
+            last_block: 101,
+            first_observed_at: "2026-07-14T00:00:00.000Z",
+            last_observed_at: "2026-07-14T00:00:12.000Z",
+            block_time: {
+              count: 1,
+              mean_ms: 12000,
+              min_ms: 12000,
+              max_ms: 12000,
+              p50_ms: 12000,
+              p90_ms: 12000,
+            },
+            throughput: {
+              total_extrinsics: 5,
+              total_events: 9,
+              mean_extrinsics_per_block: 2.5,
+              mean_events_per_block: 4.5,
+              max_extrinsics_in_block: 3,
+            },
+            distinct_authors: 2,
+            author_concentration: {
+              holders: 2,
+              total: 2,
+              gini: 0,
+              hhi: 0.5,
+              hhi_normalized: 0,
+              nakamoto_coefficient: 1,
+              top_1pct_share: 0.5,
+              top_5pct_share: 0.5,
+              top_10pct_share: 0.5,
+              top_20pct_share: 0.5,
+              entropy: 1,
+              entropy_normalized: 1,
+            },
+            distinct_spec_versions: 1,
+            latest_spec_version: 200,
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      "{ blocks_summary { block_count first_block last_block block_time { count mean_ms p50_ms p90_ms } throughput { total_extrinsics mean_extrinsics_per_block } distinct_authors author_concentration { holders gini nakamoto_coefficient } distinct_spec_versions latest_spec_version } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/blocks/summary");
+    assert.equal(body.data.blocks_summary.block_count, 2);
+    assert.equal(body.data.blocks_summary.first_block, 100);
+    assert.equal(body.data.blocks_summary.last_block, 101);
+    assert.equal(body.data.blocks_summary.block_time.count, 1);
+    assert.equal(body.data.blocks_summary.throughput.total_extrinsics, 5);
+    assert.equal(body.data.blocks_summary.distinct_authors, 2);
+    assert.equal(
+      body.data.blocks_summary.author_concentration.nakamoto_coefficient,
+      1,
+    );
+    assert.equal(body.data.blocks_summary.distinct_spec_versions, 1);
+    assert.equal(body.data.blocks_summary.latest_spec_version, 200);
+  });
+
+  test("blocks_summary: a malformed Postgres-tier body degrades to the schema-stable zeroed card", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      "{ blocks_summary { block_count block_time { count } throughput { total_extrinsics } author_concentration { holders } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.blocks_summary, {
+      block_count: 0,
+      block_time: null,
+      throughput: null,
+      author_concentration: null,
+    });
+  });
+
+  test("blocks_summary is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.blocks_summary, 5);
+  });
+});
+
 describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
