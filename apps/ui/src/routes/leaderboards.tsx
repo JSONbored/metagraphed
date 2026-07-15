@@ -8,12 +8,13 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { PageHero, BrandIcon, TimeAgo, StatTile } from "@jsonbored/ui-kit";
+import { PageHero, BrandIcon, TimeAgo, StatTile, DownloadCsvButton } from "@jsonbored/ui-kit";
 import {
   chainDeregistrationsQuery,
   chainWeightsQuery,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { Subnet } from "@/lib/metagraphed/types";
 
@@ -49,6 +50,11 @@ const WINDOW_BTN_ACTIVE =
   "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-accent";
 const WINDOW_BTN =
   "rounded-full border border-border bg-card px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30";
+
+// Mirror each board query's own default page size (queries.ts) so the CSV export lines up with
+// the rows rendered on the page rather than drifting from an independently-chosen limit.
+const WEIGHTS_LIMIT = 20;
+const DEREGISTRATIONS_LIMIT = 100;
 
 // Every board on this route ranks the same 7d/30d window, so the window control lives at the page
 // level and governs both sections rather than each board owning a duplicate toggle.
@@ -109,22 +115,26 @@ function useSubnetById(): Map<number, Subnet> {
 }
 
 function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
-  const { data: boardRes } = useSuspenseQuery(chainWeightsQuery(win));
+  const { data: boardRes } = useSuspenseQuery(chainWeightsQuery(win, WEIGHTS_LIMIT));
   const subnetById = useSubnetById();
   const board = boardRes.data;
   const network = board.network;
   const dist = board.intensity_distribution;
+  const weightsCsvUrl = buildUrl("/api/v1/chain/weights", { window: win, limit: WEIGHTS_LIMIT });
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Weight-setting activity
-        </h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Validator consensus effort ranked by subnet — raw WeightsSet events over the selected
-          window.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Weight-setting activity
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Validator consensus effort ranked by subnet — raw WeightsSet events over the selected
+            window.
+          </p>
+        </div>
+        <DownloadCsvButton url={weightsCsvUrl} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -279,21 +289,30 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
 }
 
 function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
-  const { data: boardRes } = useSuspenseQuery(chainDeregistrationsQuery(win));
+  const { data: boardRes } = useSuspenseQuery(
+    chainDeregistrationsQuery(win, DEREGISTRATIONS_LIMIT),
+  );
   const subnetById = useSubnetById();
   const board = boardRes.data;
   const network = board.network;
+  const deregistrationsCsvUrl = buildUrl("/api/v1/chain/deregistrations", {
+    window: win,
+    limit: DEREGISTRATIONS_LIMIT,
+  });
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Deregistrations
-        </h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Neuron evictions ranked by subnet — raw NeuronDeregistered events over the selected
-          window.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Deregistrations
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Neuron evictions ranked by subnet — raw NeuronDeregistered events over the selected
+            window.
+          </p>
+        </div>
+        <DownloadCsvButton url={deregistrationsCsvUrl} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
