@@ -4,6 +4,7 @@ import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { classNames } from "@/lib/metagraphed/format";
 import { CopyableCode, SectionHeading } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { SettingsSummaryStrip } from "@/components/metagraphed/settings-summary-strip";
 import type {
   WebhookDeliveryStatus,
   WebhookSubscriptionCreated,
@@ -52,6 +53,8 @@ function describeApiError(error: unknown): string {
 export function WebhookSubscriptionManager() {
   return (
     <div className="space-y-8">
+      {/* #5346: KPI/status strip so Settings matches sibling utility-page weight. */}
+      <SettingsSummaryStrip />
       <CreateSubscriptionSection />
       <LookupSubscriptionSection />
       <DeleteSubscriptionSection />
