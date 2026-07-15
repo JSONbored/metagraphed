@@ -245,6 +245,21 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitads.json (reviewed_at 2026-06-08T20:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 17,
+      "slug": "sn-17",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T22:35:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.404.xyz/",
+        "https://github.com/404-Repo/404-gen-subnet",
+        "https://github.com/404-Repo/404-active-competition",
+        "https://gen.404.xyz/api/health",
+        "https://github.com/404-Repo/gateway-rs/blob/main/docs/api/client_api.md"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite the top-level fields already being set). Verified the official website, source repository, and the separate live 404-active-competition state repository; confirmed the gateway API's task-submission endpoints require x-api-key and the portal's docs/OpenAPI routes are deliberately disabled in production (HTTP 200, empty body) rather than missing."
+    },
+    {
       "netuid": 19,
       "slug": "sn-19",
       "decision": "maintainer-reviewed",
