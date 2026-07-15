@@ -7758,6 +7758,74 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
   });
 });
 
+describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.mjs)", () => {
+  // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
+  // in tests/sudo-key.test.mjs.
+  function withFetchStub(stub, fn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  test("resolves the sudo hotkey from a live RPC hit", async () => {
+    await withFetchStub(
+      async () => ({
+        ok: true,
+        json: async () => ({
+          jsonrpc: "2.0",
+          id: 1,
+          result: "0x" + "11".repeat(32), // a valid 32-byte AccountId32
+        }),
+      }),
+      async () => {
+        const { status, body } = await gql(
+          "{ sudo_key { schema_version hotkey queried_at } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.sudo_key;
+        assert.equal(r.schema_version, 1);
+        assert.equal(typeof r.hotkey, "string");
+        assert.ok(r.hotkey.length > 0);
+        assert.ok(r.queried_at);
+      },
+    );
+  });
+
+  test("RPC failure degrades hotkey to null, never a GraphQL error", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("network unreachable");
+      },
+      async () => {
+        const { status, body } = await gql(
+          "{ sudo_key { schema_version hotkey queried_at } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.sudo_key;
+        assert.equal(r.schema_version, 1);
+        assert.equal(r.hotkey, null);
+        assert.ok(r.queried_at);
+      },
+    );
+  });
+
+  test("a renounced sudo (null storage) resolves hotkey to null without error", async () => {
+    await withFetchStub(
+      async () => ({ ok: true, json: async () => ({ result: null }) }),
+      async () => {
+        const { status, body } = await gql("{ sudo_key { hotkey } }");
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.sudo_key.hotkey, null);
+      },
+    );
+  });
+});
+
 describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.mjs)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/subnet-recycled.test.mjs.

@@ -85,6 +85,7 @@ import { buildBlocksSummary } from "./blocks-summary.mjs";
 import { buildChainYield } from "./chain-yield.mjs";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.mjs";
+import { loadSudoKey } from "./sudo-key.mjs";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -329,6 +330,8 @@ export const SDL = `
     subnet_recycled(netuid: Int!): SubnetRecycled
     "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached, not the Postgres tier). balance_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/accounts/{ss58}/balance."
     account_balance(ss58: String!): AccountBalance
+    "The network's on-chain sudo (superuser) key hotkey, read live from chain via RPC (not the Postgres tier). hotkey is null on RPC failure or a renounced sudo, schema-stable, never a GraphQL error. Mirrors GET /api/v1/sudo/key."
+    sudo_key: SudoKey
   }
 
   type SubnetList {
@@ -1310,6 +1313,13 @@ export const SDL = `
     queried_at: String!
   }
 
+  "The network's on-chain sudo (superuser) key, read live from chain via RPC. hotkey is null on RPC failure or a renounced sudo (schema-stable). Mirrors GET /api/v1/sudo/key's data envelope."
+  type SudoKey {
+    schema_version: Int!
+    hotkey: String
+    queried_at: String!
+  }
+
   "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary."
   type BlocksSummary {
     schema_version: Int!
@@ -1944,6 +1954,7 @@ export const FIELD_COMPLEXITY = {
   registry_leaderboards: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_recycled: LIVE_RPC_FIELD_COMPLEXITY,
   account_balance: LIVE_RPC_FIELD_COMPLEXITY,
+  sudo_key: LIVE_RPC_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -4360,6 +4371,15 @@ const rootValue = {
     // loadAccountBalance always sets schema_version/ss58/queried_at
     // unconditionally, so no `??` fallback is needed for those.
     return loadAccountBalance(context.env, ss58);
+  },
+
+  async sudo_key(_args, context) {
+    // Live chain RPC, not the Postgres tier -- reuses loadSudoKey's own KV
+    // cache/TTL, matching REST's sudo/key handler exactly. hotkey stays null
+    // on RPC failure or a renounced sudo (schema-stable), never a GraphQL
+    // error. loadSudoKey always sets schema_version/queried_at
+    // unconditionally, so no `??` fallback is needed for those.
+    return loadSudoKey(context.env);
   },
 };
 
