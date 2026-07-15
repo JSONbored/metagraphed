@@ -98,6 +98,7 @@ import {
   GLOBAL_VALIDATOR_LIMIT_MAX,
   GLOBAL_VALIDATOR_SORTS,
   buildGlobalValidators,
+  buildNeuronDetail,
   buildValidatorDetail,
   overlayFeaturedValidators,
 } from "./metagraph-neurons.mjs";
@@ -154,6 +155,7 @@ import { loadAccountIdentityHistory } from "./account-identity-history.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import {
+  buildNeuronHistory,
   parseHistoryWindow,
   unsupportedWindowMessage,
 } from "./neuron-history.mjs";
@@ -297,6 +299,10 @@ export const SDL = `
     validator_nominators(hotkey: String!, window: String, sort: String): NominatorList!
     "One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history."
     validator_history(hotkey: String!, window: String): ValidatorHistory!
+    "One subnet neuron's latest snapshot by UID: hot/cold keys, stake, rank, trust, consensus, incentive, dividends, emission, validator permit, immunity, take, and axon, wrapped in the subnet's captured_at/block_number. The neuron field is null when that UID is not in the latest snapshot (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}."
+    neuron(netuid: Int!, uid: Int!): NeuronDetail!
+    "One subnet neuron's per-day history by UID: one point per snapshot_date (window: 7d/30d/90d/1y/all, default 30d), each a live-shaped neuron row plus that day's snapshot_date/captured_at/block_number, newest first. An unsupported window is a GraphQL error; a UID with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history."
+    neuron_history(netuid: Int!, uid: Int!, window: String): NeuronHistory!
     "Site-wide accounts leaderboard -- every currently-registered hotkey, aggregated cross-subnet from the current neurons snapshot. Mirrors GET /api/v1/accounts."
     accounts(sort: String, limit: Int): AccountList!
     "One account's cross-subnet event-history summary by ss58 address; an address with no matching account_events rows resolves to a schema-stable zero summary, never null. Mirrors GET /api/v1/accounts/{ss58}."
@@ -1540,6 +1546,70 @@ export const SDL = `
     validator_trust: Float
   }
 
+  "One neuron (UID) in a subnet's metagraph: hot/cold keys, stake, rank, trust, consensus, incentive, dividends, emission, validator permit, immunity, and axon (host:port or null). trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; take is the global 0..1 per-hotkey validator commission."
+  type Neuron {
+    uid: Int
+    hotkey: String
+    coldkey: String
+    active: Boolean
+    validator_permit: Boolean
+    rank: Float
+    trust: Float
+    validator_trust: Float
+    consensus: Float
+    incentive: Float
+    dividends: Float
+    emission_tao: Float
+    stake_tao: Float
+    registered_at_block: Int
+    is_immunity_period: Boolean
+    axon: String
+    take: Float
+  }
+
+  "One subnet neuron's latest snapshot by UID, wrapped in the subnet's captured_at/block_number. The neuron field is null when that UID is not in the latest snapshot. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}."
+  type NeuronDetail {
+    schema_version: Int!
+    netuid: Int!
+    captured_at: String
+    block_number: Int
+    neuron: Neuron
+  }
+
+  "One subnet neuron's per-day time series by UID. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history."
+  type NeuronHistory {
+    schema_version: Int!
+    netuid: Int!
+    uid: Int!
+    window: String
+    point_count: Int!
+    points: [NeuronHistoryPoint!]!
+  }
+
+  "One day's snapshot for a neuron UID: the live-shaped neuron row (same fields as Neuron) plus that day's snapshot_date/captured_at/block_number."
+  type NeuronHistoryPoint {
+    snapshot_date: String!
+    captured_at: String
+    block_number: Int
+    uid: Int
+    hotkey: String
+    coldkey: String
+    active: Boolean
+    validator_permit: Boolean
+    rank: Float
+    trust: Float
+    validator_trust: Float
+    consensus: Float
+    incentive: Float
+    dividends: Float
+    emission_tao: Float
+    stake_tao: Float
+    registered_at_block: Int
+    is_immunity_period: Boolean
+    axon: String
+    take: Float
+  }
+
   "Self-reported on-chain identity (SubtensorModule::set_identity) for a coldkey."
   type Identity {
     has_identity: Boolean!
@@ -2008,6 +2078,10 @@ export const FIELD_COMPLEXITY = {
   validators: RELATIONSHIP_FIELD_COMPLEXITY,
   validator: RELATIONSHIP_FIELD_COMPLEXITY,
   validator_history: RELATIONSHIP_FIELD_COMPLEXITY,
+  // A single latest-only detail row, priced with the other per-subnet reads.
+  neuron: RELATIONSHIP_FIELD_COMPLEXITY,
+  // Paginated fan-out: one neuron row per recorded snapshot_date.
+  neuron_history: RELATIONSHIP_FIELD_COMPLEXITY,
   accounts: RELATIONSHIP_FIELD_COMPLEXITY,
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   account_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3542,6 +3616,67 @@ const rootValue = {
     return {
       schema_version: data.schema_version ?? 1,
       hotkey: data.hotkey ?? hotkey,
+      window: data.window ?? label,
+      point_count: data.point_count ?? 0,
+      points: data.points || [],
+    };
+  },
+
+  async neuron({ netuid, uid }, context) {
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronDetail(null, ...)
+    // fallback contract handleNeuron / the get_neuron MCP tool use: a UID absent
+    // from the latest snapshot (or a cold tier) is a schema-stable envelope with
+    // neuron:null, never a GraphQL error. A malformed tier body degrades to the
+    // same zeroed envelope the same way validator_history's `?? 1` guards degrade
+    // a partial upstream body.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/neurons/${uid}`,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildNeuronDetail(null, netuid);
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      captured_at: data.captured_at ?? null,
+      block_number: data.block_number ?? null,
+      neuron: data.neuron ?? null,
+    };
+  },
+
+  async neuron_history({ netuid, uid, window }, context) {
+    // Same parseHistoryWindow REST's handleNeuronHistory / the get_neuron_history
+    // MCP tool use, so accepted window labels (7d/30d/90d/1y/all, default 30d)
+    // match exactly; an unsupported window is a GraphQL error, never a silently
+    // substituted default.
+    const { label, error } = parseHistoryWindow(window);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("window", label);
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronHistory([])
+    // fallback contract handleNeuronHistory uses; a UID with no neuron_daily rows
+    // in the window is a schema-stable empty-points card, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/neurons/${uid}/history`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildNeuronHistory([], netuid, uid, { window: label });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      uid: data.uid ?? uid,
       window: data.window ?? label,
       point_count: data.point_count ?? 0,
       points: data.points || [],
