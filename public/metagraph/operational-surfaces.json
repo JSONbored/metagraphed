@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 204,
+  "surface_count": 205,
   "surfaces": [
     {
       "auth_required": false,
@@ -1019,6 +1019,24 @@
       "surface_id": "sn-11-trajectoryrl-subnet-api",
       "surface_key": "srf-fb2d84726c2ab7c6",
       "url": "https://trajrl.com/api/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 12,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
+      "public_safe": true,
+      "subnet_name": "Compute Horde",
+      "subnet_slug": "sn-12",
+      "surface_id": "sn-12-computehorde-collateral-abi",
+      "surface_key": "srf-8b567d64fac472c2",
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/ComputeHorde/master/validator/app/src/compute_horde_validator/validator/collateral_abi.json"
     },
     {
       "auth_required": false,

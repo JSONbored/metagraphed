@@ -23,7 +23,7 @@
   "dashboard_url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12",
   "name": "Compute Horde",
   "netuid": 12,
-  "notes": "Reviewed overlay for SN12 using the official Compute Horde website/source repository and the project-linked Grafana metagraph dashboard. No safe public subnet API/OpenAPI surface is verified yet.",
+  "notes": "Reviewed overlay for SN12 using the official Compute Horde website/source repository and the project-linked Grafana metagraph dashboard. No safe public subnet API/OpenAPI surface is verified yet; no docs subdomain found either (docs.computehorde.io unresolvable, /docs 404s). Two community-submitted surfaces (sdk, collateral-abi) had no probe config at all -- the same registry-wide gap tracked in #5932 -- confirmed live and given probe configs matching sibling conventions elsewhere in the registry.",
   "schema_version": 1,
   "slug": "sn-12",
   "source_repo": "https://github.com/backend-developers-ltd/ComputeHorde",
@@ -100,6 +100,12 @@
       "kind": "sdk",
       "name": "Compute Horde Python SDK",
       "notes": "Official Python SDK (pip install compute-horde-sdk, module compute_horde_sdk.v1) for submitting organic compute jobs to the SN12 Compute Horde subnet, developed and published from the subnet's registered source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "compute-horde",
       "public_safe": true,
       "review": {
@@ -118,6 +124,12 @@
       "kind": "data-artifact",
       "name": "ComputeHorde collateral contract ABI",
       "notes": "Public no-auth machine-readable JSON ABI for ComputeHorde's on-chain collateral smart contract, committed in the official backend-developers-ltd/ComputeHorde source repository (whose README declares \"Subnet 12 of Bittensor\"). The contract carries a NETUID accessor plus the deposit / reclaim / finalizeReclaim / collaterals interface that SN12 miners and validators use for the subnet's economic-security collateral flow — a standalone machine-readable reference artifact the registry did not yet capture.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "compute-horde",
       "public_safe": true,
       "review": {
