@@ -43,6 +43,8 @@ jobs:
         with:
           node-version: 24.18.0
           registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Validate release version
         env:
