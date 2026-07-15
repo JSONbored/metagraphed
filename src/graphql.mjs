@@ -82,6 +82,7 @@ import {
   buildGlobalHealth,
   formatLeaderboards,
   LEADERBOARD_BOARDS,
+  loadSubnetTrajectory,
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
@@ -280,6 +281,8 @@ export const SDL = `
     subnet_concentration_history(netuid: Int!, window: String): SubnetConcentrationHistory!
     "Append-only on-chain SubnetIdentitiesV3 change timeline for one subnet (name, symbol, description, repo, website, discord, logo), newest first; page with limit/offset or follow next_cursor. A subnet with no matching events resolves to a schema-stable empty timeline (entry_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/identity-history."
     subnet_identity_history(netuid: Int!, limit: Int, offset: Int, cursor: String): SubnetIdentityHistory!
+    "One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory."
+    subnet_trajectory(netuid: Int!): SubnetTrajectory!
     "Paginated provider/source registry."
     providers(limit: Int, cursor: String): ProviderList!
     "One provider with its subnets."
@@ -1060,6 +1063,46 @@ export const SDL = `
     offset: Int
     next_cursor: String
     entries: [SubnetIdentityHistoryEntry!]!
+  }
+
+  "One subnet's weekly structural + economics trajectory from the daily snapshots (#5887). Mirrors GET /api/v1/subnets/{netuid}/trajectory's data envelope. The REST envelope's window-keyed deltas map (7d/30d) is exposed here as a list carrying each window label, since those keys are not valid GraphQL field names."
+  type SubnetTrajectory {
+    schema_version: Int!
+    netuid: Int!
+    point_count: Int!
+    points: [SubnetTrajectoryPoint!]!
+    "Latest-vs-window-ago deltas -- one entry per window (7d, 30d) that has a prior point to compare against; empty when the series is too short."
+    deltas: [SubnetTrajectoryDelta!]!
+  }
+
+  "One daily-snapshot point on a subnet's trajectory (chronological). Economics fields are null on rows captured before those columns existed / when economics was unavailable that day."
+  type SubnetTrajectoryPoint {
+    date: String
+    completeness_score: Int
+    surface_count: Int
+    endpoint_count: Int
+    validator_count: Int
+    miner_count: Int
+    total_stake_tao: Float
+    alpha_price_tao: Float
+    emission_share: Float
+    tao_in_pool_tao: Float
+    alpha_in_pool: Float
+    alpha_out_pool: Float
+    subnet_volume_tao: Float
+  }
+
+  "Change in a subnet's key metrics over a trailing window (latest point minus the point at-or-before the window start). Pool-reserve deltas double as the net TAO/alpha flow over the window."
+  type SubnetTrajectoryDelta {
+    window: String!
+    from_date: String
+    to_date: String
+    completeness_score: Int
+    surface_count: Int
+    endpoint_count: Int
+    tao_in_pool_tao: Float
+    alpha_in_pool: Float
+    alpha_out_pool: Float
   }
 
   "One SubnetIdentitiesV3 snapshot recorded when a tracked identity field changed."
@@ -2319,6 +2362,7 @@ export const FIELD_COMPLEXITY = {
   subnet_concentration: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_concentration_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_trajectory: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   runtime: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2917,6 +2961,30 @@ const rootValue = {
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
       entries: data.entries ?? [],
+    };
+  },
+
+  async subnet_trajectory({ netuid }, context) {
+    // Same tryPostgresTier(METAGRAPH_SUBNET_SNAPSHOTS_SOURCE) -> loadSubnetTrajectory
+    // fallback contract handleTrajectory uses; a subnet with no daily snapshots is
+    // a schema-stable empty trajectory, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, `/api/v1/subnets/${netuid}/trajectory`),
+        "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
+      )) ?? (await loadSubnetTrajectory(graphqlD1(context), netuid));
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      point_count: data.point_count ?? 0,
+      points: data.points ?? [],
+      // The REST envelope keys deltas by window ("7d"/"30d") -- names that
+      // aren't valid GraphQL fields -- so flatten to a list carrying the label,
+      // dropping windows with no comparable prior point (null delta).
+      deltas: Object.entries(data.deltas ?? {})
+        .filter(([, delta]) => delta != null)
+        .map(([window, delta]) => ({ window, ...delta })),
     };
   },
 

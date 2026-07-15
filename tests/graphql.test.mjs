@@ -3125,6 +3125,145 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
   });
 });
 
+describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback)", () => {
+  const trajectoryQuery = `{ subnet_trajectory(netuid: 3) {
+    schema_version netuid point_count
+    points { date completeness_score surface_count total_stake_tao }
+    deltas { window from_date to_date completeness_score tao_in_pool_tao }
+  } }`;
+
+  // loadSubnetTrajectory issues a single SELECT over subnet_snapshots (no GROUP
+  // BY); formatTrajectory re-sorts ascending and derives the 7d/30d deltas.
+  function trajectoryD1(rows = []) {
+    return {
+      prepare() {
+        return {
+          bind() {
+            return {
+              async all() {
+                return { results: rows };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  const P1 = {
+    date: "2026-07-01",
+    completeness_score: 50,
+    surface_count: 4,
+    endpoint_count: 2,
+    validator_count: null,
+    miner_count: null,
+    total_stake_tao: 100,
+    alpha_price_tao: null,
+    emission_share: null,
+    tao_in_pool_tao: 10,
+    alpha_in_pool: null,
+    alpha_out_pool: null,
+    subnet_volume_tao: null,
+  };
+  const P2 = {
+    ...P1,
+    date: "2026-07-08",
+    completeness_score: 60,
+    tao_in_pool_tao: 15,
+  };
+
+  test("cold store: schema-stable empty trajectory", async () => {
+    const { status, body } = await gql(trajectoryQuery);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_trajectory, {
+      schema_version: 1,
+      netuid: 3,
+      point_count: 0,
+      points: [],
+      deltas: [],
+    });
+  });
+
+  test("resolves Postgres-tier data and flattens the window-keyed deltas map to a labelled list", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: 3,
+            point_count: 2,
+            points: [P1, P2],
+            deltas: {
+              "7d": {
+                from_date: "2026-07-01",
+                to_date: "2026-07-08",
+                completeness_score: 10,
+                surface_count: 0,
+                endpoint_count: 0,
+                tao_in_pool_tao: 5,
+                alpha_in_pool: null,
+                alpha_out_pool: null,
+              },
+              "30d": null,
+            },
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(trajectoryQuery, env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/subnets/3/trajectory");
+    assert.equal(body.data.subnet_trajectory.point_count, 2);
+    assert.equal(body.data.subnet_trajectory.points[0].date, "2026-07-01");
+    assert.equal(body.data.subnet_trajectory.points[1].completeness_score, 60);
+    // The window-keyed map becomes a list; the null 30d entry is dropped and
+    // the 7d entry carries its label.
+    assert.equal(body.data.subnet_trajectory.deltas.length, 1);
+    assert.equal(body.data.subnet_trajectory.deltas[0].window, "7d");
+    assert.equal(body.data.subnet_trajectory.deltas[0].completeness_score, 10);
+    assert.equal(body.data.subnet_trajectory.deltas[0].tao_in_pool_tao, 5);
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty trajectory", async () => {
+    const env = {
+      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(trajectoryQuery, env);
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet_trajectory.point_count, 0);
+    assert.deepEqual(body.data.subnet_trajectory.points, []);
+    assert.deepEqual(body.data.subnet_trajectory.deltas, []);
+  });
+
+  test("no Postgres tier flag: formats the subnet_snapshots rows straight off D1, deriving deltas", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: trajectoryD1([
+        { ...P2, snapshot_date: P2.date },
+        { ...P1, snapshot_date: P1.date },
+      ]),
+    };
+    const { status, body } = await gql(trajectoryQuery, env);
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet_trajectory.point_count, 2);
+    // formatTrajectory re-sorts ascending, so the earliest point is first.
+    assert.equal(body.data.subnet_trajectory.points[0].date, "2026-07-01");
+    assert.equal(body.data.subnet_trajectory.points[1].completeness_score, 60);
+    const d7 = body.data.subnet_trajectory.deltas.find(
+      (d) => d.window === "7d",
+    );
+    assert.ok(d7);
+    assert.equal(d7.completeness_score, 10);
+  });
+
+  test("subnet_trajectory is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_trajectory, 5);
+  });
+});
+
 describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty timeline fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
