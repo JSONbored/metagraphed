@@ -5797,6 +5797,105 @@ describe("MCP call_rpc", () => {
   });
 });
 
+describe("MCP query_graphql (#5591 — GraphQL bridge tool)", () => {
+  test("executes a query and returns { data, errors }", async () => {
+    const res = await callTool("query_graphql", { query: "{ __typename }" });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.deepEqual(out, { data: { __typename: "Query" }, errors: [] });
+  });
+
+  test("passes GraphQL variables through to the query", async () => {
+    const res = await callTool("query_graphql", {
+      query:
+        "query Q($netuid: Int!) { subnet_serving(netuid: $netuid) { netuid schema_version } }",
+      variables: { netuid: 7 },
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.deepEqual(out.errors, []);
+    // Cold env (no Postgres flag) -> the resolver's schema-stable zeroed card.
+    assert.equal(out.data.subnet_serving.netuid, 7);
+    assert.equal(out.data.subnet_serving.schema_version, 1);
+  });
+
+  test("surfaces GraphQL validation errors as a populated errors[] (never bypassing the schema)", async () => {
+    const res = await callTool("query_graphql", {
+      query: "{ definitely_not_a_real_field }",
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.equal(out.data, null);
+    assert.ok(Array.isArray(out.errors) && out.errors.length > 0);
+  });
+
+  test("a query that exceeds the complexity cap is rejected, proving the cap is reused", async () => {
+    // 11 aliased relationship fields (weight 5 each = 55) trip
+    // GRAPHQL_MAX_COMPLEXITY (50); the shared handler's maxComplexityRule
+    // rejects it, so the bridge can't bypass the GraphQL-side protection.
+    const aliases = Array.from(
+      { length: 11 },
+      (_unused, i) => `a${i}: subnet_serving(netuid: ${i}) { netuid }`,
+    ).join(" ");
+    const res = await callTool("query_graphql", { query: `{ ${aliases} }` });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.ok(Array.isArray(out.errors) && out.errors.length > 0);
+    assert.ok(/complex/i.test(JSON.stringify(out.errors)));
+  });
+
+  test("surfaces a non-2xx handler response (oversized query -> 413) as { data: null, errors[] }, never thrown", async () => {
+    // Pins the invariant the handler relies on: every handleGraphQLRequest path,
+    // including the non-2xx query-too-large (>16KB) response, returns a JSON
+    // errors[] body -- so the bridge shapes it into { data, errors } rather than
+    // throwing or dropping the error detail.
+    // Padded with a GraphQL comment (non-whitespace, so requireString's trim
+    // leaves it) to exceed GRAPHQL_MAX_QUERY_BYTES (16KB) -> the handler's 413.
+    const oversized = `{ __typename }\n#${"x".repeat(17000)}`;
+    const res = await callTool("query_graphql", { query: oversized });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.equal(out.data, null);
+    assert.ok(Array.isArray(out.errors) && out.errors.length > 0);
+    assert.ok(/too large/i.test(JSON.stringify(out.errors)));
+  });
+
+  test("applies the GraphQL rate limiter, surfacing a throttle as an error (never bypassing it)", async () => {
+    // A saturated RPC_RATE_LIMITER makes graphqlRateLimited return its 429, so
+    // the bridge is throttled identically to the REST route rather than
+    // bypassing the GraphQL-specific per-client limit.
+    // Saturate only the GraphQL bucket (key `gql:*`); the MCP-dispatch limiter
+    // uses a different key and must still pass so the request reaches the tool.
+    const env = {
+      RPC_RATE_LIMITER: {
+        limit: async ({ key }) => ({ success: !key.startsWith("gql:") }),
+      },
+    };
+    const res = await callTool(
+      "query_graphql",
+      { query: "{ __typename }" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(/too many|rate/i.test(res.body.result.content[0].text));
+  });
+
+  test("requires a non-empty query string", async () => {
+    const res = await callTool("query_graphql", { query: "   " });
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("query"));
+  });
+
+  test("rejects a non-object variables argument", async () => {
+    const res = await callTool("query_graphql", {
+      query: "{ __typename }",
+      variables: [1, 2, 3],
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("variables"));
+  });
+});
+
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
