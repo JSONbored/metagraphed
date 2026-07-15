@@ -21,7 +21,7 @@
   "dashboard_url": "https://taomarketcap.com/subnets/21",
   "name": "AdTAO",
   "netuid": 21,
-  "notes": "Reviewed overlay for SN21 using the official AdTAO website and source repository.",
+  "notes": "Reviewed overlay for SN21 using the official AdTAO website and source repository. 1 community-submitted surface (training-episodes) had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. Diffed the tracked validator OpenAPI schema (16 paths) against tracked surfaces: /training/episodes, /training/summary, and /v1/registration-status all require a caller-identifying request header per the schema (confirmed live: 422 without it), not public; the /v1/epochs/* routes are parameterized by epoch_id with no stable canonical value. Not tracked: two internal debug endpoints (/debug/memory, /debug/tracemalloc) are unexpectedly public (200, no auth) but only expose Python process memory/GC stats -- no secrets or PII, low-value reconnaissance only, not the kind of intentional public product surface this registry curates.",
   "schema_version": 1,
   "slug": "sn-21",
   "social": {
@@ -126,6 +126,12 @@
       "kind": "data-artifact",
       "name": "AdTAO training episodes sample dataset",
       "notes": "Public no-auth JSON dataset of bundled sample prediction episodes (account state, action context, and known outcomes) published in the official SN21 AdTAO source repository at data/training/. Documented in the repo README as the bundled sample data (10 episodes with known outcomes) and consumed by scripts/train_example_model.py for local baseline-model training.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "adtao",
       "public_safe": true,
       "review": {

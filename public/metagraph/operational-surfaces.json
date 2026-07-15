@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 231,
+  "surface_count": 232,
   "surfaces": [
     {
       "auth_required": false,
@@ -1793,6 +1793,24 @@
       "surface_id": "sn-20-taomarketcap-subnet-api",
       "surface_key": "srf-ebe7ad3af0b78382",
       "url": "https://api.taomarketcap.com/public/v1/subnets/20"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 21,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "subnet_name": "AdTAO",
+      "subnet_slug": "sn-21",
+      "surface_id": "sn-21-adtao-training-episodes",
+      "surface_key": "srf-6fd24e82ee2745e0",
+      "url": "https://raw.githubusercontent.com/ippcteam/SN21-adtao/main/data/training/training_episodes.json"
     },
     {
       "auth_required": false,
