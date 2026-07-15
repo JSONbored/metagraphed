@@ -14,6 +14,7 @@ import {
   Activity,
   ArrowRightLeft,
   Bot,
+  Braces,
   Compass,
   Copy,
   ExternalLink,
@@ -115,6 +116,13 @@ const ROUTE_INDEX: Array<{
     to: "/schemas",
     hint: "OpenAPI, contracts, drift",
     icon: FileJson,
+    scope: "route",
+  },
+  {
+    label: "GraphQL",
+    to: "/graphql",
+    hint: "Schema, root queries, limits",
+    icon: Braces,
     scope: "route",
   },
   {

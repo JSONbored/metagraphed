@@ -363,6 +363,7 @@ function SiteFooter() {
           <FooterLink to="/health">Health</FooterLink>
           <FooterLink to="/status">Status</FooterLink>
           <FooterLink to="/schemas">Schemas</FooterLink>
+          <FooterLink to="/graphql">GraphQL</FooterLink>
           <FooterLink to="/gaps">Gaps</FooterLink>
           <FooterLink to="/agents">For agents</FooterLink>
           <FooterLink to="/about">About</FooterLink>

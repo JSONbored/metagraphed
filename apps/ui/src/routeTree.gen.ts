@@ -15,6 +15,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SchemasRouteImport } from './routes/schemas'
 import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
 import { Route as HealthRouteImport } from './routes/health'
+import { Route as GraphqlRouteImport } from './routes/graphql'
 import { Route as GapsRouteImport } from './routes/gaps'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as EndpointsRouteImport } from './routes/endpoints'
@@ -65,6 +66,11 @@ const LeaderboardsRoute = LeaderboardsRouteImport.update({
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GraphqlRoute = GraphqlRouteImport.update({
+  id: '/graphql',
+  path: '/graphql',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GapsRoute = GapsRouteImport.update({
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
+  '/graphql': typeof GraphqlRoute
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/schemas': typeof SchemasRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
+  '/graphql': typeof GraphqlRoute
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/schemas': typeof SchemasRoute
@@ -239,6 +247,7 @@ export interface FileRoutesById {
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
+  '/graphql': typeof GraphqlRoute
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/schemas': typeof SchemasRoute
@@ -270,6 +279,7 @@ export interface FileRouteTypes {
     | '/endpoints'
     | '/explorer'
     | '/gaps'
+    | '/graphql'
     | '/health'
     | '/leaderboards'
     | '/schemas'
@@ -299,6 +309,7 @@ export interface FileRouteTypes {
     | '/endpoints'
     | '/explorer'
     | '/gaps'
+    | '/graphql'
     | '/health'
     | '/leaderboards'
     | '/schemas'
@@ -328,6 +339,7 @@ export interface FileRouteTypes {
     | '/endpoints'
     | '/explorer'
     | '/gaps'
+    | '/graphql'
     | '/health'
     | '/leaderboards'
     | '/schemas'
@@ -358,6 +370,7 @@ export interface RootRouteChildren {
   EndpointsRoute: typeof EndpointsRoute
   ExplorerRoute: typeof ExplorerRoute
   GapsRoute: typeof GapsRoute
+  GraphqlRoute: typeof GraphqlRoute
   HealthRoute: typeof HealthRoute
   LeaderboardsRoute: typeof LeaderboardsRoute
   SchemasRoute: typeof SchemasRoute
@@ -423,6 +436,13 @@ declare module '@tanstack/react-router' {
       path: '/health'
       fullPath: '/health'
       preLoaderRoute: typeof HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graphql': {
+      id: '/graphql'
+      path: '/graphql'
+      fullPath: '/graphql'
+      preLoaderRoute: typeof GraphqlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gaps': {
@@ -582,6 +602,7 @@ const rootRouteChildren: RootRouteChildren = {
   EndpointsRoute: EndpointsRoute,
   ExplorerRoute: ExplorerRoute,
   GapsRoute: GapsRoute,
+  GraphqlRoute: GraphqlRoute,
   HealthRoute: HealthRoute,
   LeaderboardsRoute: LeaderboardsRoute,
   SchemasRoute: SchemasRoute,
