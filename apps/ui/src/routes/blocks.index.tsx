@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { ChevronLeft, ChevronRight, Timer, Activity, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Timer, Activity, Users, SlidersHorizontal } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -28,7 +28,8 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { blocksQuery, blocksSummaryQuery, chainActivityQuery } from "@/lib/metagraphed/queries";
-import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
+import { activeFilterCount, filterToggleLabel } from "@/lib/metagraphed/filter-disclosure";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { nakamotoTone } from "@/lib/metagraphed/network-decentralization";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -236,73 +237,108 @@ function BlocksTable() {
     search.min_events,
   );
 
+  const activeCount = activeFilterCount([
+    search.author,
+    search.spec_version,
+    search.block_start,
+    search.block_end,
+    search.min_extrinsics,
+    search.min_events,
+  ]);
+  // Six placeholder-only inputs stacked to ~a full 375px screen before any block
+  // row was visible (#5323). Collapse them behind a toggle on mobile — open by
+  // default when a filter is already applied (e.g. a shared URL), so the reason
+  // the list is narrowed is never hidden.
+  const [filtersOpen, setFiltersOpen] = useState(activeCount > 0);
+
   const filters = (
     <>
-      <span
-        className="font-mono text-[11px] text-ink-muted whitespace-nowrap"
-        title="Blocks are listed newest first"
+      <button
+        type="button"
+        onClick={() => setFiltersOpen((open) => !open)}
+        aria-expanded={filtersOpen}
+        aria-controls="blocks-filter-fields"
+        className="md:hidden inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-2.5 font-mono text-[11px] text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors"
       >
-        <span aria-hidden="true">↓ </span>Newest first
-      </span>
-      <SearchInput
-        value={search.author}
-        onChange={(v) => setSearch({ author: v, offset: 0 })}
-        placeholder="Author ss58…"
-      />
-      <SearchInput
-        value={search.spec_version}
-        onChange={(v) => setSearch({ spec_version: v, offset: 0 })}
-        placeholder="Spec version…"
-        inputMode="numeric"
-        className="min-w-[120px] max-w-[140px] flex-none"
-      />
-      <SearchInput
-        value={search.block_start}
-        onChange={(v) => setSearch({ block_start: v, offset: 0 })}
-        placeholder="Block from…"
-        inputMode="numeric"
-        className="min-w-[120px] max-w-[140px] flex-none"
-      />
-      <SearchInput
-        value={search.block_end}
-        onChange={(v) => setSearch({ block_end: v, offset: 0 })}
-        placeholder="Block to…"
-        inputMode="numeric"
-        className="min-w-[120px] max-w-[140px] flex-none"
-      />
-      <SearchInput
-        value={search.min_extrinsics}
-        onChange={(v) => setSearch({ min_extrinsics: v, offset: 0 })}
-        placeholder="Min extrinsics…"
-        inputMode="numeric"
-        className="min-w-[120px] max-w-[140px] flex-none"
-      />
-      <SearchInput
-        value={search.min_events}
-        onChange={(v) => setSearch({ min_events: v, offset: 0 })}
-        placeholder="Min events…"
-        inputMode="numeric"
-        className="min-w-[120px] max-w-[140px] flex-none"
-      />
-      <PageSizeSelect
-        value={search.limit}
-        onChange={(n) => setSearch({ limit: n, offset: 0 })}
-        options={[10, 25, 50, 100]}
-      />
-      <ResetFiltersButton
-        active={filtersActive}
-        onReset={() =>
-          setSearch({
-            author: "",
-            spec_version: "",
-            block_start: "",
-            block_end: "",
-            min_extrinsics: "",
-            min_events: "",
-            offset: 0,
-          })
-        }
-      />
+        <SlidersHorizontal className="size-3" aria-hidden="true" />
+        {filterToggleLabel(activeCount)}
+      </button>
+      {/* `md:contents` dissolves this wrapper at md and up, so the fields lay out
+          as direct children of the filter bar exactly as they did before — the
+          collapse is mobile-only. */}
+      <div
+        id="blocks-filter-fields"
+        className={classNames(
+          "w-full flex-wrap items-center gap-2 md:contents",
+          filtersOpen ? "flex" : "hidden",
+        )}
+      >
+        <span
+          className="font-mono text-[11px] text-ink-muted whitespace-nowrap"
+          title="Blocks are listed newest first"
+        >
+          <span aria-hidden="true">↓ </span>Newest first
+        </span>
+        <SearchInput
+          value={search.author}
+          onChange={(v) => setSearch({ author: v, offset: 0 })}
+          placeholder="Author ss58…"
+        />
+        <SearchInput
+          value={search.spec_version}
+          onChange={(v) => setSearch({ spec_version: v, offset: 0 })}
+          placeholder="Spec version…"
+          inputMode="numeric"
+          className="min-w-[120px] max-w-[140px] flex-none"
+        />
+        <SearchInput
+          value={search.block_start}
+          onChange={(v) => setSearch({ block_start: v, offset: 0 })}
+          placeholder="Block from…"
+          inputMode="numeric"
+          className="min-w-[120px] max-w-[140px] flex-none"
+        />
+        <SearchInput
+          value={search.block_end}
+          onChange={(v) => setSearch({ block_end: v, offset: 0 })}
+          placeholder="Block to…"
+          inputMode="numeric"
+          className="min-w-[120px] max-w-[140px] flex-none"
+        />
+        <SearchInput
+          value={search.min_extrinsics}
+          onChange={(v) => setSearch({ min_extrinsics: v, offset: 0 })}
+          placeholder="Min extrinsics…"
+          inputMode="numeric"
+          className="min-w-[120px] max-w-[140px] flex-none"
+        />
+        <SearchInput
+          value={search.min_events}
+          onChange={(v) => setSearch({ min_events: v, offset: 0 })}
+          placeholder="Min events…"
+          inputMode="numeric"
+          className="min-w-[120px] max-w-[140px] flex-none"
+        />
+        <PageSizeSelect
+          value={search.limit}
+          onChange={(n) => setSearch({ limit: n, offset: 0 })}
+          options={[10, 25, 50, 100]}
+        />
+        <ResetFiltersButton
+          active={filtersActive}
+          onReset={() =>
+            setSearch({
+              author: "",
+              spec_version: "",
+              block_start: "",
+              block_end: "",
+              min_extrinsics: "",
+              min_events: "",
+              offset: 0,
+            })
+          }
+        />
+      </div>
     </>
   );
 

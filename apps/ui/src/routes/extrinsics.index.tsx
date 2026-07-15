@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -28,7 +28,8 @@ import {
   Sparkline,
 } from "@jsonbored/ui-kit";
 import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
-import { formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { activeFilterCount, filterToggleLabel } from "@/lib/metagraphed/filter-disclosure";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
@@ -198,49 +199,79 @@ function ExtrinsicsTable() {
     search.signer || search.call_module || search.call_function || search.success,
   );
 
+  const activeCount = activeFilterCount([
+    search.signer,
+    search.call_module,
+    search.call_function,
+    search.success,
+  ]);
+  // Same treatment as /blocks (#5323) — a lighter four-filter bar, but it still
+  // pushed the first extrinsic row down on a 375px viewport.
+  const [filtersOpen, setFiltersOpen] = useState(activeCount > 0);
+
   const filters = (
     <>
-      <SearchInput
-        value={search.signer}
-        onChange={(v) => setSearch({ signer: v, offset: 0 })}
-        placeholder="Signer ss58…"
-      />
-      <SearchInput
-        value={search.call_module}
-        onChange={(v) => setSearch({ call_module: v, offset: 0 })}
-        placeholder="Call module…"
-      />
-      <SearchInput
-        value={search.call_function}
-        onChange={(v) => setSearch({ call_function: v, offset: 0 })}
-        placeholder="Call function…"
-      />
-      <SelectFilter
-        label="Result"
-        value={search.success}
-        onChange={(v) => setSearch({ success: v, offset: 0 })}
-        options={[
-          { value: "true", label: "ok" },
-          { value: "false", label: "fail" },
-        ]}
-      />
-      <PageSizeSelect
-        value={search.limit}
-        onChange={(n) => setSearch({ limit: n, offset: 0 })}
-        options={[10, 25, 50, 100]}
-      />
-      <ResetFiltersButton
-        active={filtersActive}
-        onReset={() =>
-          setSearch({
-            signer: "",
-            call_module: "",
-            call_function: "",
-            success: "",
-            offset: 0,
-          })
-        }
-      />
+      <button
+        type="button"
+        onClick={() => setFiltersOpen((open) => !open)}
+        aria-expanded={filtersOpen}
+        aria-controls="extrinsics-filter-fields"
+        className="md:hidden inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-2.5 font-mono text-[11px] text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors"
+      >
+        <SlidersHorizontal className="size-3" aria-hidden="true" />
+        {filterToggleLabel(activeCount)}
+      </button>
+      {/* `md:contents` dissolves this wrapper at md and up, so the fields lay out
+          as direct children of the filter bar exactly as they did before. */}
+      <div
+        id="extrinsics-filter-fields"
+        className={classNames(
+          "w-full flex-wrap items-center gap-2 md:contents",
+          filtersOpen ? "flex" : "hidden",
+        )}
+      >
+        <SearchInput
+          value={search.signer}
+          onChange={(v) => setSearch({ signer: v, offset: 0 })}
+          placeholder="Signer ss58…"
+        />
+        <SearchInput
+          value={search.call_module}
+          onChange={(v) => setSearch({ call_module: v, offset: 0 })}
+          placeholder="Call module…"
+        />
+        <SearchInput
+          value={search.call_function}
+          onChange={(v) => setSearch({ call_function: v, offset: 0 })}
+          placeholder="Call function…"
+        />
+        <SelectFilter
+          label="Result"
+          value={search.success}
+          onChange={(v) => setSearch({ success: v, offset: 0 })}
+          options={[
+            { value: "true", label: "ok" },
+            { value: "false", label: "fail" },
+          ]}
+        />
+        <PageSizeSelect
+          value={search.limit}
+          onChange={(n) => setSearch({ limit: n, offset: 0 })}
+          options={[10, 25, 50, 100]}
+        />
+        <ResetFiltersButton
+          active={filtersActive}
+          onReset={() =>
+            setSearch({
+              signer: "",
+              call_module: "",
+              call_function: "",
+              success: "",
+              offset: 0,
+            })
+          }
+        />
+      </div>
     </>
   );
 
