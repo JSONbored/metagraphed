@@ -2,7 +2,16 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Compass, Github, Menu, Rss, Webhook } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  Github,
+  Menu,
+  Rss,
+  Search,
+  Webhook,
+} from "lucide-react";
 import {
   API_BASE,
   DEFAULT_DISCORD_URL,
@@ -141,6 +150,21 @@ export function AppShell({ children }: { children: ReactNode }) {
               <NavMegaMenu />
               <div className="flex-1 min-w-0 flex justify-end">
                 <NavOmnibox onOpenPalette={() => setPaletteOpen(true)} />
+                {/* Below md the omnibox is hidden (#5034), which left the palette
+                    reachable only via ⌘K / Ctrl+K / "/" — none of which exist on a
+                    touch device, so mobile had no way into global search at all.
+                    This is that missing entry point: same setPaletteOpen the
+                    keyboard shortcuts use, shown exactly where the omnibox isn't
+                    (#5319). */}
+                <button
+                  type="button"
+                  onClick={() => setPaletteOpen(true)}
+                  aria-label="Open search"
+                  title="Search"
+                  className="md:hidden inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                >
+                  <Search className="size-4" aria-hidden="true" />
+                </button>
               </div>
               <div className="flex items-center gap-1">
                 <ApiDrawerTrigger />
