@@ -109,7 +109,10 @@ import {
   DEFAULT_ACCOUNTS_LIST_SORT,
   buildAccountsList,
 } from "./accounts-list.mjs";
-import { buildAccountSummary } from "./account-events.mjs";
+import {
+  buildAccountSummary,
+  buildAccountTransfers,
+} from "./account-events.mjs";
 import {
   DEFAULT_PROMETHEUS_WINDOW,
   PROMETHEUS_WINDOWS,
@@ -310,6 +313,8 @@ export const SDL = `
     account_registrations(ss58: String!, window: String): AccountRegistrations!
     "One account's per-subnet deregistration footprint over a 7d/30d/90d window (default 30d): NeuronDeregistered count and first/last timestamps per subnet, an HHI concentration of where its deregistration activity is focused, and the dominant subnet; an address with no deregistrations in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/deregistrations."
     account_deregistrations(ss58: String!, window: String): AccountDeregistrations!
+    "One account's native-TAO transfer feed by ss58 (newest first): each Transfer event where the address is sender and/or recipient, with from/to/amount_tao/direction/observed_at, keyset-paginated. direction filters to sent | received (default both); block_start/block_end bound the height range. A malformed ss58 is a GraphQL error; an address with no transfers resolves to a schema-stable empty feed, never null. Mirrors GET /api/v1/accounts/{ss58}/transfers."
+    account_transfers(ss58: String!, limit: Int, offset: Int, cursor: String, direction: String, block_start: Int, block_end: Int): AccountTransfers!
     "One account's StakeAdded/StakeRemoved flow per subnet over a 7d/30d/90d window (default 30d) -- net + gross flow, a direction label (accumulating/exiting/churning/idle), and an HHI concentration of where its flow is focused. direction narrows to inflow (in) or outflow (out) only; all (default) reports both sides. An address with no flow in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/stake-flow."
     account_stake_flow(ss58: String!, window: String, direction: String): AccountStakeFlow!
     "One wallet's cross-subnet neuron portfolio: every subnet where the hotkey is a registered neuron, each position's economics (stake, emission, rank, trust, incentive, dividends, role) and emission/stake yield, plus wallet-level aggregates (totals, counts, overall return, stake concentration). Richer than account.registrations (registration footprint only). An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio."
@@ -1673,6 +1678,28 @@ export const SDL = `
     subnets: [AccountDeregistrationSubnet!]!
   }
 
+  "One native-TAO Transfer event on the account's feed. direction is relative to the queried address (sent = it paid, received = it was paid)."
+  type AccountTransfer {
+    block_number: Int
+    event_index: Int
+    from: String
+    to: String
+    amount_tao: Float
+    direction: String
+    observed_at: String
+  }
+
+  "One account's native-TAO transfer feed, keyset-paginated newest-first. Mirrors GET /api/v1/accounts/{ss58}/transfers' data envelope."
+  type AccountTransfers {
+    schema_version: Int!
+    address: String!
+    transfer_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    transfers: [AccountTransfer!]!
+  }
+
   "One subnet's slice of an account's axon-serving footprint over the window."
   type AccountServingSubnet {
     netuid: Int!
@@ -2031,6 +2058,7 @@ export const FIELD_COMPLEXITY = {
   accounts: RELATIONSHIP_FIELD_COMPLEXITY,
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   account_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_transfers: RELATIONSHIP_FIELD_COMPLEXITY,
   account_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   account_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   account_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3826,6 +3854,63 @@ const rootValue = {
         registrations: s.registrations,
         first_registered_at: s.first_registered_at ?? null,
         last_registered_at: s.last_registered_at ?? null,
+      })),
+    };
+  },
+
+  async account_transfers(
+    { ss58, limit, offset, cursor, direction, block_start, block_end },
+    context,
+  ) {
+    // Same SS58 validation the REST transfers handler enforces -- a malformed
+    // address is a GraphQL BAD_USER_INPUT error, not a silent empty feed.
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (cursor) params.set("cursor", cursor);
+    if (direction) params.set("direction", direction);
+    if (block_start != null) params.set("block_start", String(block_start));
+    if (block_end != null) params.set("block_end", String(block_end));
+    // Same flat tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) envelope the
+    // REST transfers handler returns; a cold store / an address with no Transfer
+    // events is a schema-stable empty feed via buildAccountTransfers([], ...).
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/transfers`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildAccountTransfers([], ss58, {
+        limit: safeLimit,
+        offset: safeOffset,
+        nextCursor: null,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      address: data.ss58 ?? ss58,
+      transfer_count: data.transfer_count ?? 0,
+      limit: data.limit ?? safeLimit,
+      offset: data.offset ?? safeOffset,
+      next_cursor: data.next_cursor ?? null,
+      transfers: (data.transfers ?? []).map((t) => ({
+        block_number: t.block_number,
+        event_index: t.event_index,
+        from: t.from,
+        to: t.to,
+        amount_tao: t.amount_tao,
+        direction: t.direction,
+        observed_at: t.observed_at,
       })),
     };
   },
