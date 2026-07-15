@@ -23,7 +23,7 @@
   "notes": "Reviewed overlay for SN69 ain. Public directories and analytics pages list the subnet, but no official team, website, source repository, API, OpenAPI schema, or docs site has been verified.",
   "schema_version": 1,
   "slug": "ain",
-  "source_repo": null,
+  "source_repo": "https://github.com/HeraldMedia/herald",
   "status": "active",
   "surfaces": [
     {

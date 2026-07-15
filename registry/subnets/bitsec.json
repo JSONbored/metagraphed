@@ -70,6 +70,9 @@
       "url": "https://bitsec.ai/api/projects/known-solutions"
     }
   ],
+  "social": {
+    "x": "https://x.com/bitsecai"
+  },
   "source_repo": "https://github.com/Bitsec-AI/sandbox",
   "website_url": "https://bitsec.ai/"
 }
