@@ -125,7 +125,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**129 curated subnets** — 116 with a site, 43 with docs, 116 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**129 curated subnets** — 116 with a site, 44 with docs, 116 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `defi` 5 · `inference` 5 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -143,11 +143,11 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[TrajectoryRL](https://metagraph.sh/subnets/11)** `SN11` · [site](https://trajrl.com/) · [docs](https://trajrl.com/docs) · [repo](https://github.com/trajectoryRL/trajectoryRL)
 - **[Compute Horde](https://metagraph.sh/subnets/12)** `SN12` — `compute` `dashboard` · [site](https://computehorde.io/) · [repo](https://github.com/backend-developers-ltd/ComputeHorde)
 - **[Data Universe](https://metagraph.sh/subnets/13)** `SN13` — `data` `mcp` · [site](https://datauniverse.macrocosmos.ai/) · [docs](https://docs.macrocosmos.ai/product-and-services/gravity) · [repo](https://github.com/macrocosm-os/data-universe)
-- **[Cacheon](https://metagraph.sh/subnets/14)** `SN14` — `inference` · [site](https://cacheon.ai/) · [docs](https://cacheon.ai/docs) · [repo](https://github.com/latent-to/cacheon)
+- **[Cacheon](https://metagraph.sh/subnets/14)** `SN14` — `inference` · [site](https://cacheon.ai/) · [docs](https://cacheon.ai/docs) · [repo](https://github.com/latent-to/cacheon-old)
 - **[ORO](https://metagraph.sh/subnets/15)** `SN15` · [site](https://oroagents.com/) · [docs](https://docs.oroagents.com/docs/miners/quick-start) · [repo](https://github.com/ORO-AI/oro)
 - **[BitAds](https://metagraph.sh/subnets/16)** `SN16` · [repo](https://github.com/study-service/BitAds.ai)
-- **[404—GEN](https://metagraph.sh/subnets/17)** `SN17` · [site](https://www.404.xyz/) · [repo](https://github.com/404-Repo/404-gen-subnet)
-- **[Zeus](https://metagraph.sh/subnets/18)** `SN18` · [site](https://www.zeussubnet.com/) · [repo](https://github.com/Orpheus-AI/Zeus)
+- **[404—GEN](https://metagraph.sh/subnets/17)** `SN17` — `3d-generation` · [site](https://www.404.xyz/) · [repo](https://github.com/404-Repo/404-gen-subnet)
+- **[Zeus](https://metagraph.sh/subnets/18)** `SN18` — `weather-forecasting` · [site](https://www.zeussubnet.com/) · [docs](https://docs.zeussubnet.com/docs/introduction) · [repo](https://github.com/Orpheus-AI/Zeus)
 - **[blockmachine](https://metagraph.sh/subnets/19)** `SN19` · [site](https://blockmachine.io/) · [docs](https://blockmachine.io/whitepaper) · [repo](https://github.com/taostat/blockmachine)
 - **[GroundLayer](https://metagraph.sh/subnets/20)** `SN20` — `capital-markets` · [site](https://www.groundlayer.xyz/)
 - **[AdTAO](https://metagraph.sh/subnets/21)** `SN21` — `advertising` · [site](https://adtao.io/) · [repo](https://github.com/ippcteam/SN21-adtao)
