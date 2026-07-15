@@ -5485,6 +5485,207 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
   });
 });
 
+describe("graphql — account_identity_history (#5709, Postgres-tier + empty timeline fallback)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag / no D1 rows returns a schema-stable empty timeline, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_identity_history(ss58: "${SS58}") {
+          schema_version account entry_count limit offset next_cursor
+          entries { name identity_hash }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_identity_history, {
+      schema_version: 1,
+      account: SS58,
+      entry_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      entries: [],
+    });
+  });
+
+  test("resolves the Postgres-tier timeline entries verbatim", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          account: SS58,
+          entry_count: 1,
+          limit: 50,
+          offset: 0,
+          next_cursor: "next-page-token",
+          entries: [
+            {
+              observed_at: "2026-07-01T00:00:00.000Z",
+              name: "Example",
+              url: "https://example-account.sh",
+              github: "https://github.com/example/acct",
+              image: "https://example-account.sh/logo.png",
+              discord: "example#1234",
+              description: "desc",
+              additional: "extra",
+              identity_hash: "abc123",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_identity_history(ss58: "${SS58}", limit: 50) {
+          account entry_count limit next_cursor
+          entries {
+            observed_at name url github image discord description additional identity_hash
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.account_identity_history;
+    assert.equal(r.account, SS58);
+    assert.equal(r.entry_count, 1);
+    assert.equal(r.limit, 50);
+    assert.equal(r.next_cursor, "next-page-token");
+    assert.deepEqual(r.entries, [
+      {
+        observed_at: "2026-07-01T00:00:00.000Z",
+        name: "Example",
+        url: "https://example-account.sh",
+        github: "https://github.com/example/acct",
+        image: "https://example-account.sh/logo.png",
+        discord: "example#1234",
+        description: "desc",
+        additional: "extra",
+        identity_hash: "abc123",
+      },
+    ]);
+  });
+
+  test("D1 fallback path shapes rows through loadAccountIdentityHistory", async () => {
+    const observedAt = Date.parse("2026-06-15T12:00:00.000Z");
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return {
+                    results: [
+                      {
+                        id: 11,
+                        observed_at: observedAt,
+                        name: "Alice",
+                        url: "https://metagraph.sh/alice",
+                        github: "https://github.com/jsonbored/alpha",
+                        image: null,
+                        discord: "alice#1234",
+                        description: "alpha desc",
+                        additional: null,
+                        identity_hash: "deadbeef",
+                      },
+                    ],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ account_identity_history(ss58: "${SS58}", limit: 10) {
+          account entry_count limit
+          entries { observed_at name url github discord description identity_hash }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.account_identity_history;
+    assert.equal(r.account, SS58);
+    assert.equal(r.entry_count, 1);
+    assert.equal(r.limit, 10);
+    assert.equal(r.entries.length, 1);
+    assert.equal(r.entries[0].observed_at, "2026-06-15T12:00:00.000Z");
+    assert.equal(r.entries[0].name, "Alice");
+    assert.equal(r.entries[0].url, "https://metagraph.sh/alice");
+    assert.equal(r.entries[0].github, "https://github.com/jsonbored/alpha");
+    assert.equal(r.entries[0].discord, "alice#1234");
+    assert.equal(r.entries[0].description, "alpha desc");
+    assert.equal(r.entries[0].identity_hash, "deadbeef");
+  });
+
+  test("pagination args are forwarded to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      `{ account_identity_history(ss58: "${SS58}", limit: 25, offset: 10, cursor: "abc") { entry_count } }`,
+      env,
+    );
+    assert.equal(capturedUrl.searchParams.get("limit"), "25");
+    assert.equal(capturedUrl.searchParams.get("offset"), "10");
+    assert.equal(capturedUrl.searchParams.get("cursor"), "abc");
+    assert.ok(
+      capturedUrl.pathname.endsWith(
+        `/accounts/${encodeURIComponent(SS58)}/identity-history`,
+      ),
+    );
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ account_identity_history(ss58: "${SS58}") {
+          schema_version account entry_count limit offset next_cursor entries { name }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_identity_history, {
+      schema_version: 1,
+      account: SS58,
+      entry_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      entries: [],
+    });
+  });
+
+  test("a malformed ss58 address is a GraphQL error, not an empty timeline", async () => {
+    const { body } = await gql(
+      '{ account_identity_history(ss58: "not-an-address") { entry_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/ss58/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_identity_history ?? null, null);
+  });
+
+  test("account_identity_history is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_identity_history, 5);
+  });
+});
+
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

@@ -52,6 +52,7 @@ import {
   clampOffset,
 } from "../workers/request-params.mjs";
 import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
+import { loadAccountIdentityHistory } from "./account-identity-history.mjs";
 import {
   buildGlobalHealth,
   formatLeaderboards,
@@ -257,6 +258,8 @@ export const SDL = `
     account_axon_removals(ss58: String!, window: String): AccountAxonRemovals!
     "One account's per-subnet StakeMoved footprint over a 7d/30d/90d window (default 30d): movement count, first/last timestamps, and the alpha price (TAO) at its most recent move per subnet, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet; an address with no moves in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/stake-moves."
     account_stake_moves(ss58: String!, window: String): AccountStakeMoves!
+    "Append-only diff-tracked chain-identity timeline for one account (coldkey), newest first — a row each time a tracked identity field (name, url, github, image, discord, description, additional) changed; page with limit/offset or follow next_cursor. An account with no recorded changes resolves to a schema-stable empty timeline (entry_count 0), never null. Mirrors GET /api/v1/accounts/{ss58}/identity-history."
+    account_identity_history(ss58: String!, limit: Int, offset: Int, cursor: String): AccountIdentityHistory!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
@@ -1303,6 +1306,30 @@ export const SDL = `
     subnets: [AccountStakeMoveSubnet!]!
   }
 
+  "Append-only diff-tracked account (coldkey) identity timeline (#4326, epic #4301/5.4). Empty entries on a cold/absent store. Mirrors GET /api/v1/accounts/{ss58}/identity-history."
+  type AccountIdentityHistory {
+    schema_version: Int!
+    account: String!
+    entry_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    entries: [AccountIdentityHistoryEntry!]!
+  }
+
+  "One account_identity snapshot recorded when a tracked identity field changed. No block_number column — account_identity carries no chain block height, only observed_at."
+  type AccountIdentityHistoryEntry {
+    observed_at: String
+    name: String
+    url: String
+    github: String
+    image: String
+    discord: String
+    description: String
+    additional: String
+    identity_hash: String
+  }
+
   type AccountEvent {
     block_number: Int
     event_index: Int
@@ -1568,6 +1595,7 @@ export const FIELD_COMPLEXITY = {
   account_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   account_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   account_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3253,6 +3281,50 @@ const rootValue = {
         last_moved_at: s.last_moved_at ?? null,
         price_tao_at_last_move: s.price_tao_at_last_move ?? null,
       })),
+    };
+  },
+
+  async account_identity_history({ ss58, limit, offset, cursor }, context) {
+    // Same SS58 validation handleAccountIdentityHistory's route uses -- a
+    // malformed address is a GraphQL BAD_USER_INPUT error, not a silent card.
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (cursor) params.set("cursor", cursor);
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_IDENTITY_SOURCE) ->
+    // loadAccountIdentityHistory fallback contract handleAccountIdentityHistory
+    // uses; an account with no recorded changes is a schema-stable empty
+    // timeline (entry_count 0), never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/identity-history`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+      )) ??
+      (await loadAccountIdentityHistory(graphqlD1(context), ss58, {
+        limit: safeLimit,
+        offset: safeOffset,
+        cursor,
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      account: data.account ?? ss58,
+      entry_count: data.entry_count ?? 0,
+      limit: data.limit ?? safeLimit,
+      offset: data.offset ?? safeOffset,
+      next_cursor: data.next_cursor ?? null,
+      entries: data.entries || [],
     };
   },
 
