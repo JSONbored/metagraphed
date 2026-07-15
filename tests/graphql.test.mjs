@@ -3023,6 +3023,228 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
   });
 });
 
+describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generatedAt } + zeroed-card fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function query(argsClause) {
+    return `{ account_stake_flow${argsClause} {
+      schema_version address window total_staked_tao total_unstaked_tao
+      net_flow_tao gross_flow_tao flow_ratio direction stake_events unstake_events
+      subnet_count concentration dominant_netuid
+      subnets { netuid staked_tao unstaked_tao net_flow_tao gross_flow_tao flow_ratio direction stake_events unstake_events }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_stake_flow, {
+      schema_version: 1,
+      address: SS58,
+      window: "30d",
+      total_staked_tao: 0,
+      total_unstaked_tao: 0,
+      net_flow_tao: 0,
+      gross_flow_tao: 0,
+      flow_ratio: null,
+      direction: "idle",
+      stake_events: 0,
+      unstake_events: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves the Postgres-tier scorecard for the requested window", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: {
+              schema_version: 1,
+              address: SS58,
+              window: "7d",
+              total_staked_tao: 100,
+              total_unstaked_tao: 20,
+              net_flow_tao: 80,
+              gross_flow_tao: 120,
+              flow_ratio: 0.6667,
+              direction: "accumulating",
+              stake_events: 4,
+              unstake_events: 1,
+              subnet_count: 2,
+              concentration: 0.72,
+              dominant_netuid: 3,
+              subnets: [
+                {
+                  netuid: 3,
+                  staked_tao: 90,
+                  unstaked_tao: 10,
+                  net_flow_tao: 80,
+                  gross_flow_tao: 100,
+                  flow_ratio: 0.8,
+                  direction: "accumulating",
+                  stake_events: 3,
+                  unstake_events: 1,
+                },
+                {
+                  netuid: 7,
+                  staked_tao: 10,
+                  unstaked_tao: 10,
+                  net_flow_tao: 0,
+                  gross_flow_tao: 20,
+                  flow_ratio: 0,
+                  direction: "churning",
+                  stake_events: 1,
+                  unstake_events: 0,
+                },
+              ],
+            },
+            generatedAt: "2026-07-10T00:00:00.000Z",
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "7d")`),
+      env,
+    );
+    assert.equal(status, 200);
+    const f = body.data.account_stake_flow;
+    assert.equal(f.window, "7d");
+    assert.equal(f.total_staked_tao, 100);
+    assert.equal(f.net_flow_tao, 80);
+    assert.equal(f.direction, "accumulating");
+    assert.equal(f.subnet_count, 2);
+    assert.equal(f.dominant_netuid, 3);
+    assert.equal(f.subnets[0].netuid, 3);
+    assert.equal(f.subnets[0].flow_ratio, 0.8);
+    assert.equal(f.subnets[1].direction, "churning");
+  });
+
+  test("window and direction are forwarded as query params to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            data: { schema_version: 1, address: SS58, subnets: [] },
+            generatedAt: null,
+          });
+        },
+      },
+    };
+    await gql(query(`(ss58: "${SS58}", window: "90d", direction: "in")`), env);
+    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/stake-flow`);
+    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+    assert.equal(capturedUrl.searchParams.get("direction"), "in");
+  });
+
+  test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_stake_flow, {
+      schema_version: 1,
+      address: SS58,
+      window: "30d",
+      total_staked_tao: 0,
+      total_unstaked_tao: 0,
+      net_flow_tao: 0,
+      gross_flow_tao: 0,
+      flow_ratio: null,
+      direction: "idle",
+      stake_events: 0,
+      unstake_events: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("a partial data envelope degrades missing fields to their defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => Response.json({ data: {}, generatedAt: null }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_stake_flow, {
+      schema_version: 1,
+      address: SS58,
+      window: "30d",
+      total_staked_tao: 0,
+      total_unstaked_tao: 0,
+      net_flow_tao: 0,
+      gross_flow_tao: 0,
+      flow_ratio: null,
+      direction: "idle",
+      stake_events: 0,
+      unstake_events: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query('(ss58: "not-a-valid-address")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "99d")`),
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|30d/i.test(body.errors[0].message));
+    assert.equal(body.data, null);
+  });
+
+  test("an unsupported direction is a GraphQL error, not a silent card", async () => {
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", direction: "sideways")`),
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/direction/i.test(body.errors[0].message));
+    assert.equal(body.data, null);
+  });
+
+  test("account_stake_flow is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_stake_flow, 5);
+  });
+});
+
 // --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
 //
 // The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,

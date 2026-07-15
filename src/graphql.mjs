@@ -79,6 +79,15 @@ import {
   buildAccountPrometheus,
 } from "./account-prometheus.mjs";
 import {
+  DEFAULT_STAKE_FLOW_WINDOW,
+  STAKE_FLOW_WINDOWS,
+  buildAccountStakeFlow,
+} from "./account-stake-flow.mjs";
+import {
+  DEFAULT_STAKE_FLOW_DIRECTION,
+  STAKE_FLOW_DIRECTIONS,
+} from "./stake-flow.mjs";
+import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
@@ -194,6 +203,8 @@ export const SDL = `
     account_registrations(ss58: String!, window: String): AccountRegistrations!
     "One account's per-subnet deregistration footprint over a 7d/30d/90d window (default 30d): NeuronDeregistered count and first/last timestamps per subnet, an HHI concentration of where its deregistration activity is focused, and the dominant subnet; an address with no deregistrations in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/deregistrations."
     account_deregistrations(ss58: String!, window: String): AccountDeregistrations!
+    "One account's StakeAdded/StakeRemoved flow per subnet over a 7d/30d/90d window (default 30d) -- net + gross flow, a direction label (accumulating/exiting/churning/idle), and an HHI concentration of where its flow is focused. direction narrows to inflow (in) or outflow (out) only; all (default) reports both sides. An address with no flow in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/stake-flow."
+    account_stake_flow(ss58: String!, window: String, direction: String): AccountStakeFlow!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
@@ -1085,6 +1096,41 @@ export const SDL = `
     last_announced_at: String
   }
 
+  "One account's StakeAdded/StakeRemoved staking-behavior scorecard (#5706) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/stake-flow."
+  type AccountStakeFlow {
+    schema_version: Int!
+    address: String!
+    window: String
+    total_staked_tao: Float!
+    total_unstaked_tao: Float!
+    net_flow_tao: Float!
+    gross_flow_tao: Float!
+    "net_flow_tao / gross_flow_tao, [-1, 1]; null when gross_flow_tao is 0 (no flow to rate)."
+    flow_ratio: Float
+    "accumulating / exiting / churning / idle, derived from flow_ratio."
+    direction: String!
+    stake_events: Int!
+    unstake_events: Int!
+    subnet_count: Int!
+    "Herfindahl-Hirschman index of gross flow across subnets: 1 = all flow in one subnet, -> 1/n as it spreads evenly; null when there is no flow to concentrate."
+    concentration: Float
+    dominant_netuid: Int
+    subnets: [AccountStakeFlowSubnet!]!
+  }
+
+  "One subnet's stake flow in an account's footprint, ranked most-active-first (highest gross flow)."
+  type AccountStakeFlowSubnet {
+    netuid: Int!
+    staked_tao: Float!
+    unstaked_tao: Float!
+    net_flow_tao: Float!
+    gross_flow_tao: Float!
+    flow_ratio: Float
+    direction: String!
+    stake_events: Int!
+    unstake_events: Int!
+  }
+
   # Realtime chain-event firehose (#4983, ADR 0015) -- a thin protocol adapter
   # over the SAME ChainFirehoseHub Durable Object connection #4982's SSE/WS
   # transports use, not a second event pipeline. Reached over WebSocket only
@@ -1245,6 +1291,7 @@ export const FIELD_COMPLEXITY = {
   health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   account_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_recycled: LIVE_RPC_FIELD_COMPLEXITY,
 };
 
@@ -2401,6 +2448,64 @@ const rootValue = {
       address: data.address ?? ss58,
       window: data.window ?? requestedWindow,
       total_announcements: data.total_announcements ?? 0,
+      subnet_count: data.subnet_count ?? 0,
+      concentration: data.concentration ?? null,
+      dominant_netuid: data.dominant_netuid ?? null,
+      subnets: data.subnets || [],
+    };
+  },
+
+  async account_stake_flow({ ss58, window, direction }, context) {
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const requestedWindow = window ?? DEFAULT_STAKE_FLOW_WINDOW;
+    if (!Object.hasOwn(STAKE_FLOW_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, STAKE_FLOW_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const requestedDirection = direction ?? DEFAULT_STAKE_FLOW_DIRECTION;
+    if (!STAKE_FLOW_DIRECTIONS.includes(requestedDirection)) {
+      throw new GraphQLError(
+        `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("direction", requestedDirection);
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data, generatedAt }
+    // -> buildAccountStakeFlow([]) zeroed-card fallback contract handleAccountStakeFlow
+    // uses. direction only narrows the live Postgres-tier query -- the fallback builder
+    // takes no direction argument, so a cold/absent tier degrades to the same zeroed
+    // card regardless of the requested direction.
+    const pg = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/accounts/${encodeURIComponent(ss58)}/stake-flow`,
+        params,
+      ),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
+    const data =
+      pg?.data ?? buildAccountStakeFlow([], ss58, { window: requestedWindow });
+    return {
+      schema_version: data.schema_version ?? 1,
+      address: data.address ?? ss58,
+      window: data.window ?? requestedWindow,
+      total_staked_tao: data.total_staked_tao ?? 0,
+      total_unstaked_tao: data.total_unstaked_tao ?? 0,
+      net_flow_tao: data.net_flow_tao ?? 0,
+      gross_flow_tao: data.gross_flow_tao ?? 0,
+      flow_ratio: data.flow_ratio ?? null,
+      direction: data.direction ?? "idle",
+      stake_events: data.stake_events ?? 0,
+      unstake_events: data.unstake_events ?? 0,
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
