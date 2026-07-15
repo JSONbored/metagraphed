@@ -1987,6 +1987,246 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 });
 
+describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("validators: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
+    const { status, body } = await gql(
+      "{ validators { items { hotkey } total sort captured_at block_number } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.validators, {
+      items: [],
+      total: 0,
+      sort: "subnet_count",
+      captured_at: null,
+      block_number: null,
+    });
+  });
+
+  test("validators: resolves Postgres-tier rows, normalizing latest_* into captured_at/block_number", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          sort: "total_stake",
+          limit: 20,
+          captured_at: "2026-07-14T00:00:00.000Z",
+          block_number: 100,
+          validator_count: 1,
+          validators: [
+            {
+              hotkey: "5Validator",
+              featured: true,
+              coldkey: "5Coldkey",
+              coldkey_identity: { has_identity: false },
+              coldkey_count: 1,
+              subnet_count: 1,
+              uid_count: 1,
+              take: 0.1,
+              total_stake_tao: 1000,
+              root_stake_tao: 0,
+              alpha_stake_tao: 1000,
+              total_emission_tao: 5,
+              nominator_count: 3,
+              apy_estimate: 0.12,
+              apy_estimate_eligible_subnet_count: 1,
+              avg_validator_trust: 0.9,
+              max_validator_trust: 0.9,
+              latest_captured_at: "2026-07-14T00:00:00.000Z",
+              latest_block_number: 100,
+              subnets: [
+                {
+                  netuid: 1,
+                  uid: 5,
+                  stake_tao: 1000,
+                  emission_tao: 5,
+                  validator_trust: 0.9,
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      '{ validators(sort: "total_stake", limit: 5) { items { hotkey featured coldkey nominator_count captured_at block_number subnets { netuid uid stake_tao } } total sort captured_at block_number } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.validators.total, 1);
+    assert.equal(body.data.validators.sort, "total_stake");
+    assert.equal(body.data.validators.captured_at, "2026-07-14T00:00:00.000Z");
+    assert.equal(body.data.validators.block_number, 100);
+    const item = body.data.validators.items[0];
+    assert.equal(item.hotkey, "5Validator");
+    assert.equal(item.featured, true);
+    assert.equal(item.nominator_count, 3);
+    assert.equal(item.captured_at, "2026-07-14T00:00:00.000Z");
+    assert.equal(item.block_number, 100);
+    assert.deepEqual(item.subnets, [{ netuid: 1, uid: 5, stake_tao: 1000 }]);
+  });
+
+  test("validators: sort and limit args are forwarded as query params to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            sort: "uid_count",
+            limit: 5,
+            captured_at: null,
+            block_number: null,
+            validator_count: 0,
+            validators: [],
+          });
+        },
+      },
+    };
+    await gql('{ validators(sort: "uid_count", limit: 5) { total } }', env);
+    assert.equal(capturedUrl.pathname, "/api/v1/validators");
+    assert.equal(capturedUrl.searchParams.get("sort"), "uid_count");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+  });
+
+  test("validators: an omitted limit forwards the default limit to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            sort: "subnet_count",
+            limit: 20,
+            captured_at: null,
+            block_number: null,
+            validator_count: 0,
+            validators: [],
+          });
+        },
+      },
+    };
+    await gql("{ validators { total } }", env);
+    assert.equal(capturedUrl.searchParams.get("sort"), "subnet_count");
+    assert.equal(capturedUrl.searchParams.get("limit"), "20");
+  });
+
+  test("validators: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      "{ validators { items { hotkey } total sort captured_at block_number } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.validators, {
+      items: [],
+      total: 0,
+      sort: "subnet_count",
+      captured_at: null,
+      block_number: null,
+    });
+  });
+
+  test("validators: an unsupported sort value is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      '{ validators(sort: "not_a_real_sort") { total } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("validator: a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null", async () => {
+    const { status, body } = await gql(
+      '{ validator(hotkey: "5NoRows") { hotkey featured subnet_count total_stake_tao captured_at block_number subnets { netuid } } }',
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.validator, {
+      hotkey: "5NoRows",
+      featured: false,
+      subnet_count: 0,
+      total_stake_tao: 0,
+      captured_at: null,
+      block_number: null,
+      subnets: [],
+    });
+  });
+
+  test("validator: resolves Postgres-tier detail data, normalizing captured_at/block_number", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          hotkey: "5Validator",
+          coldkey: "5Coldkey",
+          coldkey_identity: { has_identity: false },
+          coldkey_count: 1,
+          subnet_count: 2,
+          take: 0.1,
+          total_stake_tao: 2000,
+          root_stake_tao: 500,
+          alpha_stake_tao: 1500,
+          total_emission_tao: 8,
+          nominator_count: null,
+          apy_estimate: null,
+          apy_estimate_eligible_subnet_count: 0,
+          avg_validator_trust: 0.8,
+          max_validator_trust: 0.85,
+          captured_at: "2026-07-14T01:00:00.000Z",
+          block_number: 200,
+          subnets: [
+            { netuid: 1, uid: 5, stake_tao: 500, emission_tao: 2 },
+            { netuid: 3, uid: 9, stake_tao: 1500, emission_tao: 6 },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      '{ validator(hotkey: "5Validator") { hotkey subnet_count captured_at block_number subnets { netuid stake_tao } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.validator.hotkey, "5Validator");
+    assert.equal(body.data.validator.subnet_count, 2);
+    assert.equal(body.data.validator.captured_at, "2026-07-14T01:00:00.000Z");
+    assert.equal(body.data.validator.block_number, 200);
+    assert.deepEqual(body.data.validator.subnets, [
+      { netuid: 1, stake_tao: 500 },
+      { netuid: 3, stake_tao: 1500 },
+    ]);
+  });
+
+  test("validators / validator are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.validators, 5);
+    assert.equal(FIELD_COMPLEXITY.validator, 5);
+  });
+});
+
 // --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
 //
 // The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,

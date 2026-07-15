@@ -27,6 +27,15 @@ import {
   parseCompareNetuidList,
 } from "./analytics-live.mjs";
 import { buildExtrinsic, buildExtrinsicFeed } from "./extrinsics.mjs";
+import {
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
+  GLOBAL_VALIDATOR_SORTS,
+  buildGlobalValidators,
+  buildValidatorDetail,
+  overlayFeaturedValidators,
+} from "./metagraph-neurons.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
@@ -65,6 +74,10 @@ export const SDL = `
     extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
     "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
     extrinsic(ref: String!): ExtrinsicDetail
+    "Network-wide validator/operator leaderboard, grouped by hotkey across every subnet it operates in. Mirrors GET /api/v1/validators."
+    validators(sort: String, limit: Int): ValidatorList!
+    "One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}."
+    validator(hotkey: String!): Validator
   }
 
   type SubnetList {
@@ -355,6 +368,59 @@ export const SDL = `
     extrinsic: Extrinsic
   }
 
+  type ValidatorList {
+    items: [Validator!]!
+    total: Int!
+    sort: String!
+    captured_at: String
+    block_number: Int
+  }
+
+  type Validator {
+    hotkey: String!
+    featured: Boolean!
+    coldkey: String
+    coldkey_identity: Identity
+    coldkey_count: Int
+    subnet_count: Int
+    uid_count: Int
+    take: Float
+    total_stake_tao: Float
+    root_stake_tao: Float
+    alpha_stake_tao: Float
+    total_emission_tao: Float
+    nominator_count: Int
+    apy_estimate: Float
+    apy_estimate_eligible_subnet_count: Int
+    avg_validator_trust: Float
+    max_validator_trust: Float
+    captured_at: String
+    block_number: Int
+    "Per-subnet membership rows for this validator. The global leaderboard entry caps this at the top 10 by stake; the single-validator lookup carries every subnet."
+    subnets: [ValidatorSubnet!]!
+  }
+
+  type ValidatorSubnet {
+    netuid: Int!
+    uid: Int
+    stake_tao: Float
+    emission_tao: Float
+    validator_trust: Float
+  }
+
+  "Self-reported on-chain identity (SubtensorModule::set_identity) for a coldkey."
+  type Identity {
+    has_identity: Boolean!
+    name: String
+    url: String
+    github: String
+    image: String
+    discord: String
+    description: String
+    additional: String
+    captured_at: String
+  }
+
   # Realtime chain-event firehose (#4983, ADR 0015) -- a thin protocol adapter
   # over the SAME ChainFirehoseHub Durable Object connection #4982's SSE/WS
   # transports use, not a second event pipeline. Reached over WebSocket only
@@ -489,6 +555,8 @@ export const FIELD_COMPLEXITY = {
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
+  validators: RELATIONSHIP_FIELD_COMPLEXITY,
+  validator: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -857,6 +925,27 @@ function extrinsicNode(extrinsic) {
   };
 }
 
+// buildGlobalValidators' per-hotkey entries carry featured/uid_count/
+// latest_captured_at/latest_block_number; buildValidatorDetail's single-hotkey
+// aggregate has no featured/uid_count and names the same timestamps
+// captured_at/block_number -- normalized here so both resolvers return the
+// same Validator shape. Both builders always return an object (rows=[]
+// degrades to a zeroed aggregate, never null/undefined), so there is no null
+// case to guard. `subnets` entries are passed through as-is: the leaderboard's
+// compact 5-field rows and the detail's full formatNeuron rows share the
+// fields ValidatorSubnet declares, and graphql-js' default field resolver
+// reads them straight off each row, the same technique this file's other node
+// builders use for rows with more columns than any one GraphQL type exposes.
+function validatorNode(validator) {
+  return {
+    ...validator,
+    featured: validator.featured === true,
+    captured_at: validator.latest_captured_at ?? validator.captured_at ?? null,
+    block_number:
+      validator.latest_block_number ?? validator.block_number ?? null,
+  };
+}
+
 function providerNode(provider) {
   const netuids = provider?.netuids || [];
   return {
@@ -1133,6 +1222,54 @@ const rootValue = {
       ref: data.ref ?? ref,
       extrinsic: extrinsicNode(data.extrinsic),
     };
+  },
+
+  async validators({ sort, limit }, context) {
+    const requestedSort = sort ?? DEFAULT_GLOBAL_VALIDATOR_SORT;
+    if (!GLOBAL_VALIDATOR_SORTS.includes(requestedSort)) {
+      throw new GraphQLError(
+        `"${requestedSort}" is not a supported sort. Supported: ${GLOBAL_VALIDATOR_SORTS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+      maxLimit: GLOBAL_VALIDATOR_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("sort", requestedSort);
+    params.set("limit", String(safeLimit));
+    const data = overlayFeaturedValidators(
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/validators", params),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ??
+        buildGlobalValidators([], {
+          sort: requestedSort,
+          limit: safeLimit,
+        }),
+    );
+    return {
+      items: (data.validators || []).map(validatorNode),
+      total: data.validator_count ?? 0,
+      sort: data.sort ?? requestedSort,
+      captured_at: data.captured_at ?? null,
+      block_number: data.block_number ?? null,
+    };
+  },
+
+  async validator({ hotkey }, context) {
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/validators/${encodeURIComponent(hotkey)}`,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildValidatorDetail([], hotkey);
+    return validatorNode(data);
   },
 };
 
