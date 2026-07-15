@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 232,
+  "surface_count": 236,
   "surfaces": [
     {
       "auth_required": false,
@@ -1829,6 +1829,78 @@
       "surface_id": "sn-21-adtao-validator-api",
       "surface_key": "srf-34b5c51b4e147eef",
       "url": "https://validator.adtao.io/health"
+    },
+    {
+      "auth_required": true,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 22,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "subnet_name": "Desearch",
+      "subnet_slug": "sn-22",
+      "surface_id": "sn-22-desearch-api",
+      "surface_key": "srf-ac4e81b516cfa7b2",
+      "url": "https://api.desearch.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 22,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "subnet_name": "Desearch",
+      "subnet_slug": "sn-22",
+      "surface_id": "sn-22-desearch-benchmark-questions",
+      "surface_key": "srf-6eeec6eb3562eadc",
+      "url": "https://huggingface.co/datasets/desearch/dataset"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 22,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "subnet_name": "Desearch",
+      "subnet_slug": "sn-22",
+      "surface_id": "sn-22-desearch-health",
+      "surface_key": "srf-864324f9ccf05235",
+      "url": "https://api.desearch.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 22,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "subnet_name": "Desearch",
+      "subnet_slug": "sn-22",
+      "surface_id": "sn-22-desearch-search-evals",
+      "surface_key": "srf-8efc81833817d125",
+      "url": "https://huggingface.co/datasets/desearch/desearch-search-evals"
     },
     {
       "auth_required": false,
