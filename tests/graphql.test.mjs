@@ -4985,6 +4985,8 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
 
   test("subnet_recycled is weighted heavier than a Postgres-tier relationship field, since it hits live chain RPC", () => {
     assert.equal(FIELD_COMPLEXITY.subnet_recycled, 10);
-    assert.ok(FIELD_COMPLEXITY.subnet_recycled > FIELD_COMPLEXITY.chain_weights);
+    assert.ok(
+      FIELD_COMPLEXITY.subnet_recycled > FIELD_COMPLEXITY.chain_weights,
+    );
   });
 });
