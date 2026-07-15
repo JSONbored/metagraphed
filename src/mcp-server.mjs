@@ -40,6 +40,7 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import { handleRpcProxyRequest } from "../workers/request-handlers/rpc-proxy.mjs";
+import { handleGraphQLRequest } from "./graphql.mjs";
 import {
   isValidSubscriptionId,
   subscriptionStorageKey,
@@ -9111,6 +9112,93 @@ export const MCP_TOOLS = [
         endpoint_id: response.headers.get("x-metagraph-rpc-endpoint-id"),
         provider: response.headers.get("x-metagraph-rpc-provider"),
         cache: response.headers.get("x-metagraph-rpc-cache"),
+      };
+    },
+  },
+  {
+    name: "query_graphql",
+    title: "Run a GraphQL query",
+    description:
+      "Execute an arbitrary read-only GraphQL query against the metagraph " +
+      "GraphQL API (POST /api/v1/graphql) and return its { data, errors } " +
+      "result. Prefer this over the individual REST-mirrored tools (get_subnet, " +
+      "list_subnets, etc.) when you need arbitrary field selection or nested " +
+      "relations resolved in ONE round-trip; prefer a dedicated tool for a " +
+      "single well-known lookup. The endpoint is query-only (no mutations) and " +
+      "enforces the same depth (max 7) and complexity (max 50) limits as the " +
+      "REST GraphQL endpoint -- a query that exceeds them is rejected. Pass the " +
+      "query string in `query` and any GraphQL variables as an object in " +
+      "`variables`.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "The GraphQL query document, e.g. '{ subnet(netuid: 1) { name } }'.",
+        },
+        variables: {
+          type: "object",
+          description:
+            "Optional GraphQL variables keyed by name, e.g. { netuid: 1 }.",
+          additionalProperties: true,
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        data: {
+          type: "object",
+          description: "The query result, or null when the query errored.",
+          additionalProperties: true,
+          nullable: true,
+        },
+        errors: {
+          type: "array",
+          description:
+            "GraphQL errors (validation, depth/complexity, or resolver), when any.",
+          items: { type: "object", additionalProperties: true },
+        },
+      },
+      additionalProperties: true,
+    },
+    async handler(args, ctx) {
+      const query = requireString(args, "query");
+      if (
+        args?.variables !== undefined &&
+        (typeof args.variables !== "object" ||
+          args.variables === null ||
+          Array.isArray(args.variables))
+      ) {
+        throw toolError(
+          "invalid_params",
+          "Argument `variables`, when present, must be an object.",
+        );
+      }
+      // Forward through the SAME handler REST callers hit, so the depth and
+      // complexity validation rules (and any other GraphQL-side protection)
+      // apply identically -- this tool cannot bypass them. The MCP path already
+      // ran enforceMcpRateLimit before dispatch, so no extra limiter is needed.
+      const gqlRequest = new Request("https://d/api/v1/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query, variables: args?.variables }),
+      });
+      const response = await handleGraphQLRequest(gqlRequest, ctx.env);
+      // The POST path of handleGraphQLRequest always returns a JSON body -- the
+      // execution result on success, or an errors[] envelope on a parse /
+      // validation / depth-complexity failure -- so no non-JSON guard is needed.
+      const payload = await response.json();
+      // A malformed/oversized query is a non-2xx with a populated errors[]; a
+      // valid query that resolves to GraphQL-level errors is a 200 with errors[].
+      // Both are surfaced to the agent as { data, errors } rather than thrown,
+      // so it can read partial data and the error detail together.
+      return {
+        data: payload?.data ?? null,
+        errors: payload?.errors ?? [],
       };
     },
   },
