@@ -4,7 +4,10 @@
 // the query-collection contract and nothing from api.mjs, so there is no cycle.
 // `applyQueryFilters` is the main public entry; route preflight uses the same
 // validator before artifact/cache reads.
-import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
+import {
+  API_QUERY_COLLECTIONS,
+  SEARCH_TEXT_MAX_LENGTH,
+} from "../src/contracts.mjs";
 import { linkHeader } from "./http.mjs";
 import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.mjs";
 
@@ -471,6 +474,20 @@ function validateListQuery(params, config, { csvResponse = false } = {}) {
       return {
         parameter: key,
         message: `${key} is not in the expected format.`,
+      };
+    }
+  }
+
+  // The `q` free-text search param isn't in config.filters, so the generic
+  // maxLength check above never sees it (#5544). Bound it explicitly from the
+  // same searchTextSchema ceiling so an oversized query can't drive unbounded
+  // per-term, per-row scan work in searchRows.
+  if ((config.search_keys?.length || 0) > 0 && params.has("q")) {
+    const value = params.get("q");
+    if (value.length > SEARCH_TEXT_MAX_LENGTH) {
+      return {
+        parameter: "q",
+        message: "q is too long.",
       };
     }
   }

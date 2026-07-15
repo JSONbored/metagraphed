@@ -130,7 +130,19 @@ export const QUERY_ENUMS = {
 };
 
 const integerSchema = { type: "integer", minimum: 0 };
-const textSchema = { type: "string" };
+// Free-text query params carry an explicit maxLength so an arbitrarily long
+// value can't drive unbounded per-row scan work in searchRows / filter matching
+// (#5544) — every other validated param already bounds its input. `q` is
+// free-typed search prose (a generous 200-char ceiling); the exact-ish filters
+// (provider, id, review_state, reason_codes) are structured tokens, bounded
+// tighter at 100, in line with the existing pallet/method/call_module limits.
+// SEARCH_TEXT_MAX_LENGTH is exported because the generic maxLength check in
+// validateListQuery only iterates config.filters — `q` is a search param, not a
+// filter, so workers/list-query.mjs enforces its bound from this single source.
+export const SEARCH_TEXT_MAX_LENGTH = 200;
+const FILTER_TEXT_MAX_LENGTH = 100;
+const searchTextSchema = { type: "string", maxLength: SEARCH_TEXT_MAX_LENGTH };
+const filterTextSchema = { type: "string", maxLength: FILTER_TEXT_MAX_LENGTH };
 const fieldListSchema = {
   type: "string",
   pattern: "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -141,7 +153,7 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       kind: enumSchema(QUERY_ENUMS.surfaceKind),
-      provider: textSchema,
+      provider: filterTextSchema,
       state: enumSchema(QUERY_ENUMS.candidateState),
     },
     sort: ["confidence", "id", "kind", "name", "netuid", "provider", "state"],
@@ -179,7 +191,7 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       kind: enumSchema(QUERY_ENUMS.surfaceKind),
-      provider: textSchema,
+      provider: filterTextSchema,
     },
     sort: ["id", "kind", "name", "netuid", "provider"],
   }),
@@ -219,7 +231,7 @@ export const API_QUERY_COLLECTIONS = {
       layer: enumSchema(QUERY_ENUMS.endpointLayer),
       netuid: integerSchema,
       pool_eligible: enumSchema(["true", "false"]),
-      provider: textSchema,
+      provider: filterTextSchema,
       publication_state: enumSchema(QUERY_ENUMS.endpointPublicationState),
       status: enumSchema(QUERY_ENUMS.healthStatus),
     },
@@ -239,7 +251,7 @@ export const API_QUERY_COLLECTIONS = {
   }),
   "endpoint-pools": queryCollection("pools", {
     filters: {
-      id: textSchema,
+      id: filterTextSchema,
       kind: enumSchema(["subtensor-rpc", "subtensor-wss", "archive"]),
     },
     sort: ["eligible_count", "endpoint_count", "id", "kind"],
@@ -249,7 +261,7 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       kind: enumSchema(QUERY_ENUMS.surfaceKind),
-      provider: textSchema,
+      provider: filterTextSchema,
       status: enumSchema(QUERY_ENUMS.healthStatus),
       severity: enumSchema(QUERY_ENUMS.endpointIncidentSeverity),
       state: enumSchema(QUERY_ENUMS.endpointIncidentState),
@@ -279,7 +291,7 @@ export const API_QUERY_COLLECTIONS = {
       netuid: integerSchema,
       subnet_type: enumSchema(QUERY_ENUMS.subnetType),
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
-      review_state: textSchema,
+      review_state: filterTextSchema,
       confidence: enumSchema(["low", "medium", "high"]),
       profile_level: enumSchema(QUERY_ENUMS.profileLevel),
     },
@@ -327,7 +339,7 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
-      review_state: textSchema,
+      review_state: filterTextSchema,
     },
     sort: [
       "candidate_count",
@@ -346,7 +358,7 @@ export const API_QUERY_COLLECTIONS = {
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
       candidate_api_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
       operational_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
-      reason_codes: textSchema,
+      reason_codes: filterTextSchema,
       recommended_adapter_kind: enumSchema(QUERY_ENUMS.recommendedAdapterKind),
     },
     sort: [
@@ -384,8 +396,8 @@ export const API_QUERY_COLLECTIONS = {
       missing_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
       netuid: integerSchema,
       profile_level: enumSchema(QUERY_ENUMS.profileLevel),
-      reason_codes: textSchema,
-      review_state: textSchema,
+      reason_codes: filterTextSchema,
+      review_state: filterTextSchema,
       manual_review_required: enumSchema(["true", "false"]),
     },
     search: ["name", "slug", "recommended_action", "reason_codes"],
@@ -458,7 +470,7 @@ export const API_QUERY_COLLECTIONS = {
       missing_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
       netuid: integerSchema,
       profile_level: enumSchema(QUERY_ENUMS.profileLevel),
-      reason_codes: textSchema,
+      reason_codes: filterTextSchema,
       submission_route: enumSchema([
         "direct-candidate-pr",
         "adapter-request",
@@ -527,7 +539,7 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       kind: enumSchema(QUERY_ENUMS.surfaceKind),
-      provider: textSchema,
+      provider: filterTextSchema,
       status: enumSchema(QUERY_ENUMS.healthStatus),
       classification: enumSchema(QUERY_ENUMS.healthClassification),
     },
@@ -547,7 +559,7 @@ export const API_QUERY_COLLECTIONS = {
   }),
   pools: queryCollection("pools", {
     filters: {
-      id: textSchema,
+      id: filterTextSchema,
       kind: enumSchema(["subtensor-rpc", "subtensor-wss", "archive"]),
     },
     sort: ["eligible_count", "endpoint_count", "id", "kind"],
@@ -555,7 +567,7 @@ export const API_QUERY_COLLECTIONS = {
   }),
   providers: queryCollection("providers", {
     filters: {
-      id: textSchema,
+      id: filterTextSchema,
       kind: enumSchema(QUERY_ENUMS.providerKind),
       authority: enumSchema(QUERY_ENUMS.providerAuthority),
     },
@@ -4245,7 +4257,9 @@ function listQuery(collection, options = {}) {
     .map(([name, schema]) => ({ name, schema }))
     .filter((parameter) => !excluded.has(parameter.name));
   const searchParameters =
-    config.search_keys.length > 0 ? [{ name: "q", schema: textSchema }] : [];
+    config.search_keys.length > 0
+      ? [{ name: "q", schema: searchTextSchema }]
+      : [];
   // Each numeric range field F → a `min_F` + `max_F` inclusive-bound parameter.
   const rangeParameters = config.range_filters.flatMap((field) => [
     { name: `min_${field}`, schema: { type: "number" } },
