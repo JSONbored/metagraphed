@@ -2976,6 +2976,201 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
   });
 });
 
+describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback leaderboard)", () => {
+  function moversQuery(argsClause) {
+    return `{ subnet_movers${argsClause} {
+      schema_version window start_date end_date sort subnet_count
+      network {
+        total_stake_start_tao total_stake_end_tao total_stake_delta_tao
+        total_emission_start_tao total_emission_end_tao total_emission_delta_tao
+        total_validators_start total_validators_end total_validators_delta
+        gainers losers unchanged
+      }
+      movers { netuid stake_delta_tao emission_delta_tao validators_delta }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard", async () => {
+    const { status, body } = await gql(moversQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_movers, {
+      schema_version: 1,
+      window: "30d",
+      start_date: null,
+      end_date: null,
+      sort: "stake",
+      subnet_count: 0,
+      network: {
+        total_stake_start_tao: "0.000000000",
+        total_stake_end_tao: "0.000000000",
+        total_stake_delta_tao: "0.000000000",
+        total_emission_start_tao: "0.000000000",
+        total_emission_end_tao: "0.000000000",
+        total_emission_delta_tao: "0.000000000",
+        total_validators_start: 0,
+        total_validators_end: 0,
+        total_validators_delta: 0,
+        gainers: 0,
+        losers: 0,
+        unchanged: 0,
+      },
+      movers: [],
+    });
+  });
+
+  test("resolves Postgres-tier movers for a valid non-default window/sort combination", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "7d",
+            start_date: "2026-07-08",
+            end_date: "2026-07-15",
+            sort: "emission",
+            subnet_count: 1,
+            network: {
+              total_stake_start_tao: "1000.000000000",
+              total_stake_end_tao: "1200.000000000",
+              total_stake_delta_tao: "200.000000000",
+              total_emission_start_tao: "10.000000000",
+              total_emission_end_tao: "12.000000000",
+              total_emission_delta_tao: "2.000000000",
+              total_validators_start: 5,
+              total_validators_end: 6,
+              total_validators_delta: 1,
+              gainers: 1,
+              losers: 0,
+              unchanged: 0,
+            },
+            movers: [
+              {
+                netuid: 3,
+                stake_start_tao: 1000,
+                stake_end_tao: 1200,
+                stake_delta_tao: 200,
+                stake_pct_change: 20,
+                stake_share_pct: 100,
+                emission_start_tao: 10,
+                emission_end_tao: 12,
+                emission_delta_tao: 2,
+                emission_pct_change: 20,
+                emission_share_pct: 100,
+                validators_start: 5,
+                validators_end: 6,
+                validators_delta: 1,
+                neurons_start: 20,
+                neurons_end: 21,
+                neurons_delta: 1,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      moversQuery('(window: "7d", sort: "emission")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/subnets/movers");
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl.searchParams.get("sort"), "emission");
+    assert.equal(capturedUrl.searchParams.get("limit"), "20");
+    assert.equal(body.data.subnet_movers.window, "7d");
+    assert.equal(body.data.subnet_movers.sort, "emission");
+    assert.equal(body.data.subnet_movers.subnet_count, 1);
+    assert.equal(
+      body.data.subnet_movers.network.total_stake_delta_tao,
+      "200.000000000",
+    );
+    assert.equal(body.data.subnet_movers.movers.length, 1);
+    assert.equal(body.data.subnet_movers.movers[0].netuid, 3);
+    assert.equal(body.data.subnet_movers.movers[0].emission_delta_tao, 2);
+  });
+
+  test("a limit argument is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({ schema_version: 1, movers: [] });
+        },
+      },
+    };
+    await gql(moversQuery("(limit: 5)"), env);
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+  });
+
+  test("a malformed Postgres-tier body degrades to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(moversQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet_movers.subnet_count, 0);
+    assert.deepEqual(body.data.subnet_movers.movers, []);
+    assert.equal(
+      body.data.subnet_movers.network.total_stake_start_tao,
+      "0.000000000",
+    );
+    assert.equal(body.data.subnet_movers.network.gainers, 0);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(moversQuery('(window: "1y")'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /1y/);
+  });
+
+  test("an unsupported sort is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(moversQuery('(sort: "bogus")'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /bogus/);
+  });
+
+  test("a limit above MOVERS_LIMIT_MAX is a GraphQL error, matching REST's exact rejection", async () => {
+    const { status, body } = await gql(moversQuery("(limit: 101)"));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /1 to 100/);
+  });
+
+  test("a limit below 1 is a GraphQL error", async () => {
+    const { status, body } = await gql(moversQuery("(limit: 0)"));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+  });
+
+  test("subnet_movers is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_movers, 5);
+  });
+});
+
 describe("Subscription.chainEvents", () => {
   test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
     const hub = fakeChainFirehose((repeater) => {

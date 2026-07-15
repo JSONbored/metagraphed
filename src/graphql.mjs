@@ -47,8 +47,20 @@ import {
 import { buildAccountSummary } from "./account-events.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
-import { parseHistoryWindow } from "./neuron-history.mjs";
+import {
+  parseHistoryWindow,
+  unsupportedWindowMessage,
+} from "./neuron-history.mjs";
 import { loadEconomicsTrends } from "./economics-trends.mjs";
+import {
+  DEFAULT_MOVERS_SORT,
+  DEFAULT_MOVERS_WINDOW,
+  MOVERS_LIMIT_DEFAULT,
+  MOVERS_LIMIT_MAX,
+  MOVERS_SORTS,
+  MOVERS_WINDOWS,
+  buildMovers,
+} from "./movers.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
@@ -100,6 +112,8 @@ export const SDL = `
     account(ss58: String!): AccountSummary
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
+    "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
+    subnet_movers(window: String, sort: String, limit: Int): SubnetMovers!
   }
 
   type SubnetList {
@@ -215,6 +229,57 @@ export const SDL = `
     validator_count: Int
     miner_count: Int
     mean_emission_share: Float
+  }
+
+  type SubnetMovers {
+    schema_version: Int!
+    window: String
+    start_date: String
+    end_date: String
+    sort: String!
+    subnet_count: Int!
+    network: SubnetMoversNetwork!
+    movers: [SubnetMover!]!
+  }
+
+  "Network-wide boundary totals for the movers window, summed across every ranked subnet (not just the returned page)."
+  type SubnetMoversNetwork {
+    "Lossless fixed 9-decimal (rao-precision) TAO string -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float."
+    total_stake_start_tao: String!
+    total_stake_end_tao: String!
+    total_stake_delta_tao: String!
+    total_emission_start_tao: String!
+    total_emission_end_tao: String!
+    total_emission_delta_tao: String!
+    total_validators_start: Int!
+    total_validators_end: Int!
+    total_validators_delta: Int!
+    gainers: Int!
+    losers: Int!
+    unchanged: Int!
+  }
+
+  "One subnet's stake/emission/validator/neuron movement between the window's start and end snapshots."
+  type SubnetMover {
+    netuid: Int!
+    stake_start_tao: Float!
+    stake_end_tao: Float!
+    stake_delta_tao: Float!
+    "Null when the start snapshot's stake was 0 (growth from nothing is undefined)."
+    stake_pct_change: Float
+    "This subnet's share of network stake at the end snapshot; null when the network total is 0."
+    stake_share_pct: Float
+    emission_start_tao: Float!
+    emission_end_tao: Float!
+    emission_delta_tao: Float!
+    emission_pct_change: Float
+    emission_share_pct: Float
+    validators_start: Int!
+    validators_end: Int!
+    validators_delta: Int!
+    neurons_start: Int!
+    neurons_end: Int!
+    neurons_delta: Int!
   }
 
   type SurfaceList {
@@ -721,6 +786,7 @@ export const FIELD_COMPLEXITY = {
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -1591,6 +1657,80 @@ const rootValue = {
       window: data.window ?? label,
       day_count: data.day_count ?? 0,
       days: data.days || [],
+    };
+  },
+
+  async subnet_movers({ window, sort, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_MOVERS_WINDOW;
+    if (!Object.hasOwn(MOVERS_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, MOVERS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const requestedSort = sort ?? DEFAULT_MOVERS_SORT;
+    if (!MOVERS_SORTS.includes(requestedSort)) {
+      throw new GraphQLError(
+        `"${requestedSort}" is not a supported sort. Supported: ${MOVERS_SORTS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const requestedLimit = limit ?? MOVERS_LIMIT_DEFAULT;
+    if (
+      !Number.isInteger(requestedLimit) ||
+      requestedLimit < 1 ||
+      requestedLimit > MOVERS_LIMIT_MAX
+    ) {
+      throw new GraphQLError(
+        `limit must be an integer from 1 to ${MOVERS_LIMIT_MAX}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("sort", requestedSort);
+    params.set("limit", String(requestedLimit));
+    // Same tryPostgresTier + buildMovers([], [], ...) fallback contract REST's
+    // handleSubnetMovers uses -- a cold/absent tier yields a schema-stable
+    // empty leaderboard, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/subnets/movers", params),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ??
+      buildMovers([], [], {
+        window: requestedWindow,
+        startDate: null,
+        endDate: null,
+        sort: requestedSort,
+        limit: requestedLimit,
+      });
+    const network = data.network ?? {};
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      start_date: data.start_date ?? null,
+      end_date: data.end_date ?? null,
+      sort: data.sort ?? requestedSort,
+      subnet_count: data.subnet_count ?? 0,
+      network: {
+        total_stake_start_tao: network.total_stake_start_tao ?? "0.000000000",
+        total_stake_end_tao: network.total_stake_end_tao ?? "0.000000000",
+        total_stake_delta_tao: network.total_stake_delta_tao ?? "0.000000000",
+        total_emission_start_tao:
+          network.total_emission_start_tao ?? "0.000000000",
+        total_emission_end_tao: network.total_emission_end_tao ?? "0.000000000",
+        total_emission_delta_tao:
+          network.total_emission_delta_tao ?? "0.000000000",
+        total_validators_start: network.total_validators_start ?? 0,
+        total_validators_end: network.total_validators_end ?? 0,
+        total_validators_delta: network.total_validators_delta ?? 0,
+        gainers: network.gainers ?? 0,
+        losers: network.losers ?? 0,
+        unchanged: network.unchanged ?? 0,
+      },
+      movers: data.movers || [],
     };
   },
 };
