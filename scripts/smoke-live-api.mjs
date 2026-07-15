@@ -498,6 +498,10 @@ export function apiRouteUrl(routePath, date, options = {}) {
   } else if (routePath === "/api/v1/compare") {
     // compare requires `netuids` — a bare GET is a 400 (#1682).
     url.searchParams.set("netuids", "7,8");
+  } else if (routePath === "/api/v1/subnets/{netuid}/stake-quote") {
+    // stake-quote requires `amount` — a bare GET is a correct 400
+    // invalid_amount, not a route failure (same #1682 class as compare above).
+    url.searchParams.set("amount", "1");
   } else if (
     [
       "/api/v1/surfaces",
