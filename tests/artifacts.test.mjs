@@ -1225,10 +1225,15 @@ test("public artifacts are internally consistent", () => {
     allwaysSseFixtureService.fixture_status.status,
     "unsupported-kind",
   );
+  // allways-crown-history used to be tracked with probe.enabled: false (a
+  // blind GET 400s without the direction query param), classifying it
+  // "non-get" here. Fixed to probe `?direction=SOL-BTC` and enabled -- it's
+  // now a normal enabled GET probe with no fixture captured in this
+  // deterministic no-capture build, same as allwaysFixtureService above.
   const allwaysHistoryFixtureService = readArtifact(
     "agent-catalog/7.json",
   ).services.find((service) => service.surface_id === "allways-crown-history");
-  assert.equal(allwaysHistoryFixtureService.fixture_status.status, "non-get");
+  assert.equal(allwaysHistoryFixtureService.fixture_status.status, "missing");
 
   // AI-resources index: the copyable agent + the live MCP tool list + resources.
   assert.match(agentResources.copyable_agent.url, /\/agent\.md$/);
