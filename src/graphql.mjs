@@ -35,6 +35,7 @@ import {
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
 } from "./subnet-weights.mjs";
 import { buildSubnetYield } from "./subnet-yield.mjs";
+import { buildSubnetPerformance } from "./subnet-performance.mjs";
 import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
@@ -183,6 +184,8 @@ export const SDL = `
     subnet_weights(netuid: Int!, window: String): SubnetWeights!
     "Per-subnet emission-per-stake yield over the current metagraph snapshot: each UID's yield plus the subnet-wide aggregate and p25/median/p75/p90 distribution; a subnet with no neurons resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/yield."
     subnet_yield(netuid: Int!): SubnetYield!
+    "Per-subnet reward-distribution and score-spread card over the current neurons snapshot: incentive/dividends concentration plus p10–p90 trust/consensus/validator_trust; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/performance."
+    subnet_performance(netuid: Int!): SubnetPerformance!
     "Append-only on-chain SubnetIdentitiesV3 change timeline for one subnet (name, symbol, description, repo, website, discord, logo), newest first; page with limit/offset or follow next_cursor. A subnet with no matching events resolves to a schema-stable empty timeline (entry_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/identity-history."
     subnet_identity_history(netuid: Int!, limit: Int, offset: Int, cursor: String): SubnetIdentityHistory!
     "Paginated provider/source registry."
@@ -760,6 +763,39 @@ export const SDL = `
     p75_yield: Float
     p90_yield: Float
     neurons: [SubnetYieldNeuron!]!
+  }
+
+  "0..1 score column spread (count/mean/min/max plus nearest-rank percentiles). Null when no neuron carries a finite value."
+  type ScoreDistribution {
+    count: Int!
+    mean: Float
+    min: Float
+    max: Float
+    p10: Float
+    p25: Float
+    p50: Float
+    p75: Float
+    p90: Float
+  }
+
+  "Per-subnet reward-distribution & score-spread card (#5714). Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/performance."
+  type SubnetPerformance {
+    schema_version: Int!
+    netuid: Int!
+    neuron_count: Int!
+    validator_count: Int!
+    active_count: Int!
+    captured_at: String
+    "Incentive concentration across all neurons with positive incentive."
+    incentive: ConcentrationMetrics
+    "Dividends concentration across permitted validators only."
+    dividends: ConcentrationMetrics
+    "Trust score spread across all neurons."
+    trust: ScoreDistribution
+    "Consensus score spread across all neurons."
+    consensus: ScoreDistribution
+    "Validator-trust score spread across permitted validators only."
+    validator_trust: ScoreDistribution
   }
 
   "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope."
@@ -1411,6 +1447,7 @@ export const FIELD_COMPLEXITY = {
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_yield: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_performance: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2121,6 +2158,41 @@ const rootValue = {
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
       entries: data.entries || [],
+    };
+  },
+
+  async subnet_performance({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetPerformance([])
+    // cold fallback contract handleSubnetPerformance / MCP get_subnet_performance
+    // use: a subnet with no neurons is a schema-stable zeroed card (metric
+    // blocks null), never a GraphQL error. No window — current snapshot only.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/performance`,
+          new URLSearchParams(),
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildSubnetPerformance([], netuid);
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      neuron_count: data.neuron_count ?? 0,
+      validator_count: data.validator_count ?? 0,
+      active_count: data.active_count ?? 0,
+      captured_at: data.captured_at ?? null,
+      incentive: data.incentive ?? null,
+      dividends: data.dividends ?? null,
+      trust: data.trust ?? null,
+      consensus: data.consensus ?? null,
+      validator_trust: data.validator_trust ?? null,
     };
   },
 

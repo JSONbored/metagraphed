@@ -3862,6 +3862,192 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
   });
 });
 
+describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_performance(netuid: 5) {
+          schema_version netuid neuron_count validator_count active_count captured_at
+          incentive { holders gini } dividends { holders }
+          trust { count } consensus { count } validator_trust { count }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_performance, {
+      schema_version: 1,
+      netuid: 5,
+      neuron_count: 0,
+      validator_count: 0,
+      active_count: 0,
+      captured_at: null,
+      incentive: null,
+      dividends: null,
+      trust: null,
+      consensus: null,
+      validator_trust: null,
+    });
+  });
+
+  test("resolves the Postgres-tier reward + score blocks", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          neuron_count: 4,
+          validator_count: 2,
+          active_count: 3,
+          captured_at: "2026-07-01T00:00:00.000Z",
+          incentive: {
+            holders: 3,
+            total: 1,
+            gini: 0.4,
+            hhi: 0.5,
+            hhi_normalized: 0.25,
+            nakamoto_coefficient: 1,
+            top_1pct_share: 0.6,
+            top_5pct_share: 0.6,
+            top_10pct_share: 0.6,
+            top_20pct_share: 0.9,
+            entropy: 1.4,
+            entropy_normalized: 0.8,
+          },
+          dividends: {
+            holders: 2,
+            total: 0.6,
+            gini: 0.2,
+            hhi: 0.7,
+            hhi_normalized: 0.4,
+            nakamoto_coefficient: 1,
+            top_1pct_share: 0.83,
+            top_5pct_share: 0.83,
+            top_10pct_share: 0.83,
+            top_20pct_share: 1,
+            entropy: 0.9,
+            entropy_normalized: 0.9,
+          },
+          trust: {
+            count: 4,
+            mean: 0.7,
+            min: 0.4,
+            max: 0.9,
+            p10: 0.4,
+            p25: 0.5,
+            p50: 0.75,
+            p75: 0.85,
+            p90: 0.9,
+          },
+          consensus: {
+            count: 4,
+            mean: 0.6,
+            min: 0.3,
+            max: 0.8,
+            p10: 0.3,
+            p25: 0.4,
+            p50: 0.65,
+            p75: 0.75,
+            p90: 0.8,
+          },
+          validator_trust: {
+            count: 2,
+            mean: 0.9,
+            min: 0.85,
+            max: 0.95,
+            p10: 0.85,
+            p25: 0.85,
+            p50: 0.95,
+            p75: 0.95,
+            p90: 0.95,
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_performance(netuid: 7) {
+          netuid neuron_count validator_count active_count captured_at
+          incentive { holders gini nakamoto_coefficient top_10pct_share }
+          dividends { holders total }
+          trust { count mean max }
+          validator_trust { count min max }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const p = body.data.subnet_performance;
+    assert.equal(p.netuid, 7);
+    assert.equal(p.neuron_count, 4);
+    assert.equal(p.validator_count, 2);
+    assert.equal(p.active_count, 3);
+    assert.equal(p.captured_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(p.incentive.holders, 3);
+    assert.equal(p.incentive.nakamoto_coefficient, 1);
+    assert.equal(p.dividends.holders, 2);
+    assert.equal(p.dividends.total, 0.6);
+    assert.equal(p.trust.count, 4);
+    assert.equal(p.trust.max, 0.9);
+    assert.equal(p.validator_trust.count, 2);
+    assert.equal(p.validator_trust.min, 0.85);
+  });
+
+  test("forwards the performance path to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql("{ subnet_performance(netuid: 3) { neuron_count } }", env);
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/performance"));
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_performance(netuid: 9) {
+          schema_version netuid neuron_count validator_count active_count
+          incentive { holders } trust { count }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_performance, {
+      schema_version: 1,
+      netuid: 9,
+      neuron_count: 0,
+      validator_count: 0,
+      active_count: 0,
+      incentive: null,
+      trust: null,
+    });
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty card", async () => {
+    const { body } = await gql(
+      "{ subnet_performance(netuid: -1) { neuron_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_performance ?? null, null);
+  });
+
+  test("subnet_performance is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_performance, 5);
+  });
+});
+
 describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
