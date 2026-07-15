@@ -12,6 +12,7 @@ shell) for content/structure/search, rendered through existing ui-kit primitives
 once proven, as a shared package both apps import rather than a second from-scratch integration.
 
 **Until that spike lands and a metagraphed port issue exists:**
+
 - Don't file new issues asking a contributor to hand-build a `docs.*.tsx` route. If a genuine docs
   gap is found during Pass 2, note it in the digest instead of filing it under the old pattern.
 - The open "Docs page: X" family (#3504/3505/3506/3507/3508/3509/3510/3511/3514/3516) was
