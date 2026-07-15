@@ -8,7 +8,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { PageHero, BrandIcon, TimeAgo, StatTile } from "@jsonbored/ui-kit";
+import { PageHero, BrandIcon, TimeAgo, StatTile, ShareButton } from "@jsonbored/ui-kit";
 import {
   chainDeregistrationsQuery,
   chainWeightsQuery,
@@ -64,6 +64,7 @@ function LeaderboardsPage() {
         live
         title="Leaderboards"
         description="Network-wide chain activity boards — ranked by subnet from live chain-direct analytics."
+        actions={<ShareButton />}
       />
       <div className="flex flex-wrap items-center justify-end gap-2">
         <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">

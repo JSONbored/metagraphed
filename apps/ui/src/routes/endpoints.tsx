@@ -22,6 +22,7 @@ import {
   DownloadCsvButton,
   SparkLegend,
   StatTile,
+  ShareButton,
 } from "@jsonbored/ui-kit";
 import { Radio, Server, ShieldCheck, Activity } from "lucide-react";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -145,6 +146,7 @@ function EndpointsPage() {
         live
         title="Endpoints"
         description="A load-balanced reverse proxy for Bittensor RPC, plus the registry of callable Subtensor and subnet endpoints behind it."
+        actions={<ShareButton />}
       />
       <div className="space-y-section">
         {/* Endpoint KPIs stay visible above the tabs so the tab bar has context
