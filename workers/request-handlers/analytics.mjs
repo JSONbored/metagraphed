@@ -947,6 +947,17 @@ const CHAIN_TRANSFER_PAIRS_CSV_COLUMNS = [
   "last_observed_at",
 ];
 
+// The transfers CSV exports the top-senders and top-receivers leaderboards as one
+// row set tagged by a `direction` column (sender|receiver) rather than as two
+// separate exports, since both share the same per-address shape; the scorecard
+// totals + top_sender_share rollup stay JSON-only, mirroring chain-transfer-pairs.
+const CHAIN_TRANSFERS_CSV_COLUMNS = [
+  "direction",
+  "address",
+  "volume_tao",
+  "transfer_count",
+];
+
 // Daily network-activity aggregates over the first-party chain D1 tiers (#1987):
 // per-UTC-day extrinsic/event/block counts, success rate, and unique signers —
 // the foundation time-series for the block-explorer "network at a glance" view
@@ -1184,13 +1195,16 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
 // volume (a concentration signal), from the account_events Transfer feed. The
 // network-level companion of /accounts/{ss58}/transfers + /counterparties.
 export async function handleChainTransfers(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const { limit, error: limitError } = parseLimitParam(url, {
     defaultLimit: 25,
     maxLimit: 100,
   });
   if (limitError) return analyticsQueryError(limitError);
+  const csv = csvRequested(url, request);
 
   // HEAD probes are globally allowed for read-only API routes. Normalize them
   // through the GET cache key so a transfer-analytics probe cannot bypass the
@@ -1219,6 +1233,24 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
           observedAt: meta?.last_run_at || null,
           limit,
         }));
+      if (csv) {
+        return csvResponse(
+          [
+            ...data.top_senders.map((row) => ({
+              direction: "sender",
+              ...row,
+            })),
+            ...data.top_receivers.map((row) => ({
+              direction: "receiver",
+              ...row,
+            })),
+          ],
+          "chain-transfers",
+          "short",
+          cacheRequest,
+          CHAIN_TRANSFERS_CSV_COLUMNS,
+        );
+      }
       return envelopeResponse(
         cacheRequest,
         {
@@ -1232,7 +1264,7 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
         "short",
       );
     },
-    canonicalAnalyticsCacheRoute(url, ["limit"]),
+    `${canonicalAnalyticsCacheRoute(url, ["limit"])}${csv ? "&format=csv" : ""}`,
   );
   return request.method === "HEAD"
     ? new Response(null, { status: response.status, headers: response.headers })

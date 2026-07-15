@@ -929,7 +929,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold. */
+        /** Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold. Pass ?format=csv to download the top senders and receivers as one CSV tagged by a `direction` column (the totals + top_sender_share stay JSON-only). */
         get: operations["chainTransfers"];
         put?: never;
         post?: never;
@@ -14937,6 +14937,8 @@ export interface operations {
             query?: {
                 window?: "7d" | "30d";
                 limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -14944,7 +14946,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -15018,6 +15020,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainTransfersArtifact"];
                     };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

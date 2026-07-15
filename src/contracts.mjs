@@ -3354,13 +3354,13 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/chain/transfers",
     "/metagraph/chain/transfers.json",
-    "Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold.",
+    "Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold. Pass ?format=csv to download the top senders and receivers as one CSV tagged by a `direction` column (the totals + top_sender_share stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    [
+    csvRouteQuery([
       { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ],
+    ]),
     [],
   ),
   route(

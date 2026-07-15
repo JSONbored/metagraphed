@@ -849,6 +849,122 @@ test("GET /api/v1/chain/transfers rejects non-canonical limits", async () => {
   }
 });
 
+function transfersEnv({ senders = [], receivers = [], totals } = {}) {
+  return {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              all: () => {
+                if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      totals ?? {
+                        transfer_count: 0,
+                        total_volume_tao: 0,
+                        unique_senders: 0,
+                        unique_receivers: 0,
+                      },
+                    ],
+                  });
+                }
+                if (/GROUP BY hotkey/.test(sql)) {
+                  return Promise.resolve({ results: senders });
+                }
+                if (/GROUP BY coldkey/.test(sql)) {
+                  return Promise.resolve({ results: receivers });
+                }
+                return Promise.resolve({ results: [] });
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+}
+
+const TRANSFERS_CSV_HEADER = "direction,address,volume_tao,transfer_count";
+const TRANSFERS_SENDER_ROW = {
+  address: "5Sa",
+  volume_tao: 80,
+  transfer_count: 5,
+};
+const TRANSFERS_RECEIVER_ROW = {
+  address: "5Rx",
+  volume_tao: 60,
+  transfer_count: 4,
+};
+const TRANSFERS_TOTALS = {
+  transfer_count: 10,
+  total_volume_tao: 100,
+  unique_senders: 4,
+  unique_receivers: 6,
+};
+
+test("GET /api/v1/chain/transfers exports top senders + receivers as CSV with ?format=csv", async () => {
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/transfers?window=7d&format=csv",
+    ),
+    transfersEnv({
+      senders: [TRANSFERS_SENDER_ROW],
+      receivers: [TRANSFERS_RECEIVER_ROW],
+      totals: TRANSFERS_TOTALS,
+    }),
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/csv/);
+  assert.match(
+    res.headers.get("content-disposition"),
+    /attachment; filename="chain-transfers\.csv"/,
+  );
+  const lines = (await res.text()).trim().split("\r\n");
+  assert.equal(lines[0], TRANSFERS_CSV_HEADER);
+  assert.equal(lines.length, 3); // header + 1 sender row + 1 receiver row
+  assert.equal(lines[1], "sender,5Sa,80,5");
+  assert.equal(lines[2], "receiver,5Rx,60,4");
+});
+
+test("GET /api/v1/chain/transfers honors Accept: text/csv the same as ?format=csv", async () => {
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/transfers", {
+      headers: { accept: "text/csv" },
+    }),
+    transfersEnv({
+      senders: [TRANSFERS_SENDER_ROW],
+      receivers: [TRANSFERS_RECEIVER_ROW],
+      totals: TRANSFERS_TOTALS,
+    }),
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/csv/);
+});
+
+test("GET /api/v1/chain/transfers emits a header-only CSV on a cold store", async () => {
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/transfers?format=csv"),
+    transfersEnv({}),
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/csv/);
+  assert.equal((await res.text()).trim(), TRANSFERS_CSV_HEADER);
+});
+
+test("GET /api/v1/chain/transfers rejects an unsupported format value with 400", async () => {
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/transfers?format=xml"),
+    transfersEnv({}),
+    {},
+  );
+  assert.equal(res.status, 400);
+});
+
 // #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
 // table this handler already reads, no new flag) -- tryPostgresTier's own
 // fallback contract is unit-tested in workers/postgres-tier.mjs's own tests,
