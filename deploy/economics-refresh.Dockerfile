@@ -26,11 +26,19 @@
 # roles/data-refresh-economics/files/refresh-economics.sh in
 # metagraphed-infra for the orchestration.
 #
-# No non-root USER (unlike metagraph-fetch.Dockerfile/chain-firehose-relay.
-# Dockerfile): this container's only inputs are our own git repo, our own
-# fullnode, and the Cloudflare API -- accepts no external network input, so
-# the non-root hardening those long-running/user-facing services need buys
-# little here. Revisit if that changes.
+# Non-root (uid 10001, matching metagraph-fetch.Dockerfile/chain-firehose-
+# relay.Dockerfile's own convention). Originally shipped without one on the
+# theory that this container accepts no external network input -- a security
+# review correctly called that out as reasoning about the wrong risk: the
+# real exposure isn't inbound network requests, it's SUPPLY CHAIN (npm ci's
+# postinstall scripts across ~600 packages, the unpinned-at-runtime bittensor
+# PyPI resolution noted above, in principle a compromised git ref) running
+# arbitrary code -- and root privilege inside the container widens the blast
+# radius of a container escape regardless of whether the process itself
+# listens on a socket. /repo is pre-created + chowned here (not left for
+# Docker to auto-create on first volume mount) so the entrypoint's runtime
+# git clone/npm ci -- which must run as this same non-root user -- can
+# actually write to it.
 #
 # Deployed via the data-refresh-economics Ansible role in
 # JSONbored/metagraphed-infra, which copies this Dockerfile +
@@ -52,7 +60,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 git ca-
   && rm -rf /var/lib/apt/lists/*
 COPY --from=uv /uv /uvx /usr/local/bin/
 
+RUN useradd -u 10001 -m runner \
+  && mkdir -p /repo \
+  && chown runner:runner /repo
+
 COPY scripts/economics-refresh-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+USER runner
 ENTRYPOINT ["/entrypoint.sh"]
