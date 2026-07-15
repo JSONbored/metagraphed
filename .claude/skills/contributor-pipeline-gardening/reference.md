@@ -1,5 +1,26 @@
 # Contributor pipeline gardening — reference (metagraphed)
 
+## Docs architecture is mid-migration (as of 2026-07-15) — don't generate old-pattern docs issues
+
+metagraphed's website docs (currently hand-built TanStack Router route files, one full React
+component per page — see the shipped `Docs page: X` precedents like #3512/#3513/#3515) are migrating
+to a shared MDX pipeline: **`fumadocs-core`/`fumadocs-mdx` (headless, not `fumadocs-ui`'s component
+shell) for content/structure/search, rendered through existing ui-kit primitives, plus Scalar
+(`@scalar/api-reference`) for the API playground.** This is being proven on loopover first
+(JSONbored/loopover#6037, a bounded spike) — metagraphed's `apps/ui` shares the identical
+`@lovable.dev/vite-tanstack-config` Vite setup as loopover's, so the pattern should port directly
+once proven, as a shared package both apps import rather than a second from-scratch integration.
+
+**Until that spike lands and a metagraphed port issue exists:**
+- Don't file new issues asking a contributor to hand-build a `docs.*.tsx` route. If a genuine docs
+  gap is found during Pass 2, note it in the digest instead of filing it under the old pattern.
+- The open "Docs page: X" family (#3504/3505/3506/3507/3508/3509/3510/3511/3514/3516) was
+  deliberately paused this way on 2026-07-15 — `maintainer-only` + a comment, not because the
+  underlying content need went away. Don't "fix" this labeling in a future stale-sweep pass; check
+  JSONbored/loopover#6037's state first. Once the pattern lands here too, these need their
+  Requirements rewritten to target an `.mdx` content file instead of a hand-built route, then
+  `maintainer-only` removed.
+
 ## Product shape
 
 metagraphed is a Bittensor subnet registry + block-explorer product: `registry/subnets/<slug>.json`
