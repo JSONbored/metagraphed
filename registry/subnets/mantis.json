@@ -12,7 +12,7 @@
   ],
   "source_repo": "https://github.com/Barbariandev/MANTIS",
   "dashboard_url": "https://taomarketcap.com/subnets/123",
-  "website_url": null,
+  "website_url": "https://mantis123.com",
   "notes": "Reviewed overlay for SN123 using the live MANTIS source repository and linked model-iteration SDK/tooling repository. No standalone website, docs site, public API, OpenAPI, SSE, or data artifact has been verified yet.",
   "curation": {
     "level": "maintainer-reviewed",

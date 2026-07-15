@@ -5,7 +5,7 @@
   "slug": "ain",
   "status": "active",
   "categories": ["baseline-curated", "identity-reviewed"],
-  "source_repo": null,
+  "source_repo": "https://github.com/HeraldMedia/herald",
   "website_url": "https://www.heraldmedia.ai/",
   "docs_url": null,
   "dashboard_url": null,
