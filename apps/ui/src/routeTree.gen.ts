@@ -20,6 +20,7 @@ import { Route as GraphqlRouteImport } from './routes/graphql'
 import { Route as GapsRouteImport } from './routes/gaps'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as EndpointsRouteImport } from './routes/endpoints'
+import { Route as ChainEventsRouteImport } from './routes/chain-events'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -92,6 +93,11 @@ const ExplorerRoute = ExplorerRouteImport.update({
 const EndpointsRoute = EndpointsRouteImport.update({
   id: '/endpoints',
   path: '/endpoints',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChainEventsRoute = ChainEventsRouteImport.update({
+  id: '/chain-events',
+  path: '/chain-events',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentsRoute = AgentsRouteImport.update({
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/chain-events': typeof ChainEventsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/chain-events': typeof ChainEventsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
@@ -252,6 +260,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/chain-events': typeof ChainEventsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
@@ -285,6 +294,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/chain-events'
     | '/endpoints'
     | '/explorer'
     | '/gaps'
@@ -316,6 +326,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/chain-events'
     | '/endpoints'
     | '/explorer'
     | '/gaps'
@@ -347,6 +358,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/chain-events'
     | '/endpoints'
     | '/explorer'
     | '/gaps'
@@ -379,6 +391,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AgentsRoute: typeof AgentsRoute
+  ChainEventsRoute: typeof ChainEventsRoute
   EndpointsRoute: typeof EndpointsRoute
   ExplorerRoute: typeof ExplorerRoute
   GapsRoute: typeof GapsRoute
@@ -484,6 +497,13 @@ declare module '@tanstack/react-router' {
       path: '/endpoints'
       fullPath: '/endpoints'
       preLoaderRoute: typeof EndpointsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chain-events': {
+      id: '/chain-events'
+      path: '/chain-events'
+      fullPath: '/chain-events'
+      preLoaderRoute: typeof ChainEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agents': {
@@ -619,6 +639,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AgentsRoute: AgentsRoute,
+  ChainEventsRoute: ChainEventsRoute,
   EndpointsRoute: EndpointsRoute,
   ExplorerRoute: ExplorerRoute,
   GapsRoute: GapsRoute,
