@@ -31,6 +31,7 @@ import {
   Sparkles,
   Star,
   User,
+  Webhook,
   Wifi,
   Workflow,
   Zap,
@@ -139,6 +140,13 @@ const ROUTE_INDEX: Array<{
     to: "/feeds",
     hint: "RSS, Atom, JSON Feed subscriptions",
     icon: Rss,
+    scope: "route",
+  },
+  {
+    label: "Webhooks",
+    to: "/webhooks",
+    hint: "Change-feed subscriptions, HMAC signing",
+    icon: Webhook,
     scope: "route",
   },
   {
