@@ -1,11 +1,12 @@
 {
-  "schema_version": 1,
-  "id": "gittensory",
-  "name": "Gittensory",
-  "kind": "data-provider",
-  "website_url": "https://gittensory.aethereal.dev",
+  "authority": "provider-claimed",
   "docs_url": "https://gittensory.aethereal.dev",
   "github_url": "https://github.com/JSONbored/gittensory",
-  "authority": "provider-claimed",
-  "notes": "Gittensor-native contribution quality & planning layer for SN74: deterministic MCP signals for contributors and a free anti-slop + AI second-opinion gate (GitHub App) for maintainers. Provider-claimed; surfaces pending registry verification."
+  "id": "gittensory",
+  "kind": "data-provider",
+  "logo_url": "https://metagraph.sh/logos/gittensory.png",
+  "name": "Gittensory",
+  "notes": "Gittensor-native contribution quality & planning layer for SN74: deterministic MCP signals for contributors and a free anti-slop + AI second-opinion gate (GitHub App) for maintainers. Provider-claimed; surfaces pending registry verification.",
+  "schema_version": 1,
+  "website_url": "https://gittensory.aethereal.dev"
 }

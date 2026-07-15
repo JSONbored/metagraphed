@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "silx-labs",
-  "name": "SILX Labs",
-  "kind": "subnet-team",
-  "website_url": "https://silxinc.com/",
-  "github_url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
   "authority": "official",
-  "notes": "Provider entry for the SILX Labs Quasar SN24 website, source repository, and public model artifacts."
+  "github_url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
+  "id": "silx-labs",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/silx-labs.png",
+  "name": "SILX Labs",
+  "notes": "Provider entry for the SILX Labs Quasar SN24 website, source repository, and public model artifacts.",
+  "schema_version": 1,
+  "website_url": "https://silxinc.com/"
 }

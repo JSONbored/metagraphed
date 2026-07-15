@@ -1,11 +1,12 @@
 {
-  "schema_version": 1,
-  "id": "bitrecs",
-  "name": "Bitrecs",
-  "kind": "subnet-team",
-  "website_url": "https://www.bitrecs.ai/",
+  "authority": "official",
   "docs_url": "https://bitrecs.gitbook.io/bitrecs-docs/",
   "github_url": "https://github.com/bitrecs/bitrecs-subnet",
-  "authority": "official",
-  "notes": "Provider entry for Bitrecs SN122 official website, documentation, and source repository."
+  "id": "bitrecs",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/bitrecs.png",
+  "name": "Bitrecs",
+  "notes": "Provider entry for Bitrecs SN122 official website, documentation, and source repository.",
+  "schema_version": 1,
+  "website_url": "https://www.bitrecs.ai/"
 }

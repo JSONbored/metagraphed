@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "blockmachine",
-  "name": "BlockMachine",
-  "kind": "infrastructure-provider",
-  "website_url": "https://blockmachine.io",
-  "docs_url": "https://blockmachine.io/docs/integrate-rpc",
   "authority": "provider-claimed",
-  "notes": "Bittensor subnet/provider for verifiable RPC infrastructure. Tracked as adjacent infra provider, not generic Metagraphed hosting."
+  "docs_url": "https://blockmachine.io/docs/integrate-rpc",
+  "id": "blockmachine",
+  "kind": "infrastructure-provider",
+  "logo_url": "https://metagraph.sh/logos/blockmachine.svg",
+  "name": "BlockMachine",
+  "notes": "Bittensor subnet/provider for verifiable RPC infrastructure. Tracked as adjacent infra provider, not generic Metagraphed hosting.",
+  "schema_version": 1,
+  "website_url": "https://blockmachine.io"
 }

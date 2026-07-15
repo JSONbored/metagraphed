@@ -1,11 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "allways",
-  "name": "Allways",
-  "kind": "subnet-team",
-  "website_url": "https://all-ways.io",
-  "docs_url": "https://docs.all-ways.io/how-it-works.html",
-  "logo_url": "https://all-ways.io/icons/icon-512.png",
   "authority": "provider-claimed",
-  "notes": "Seed provider entry for the Allways SN7 pilot."
+  "docs_url": "https://docs.all-ways.io/how-it-works.html",
+  "id": "allways",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/allways.png",
+  "name": "Allways",
+  "notes": "Seed provider entry for the Allways SN7 pilot.",
+  "schema_version": 1,
+  "website_url": "https://all-ways.io"
 }

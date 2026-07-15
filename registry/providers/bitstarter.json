@@ -1,9 +1,10 @@
 {
-  "schema_version": 1,
-  "id": "bitstarter",
-  "name": "Bitstarter",
-  "kind": "subnet-team",
-  "website_url": "https://bitstarter.ai/",
   "authority": "official",
-  "notes": "Provider entry for Bitstarter SN91 public website and app surfaces. No verified source repository or machine-readable API schema has been found yet."
+  "id": "bitstarter",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/bitstarter.png",
+  "name": "Bitstarter",
+  "notes": "Provider entry for Bitstarter SN91 public website and app surfaces. No verified source repository or machine-readable API schema has been found yet.",
+  "schema_version": 1,
+  "website_url": "https://bitstarter.ai/"
 }

@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "djinn",
-  "name": "Djinn",
-  "kind": "subnet-team",
-  "website_url": "https://www.djinn.gg/",
-  "github_url": "https://github.com/Djinn-Inc/djinn",
   "authority": "official",
-  "notes": "Provider entry for Djinn SN103 website and source repository."
+  "github_url": "https://github.com/Djinn-Inc/djinn",
+  "id": "djinn",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/djinn.png",
+  "name": "Djinn",
+  "notes": "Provider entry for Djinn SN103 website and source repository.",
+  "schema_version": 1,
+  "website_url": "https://www.djinn.gg/"
 }

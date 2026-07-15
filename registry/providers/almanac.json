@@ -3,6 +3,7 @@
   "github_url": "https://github.com/sportstensor/sn41",
   "id": "almanac",
   "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/almanac.png",
   "name": "Almanac",
   "public_notes": "Subnet 41 (Almanac) team profile — incentivized market intelligence via Sportstensor prediction markets. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo). Review input only (authority: community).",
   "schema_version": 1,

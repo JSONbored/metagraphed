@@ -2,6 +2,7 @@
   "authority": "community",
   "id": "yanez-compliance",
   "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/yanez-compliance.png",
   "name": "Yanez Compliance",
   "public_notes": "",
   "schema_version": 1,

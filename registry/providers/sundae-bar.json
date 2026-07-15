@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "sundae-bar",
-  "name": "Sundae Bar",
-  "kind": "subnet-team",
-  "website_url": "https://www.sundaebar.ai/",
-  "github_url": "https://github.com/sundae-bar/bittensor-subnet",
   "authority": "official",
-  "notes": "Provider entry for Sundae Bar SN121 website and source repository."
+  "github_url": "https://github.com/sundae-bar/bittensor-subnet",
+  "id": "sundae-bar",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/sundae-bar.png",
+  "name": "Sundae Bar",
+  "notes": "Provider entry for Sundae Bar SN121 website and source repository.",
+  "schema_version": 1,
+  "website_url": "https://www.sundaebar.ai/"
 }

@@ -1,12 +1,13 @@
 {
-  "schema_version": 1,
-  "id": "cacheon",
-  "name": "Cacheon",
-  "kind": "subnet-team",
-  "website_url": "https://cacheon.ai/",
+  "authority": "official",
   "docs_url": "https://cacheon.ai/docs",
   "github_url": "https://github.com/latent-to/cacheon",
-  "authority": "official",
+  "id": "cacheon",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/cacheon.png",
+  "name": "Cacheon",
+  "notes": "The public API contract documentation describes miner-required OpenAI-compatible endpoints. No shared hosted public subnet API endpoint is promoted from that contract.",
   "public_notes": "Provider profile for Cacheon / SN14. Public surfaces include the Cacheon website, documentation, source repository, and miner API contract documentation.",
-  "notes": "The public API contract documentation describes miner-required OpenAI-compatible endpoints. No shared hosted public subnet API endpoint is promoted from that contract."
+  "schema_version": 1,
+  "website_url": "https://cacheon.ai/"
 }

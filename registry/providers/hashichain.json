@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "hashichain",
-  "name": "HashiChain",
-  "kind": "subnet-team",
-  "website_url": "https://github.com/hashi115/hashichain",
-  "github_url": "https://github.com/hashi115/hashichain",
   "authority": "official",
-  "notes": "Provider entry for the HashiChain SN115 public source repository. No standalone website, docs site, or machine-readable API schema has been verified yet."
+  "github_url": "https://github.com/hashi115/hashichain",
+  "id": "hashichain",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/hashichain.png",
+  "name": "HashiChain",
+  "notes": "Provider entry for the HashiChain SN115 public source repository. No standalone website, docs site, or machine-readable API schema has been verified yet.",
+  "schema_version": 1,
+  "website_url": "https://github.com/hashi115/hashichain"
 }

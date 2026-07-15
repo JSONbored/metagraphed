@@ -3,7 +3,7 @@
   "github_url": "https://github.com/subnet112/minotaur_subnet",
   "id": "minotaur",
   "kind": "subnet-team",
-  "logo_url": "https://github.com/subnet112.png",
+  "logo_url": "https://metagraph.sh/logos/minotaur.png",
   "name": "minotaur",
   "public_notes": "Subnet 112 (minotaur) team profile — distributed DEX aggregator and swap-intent network. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
   "schema_version": 1,

@@ -1,11 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "its-ai",
-  "name": "ItsAI",
-  "kind": "subnet-team",
-  "website_url": "https://its-ai.org/en",
-  "github_url": "https://github.com/It-s-AI/llm-detection",
-  "logo_url": "https://github.com/It-s-AI.png",
   "authority": "official",
-  "notes": "Provider entry for ItsAI SN32 website and source repository."
+  "github_url": "https://github.com/It-s-AI/llm-detection",
+  "id": "its-ai",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/its-ai.png",
+  "name": "ItsAI",
+  "notes": "Provider entry for ItsAI SN32 website and source repository.",
+  "schema_version": 1,
+  "website_url": "https://its-ai.org/en"
 }

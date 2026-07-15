@@ -1,11 +1,12 @@
 {
-  "schema_version": 1,
-  "id": "tensorusd",
-  "name": "TensorUSD",
-  "kind": "subnet-team",
-  "website_url": "https://tensorusd.com/",
+  "authority": "official",
   "docs_url": "https://docs.tensorusd.com/",
   "github_url": "https://github.com/TensorUSD/subnet",
-  "authority": "official",
-  "notes": "Provider entry for TensorUSD SN113 website, subnet docs, and source repository."
+  "id": "tensorusd",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/tensorusd.png",
+  "name": "TensorUSD",
+  "notes": "Provider entry for TensorUSD SN113 website, subnet docs, and source repository.",
+  "schema_version": 1,
+  "website_url": "https://tensorusd.com/"
 }

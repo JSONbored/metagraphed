@@ -1,11 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "gittensor",
-  "name": "Gittensor",
-  "kind": "subnet-team",
-  "website_url": "https://gittensor.io",
-  "docs_url": "https://docs.gittensor.io/",
-  "logo_url": "https://gittensor.io/gt-logo.svg",
   "authority": "provider-claimed",
-  "notes": "Seed provider entry for the Gittensor SN74 pilot."
+  "docs_url": "https://docs.gittensor.io/",
+  "id": "gittensor",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/gittensor.svg",
+  "name": "Gittensor",
+  "notes": "Seed provider entry for the Gittensor SN74 pilot.",
+  "schema_version": 1,
+  "website_url": "https://gittensor.io"
 }

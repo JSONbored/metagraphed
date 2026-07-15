@@ -3,6 +3,7 @@
   "github_url": "https://github.com/RendixNetwork/eirel-ai",
   "id": "eirel",
   "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/eirel.png",
   "name": "Eirel",
   "public_notes": "Subnet 36 (Eirel) team profile — the execution layer for multimodal AI workloads. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
   "schema_version": 1,

@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "compelle",
-  "name": "Compelle",
-  "kind": "subnet-team",
-  "website_url": "https://compelle.com/",
-  "github_url": "https://github.com/compelle/compelle-validator",
   "authority": "official",
-  "notes": "Provider entry for Compelle SN82 website and validator repository."
+  "github_url": "https://github.com/compelle/compelle-validator",
+  "id": "compelle",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/compelle.png",
+  "name": "Compelle",
+  "notes": "Provider entry for Compelle SN82 website and validator repository.",
+  "schema_version": 1,
+  "website_url": "https://compelle.com/"
 }

@@ -1,13 +1,14 @@
 {
-  "schema_version": 1,
-  "id": "herald",
-  "name": "Herald",
-  "kind": "subnet-team",
-  "website_url": "https://www.heraldmedia.ai/",
-  "github_url": "https://github.com/HeraldMedia/herald",
   "authority": "community",
+  "github_url": "https://github.com/HeraldMedia/herald",
+  "id": "herald",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/herald.svg",
+  "name": "Herald",
   "public_notes": "SN69 ain (Herald) verified media placement subnet. Identity from the official Herald website and HeraldMedia/herald source repository (README declares Bittensor netuid 69). Review input only (authority: community).",
+  "schema_version": 1,
   "social": {
     "x": "https://x.com/heraldmedia_ai"
-  }
+  },
+  "website_url": "https://www.heraldmedia.ai/"
 }

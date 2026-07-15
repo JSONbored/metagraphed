@@ -1,11 +1,12 @@
 {
-  "schema_version": 1,
-  "id": "lium",
-  "name": "lium.io",
-  "kind": "subnet-team",
-  "website_url": "https://lium.io/",
+  "authority": "official",
   "docs_url": "https://docs.lium.io/",
   "github_url": "https://github.com/Datura-ai/lium-io",
-  "authority": "official",
-  "notes": "Provider entry for lium.io SN51, the GPU-compute marketplace operator — website, Lium Backend API OpenAPI schema, and public machines API."
+  "id": "lium",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/lium.png",
+  "name": "lium.io",
+  "notes": "Provider entry for lium.io SN51, the GPU-compute marketplace operator — website, Lium Backend API OpenAPI schema, and public machines API.",
+  "schema_version": 1,
+  "website_url": "https://lium.io/"
 }

@@ -3,6 +3,7 @@
   "github_url": "https://github.com/0xsigurd/Perturb",
   "id": "perturb",
   "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/perturb.svg",
   "name": "Perturb",
   "public_notes": "Subnet 26 (Perturb) team profile — decentralized adversarial robustness network. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
   "schema_version": 1,

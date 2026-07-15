@@ -1,12 +1,13 @@
 {
-  "schema_version": 1,
-  "id": "gradients",
-  "name": "Gradients",
-  "kind": "subnet-team",
-  "website_url": "https://www.gradients.io/",
+  "authority": "provider-claimed",
   "docs_url": "https://api.gradients.io/docs",
   "github_url": "https://github.com/gradients-ai/G.O.D",
-  "authority": "provider-claimed",
+  "id": "gradients",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/gradients.png",
+  "name": "Gradients",
+  "notes": "The public Gradients website describes decentralized AI training on Bittensor and links to the public API host. The GitHub source repository is live and was observed through public subnet directories.",
   "public_notes": "Provider profile for Gradients / SN56.",
-  "notes": "The public Gradients website describes decentralized AI training on Bittensor and links to the public API host. The GitHub source repository is live and was observed through public subnet directories."
+  "schema_version": 1,
+  "website_url": "https://www.gradients.io/"
 }

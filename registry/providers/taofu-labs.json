@@ -2,6 +2,7 @@
   "authority": "community",
   "id": "taofu-labs",
   "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/taofu-labs.png",
   "name": "Taofu Labs",
   "public_notes": "",
   "schema_version": 1,

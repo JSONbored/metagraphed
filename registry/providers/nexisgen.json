@@ -3,6 +3,7 @@
   "github_url": "https://github.com/RendixNetwork/nexisgen",
   "id": "nexisgen",
   "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/nexisgen.png",
   "name": "NexisGen",
   "public_notes": "Subnet 70 (NexisGen) team profile — Bittensor data subnet for validated miner submissions. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
   "schema_version": 1,

@@ -754,7 +754,6 @@ function pickIconSource(src, theme) {
 var PROVIDER_ICONS = {
   // Subnet teams with strong GH org presence
   bitmind: "https://github.com/BitMind-AI.png?size=192",
-  chutes: "https://github.com/chutesai.png?size=192",
   "compute-horde": "https://github.com/backend-developers-ltd.png?size=192",
   desearch: "https://github.com/Desearch-ai.png?size=192",
   macrocosmos: "https://github.com/macrocosm-os.png?size=192",
@@ -766,44 +765,13 @@ var PROVIDER_ICONS = {
   datura: "https://github.com/Datura-ai.png?size=192",
   nineteen: "https://github.com/namoray.png?size=192",
   corcel: "https://github.com/corcel-api.png?size=192",
-  targon: "https://github.com/manifold-inc.png?size=192",
   manifold: "https://github.com/manifold-inc.png?size=192",
   "cortex-t": "https://github.com/corcel-api.png?size=192",
-  // NOT allways-ai (a real GitHub org, but empty -- 0 public repos, no bio/
-  // blog/avatar of its own -- confirmed 2026-07-15 its ".png" avatar is just
-  // GitHub's auto-generated default identicon for a repo-less org, not any
-  // real Allways branding; visually confirmed against the real logo below,
-  // they share nothing in common). Allways' real GitHub org (entrius, same
-  // team as Gittensor/SN74) has no set avatar either. The subnet's
-  // on-chain-declared logo_url (SubnetIdentitiesV3, same source the masthead
-  // uses) is the SAME mark but hosted on an S3 bucket with no CORS headers
-  // -- verified live it fails to load here (this override is fetched with
-  // crossOrigin="anonymous" downstream). all-ways.io's own hosted copy is
-  // pixel-identical and Cloudflare-fronted with a proper
-  // access-control-allow-origin, so use that instead.
-  allways: "https://all-ways.io/icons/icon-512.png",
-  // NOT eden-network (a real, unrelated GitHub org — confirmed via the GitHub
-  // API while auditing this file 2026-07-15; likely a stale copy-paste). This
-  // fallback only fires for provider-attribution UI (Providers/Surfaces/
-  // Endpoints listings) since the subnet masthead itself sources its icon
-  // from profile.icon_url (on-chain SubnetIdentitiesV3 logo_url, correct).
-  // Gittensor's real GitHub org (entrius) has no set avatar worth using, so
-  // this points at their own self-hosted logo instead, matching the asset
-  // scripts/gittensor-impact-card.mjs already treats as authoritative.
-  gittensor: "https://gittensor.io/gt-logo.svg",
-  bitads: "https://github.com/FirstTensorLabs.png?size=192",
   academia: "https://github.com/fx-integral.png?size=192",
-  adtao: "https://github.com/ippcteam.png?size=192",
-  bitrecs: "https://github.com/bitrecs.png?size=192",
-  cacheon: "https://github.com/latent-to.png?size=192",
   chipforge: "https://github.com/TatsuProject.png?size=192",
   coldint: "https://github.com/coldint.png?size=192",
-  compelle: "https://github.com/compelle.png?size=192",
-  connito: "https://github.com/Connito-AI.png?size=192",
-  djinn: "https://github.com/Djinn-Inc.png?size=192",
   // Infra / data providers
   dwellir: "https://github.com/Dwellir.png?size=192",
-  blockmachine: "https://github.com/blockmachine-io.png?size=192",
   "opentensor-foundation": "https://github.com/opentensor.png?size=192",
   opentensor: "https://github.com/opentensor.png?size=192",
   bittensor: "https://github.com/opentensor.png?size=192"

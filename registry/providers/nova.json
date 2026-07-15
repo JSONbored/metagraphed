@@ -3,6 +3,7 @@
   "github_url": "https://github.com/metanova-labs/nova",
   "id": "nova",
   "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/nova.png",
   "name": "NOVA",
   "public_notes": "Subnet 68 (NOVA) team profile — accelerating drug discovery. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
   "schema_version": 1,

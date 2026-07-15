@@ -1,12 +1,12 @@
 {
-  "schema_version": 1,
-  "id": "hone",
-  "name": "Hone",
-  "kind": "subnet-team",
-  "website_url": "https://www.hone.training/",
-  "github_url": "https://github.com/manifold-inc/hone",
-  "logo_url": "https://www.hone.training/favicon.ico",
   "authority": "official",
+  "github_url": "https://github.com/manifold-inc/hone",
+  "id": "hone",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/hone.png",
+  "name": "Hone",
+  "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet.",
   "public_notes": "Provider profile for Hone / SN5. Public surfaces include the Hone website, network pages, and source repository.",
-  "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet."
+  "schema_version": 1,
+  "website_url": "https://www.hone.training/"
 }

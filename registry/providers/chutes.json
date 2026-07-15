@@ -1,12 +1,12 @@
 {
-  "schema_version": 1,
-  "id": "chutes",
-  "name": "Chutes",
-  "kind": "subnet-team",
-  "website_url": "https://chutes.ai/",
+  "authority": "official",
   "docs_url": "https://chutes.ai/docs",
   "github_url": "https://github.com/chutesai/chutes",
-  "logo_url": "https://chutes.ai/favicon.png",
-  "authority": "official",
-  "notes": "Provider entry for Chutes SN64 website, docs, SDK, miner, validator/API source repositories, app catalog, and public pricing data."
+  "id": "chutes",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/chutes.png",
+  "name": "Chutes",
+  "notes": "Provider entry for Chutes SN64 website, docs, SDK, miner, validator/API source repositories, app catalog, and public pricing data.",
+  "schema_version": 1,
+  "website_url": "https://chutes.ai/"
 }
