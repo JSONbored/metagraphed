@@ -4359,3 +4359,167 @@ describe("Subscription.chainEvents", () => {
     assert.ok(body.errors?.length);
   });
 });
+
+describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(
+      `{ chain_yield {
+          schema_version subnet_count neuron_count validator_count miner_count
+          captured_at total_stake_tao total_emission_tao
+          network_yield validator_yield miner_yield
+          distribution { count mean median min max p10 p25 p75 p90 }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_yield, {
+      schema_version: 1,
+      subnet_count: 0,
+      neuron_count: 0,
+      validator_count: 0,
+      miner_count: 0,
+      captured_at: null,
+      total_stake_tao: 0,
+      total_emission_tao: 0,
+      network_yield: null,
+      validator_yield: null,
+      miner_yield: null,
+      distribution: null,
+    });
+  });
+
+  test("resolves the Postgres-tier card, including the nested distribution", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          subnet_count: 3,
+          neuron_count: 500,
+          validator_count: 40,
+          miner_count: 460,
+          captured_at: "2026-07-15T00:00:00.000Z",
+          total_stake_tao: 1200000,
+          total_emission_tao: 84,
+          network_yield: 0.00007,
+          validator_yield: 0.00009,
+          miner_yield: 0.00002,
+          distribution: {
+            count: 460,
+            mean: 0.00006,
+            median: 0.00005,
+            min: 0.000001,
+            max: 0.0009,
+            p10: 0.000005,
+            p25: 0.00002,
+            p75: 0.00008,
+            p90: 0.0002,
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ chain_yield {
+          subnet_count neuron_count validator_count miner_count captured_at
+          network_yield validator_yield miner_yield
+          distribution { count mean p90 }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const c = body.data.chain_yield;
+    assert.equal(c.subnet_count, 3);
+    assert.equal(c.neuron_count, 500);
+    assert.equal(c.validator_count, 40);
+    assert.equal(c.miner_count, 460);
+    assert.equal(c.captured_at, "2026-07-15T00:00:00.000Z");
+    assert.equal(c.network_yield, 0.00007);
+    assert.equal(c.validator_yield, 0.00009);
+    assert.equal(c.miner_yield, 0.00002);
+    assert.equal(c.distribution.count, 460);
+    assert.equal(c.distribution.mean, 0.00006);
+    assert.equal(c.distribution.p90, 0.0002);
+  });
+
+  test("forwards to /api/v1/chain/yield with no query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({ schema_version: 1, subnet_count: 0 });
+        },
+      },
+    };
+    await gql("{ chain_yield { subnet_count } }", env);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/yield");
+    assert.equal(capturedUrl.search, "");
+  });
+
+  test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      // Every field absent -- the resolver's own ?? defaults must fill them in.
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ chain_yield {
+          schema_version subnet_count neuron_count validator_count miner_count
+          captured_at total_stake_tao total_emission_tao
+          network_yield validator_yield miner_yield distribution { count }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_yield, {
+      schema_version: 1,
+      subnet_count: 0,
+      neuron_count: 0,
+      validator_count: 0,
+      miner_count: 0,
+      captured_at: null,
+      total_stake_tao: 0,
+      total_emission_tao: 0,
+      network_yield: null,
+      validator_yield: null,
+      miner_yield: null,
+      distribution: null,
+    });
+  });
+
+  test("a distribution present but missing individual fields degrades those to zero, not null, since the field is non-null", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          distribution: {},
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ chain_yield { distribution { count mean median min max p10 p25 p75 p90 } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_yield.distribution, {
+      count: 0,
+      mean: 0,
+      median: 0,
+      min: 0,
+      max: 0,
+      p10: 0,
+      p25: 0,
+      p75: 0,
+      p90: 0,
+    });
+  });
+
+  test("chain_yield carries the same relationship field complexity weight as its siblings", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_yield, FIELD_COMPLEXITY.blocks_summary);
+  });
+});
