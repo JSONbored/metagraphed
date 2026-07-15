@@ -9,6 +9,13 @@ import {
 import { readArtifact, readHealthKv } from "../workers/storage.mjs";
 import { contractVersion } from "../workers/responses.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import {
+  loadChainPrometheus,
+  CHAIN_PROMETHEUS_WINDOWS,
+  DEFAULT_CHAIN_PROMETHEUS_WINDOW,
+  CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+  CHAIN_PROMETHEUS_LIMIT_MAX,
+} from "./chain-prometheus.mjs";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
 import {
@@ -356,6 +363,8 @@ export const SDL = `
     chain_serving(window: String, limit: Int): ChainServing!
     "Extrinsic call-mix breakdown over a 7d/30d window (default 7d): the extrinsic count and share per call_module, or per call_module+call_function when group_by is module_function (default module), optionally scoped to a single call_module, ranked by count (limit default 50, max 100). Computed live from the extrinsics tier; a cold store yields a schema-stable empty breakdown, never a GraphQL error. Mirrors GET /api/v1/chain/calls."
     chain_calls(window: String, group_by: String, limit: Int, call_module: String): ChainCalls!
+    "Network-wide Prometheus telemetry-endpoint announcement leaderboard over a 7d/30d window (default 7d): subnets ranked by PrometheusServed announcements with each's distinct-exporter count and announcements-per-exporter re-announcement intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The telemetry-endpoint companion to chain_serving's axon endpoints -- which subnets run observability infrastructure. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/prometheus."
+    chain_prometheus(window: String, limit: Int): ChainPrometheus!
     "Network-wide weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators driving consensus network-wide, each with its total WeightsSet count, share of the network total, and first/last set times, ranked by activity. The setter-level drill-in behind chain_weights. Mirrors GET /api/v1/chain/weights/setters."
     chain_weight_setters(window: String, limit: Int): ChainWeightSetters!
     "Compact all-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history (probed every ~15 minutes); a cold store still returns both windows, schema-stable and zeroed, never a GraphQL error. Mirrors GET /api/v1/health/trends."
@@ -691,6 +700,44 @@ export const SDL = `
     distinct_servers: Int!
     announcements: Int!
     announcements_per_server: Float
+  }
+
+  type ChainPrometheus {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    subnet_count: Int!
+    network: ChainPrometheusNetwork!
+    intensity_distribution: ChainPrometheusIntensityDistribution
+    subnets: [ChainPrometheusSubnet!]!
+  }
+
+  "Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts."
+  type ChainPrometheusNetwork {
+    distinct_exporters: Int!
+    announcements: Int!
+    "Null when distinct_exporters is 0 (no defined intensity without exporters)."
+    announcements_per_exporter: Float
+  }
+
+  "Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard."
+  type ChainPrometheusIntensityDistribution {
+    count: Int!
+    mean: Float!
+    min: Float!
+    p25: Float!
+    median: Float!
+    p75: Float!
+    p90: Float!
+    max: Float!
+  }
+
+  "One subnet's Prometheus telemetry-serving activity in the window, ranked by announcements."
+  type ChainPrometheusSubnet {
+    netuid: Int!
+    distinct_exporters: Int!
+    announcements: Int!
+    announcements_per_exporter: Float
   }
 
   "Network-wide rolling 24h buy/sell alpha-volume leaderboard, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/alpha-volume's data envelope."
@@ -2236,6 +2283,7 @@ export const FIELD_COMPLEXITY = {
   chain_calls: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_serving: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   validator_nominators: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4860,6 +4908,50 @@ const rootValue = {
         distinct_servers: 0,
         announcements: 0,
         announcements_per_server: null,
+      },
+      intensity_distribution: data.intensity_distribution ?? null,
+      subnets: data.subnets || [],
+    };
+  },
+
+  async chain_prometheus({ window, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_PROMETHEUS_WINDOW;
+    if (!Object.hasOwn(CHAIN_PROMETHEUS_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, CHAIN_PROMETHEUS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+      maxLimit: CHAIN_PROMETHEUS_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainPrometheus
+    // fallback contract REST's handleChainPrometheus uses -- a cold store yields a
+    // schema-stable zeroed card, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/prometheus", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      (await loadChainPrometheus(graphqlD1(context), {
+        windowLabel: requestedWindow,
+        windowDays: CHAIN_PROMETHEUS_WINDOWS[requestedWindow],
+        limit: safeLimit,
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      observed_at: data.observed_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      network: data.network ?? {
+        distinct_exporters: 0,
+        announcements: 0,
+        announcements_per_exporter: null,
       },
       intensity_distribution: data.intensity_distribution ?? null,
       subnets: data.subnets || [],

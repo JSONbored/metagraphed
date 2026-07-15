@@ -22,6 +22,7 @@ import {
   schema as chainEventsSchema,
 } from "../src/graphql.mjs";
 import { LEADERBOARD_BOARDS } from "../src/health-serving.mjs";
+import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { resolveClientIp } from "../workers/config.mjs";
 import {
@@ -10258,6 +10259,228 @@ describe("Query.account_identity", () => {
     assert.equal(
       FIELD_COMPLEXITY.account_identity,
       FIELD_COMPLEXITY.account_identity_history,
+    );
+  });
+});
+
+describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)", () => {
+  function prometheusQuery(argsClause) {
+    return `{ chain_prometheus${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_exporters announcements announcements_per_exporter }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_exporters announcements announcements_per_exporter }
+    } }`;
+  }
+
+  // Mirrors chainServingD1: loadChainPrometheus issues the network aggregate
+  // (COUNT DISTINCT hotkey / MAX(observed_at), no GROUP BY) and only then the
+  // GROUP BY netuid leaderboard, and only when newest_observed is non-null.
+  function chainPrometheusD1({ network, subnets = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY netuid")) {
+                  return { results: subnets };
+                }
+                return { results: network ? [network] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard, never an error", async () => {
+    const { status, body } = await gql(prometheusQuery(""));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_prometheus, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_exporters: 0,
+        announcements: 0,
+        announcements_per_exporter: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves the D1-live tier: per-subnet leaderboard + network rollup", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainPrometheusD1({
+        network: { distinct_exporters: 3, newest_observed: 1780000000000 },
+        subnets: [
+          { netuid: 1, announcements: 10, distinct_exporters: 2 },
+          { netuid: 7, announcements: 4, distinct_exporters: 2 },
+        ],
+      }),
+    };
+    const { status, body } = await gql(prometheusQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const got = body.data.chain_prometheus;
+    assert.equal(got.subnet_count, 2);
+    assert.equal(got.observed_at, new Date(1780000000000).toISOString());
+    // The network rollup is the true distinct count, not the sum of per-subnet
+    // exporters (a hotkey announcing on several subnets counts once).
+    assert.deepEqual(got.network, {
+      distinct_exporters: 3,
+      announcements: 14,
+      // 14 announcements / 3 distinct exporters, rounded to the builder's 2dp.
+      announcements_per_exporter: 4.67,
+    });
+    assert.deepEqual(got.subnets, [
+      {
+        netuid: 1,
+        distinct_exporters: 2,
+        announcements: 10,
+        announcements_per_exporter: 5,
+      },
+      {
+        netuid: 7,
+        distinct_exporters: 2,
+        announcements: 4,
+        announcements_per_exporter: 2,
+      },
+    ]);
+    assert.equal(got.intensity_distribution.count, 2);
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-01T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_exporters: 5,
+              announcements: 20,
+              announcements_per_exporter: 4,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 4,
+              min: 4,
+              p25: 4,
+              median: 4,
+              p75: 4,
+              p90: 4,
+              max: 4,
+            },
+            subnets: [
+              {
+                netuid: 3,
+                distinct_exporters: 5,
+                announcements: 20,
+                announcements_per_exporter: 4,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      prometheusQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/prometheus");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_prometheus.window, "30d");
+    assert.equal(body.data.chain_prometheus.subnet_count, 1);
+    assert.equal(body.data.chain_prometheus.network.distinct_exporters, 5);
+  });
+
+  test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
+    // The tier's shape is upstream-controlled, so every field falls back rather
+    // than surfacing null through a non-null SDL field.
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(prometheusQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_prometheus, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_exporters: 0,
+        announcements: 0,
+        announcements_per_exporter: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("clamps an over-max limit to the route's own ceiling", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(prometheusQuery("(limit: 99999)"), env);
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+  });
+
+  test("every documented window is accepted", async () => {
+    for (const window of Object.keys(CHAIN_PROMETHEUS_WINDOWS)) {
+      const { status, body } = await gql(
+        prometheusQuery(`(window: "${window}")`),
+      );
+      assert.equal(status, 200, window);
+      assert.equal(body.errors, undefined);
+      assert.equal(body.data.chain_prometheus.window, window);
+    }
+  });
+
+  test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(prometheusQuery('(window: "1y")'), env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_prometheus,
+      FIELD_COMPLEXITY.chain_serving,
     );
   });
 });
