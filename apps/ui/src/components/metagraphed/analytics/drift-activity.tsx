@@ -4,7 +4,7 @@ import { ArrowUpRight, ChevronRight } from "lucide-react";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 import { classNames } from "@/lib/metagraphed/format";
 import { TimeAgo } from "@jsonbored/ui-kit";
-import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
+import { StateBlock } from "@/components/metagraphed/states/state-block";
 
 interface Props {
   schemas: SchemaInfo[];
@@ -46,7 +46,8 @@ export function DriftActivity({ schemas, fromPath }: Props) {
 
   if (total === 0) {
     return (
-      <RegistryEmpty
+      <StateBlock
+        kind="registry"
         variant="empty"
         title="No schemas tracked yet"
         description="Drift activity appears once the registry has two snapshots of a schema to compare."
@@ -116,7 +117,8 @@ export function DriftActivity({ schemas, fromPath }: Props) {
       {/* Drifting list */}
       {drifting.length === 0 ? (
         <div className="p-6">
-          <RegistryEmpty
+          <StateBlock
+            kind="registry"
             variant="empty"
             title="No drift detected"
             description="All tracked schemas match their previous snapshot. New activity will appear here as soon as a published schema changes."
