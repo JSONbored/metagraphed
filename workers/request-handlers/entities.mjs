@@ -3684,7 +3684,11 @@ export async function handleBlock(request, env, ref) {
 // (<=100) / ?offset. Unknown ref / cold store → 200 with block_number:null +
 // extrinsics:[] (schema-stable, never 404).
 export async function handleBlockExtrinsics(request, env, ref, url) {
-  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  const validationError = validateEntityQuery(url, [
+    "limit",
+    "offset",
+    "format",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
@@ -3694,6 +3698,17 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
     request,
     "METAGRAPH_EXTRINSICS_SOURCE",
   )) ?? { data: buildBlockExtrinsics([], ref, null, { limit, offset }) };
+  // CSV reuses handleExtrinsics's transform + columns — buildBlockExtrinsics maps
+  // the same formatExtrinsic row shape (#5746). Cold block → empty → header-only.
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      extrinsicsToCsvRows(data.extrinsics),
+      `block-${ref}-extrinsics`,
+      "short",
+      request,
+      EXTRINSICS_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -3715,7 +3730,11 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
 // (<=1000) / ?offset. Unknown ref / cold store → 200 with block_number:null +
 // events:[] (schema-stable, never 404). Mirrors handleBlockExtrinsics.
 export async function handleBlockEvents(request, env, ref, url) {
-  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  const validationError = validateEntityQuery(url, [
+    "limit",
+    "offset",
+    "format",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
@@ -3725,6 +3744,17 @@ export async function handleBlockEvents(request, env, ref, url) {
     request,
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
   )) ?? { data: buildBlockEvents([], ref, null, { limit, offset }) };
+  // CSV reuses the account-events EVENTS_CSV_COLUMNS — buildBlockEvents maps the
+  // same formatAccountEvent row shape (#5746). Cold block → empty → header-only.
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.events,
+      `block-${ref}-events`,
+      "short",
+      request,
+      EVENTS_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
