@@ -169,6 +169,13 @@ import {
   loadChainWeights,
 } from "./chain-weights.mjs";
 import {
+  CHAIN_SERVING_LIMIT_DEFAULT,
+  CHAIN_SERVING_LIMIT_MAX,
+  CHAIN_SERVING_WINDOWS,
+  DEFAULT_CHAIN_SERVING_WINDOW,
+  loadChainServing,
+} from "./chain-serving.mjs";
+import {
   buildChainTurnover,
   CHAIN_TURNOVER_LIMIT_DEFAULT,
   CHAIN_TURNOVER_LIMIT_MAX,
@@ -313,6 +320,8 @@ export const SDL = `
     chain_turnover(window: String, limit: Int): ChainTurnover!
     "Network-wide validator weight-setting activity leaderboard over a 7d/30d window (default 7d): subnets ranked by WeightsSet events with each's distinct-setter count and sets-per-setter update intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. Mirrors GET /api/v1/chain/weights."
     chain_weights(window: String, limit: Int): ChainWeights!
+    "Network-wide axon-serving announcement leaderboard over a 7d/30d window (default 7d): subnets ranked by AxonServed announcements with each's distinct-server count and announcements-per-server re-announcement intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide counterpart of subnet_serving. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/serving."
+    chain_serving(window: String, limit: Int): ChainServing!
     "Network-wide weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators driving consensus network-wide, each with its total WeightsSet count, share of the network total, and first/last set times, ranked by activity. The setter-level drill-in behind chain_weights. Mirrors GET /api/v1/chain/weights/setters."
     chain_weight_setters(window: String, limit: Int): ChainWeightSetters!
     "Compact all-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history (probed every ~15 minutes); a cold store still returns both windows, schema-stable and zeroed, never a GraphQL error. Mirrors GET /api/v1/health/trends."
@@ -586,6 +595,45 @@ export const SDL = `
     distinct_setters: Int!
     weight_sets: Int!
     sets_per_setter: Float
+  }
+
+  "Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope."
+  type ChainServing {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    subnet_count: Int!
+    network: ChainServingNetwork!
+    intensity_distribution: ChainServingIntensityDistribution
+    subnets: [ChainServingSubnet!]!
+  }
+
+  "Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined."
+  type ChainServingNetwork {
+    distinct_servers: Int!
+    announcements: Int!
+    "Null when distinct_servers is 0 (no defined intensity without servers)."
+    announcements_per_server: Float
+  }
+
+  "Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard."
+  type ChainServingIntensityDistribution {
+    count: Int!
+    mean: Float!
+    min: Float!
+    p25: Float!
+    median: Float!
+    p75: Float!
+    p90: Float!
+    max: Float!
+  }
+
+  "One subnet's axon-serving activity in the window, ranked by announcements."
+  type ChainServingSubnet {
+    netuid: Int!
+    distinct_servers: Int!
+    announcements: Int!
+    announcements_per_server: Float
   }
 
   "Network-wide rolling 24h buy/sell alpha-volume leaderboard, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/alpha-volume's data envelope."
@@ -1929,6 +1977,7 @@ export const FIELD_COMPLEXITY = {
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   validator_nominators: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4085,6 +4134,50 @@ const rootValue = {
         distinct_setters: 0,
         weight_sets: 0,
         sets_per_setter: null,
+      },
+      intensity_distribution: data.intensity_distribution ?? null,
+      subnets: data.subnets || [],
+    };
+  },
+
+  async chain_serving({ window, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_SERVING_WINDOW;
+    if (!Object.hasOwn(CHAIN_SERVING_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, CHAIN_SERVING_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_SERVING_LIMIT_DEFAULT,
+      maxLimit: CHAIN_SERVING_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainServing
+    // fallback contract REST's chainServing route uses -- a cold store yields a
+    // schema-stable zeroed card, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/serving", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      (await loadChainServing(graphqlD1(context), {
+        windowLabel: requestedWindow,
+        windowDays: CHAIN_SERVING_WINDOWS[requestedWindow],
+        limit: safeLimit,
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      observed_at: data.observed_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      network: data.network ?? {
+        distinct_servers: 0,
+        announcements: 0,
+        announcements_per_server: null,
       },
       intensity_distribution: data.intensity_distribution ?? null,
       subnets: data.subnets || [],

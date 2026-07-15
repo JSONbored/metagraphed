@@ -6502,6 +6502,182 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
   });
 });
 
+describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", () => {
+  function servingQuery(argsClause) {
+    return `{ chain_serving${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_servers announcements announcements_per_server }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_servers announcements announcements_per_server }
+    } }`;
+  }
+
+  // The network aggregate (COUNT DISTINCT hotkey / MAX(observed_at)) has no
+  // GROUP BY; the per-subnet leaderboard is GROUP BY netuid -- same two-query
+  // shape loadChainServing always issues. The subnet query only fires when the
+  // network row carries a non-null newest_observed.
+  function chainServingD1({ network, subnets = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY netuid")) {
+                  return { results: subnets };
+                }
+                return { results: network ? [network] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard", async () => {
+    const { status, body } = await gql(servingQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_serving, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_servers: 0,
+        announcements: 0,
+        announcements_per_server: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_servers: 4,
+              announcements: 40,
+              announcements_per_server: 10,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 10,
+              min: 10,
+              p25: 10,
+              median: 10,
+              p75: 10,
+              p90: 10,
+              max: 10,
+            },
+            subnets: [
+              {
+                netuid: 3,
+                distinct_servers: 4,
+                announcements: 40,
+                announcements_per_server: 10,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      servingQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/serving");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_serving.window, "30d");
+    assert.equal(body.data.chain_serving.subnet_count, 1);
+    assert.equal(body.data.chain_serving.network.distinct_servers, 4);
+    assert.equal(body.data.chain_serving.network.announcements_per_server, 10);
+    assert.equal(body.data.chain_serving.intensity_distribution.median, 10);
+    assert.equal(body.data.chain_serving.subnets[0].netuid, 3);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(servingQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_serving.window, "7d");
+    assert.equal(body.data.chain_serving.subnet_count, 0);
+    assert.equal(body.data.chain_serving.network.announcements, 0);
+    assert.equal(
+      body.data.chain_serving.network.announcements_per_server,
+      null,
+    );
+    assert.equal(body.data.chain_serving.intensity_distribution, null);
+    assert.deepEqual(body.data.chain_serving.subnets, []);
+  });
+
+  test("no Postgres tier flag: rolls up the account_events AxonServed stream straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainServingD1({
+        network: {
+          distinct_servers: 4,
+          newest_observed: 1_750_000_000_000,
+        },
+        subnets: [{ netuid: 3, announcements: 40, distinct_servers: 4 }],
+      }),
+    };
+    const { status, body } = await gql(servingQuery('(window: "7d")'), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_serving.window, "7d");
+    assert.equal(body.data.chain_serving.subnet_count, 1);
+    assert.equal(body.data.chain_serving.network.distinct_servers, 4);
+    assert.equal(body.data.chain_serving.network.announcements, 40);
+    assert.equal(body.data.chain_serving.network.announcements_per_server, 10);
+    assert.equal(body.data.chain_serving.subnets[0].netuid, 3);
+    assert.equal(body.data.chain_serving.intensity_distribution.count, 1);
+    assert.ok(body.data.chain_serving.observed_at);
+  });
+
+  test("a D1 query error degrades to a schema-stable empty leaderboard (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(servingQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_serving.subnet_count, 0);
+    assert.deepEqual(body.data.chain_serving.subnets, []);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(servingQuery('(window: "99d")'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /99d/);
+  });
+
+  test("chain_serving is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_serving, 5);
+  });
+});
+
 describe("graphql — chain_weight_setters (#5689, Postgres-tier + D1-live fallback)", () => {
   function weightSettersQuery(argsClause) {
     return `{ chain_weight_setters${argsClause} {
