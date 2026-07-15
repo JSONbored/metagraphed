@@ -2801,6 +2801,181 @@ function asPlainJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag / no D1 rows returns a schema-stable empty series", async () => {
+    const { status, body } = await gql(
+      "{ economics_trends { schema_version window day_count days { snapshot_date } } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.economics_trends, {
+      schema_version: 1,
+      window: "30d",
+      day_count: 0,
+      days: [],
+    });
+  });
+
+  test("resolves Postgres-tier days when the tier flag is set", async () => {
+    const env = {
+      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          window: "90d",
+          day_count: 1,
+          days: [
+            {
+              snapshot_date: "2026-07-01",
+              subnet_count: 3,
+              total_stake_tao: "1000.000000000",
+              alpha_price_tao_weighted: 0.06,
+              alpha_price_tao_median: 0.05,
+              validator_count: 12,
+              miner_count: 200,
+              mean_emission_share: 0.02,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ economics_trends(window: "90d") {
+          window day_count
+          days { snapshot_date subnet_count total_stake_tao alpha_price_tao_weighted alpha_price_tao_median validator_count miner_count mean_emission_share }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.economics_trends.window, "90d");
+    assert.equal(body.data.economics_trends.day_count, 1);
+    const day = body.data.economics_trends.days[0];
+    assert.equal(day.snapshot_date, "2026-07-01");
+    assert.equal(day.subnet_count, 3);
+    assert.equal(day.total_stake_tao, "1000.000000000");
+    assert.equal(day.alpha_price_tao_weighted, 0.06);
+    assert.equal(day.validator_count, 12);
+    assert.equal(day.miner_count, 200);
+    assert.equal(day.mean_emission_share, 0.02);
+  });
+
+  test("window is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            window: "7d",
+            day_count: 0,
+            days: [],
+          });
+        },
+      },
+    };
+    await gql('{ economics_trends(window: "7d") { day_count } }', env);
+    assert.equal(capturedUrl.pathname, "/api/v1/economics/trends");
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+  });
+
+  test("a malformed Postgres-tier body falls back to the D1 rollup (schema-stable empty on cold D1)", async () => {
+    const env = {
+      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      "{ economics_trends { day_count days { snapshot_date } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.economics_trends.day_count, 0);
+    assert.deepEqual(body.data.economics_trends.days, []);
+  });
+
+  test("no Postgres tier flag: rolls up subnet_snapshots rows straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return {
+                    results: [
+                      {
+                        snapshot_date: "2026-06-10",
+                        total_stake_tao: 1000,
+                        alpha_price_tao: 0.06,
+                        validator_count: 12,
+                        miner_count: 200,
+                        emission_share: 0.05,
+                      },
+                    ],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ economics_trends(window: "7d") {
+          window day_count days { snapshot_date total_stake_tao validator_count }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.economics_trends.window, "7d");
+    assert.equal(body.data.economics_trends.day_count, 1);
+    assert.equal(
+      body.data.economics_trends.days[0].snapshot_date,
+      "2026-06-10",
+    );
+    assert.equal(
+      body.data.economics_trends.days[0].total_stake_tao,
+      "1000.000000000",
+    );
+    assert.equal(body.data.economics_trends.days[0].validator_count, 12);
+  });
+
+  test("a D1 query error degrades to a schema-stable empty series (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(
+      "{ economics_trends { day_count days { snapshot_date } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.economics_trends.day_count, 0);
+    assert.deepEqual(body.data.economics_trends.days, []);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(
+      '{ economics_trends(window: "99d") { day_count } }',
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.match(body.errors[0].message, /99d/);
+  });
+
+  test("economics_trends is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.economics_trends, 5);
+  });
+});
+
 describe("Subscription.chainEvents", () => {
   test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
     const hub = fakeChainFirehose((repeater) => {

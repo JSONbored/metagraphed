@@ -47,6 +47,8 @@ import {
 import { buildAccountSummary } from "./account-events.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 import { SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
+import { parseHistoryWindow } from "./neuron-history.mjs";
+import { loadEconomicsTrends } from "./economics-trends.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
@@ -96,6 +98,8 @@ export const SDL = `
     accounts(sort: String, limit: Int): AccountList!
     "One account's cross-subnet event-history summary by ss58 address; an address with no matching account_events rows resolves to a schema-stable zero summary, never null. Mirrors GET /api/v1/accounts/{ss58}."
     account(ss58: String!): AccountSummary
+    "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
+    economics_trends(window: String): EconomicsTrends!
   }
 
   type SubnetList {
@@ -191,6 +195,26 @@ export const SDL = `
     alpha_out_pool: Float
     owner_coldkey: String
     owner_hotkey: String
+  }
+
+  type EconomicsTrends {
+    schema_version: Int!
+    window: String
+    day_count: Int!
+    days: [EconomicsTrendsDay!]!
+  }
+
+  "One UTC day of network-wide economics aggregated across every subnet with a snapshot that day. Sums are null only when no subnet reported a value that day."
+  type EconomicsTrendsDay {
+    snapshot_date: String!
+    subnet_count: Int!
+    "Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float."
+    total_stake_tao: String
+    alpha_price_tao_weighted: Float
+    alpha_price_tao_median: Float
+    validator_count: Int
+    miner_count: Int
+    mean_emission_share: Float
   }
 
   type SurfaceList {
@@ -696,6 +720,7 @@ export const FIELD_COMPLEXITY = {
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
+  economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -1531,6 +1556,42 @@ const rootValue = {
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) ?? buildAccountSummary(ss58, {});
     return accountSummaryNode(data, ss58);
+  },
+
+  async economics_trends({ window }, context) {
+    // Same parseHistoryWindow REST uses, so accepted window labels and the
+    // resulting { label, days } stay identical between REST and GraphQL.
+    const { label, days, error } = parseHistoryWindow(window);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("window", label);
+    // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same tier
+    // and fallback contract REST's handleEconomicsTrends uses.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/economics/trends", params),
+        "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
+      )) ??
+      (
+        await loadEconomicsTrends(graphqlD1(context), {
+          windowLabel: label,
+          windowDays: days,
+        })
+      ).data;
+    // Normalized the same way blocks/validators/accounts are (schema-stable,
+    // never a GraphQL error), so a malformed/partial Postgres-tier body still
+    // satisfies the non-null EconomicsTrends! contract.
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? label,
+      day_count: data.day_count ?? 0,
+      days: data.days || [],
+    };
   },
 };
 
