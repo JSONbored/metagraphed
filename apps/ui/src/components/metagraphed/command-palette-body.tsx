@@ -15,6 +15,7 @@ import {
   ArrowRightLeft,
   Bot,
   Braces,
+  ChartColumn,
   Compass,
   Copy,
   ExternalLink,
@@ -139,6 +140,13 @@ const ROUTE_INDEX: Array<{
     to: "/feeds",
     hint: "RSS, Atom, JSON Feed subscriptions",
     icon: Rss,
+    scope: "route",
+  },
+  {
+    label: "Chain analytics",
+    to: "/chain",
+    hint: "Activity, calls, signers, fees",
+    icon: ChartColumn,
     scope: "route",
   },
   {

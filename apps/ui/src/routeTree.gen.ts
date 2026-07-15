@@ -22,6 +22,7 @@ import { Route as FeedsRouteImport } from './routes/feeds'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as EndpointsRouteImport } from './routes/endpoints'
 import { Route as ChainEventsRouteImport } from './routes/chain-events'
+import { Route as ChainRouteImport } from './routes/chain'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -104,6 +105,11 @@ const EndpointsRoute = EndpointsRouteImport.update({
 const ChainEventsRoute = ChainEventsRouteImport.update({
   id: '/chain-events',
   path: '/chain-events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChainRoute = ChainRouteImport.update({
+  id: '/chain',
+  path: '/chain',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentsRoute = AgentsRouteImport.update({
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/chain': typeof ChainRoute
   '/chain-events': typeof ChainEventsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
@@ -234,6 +241,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/chain': typeof ChainRoute
   '/chain-events': typeof ChainEventsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/chain': typeof ChainRoute
   '/chain-events': typeof ChainEventsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/chain'
     | '/chain-events'
     | '/endpoints'
     | '/explorer'
@@ -336,6 +346,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/chain'
     | '/chain-events'
     | '/endpoints'
     | '/explorer'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/chain'
     | '/chain-events'
     | '/endpoints'
     | '/explorer'
@@ -403,6 +415,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AgentsRoute: typeof AgentsRoute
+  ChainRoute: typeof ChainRoute
   ChainEventsRoute: typeof ChainEventsRoute
   EndpointsRoute: typeof EndpointsRoute
   ExplorerRoute: typeof ExplorerRoute
@@ -524,6 +537,13 @@ declare module '@tanstack/react-router' {
       path: '/chain-events'
       fullPath: '/chain-events'
       preLoaderRoute: typeof ChainEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chain': {
+      id: '/chain'
+      path: '/chain'
+      fullPath: '/chain'
+      preLoaderRoute: typeof ChainRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agents': {
@@ -659,6 +679,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AgentsRoute: AgentsRoute,
+  ChainRoute: ChainRoute,
   ChainEventsRoute: ChainEventsRoute,
   EndpointsRoute: EndpointsRoute,
   ExplorerRoute: ExplorerRoute,
