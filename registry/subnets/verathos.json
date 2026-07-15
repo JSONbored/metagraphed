@@ -306,6 +306,74 @@
         "https://verathos.ai/docs"
       ],
       "url": "https://api.verathos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-validator-proxy-openapi",
+      "kind": "openapi",
+      "name": "Verathos validator proxy OpenAPI schema",
+      "notes": "Public no-auth machine-readable OpenAPI 3.x schema (title \"Verathos Validator Proxy\") for api.verathos.ai -- a distinct host/API from the already-tracked verathos.ai/openapi.json protocol schema, covering validator proxy network stats, supply, and TEE-inference routes.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.verathos.ai/openapi.json",
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-network-stats",
+      "kind": "subnet-api",
+      "name": "Verathos network stats",
+      "notes": "Public no-auth GET returning live per-miner network stats (address, ss58_address, uid, endpoint, model_id). Documented in the validator proxy's own OpenAPI schema (path /v1/network/stats).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/v1/network/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-supply-info",
+      "kind": "subnet-api",
+      "name": "Verathos supply info",
+      "notes": "Public no-auth GET returning full token supply info (circulating, total, max, minted_total, alpha_in_pool, alpha_staked, price_tao, volume_tao) in one call -- a superset of the already-tracked /v1/supply/circulating. Documented in the validator proxy's own OpenAPI schema (path /v1/supply/info).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/v1/supply/info"
     }
   ],
   "website_url": "https://verathos.ai/"
