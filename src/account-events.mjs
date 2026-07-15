@@ -59,6 +59,30 @@ export const INGESTED_EVENT_KINDS = [
   "AxonInfoRemoved",
   "Faucet",
   "Transfer",
+  // Found by the 2026-07-14/15 exhaustive decode audit: indexer-rs's Rust
+  // extract() (apps/indexer-rs/src/main.rs) has always curated these -- field
+  // values decode correctly (SS58/numbers, never raw) -- but the JS serving
+  // allowlist never learned their names, so ?kind= 400ed on them and they fell
+  // into the "other" event-summary bucket despite being high-frequency
+  // (TimelockedWeightsCommitted alone was ~27% of one subnet's weekly volume).
+  // CRV3WeightsCommitted/Revealed are TimelockedWeights*'s predecessor variant
+  // (superseded on the current runtime, confirmed absent from a live 1000-event
+  // sample) -- included for historical blocks indexer-rs may still have
+  // processed under the older runtime spec.
+  "CRV3WeightsCommitted",
+  "CRV3WeightsRevealed",
+  "TimelockedWeightsCommitted",
+  "TimelockedWeightsRevealed",
+  "AutoStakeAdded",
+  "StakeSwapped",
+  // Native substrate frame/balances Event enum, not SubtensorModule-specific.
+  "Deposit",
+  "Withdraw",
+  "Reserved",
+  "Unreserved",
+  "Endowed",
+  "DustLost",
+  "Issued",
 ];
 
 export const SUBNET_EVENT_SUMMARY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
@@ -92,6 +116,19 @@ const EVENT_KIND_CATEGORIES = {
   SubnetOwnerHotkeySet: "governance",
   BurnSet: "governance",
   Transfer: "transfer",
+  CRV3WeightsCommitted: "consensus",
+  CRV3WeightsRevealed: "consensus",
+  TimelockedWeightsCommitted: "consensus",
+  TimelockedWeightsRevealed: "consensus",
+  AutoStakeAdded: "stake",
+  StakeSwapped: "stake",
+  Deposit: "transfer",
+  Withdraw: "transfer",
+  Reserved: "transfer",
+  Unreserved: "transfer",
+  Endowed: "transfer",
+  DustLost: "transfer",
+  Issued: "transfer",
 };
 
 function toIso(ms) {

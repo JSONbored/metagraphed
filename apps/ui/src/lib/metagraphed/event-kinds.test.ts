@@ -12,7 +12,23 @@ describe("eventKindCategory", () => {
     expect(eventKindCategory("StakeAdded")).toBe("stake");
     expect(eventKindCategory("AxonServed")).toBe("serving");
     expect(eventKindCategory("Transfer")).toBe("transfer");
-    expect(Object.keys(EVENT_KIND_CATEGORIES)).toHaveLength(25);
+    expect(Object.keys(EVENT_KIND_CATEGORIES)).toHaveLength(38);
+  });
+
+  it("maps the kinds found by the 2026-07-14/15 exhaustive decode audit (previously unfiled, dumped into 'other')", () => {
+    expect(eventKindCategory("TimelockedWeightsCommitted")).toBe("consensus");
+    expect(eventKindCategory("TimelockedWeightsRevealed")).toBe("consensus");
+    expect(eventKindCategory("CRV3WeightsCommitted")).toBe("consensus");
+    expect(eventKindCategory("CRV3WeightsRevealed")).toBe("consensus");
+    expect(eventKindCategory("AutoStakeAdded")).toBe("stake");
+    expect(eventKindCategory("StakeSwapped")).toBe("stake");
+    expect(eventKindCategory("Deposit")).toBe("transfer");
+    expect(eventKindCategory("Withdraw")).toBe("transfer");
+    expect(eventKindCategory("Reserved")).toBe("transfer");
+    expect(eventKindCategory("Unreserved")).toBe("transfer");
+    expect(eventKindCategory("Endowed")).toBe("transfer");
+    expect(eventKindCategory("DustLost")).toBe("transfer");
+    expect(eventKindCategory("Issued")).toBe("transfer");
   });
 
   it("returns other for unknown or missing kinds", () => {

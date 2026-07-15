@@ -40,6 +40,19 @@ export const EVENT_KIND_CATEGORIES: Record<string, EventKindCategory> = {
   SubnetOwnerHotkeySet: "governance",
   BurnSet: "governance",
   Transfer: "transfer",
+  CRV3WeightsCommitted: "consensus",
+  CRV3WeightsRevealed: "consensus",
+  TimelockedWeightsCommitted: "consensus",
+  TimelockedWeightsRevealed: "consensus",
+  AutoStakeAdded: "stake",
+  StakeSwapped: "stake",
+  Deposit: "transfer",
+  Withdraw: "transfer",
+  Reserved: "transfer",
+  Unreserved: "transfer",
+  Endowed: "transfer",
+  DustLost: "transfer",
+  Issued: "transfer",
 };
 
 /** Explorer-facing labels for known event kinds. */
@@ -69,6 +82,19 @@ export const EVENT_KIND_LABELS: Record<string, string> = {
   SubnetOwnerHotkeySet: "Subnet owner hotkey set",
   BurnSet: "Burn set",
   Transfer: "Transfer",
+  CRV3WeightsCommitted: "CRV3 weights committed",
+  CRV3WeightsRevealed: "CRV3 weights revealed",
+  TimelockedWeightsCommitted: "Timelocked weights committed",
+  TimelockedWeightsRevealed: "Timelocked weights revealed",
+  AutoStakeAdded: "Auto-stake added",
+  StakeSwapped: "Stake swapped",
+  Deposit: "Deposit",
+  Withdraw: "Withdraw",
+  Reserved: "Reserved",
+  Unreserved: "Unreserved",
+  Endowed: "Endowed",
+  DustLost: "Dust lost",
+  Issued: "Issued",
 };
 
 /** Short category labels for chips / filters. */

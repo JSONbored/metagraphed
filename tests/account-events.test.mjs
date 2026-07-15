@@ -74,6 +74,48 @@ test("INGESTED_EVENT_KINDS accepts StakeTransferred (cross-coldkey stake move) f
   assert.ok(INGESTED_EVENT_KINDS.includes("StakeTransferred"));
 });
 
+test("INGESTED_EVENT_KINDS accepts the kinds found by the 2026-07-14/15 exhaustive decode audit (indexer-rs has always curated these; the JS allowlist never learned their names)", () => {
+  for (const kind of [
+    "CRV3WeightsCommitted",
+    "CRV3WeightsRevealed",
+    "TimelockedWeightsCommitted",
+    "TimelockedWeightsRevealed",
+    "AutoStakeAdded",
+    "StakeSwapped",
+    "Deposit",
+    "Withdraw",
+    "Reserved",
+    "Unreserved",
+    "Endowed",
+    "DustLost",
+    "Issued",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
+test("buildSubnetEventSummary categorizes the newly-added kinds instead of dumping them in other (2026-07-14/15 audit fix)", () => {
+  const out = buildSubnetEventSummary(
+    [
+      { event_kind: "TimelockedWeightsCommitted", event_count: 5 },
+      { event_kind: "AutoStakeAdded", event_count: 3 },
+      { event_kind: "Deposit", event_count: 2 },
+    ],
+    [],
+    7,
+  );
+  const byKind = Object.fromEntries(
+    out.event_kinds.map((row) => [row.event_kind, row.category]),
+  );
+  assert.equal(byKind.TimelockedWeightsCommitted, "consensus");
+  assert.equal(byKind.AutoStakeAdded, "stake");
+  assert.equal(byKind.Deposit, "transfer");
+  assert.ok(
+    !out.categories.some((row) => row.category === "other"),
+    "none of these kinds should fall into the other category",
+  );
+});
+
 test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
   const out = formatAccountEvent({
     block_number: 1000,
