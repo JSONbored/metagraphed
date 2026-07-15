@@ -118,6 +118,7 @@
     "endpoint:brief": "node scripts/endpoint-ops-brief.mjs"
   },
   "dependencies": {
+    "@duckdb/node-api": "^1.5.4-r.1",
     "@noble/hashes": "^2.2.0",
     "graphql": "^17.0.2",
     "graphql-ws": "^6.1.0",

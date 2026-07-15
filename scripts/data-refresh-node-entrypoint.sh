@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs one step of the box-side Node-only data-refresh jobs (registry-sync,
-# registry-sync-fast, testnet-discovery) -- see
+# registry-sync-fast, testnet-discovery, export-parquet) -- see
 # deploy/data-refresh-node.Dockerfile's header. Unlike deploy/economics-
 # refresh.Dockerfile's two-container split, none of these need a separate
 # untrusted-fetch step: all are pure JS with no PyPI/uvx involved, so npm
@@ -8,7 +8,7 @@
 # supply-chain guard needed, in ONE container.
 set -euo pipefail
 
-: "${STEP:?STEP env var required (registry-sync|registry-sync-fast|testnet-discovery)}"
+: "${STEP:?STEP env var required (registry-sync|registry-sync-fast|testnet-discovery|export-parquet)}"
 
 REPO_DIR=/repo
 GIT_REPO_URL="https://github.com/JSONbored/metagraphed.git"
@@ -150,8 +150,20 @@ case "$STEP" in
       fi
     fi
     ;;
+  export-parquet)
+    : "${REGISTRY_PG_DB:?REGISTRY_PG_DB env var required for the export-parquet step}"
+    : "${REGISTRY_PG_USER:?REGISTRY_PG_USER env var required for the export-parquet step}"
+    : "${REGISTRY_PG_PASSWORD:?REGISTRY_PG_PASSWORD env var required for the export-parquet step}"
+    : "${INDEXER_PG_DB:?INDEXER_PG_DB env var required for the export-parquet step}"
+    : "${INDEXER_PG_USER:?INDEXER_PG_USER env var required for the export-parquet step}"
+    : "${INDEXER_PG_PASSWORD:?INDEXER_PG_PASSWORD env var required for the export-parquet step}"
+    : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN env var required for the export-parquet step}"
+    : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID env var required for the export-parquet step}"
+    echo "entrypoint: nightly Parquet bulk export to R2"
+    exec node scripts/export-parquet.mjs
+    ;;
   *)
-    echo "entrypoint: unknown STEP '$STEP' (want registry-sync|registry-sync-fast|testnet-discovery)" >&2
+    echo "entrypoint: unknown STEP '$STEP' (want registry-sync|registry-sync-fast|testnet-discovery|export-parquet)" >&2
     exit 1
     ;;
 esac
