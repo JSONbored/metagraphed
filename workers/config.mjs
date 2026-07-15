@@ -20,6 +20,11 @@ export const EMBEDDING_SYNC_CRON = "37 3 * * *";
 // from the probe/prune/embed/fast crons) so the ~33k-row INSERT...SELECT runs
 // exactly once/day, not on every tick. Must match a wrangler.jsonc cron entry.
 export const NEURON_HISTORY_ROLLUP_CRON = "47 5 * * *";
+// Hourly account_events_daily rollup (#4832 gap-closure), moved off the
+// former rollup-account-events-daily.yml GitHub Actions workflow onto this
+// Worker-native cron -- offset from the top-of-hour prune (0) so the two
+// don't tick on the same minute. Must match a wrangler.jsonc cron entry.
+export const ACCOUNT_EVENTS_ROLLUP_CRON = "17 * * * *";
 // Trend windows for /api/v1/subnets/{netuid}/health/trends and
 // /api/v1/health/trends.
 export const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =
@@ -411,6 +416,12 @@ export const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
 // The streamer + that route are retired (#4772 D1 chain-data retirement); this
 // header is still shared by the surviving neuron/economics backfill ingest routes.
 export const EVENTS_INGEST_TOKEN_HEADER = "x-metagraph-events-token";
+// account_events_daily rollup trigger (#4832 gap-closure). Shared by
+// data-api.mjs's handler (validates it) and api.mjs's Worker-native cron
+// dispatch (sets it on the synthetic internal request — the former
+// rollup-account-events-daily.yml GitHub Actions workflow used to set it on
+// its public curl call instead).
+export const ROLLUP_TOKEN_HEADER = "x-rollup-sync-token";
 // Internal historical backfill ingest (#1345 Phase 1): batched subnet_snapshots
 // upserts from the chain-direct backfill script (scripts/backfill-economics-history.py).
 // Auth via the dedicated METAGRAPH_BACKFILL_SECRET (falls back to the events-ingest

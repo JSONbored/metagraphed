@@ -227,6 +227,7 @@ import {
   MAX_UPTIME_ROWS,
   RPC_USAGE_BUCKETS,
   resolveClientIp,
+  ROLLUP_TOKEN_HEADER,
 } from "./config.mjs";
 import {
   formatBulkTrends,
@@ -1016,14 +1017,16 @@ async function handleNeuronDailyBackfill(request, env) {
 // account_events is written continuously by indexer-rs directly into this
 // same Postgres instance (not through any Worker route), so unlike
 // neurons-sync above there is no existing write request to piggyback the
-// rollup onto -- a dedicated hourly GitHub Actions workflow
-// (rollup-account-events-daily.yml) calls this instead, proxied through the
-// main Worker the same way (workers/api.mjs's
-// handleRollupAccountEventsDailyProxy). Mirrors D1's rollupAccountEventsDaily
+// rollup onto -- a Worker-native cron (ACCOUNT_EVENTS_ROLLUP_CRON,
+// workers/config.mjs) dispatches this instead, proxied through the main
+// Worker the same way (workers/api.mjs's handleRollupAccountEventsDailyProxy,
+// called from handleScheduled). Formerly a dedicated hourly GitHub Actions
+// workflow (rollup-account-events-daily.yml, retired) made the same POST over
+// the public internet; the cron dispatch constructs the identical request
+// internally instead. Mirrors D1's rollupAccountEventsDaily
 // (src/account-events.mjs) exactly: re-roll the two active UTC days each
 // run (past days are already finalized), upsert idempotently. No request
 // body -- this is a trigger-only POST, not a data-carrying sync.
-const ROLLUP_TOKEN_HEADER = "x-rollup-sync-token";
 
 function utcDayBounds(ms) {
   const d = new Date(ms);

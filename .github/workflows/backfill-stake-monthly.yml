@@ -12,6 +12,13 @@ name: Backfill Stake Monthly (one-time, #1345)
 # idempotent on (netuid,uid,snapshot_date) → those monthly days are overwritten in place
 # with full rows, so a re-run is safe. Manual only.
 #
+# scripts/backfill-stake-monthly.py now honors a SUBTENSOR_RPC_URL env override
+# (same ADR 0012 convention as the live-state fetch scripts) -- once
+# our own archive node finishes its genesis sync, repoint by setting that
+# env var here (or by moving this job onto the indexer box entirely, matching the
+# refresh-metagraph/refresh-account-identity/refresh-subnet-hyperparams migration
+# pattern) instead of OnFinality's public archive.
+#
 # ONE job (NOT a matrix): OnFinality is a single endpoint, and the work is small enough
 # (~8 months x ~5s/subnet) to finish well inside one runner.
 on:

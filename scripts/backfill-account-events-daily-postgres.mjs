@@ -1,7 +1,8 @@
 // One-time (idempotent, safe to re-run) backfill of Postgres's
 // account_events_daily rollup for the gap before Postgres's own hourly
 // rollup cron (workers/data-api.mjs's handleRollupAccountEventsDaily,
-// wired via .github/workflows/rollup-account-events-daily.yml) started
+// dispatched by the ACCOUNT_EVENTS_ROLLUP_CRON Worker-native cron --
+// formerly a dedicated GitHub Actions workflow, retired) started
 // writing on 2026-07-10. Commit 4c3dbbfe ("retire D1 chain-data write
 // path", #4772) removed the D1-side rollup call that used to cover this
 // range, and METAGRAPH_ACCOUNT_EVENTS_SOURCE has no date-aware fallback --

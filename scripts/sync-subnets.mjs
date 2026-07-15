@@ -17,7 +17,11 @@ const testnetSnapshotPath = path.join(
   "registry/native/test-subnets.json",
 );
 
-const snapshot = fetchNativeSnapshot("finney");
+// Same SUBTENSOR_RPC_URL convention as the other native chain-fetch scripts
+// (ADR 0012): unset -> "finney" (public), set -> route through our own node
+// without exposing it. fetchTestnetSnapshot() below is untouched -- it's a
+// distinct chain ("test"), not served by our mainnet fullnode.
+const snapshot = fetchNativeSnapshot(process.env.SUBTENSOR_RPC_URL || "finney");
 const existing = await readExistingSnapshot(snapshotPath);
 const tmcCount = await fetchTaoMarketCapCount();
 const diff = diffSnapshots(existing, snapshot);

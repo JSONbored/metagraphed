@@ -425,13 +425,21 @@
   // far politer to the probed subnets than the old 2-min sweep. Registered
   // automatically on the next Workers Builds deploy.
   "triggers": {
-    // */15 = health probe; 0 = hourly prune/rollup; 37 3 = daily embedding
-    // sync; 47 5 = daily neuron-history rollup (#1345). The former */3 fast
-    // drain of R2-staged batches into D1 (#1346 Option A) is retired: its
-    // last consumer, loadStagedAccountIdentity, was removed once
-    // refresh-account-identity moved off the R2/D1 staging path onto a
+    // */15 = health probe; 0 = hourly prune/rollup; 17 = hourly
+    // account_events_daily rollup (#4832, moved off GitHub Actions --
+    // formerly rollup-account-events-daily.yml, retired); 37 3 = daily
+    // embedding sync; 47 5 = daily neuron-history rollup (#1345). The former
+    // */3 fast drain of R2-staged batches into D1 (#1346 Option A) is
+    // retired: its last consumer, loadStagedAccountIdentity, was removed
+    // once refresh-account-identity moved off the R2/D1 staging path onto a
     // direct-to-Postgres sync (indexer-box cron migration).
-    "crons": ["*/15 * * * *", "0 * * * *", "37 3 * * *", "47 5 * * *"],
+    "crons": [
+      "*/15 * * * *",
+      "0 * * * *",
+      "17 * * * *",
+      "37 3 * * *",
+      "47 5 * * *",
+    ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite
   // for enabling METAGRAPH_ENABLE_RPC_PROXY). 100 requests / 60s per client IP;

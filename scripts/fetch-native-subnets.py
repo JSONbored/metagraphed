@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 from datetime import datetime, timezone
 
 
@@ -166,7 +167,15 @@ def main():
     # without the heavy SDK installed, matching fetch-events.py's convention.
 
     parser = argparse.ArgumentParser(description="Fetch decoded Bittensor Finney subnet metadata.")
-    parser.add_argument("--network", default="finney")
+    # Same SUBTENSOR_RPC_URL convention as fetch-metagraph-native.py (ADR 0012):
+    # unset -> "finney", set -> route through our own node without exposing it.
+    # This was the last chain-fetch script still hardcoded to the public
+    # "finney" alias -- callers are refresh-native-snapshot.mjs (production
+    # publish + refresh-economics.yml) and sync-subnets.yml via
+    # scripts/sync-subnets.mjs's fetchNativeSnapshot().
+    parser.add_argument(
+        "--network", default=os.environ.get("SUBTENSOR_RPC_URL") or "finney"
+    )
     args = parser.parse_args()
 
     subtensor = bt.SubtensorApi(network=args.network)

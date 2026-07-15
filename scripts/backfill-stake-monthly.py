@@ -41,8 +41,11 @@ import time
 import urllib.error
 import urllib.request
 
-# OnFinality public archive — free, no key, no rate limit, retains historical state.
-NETWORK = "wss://bittensor-finney.api.onfinality.io/public-ws"
+# SUBTENSOR_RPC_URL override (ADR 0012 convention, same as the live-state fetch
+# scripts): unset -> OnFinality's public archive (free, no key, no rate limit,
+# retains historical state), set -> our own archive node once it finishes its
+# genesis sync (#2111).
+NETWORK = os.environ.get("SUBTENSOR_RPC_URL") or "wss://bittensor-finney.api.onfinality.io/public-ws"
 BLOCK_MS = 12_000  # finney block time, empirically exactly 12.0s
 DAYS_PER_MONTH = 30  # month offset m = m*30 days ago (calendar-month precision n/a here)
 API_BASE = os.environ.get("METAGRAPH_API_BASE", "https://api.metagraph.sh")

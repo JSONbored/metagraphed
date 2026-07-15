@@ -8,6 +8,13 @@ name: Backfill Economics History (one-time, #1307)
 # secret-gated /api/v1/internal/backfill-economics ingest (idempotent COALESCE
 # upsert → safe to re-run, never clobbers a forward fire). Manual only.
 #
+# scripts/backfill-economics-history.py now honors a SUBTENSOR_RPC_URL env
+# override (same ADR 0012 convention as the live-state fetch scripts) -- once
+# our own archive node finishes its genesis sync, repoint by setting that
+# env var here (or by moving this job onto the indexer box entirely, matching
+# the refresh-metagraph/refresh-account-identity/refresh-subnet-hyperparams
+# migration pattern) instead of the public archive alias.
+#
 # Economics is LIGHT — one scalar per subnet (~129 keys/block, one batched
 # round-trip per day) — so a single job covers a full year well within the job
 # limit (no quarterly sharding needed, unlike the neuron backfill).

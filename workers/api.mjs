@@ -303,6 +303,7 @@ import {
   BLOCKS_FEED_PATH_PATTERN,
   EXTRINSIC_DETAIL_PATH_PATTERN,
   EXTRINSICS_FEED_PATH_PATTERN,
+  ACCOUNT_EVENTS_ROLLUP_CRON,
   BULK_TRENDS_PATH_PATTERN,
   EMBEDDING_SYNC_CRON,
   EVENTS_INGEST_TOKEN_HEADER,
@@ -318,6 +319,7 @@ import {
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
   resolveClientIp,
+  ROLLUP_TOKEN_HEADER,
   RUNTIME_VERSIONS_PATH_PATTERN,
   SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_HYPERPARAMS_PATH_PATTERN,
@@ -651,6 +653,36 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     // left wired but inert rather than also retiring the schedule trigger
     // itself, which is a separate deploy-config decision.
     return { ok: true, retired: true };
+  }
+  if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) {
+    // #4832 gap-closure, moved off GitHub Actions (rollup-account-events-daily.yml,
+    // retired) onto this Worker-native cron -- eliminates a third-party trigger
+    // hop for what was already a same-Worker-owned Postgres write. Builds the
+    // identical trigger-only POST the GH Actions workflow used to make over the
+    // public internet, and dispatches it internally through the existing
+    // DATA_API service-binding proxy (handleRollupAccountEventsDailyProxy).
+    if (!env.ROLLUP_SYNC_SECRET) {
+      return {
+        ok: false,
+        skipped: true,
+        reason: "ROLLUP_SYNC_SECRET not configured",
+      };
+    }
+    const response = await handleRollupAccountEventsDailyProxy(
+      new Request(
+        "https://internal.metagraph.sh/api/v1/internal/rollup-account-events-daily",
+        {
+          method: "POST",
+          headers: { [ROLLUP_TOKEN_HEADER]: env.ROLLUP_SYNC_SECRET },
+        },
+      ),
+      env,
+    );
+    // proxyToDataApi (which handleRollupAccountEventsDailyProxy wraps) always
+    // resolves to a JSON body -- either the DATA_API passthrough or its own
+    // errorResponse envelope -- so this can never throw.
+    const body = await response.json();
+    return { ok: response.ok, status: response.status, body };
   }
   return runHealthProber(env, ctx);
 }

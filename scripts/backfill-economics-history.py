@@ -208,7 +208,11 @@ def cross_check(api, netuid, block, batched_price):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--network", default="archive")
+    # SUBTENSOR_RPC_URL override (ADR 0012 convention, same as the live-state
+    # fetch scripts): unset -> the SDK's "archive" alias (a third-party public
+    # archive RPC), set -> our own archive node once it finishes its genesis
+    # sync (#2111).
+    p.add_argument("--network", default=os.environ.get("SUBTENSOR_RPC_URL") or "archive")
     p.add_argument("--days", type=int, default=365)
     p.add_argument("--end-offset", type=int, default=1, help="newest day = today-N")
     p.add_argument("--hour", type=int, default=5, help="UTC hour (forward cron is 47 5)")

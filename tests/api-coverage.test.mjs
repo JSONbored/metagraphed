@@ -2684,6 +2684,99 @@ describe("handleScheduled", () => {
   });
 });
 
+// --- handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON (#4832, moved off GitHub
+// Actions -- formerly rollup-account-events-daily.yml, retired) -------------
+describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
+  test("skips (does not throw) when ROLLUP_SYNC_SECRET is not configured", async () => {
+    const result = await handleScheduled(
+      { cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON },
+      {},
+      {},
+    );
+    assert.deepEqual(result, {
+      ok: false,
+      skipped: true,
+      reason: "ROLLUP_SYNC_SECRET not configured",
+    });
+  });
+
+  test("dispatches the internal rollup request through DATA_API with the shared token", async () => {
+    let receivedToken;
+    let receivedPath;
+    let receivedMethod;
+    const env = {
+      ROLLUP_SYNC_SECRET: "shared-secret",
+      DATA_API: {
+        fetch(request) {
+          receivedToken = request.headers.get("x-rollup-sync-token");
+          receivedPath = new URL(request.url).pathname;
+          receivedMethod = request.method;
+          return new Response(
+            JSON.stringify({ ok: true, rolled: ["2026-07-14", "2026-07-13"] }),
+            { status: 200 },
+          );
+        },
+      },
+    };
+    const result = await handleScheduled(
+      { cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON },
+      env,
+      {},
+    );
+    assert.equal(receivedToken, "shared-secret");
+    assert.equal(receivedPath, "/api/v1/internal/rollup-account-events-daily");
+    assert.equal(receivedMethod, "POST");
+    assert.deepEqual(result, {
+      ok: true,
+      status: 200,
+      body: { ok: true, rolled: ["2026-07-14", "2026-07-13"] },
+    });
+  });
+
+  test("relays a non-2xx DATA_API response instead of throwing", async () => {
+    const env = {
+      ROLLUP_SYNC_SECRET: "shared-secret",
+      DATA_API: {
+        fetch() {
+          return new Response(JSON.stringify({ error: "db unavailable" }), {
+            status: 502,
+          });
+        },
+      },
+    };
+    const result = await handleScheduled(
+      { cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON },
+      env,
+      {},
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 502);
+    assert.deepEqual(result.body, { error: "db unavailable" });
+  });
+
+  test("an unreadable DATA_API response body degrades to a clean error, not a throw", async () => {
+    const env = {
+      ROLLUP_SYNC_SECRET: "shared-secret",
+      DATA_API: {
+        fetch() {
+          return new Response("not json", { status: 200 });
+        },
+      },
+    };
+    const result = await handleScheduled(
+      { cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON },
+      env,
+      {},
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 502);
+    assert.equal(
+      result.body.error.code,
+      "rollup_account_events_daily_unavailable",
+    );
+  });
+});
+
 // --- logEvent disabled --------------------------------------------------------
 describe("logEvent", () => {
   test("R2 timeout with logs disabled still produces a 504 (no log spam)", async () => {
