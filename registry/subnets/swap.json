@@ -26,7 +26,7 @@
     "sn-10-website-common-swagger-json",
     "sn-10-website-subdomain-docs-docs-taofi-com"
   ],
-  "notes": "Reviewed overlay for SN10 Swap using the TaoFi pool page, TaoFi docs, and Swap source repository. Common www.taofi.com API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
+  "notes": "Reviewed overlay for SN10 Swap using the TaoFi pool page, TaoFi docs, and Swap source repository. The www.taofi.com/pool page currently returns an HTTP 402 response to simple probes and should appear degraded until it recovers. Common www.taofi.com API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -34,7 +34,7 @@
     "verified_at": "2026-06-08T20:25:00.000Z",
     "source_count": 5,
     "gap_notes": [
-      "Official TaoFi pool page, docs, and Swap source repository are verified live.",
+      "Official TaoFi pool page (www.taofi.com/pool) currently returns HTTP 402 to simple probes and should appear degraded until it recovers.",
       "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
       "No verified safe public subnet API endpoint yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -62,7 +62,7 @@
         "expect": "html",
         "timeout_ms": 10000
       },
-      "notes": "Official TaoFi pool page for SN10 Swap."
+      "notes": "Official TaoFi pool page for SN10 Swap. Current probe state is expected to show degraded while the origin returns HTTP 402 to simple probes."
     },
     {
       "id": "sn-10-taofi-docs",
