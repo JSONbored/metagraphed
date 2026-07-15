@@ -14882,6 +14882,136 @@ describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)",
       "invalid_params",
     );
   });
+
+  test("get_alert_trigger falls back to the generic error message when the upstream error field is not a string", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ error: { unexpected: "shape" } }, { status: 500 }),
+      },
+    };
+    const res = await callTool(
+      "get_alert_trigger",
+      { id: "trigger-1", owner_token: "token" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "alert_trigger_error",
+    );
+    assert.equal(
+      res.body.result.structuredContent.error.message,
+      "The alert triggers tier returned an error.",
+    );
+  });
+
+  // readMcpWebhookDeliveryStatus (src/mcp-server.mjs) is a best-effort helper --
+  // the tests above only exercise its happy path (a working `.list` returning no
+  // keys). These target its other branches directly: no `.list` method at all, a
+  // `.list` that throws, and a `.list` that returns real keys worth `.get`-ing.
+  test("get_webhook_subscription degrades delivery status to empty when METAGRAPH_CONTROL has no list method", async () => {
+    const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key, opts) {
+          if (key !== `webhooks:sub:${id}`) return null;
+          const record = {
+            id,
+            url: "https://hooks.example.com/mg",
+            secret: "s",
+            filters: {},
+            created_at: "2026-07-01T00:00:00.000Z",
+            active: true,
+          };
+          return opts?.type === "json" ? record : JSON.stringify(record);
+        },
+        // No `list` method -- matches an older/partial KV mock shape.
+      },
+    };
+    const res = await callTool("get_webhook_subscription", { id }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(res.body.result.structuredContent.delivery, {
+      status: "ok",
+      pending: 0,
+      dead_letter: 0,
+      last_failure: null,
+    });
+  });
+
+  test("get_webhook_subscription degrades delivery status to empty when listing delivery records throws", async () => {
+    const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key, opts) {
+          if (key !== `webhooks:sub:${id}`) return null;
+          const record = {
+            id,
+            url: "https://hooks.example.com/mg",
+            secret: "s",
+            filters: {},
+            created_at: "2026-07-01T00:00:00.000Z",
+            active: true,
+          };
+          return opts?.type === "json" ? record : JSON.stringify(record);
+        },
+        async list() {
+          throw new Error("KV list unavailable");
+        },
+      },
+    };
+    const res = await callTool("get_webhook_subscription", { id }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(res.body.result.structuredContent.delivery, {
+      status: "ok",
+      pending: 0,
+      dead_letter: 0,
+      last_failure: null,
+    });
+  });
+
+  test("get_webhook_subscription summarizes real delivery records returned by list", async () => {
+    const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    const subKey = `webhooks:sub:${id}`;
+    const deliveryKey = `webhooks:delivery:${id}:evt-1`;
+    const deliveryRecord = {
+      state: "dead",
+      last_attempt_at: "2026-07-14T00:00:00.000Z",
+    };
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key, opts) {
+          const value =
+            key === subKey
+              ? {
+                  id,
+                  url: "https://hooks.example.com/mg",
+                  secret: "s",
+                  filters: {},
+                  created_at: "2026-07-01T00:00:00.000Z",
+                  active: true,
+                }
+              : key === deliveryKey
+                ? deliveryRecord
+                : null;
+          if (value === null) return null;
+          return opts?.type === "json" ? value : JSON.stringify(value);
+        },
+        async list({ prefix }) {
+          assert.equal(prefix, `webhooks:delivery:${id}:`);
+          return { keys: [{ name: deliveryKey }] };
+        },
+      },
+    };
+    const res = await callTool("get_webhook_subscription", { id }, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(
+      res.body.result.structuredContent.delivery.status,
+      "dead_letter",
+    );
+    assert.equal(res.body.result.structuredContent.delivery.dead_letter, 1);
+    assert.equal(res.body.result.structuredContent.delivery.pending, 0);
+  });
 });
 
 // MCP feature-parity tools (#5225): validator detail/nominators/history, subnet
