@@ -15,21 +15,26 @@
 // registry/subnets/<slug>.json, still gets scored by the Gittensory Gate
 // exactly as today. This script only runs AFTER a merge lands on main, reading
 // the already-reviewed file — the write path a contributor's credentials
-// never reach. There is no Tailscale, SSH, or direct network path from CI to
-// the database at all: this script POSTs to the registry-sync Worker over
-// HTTPS (see workers/registry-sync-api.mjs and
-// .github/workflows/sync-registry-to-postgres.yml, which this script is
-// called from); the database itself stays exactly as private as it already
-// was.
+// never reach. There is no Tailscale, SSH, or direct network path from the
+// caller to the database at all: this script POSTs to the registry-sync
+// Worker over HTTPS (see workers/registry-sync-api.mjs); the database itself
+// stays exactly as private as it already was.
+//
+// Called by the box-side registry-sync-fast job (see
+// scripts/data-refresh-node-entrypoint.sh), a 3-minute poll standing in for
+// the retired push-triggered .github/workflows/sync-registry-to-postgres.yml
+// (moved off GitHub Actions 2026-07-15, consolidating recurring bittensor
+// data jobs onto the box rather than fragmenting them across two places) --
+// --base/--head are the last-synced and current commit SHAs from that poll,
+// not a GitHub Actions push event's before/sha.
 //
 // Independently re-validates each changed subnet file against
 // scripts/validate-surface.mjs before sending it (defense in depth: the Gate
 // already checked it pre-merge, this checks again post-merge) rather than
 // trusting the git content blindly.
 //
-// Safe to merge/run before REGISTRY_SYNC_SECRET is provisioned: with no
-// REGISTRY_SYNC_SECRET, this exits 0 having done nothing, so adding this
-// workflow can't break anything ahead of the real credential existing.
+// Safe to run before REGISTRY_SYNC_SECRET is provisioned: with no
+// REGISTRY_SYNC_SECRET, this exits 0 having done nothing.
 //
 // Usage:
 //   REGISTRY_SYNC_SECRET=... node scripts/sync-registry-to-postgres.mjs \
