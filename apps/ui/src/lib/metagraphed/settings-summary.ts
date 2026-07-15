@@ -33,6 +33,14 @@ export const SETTINGS_SUMMARY_ACTIONS = [
 
 export type SettingsSummaryAction = (typeof SETTINGS_SUMMARY_ACTIONS)[number];
 
+/** Loose input shape so callers/tests can pass custom action lists. */
+export interface SettingsSummaryActionInput {
+  id: SettingsSummaryAction["id"];
+  label: string;
+  method: string;
+  hint: string;
+}
+
 export interface SettingsHeroKpi {
   label: string;
   value: string;
@@ -49,8 +57,8 @@ export interface SettingsSummaryTile {
 
 /** PageHero KPI cells — hairline strip under the hero copy. */
 export function buildSettingsHeroKpis(
-  actions: readonly SettingsSummaryAction[] = SETTINGS_SUMMARY_ACTIONS,
-  kinds: readonly SettingsChangeKind[] = SETTINGS_CHANGE_KINDS,
+  actions: readonly SettingsSummaryActionInput[] = SETTINGS_SUMMARY_ACTIONS,
+  kinds: readonly string[] = SETTINGS_CHANGE_KINDS,
 ): SettingsHeroKpi[] {
   return [
     {
@@ -78,7 +86,7 @@ export function buildSettingsHeroKpis(
 
 /** Compact StatTile row between the hero and the subscription forms. */
 export function buildSettingsSummaryTiles(
-  actions: readonly SettingsSummaryAction[] = SETTINGS_SUMMARY_ACTIONS,
+  actions: readonly SettingsSummaryActionInput[] = SETTINGS_SUMMARY_ACTIONS,
 ): SettingsSummaryTile[] {
   return actions.map((action, index) => ({
     id: action.id,
