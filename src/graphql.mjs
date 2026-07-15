@@ -9,6 +9,8 @@ import {
 import { readArtifact, readHealthKv } from "../workers/storage.mjs";
 import { contractVersion } from "../workers/responses.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
+import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
 import {
   buildSubnetRegistrations,
   SUBNET_REGISTRATIONS_WINDOWS,
@@ -202,6 +204,10 @@ export const SDL = `
     subnet(netuid: Int!): Subnet
     "Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations."
     subnet_registrations(netuid: Int!, window: String): SubnetRegistrations!
+    "One subnet's live on-chain hyperparameters (latest snapshot only). The hyperparameters block is null when the subnet has no captured row -- a schema-stable card, never a GraphQL error, matching the Query.block ref-lookup convention. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters."
+    subnet_hyperparameters(netuid: Int!): SubnetHyperparameters
+    "One subnet's append-only hyperparameter-change history, newest first, one entry per observed change. Forward-only: entries exist only from when the diff-on-change write started. A subnet with no recorded changes resolves to an empty entry list, never null. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters/history."
+    subnet_hyperparameters_history(netuid: Int!, limit: Int, offset: Int): SubnetHyperparamsHistory!
     "Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, NeuronDeregistered count, and deregistrations per hotkey); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/deregistrations."
     subnet_deregistrations(netuid: Int!, window: String): SubnetDeregistrations!
     "Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving."
@@ -857,6 +863,69 @@ export const SDL = `
   }
 
   "Per-subnet neuron-registration activity over a window (#5720). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/registrations."
+  type SubnetHyperparameters {
+    schema_version: Int!
+    netuid: Int!
+    captured_at: String
+    block_number: Int
+    hyperparameters: Hyperparameters
+  }
+
+  "One subnet's on-chain hyperparameter block. Every field is nullable: a value absent from the captured row stays null rather than being coerced. *_ratio fields are 0..1 U16-derived ratios; *_tao fields are rao-exact (9dp); bonds_moving_avg_raw is the unscaled on-chain integer."
+  type Hyperparameters {
+    kappa_ratio: Float
+    immunity_period: Int
+    min_allowed_weights: Int
+    max_weight_limit_ratio: Float
+    tempo: Int
+    weights_version: Int
+    weights_rate_limit: Int
+    activity_cutoff: Int
+    activity_cutoff_factor: Int
+    registration_allowed: Boolean
+    target_regs_per_interval: Int
+    min_burn_tao: Float
+    max_burn_tao: Float
+    burn_half_life: Int
+    burn_increase_mult: Float
+    bonds_moving_avg_raw: Int
+    max_regs_per_block: Int
+    serving_rate_limit: Int
+    max_validators: Int
+    commit_reveal_period: Int
+    commit_reveal_enabled: Boolean
+    alpha_high_ratio: Float
+    alpha_low_ratio: Float
+    liquid_alpha_enabled: Boolean
+    alpha_sigmoid_steepness: Float
+    yuma_version: Int
+    subnet_is_active: Boolean
+    transfers_enabled: Boolean
+    bonds_reset_enabled: Boolean
+    user_liquidity_enabled: Boolean
+    owner_cut_enabled: Boolean
+    owner_cut_auto_lock_enabled: Boolean
+    min_childkey_take_ratio: Float
+  }
+
+  type SubnetHyperparamsHistory {
+    schema_version: Int!
+    netuid: Int!
+    entry_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    entries: [HyperparamsHistoryEntry!]!
+  }
+
+  "One observed hyperparameter change: the full block as of that block_number, plus the hash the diff-on-change writer keyed it by."
+  type HyperparamsHistoryEntry {
+    block_number: Int
+    observed_at: String
+    hyperparameters: Hyperparameters
+    hyperparams_hash: String
+  }
+
   type SubnetRegistrations {
     schema_version: Int!
     netuid: Int!
@@ -1726,6 +1795,11 @@ export const FIELD_COMPLEXITY = {
   account_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
   account_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
+  // A single latest-only row -- but it fans out into the full hyperparameter
+  // block, so it is priced with the other per-subnet relationship fields.
+  subnet_hyperparameters: RELATIONSHIP_FIELD_COMPLEXITY,
+  // Paginated fan-out: one hyperparameter block per recorded change.
+  subnet_hyperparameters_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_serving: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2263,6 +2337,66 @@ const rootValue = {
       surfaces: data.surfaces,
       endpoints: data.endpoints,
     });
+  },
+
+  async subnet_hyperparameters({ netuid }, context) {
+    // Same tryPostgresTier(METAGRAPH_SUBNET_HYPERPARAMS_SOURCE) -> buildSubnetHyperparams
+    // fallback contract handleSubnetHyperparams uses. The D1 write path is retired, so a
+    // cold tier is an expected steady state, not an error: it yields a schema-stable card
+    // with hyperparameters:null rather than a GraphQL error or a 404.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/hyperparameters`,
+        ),
+        "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+      )) ?? buildSubnetHyperparams(null, netuid);
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      captured_at: data.captured_at ?? null,
+      block_number: data.block_number ?? null,
+      // The hyperparameter block is passed through whole -- graphql's default
+      // field resolver reads it, so an absent key surfaces as null without a
+      // per-field fallback here.
+      hyperparameters: data.hyperparameters ?? null,
+    };
+  },
+
+  async subnet_hyperparameters_history({ netuid, limit, offset }, context) {
+    // Same FEED_PAGINATION bounds parsePagination applies for REST, so a GraphQL
+    // caller cannot request a wider page than the route allows.
+    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/hyperparameters/history`,
+          params,
+        ),
+        "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+      )) ??
+      buildSubnetHyperparamsHistory([], netuid, {
+        limit: safeLimit,
+        offset: safeOffset,
+        nextCursor: null,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      entry_count: data.entry_count ?? 0,
+      limit: data.limit ?? safeLimit,
+      offset: data.offset ?? safeOffset,
+      next_cursor: data.next_cursor ?? null,
+      entries: data.entries ?? [],
+    };
   },
 
   async subnet_registrations({ netuid, window }, context) {
