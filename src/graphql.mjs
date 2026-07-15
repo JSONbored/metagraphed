@@ -55,10 +55,12 @@ import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import {
   buildGlobalHealth,
   formatLeaderboards,
+  LEADERBOARD_BOARDS,
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
 } from "./health-serving.mjs";
+import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.mjs";
 import {
   loadCompareSubnets,
   parseCompareDimensionList,
@@ -256,6 +258,8 @@ export const SDL = `
     account_stake_moves(ss58: String!, window: String): AccountStakeMoves!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
+    "Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom), composed live from the registry profiles projection plus D1 health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards."
+    registry_leaderboards(board: String, limit: Int): RegistryLeaderboards!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
     subnet_movers(window: String, sort: String, limit: Int): SubnetMovers!
     "Network-wide validator-set churn across all subnets over a 7d/30d/90d window (default 30d): every subnet ranked by gross validator churn (entered + exited) between the window's start and end snapshots, each with its retention and 0-100 stability score, plus a network rollup and the network-wide stability spread. neuron_daily-derived; comparable is false and the leaderboard empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/chain/turnover."
@@ -559,6 +563,17 @@ export const SDL = `
     source: String
     "The 7d/30d windows keyed by window label (7d, 30d), each holding days/granularity/subnet_count and the per-subnet daily point series. Opaque JSON: dynamic-keyed by window label, matching the get_health_trends MCP/REST shape."
     windows: JSON!
+  }
+
+  "Registry leaderboards over the operational + economic-opportunity boards. Mirrors GET /api/v1/registry/leaderboards."
+  type RegistryLeaderboards {
+    schema_version: Int!
+    "The board filter that was applied, or null when every board is returned."
+    board: String
+    observed_at: String
+    source: String
+    "Every board keyed by board name, each an array of ranked subnet entries capped at limit. Opaque JSON like HealthTrends.windows: the keys are dynamic AND hyphenated (fastest-rpc, most-complete, open-slots, …) so they are not expressible as GraphQL field names, and each board carries its own metric columns (healthiest has uptime_ratio/surfaces_ok, fastest-rpc has latency_ms, fastest-growing has completeness_delta, …). Passing it through verbatim keeps the REST/MCP get_registry_leaderboards shape byte-for-byte."
+    boards: JSON!
   }
 
   type SurfaceList {
@@ -1553,6 +1568,9 @@ export const FIELD_COMPLEXITY = {
   chain_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   account_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
   account_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
+  // Fans out into leaderboardProfilesProjection plus several D1 reads and the
+  // economics tier -- same cost class as the other relationship fields.
+  registry_leaderboards: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_recycled: LIVE_RPC_FIELD_COMPLEXITY,
 };
 
@@ -3450,6 +3468,48 @@ const rootValue = {
       observed_at: data.observed_at ?? null,
       source: data.source ?? null,
       windows: data.windows ?? {},
+    };
+  },
+
+  async registry_leaderboards({ board, limit }, context) {
+    // Same board allowlist handleLeaderboards enforces -- an unknown board is a
+    // GraphQL BAD_USER_INPUT error, mirroring REST's invalid_query 400 rather
+    // than silently resolving to an empty board.
+    if (board != null && !LEADERBOARD_BOARDS.includes(board)) {
+      throw new GraphQLError(
+        `Unknown board "${board}". Valid boards: ${LEADERBOARD_BOARDS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same default 20 / max 100 parseLimitParam gives REST. A non-integer or
+    // out-of-range limit is rejected there, so reject it here too instead of
+    // silently clamping.
+    if (
+      limit != null &&
+      (!Number.isInteger(limit) || limit < 1 || limit > 100)
+    ) {
+      throw new GraphQLError(
+        `\`limit\` must be an integer between 1 and 100. Received "${limit}".`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Reuses handleLeaderboards' own projection + D1 reads via the shared
+    // composer, so REST and GraphQL can never drift apart on board composition.
+    const { data } = await composeLeaderboardsData(context.env, {
+      board: board ?? null,
+      limit: limit ?? 20,
+    });
+    // formatLeaderboards always populates all five fields -- schema_version and
+    // source are literals there, boards is always built, and board/observed_at
+    // are already null-normalized. No `??` fallbacks: unlike the Postgres-tier
+    // resolvers (whose upstream shape is arbitrary), this data has exactly one
+    // producer, so a fallback would be an unreachable branch.
+    return {
+      schema_version: data.schema_version,
+      board: data.board,
+      observed_at: data.observed_at,
+      source: data.source,
+      boards: data.boards,
     };
   },
 

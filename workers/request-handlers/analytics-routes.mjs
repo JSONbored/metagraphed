@@ -507,23 +507,22 @@ async function resolveEconomicsRows(env) {
     : [];
 }
 
-export async function handleLeaderboards(request, env, url) {
-  const validationError = validateQueryParams(url, ["board", "limit"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const requestedBoard = url.searchParams.get("board");
-  if (requestedBoard && !LEADERBOARD_BOARDS.includes(requestedBoard)) {
-    return errorResponse(
-      "invalid_query",
-      `Unknown board "${requestedBoard}". Valid boards: ${LEADERBOARD_BOARDS.join(", ")}.`,
-      400,
-    );
-  }
-  const parsedLimit = parseLimitParam(url, { defaultLimit: 20, maxLimit: 100 });
-  if (parsedLimit.error) {
-    return errorResponse("invalid_query", parsedLimit.error.message, 400);
-  }
-  const limit = parsedLimit.limit;
-
+/**
+ * Compose the registry-leaderboards payload: the profiles projection plus the
+ * D1 health/rpc/growth/reliability reads and the economics tier, folded through
+ * formatLeaderboards.
+ *
+ * Split out of handleLeaderboards so the GraphQL mirror
+ * (Query.registry_leaderboards, #5661) reuses this exact projection instead of
+ * duplicating the D1 queries. Callers own argument validation and response
+ * wrapping; this only builds the payload. `d1Rows` is returned alongside it
+ * because the HTTP path needs the raw row-sets for its cold-store fallback
+ * signal — GraphQL ignores them.
+ */
+export async function composeLeaderboardsData(
+  env,
+  { board = null, limit = 20 } = {},
+) {
   const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
 
   const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
@@ -581,7 +580,7 @@ export async function handleLeaderboards(request, env, url) {
 
   const meta = await readHealthMetaKv(env);
   const data = formatLeaderboards({
-    board: requestedBoard || null,
+    board,
     limit,
     observedAt: meta?.last_run_at || null,
     healthRows,
@@ -591,6 +590,32 @@ export async function handleLeaderboards(request, env, url) {
     reliabilityRows,
     economicsRows,
     subnetMeta,
+  });
+  return {
+    data,
+    d1Rows: [healthRows, rpcRows, growthSamples, reliabilityRows],
+  };
+}
+
+export async function handleLeaderboards(request, env, url) {
+  const validationError = validateQueryParams(url, ["board", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const requestedBoard = url.searchParams.get("board");
+  if (requestedBoard && !LEADERBOARD_BOARDS.includes(requestedBoard)) {
+    return errorResponse(
+      "invalid_query",
+      `Unknown board "${requestedBoard}". Valid boards: ${LEADERBOARD_BOARDS.join(", ")}.`,
+      400,
+    );
+  }
+  const parsedLimit = parseLimitParam(url, { defaultLimit: 20, maxLimit: 100 });
+  if (parsedLimit.error) {
+    return errorResponse("invalid_query", parsedLimit.error.message, 400);
+  }
+
+  const { data, d1Rows } = await composeLeaderboardsData(env, {
+    board: requestedBoard || null,
+    limit: parsedLimit.limit,
   });
   return envelopeWithD1Fallback(
     request,
@@ -605,7 +630,7 @@ export async function handleLeaderboards(request, env, url) {
       },
     },
     "standard",
-    [healthRows, rpcRows, growthSamples, reliabilityRows],
+    d1Rows,
   );
 }
 
