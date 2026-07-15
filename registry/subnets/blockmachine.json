@@ -8,12 +8,7 @@
   ],
   "contact": "team@blockmachine.io",
   "curation": {
-    "gap_notes": [
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ],
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T10:10:00.000Z",
@@ -24,7 +19,7 @@
   "docs_url": "https://blockmachine.io/whitepaper",
   "name": "blockmachine",
   "netuid": 19,
-  "notes": "Reviewed overlay for SN19 using the official BlockMachine website, whitepaper, and source repository.",
+  "notes": "Reviewed overlay for SN19 using the official BlockMachine website, whitepaper, and source repository. 5 community-submitted surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. The leaderboard endpoint is consistently slow (~17s across repeated live tests) though genuinely working, not down; timeout extended to 25s so it isn't misreported unhealthy. Diffed the tracked OpenAPI schema (27 paths) against tracked surfaces: found and added the public CLI install script (/install.sh); the remaining untracked paths are either HTTPBearer-auth-gated, X-API-Key-gated, or need a specific epoch_id with no stable canonical value.",
   "schema_version": 1,
   "slug": "sn-19",
   "social": {
@@ -117,6 +112,13 @@
       "id": "sn-19-blockmachine-subnet-api",
       "kind": "subnet-api",
       "name": "BlockMachine public leaderboard API",
+      "notes": "Public no-auth GET returning the BlockMachine leaderboard. Consistently slow (~17s observed across repeated live tests, TLS handshake succeeds immediately but the response body takes that long) -- timeout extended well past this file's usual 10s default so it isn't misreported unhealthy for being slow rather than down.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 25000
+      },
       "provider": "blockmachine",
       "public_safe": true,
       "review": {
@@ -135,6 +137,13 @@
       "id": "sn-19-blockmachine-data-artifact",
       "kind": "data-artifact",
       "name": "BlockMachine finalized-epoch snapshot",
+      "notes": "Public no-auth GET returning the latest finalized epoch (id, number, participating gateway_ids, per-gateway manifest). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "blockmachine",
       "public_safe": true,
       "review": {
@@ -153,6 +162,13 @@
       "id": "sn-19-blockmachine-data-artifact-api-blockmachine-io",
       "kind": "data-artifact",
       "name": "BlockMachine current-epoch snapshot",
+      "notes": "Public no-auth GET returning the current epoch (epoch_id, current_block, observed_at). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "blockmachine",
       "public_safe": true,
       "review": {
@@ -172,6 +188,12 @@
       "kind": "data-artifact",
       "name": "BlockMachine epochs catalog",
       "notes": "Public no-auth BlockMachine epochs listing — every epoch's id/number, participating gateway_ids, and per-gateway manifest (request log files + finalized CU-allocation objects). The full-history catalog behind the already-registered latest-finalized/current single-epoch endpoints; declared as GET /epochs (\"List Epochs\") in the operator's OpenAPI (source).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "blockmachine",
       "public_safe": true,
       "review": {
@@ -191,6 +213,12 @@
       "kind": "subnet-api",
       "name": "BlockMachine API health",
       "notes": "Public no-auth GET /health returning BlockMachine API status and version. Documented in the subnet's OpenAPI spec on the same host as the existing leaderboard and epoch snapshot surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "blockmachine",
       "public_safe": true,
       "review": {
@@ -224,6 +252,24 @@
       },
       "source_urls": ["https://api.blockmachine.io/ready"],
       "url": "https://api.blockmachine.io/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-19-blockmachine-install-script",
+      "kind": "sdk",
+      "name": "BlockMachine CLI install script",
+      "notes": "Public no-auth GET /install.sh serving the shell installer for the Blockmachine CLI (bm), which pip-installs the blockmachine package. Documented in the subnet's own OpenAPI schema; same host as the other api.blockmachine.io surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/install.sh"
     }
   ],
   "website_url": "https://blockmachine.io/"

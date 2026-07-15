@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 224,
+  "surface_count": 229,
   "surfaces": [
     {
       "auth_required": false,
@@ -1653,6 +1653,78 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 19,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "subnet_name": "blockmachine",
+      "subnet_slug": "sn-19",
+      "surface_id": "sn-19-blockmachine-data-artifact",
+      "surface_key": "srf-0cf09195357d6450",
+      "url": "https://api.blockmachine.io/epochs/latest-finalized"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 19,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "subnet_name": "blockmachine",
+      "subnet_slug": "sn-19",
+      "surface_id": "sn-19-blockmachine-data-artifact-api-blockmachine-io",
+      "surface_key": "srf-f96ef1de905a31d2",
+      "url": "https://api.blockmachine.io/epochs/current"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 19,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "subnet_name": "blockmachine",
+      "subnet_slug": "sn-19",
+      "surface_id": "sn-19-blockmachine-epochs-catalog",
+      "surface_key": "srf-13e601b8e71500b5",
+      "url": "https://api.blockmachine.io/epochs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 19,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "subnet_name": "blockmachine",
+      "subnet_slug": "sn-19",
+      "surface_id": "sn-19-blockmachine-health",
+      "surface_key": "srf-fa68a799d2a0e7c3",
+      "url": "https://api.blockmachine.io/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 19,
       "probe": {
@@ -1667,6 +1739,24 @@
       "surface_id": "sn-19-blockmachine-ready",
       "surface_key": "srf-4eefba22b5905e9d",
       "url": "https://api.blockmachine.io/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 19,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 25000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "subnet_name": "blockmachine",
+      "subnet_slug": "sn-19",
+      "surface_id": "sn-19-blockmachine-subnet-api",
+      "surface_key": "srf-f8bda901a1163175",
+      "url": "https://api.blockmachine.io/leaderboard"
     },
     {
       "auth_required": false,
