@@ -740,7 +740,19 @@ var PROVIDER_ICONS = {
   targon: "https://github.com/manifold-inc.png?size=192",
   manifold: "https://github.com/manifold-inc.png?size=192",
   "cortex-t": "https://github.com/corcel-api.png?size=192",
-  allways: "https://github.com/allways-ai.png?size=192",
+  // NOT allways-ai (a real GitHub org, but empty -- 0 public repos, no bio/
+  // blog/avatar of its own -- confirmed 2026-07-15 its ".png" avatar is just
+  // GitHub's auto-generated default identicon for a repo-less org, not any
+  // real Allways branding; visually confirmed against the real logo below,
+  // they share nothing in common). Allways' real GitHub org (entrius, same
+  // team as Gittensor/SN74) has no set avatar either. The subnet's
+  // on-chain-declared logo_url (SubnetIdentitiesV3, same source the masthead
+  // uses) is the SAME mark but hosted on an S3 bucket with no CORS headers
+  // -- verified live it fails to load here (this override is fetched with
+  // crossOrigin="anonymous" downstream). all-ways.io's own hosted copy is
+  // pixel-identical and Cloudflare-fronted with a proper
+  // access-control-allow-origin, so use that instead.
+  allways: "https://all-ways.io/icons/icon-512.png",
   // NOT eden-network (a real, unrelated GitHub org — confirmed via the GitHub
   // API while auditing this file 2026-07-15; likely a stale copy-paste). This
   // fallback only fires for provider-attribution UI (Providers/Surfaces/

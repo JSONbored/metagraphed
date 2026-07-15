@@ -5,6 +5,7 @@
   "kind": "subnet-team",
   "website_url": "https://all-ways.io",
   "docs_url": "https://docs.all-ways.io/how-it-works.html",
+  "logo_url": "https://all-ways.io/icons/icon-512.png",
   "authority": "provider-claimed",
   "notes": "Seed provider entry for the Allways SN7 pilot."
 }

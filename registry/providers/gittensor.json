@@ -5,6 +5,7 @@
   "kind": "subnet-team",
   "website_url": "https://gittensor.io",
   "docs_url": "https://docs.gittensor.io/",
+  "logo_url": "https://gittensor.io/gt-logo.svg",
   "authority": "provider-claimed",
   "notes": "Seed provider entry for the Gittensor SN74 pilot."
 }
