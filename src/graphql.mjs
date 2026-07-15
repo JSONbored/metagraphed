@@ -20,6 +20,11 @@ import {
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
 } from "./subnet-deregistrations.mjs";
 import {
+  buildSubnetServing,
+  SUBNET_SERVING_WINDOWS,
+  DEFAULT_SUBNET_SERVING_WINDOW,
+} from "./subnet-serving.mjs";
+import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
 } from "../workers/request-handlers/analytics.mjs";
@@ -115,6 +120,8 @@ export const SDL = `
     subnet_registrations(netuid: Int!, window: String): SubnetRegistrations!
     "Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, NeuronDeregistered count, and deregistrations per hotkey); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/deregistrations."
     subnet_deregistrations(netuid: Int!, window: String): SubnetDeregistrations!
+    "Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving."
+    subnet_serving(netuid: Int!, window: String): SubnetServing!
     "Paginated provider/source registry."
     providers(limit: Int, cursor: String): ProviderList!
     "One provider with its subnets."
@@ -588,6 +595,16 @@ export const SDL = `
     deregistrations_per_hotkey: Float
   }
 
+  type SubnetServing {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    distinct_servers: Int!
+    announcements: Int!
+    announcements_per_server: Float
+  }
+
   "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope."
   type GlobalIncidents {
     schema_version: Int!
@@ -1016,6 +1033,7 @@ export const FIELD_COMPLEXITY = {
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1605,6 +1623,43 @@ const rootValue = {
       distinct_deregistered_hotkeys: data.distinct_deregistered_hotkeys ?? 0,
       deregistrations: data.deregistrations ?? 0,
       deregistrations_per_hotkey: data.deregistrations_per_hotkey ?? null,
+    };
+  },
+
+  async subnet_serving({ netuid, window }, context) {
+    // Same 7d/30d window validation handleSubnetServing uses -- an
+    // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_SUBNET_SERVING_WINDOW;
+    if (!Object.hasOwn(SUBNET_SERVING_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SUBNET_SERVING_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetServing
+    // zeroed-card fallback contract handleSubnetServing uses; a subnet with no
+    // AxonServed events in the window is a schema-stable zeroed card, never a
+    // GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/serving`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? buildSubnetServing(null, netuid, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      observed_at: data.observed_at ?? null,
+      distinct_servers: data.distinct_servers ?? 0,
+      announcements: data.announcements ?? 0,
+      announcements_per_server: data.announcements_per_server ?? null,
     };
   },
 
