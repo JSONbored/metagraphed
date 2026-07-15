@@ -29,6 +29,11 @@ import {
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
 } from "./subnet-axon-removals.mjs";
+import {
+  buildSubnetWeights,
+  SUBNET_WEIGHTS_WINDOWS,
+  DEFAULT_SUBNET_WEIGHTS_WINDOW,
+} from "./subnet-weights.mjs";
 import { buildSubnetYield } from "./subnet-yield.mjs";
 import {
   analyticsWindow,
@@ -162,6 +167,8 @@ export const SDL = `
     subnet_serving(netuid: Int!, window: String): SubnetServing!
     "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
     subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
+    "Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights."
+    subnet_weights(netuid: Int!, window: String): SubnetWeights!
     "Per-subnet emission-per-stake yield over the current metagraph snapshot: each UID's yield plus the subnet-wide aggregate and p25/median/p75/p90 distribution; a subnet with no neurons resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/yield."
     subnet_yield(netuid: Int!): SubnetYield!
     "Paginated provider/source registry."
@@ -671,6 +678,16 @@ export const SDL = `
     distinct_removers: Int!
     removals: Int!
     removals_per_remover: Float
+  }
+
+  type SubnetWeights {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    distinct_setters: Int!
+    weight_sets: Int!
+    sets_per_setter: Float
   }
 
   "One UID's emission-per-stake yield within a subnet's current metagraph snapshot."
@@ -1307,6 +1324,7 @@ export const FIELD_COMPLEXITY = {
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2012,6 +2030,43 @@ const rootValue = {
       // buildSubnetYield's neuron shape matches SubnetYieldNeuron field-for-field,
       // so GraphQL resolves the nested selection off the raw rows directly.
       neurons: data.neurons ?? [],
+    };
+  },
+
+  async subnet_weights({ netuid, window }, context) {
+    // Same 7d/30d window validation handleSubnetWeights uses -- an unsupported
+    // window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
+    if (!Object.hasOwn(SUBNET_WEIGHTS_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SUBNET_WEIGHTS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetWeights
+    // zeroed-card fallback contract handleSubnetWeights uses; a subnet with no
+    // WeightsSet events in the window is a schema-stable zeroed card, never a
+    // GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/weights`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? buildSubnetWeights(null, netuid, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      observed_at: data.observed_at ?? null,
+      distinct_setters: data.distinct_setters ?? 0,
+      weight_sets: data.weight_sets ?? 0,
+      sets_per_setter: data.sets_per_setter ?? null,
     };
   },
 
