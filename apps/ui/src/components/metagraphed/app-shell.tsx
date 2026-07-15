@@ -365,6 +365,7 @@ function SiteFooter() {
           <FooterLink to="/schemas">Schemas</FooterLink>
           <FooterLink to="/graphql">GraphQL</FooterLink>
           <FooterLink to="/rpc">RPC</FooterLink>
+          <FooterLink to="/feeds">Feeds</FooterLink>
           <FooterLink to="/gaps">Gaps</FooterLink>
           <FooterLink to="/agents">For agents</FooterLink>
           <FooterLink to="/about">About</FooterLink>

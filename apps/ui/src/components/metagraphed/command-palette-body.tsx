@@ -25,6 +25,7 @@ import {
   KeyRound,
   Layers,
   Network,
+  Rss,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -131,6 +132,13 @@ const ROUTE_INDEX: Array<{
     to: "/rpc",
     hint: "Proxy, pools, endpoints, usage",
     icon: Zap,
+    scope: "route",
+  },
+  {
+    label: "Feeds",
+    to: "/feeds",
+    hint: "RSS, Atom, JSON Feed subscriptions",
+    icon: Rss,
     scope: "route",
   },
   {
