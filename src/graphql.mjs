@@ -25,6 +25,11 @@ import {
   DEFAULT_SUBNET_SERVING_WINDOW,
 } from "./subnet-serving.mjs";
 import {
+  buildSubnetAxonRemovals,
+  SUBNET_AXON_REMOVALS_WINDOWS,
+  DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
+} from "./subnet-axon-removals.mjs";
+import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
 } from "../workers/request-handlers/analytics.mjs";
@@ -122,6 +127,8 @@ export const SDL = `
     subnet_deregistrations(netuid: Int!, window: String): SubnetDeregistrations!
     "Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving."
     subnet_serving(netuid: Int!, window: String): SubnetServing!
+    "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
+    subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
     "Paginated provider/source registry."
     providers(limit: Int, cursor: String): ProviderList!
     "One provider with its subnets."
@@ -605,6 +612,16 @@ export const SDL = `
     announcements_per_server: Float
   }
 
+  type SubnetAxonRemovals {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    distinct_removers: Int!
+    removals: Int!
+    removals_per_remover: Float
+  }
+
   "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope."
   type GlobalIncidents {
     schema_version: Int!
@@ -1034,6 +1051,7 @@ export const FIELD_COMPLEXITY = {
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_serving: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1660,6 +1678,43 @@ const rootValue = {
       distinct_servers: data.distinct_servers ?? 0,
       announcements: data.announcements ?? 0,
       announcements_per_server: data.announcements_per_server ?? null,
+    };
+  },
+
+  async subnet_axon_removals({ netuid, window }, context) {
+    // Same 7d/30d window validation handleSubnetAxonRemovals uses -- an
+    // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
+    if (!Object.hasOwn(SUBNET_AXON_REMOVALS_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SUBNET_AXON_REMOVALS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetAxonRemovals
+    // zeroed-card fallback contract handleSubnetAxonRemovals uses; a subnet with no
+    // AxonInfoRemoved events in the window is a schema-stable zeroed card, never a
+    // GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/axon-removals`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? buildSubnetAxonRemovals(null, netuid, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      observed_at: data.observed_at ?? null,
+      distinct_removers: data.distinct_removers ?? 0,
+      removals: data.removals ?? 0,
+      removals_per_remover: data.removals_per_remover ?? null,
     };
   },
 
