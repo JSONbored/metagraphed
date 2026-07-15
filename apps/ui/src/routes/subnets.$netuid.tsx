@@ -52,6 +52,7 @@ import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
 import { EndpointSnippet, apiSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
+import { SubnetOhlcChart } from "@/components/metagraphed/subnet-ohlc-chart";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
 import { DistributionPanel } from "@/components/metagraphed/concentration-panel";
@@ -421,6 +422,21 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
       >
         <QueryErrorBoundary>
           <AlphaVolumeScorecard netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      {/* 5a2b — OHLC price/volume candlesticks (#5656, Phase 2 of the OHLC
+          epic #5304): open/high/low/close candles from the same trade stream
+          the 24h volume scorecard above reads, just bucketed by time instead
+          of summed into a rolling total. */}
+      <SectionAnchor
+        id="ohlc"
+        title="Price history"
+        subtitle="Open/high/low/close candles built from executed stake/unstake trades."
+        info="GET /api/v1/subnets/{netuid}/ohlc — OHLCV candles bucketed by ?interval=1h|1d from the same account_events StakeAdded/StakeRemoved stream as 24h Volume above. Each trade's price is amount_tao / alpha_amount; empty buckets are gaps, never synthesized flat candles."
+      >
+        <QueryErrorBoundary>
+          <SubnetOhlcChart netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
 

@@ -1904,6 +1904,31 @@ export interface SubnetAlphaVolume {
   vol_mcap_ratio: number | null;
 }
 
+/** One open/high/low/close/volume candle from /api/v1/subnets/{netuid}/ohlc. */
+export interface SubnetOhlcCandle {
+  bucket_start: number;
+  bucket_start_iso: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume_alpha: number;
+  volume_tao: number;
+  event_count: number;
+}
+
+/** OHLC price/volume candlesticks for one subnet (#5655), bucketed by
+ * ?interval=1h|1d from the account_events StakeAdded/StakeRemoved stream.
+ * Root (netuid 0) has no AMM pool and always carries root_excluded:true with
+ * an empty candles array rather than a meaningless flat-line series. */
+export interface SubnetOhlc {
+  schema_version: number;
+  netuid: number;
+  interval: "1h" | "1d";
+  candles: SubnetOhlcCandle[];
+  root_excluded: boolean;
+}
+
 /** One subnet's movement over the comparison window on the /subnets/movers board. */
 export interface SubnetMover {
   netuid: number;

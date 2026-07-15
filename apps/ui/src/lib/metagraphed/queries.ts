@@ -197,6 +197,8 @@ import type {
   SubnetRegistrations,
   SubnetStakeFlow,
   SubnetAlphaVolume,
+  SubnetOhlc,
+  SubnetOhlcCandle,
   SubnetMovers,
   SubnetMover,
   MetagraphNeuron,
@@ -4629,6 +4631,74 @@ export const subnetAlphaVolumeQuery = (netuid: number) =>
     },
     staleTime: STALE_MED,
   });
+
+// A finite candle field, or 0 -- matches normalizeSubnetAlphaVolume's own
+// "0 is a real value" convention for volume/count fields (unlike
+// sentiment_ratio/vol_mcap_ratio, which stay null to distinguish "no data"
+// from "genuinely zero").
+export function normalizeSubnetOhlcCandle(raw: unknown): SubnetOhlcCandle | null {
+  if (!isRecord(raw)) return null;
+  const bucketStart = firstFiniteNumber(raw.bucket_start);
+  if (bucketStart == null) return null;
+  return {
+    bucket_start: bucketStart,
+    bucket_start_iso: firstString(raw.bucket_start_iso) ?? new Date(bucketStart).toISOString(),
+    open: coerceFiniteNumber(raw.open) ?? 0,
+    high: coerceFiniteNumber(raw.high) ?? 0,
+    low: coerceFiniteNumber(raw.low) ?? 0,
+    close: coerceFiniteNumber(raw.close) ?? 0,
+    volume_alpha: coerceFiniteNumber(raw.volume_alpha) ?? 0,
+    volume_tao: coerceFiniteNumber(raw.volume_tao) ?? 0,
+    event_count: firstFiniteNumber(raw.event_count) ?? 0,
+  };
+}
+
+// Cold/absent store, an empty window, or root (netuid 0) all yield a
+// schema-stable empty candles array -- never throws. A malformed individual
+// candle row is dropped rather than poisoning the whole series.
+export function normalizeSubnetOhlc(netuid: number, interval: string, raw: unknown): SubnetOhlc {
+  const d = isRecord(raw) ? raw : {};
+  const candles = Array.isArray(d.candles)
+    ? d.candles.map(normalizeSubnetOhlcCandle).filter((c): c is SubnetOhlcCandle => c != null)
+    : [];
+  const normalizedInterval = d.interval === "1d" ? "1d" : "1h";
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    interval: normalizedInterval,
+    candles,
+    root_excluded: d.root_excluded === true || netuid === 0,
+  };
+}
+
+export interface SubnetOhlcParams {
+  interval?: "1h" | "1d";
+  /** Lookback window in days (server clamps to [1, 365], default 90). */
+  days?: number;
+}
+
+// GET /api/v1/subnets/{netuid}/ohlc (#5655): open/high/low/close/volume
+// candles from the same account_events stream /volume reads, bucketed by
+// ?interval=. Root (netuid 0) always normalizes to root_excluded:true with
+// an empty series, matching the server's own short-circuit.
+export const subnetOhlcQuery = (netuid: number, params: SubnetOhlcParams = {}) => {
+  const interval = params.interval ?? "1h";
+  return queryOptions({
+    queryKey: k("subnet-ohlc", netuid, interval, params.days ?? null),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetOhlc>>(`/api/v1/subnets/${netuid}/ohlc`, {
+        params: { interval, days: params.days },
+        signal,
+      });
+      return {
+        data: normalizeSubnetOhlc(netuid, interval, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+};
 
 export interface SubnetEventsParams {
   /** Filter to one event_kind (e.g. "StakeAdded"). */

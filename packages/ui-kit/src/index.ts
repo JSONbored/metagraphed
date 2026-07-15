@@ -169,6 +169,10 @@ export {
   BarMini,
 } from "@/components/metagraphed/charts/bar-mini";
 export {
+  type CandlestickDatum,
+  CandlestickMini,
+} from "@/components/metagraphed/charts/candlestick-mini";
+export {
   type DonutSegment,
   Donut,
   DonutLegend,

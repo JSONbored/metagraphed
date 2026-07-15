@@ -3098,6 +3098,188 @@ function BarMini({
     }
   );
 }
+var BODY_WIDTH_RATIO = 0.6;
+function CandlestickMini({
+  data,
+  width = 480,
+  height = 160,
+  upColor = "var(--health-ok)",
+  downColor = "var(--health-down)",
+  className,
+  ariaLabel,
+  formatValue,
+  interactive = true
+}) {
+  const wrapRef = useRef(null);
+  const [hover, setHover] = useState(null);
+  const candles = data.slice(-500).filter(
+    (c) => Number.isFinite(c.open) && Number.isFinite(c.high) && Number.isFinite(c.low) && Number.isFinite(c.close)
+  );
+  if (candles.length === 0) {
+    return /* @__PURE__ */ jsx(
+      "svg",
+      {
+        width: "100%",
+        height,
+        viewBox: `0 0 ${width} ${height}`,
+        preserveAspectRatio: "none",
+        className: `block max-w-full ${className ?? ""}`,
+        style: { maxWidth: width },
+        "aria-label": ariaLabel,
+        children: /* @__PURE__ */ jsx(
+          "line",
+          {
+            x1: 0,
+            y1: height / 2,
+            x2: width,
+            y2: height / 2,
+            stroke: "var(--border)",
+            strokeDasharray: "2 3"
+          }
+        )
+      }
+    );
+  }
+  let min = candles[0].low;
+  let max = candles[0].high;
+  for (const c of candles) {
+    if (c.low < min) min = c.low;
+    if (c.high > max) max = c.high;
+  }
+  const span = max - min || 1;
+  const padY = height * 0.06;
+  const plotHeight = height - padY * 2;
+  const y = (v) => padY + plotHeight - (v - min) / span * plotHeight;
+  const slotWidth = width / candles.length;
+  const bodyWidth = Math.max(1, slotWidth * BODY_WIDTH_RATIO);
+  const bars = candles.map((c, i) => {
+    const cx = slotWidth * (i + 0.5);
+    const up = c.close >= c.open;
+    const color = up ? upColor : downColor;
+    const bodyTop = y(Math.max(c.open, c.close));
+    const bodyBottom = y(Math.min(c.open, c.close));
+    const bodyHeight = Math.max(1, bodyBottom - bodyTop);
+    return {
+      cx,
+      up,
+      color,
+      wickTop: y(c.high),
+      wickBottom: y(c.low),
+      bodyTop,
+      bodyHeight
+    };
+  });
+  const canTooltip = interactive && candles.length > 0;
+  function onMove(e) {
+    if (!canTooltip) return;
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    const idx = Math.min(
+      candles.length - 1,
+      Math.floor(x / rect.width * candles.length)
+    );
+    setHover(idx);
+  }
+  function onKeyDown(e) {
+    if (!canTooltip) return;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setHover((prev) => Math.min(candles.length - 1, (prev ?? -1) + 1));
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setHover((prev) => Math.max(0, (prev ?? candles.length) - 1));
+    }
+  }
+  function onFocus() {
+    if (!canTooltip) return;
+    setHover((prev) => prev ?? 0);
+  }
+  const hoverCandle = hover != null ? candles[hover] : null;
+  const hoverBar = hover != null ? bars[hover] : null;
+  const fmt = formatValue ?? ((v) => v.toString());
+  const tooltipText = hoverCandle ? `${hoverCandle.label} \xB7 O ${fmt(hoverCandle.open)} H ${fmt(hoverCandle.high)} L ${fmt(hoverCandle.low)} C ${fmt(hoverCandle.close)}` : "";
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      ref: wrapRef,
+      className: `relative block w-full ${className ?? ""}`,
+      style: { width: "100%", maxWidth: width, height },
+      onPointerMove: onMove,
+      onPointerLeave: () => setHover(null),
+      onKeyDown,
+      onFocus,
+      onBlur: () => setHover(null),
+      tabIndex: canTooltip ? 0 : void 0,
+      "aria-label": canTooltip ? `${ariaLabel ?? "Candlestick chart"}, use arrow keys to step through candles` : void 0,
+      children: [
+        /* @__PURE__ */ jsxs(
+          "svg",
+          {
+            width: "100%",
+            height,
+            viewBox: `0 0 ${width} ${height}`,
+            preserveAspectRatio: "none",
+            role: "img",
+            "aria-label": ariaLabel,
+            className: "block w-full",
+            children: [
+              bars.map((b, i) => /* @__PURE__ */ jsxs("g", { children: [
+                /* @__PURE__ */ jsx(
+                  "line",
+                  {
+                    x1: b.cx,
+                    x2: b.cx,
+                    y1: b.wickTop,
+                    y2: b.wickBottom,
+                    stroke: b.color,
+                    strokeWidth: 1
+                  }
+                ),
+                /* @__PURE__ */ jsx(
+                  "rect",
+                  {
+                    x: b.cx - bodyWidth / 2,
+                    y: b.bodyTop,
+                    width: bodyWidth,
+                    height: b.bodyHeight,
+                    fill: b.color,
+                    opacity: b.up ? 0.85 : 0.7
+                  }
+                )
+              ] }, i)),
+              hoverBar ? /* @__PURE__ */ jsx(
+                "line",
+                {
+                  x1: hoverBar.cx,
+                  x2: hoverBar.cx,
+                  y1: 0,
+                  y2: height,
+                  stroke: "var(--ink-muted)",
+                  strokeOpacity: 0.35,
+                  strokeWidth: 1
+                }
+              ) : null
+            ]
+          }
+        ),
+        hoverBar && tooltipText ? /* @__PURE__ */ jsx(
+          "div",
+          {
+            className: "pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] leading-tight text-ink-strong shadow-sm whitespace-nowrap",
+            style: {
+              left: Math.max(60, Math.min(width - 60, hoverBar.cx)),
+              top: Math.max(0, hoverBar.wickTop - 4)
+            },
+            role: "tooltip",
+            children: tooltipText
+          }
+        ) : null,
+        /* @__PURE__ */ jsx("span", { "aria-live": "polite", className: "sr-only", children: tooltipText })
+      ]
+    }
+  );
+}
 function Donut({
   segments,
   size = 96,
@@ -3828,4 +4010,4 @@ function TreemapMini({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EntityHero, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SearchScopeChip, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, cn, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel, timeAgoAbsoluteTitle, visibleTools };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EntityHero, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SearchScopeChip, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, cn, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel, timeAgoAbsoluteTitle, visibleTools };
