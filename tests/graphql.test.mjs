@@ -2801,6 +2801,156 @@ function asPlainJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty summary, never null", async () => {
+    const { status, body } = await gql(
+      `{ blocks_summary {
+          schema_version block_count first_block last_block
+          first_observed_at last_observed_at
+          block_time { count } throughput { total_extrinsics }
+          distinct_authors author_concentration { gini }
+          distinct_spec_versions latest_spec_version
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.blocks_summary, {
+      schema_version: 1,
+      block_count: 0,
+      first_block: null,
+      last_block: null,
+      first_observed_at: null,
+      last_observed_at: null,
+      block_time: null,
+      throughput: null,
+      distinct_authors: 0,
+      author_concentration: null,
+      distinct_spec_versions: 0,
+      latest_spec_version: null,
+    });
+  });
+
+  test("resolves the Postgres-tier summary, including nested time/throughput/concentration", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          block_count: 3,
+          first_block: 100,
+          last_block: 102,
+          first_observed_at: "2026-07-01T00:00:00.000Z",
+          last_observed_at: "2026-07-01T00:00:24.000Z",
+          block_time: {
+            count: 2,
+            mean_ms: 12000,
+            min_ms: 11800,
+            max_ms: 12200,
+            p50_ms: 12000,
+            p90_ms: 12200,
+          },
+          throughput: {
+            total_extrinsics: 30,
+            total_events: 90,
+            mean_extrinsics_per_block: 10,
+            mean_events_per_block: 30,
+            max_extrinsics_in_block: 12,
+          },
+          distinct_authors: 2,
+          author_concentration: {
+            holders: 2,
+            total: 3,
+            gini: 0.17,
+            hhi: 0.56,
+            hhi_normalized: 0.11,
+            nakamoto_coefficient: 1,
+            top_1pct_share: 0.67,
+            top_5pct_share: 0.67,
+            top_10pct_share: 0.67,
+            top_20pct_share: 0.67,
+            entropy: 0.92,
+            entropy_normalized: 0.92,
+          },
+          distinct_spec_versions: 1,
+          latest_spec_version: 199,
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ blocks_summary {
+          block_count first_block last_block latest_spec_version distinct_authors
+          block_time { count mean_ms p50_ms p90_ms }
+          throughput { total_extrinsics mean_extrinsics_per_block max_extrinsics_in_block }
+          author_concentration { gini nakamoto_coefficient top_1pct_share entropy_normalized }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const s = body.data.blocks_summary;
+    assert.equal(s.block_count, 3);
+    assert.equal(s.first_block, 100);
+    assert.equal(s.last_block, 102);
+    assert.equal(s.latest_spec_version, 199);
+    assert.equal(s.distinct_authors, 2);
+    assert.equal(s.block_time.count, 2);
+    assert.equal(s.block_time.mean_ms, 12000);
+    assert.equal(s.block_time.p90_ms, 12200);
+    assert.equal(s.throughput.total_extrinsics, 30);
+    assert.equal(s.throughput.max_extrinsics_in_block, 12);
+    assert.equal(s.author_concentration.gini, 0.17);
+    assert.equal(s.author_concentration.nakamoto_coefficient, 1);
+    assert.equal(s.author_concentration.top_1pct_share, 0.67);
+  });
+
+  test("forwards to /api/v1/blocks/summary with no query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({ schema_version: 1, block_count: 0 });
+        },
+      },
+    };
+    await gql("{ blocks_summary { block_count } }", env);
+    assert.equal(capturedUrl.pathname, "/api/v1/blocks/summary");
+    assert.equal(capturedUrl.search, "");
+  });
+
+  test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      // Every field absent -- the resolver's own ?? defaults must fill them in.
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ blocks_summary {
+          schema_version block_count distinct_authors distinct_spec_versions
+          first_block last_block block_time { count } throughput { total_extrinsics }
+          author_concentration { gini } latest_spec_version
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.blocks_summary, {
+      schema_version: 1,
+      block_count: 0,
+      distinct_authors: 0,
+      distinct_spec_versions: 0,
+      first_block: null,
+      last_block: null,
+      block_time: null,
+      throughput: null,
+      author_concentration: null,
+      latest_spec_version: null,
+    });
+  });
+});
+
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

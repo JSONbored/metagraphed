@@ -28,6 +28,7 @@ import {
 } from "./analytics-live.mjs";
 import { buildExtrinsic, buildExtrinsicFeed } from "./extrinsics.mjs";
 import { buildBlock, buildBlockFeed } from "./blocks.mjs";
+import { buildBlocksSummary } from "./blocks-summary.mjs";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -90,6 +91,8 @@ export const SDL = `
     blocks(limit: Int, offset: Int, cursor: String): BlockList!
     "One block by numeric height or 0x block hash; block is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/{ref}."
     block(ref: String!): BlockDetail
+    "Block-production summary over the recent-block window -- counts, inter-block timing, throughput, and author-concentration. Every aggregate is null (never a GraphQL error) when the retired-D1 store is cold. Mirrors GET /api/v1/blocks/summary."
+    blocks_summary: BlocksSummary!
     "Network-wide validator/operator leaderboard, grouped by hotkey across every subnet it operates in. Mirrors GET /api/v1/validators."
     validators(sort: String, limit: Int): ValidatorList!
     "One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}."
@@ -428,6 +431,57 @@ export const SDL = `
     observed_at: String
   }
 
+  "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary."
+  type BlocksSummary {
+    schema_version: Int!
+    block_count: Int!
+    first_block: Int
+    last_block: Int
+    first_observed_at: String
+    last_observed_at: String
+    block_time: BlockTimeDistribution
+    throughput: BlocksThroughput
+    distinct_authors: Int!
+    author_concentration: ConcentrationMetrics
+    distinct_spec_versions: Int!
+    latest_spec_version: Int
+  }
+
+  "Inter-block interval distribution in milliseconds, over genuinely consecutive in-window blocks."
+  type BlockTimeDistribution {
+    count: Int!
+    mean_ms: Float
+    min_ms: Float
+    max_ms: Float
+    p50_ms: Float
+    p90_ms: Float
+  }
+
+  "Extrinsic/event throughput across the summarized block window."
+  type BlocksThroughput {
+    total_extrinsics: Int!
+    total_events: Int!
+    mean_extrinsics_per_block: Float
+    mean_events_per_block: Float
+    max_extrinsics_in_block: Int!
+  }
+
+  "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy."
+  type ConcentrationMetrics {
+    holders: Int!
+    total: Float
+    gini: Float
+    hhi: Float
+    hhi_normalized: Float
+    nakamoto_coefficient: Int
+    top_1pct_share: Float
+    top_5pct_share: Float
+    top_10pct_share: Float
+    top_20pct_share: Float
+    entropy: Float
+    entropy_normalized: Float
+  }
+
   type BlockDetail {
     ref: String
     block: Block
@@ -719,6 +773,7 @@ export const FIELD_COMPLEXITY = {
   accounts: RELATIONSHIP_FIELD_COMPLEXITY,
   account: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
+  blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
 };
@@ -1437,6 +1492,34 @@ const rootValue = {
       items: data.blocks || [],
       total: data.block_count ?? 0,
       next_cursor: data.next_cursor ?? null,
+    };
+  },
+
+  async blocks_summary(_args, context) {
+    // #5664: same tryPostgresTier(METAGRAPH_BLOCKS_SOURCE) -> buildBlocksSummary([])
+    // fallback contract handleBlocksSummary uses. blocks' D1 write path is retired
+    // (#4909) so a cold Postgres tier is the steady state -- the empty builder
+    // shape (block_count 0, every aggregate null) satisfies the non-null
+    // BlocksSummary! contract, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/blocks/summary"),
+        "METAGRAPH_BLOCKS_SOURCE",
+      )) ?? buildBlocksSummary([]);
+    return {
+      schema_version: data.schema_version ?? 1,
+      block_count: data.block_count ?? 0,
+      first_block: data.first_block ?? null,
+      last_block: data.last_block ?? null,
+      first_observed_at: data.first_observed_at ?? null,
+      last_observed_at: data.last_observed_at ?? null,
+      block_time: data.block_time ?? null,
+      throughput: data.throughput ?? null,
+      distinct_authors: data.distinct_authors ?? 0,
+      author_concentration: data.author_concentration ?? null,
+      distinct_spec_versions: data.distinct_spec_versions ?? 0,
+      latest_spec_version: data.latest_spec_version ?? null,
     };
   },
 
