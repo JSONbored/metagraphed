@@ -3,26 +3,25 @@
     "baseline-curated",
     "identity-reviewed",
     "sdk",
-    "official-source-repo"
+    "official-source-repo",
+    "official-website"
   ],
   "curation": {
     "gap_notes": [
-      "No verified standalone website yet.",
       "The linked model iteration tool repository includes SDK and API guide references for builder workflows.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:50:00.000Z",
-    "source_count": 5,
-    "verified_at": "2026-06-08T10:50:00.000Z"
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/123",
   "name": "MANTIS",
   "netuid": 123,
-  "notes": "Reviewed overlay for SN123 using the live MANTIS source repository and linked model-iteration SDK/tooling repository. No standalone website, docs site, public API, OpenAPI, SSE, or data artifact has been verified yet.",
+  "notes": "Reviewed overlay for SN123 using the live MANTIS source repository and linked model-iteration SDK/tooling repository. Root->128 accuracy audit re-review pass (#5903): the mantis123.com network console (previously only cited via website_url with a stale \"no website\" gap_note) is now confirmed live and is added as its own tracked surface; reverse-engineering its dashboard app.js surfaced 2 new no-param public subnet-api endpoints (challenge/emission metadata, per-UID incentive history), both live-tested and free of wallet/hotkey data. Fixed 3 missing probe blocks (price-feed, datalog-archive, TaoMarketCap candle-chart); the datalog-archive probe intentionally uses HEAD given the artifact is ~74.3GiB.",
   "schema_version": 1,
   "slug": "sn-123",
   "source_repo": "https://github.com/Barbariandev/MANTIS",
@@ -77,6 +76,12 @@
       "kind": "data-artifact",
       "name": "MANTIS price & funding data artifact",
       "notes": "Public no-auth JSON data artifact of asset prices and funding rates published by the SN123 MANTIS validator — the PRICE_DATA_URL declared in the official repo's config.py (line 63). Freshness/uptime are probe-derived and not asserted here.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "mantis",
       "public_safe": true,
       "review": {
@@ -94,7 +99,13 @@
       "id": "sn-123-mantis-datalog-archive",
       "kind": "data-artifact",
       "name": "MANTIS historical datalog archive",
-      "notes": "Public no-auth downloadable SQLite datalog of the SN123 MANTIS validator's full historical multi-asset signal/price time series — the DATALOG_ARCHIVE_URL declared in the official repo's config.py, distinct from and complementary to the latest_prices.json snapshot (this is the complete historical archive, served as a SQLite database file). Verified as a live SQLite artifact (magic bytes 'SQLite format 3'). Freshness/size are probe-derived and not asserted here.",
+      "notes": "Public no-auth downloadable SQLite datalog of the SN123 MANTIS validator's full historical multi-asset signal/price time series — the DATALOG_ARCHIVE_URL declared in the official repo's config.py, distinct from and complementary to the latest_prices.json snapshot (this is the complete historical archive, served as a SQLite database file). Verified as a live SQLite artifact (magic bytes 'SQLite format 3'). Freshness/size are probe-derived and not asserted here. Confirmed ~74.3GiB (Content-Length 79805812736) via HEAD; probe intentionally uses HEAD rather than GET to avoid downloading the full archive on every check.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "mantis",
       "public_safe": true,
       "review": {
@@ -112,7 +123,13 @@
       "id": "sn-123-taomarketcap-candle-chart",
       "kind": "data-artifact",
       "name": "SN123 TaoMarketCap OHLCV candle-chart dataset",
-      "notes": "Public no-auth GET /public/v1/subnets/123/candle-chart on api.taomarketcap.com returning a machine-readable JSON time-series of hourly OHLCV candles for SN123 MANTIS's alpha token: each record carries period_name, timestamp, block_number, open/high/low/close, volume, start_volume, and tao_price_usd/eur, every record scoped to subnet_id 123. A standalone historical price/volume dataset, distinct from MANTIS's own model-input data artifacts (latest_prices.json / datalog.db). This indexed feed is the concrete public JSON market-data endpoint for netuid 123, documented in the TaoMarketCap developer API (its public-oas3.json lists this GET with an optional API key, i.e. no-auth access is supported).",
+      "notes": "Public no-auth GET /public/v1/subnets/123/candle-chart on api.taomarketcap.com returning a machine-readable JSON time-series of hourly OHLCV candles for SN123 MANTIS's alpha token: each record carries period_name, timestamp, block_number, open/high/low/close, volume, start_volume, and tao_price_usd/eur, every record scoped to subnet_id 123. A standalone historical price/volume dataset, distinct from MANTIS's own model-input data artifacts (latest_prices.json / datalog.db). This indexed feed is the concrete public JSON market-data endpoint for netuid 123, documented in the TaoMarketCap developer API (its public-oas3.json lists this GET with an optional API key, i.e. no-auth access is supported). TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -123,8 +140,80 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://backprop.finance/dtao/subnets/123-mantis"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/123/candle-chart"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/123/candle-chart/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-123-mantis-website",
+      "kind": "website",
+      "name": "MANTIS subnet network console",
+      "notes": "Live MANTIS SN123 network console/dashboard at mantis123.com (page title \"MANTIS · Subnet 123 Network Console\"). Previously tracked only as the overlay's website_url field with a gap_note claiming no standalone website was verified; the domain is now confirmed live and self-identifies netuid 123 via its own dashboard API (see sn-123-mantis-dashboard-snap-meta). Served with an X-Robots noindex/nofollow tag, which does not affect public reachability.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://mantis123.com/"],
+      "url": "https://mantis123.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-123-mantis-dashboard-snap-meta",
+      "kind": "subnet-api",
+      "name": "MANTIS dashboard challenge/emission metadata",
+      "notes": "Public no-auth GET /dashboard/api/snap/meta on mantis123.com returning SN123 MANTIS's live challenge roster (per-ticker row counts), challenge_weights, total_weight, and emission_rules (burn_pct, young/EMA parameters, source_revision). Discovered by reading the console's own app.js, which calls this literal path (snap(\"meta\")) to populate the dashboard header -- not a guessed/parameterized value. Response confirms netuid 123. Distinct from the OpenAPI-less MANTIS source repo and from the TaoMarketCap indexed feed.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://mantis123.com/",
+        "https://mantis123.com/dashboard/static/app.js"
+      ],
+      "url": "https://mantis123.com/dashboard/api/snap/meta"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-123-mantis-dashboard-history-incentive",
+      "kind": "subnet-api",
+      "name": "MANTIS dashboard incentive history",
+      "notes": "Public no-auth GET /dashboard/api/history/incentive on mantis123.com returning a per-block JSON time series of per-UID incentive values for SN123 MANTIS (block, timestamp, and an inc map keyed by miner UID). Discovered by reading the console's own app.js, which calls this literal no-param path directly. Contains only UID-keyed numeric incentive data, no hotkeys/coldkeys/wallet addresses.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://mantis123.com/",
+        "https://mantis123.com/dashboard/static/app.js"
+      ],
+      "url": "https://mantis123.com/dashboard/api/history/incentive"
     }
   ],
-  "website_url": "https://mantis123.com"
+  "website_url": "https://mantis123.com/"
 }

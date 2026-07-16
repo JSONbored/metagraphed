@@ -1645,13 +1645,15 @@
       "netuid": 123,
       "slug": "sn-123",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:50:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://github.com/Barbariandev/MANTIS",
-        "https://github.com/Barbariandev/mantis_model_iteration_tool"
+        "https://github.com/Barbariandev/mantis_model_iteration_tool",
+        "https://mantis123.com/",
+        "https://mantis123.com/dashboard/static/app.js"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/mantis.json (reviewed_at 2026-06-08T10:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): confirmed mantis123.com is a live network console (previously only cited via website_url, not tracked), added as a website surface; discovered 2 new no-param public subnet-api endpoints (dashboard snap/meta, history/incentive) by reading the console's app.js, both live-tested and free of wallet/hotkey data; fixed 3 missing probe blocks."
     },
     {
       "netuid": 125,
