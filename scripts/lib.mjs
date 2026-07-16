@@ -1382,7 +1382,13 @@ export function normalizePublicUrl(value) {
       url.username ||
       url.password ||
       isCredentialedUrl(url.toString()) ||
-      isUnsafeUrl(url.toString())
+      isUnsafeUrl(url.toString()) ||
+      // #5990: the brand-impersonation guard (ADR 0004) previously ran only on
+      // the deprecated discovery path's local copy; run it here too so every
+      // contributor-submitted surface URL -- the path that actually ships today
+      // (validate-surface.mjs / surface-add.mjs) -- is checked, not just
+      // auto-discovered candidates.
+      isBrandImpersonationUrl(url.toString())
     ) {
       return null;
     }
