@@ -1,11 +1,15 @@
 import { createOpenAPI } from "fumadocs-openapi/server";
+import { DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 
 // Same unwrapped spec URL scripts/generate-openapi-docs.mjs bakes into every
 // generated content/docs/api-reference/**/*.mdx page's `_openapi.preload`
-// frontmatter -- kept as a literal here (not imported from the generator
-// script) since this module runs in the app itself, the generator in a
-// standalone Node process.
-const LIVE_SPEC_URL = "https://api.metagraph.sh/metagraph/openapi.json";
+// frontmatter -- derived from DEFAULT_API_BASE (not the runtime-overridable
+// getApiBase()/API_BASE) rather than a second hardcoded domain literal, so
+// there's one source of truth for it. The generator script can't share this
+// constant directly (a standalone Node process, not part of the Vite/TS
+// build), so its own comment references this file by name instead of
+// repeating the literal string.
+const LIVE_SPEC_URL = `${DEFAULT_API_BASE}/metagraph/openapi.json`;
 
 // The spec's `summary` field holds full explanatory paragraphs (up to
 // ~1100 chars) with `description` left empty on every operation.

@@ -50,8 +50,10 @@ import { createOpenAPI } from "fumadocs-openapi/server";
 const OUTPUT_DIR = process.env.OPENAPI_DOCS_OUTPUT ?? "./content/docs/api-reference";
 // Read locally (fast, no network dependency for a rarely-changing generator
 // script). src/lib/openapi-source.ts's runtime instance fetches the same
-// spec from its live, unwrapped URL (https://api.metagraph.sh/metagraph/openapi.json)
-// instead -- see that file for why.
+// spec from its own LIVE_SPEC_URL (the live, unwrapped equivalent) instead
+// -- see that file for why, and for the single source of truth on the
+// actual domain (this script can't import it directly -- a standalone Node
+// process, not part of the Vite/TS build).
 const LOCAL_SPEC_PATH = "../../public/metagraph/openapi.json";
 
 // Acronyms/initialisms that Title-Case-per-camelCase-word gets wrong
