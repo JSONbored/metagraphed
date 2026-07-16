@@ -1061,6 +1061,18 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/byzantium.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 78,
+      "slug": "sn-78",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.vocence.ai/",
+        "https://github.com/vocence-78/vocence"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN78. Added website + source-repo surfaces, fixed 3 missing probe blocks. Diffed the OpenAPI schema (46 paths, schema declares no security) for undiscovered public GET endpoints -- spot-checking confirms the entire developer API is auth-gated except the already-tracked /health route."
+    },
+    {
       "netuid": 79,
       "slug": "sn-79",
       "decision": "maintainer-reviewed",
