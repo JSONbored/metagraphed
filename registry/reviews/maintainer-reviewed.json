@@ -1369,10 +1369,13 @@
       "netuid": 101,
       "slug": "eni",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T15:00:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
-      "source_urls": [],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/eni.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "source_urls": [
+        "http://tag101.ai/",
+        "https://github.com/tag101-ai/tag101"
+      ],
+      "notes": "Root->128 accuracy audit re-review pass (#5903): the official website and source repository are now both live and added as tracked surfaces (previously only cited via top-level fields, not tracked). Website only serves over plain HTTP. No public API, OpenAPI schema, or docs site beyond what was already tracked."
     },
     {
       "netuid": 102,
