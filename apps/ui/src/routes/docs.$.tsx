@@ -7,6 +7,7 @@ import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layo
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import browserCollections from "collections/browser";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { CopyMarkdownButton } from "@/components/metagraphed/copy-markdown-button";
 import { getMDXComponents } from "@/components/metagraphed/mdx";
 import { baseOptions } from "@/lib/docs-layout-shared";
 import { docsSource } from "@/lib/docs-source";
@@ -67,11 +68,16 @@ const serverLoader = createServerFn({ method: "GET" })
   });
 
 const clientLoader = browserCollections.docs.createClientLoader({
-  component({ toc, frontmatter, default: MDX }, _props: undefined) {
+  component({ toc, frontmatter, default: MDX, _markdown }, _props: undefined) {
     return (
       <DocsPage toc={toc}>
-        <DocsTitle>{frontmatter.title}</DocsTitle>
-        <DocsDescription>{frontmatter.description}</DocsDescription>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <DocsTitle>{frontmatter.title}</DocsTitle>
+            <DocsDescription>{frontmatter.description}</DocsDescription>
+          </div>
+          <CopyMarkdownButton markdown={_markdown} />
+        </div>
         <DocsBody>
           {/* getMDXComponents, not the useMDXComponents alias -- this
               `component` callback is a plain object method (fumadocs'
