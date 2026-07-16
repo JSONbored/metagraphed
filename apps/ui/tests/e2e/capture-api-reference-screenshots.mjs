@@ -61,7 +61,7 @@ async function main() {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await context.newPage();
     await setTheme(page, theme);
-    await open(page, "/docs/api-reference/accounts/accountAxonRemovals");
+    await open(page, "/docs/api-reference/accounts/account-axon-removals");
     const opFile = path.join(OUT_DIR, `${VARIANT}-operation-desktop-${theme}.png`);
     await page.screenshot({ path: opFile, fullPage: false });
     console.log(`wrote ${opFile}`);

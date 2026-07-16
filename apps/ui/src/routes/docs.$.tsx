@@ -103,11 +103,25 @@ const clientLoader = browserCollections.docs.createClientLoader<{ markdownUrl: s
   component({ toc, frontmatter, default: MDX, lastModified }, { markdownUrl }) {
     return (
       <DocsPage toc={toc}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <DocsTitle>{frontmatter.title}</DocsTitle>
-            <DocsDescription>{frontmatter.description}</DocsDescription>
-          </div>
+        <DocsTitle>{frontmatter.title}</DocsTitle>
+        <DocsDescription>{frontmatter.description}</DocsDescription>
+        {/* Anchored to "Last updated," not the title -- floating this next
+            to a (potentially multi-line, especially on mobile) H1 read as
+            misplaced. Metadata + page actions belong in the same row. */}
+        <div className="flex items-center justify-between gap-4">
+          {/* lastModified comes from local `git log` at build/dev-compile
+              time (source.config.ts's docs.lastModified: true), not a live
+              GitHub API call -- this app deploys to a Cloudflare Worker with
+              no .git directory at runtime, so a runtime call would need its
+              own caching/token and could rate-limit. Baked in at compile
+              time instead, same as frontmatter/toc already are. */}
+          {lastModified ? (
+            <p className="text-[12px] text-ink-muted">
+              Last updated <TimeAgo at={lastModified.toISOString()} />
+            </p>
+          ) : (
+            <span />
+          )}
           {/* Fumadocs' own page-actions component (fumadocs.dev/docs/integrations/llms#page-actions)
               -- Copy Page / View as Markdown / Open in ChatGPT, Claude, Cursor,
               Scira AI. markdownUrl points at docs.raw.$.ts, a real per-page
@@ -120,17 +134,6 @@ const clientLoader = browserCollections.docs.createClientLoader<{ markdownUrl: s
               service to fetch itself. */}
           <ViewOptionsPopover markdownUrl={markdownUrl} />
         </div>
-        {/* lastModified comes from local `git log` at build/dev-compile time
-            (source.config.ts's docs.lastModified: true), not a live GitHub
-            API call -- this app deploys to a Cloudflare Worker with no .git
-            directory at runtime, so a runtime call would need its own
-            caching/token and could rate-limit. Baked in at compile time
-            instead, same as frontmatter/toc already are. */}
-        {lastModified ? (
-          <p className="text-[12px] text-ink-muted -mt-4">
-            Last updated <TimeAgo at={lastModified.toISOString()} />
-          </p>
-        ) : null}
         <DocsBody>
           {/* getMDXComponents, not the useMDXComponents alias -- this
               `component` callback is a plain object method (fumadocs'
