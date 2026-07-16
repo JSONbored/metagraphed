@@ -1949,6 +1949,18 @@ const LIST_SUBNETS_RANGE_BOUNDS = [
   { arg: "max_readiness", field: "integration_readiness", op: "max" },
   { arg: "min_surface_count", field: "surface_count", op: "min" },
   { arg: "max_surface_count", field: "surface_count", op: "max" },
+  { arg: "min_block", field: "block", op: "min" },
+  { arg: "max_block", field: "block", op: "max" },
+  { arg: "min_candidate_count", field: "candidate_count", op: "min" },
+  { arg: "max_candidate_count", field: "candidate_count", op: "max" },
+  { arg: "min_mechanism_count", field: "mechanism_count", op: "min" },
+  { arg: "max_mechanism_count", field: "mechanism_count", op: "max" },
+  { arg: "min_participant_count", field: "participant_count", op: "min" },
+  { arg: "max_participant_count", field: "participant_count", op: "max" },
+  { arg: "min_probed_surface_count", field: "probed_surface_count", op: "min" },
+  { arg: "max_probed_surface_count", field: "probed_surface_count", op: "max" },
+  { arg: "min_tempo", field: "tempo", op: "min" },
+  { arg: "max_tempo", field: "tempo", op: "max" },
   { arg: "min_netuid", field: "netuid", op: "min" },
   { arg: "max_netuid", field: "netuid", op: "max" },
 ];
@@ -2274,6 +2286,66 @@ export const MCP_TOOLS = [
         max_surface_count: {
           type: "integer",
           description: "Only subnets with at most this many callable surfaces.",
+          minimum: 0,
+        },
+        min_block: {
+          type: "number",
+          description: "Only subnets whose current block is >= this.",
+        },
+        max_block: {
+          type: "number",
+          description: "Only subnets whose current block is <= this.",
+        },
+        min_candidate_count: {
+          type: "integer",
+          description: "Only subnets with at least this many surface candidates.",
+          minimum: 0,
+        },
+        max_candidate_count: {
+          type: "integer",
+          description: "Only subnets with at most this many surface candidates.",
+          minimum: 0,
+        },
+        min_mechanism_count: {
+          type: "integer",
+          description: "Only subnets with at least this many registered mechanisms.",
+          minimum: 0,
+        },
+        max_mechanism_count: {
+          type: "integer",
+          description: "Only subnets with at most this many registered mechanisms.",
+          minimum: 0,
+        },
+        min_participant_count: {
+          type: "integer",
+          description: "Only subnets with at least this many participants.",
+          minimum: 0,
+        },
+        max_participant_count: {
+          type: "integer",
+          description: "Only subnets with at most this many participants.",
+          minimum: 0,
+        },
+        min_probed_surface_count: {
+          type: "integer",
+          description:
+            "Only subnets with at least this many probed (health-checked) surfaces.",
+          minimum: 0,
+        },
+        max_probed_surface_count: {
+          type: "integer",
+          description:
+            "Only subnets with at most this many probed (health-checked) surfaces.",
+          minimum: 0,
+        },
+        min_tempo: {
+          type: "integer",
+          description: "Only subnets whose tempo is >= this.",
+          minimum: 0,
+        },
+        max_tempo: {
+          type: "integer",
+          description: "Only subnets whose tempo is <= this.",
           minimum: 0,
         },
         min_netuid: {
