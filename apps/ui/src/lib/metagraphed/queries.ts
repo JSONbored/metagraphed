@@ -1,5 +1,5 @@
 import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
-import { apiFetch, type ApiResult, type QueryParams } from "./client";
+import { apiFetch, ApiError, type ApiResult, type QueryParams } from "./client";
 import { getNetwork } from "./config";
 import { blockRefPathSegment } from "./blocks";
 import { extrinsicHashPathSegment } from "./extrinsics";
@@ -166,6 +166,9 @@ import type {
   RpcEndpointsData,
   RpcEndpointsSummary,
   RpcUsage,
+  UsageAnalytics,
+  UsageRoute,
+  UsageTool,
   SchemaInfo,
   SemanticSearchResponse,
   Subnet,
@@ -7164,6 +7167,99 @@ export const rpcUsageQuery = (window = "7d") =>
     queryFn: async ({ signal }) => {
       const res = await apiFetch<unknown>("/api/v1/rpc/usage", { params: { window }, signal });
       return { ...res, data: normalizeRpcUsage(res.data) } as ApiResult<RpcUsage>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+// /api/v1/usage — product-usage analytics (#6033): REST-route + MCP-tool call
+// volume and success/failure over a window. Mirrors normalizeRpcUsage's
+// forgiving contract — any missing field collapses to a zeroed, schema-stable
+// shape so a partial (or cold, pre-#366) payload can't crash the maintainer
+// view. The window param is echoed back so a shared link restores the view.
+export function normalizeUsageAnalytics(raw: unknown): UsageAnalytics {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const s = (r.summary && typeof r.summary === "object" ? r.summary : {}) as Record<
+    string,
+    unknown
+  >;
+  return {
+    window: (r.window as string | null) ?? null,
+    observed_at: (r.observed_at as string | null) ?? null,
+    source: (r.source as string) ?? "usage",
+    summary: {
+      total_calls: finiteNumber(s.total_calls),
+      ok_calls: finiteNumber(s.ok_calls),
+      error_calls: finiteNumber(s.error_calls),
+      error_rate: finiteOptionalNumber(s.error_rate) ?? null,
+      route_calls: finiteNumber(s.route_calls),
+      mcp_calls: finiteNumber(s.mcp_calls),
+    },
+    routes: Array.isArray(r.routes)
+      ? r.routes.flatMap((route, index) => {
+          const normalized = normalizeUsageRoute(route, index);
+          return normalized ? [normalized] : [];
+        })
+      : [],
+    tools: Array.isArray(r.tools)
+      ? r.tools.flatMap((tool, index) => {
+          const normalized = normalizeUsageTool(tool, index);
+          return normalized ? [normalized] : [];
+        })
+      : [],
+  };
+}
+
+function normalizeUsageRoute(raw: unknown, index: number): UsageRoute | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const r = raw as Record<string, unknown>;
+  const route = typeof r.route === "string" ? r.route : "";
+  if (!route) return undefined;
+  return {
+    rank: finiteNumber(r.rank, index + 1),
+    route,
+    calls: finiteNumber(r.calls),
+    ok_calls: finiteNumber(r.ok_calls),
+    error_calls: finiteNumber(r.error_calls),
+    error_rate: finiteOptionalNumber(r.error_rate) ?? null,
+  };
+}
+
+function normalizeUsageTool(raw: unknown, index: number): UsageTool | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const t = raw as Record<string, unknown>;
+  const tool = typeof t.tool === "string" ? t.tool : "";
+  if (!tool) return undefined;
+  return {
+    rank: finiteNumber(t.rank, index + 1),
+    tool,
+    calls: finiteNumber(t.calls),
+    ok_calls: finiteNumber(t.ok_calls),
+    error_calls: finiteNumber(t.error_calls),
+    error_rate: finiteOptionalNumber(t.error_rate) ?? null,
+  };
+}
+
+export const usageAnalyticsQuery = (window = "7d") =>
+  queryOptions({
+    queryKey: k("usage-analytics", window),
+    queryFn: async ({ signal }) => {
+      try {
+        const res = await apiFetch<unknown>("/api/v1/usage", { params: { window }, signal });
+        return { ...res, data: normalizeUsageAnalytics(res.data) } as ApiResult<UsageAnalytics>;
+      } catch (err) {
+        // The telemetry-writing side (#366) may not have shipped /api/v1/usage
+        // yet — a 404 (or an offline dev worker: status 0) is "no data yet",
+        // not a failure, so degrade to the zeroed shape rather than tripping
+        // the error boundary. Genuine server errors (5xx, etc.) still surface.
+        if (err instanceof ApiError && (err.status === 404 || err.status === 0)) {
+          return {
+            data: normalizeUsageAnalytics(null),
+            meta: {},
+            url: err.url,
+          } as ApiResult<UsageAnalytics>;
+        }
+        throw err;
+      }
     },
     staleTime: STALE_SHORT,
   });
