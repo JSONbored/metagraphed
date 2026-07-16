@@ -1340,6 +1340,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/forevermoney.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 99,
+      "slug": "sn-99",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://leoma.ai/",
+        "https://github.com/RendixNetwork/leoma",
+        "https://api.leoma.ai/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN99. Added website + source-repo surfaces, fixed 2 missing probe blocks. Diffed the 28-path OpenAPI schema for undiscovered public GET endpoints -- added 6 new surfaces; 2 candidates (miners/valid, miners/all) turned out to require validator-signed headers despite the schema saying no auth."
+    },
+    {
       "netuid": 100,
       "slug": "sn-100",
       "decision": "maintainer-reviewed",
