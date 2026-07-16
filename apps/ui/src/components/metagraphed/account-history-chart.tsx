@@ -118,7 +118,7 @@ function hoverLabel(day: AccountHistorySeriesDay, scope: Scope): string {
 
 export function AccountHistoryChart({ ss58 }: { ss58: string }) {
   const [scope, setScope] = useState<Scope>("all");
-  const { data, isLoading, isError, error } = useQuery(
+  const { data, isLoading, isError, error, refetch } = useQuery(
     accountHistoryQuery(ss58, { limit: DEFAULT_HISTORY_LIMIT }),
   );
 
@@ -151,7 +151,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
   }
 
   if (isError) {
-    return <ErrorState error={error} context="account history" />;
+    return <ErrorState error={error} onRetry={() => refetch()} context="account history" />;
   }
 
   if (days.length === 0 || scopedDays.length === 0) {
