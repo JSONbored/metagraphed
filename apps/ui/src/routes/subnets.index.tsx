@@ -191,7 +191,7 @@ function SubnetsPage() {
       <QueryErrorBoundary>
         <Suspense
           fallback={
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
               <Skeleton className="h-20" />
               <Skeleton className="h-20" />
               <Skeleton className="h-20" />
@@ -248,12 +248,13 @@ function SubnetsStatStrip() {
   const totalH = health.total;
   const healthyOk = ok != null && totalH != null && totalH > 0 && ok / totalH > 0.9;
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
       <StatTile
         icon={Network}
         eyebrow="Active subnets"
         value={formatNumber(active)}
         hint={total ? `of ${formatNumber(total)}` : undefined}
+        truncate={false}
       />
       <StatTile
         icon={Radio}
@@ -261,19 +262,27 @@ function SubnetsStatStrip() {
         value={formatNumber(adapter)}
         hint="pilots"
         tone="accent"
+        truncate={false}
       />
-      <StatTile icon={Layers} eyebrow="Manifested surfaces" value={formatNumber(manifested)} />
+      <StatTile
+        icon={Layers}
+        eyebrow="Manifested surfaces"
+        value={formatNumber(manifested)}
+        truncate={false}
+      />
       <StatTile
         icon={Activity}
         eyebrow="Healthy"
         value={ok != null && totalH ? `${formatNumber(ok)}/${formatNumber(totalH)}` : "—"}
         tone={healthyOk ? "ok" : "default"}
+        truncate={false}
       />
       <StatTile
         icon={Coins}
         eyebrow="Total stake"
         value={formatTao(totalStake)}
         tooltip="Network-wide total stake across all subnets, from the latest daily snapshot."
+        truncate={false}
       />
     </div>
   );
