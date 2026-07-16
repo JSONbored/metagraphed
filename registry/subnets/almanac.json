@@ -1,11 +1,25 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "prediction-markets"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T01:40:00.000Z",
+    "source_count": 7,
+    "verified_at": "2026-07-16T01:40:00.000Z"
   },
   "name": "Almanac",
   "netuid": 41,
+  "notes": "First maintainer-reviewed pass for SN41 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 2 pre-existing surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Replaced the hardcoded single-market snapshot surface (GET /api/markets/events/202857, pinned to a specific \"NFL Champion 2027\" event with no stable canonical value -- it will inevitably go stale once that market resolves around Feb 2027) with GET /api/markets, a genuine no-parameter, evergreen listing of all markets on the same host (same reasoning as #5914/#5934).",
   "schema_version": 1,
   "slug": "sn-41",
   "source_repo": "https://github.com/sportstensor/sn41",
@@ -13,11 +27,53 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-41-almanac-website",
+      "kind": "website",
+      "name": "Almanac website",
+      "notes": "Official Almanac (SN41) website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "almanac",
+      "public_safe": true,
+      "source_urls": ["https://github.com/sportstensor/sn41"],
+      "url": "https://almanac.market/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-41-almanac-source-repo",
+      "kind": "source-repo",
+      "name": "Almanac source repository",
+      "notes": "Official Almanac (SN41) source repository, in the sportstensor GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "almanac",
+      "public_safe": true,
+      "source_urls": ["https://almanac.market/"],
+      "url": "https://github.com/sportstensor/sn41"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-41-almanac-subnet-api",
       "kind": "subnet-api",
       "name": "Almanac API health",
       "notes": "Public no-auth GET /health on api.almanac.market returning JSON liveness (observed: status healthy with uptime, version, and database/redis checks). The official sportstensor/sn41 trading client sets ALMANAC_API_URL to https://api.almanac.market/api on the same host.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "almanac",
       "public_safe": true,
       "review": {
@@ -31,22 +87,23 @@
     },
     {
       "auth_required": false,
-      "authority": "community",
-      "id": "sn-41-almanac-nfl-champion-market",
+      "authority": "official",
+      "id": "sn-41-almanac-markets-list",
       "kind": "data-artifact",
-      "name": "Almanac NFL Champion 2027 market snapshot",
-      "notes": "Public no-auth GET /api/markets/events/{event_id} on api.almanac.market returning full market metadata (title, description, resolution rules, image/icon URLs, active/closed/archived flags) for a specific SN41 Almanac prediction market (NFL Champion 2027, event id 202857). Same api.almanac.market host as the existing health surface; the underlying /markets/search and /markets/events/{id} routes are used by the official sportstensor/sn41 trading client (api_trading.py) to browse and inspect markets.",
+      "name": "Almanac markets listing",
+      "notes": "Public no-auth GET /api/markets on api.almanac.market returning a machine-readable listing of all SN41 Almanac prediction markets. Same api.almanac.market host as the existing health surface; the underlying /markets route is used by the official sportstensor/sn41 trading client (api_trading.py) to browse markets. Replaces a previously-tracked surface pinned to one specific market's event_id, which had no stable canonical value.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "almanac",
       "public_safe": true,
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "philluiz2323"
-      },
       "source_urls": [
-        "https://github.com/sportstensor/sn41/blob/main/api_trading.py",
-        "https://api.almanac.market/api/markets/search?q=nfl"
+        "https://github.com/sportstensor/sn41/blob/main/api_trading.py"
       ],
-      "url": "https://api.almanac.market/api/markets/events/202857"
+      "url": "https://api.almanac.market/api/markets"
     },
     {
       "auth_required": false,
@@ -55,6 +112,12 @@
       "kind": "dashboard",
       "name": "Almanac validator Weights & Biases dashboard",
       "notes": "Public Weights & Biases project the SN41 Almanac validators log to (wandb.ai/sportstensor/sportstensor-vali-logs) — live validator run logs and sports-prediction scoring metrics. Validators import wandb and start runs under entity 'sportstensor' / project 'sportstensor-vali-logs' in the official sportstensor/sn41 validator.py. Publicly readable via the W&B API. Distinct host from the api.almanac.market API.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "almanac",
       "public_safe": true,
       "review": {

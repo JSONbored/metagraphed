@@ -577,6 +577,19 @@
       "notes": "This netuid was previously reviewed under the \"Chunking\" identity (registry/subnets/chunking.json, VectorChat's text-chunking/RAG subnet). Re-reviewed and re-keyed this pass: on-chain SubnetIdentitiesV3 native_name, source_repo, and description now all point to \"Ralph\" (RalphLabsAI's training-recipe research subnet), corroborated by the old chunking_subnet repo being dead 2+ years, subnet.chunking.com's expired TLS certificate, and RalphLabsAI/ralph's own README self-identifying as \"Live on Bittensor mainnet, netuid 40\". File renamed chunking.json -> ralph.json to match slugify(name); this decision entry's slug updated to match."
     },
     {
+      "netuid": 41,
+      "slug": "sn-41",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T01:40:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://almanac.market/",
+        "https://github.com/sportstensor/sn41",
+        "https://api.almanac.market/health"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Replaced a hardcoded single-market snapshot surface (pinned to one specific prediction market's event_id, with no stable canonical value) with a genuine no-parameter markets-listing endpoint on the same host."
+    },
+    {
       "netuid": 42,
       "slug": "sn-42",
       "decision": "maintainer-reviewed",
