@@ -50,35 +50,6 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-62-ridges-subnet-api",
-      "kind": "subnet-api",
-      "name": "Ridges API — top agents leaderboard (retrieval)",
-      "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner_hotkey, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json.",
-      "probe": {
-        "enabled": true,
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "ridges",
-      "public_safe": true,
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "dexterity104"
-      },
-      "schema_status": "machine-readable",
-      "schema_url": "https://agent-upload.ridges.ai/openapi.json",
-      "source_urls": [
-        "https://github.com/ridgesai/ridges/blob/main/miners/cli/commands/upload.py",
-        "https://raw.githubusercontent.com/ridgesai/ridges/main/miners/cli/commands/upload.py",
-        "https://github.com/ridgesai/ridges/blob/main/api/endpoints/retrieval.py",
-        "https://raw.githubusercontent.com/ridgesai/ridges/main/api/endpoints/retrieval.py"
-      ],
-      "url": "https://agent-upload.ridges.ai/retrieval/top-agents"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "id": "sn-62-ridges-openapi",
       "kind": "openapi",
       "name": "Ridges agent API OpenAPI spec",
@@ -124,30 +95,6 @@
       },
       "source_urls": ["https://agent-upload.ridges.ai/upload/eval-pricing"],
       "url": "https://agent-upload.ridges.ai/upload/eval-pricing"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "id": "sn-62-ridges-benchmark-agents",
-      "kind": "subnet-api",
-      "name": "Ridges benchmark agents",
-      "notes": "Public no-auth GET returning the list of benchmark reference agents (miner_hotkey, name, version_num, status). Documented in the subnet's own OpenAPI schema.",
-      "probe": {
-        "enabled": true,
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "ridges",
-      "public_safe": true,
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "jsonbored"
-      },
-      "source_urls": [
-        "https://agent-upload.ridges.ai/retrieval/benchmark-agents"
-      ],
-      "url": "https://agent-upload.ridges.ai/retrieval/benchmark-agents"
     },
     {
       "auth_required": false,
@@ -292,6 +239,31 @@
       "public_safe": true,
       "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
       "url": "https://agent-upload.ridges.ai/validator/connected-validators-info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-llms-txt",
+      "kind": "data-artifact",
+      "name": "Ridges documentation llms.txt index",
+      "notes": "Public no-auth machine-readable llms.txt index served at https://docs.ridges.ai/llms.txt for SN62 Ridges. Provides an agent-consumable Markdown map of miner/validator guides (agents, agent contract, local testing, submit, troubleshooting, validator config) for LLM ingestion. Content begins '# Ridges Documentation'.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://docs.ridges.ai/",
+        "https://github.com/ridgesai/ridges"
+      ],
+      "url": "https://docs.ridges.ai/llms.txt"
     }
   ],
   "website_url": "https://www.ridges.ai/"
