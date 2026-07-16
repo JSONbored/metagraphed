@@ -17,6 +17,7 @@ import {
   artifactStorageTierForPath,
 } from "../src/artifact-storage.mjs";
 import { createComponentValidatorCompiler } from "./lib/component-validator.mjs";
+import { formatAjvEnumErrorMessage } from "./lib/ajv-enum-error.mjs";
 
 // Artifacts whose schema describes a live-computed API response with no static
 // file on disk (served from D1/KV). Their schema is exercised by validate-api's
@@ -398,39 +399,8 @@ function validate(validator, value, label) {
   if (!validator(value)) {
     for (const error of validator.errors || []) {
       errors.push(
-        `${label}${error.instancePath}: ${formatErrorMessage(error, value)}`,
+        `${label}${error.instancePath}: ${formatAjvEnumErrorMessage(error, value)}`,
       );
     }
   }
-}
-
-// ajv's default `error.message` for an `enum` keyword is the unhelpful "must
-// be equal to one of the allowed values" with no indication of what those
-// values actually are. Reproduce: set a surface's `kind` to an invalid value,
-// run `node scripts/validate-schemas.mjs`, and see the bare message. Fix:
-// append the allowed values (and the offending value, when resolvable) for
-// enum-keyword errors only; every other keyword's message is unchanged.
-function formatErrorMessage(error, value) {
-  if (error.keyword !== "enum") {
-    return error.message;
-  }
-  const allowed = (error.params?.allowedValues || []).join(", ");
-  const actual = valueAtInstancePath(value, error.instancePath);
-  const gotSuffix =
-    actual === undefined ? "" : ` (got ${JSON.stringify(actual)})`;
-  return `${error.message}: ${allowed}${gotSuffix}`;
-}
-
-function valueAtInstancePath(document, instancePath) {
-  if (!instancePath) return undefined;
-  const segments = instancePath
-    .split("/")
-    .slice(1)
-    .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"));
-  let value = document;
-  for (const segment of segments) {
-    if (value == null) return undefined;
-    value = value[segment];
-  }
-  return value;
 }

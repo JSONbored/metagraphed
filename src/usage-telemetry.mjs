@@ -129,7 +129,9 @@ export async function recordUsageEvent(env, event, deps = {}) {
     // Prefer an injected fetch when the key is present — including an
     // explicit `null` (tests: "fetch unavailable") — over falling through
     // to globalThis.fetch via `??` (which treats null as missing).
-    const doFetch = Object.hasOwn(deps, "fetch") ? deps.fetch : globalThis.fetch;
+    const doFetch = Object.hasOwn(deps, "fetch")
+      ? deps.fetch
+      : globalThis.fetch;
     if (typeof doFetch !== "function") return false;
 
     const response = await doFetch(postHogCaptureUrl(host), {

@@ -69,41 +69,48 @@ describe("validate-surface.mjs enum error messages", () => {
 });
 
 describe("validate-schemas.mjs enum error messages", () => {
-  let mutatedFile;
-  let originalContents;
-
-  afterEach(() => {
-    if (mutatedFile) {
-      writeFileSync(mutatedFile, originalContents);
-      mutatedFile = undefined;
-      originalContents = undefined;
-    }
-  });
-
-  test("lists the allowed kind values and the offending value on an invalid kind", async () => {
+  // Run ajv against an in-memory mutated clone — never write into
+  // registry/subnets (that races parallel full-registry validators such as
+  // validate-surface-duplicate-url).
+  async function validateMutatedSubnet(mutate) {
     const subnetFiles = await listJsonFiles(
       path.join(repoRoot, "registry/subnets"),
     );
-    let targetFile;
-    let targetDocument;
+    let document;
     for (const file of subnetFiles) {
-      const document = await readJson(file);
-      if (Array.isArray(document.surfaces) && document.surfaces.length > 0) {
-        targetFile = file;
-        targetDocument = document;
-        break;
-      }
+      const candidate = await readJson(file);
+      document = structuredClone(candidate);
+      if (mutate(document)) break;
+      document = undefined;
     }
-    assert.ok(targetFile, "at least one subnet file must have a surface");
+    assert.ok(document, "mutate() must select a suitable subnet fixture");
 
-    mutatedFile = targetFile;
-    originalContents = readFileSync(mutatedFile, "utf8");
-    targetDocument.surfaces[0].kind = "totally-invalid-kind";
-    writeFileSync(mutatedFile, JSON.stringify(targetDocument, null, 2));
+    const Ajv2020 = (await import("ajv/dist/2020.js")).default;
+    const addFormats = (await import("ajv-formats")).default;
+    const { formatAjvEnumErrorMessage } =
+      await import("../scripts/lib/ajv-enum-error.mjs");
+    const schema = await readJson(
+      path.join(repoRoot, "schemas/subnet-manifest.schema.json"),
+    );
+    const ajv = new Ajv2020({ allErrors: true, strict: false });
+    addFormats(ajv);
+    const validate = ajv.compile(schema);
+    const ok = validate(document);
+    assert.equal(ok, false);
+    const messages = (validate.errors || []).map((error) =>
+      formatAjvEnumErrorMessage(error, document),
+    );
+    return messages.join("\n");
+  }
 
-    const { status, output } = runNode(["scripts/validate-schemas.mjs"]);
-
-    assert.equal(status, 1);
+  test("lists the allowed kind values and the offending value on an invalid kind", async () => {
+    const output = await validateMutatedSubnet((document) => {
+      if (!Array.isArray(document.surfaces) || document.surfaces.length === 0) {
+        return false;
+      }
+      document.surfaces[0].kind = "totally-invalid-kind";
+      return true;
+    });
     assert.match(output, /must be equal to one of the allowed values/);
     assert.match(output, /subnet-api/);
     assert.match(output, /data-artifact/);
@@ -114,29 +121,11 @@ describe("validate-schemas.mjs enum error messages", () => {
   // — a subnet claiming any other tier must be rejected the same way an
   // invalid surface kind is, with the allowed-values list surfaced.
   test("lists the allowed partnership.tier values and the offending value on an invalid tier", async () => {
-    const subnetFiles = await listJsonFiles(
-      path.join(repoRoot, "registry/subnets"),
-    );
-    let targetFile;
-    let targetDocument;
-    for (const file of subnetFiles) {
-      const document = await readJson(file);
-      if (document.partnership) {
-        targetFile = file;
-        targetDocument = document;
-        break;
-      }
-    }
-    assert.ok(targetFile, "at least one subnet file must have a partnership");
-
-    mutatedFile = targetFile;
-    originalContents = readFileSync(mutatedFile, "utf8");
-    targetDocument.partnership.tier = "sponsor";
-    writeFileSync(mutatedFile, JSON.stringify(targetDocument, null, 2));
-
-    const { status, output } = runNode(["scripts/validate-schemas.mjs"]);
-
-    assert.equal(status, 1);
+    const output = await validateMutatedSubnet((document) => {
+      if (!document.partnership) return false;
+      document.partnership.tier = "sponsor";
+      return true;
+    });
     assert.match(output, /must be equal to one of the allowed values/);
     assert.match(output, /pilot/);
     assert.match(output, /got "sponsor"/);
