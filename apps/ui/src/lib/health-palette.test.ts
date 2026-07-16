@@ -1,6 +1,13 @@
+import React from "react";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { cssFor, HEALTH_PALETTES, readId } from "./health-palette";
+import { cssFor, HEALTH_PALETTES, readId, useHealthPalette } from "./health-palette";
+
+function HealthPaletteProbe() {
+  const { paletteId } = useHealthPalette();
+  return React.createElement("output", null, paletteId);
+}
 
 describe("cssFor", () => {
   it("maps each palette to light :root and dark .dark health variables", () => {
@@ -44,6 +51,17 @@ describe("readId", () => {
     expect(readId()).toBe("traffic-light");
   });
 
+  it("falls back to the default palette when localStorage.getItem throws", () => {
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: vi.fn(() => {
+          throw new Error("storage blocked");
+        }),
+      },
+    });
+    expect(readId()).toBe("traffic-light");
+  });
+
   it("resolves every registered palette id from storage", () => {
     for (const palette of HEALTH_PALETTES) {
       vi.stubGlobal("window", {
@@ -52,5 +70,24 @@ describe("readId", () => {
       expect(readId()).toBe(palette.id);
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("useHealthPalette", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back to the default palette when localStorage.getItem throws during initial render", () => {
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: vi.fn(() => {
+          throw new Error("storage blocked");
+        }),
+      },
+    });
+
+    expect(() => renderToString(React.createElement(HealthPaletteProbe))).not.toThrow();
+    expect(renderToString(React.createElement(HealthPaletteProbe))).toContain("traffic-light");
   });
 });

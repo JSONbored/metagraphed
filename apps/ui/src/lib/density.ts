@@ -5,8 +5,12 @@ const STORAGE_KEY = "mg-density";
 
 function readChoice(): Density {
   if (typeof window === "undefined") return "comfortable";
-  const v = window.localStorage.getItem(STORAGE_KEY);
-  return v === "compact" ? "compact" : "comfortable";
+  try {
+    const v = window.localStorage.getItem(STORAGE_KEY);
+    return v === "compact" ? "compact" : "comfortable";
+  } catch {
+    return "comfortable";
+  }
 }
 
 function apply(d: Density) {
