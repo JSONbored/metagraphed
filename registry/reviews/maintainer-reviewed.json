@@ -1462,7 +1462,7 @@
       "netuid": 110,
       "slug": "sn-110",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T07:12:52.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.green-compute.com/",
@@ -1474,7 +1474,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/110",
         "https://taomarketcap.com/subnets/110"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/green-compute.json (reviewed_at 2026-06-08T07:12:52.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks. Diffed the 99-path GreenCompute Gateway OpenAPI schema and live-tested every no-param candidate -- most declare no security but are actually 401-gated in practice; only 2 genuinely public routes were promoted (readyz, Prometheus metrics)."
     },
     {
       "netuid": 111,
