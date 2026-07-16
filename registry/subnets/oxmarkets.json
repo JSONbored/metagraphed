@@ -1,12 +1,24 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "defi",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
   "contact": "contact@0xmarkets.io",
   "curation": {
-    "level": "candidate-discovered",
-    "review_state": "unreviewed"
+    "gap_notes": ["No verified SSE/event stream yet."],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:50:00.000Z",
+    "source_count": 11,
+    "verified_at": "2026-07-16T00:50:00.000Z"
   },
   "name": "OxMarkets",
   "netuid": 35,
+  "notes": "First maintainer-reviewed pass for SN35 (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). OxMarkets/Cartha is a liquidity-as-a-service subnet powering a permissionless perp DEX (FX, crypto, commodities). Added the missing website and source-repo surfaces. Fixed 7 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full Cartha Verifier OpenAPI schema (58 paths): most are 401/403-gated in practice despite the schema declaring no security scheme (a documentation gap on the operator's side, not a registry concern), and the remaining unauthenticated GETs are either already tracked or require query parameters with no stable canonical value (e.g. /v1/metagraph/compare, /v1/miner/status). One new genuine no-auth public endpoint found and added: GET /pools, returning the registered liquidity-pool/vault list.",
   "schema_version": 1,
   "slug": "sn-35",
   "social": {
@@ -17,11 +29,55 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-35-oxmarkets-website",
+      "kind": "website",
+      "name": "0xMarkets website",
+      "notes": "Official 0xMarkets website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/General-Tao-Ventures/cartha-validator"
+      ],
+      "url": "https://www.0xmarkets.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-35-oxmarkets-source-repo",
+      "kind": "source-repo",
+      "name": "Cartha validator source repository",
+      "notes": "Official Cartha (SN35) validator source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "source_urls": ["https://www.0xmarkets.io/"],
+      "url": "https://github.com/General-Tao-Ventures/cartha-validator"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-35-oxmarkets-docs",
       "kind": "docs",
       "name": "0xMarkets / Cartha documentation",
       "notes": "Official 0xMarkets / Cartha documentation, linked from the project website (www.0xmarkets.io).",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "oxmarkets",
       "public_safe": true,
       "review": {
@@ -38,6 +94,12 @@
       "kind": "sdk",
       "name": "Cartha CLI (PyPI)",
       "notes": "Published PyPI package `cartha-cli` — the official CLI for Cartha subnet (SN35) miners; built from the team's General-Tao-Ventures/cartha-cli repo.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "oxmarkets",
       "public_safe": true,
       "review": {
@@ -54,6 +116,12 @@
       "kind": "example",
       "name": "Cartha principal miner template",
       "notes": "Official backend template for running a Cartha (SN35) principal miner; in the team's General-Tao-Ventures org.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "oxmarkets",
       "public_safe": true,
       "review": {
@@ -72,6 +140,12 @@
       "kind": "source-repo",
       "name": "0xMarkets docs source repository",
       "notes": "Source repository for the 0xMarkets documentation; README states the project is \"built on the Cartha Subnet (SN35)\". Distinct from the cartha-validator repo at the top level.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "oxmarkets",
       "public_safe": true,
       "review": {
@@ -88,6 +162,12 @@
       "kind": "openapi",
       "name": "Cartha Verifier API OpenAPI schema",
       "notes": "Machine-readable OpenAPI 3.1 schema for the Cartha Verifier API (title: Cartha Verifier). Served publicly at api.cartha.finance; documents SN35 OxMarkets/Cartha miner verification, pool, and lock routes plus the no-auth GET /health probe.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oxmarkets",
       "public_safe": true,
       "review": {
@@ -109,6 +189,12 @@
       "kind": "subnet-api",
       "name": "Cartha Verifier API health",
       "notes": "Public no-auth GET /health on api.cartha.finance returning liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /health in the subnet OpenAPI spec; api.cartha.finance is the default VERIFIER_URL configured in the official Cartha principal miner template.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oxmarkets",
       "public_safe": true,
       "review": {
@@ -128,6 +214,12 @@
       "kind": "data-artifact",
       "name": "Cartha liquidity-providing metrics",
       "notes": "Public no-auth GET /v1/lp-stats on api.cartha.finance returning aggregated liquidity-providing metrics for the 0xMarkets landing page (observed top-level fields: apy_tiers, max_apy, tvl, weekly_rewards, emissions, prices, epoch, extras, last_updated). Documented as GET /v1/lp-stats in the subnet OpenAPI spec (api.cartha.finance/openapi.json, already cited for the existing health and OpenAPI surfaces); same api.cartha.finance host as the Cartha Verifier API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oxmarkets",
       "public_safe": true,
       "review": {
@@ -136,6 +228,24 @@
       },
       "source_urls": ["https://api.cartha.finance/openapi.json"],
       "url": "https://api.cartha.finance/v1/lp-stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-35-oxmarkets-pools",
+      "kind": "subnet-api",
+      "name": "Cartha registered pools",
+      "notes": "Public no-auth GET /pools on api.cartha.finance returning the registered liquidity-pool/vault list for the Cartha perp DEX (name, poolId, vaultAddress, chainId, network per pool). Documented as GET /pools in the subnet's own OpenAPI schema; distinct from the already-registered lp-stats aggregate-metrics and parent-vaults surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/pools"
     },
     {
       "auth_required": false,

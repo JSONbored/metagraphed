@@ -497,6 +497,20 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitmind.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 35,
+      "slug": "sn-35",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:50:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.0xmarkets.io/",
+        "https://github.com/General-Tao-Ventures/cartha-validator",
+        "https://docs.0xmarkets.io/",
+        "https://api.cartha.finance/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website, source repository, and docs. Diffed the full Cartha Verifier OpenAPI schema (58 paths): most are 401/403-gated in practice despite the schema declaring no security scheme, and the remaining unauthenticated GETs are either already tracked or require query parameters with no stable canonical value. Added one new genuine no-auth public endpoint, GET /pools."
+    },
+    {
       "netuid": 39,
       "slug": "sn-39",
       "decision": "maintainer-reviewed",
