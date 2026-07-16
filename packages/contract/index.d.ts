@@ -4863,6 +4863,18 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description A single exchange the subnet's token trades on (curated registry metadata, Taostats parity). Display-only — never a probed surface and never feeds completeness. */
+        ExchangeListing: {
+            /** @description Exchange name, e.g. "MEXC" or "Gate.io". */
+            exchange: string;
+            /** @description Optional trading pair identifier, e.g. "TAO/USDT". */
+            pair?: string;
+            /**
+             * Format: uri
+             * @description Public listing or trade URL for the token on this exchange.
+             */
+            url: string;
+        };
         /** @description One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); tip_tao is the priority tip in TAO (#1855, separate from fee_tao; nullable, commonly 0); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time. */
         Extrinsic: {
             block_number: number | null;
@@ -6623,6 +6635,8 @@ export interface components {
             description?: string | null;
             /** Format: uri */
             docs_url?: string | null;
+            /** @description Curated exchanges where the subnet's token trades (Taostats parity, #6274). Display-only registry metadata — never a probed surface and never feeds completeness. */
+            exchange_listings?: components["schemas"]["ExchangeListing"][];
             gap_count?: number;
             gaps: components["schemas"]["Gaps"];
             /** @enum {string} */
@@ -22458,6 +22472,12 @@ export interface operations {
                      *           ],
                      *           "description": "Example description.",
                      *           "docs_url": "https://api.metagraph.sh/example",
+                     *           "exchange_listings": [
+                     *             {
+                     *               "exchange": "example",
+                     *               "url": "https://api.metagraph.sh/example"
+                     *             }
+                     *           ],
                      *           "gap_count": 1,
                      *           "gaps": {
                      *             "gap_notes": [
@@ -26332,6 +26352,12 @@ export interface operations {
                      *           ],
                      *           "description": "Example description.",
                      *           "docs_url": "https://api.metagraph.sh/example",
+                     *           "exchange_listings": [
+                     *             {
+                     *               "exchange": "example",
+                     *               "url": "https://api.metagraph.sh/example"
+                     *             }
+                     *           ],
                      *           "gap_count": 1,
                      *           "gaps": {
                      *             "gap_notes": [

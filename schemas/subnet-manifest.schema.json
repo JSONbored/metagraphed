@@ -70,6 +70,22 @@
         "$ref": "#/$defs/link"
       }
     },
+    "exchange_listings": {
+      "type": "array",
+      "description": "Curated exchanges where the subnet's token trades — plain registry metadata (Taostats parity), like `links`/`social`. Display-only; never a live-verified surface (no probe/verification) and never feeds completeness.",
+      "items": {
+        "$ref": "#/$defs/exchange_listing"
+      },
+      "examples": [
+        [
+          {
+            "exchange": "MEXC",
+            "url": "https://www.mexc.com/exchange/TAO_USDT",
+            "pair": "TAO/USDT"
+          }
+        ]
+      ]
+    },
     "contact": {
       "type": "string",
       "description": "Curated operator support contact (email or public URL, harvested from SubnetIdentitiesV3 subnet_contact) — sanitized at build via subnetContact. Display-only; never feeds completeness."
@@ -416,6 +432,29 @@
         "source_url": {
           "type": "string",
           "format": "uri"
+        }
+      }
+    },
+    "exchange_listing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exchange", "url"],
+      "description": "A single exchange the subnet's token is listed on. Curated metadata, not a probed surface — the exchange name plus a public listing/trade URL, with an optional trading pair.",
+      "properties": {
+        "exchange": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exchange name, e.g. \"MEXC\" or \"Gate.io\"."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Public listing or trade URL for the token on this exchange."
+        },
+        "pair": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional trading pair identifier, e.g. \"TAO/USDT\"."
         }
       }
     },

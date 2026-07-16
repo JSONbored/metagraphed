@@ -116,6 +116,27 @@
         },
         "additionalProperties": false
       },
+      "ExchangeListing": {
+        "type": "object",
+        "required": ["exchange", "url"],
+        "description": "A single exchange the subnet's token trades on (curated registry metadata, Taostats parity). Display-only — never a probed surface and never feeds completeness.",
+        "properties": {
+          "exchange": {
+            "type": "string",
+            "description": "Exchange name, e.g. \"MEXC\" or \"Gate.io\"."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Public listing or trade URL for the token on this exchange."
+          },
+          "pair": {
+            "type": "string",
+            "description": "Optional trading pair identifier, e.g. \"TAO/USDT\"."
+          }
+        },
+        "additionalProperties": false
+      },
       "Gaps": {
         "type": "object",
         "required": ["missing_kinds", "supported_kinds", "gap_notes"],
@@ -490,6 +511,13 @@
             "items": {
               "type": "object",
               "additionalProperties": true
+            }
+          },
+          "exchange_listings": {
+            "type": "array",
+            "description": "Curated exchanges where the subnet's token trades (Taostats parity, #6274). Display-only registry metadata — never a probed surface and never feeds completeness.",
+            "items": {
+              "$ref": "#/components/schemas/ExchangeListing"
             }
           },
           "native_slug": {

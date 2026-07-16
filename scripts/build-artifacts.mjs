@@ -2781,6 +2781,10 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
     // drives placement (docs/adr/0008-subnet-data-model.md).
     partnership: overlay?.partnership || null,
     links: overlay?.links || [],
+    // Curated exchange listings (#6274): where the subnet's token trades.
+    // Plain overlay passthrough like links — display-only registry metadata
+    // (Taostats parity), never a probed surface and never feeds completeness.
+    exchange_listings: overlay?.exchange_listings || [],
     // Structured social handles (#745): curated overlay wins over on-chain
     // SubnetIdentitiesV3 `additional` extraction. Display/search-only — never
     // feeds completeness (the #343 flywheel gate). Lives on the canonical

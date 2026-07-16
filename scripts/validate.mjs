@@ -804,6 +804,9 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
     // detail artifact reproducibility check matches the generator.
     partnership: overlay?.partnership || null,
     links: overlay?.links || [],
+    // Mirror mergeSubnet's #6274 exchange_listings passthrough so the per-subnet
+    // detail artifact reproducibility check matches the generator.
+    exchange_listings: overlay?.exchange_listings || [],
     // Mirror mergeSubnet's #745 social backfill (overlay wins, else sanitized
     // on-chain `additional`) so the reproducibility check matches the generator.
     social: socialAccounts(
