@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   listJsonFiles,
   loadSubnets,
+  promoteCuration,
   readJson,
   repoRoot,
   buildSubnetOverlaysByNetuid,
@@ -45,17 +46,7 @@ for (const decision of decisionsDocument.decisions || []) {
   }
 
   const nextOverlay = structuredClone(entry.overlay);
-  nextOverlay.curation = {
-    ...(nextOverlay.curation || {}),
-    review_state: decision.decision,
-    reviewed_at: decision.reviewed_at,
-  };
-  if (
-    decision.decision === "maintainer-reviewed" &&
-    nextOverlay.curation.level === "machine-verified"
-  ) {
-    nextOverlay.curation.level = "maintainer-reviewed";
-  }
+  nextOverlay.curation = promoteCuration(nextOverlay.curation, decision);
 
   const changed =
     stableStringify(nextOverlay) !== stableStringify(entry.overlay);

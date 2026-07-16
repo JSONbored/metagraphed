@@ -2108,7 +2108,60 @@ export function computeProvenanceElevations({
 // is NOT already at the top trust tier (maintainer-reviewed / adapter-backed).
 // Deterministic (generated_at is the fixed build placeholder) so the committed
 // queue is drift-checked by validate.mjs. Pure — takes the already-loaded inputs.
-const TOP_TRUST_LEVELS = new Set(["maintainer-reviewed", "adapter-backed"]);
+export const TOP_TRUST_LEVELS = new Set([
+  "maintainer-reviewed",
+  "adapter-backed",
+]);
+
+// Pure promotion helper shared by scripts/promote-reviewed.mjs and its unit
+// tests (#5992). Applies a maintainer review decision to a curation overlay:
+// always records review_state/reviewed_at, and promotes curation.level to
+// "maintainer-reviewed" ONLY when the decision is maintainer-reviewed AND the
+// current level is not already a TOP-TRUST tier. This keeps subnets already at
+// "adapter-backed" (an equal top tier) from being silently downgraded, while
+// still promoting community-seeded / candidate-discovered / native /
+// machine-verified levels that never took effect before.
+export function promoteCuration(curation, decision) {
+  const next = {
+    ...(curation || {}),
+    review_state: decision.decision,
+    reviewed_at: decision.reviewed_at,
+  };
+  if (
+    decision.decision === "maintainer-reviewed" &&
+    !TOP_TRUST_LEVELS.has(next.level)
+  ) {
+    next.level = "maintainer-reviewed";
+  }
+  return next;
+}
+
+// Forward drift guard for #5992: every maintainer-reviewed decision must have
+// been materialized onto its subnet overlay by promote-reviewed.mjs, i.e. the
+// overlay's curation.level must sit at a TOP-TRUST tier (maintainer-reviewed or
+// adapter-backed). Returns the decisions whose overlay is still below the top
+// tier. Decisions whose netuid has no subnet overlay are skipped (a separate
+// concern). Pure — takes already-loaded inputs so validate.mjs and tests can
+// share it.
+export function findUnpromotedMaintainerDecisions({
+  decisions = [],
+  subnets = [],
+} = {}) {
+  const levelByNetuid = new Map(
+    subnets.map((subnet) => [subnet.netuid, subnet.curation?.level ?? null]),
+  );
+  const drift = [];
+  for (const decision of decisions) {
+    if (decision.decision !== "maintainer-reviewed") continue;
+    if (!levelByNetuid.has(decision.netuid)) continue;
+    const level = levelByNetuid.get(decision.netuid);
+    if (!TOP_TRUST_LEVELS.has(level)) {
+      drift.push({ netuid: decision.netuid, slug: decision.slug, level });
+    }
+  }
+  return drift;
+}
+
 export function buildProvenanceReviewQueue({
   candidates = [],
   nativeSubnets = [],

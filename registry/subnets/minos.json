@@ -1,8 +1,9 @@
 {
   "categories": [],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-20T00:00:00.000Z"
   },
   "name": "Minos",
   "netuid": 107,

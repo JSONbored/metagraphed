@@ -21,6 +21,7 @@ import {
   listJsonFilesRecursive,
   cleanDescription,
   deriveDomainTags,
+  findUnpromotedMaintainerDecisions,
   subnetLifecycle,
   publicMetagraphRoot,
   readJson,
@@ -1592,6 +1593,22 @@ for (const subnet of subnets) {
       `${subnet.slug}: curation.level "maintainer-reviewed" (netuid ${subnet.netuid}) has no backing decision in registry/reviews/maintainer-reviewed.json — add a decision there instead of hand-editing the overlay level`,
     );
   }
+}
+
+// Forward direction of the same single-source-of-truth invariant (#5992): every
+// maintainer-reviewed decision must be MATERIALIZED onto its subnet overlay, so
+// the overlay's curation.level sits at a top trust tier (maintainer-reviewed or
+// adapter-backed). Otherwise a recorded decision silently never takes effect —
+// the live drift this guard closes. Decisions whose netuid has no overlay are a
+// separate concern and skipped.
+for (const drift of findUnpromotedMaintainerDecisions({
+  decisions: reviewDecisionsDocument.decisions || [],
+  subnets,
+})) {
+  assert(
+    false,
+    `${drift.slug ?? `netuid ${drift.netuid}`}: maintainer-reviewed decision (netuid ${drift.netuid}) is not materialized — curation.level "${drift.level}" is below the top trust tier; run \`node scripts/promote-reviewed.mjs --write\` to promote it`,
+  );
 }
 
 // Identity guardrail (the "Nodexo" class): a curated overlay's name matching
