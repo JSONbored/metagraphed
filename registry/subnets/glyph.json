@@ -65,5 +65,8 @@
       "url": "https://github.com/glyph-research/glyph-subnet"
     }
   ],
+  "social": {
+    "x": "https://x.com/glyphresearch"
+  },
   "website_url": "https://glyph-research.org"
 }
