@@ -400,14 +400,15 @@
       "netuid": 106,
       "slug": "nodexo",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T14:15:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://nodexo.ai/",
         "https://docs.nodexo.ai/",
-        "https://console.nodexo.ai/"
+        "https://console.nodexo.ai/",
+        "https://github.com/nodexo-ai/nodexo"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/nodexo.json (reviewed_at 2026-06-08T14:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): the official nodexo-ai/nodexo source repository is now live (previously documented as 404) -- added as its own tracked surface. The main nodexo.ai website is now consistently reachable and probe-enabled; docs.nodexo.ai and console.nodexo.ai still reject simple probes. Fixed 2 missing probe blocks on the inventory and health APIs."
     },
     {
       "netuid": 28,
