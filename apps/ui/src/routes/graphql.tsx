@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { CopyButton, PageHero, SectionHeading } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { GraphiqlExplorer } from "@/components/metagraphed/graphiql-explorer";
 import { API_BASE, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import {
   GRAPHQL_ENDPOINT_PATH,
@@ -74,6 +75,14 @@ function GraphqlDocsPage() {
               </pre>
             </div>
           </div>
+        </section>
+
+        <section id="explorer">
+          <SectionHeading
+            title="Explorer"
+            intro="Run a query against the live endpoint — schema-aware autocomplete, docs, and history, right in the browser."
+          />
+          <GraphiqlExplorer endpoint={ENDPOINT_URL} />
         </section>
 
         <section>
