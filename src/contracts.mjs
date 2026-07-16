@@ -1985,7 +1985,7 @@ export const API_ROUTES = [
     "Fetch interface gap priorities and enrichment queue for one subnet.",
     "standard",
     ["registry", "review", "subnets"],
-    listQuery("review-gap-priorities", { exclude: ["netuid"] }),
+    csvListQuery("review-gap-priorities", { exclude: ["netuid"] }),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

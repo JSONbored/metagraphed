@@ -1460,6 +1460,48 @@ describe("review enrichment list CSV export", () => {
     assert.ok(rows.every((row) => row.priority_score !== ""));
   });
 
+  // #6237: subnets/{netuid}/gaps is the netuid-scoped view of the SAME review-gap-priorities
+  // collection as review/gaps above, but was the one bulk/per-subnet pair whose per-subnet half
+  // never advertised the CSV contract, so ?format=csv silently returned JSON.
+  test("subnets/{netuid}/gaps ?format=csv returns the same CSV contract as its bulk sibling", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/subnets/1/gaps?format=csv&fields=netuid,priority_score,curation_level&limit=5",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      res.headers.get("content-disposition"),
+      'attachment; filename="subnet-gaps.csv"',
+    );
+    const { header, rows } = await parseCsv(res);
+    assert.equal(header.join(","), "netuid,priority_score,curation_level");
+    assert.ok(rows.length > 0);
+    // netuid is simply constant for the one subnet -- the scoped view of the same row shape.
+    assert.ok(rows.every((row) => row.netuid === "1"));
+    assert.ok(rows.every((row) => row.priority_score !== ""));
+  });
+
+  test("subnets/{netuid}/gaps without format= keeps its existing JSON envelope", async () => {
+    // Strictly additive: the default path must be untouched by the CSV wiring.
+    const res = await handleRequest(
+      req("/api/v1/subnets/1/gaps"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^application\/json/);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.equal(
+      Array.isArray(body.data.rows ?? body.data.gaps ?? body.data.priorities),
+      true,
+    );
+  });
+
   test("review/profile-completeness ?format=csv exports priority_score and honors identity_level", async () => {
     const res = await handleRequest(
       req(
