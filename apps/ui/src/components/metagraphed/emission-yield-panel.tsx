@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, Server, Users, Coins } from "lucide-react";
 import { chainYieldQuery } from "@/lib/metagraphed/queries";
 import { StatTile } from "@jsonbored/ui-kit";
-import { EmptyState } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { formatNumber } from "@/lib/metagraphed/format";
 
 // #3472: network emission-yield summary — the return-rate companion to the
@@ -32,8 +32,12 @@ function Notice({ children }: { children: string }) {
  * chain-yield snapshot once and renders a KPI-tile grid.
  */
 export function EmissionYieldPanel() {
-  const { data: res, isPending } = useQuery(chainYieldQuery());
+  const { data: res, isPending, isError, error, refetch } = useQuery(chainYieldQuery());
   const y = res?.data;
+
+  if (isError) {
+    return <ErrorState error={error} onRetry={() => refetch()} context="network emission yield" />;
+  }
 
   if (isPending && !y) {
     return <Notice>Loading network emission yield…</Notice>;
