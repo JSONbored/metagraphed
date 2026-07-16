@@ -15,14 +15,14 @@
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "reviewed_at": "2026-07-16T05:55:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T10:10:00.000Z"
+    "verified_at": "2026-07-16T05:55:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/63",
   "name": "Enigma",
   "netuid": 63,
-  "notes": "Reviewed overlay for SN63 using the official qBittensor Labs website and Enigma source repository.",
+  "notes": "Reviewed overlay for SN63 using the official qBittensor Labs website and Enigma source repository. This re-review pass fixed 2 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Re-checked for an OpenAPI schema (none found, matching gap_notes) and confirmed no dedicated Enigma subdomain exists on qbittensorlabs.com. On-chain identity re-confirmed unchanged.",
   "schema_version": 1,
   "slug": "sn-63",
   "social": {
@@ -74,6 +74,12 @@
       "kind": "subnet-api",
       "name": "qBittensor Labs API health",
       "notes": "Public no-auth GET /api/health on www.qbittensorlabs.com returning application liveness JSON. Served on the official qBittensor Labs website host linked from the Enigma source repository README.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "qbittensor-labs",
       "public_safe": true,
       "review": {
@@ -93,6 +99,12 @@
       "kind": "data-artifact",
       "name": "Enigma minimum compute requirements",
       "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official qbittensor-labs/enigma repository as min_compute.yml. Documents SN63 operator CPU/GPU/memory/storage/network floors.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "qbittensor-labs",
       "public_safe": true,
       "review": {
