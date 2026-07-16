@@ -8088,6 +8088,240 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 });
 
+describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHistory fallback)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  function dataApi(response, capture) {
+    return {
+      fetch: async (req) => {
+        if (capture) capture.url = new URL(req.url);
+        return response;
+      },
+    };
+  }
+
+  function query(argsClause) {
+    return `{ account_history${argsClause} {
+      schema_version ss58 day_count limit offset next_cursor
+      days { day netuid event_count event_kinds first_block last_block }
+    } }`;
+  }
+
+  // loadAccountHistory issues exactly one SELECT per call, so the mock ignores
+  // the SQL text and always returns the given rows.
+  function accountHistoryD1(rows = []) {
+    return {
+      prepare: () => ({
+        bind: () => ({ all: async () => ({ results: rows }) }),
+      }),
+    };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty series, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_history, {
+      schema_version: 1,
+      ss58: SS58,
+      day_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      days: [],
+    });
+  });
+
+  test("resolves the Postgres-tier envelope, mapping each day's fields", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          day_count: 1,
+          limit: 50,
+          offset: 0,
+          next_cursor: "c:20260625:7",
+          days: [
+            {
+              day: "2026-06-25",
+              netuid: 7,
+              event_count: 3,
+              event_kinds: ["StakeAdded", "WeightsSet"],
+              first_block: 1000,
+              last_block: 1200,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_history, {
+      schema_version: 1,
+      ss58: SS58,
+      day_count: 1,
+      limit: 50,
+      offset: 0,
+      next_cursor: "c:20260625:7",
+      days: [
+        {
+          day: "2026-06-25",
+          netuid: 7,
+          event_count: 3,
+          event_kinds: ["StakeAdded", "WeightsSet"],
+          first_block: 1000,
+          last_block: 1200,
+        },
+      ],
+    });
+  });
+
+  test("hits /api/v1/accounts/{ss58}/history and forwards every filter", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          day_count: 0,
+          limit: 5,
+          offset: 2,
+          next_cursor: null,
+          days: [],
+        }),
+        capture,
+      ),
+    };
+    const { status } = await gql(
+      query(
+        `(ss58: "${SS58}", netuid: 7, from: "2026-06-01", to: "2026-06-30", limit: 5, offset: 2, cursor: "c:20260615:3")`,
+      ),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/history`);
+    assert.equal(capture.url.searchParams.get("limit"), "5");
+    assert.equal(capture.url.searchParams.get("offset"), "2");
+    assert.equal(capture.url.searchParams.get("netuid"), "7");
+    assert.equal(capture.url.searchParams.get("from"), "2026-06-01");
+    assert.equal(capture.url.searchParams.get("to"), "2026-06-30");
+    assert.equal(capture.url.searchParams.get("cursor"), "c:20260615:3");
+  });
+
+  test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({}), capture),
+    };
+    await gql(query(`(ss58: "${SS58}", limit: 100000, offset: -5)`), env);
+    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
+    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
+    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
+    assert.equal(forwardedOffset, 0);
+    assert.equal(capture.url.searchParams.get("netuid"), null);
+    assert.equal(capture.url.searchParams.get("from"), null);
+    assert.equal(capture.url.searchParams.get("to"), null);
+    assert.equal(capture.url.searchParams.get("cursor"), null);
+  });
+
+  test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_history, {
+      schema_version: 1,
+      ss58: SS58,
+      day_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      days: [],
+    });
+  });
+
+  test("a day row with missing fields degrades each to null / empty kinds", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({ days: [{}] })),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_history.days, [
+      {
+        day: null,
+        netuid: null,
+        event_count: null,
+        event_kinds: [],
+        first_block: null,
+        last_block: null,
+      },
+    ]);
+  });
+
+  test("no Postgres tier flag: reads the daily rollup straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: accountHistoryD1([
+        {
+          day: "2026-06-25",
+          netuid: 7,
+          event_count: 2,
+          event_kinds: "StakeAdded,WeightsSet",
+          first_block: 1000,
+          last_block: 1100,
+        },
+      ]),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.account_history.ss58, SS58);
+    assert.equal(body.data.account_history.day_count, 1);
+    assert.deepEqual(body.data.account_history.days, [
+      {
+        day: "2026-06-25",
+        netuid: 7,
+        event_count: 2,
+        event_kinds: ["StakeAdded", "WeightsSet"],
+        first_block: 1000,
+        last_block: 1100,
+      },
+    ]);
+  });
+
+  test("rejects a malformed ss58 before hitting the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { body } = await gql(query('(ss58: "not-an-address")'), env);
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/ss58/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_history ?? null, null);
+    assert.equal(called, false);
+  });
+
+  test("account_history is weighted as a relationship field", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.account_history,
+      FIELD_COMPLEXITY.account_events,
+    );
+  });
+});
+
 describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live fallback)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 

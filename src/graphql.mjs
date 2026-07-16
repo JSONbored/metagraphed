@@ -146,6 +146,7 @@ import {
   buildAccountSubnets,
   buildAccountSummary,
   buildAccountTransfers,
+  loadAccountHistory,
 } from "./account-events.mjs";
 import {
   DEFAULT_PROMETHEUS_WINDOW,
@@ -401,6 +402,8 @@ export const SDL = `
     account_extrinsics(ss58: String!, limit: Int, offset: Int, cursor: String, block_start: Int, block_end: Int): AccountExtrinsics!
     "One account's first-party chain-event feed, newest first -- every event where this address is the hotkey OR coldkey (the union account_extrinsics does not use), each carrying its block/event index, event_kind, hotkey/coldkey, netuid/uid, amount_tao/alpha_amount, extrinsic_index and observed_at. kind filters to one event kind (e.g. StakeAdded, NeuronRegistered, AxonServed, WeightsSet); netuid scopes to one subnet; block_start/block_end bound the block-height range; page with limit/offset or cursor (opaque keyset from a prior response's next_cursor). event_count is the page count, not a grand total. An address with no matching events resolves to a schema-stable empty feed, never null. Mirrors GET /api/v1/accounts/{ss58}/events."
     account_events(ss58: String!, kind: String, netuid: Int, block_start: Int, block_end: Int, limit: Int, offset: Int, cursor: String): AccountEvents!
+    "One account's durable per-day activity series from the hotkey-keyed account_events_daily rollup, newest day first -- each day's netuid, event_count, event_kinds, and first/last block. netuid filters to one subnet; from/to are YYYY-MM-DD bounds; page with limit/offset or cursor (opaque keyset from a prior response's next_cursor). day_count is the page count, not a grand total. Note: the rollup is hotkey-attributed only -- a coldkey-only address returns zero days even when account_events shows activity. An address with no matching days resolves to a schema-stable empty series, never null. Mirrors GET /api/v1/accounts/{ss58}/history."
+    account_history(ss58: String!, netuid: Int, from: String, to: String, limit: Int, offset: Int, cursor: String): AccountHistory!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
     "Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom), composed live from the registry profiles projection plus D1 health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards."
@@ -2391,6 +2394,27 @@ export const SDL = `
     events: [AccountEvent!]!
   }
 
+  "One day's rolled-up activity for an account on one subnet, from the account_events_daily tier. event_kinds is the distinct set of event ids seen that day."
+  type AccountDay {
+    day: String
+    netuid: Int
+    event_count: Int
+    event_kinds: [String!]!
+    first_block: Int
+    last_block: Int
+  }
+
+  "One account's durable per-day activity series (hotkey-keyed, newest day first), keyset-paginated. day_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/history' data envelope. Each item is an AccountDay."
+  type AccountHistory {
+    schema_version: Int!
+    ss58: String!
+    day_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    days: [AccountDay!]!
+  }
+
   "Signing-activity aggregate from the extrinsics tier, matched by signer only -- an account queried by a key that did not sign returns tx_count 0, other fields null/empty."
   type AccountActivity {
     tx_count: Int!
@@ -2686,6 +2710,7 @@ export const FIELD_COMPLEXITY = {
   account_transfers: RELATIONSHIP_FIELD_COMPLEXITY,
   account_extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
   account_events: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_history: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks: RELATIONSHIP_FIELD_COMPLEXITY,
   // A single latest-only row -- but it fans out into the full hyperparameter
   // block, so it is priced with the other per-subnet relationship fields.
@@ -5326,6 +5351,71 @@ const rootValue = {
         alpha_amount: e.alpha_amount ?? null,
         observed_at: e.observed_at ?? null,
         extrinsic_index: e.extrinsic_index ?? null,
+      })),
+    };
+  },
+
+  async account_history(
+    { ss58, netuid, from, to, limit, offset, cursor },
+    context,
+  ) {
+    // Same SS58 validation every account_* resolver uses -- a malformed address
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty series.
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same FEED_PAGINATION bounds the /history route's clamp applies, so a
+    // GraphQL caller cannot request a wider page than REST allows;
+    // netuid/from/to/cursor are forwarded verbatim for the route to re-parse,
+    // matching account_events and the sibling feed resolvers.
+    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (netuid != null) params.set("netuid", String(netuid));
+    if (from != null) params.set("from", from);
+    if (to != null) params.set("to", to);
+    if (cursor != null) params.set("cursor", cursor);
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> D1
+    // (loadAccountHistory) fallback the REST handler and MCP get_account_history
+    // tool use -- a cold store is a schema-stable empty series, never a
+    // GraphQL error.
+    const historyOptions = {
+      netuid: netuid ?? undefined,
+      from: from ?? undefined,
+      to: to ?? undefined,
+      limit: safeLimit,
+      offset: safeOffset,
+      cursor: cursor ?? undefined,
+    };
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/history`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      (await loadAccountHistory(d1Runner(context.env), ss58, historyOptions));
+    return {
+      schema_version: data.schema_version ?? 1,
+      ss58: data.ss58 ?? ss58,
+      day_count: data.day_count ?? 0,
+      limit: data.limit ?? safeLimit,
+      offset: data.offset ?? safeOffset,
+      next_cursor: data.next_cursor ?? null,
+      days: (data.days ?? []).map((d) => ({
+        day: d.day ?? null,
+        netuid: d.netuid ?? null,
+        event_count: d.event_count ?? null,
+        event_kinds: Array.isArray(d.event_kinds) ? d.event_kinds : [],
+        first_block: d.first_block ?? null,
+        last_block: d.last_block ?? null,
       })),
     };
   },
