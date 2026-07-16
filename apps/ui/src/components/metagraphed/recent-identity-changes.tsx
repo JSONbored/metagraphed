@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { chainIdentityHistoryQuery } from "@/lib/metagraphed/queries";
-import { EmptyState } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { TimeAgo } from "@jsonbored/ui-kit";
 
 // #3474: homepage widget — the live network-wide feed of recent subnet-identity
@@ -24,8 +24,16 @@ function Notice({ children }: { children: string }) {
  * names/descriptions never escape the row at mobile width.
  */
 export function RecentIdentityChanges() {
-  const { data: res, isPending } = useQuery(chainIdentityHistoryQuery(10));
+  const { data: res, isPending, isError, error, refetch } = useQuery(
+    chainIdentityHistoryQuery(10),
+  );
   const changes = res?.data?.changes ?? [];
+
+  if (isError) {
+    return (
+      <ErrorState error={error} onRetry={() => refetch()} context="recent identity changes" />
+    );
+  }
 
   if (isPending && !res) {
     return <Notice>Loading recent identity changes…</Notice>;

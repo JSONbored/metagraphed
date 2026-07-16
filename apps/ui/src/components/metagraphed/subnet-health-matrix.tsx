@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { subnetsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
+import { ErrorState } from "@/components/metagraphed/states";
 import type { HealthState, Subnet } from "@/lib/metagraphed/types";
 
 const TONE: Record<HealthState, string> = {
@@ -28,10 +29,20 @@ const TONE_TEXT: Record<HealthState, string> = {
  * health state on hover. Falls back to a static skeleton on first paint.
  */
 export function SubnetHealthMatrix() {
-  const { data, isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     ...subnetsQuery({ limit: 256, sort: "netuid", order: "asc" }),
   });
   const rows = ((data?.data ?? []) as Subnet[]).slice().sort((a, b) => a.netuid - b.netuid);
+
+  if (isError) {
+    return <ErrorState error={error} onRetry={() => refetch()} context="subnet health matrix" />;
+  }
 
   if (isLoading) {
     return (
