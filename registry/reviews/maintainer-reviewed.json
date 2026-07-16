@@ -827,10 +827,14 @@
       "netuid": 59,
       "slug": "sn-59",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-20T00:00:00.000Z",
+      "reviewed_at": "2026-07-16T05:20:00.000Z",
       "confidence": "high",
-      "source_urls": ["https://api.babelbit.ai/"],
-      "notes": "Elevated from the provenance review queue (#1235): a live subnet-api is hosted on this subnet's on-chain-asserted domain (babelbit.ai, Subtensor SubnetIdentitiesV3). Maintainer-confirmed."
+      "source_urls": [
+        "https://babelbit.ai/",
+        "https://github.com/babelbit/babelbit_subnet",
+        "https://api.babelbit.ai/"
+      ],
+      "notes": "Elevated from the provenance review queue (#1235): a live subnet-api is hosted on this subnet's on-chain-asserted domain (babelbit.ai, Subtensor SubnetIdentitiesV3). Maintainer-confirmed. Reconciled 2026-07-16: the subnet overlay's own curation.level had drifted from this decision (still read community-seeded/unreviewed); brought into sync with website/source-repo surfaces added and a full OpenAPI diff performed."
     },
     {
       "netuid": 61,

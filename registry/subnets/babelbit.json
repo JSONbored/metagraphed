@@ -1,12 +1,27 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "language",
+    "official-source-repo",
+    "official-website"
+  ],
   "contact": "mk@babelbit.ai",
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified docs site yet.",
+      "No verified SSE/event stream yet.",
+      "The /challenge, /challenge/{challenge_uid}/n_utterances, /solo/sessions, /solo/start, and /transcription routes all require HTTPBearer auth and were not promoted."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T05:20:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-16T05:20:00.000Z"
   },
   "name": "Babelbit",
   "netuid": 59,
+  "notes": "Maintainer-reviewed pass for SN59. The registry/reviews/maintainer-reviewed.json decision ledger already records this subnet as maintainer-reviewed (elevated 2026-06-20 via the provenance review queue, #1235), but this overlay's own curation.level had drifted and still read community-seeded/unreviewed with categories empty and no website/source-repo surfaces despite website_url/source_repo already being set -- this pass reconciles the file to match the recorded decision. Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932; /health rejects HEAD (405) so its probe uses GET. Diffed the full 16-path OpenAPI schema: added one new no-auth no-param surface, /debug/network (chain connectivity, neuron count, sample hotkeys -- already-public on-chain identifiers). All other undiscovered routes require HTTPBearer auth.",
   "schema_version": 1,
   "slug": "sn-59",
   "social": {
@@ -17,11 +32,53 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-59-babelbit-website",
+      "kind": "website",
+      "name": "Babelbit website",
+      "notes": "Official Babelbit (SN59) website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "source_urls": ["https://github.com/babelbit/babelbit_subnet"],
+      "url": "https://babelbit.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-59-babelbit-source-repo",
+      "kind": "source-repo",
+      "name": "Babelbit source repository",
+      "notes": "Official Babelbit (SN59) source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "source_urls": ["https://babelbit.ai/"],
+      "url": "https://github.com/babelbit/babelbit_subnet"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-59-babelbit-openapi",
       "kind": "openapi",
       "name": "Babelbit Utterance Engine OpenAPI",
       "notes": "Machine-readable OpenAPI schema for the Babelbit utterance engine API; the official README points validators at api.babelbit.ai and the hosted Swagger UI loads this schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "babelbit",
       "public_safe": true,
       "review": {
@@ -42,7 +99,13 @@
       "id": "sn-59-babelbit-health",
       "kind": "subnet-api",
       "name": "Babelbit utterance engine health",
-      "notes": "Public no-auth GET /health on api.babelbit.ai returning utterance-engine liveness JSON. Documented as a no-security operation in the registered OpenAPI schema on the same host; distinct from validator-authenticated challenge endpoints.",
+      "notes": "Public no-auth GET /health on api.babelbit.ai returning utterance-engine liveness JSON. Documented as a no-security operation in the registered OpenAPI schema on the same host; distinct from validator-authenticated challenge endpoints. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "babelbit",
       "public_safe": true,
       "review": {
@@ -62,6 +125,12 @@
       "kind": "data-artifact",
       "name": "Babelbit minimum compute requirements",
       "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official babelbit/babelbit_subnet repository as min_compute.yml. Documents benchmark-based CPU, GPU, memory, storage, and bandwidth floors for SN59 utterance-engine miners and validators.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "babelbit",
       "public_safe": true,
       "review": {
@@ -95,6 +164,24 @@
       },
       "source_urls": ["https://api.babelbit.ai/"],
       "url": "https://api.babelbit.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-59-babelbit-debug-network",
+      "kind": "subnet-api",
+      "name": "Babelbit network debug info",
+      "notes": "Public no-auth GET /debug/network on api.babelbit.ai returning chain connectivity status, network name, total neuron count, and a sample of already-public on-chain hotkeys/validator permits. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/debug/network"
     }
   ],
   "website_url": "https://babelbit.ai/"
