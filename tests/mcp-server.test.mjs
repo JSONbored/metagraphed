@@ -6021,6 +6021,98 @@ describe("MCP query_graphql (#5591 — GraphQL bridge tool)", () => {
   });
 });
 
+describe("MCP usage-telemetry instrumentation (#6031)", () => {
+  function spyRecorder() {
+    const calls = [];
+    return {
+      calls,
+      fn: (env, event) => {
+        calls.push({ env, event });
+        return Promise.resolve(true);
+      },
+    };
+  }
+
+  // get_subnet succeeds by returning the overview artifact for netuid 7.
+  function okDeps(extra = {}) {
+    return {
+      ...makeDeps({ "/metagraph/overview/7.json": { netuid: 7 } }),
+      ...extra,
+    };
+  }
+
+  test("records exactly one usage event per successful tool invocation (tool name, ok, latency)", async () => {
+    const spy = spyRecorder();
+    const res = await callTool(
+      "get_subnet",
+      { netuid: 7 },
+      { deps: okDeps({ recordUsage: spy.fn }) },
+    );
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.equal(res.body.result.structuredContent.netuid, 7);
+    assert.equal(spy.calls.length, 1);
+    const { event } = spy.calls[0];
+    assert.equal(event.mcpTool, "get_subnet");
+    assert.equal(event.ok, true);
+    assert.equal(typeof event.durationMs, "number");
+    assert.ok(event.durationMs >= 0);
+  });
+
+  test("records ok:false for a failing tool, still returning the normal error result", async () => {
+    const spy = spyRecorder();
+    const res = await callTool(
+      "get_subnet",
+      { netuid: -1 },
+      { deps: { ...makeDeps(), recordUsage: spy.fn } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(spy.calls.length, 1);
+    assert.equal(spy.calls[0].event.mcpTool, "get_subnet");
+    assert.equal(spy.calls[0].event.ok, false);
+  });
+
+  test("an unknown tool records no usage event (not a real invocation)", async () => {
+    const spy = spyRecorder();
+    const res = await callTool(
+      "definitely_not_a_tool",
+      {},
+      { deps: { ...makeDeps(), recordUsage: spy.fn } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(spy.calls.length, 0);
+  });
+
+  test("a telemetry recorder that throws synchronously does not fault the tool response", async () => {
+    const res = await callTool(
+      "get_subnet",
+      { netuid: 7 },
+      {
+        deps: okDeps({
+          recordUsage: () => {
+            throw new Error("telemetry boom");
+          },
+        }),
+      },
+    );
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.equal(res.body.result.structuredContent.netuid, 7);
+  });
+
+  test("a telemetry recorder that rejects asynchronously is swallowed, not surfaced", async () => {
+    const res = await callTool(
+      "get_subnet",
+      { netuid: 7 },
+      {
+        deps: okDeps({
+          recordUsage: () => Promise.reject(new Error("async boom")),
+        }),
+      },
+    );
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.equal(res.body.result.structuredContent.netuid, 7);
+  });
+});
+
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";

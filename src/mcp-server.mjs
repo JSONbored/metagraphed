@@ -45,6 +45,7 @@ import {
   graphqlRateLimited,
 } from "../workers/request-handlers/rpc-proxy.mjs";
 import { handleGraphQLRequest } from "./graphql.mjs";
+import { recordUsageEvent } from "./usage-telemetry.mjs";
 import {
   isValidSubscriptionId,
   subscriptionStorageKey,
@@ -14199,6 +14200,22 @@ function negotiateProtocol(requested) {
     : MCP_LATEST_PROTOCOL;
 }
 
+// Record one usage event for a resolved tool invocation at the single dispatch
+// chokepoint (callTool). Fire-and-forget: telemetry must never block or fault
+// the tool response, so the recorder's result is never awaited and any
+// synchronous throw is swallowed. recordUsageEvent itself already swallows its
+// own async errors; the ctx.recordUsage seam is test-only.
+function recordToolUsage(ctx, mcpTool, ok, durationMs) {
+  try {
+    const record = ctx?.recordUsage ?? recordUsageEvent;
+    void Promise.resolve(record(ctx?.env, { mcpTool, ok, durationMs })).catch(
+      () => {},
+    );
+  } catch {
+    // Never surface a telemetry fault into the tool path.
+  }
+}
+
 async function callTool(params, ctx) {
   const name = params?.name;
   const tool = typeof name === "string" ? TOOLS_BY_NAME.get(name) : undefined;
@@ -14208,9 +14225,12 @@ async function callTool(params, ctx) {
       isError: true,
     };
   }
+  const startedAt = Date.now();
+  let ok = false;
   try {
     const args = validateToolArguments(tool, params?.arguments);
     const data = await tool.handler(args, ctx);
+    ok = true;
     return {
       content: [{ type: "text", text: JSON.stringify(data) }],
       structuredContent: data,
@@ -14248,6 +14268,10 @@ async function callTool(params, ctx) {
       },
       isError: true,
     };
+  } finally {
+    // Exactly one usage event per resolved-tool invocation, on both the success
+    // and the (toolError / internal) failure paths. ok reflects the outcome.
+    recordToolUsage(ctx, name, ok, Date.now() - startedAt);
   }
 }
 
@@ -14372,6 +14396,10 @@ function buildContext(request, env, deps) {
     clientIp: mcpClientKey(request),
     readArtifact: deps.readArtifact,
     readHealthKv: deps.readHealthKv,
+    // Optional test seam: the usage-telemetry recorder (defaults to the real
+    // recordUsageEvent at the call site). Injecting a spy/throwing stub here
+    // lets a test prove a tool call is unaffected when telemetry fails.
+    recordUsage: deps.recordUsage,
   };
 }
 
