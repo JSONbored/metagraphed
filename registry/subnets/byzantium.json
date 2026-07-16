@@ -4,18 +4,19 @@
     "gap_notes": [
       "No verified docs site yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet."
+      "No verified SSE/event stream yet.",
+      "The link-service repo's only other API route (/api/clicks) is explicitly admin-only per its own code comment (401 without an x-admin-key header) -- not a public candidate."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
     "source_count": 3,
-    "verified_at": "2026-06-08T09:25:00.000Z"
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/76",
   "name": "Byzantium",
   "netuid": 76,
-  "notes": "Reviewed overlay for SN76 using the official Byzantium website and universal TaoMarketCap dashboard. Public docs/API/common-path candidates currently 404 and are not promoted.",
+  "notes": "Reviewed overlay for SN76 using the official Byzantium website and universal TaoMarketCap dashboard. Public docs/API/common-path candidates currently 404 and are not promoted. Re-review pass (2026-07-15): fixed the source-repo surface, which was misattributed to an unrelated Bittensor subnet's repository (safe-scan-ai/cancer-ai) and never matched the file's own top-level source_repo field -- now points to the correct byzantiumaitao-arch/byzantium repo.",
   "schema_version": 1,
   "slug": "sn-76",
   "social": {
@@ -44,10 +45,11 @@
     },
     {
       "auth_required": false,
-      "authority": "community",
+      "authority": "official",
       "id": "sn-76-byzantium-source-repo",
       "kind": "source-repo",
-      "name": "Byzantium community source-repo",
+      "name": "Byzantium source repository",
+      "notes": "Official SN76 Byzantium source repository -- verified live 2026-07-15. Corrects a prior misattribution: this surface previously pointed to github.com/safe-scan-ai/cancer-ai, an unrelated Bittensor subnet's repo (SafeScan, a cancer-detection subnet with no connection to Byzantium's social-promotion agent theme), which never matched the file's own top-level source_repo field.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -56,13 +58,8 @@
       },
       "provider": "byzantium",
       "public_safe": true,
-      "review": {
-        "confidence": "medium",
-        "state": "community-submitted",
-        "submitted_by": "jsonbored"
-      },
-      "source_urls": ["https://github.com/safe-scan-ai/cancer-ai"],
-      "url": "https://github.com/safe-scan-ai/cancer-ai"
+      "source_urls": ["https://github.com/byzantiumaitao-arch/byzantium"],
+      "url": "https://github.com/byzantiumaitao-arch/byzantium"
     },
     {
       "auth_required": false,

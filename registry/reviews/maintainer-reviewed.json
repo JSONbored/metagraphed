@@ -1042,10 +1042,13 @@
       "netuid": 76,
       "slug": "sn-76",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:25:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
-      "source_urls": ["https://www.byzantiumai.net/"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/byzantium.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "source_urls": [
+        "https://www.byzantiumai.net/",
+        "https://github.com/byzantiumaitao-arch/byzantium"
+      ],
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed the source-repo surface, which was misattributed to an unrelated subnet's repository (safe-scan-ai/cancer-ai, the SafeScan cancer-detection subnet) and never matched the file's own top-level source_repo field. Now correctly points to byzantiumaitao-arch/byzantium."
     },
     {
       "netuid": 79,
