@@ -10,19 +10,21 @@
   "curation": {
     "gap_notes": [
       "No verified official docs URL yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet."
+      "No verified OpenAPI/Swagger schema yet -- sparket.ai/openapi.json returns the SPA's HTML shell (client-side-routed catch-all), not a real schema.",
+      "No verified SSE/event stream yet.",
+      "The /api/v1/health surface currently reports status \"degraded\" with sync_lag_seconds in the tens of millions (last_sync_at 2026-04-27) -- a real observed backend staleness, correctly reflected by the existing probe rather than a registry error.",
+      "On-chain SubnetIdentitiesV3 for netuid 57 reports native_name \"gaia\" via metagraph.sh, with description null; TaoMarketCap's own subnet_identities_v3 field is null (no corroboration either way from a second indexer). The live website and source repository both consistently describe \"Sparket\" with no trace of \"gaia\". Weaker signal than a two-source-corroborated rename (contrast SN53's netuid-53 finding); not renamed. subnet_emission_enabled=false and subnet_tao_in_emission=0, consistent with a dormant subnet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:35:00.000Z",
+    "reviewed_at": "2026-07-16T05:00:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T10:35:00.000Z"
+    "verified_at": "2026-07-16T05:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/57",
   "name": "Sparket",
   "netuid": 57,
-  "notes": "Reviewed overlay for SN57 using the official Sparket website and source repository. No official docs/API/OpenAPI surface is verified yet.",
+  "notes": "Reviewed overlay for SN57 using the official Sparket website and source repository. No official docs/API/OpenAPI surface is verified yet. This re-review pass re-verified all 5 surfaces live (no missing-probe gap found); confirmed sparket.ai/openapi.json is not a real schema (SPA HTML fallback). Observed the backend health endpoint reporting a real degraded/stale sync state and a single-source on-chain identity discrepancy (\"gaia\") uncorroborated by any live infrastructure -- see gap_notes.",
   "schema_version": 1,
   "slug": "sn-57",
   "source_repo": "https://github.com/sparket-ai/sparket-ai",
