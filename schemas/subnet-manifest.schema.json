@@ -70,6 +70,13 @@
         "$ref": "#/$defs/link"
       }
     },
+    "exchange_listings": {
+      "type": "array",
+      "description": "Centralized-exchange listings where this subnet's token trades (Taostats-parity metadata, #6274). Display-only registry metadata like `social` — not a live-verified surface, so it carries no probe/verification machinery.",
+      "items": {
+        "$ref": "#/$defs/exchange_listing"
+      }
+    },
     "contact": {
       "type": "string",
       "description": "Curated operator support contact (email or public URL, harvested from SubnetIdentitiesV3 subnet_contact) — sanitized at build via subnetContact. Display-only; never feeds completeness."
@@ -416,6 +423,28 @@
         "source_url": {
           "type": "string",
           "format": "uri"
+        }
+      }
+    },
+    "exchange_listing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exchange", "url"],
+      "properties": {
+        "exchange": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exchange name, e.g. \"MEXC\", \"Kraken\"."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link to the market/listing page for this token on the exchange."
+        },
+        "pair": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional traded pair identifier, e.g. \"TAO/USDT\"."
         }
       }
     },
