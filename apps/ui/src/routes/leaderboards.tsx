@@ -8,13 +8,21 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { PageHero, BrandIcon, TimeAgo, StatTile, ShareButton } from "@jsonbored/ui-kit";
+import {
+  PageHero,
+  BrandIcon,
+  TimeAgo,
+  StatTile,
+  ShareButton,
+  DownloadCsvButton,
+} from "@jsonbored/ui-kit";
 import {
   chainDeregistrationsQuery,
   chainWeightsQuery,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { buildUrl } from "@/lib/metagraphed/client";
 import type { Subnet } from "@/lib/metagraphed/types";
 
 const leaderboardsSearchSchema = z.object({
@@ -118,14 +126,17 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Weight-setting activity
-        </h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Validator consensus effort ranked by subnet — raw WeightsSet events over the selected
-          window.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Weight-setting activity
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Validator consensus effort ranked by subnet — raw WeightsSet events over the selected
+            window.
+          </p>
+        </div>
+        <DownloadCsvButton url={buildUrl("/api/v1/chain/weights", { window: win })} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -287,14 +298,17 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Deregistrations
-        </h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Neuron evictions ranked by subnet — raw NeuronDeregistered events over the selected
-          window.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Deregistrations
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Neuron evictions ranked by subnet — raw NeuronDeregistered events over the selected
+            window.
+          </p>
+        </div>
+        <DownloadCsvButton url={buildUrl("/api/v1/chain/deregistrations", { window: win })} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
