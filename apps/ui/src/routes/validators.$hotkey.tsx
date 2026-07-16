@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Boxes, Coins, Gauge, Percent, Users, Zap } from "lucide-react";
+import { Boxes, Coins, Gauge, Percent, TrendingUp, Users, Zap } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -350,6 +350,13 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           eyebrow="Avg validator trust"
           value={scoreStr(detail.avg_validator_trust)}
           hint="mean across subnets"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
+        <StatTile
+          icon={TrendingUp}
+          eyebrow="Max validator trust"
+          value={scoreStr(detail.max_validator_trust)}
+          hint="peak across subnets"
           className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
         />
         <StatTile
