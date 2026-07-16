@@ -1424,6 +1424,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/for-sale-burn-to-uid1.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 105,
+      "slug": "sn-105",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://b1m.ai/",
+        "https://github.com/Beam-Network/beam",
+        "https://beamcore.b1m.ai/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN105. Corrected source_repo from a generic org repositories-listing page to the specific Beam-Network/beam repo. Added website + source-repo surfaces. Diffed the 53-path BeamCore OpenAPI schema and live-tested every no-param candidate: most declare no security but are actually 401-gated in practice; only 2 genuinely public routes were promoted."
+    },
+    {
       "netuid": 107,
       "slug": "sn-107",
       "decision": "maintainer-reviewed",
