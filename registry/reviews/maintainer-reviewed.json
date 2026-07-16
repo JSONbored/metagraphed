@@ -697,6 +697,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/nepher-robotics.json (reviewed_at 2026-06-08T07:12:52.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 50,
+      "slug": "sn-50",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T03:10:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://synthdata.co/",
+        "https://github.com/synthdataco/synth-subnet",
+        "https://api.synthdata.co/swagger.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 48-path Swagger 2.0 schema: the 17 /insights/* routes declare no security in the schema but return HTTP 400 \"missing key in request header\" live -- an undocumented auth gate, left untracked. Added one new no-auth no-param surface, /v2/meta-leaderboard/latest. The on-chain-declared source_repo (mode-network/synth-subnet) now permanently redirects to synthdataco/synth-subnet -- same repo, org renamed; tracked URL updated accordingly."
+    },
+    {
       "netuid": 52,
       "slug": "sn-52",
       "decision": "maintainer-reviewed",

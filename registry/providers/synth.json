@@ -1,11 +1,11 @@
 {
   "authority": "community",
-  "github_url": "https://github.com/mode-network/synth-subnet",
+  "github_url": "https://github.com/synthdataco/synth-subnet",
   "id": "synth",
   "kind": "subnet-team",
   "logo_url": "https://metagraph.sh/logos/synth.png",
   "name": "Synth",
-  "public_notes": "Subnet 50 (Synth) team profile — predictive intelligence for financial markets, operated by Mode Network. Public-safe identity from the subnet's on-chain SubnetIdentitiesV3 (name, website, source repo).",
+  "public_notes": "Subnet 50 (Synth) team profile — predictive intelligence for financial markets. Public-safe identity from the subnet's on-chain SubnetIdentitiesV3 (name, website, source repo). The GitHub org has since been renamed from mode-network to synthdataco (mode-network/synth-subnet now permanently redirects here); on-chain source_repo still cites the old org name.",
   "schema_version": 1,
   "website_url": "https://synthdata.co/"
 }

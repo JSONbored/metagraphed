@@ -1,15 +1,67 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "finance",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified docs site yet.",
+      "No verified SSE/event stream yet.",
+      "The /insights/* endpoints declare no security requirement in the subnet's own Swagger schema, but live-testing returns HTTP 400 \"missing key in request header\" on every one -- an undocumented API-key gate not reflected in the schema. Left untracked rather than added as broken/auth-gated surfaces."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T03:10:00.000Z",
+    "source_count": 3,
+    "verified_at": "2026-07-16T03:10:00.000Z"
   },
   "name": "Synth",
   "netuid": 50,
+  "notes": "First maintainer-reviewed pass for SN50 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932; two of them (leaderboard, validation-scores) reject HEAD (405/404) so their probes use GET. Diffed the full 48-path Swagger 2.0 schema: found the 17 /insights/* GET routes are undocumented-auth-gated in practice despite the schema declaring no security (see gap_notes); the /v2/prediction/*, /rewards/scores, /validation/miner|prompts|realized-path|scores/historical, and /v2/leaderboard/historical|meta-leaderboard/historical routes all require query parameters with no stable canonical value. Added one new no-auth no-param surface: /v2/meta-leaderboard/latest. The on-chain-declared source_repo (github.com/mode-network/synth-subnet) now permanently redirects (301) to github.com/synthdataco/synth-subnet -- same repo, org renamed; updated the tracked source_repo/provider github_url to the current URL since on-chain native_name/description/website_url are otherwise unchanged (not a full identity pivot).",
   "schema_version": 1,
   "slug": "sn-50",
+  "source_repo": "https://github.com/synthdataco/synth-subnet",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-50-synth-website",
+      "kind": "website",
+      "name": "Synth website",
+      "notes": "Official Synth (SN50) website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "synth",
+      "public_safe": true,
+      "source_urls": ["https://github.com/synthdataco/synth-subnet"],
+      "url": "https://synthdata.co/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-50-synth-source-repo",
+      "kind": "source-repo",
+      "name": "Synth source repository",
+      "notes": "Official Synth (SN50) source repository. The on-chain-declared URL (github.com/mode-network/synth-subnet) now permanently redirects here; same repo, org renamed.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "synth",
+      "public_safe": true,
+      "source_urls": ["https://synthdata.co/"],
+      "url": "https://github.com/synthdataco/synth-subnet"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -17,6 +69,12 @@
       "kind": "openapi",
       "name": "Synth API OpenAPI spec",
       "notes": "Public Swagger 2.0 spec for the Synth API (48 unauthenticated GET endpoints — probabilistic price forecasts, market insights, leaderboards). The official synth-subnet README documents the API docs at api.synthdata.co/docs.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "synth",
       "public_safe": true,
       "review": {
@@ -36,7 +94,13 @@
       "id": "sn-50-synth-subnet-api",
       "kind": "subnet-api",
       "name": "Synth API",
-      "notes": "Public no-auth REST API at api.synthdata.co exposing Synth's probabilistic price forecasts, leaderboards, and market insights; the /v2/leaderboard/latest endpoint returns JSON with no authentication. Documented in the official synth-subnet README.",
+      "notes": "Public no-auth REST API at api.synthdata.co exposing Synth's probabilistic price forecasts, leaderboards, and market insights; the /v2/leaderboard/latest endpoint returns JSON with no authentication. Documented in the official synth-subnet README. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "synth",
       "public_safe": true,
       "review": {
@@ -54,7 +118,13 @@
       "id": "sn-50-synth-validation-scores",
       "kind": "data-artifact",
       "name": "Synth latest validation scores dataset",
-      "notes": "Public no-auth GET /validation/scores/latest on api.synthdata.co returning a JSON dataset of the latest per-miner, per-asset forecast validation scores for the SN50 Synth price-prediction network (miner_uid, asset, prompt_score, crps, scored_time, time_length). Documented as a security-free GET (\"Validations - Latest Scores\") in the subnet's registered OpenAPI spec at api.synthdata.co/swagger.json; distinct from the leaderboard subnet-api surface on the same host. Verified 200 application/json.",
+      "notes": "Public no-auth GET /validation/scores/latest on api.synthdata.co returning a JSON dataset of the latest per-miner, per-asset forecast validation scores for the SN50 Synth price-prediction network (miner_uid, asset, prompt_score, crps, scored_time, time_length). Documented as a security-free GET (\"Validations - Latest Scores\") in the subnet's registered OpenAPI spec at api.synthdata.co/swagger.json; distinct from the leaderboard subnet-api surface on the same host. Rejects HEAD (404); probe uses GET. Verified 200 application/json.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "synth",
       "public_safe": true,
       "review": {
@@ -67,8 +137,25 @@
         "https://github.com/synthdataco/synth-subnet/blob/main/README.md"
       ],
       "url": "https://api.synthdata.co/validation/scores/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-50-synth-meta-leaderboard",
+      "kind": "subnet-api",
+      "name": "Synth meta-leaderboard API",
+      "notes": "Public no-auth GET /v2/meta-leaderboard/latest on api.synthdata.co, returning the current meta-model leaderboard (neuron_uid, rewards, coldkey, ip_address) -- distinct from the per-miner /v2/leaderboard/latest surface already tracked. Discovered via a full diff of the subnet's own Swagger schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "synth",
+      "public_safe": true,
+      "source_urls": ["https://api.synthdata.co/swagger.json"],
+      "url": "https://api.synthdata.co/v2/meta-leaderboard/latest"
     }
   ],
-  "source_repo": "https://github.com/mode-network/synth-subnet",
   "website_url": "https://synthdata.co/"
 }
