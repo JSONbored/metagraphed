@@ -1,11 +1,11 @@
 {
   "authority": "official",
-  "github_url": "https://github.com/Team-Rizzo/talisman-ai",
+  "github_url": "https://github.com/Team-Rizzo/alpharidge-ai",
   "id": "talisman-ai",
   "kind": "subnet-team",
   "logo_url": "https://metagraph.sh/logos/talisman-ai.svg",
-  "name": "Talisman AI",
-  "notes": "Provider entry for Talisman AI SN45 website and source repository.",
+  "name": "AlphaRidge.ai",
+  "notes": "Provider entry for SN45, on-chain re-registered from \"Talisman AI\" to \"AlphaRidge.ai\" (same team, Team-Rizzo; native_name and description confirmed on-chain). github.com/Team-Rizzo/talisman-ai now permanently redirects to github.com/Team-Rizzo/alpharidge-ai. The internal id \"talisman-ai\" is kept stable as the existing key referenced by this subnet's surfaces.",
   "schema_version": 1,
   "website_url": "https://ai.talisman.xyz/"
 }

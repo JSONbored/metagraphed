@@ -1,0 +1,280 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "market-intelligence",
+    "official-source-repo",
+    "official-website",
+    "sentiment-analysis"
+  ],
+  "contact": "tai@rizzo.network",
+  "curation": {
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified SSE/event stream yet.",
+      "/dashboard/events and /dashboard/narratives both currently return 500 (server error, not auth-gated); not promoted as surfaces."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T02:20:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-16T02:20:00.000Z"
+  },
+  "dashboard_url": "https://taomarketcap.com/subnets/45",
+  "name": "AlphaRidge.ai",
+  "netuid": 45,
+  "notes": "This subnet was previously tracked under the \"Talisman AI\" identity. On-chain SubnetIdentitiesV3 native_name and description now both point to \"AlphaRidge.ai\" (same team, Team-Rizzo) -- the source repository github.com/Team-Rizzo/talisman-ai now permanently redirects to github.com/Team-Rizzo/alpharidge-ai, and the tracked API host (api.alpharidge.ai) and OpenAPI title (\"Alpharidge AI API\") already used the new branding prior to this pass. File renamed talisman-ai.json -> alpharidge-ai.json to match slugify(name); registered website_url (ai.talisman.xyz) is unchanged on-chain and still live, so kept as-is. Fixed 3 pre-existing surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full API OpenAPI schema (42 paths): internal work-queue, admin, and reporting routes (tweets/telegram/articles unscored+completed, rewards, penalties, blacklist, reports, verdicts, attestation, config/subnet, validators/versions, diagnostics/*) are all 401/403-gated despite the schema declaring no security scheme. Found and added 6 new genuine no-auth public dashboard endpoints: /dashboard/sentiment, /dashboard/miners, /dashboard/assets, /dashboard/validators, /dashboard/preview, and /dashboard/articles/sources.",
+  "schema_version": 1,
+  "slug": "sn-45",
+  "social": {
+    "x": "https://x.com/wearetalisman"
+  },
+  "source_repo": "https://github.com/Team-Rizzo/alpharidge-ai",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-45-talisman-ai-website",
+      "kind": "website",
+      "name": "AlphaRidge.ai website",
+      "notes": "Official AlphaRidge.ai (SN45) website, at the on-chain registered website_url (unchanged through the Talisman AI -> AlphaRidge.ai rebrand).",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Team-Rizzo/alpharidge-ai"],
+      "url": "https://ai.talisman.xyz/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-45-talisman-ai-source",
+      "kind": "source-repo",
+      "name": "AlphaRidge.ai source repository",
+      "notes": "Official AlphaRidge.ai (SN45) source repository. github.com/Team-Rizzo/talisman-ai now permanently redirects here.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "source_urls": ["https://ai.talisman.xyz/"],
+      "url": "https://github.com/Team-Rizzo/alpharidge-ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-45-talisman-openapi",
+      "kind": "openapi",
+      "name": "AlphaRidge AI API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema for the AlphaRidge.ai SN45 coordination API (title: Alpharidge AI API). Served publicly at api.alpharidge.ai; documents validator/miner coordination routes and the no-auth GET /health probe.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.alpharidge.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/Team-Rizzo/alpharidge-ai/blob/main/README.md",
+        "https://api.alpharidge.ai/openapi.json"
+      ],
+      "url": "https://api.alpharidge.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-45-talisman-health",
+      "kind": "subnet-api",
+      "name": "AlphaRidge AI API health",
+      "notes": "Public no-auth GET /health on api.alpharidge.ai returning liveness JSON (observed: {\"status\":\"healthy\"}). Documented as GET /health in the subnet OpenAPI spec; api.alpharidge.ai is the default MINER_API_URL configured in the official repository for SN45 validators and miners.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://api.alpharidge.ai/openapi.json",
+        "https://github.com/Team-Rizzo/alpharidge-ai"
+      ],
+      "url": "https://api.alpharidge.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-45-talisman-dashboard-stats",
+      "kind": "data-artifact",
+      "name": "AlphaRidge.ai dashboard stats",
+      "notes": "Public no-auth GET /dashboard/stats on api.alpharidge.ai returning live SN45 content-analysis totals (tweets/telegram/articles analyzed, latest_analysis_at, sentiment distribution) — counts advance between successive requests, confirming a genuinely live feed. Documented in the subnet's own OpenAPI spec (already the registered schema_url on the sibling openapi surface) as \"Dashboard Stats\" / \"Public dashboard overview statistics\".",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "source_urls": [
+        "https://api.alpharidge.ai/openapi.json",
+        "https://github.com/Team-Rizzo/alpharidge-ai"
+      ],
+      "url": "https://api.alpharidge.ai/dashboard/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-45-alpharidge-price-tao-usd",
+      "kind": "subnet-api",
+      "name": "AlphaRidge.ai TAO/USD price",
+      "notes": "Public no-auth GET returning the current TAO/USD price (price_usd, last_updated, source, stale). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.alpharidge.ai/price/tao-usd"],
+      "url": "https://api.alpharidge.ai/price/tao-usd"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-45-alpharidge-dashboard-sentiment",
+      "kind": "data-artifact",
+      "name": "AlphaRidge.ai sentiment distribution",
+      "notes": "Public no-auth GET /dashboard/sentiment on api.alpharidge.ai returning aggregate and daily sentiment-bucket counts (very_bullish/bullish/neutral/bearish/very_bearish) across the subnet's analyzed content. Documented as GET /dashboard/sentiment in the subnet's own OpenAPI schema; distinct from the already-tracked dashboard/stats totals.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "source_urls": ["https://api.alpharidge.ai/openapi.json"],
+      "url": "https://api.alpharidge.ai/dashboard/sentiment"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-45-alpharidge-dashboard-miners",
+      "kind": "data-artifact",
+      "name": "AlphaRidge.ai miner leaderboard",
+      "notes": "Public no-auth GET /dashboard/miners on api.alpharidge.ai returning per-miner (hotkey-keyed) content-analysis volume and sentiment breakdowns. Documented as GET /dashboard/miners in the subnet's own OpenAPI schema; the per-hotkey drill-down routes (/dashboard/miners/{hotkey}, .../batches, .../reputation, .../events) are parameterized with no stable canonical value and are not tracked.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "source_urls": ["https://api.alpharidge.ai/openapi.json"],
+      "url": "https://api.alpharidge.ai/dashboard/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-45-alpharidge-dashboard-assets",
+      "kind": "data-artifact",
+      "name": "AlphaRidge.ai tracked assets",
+      "notes": "Public no-auth GET /dashboard/assets on api.alpharidge.ai returning per-asset (symbol-keyed) content-analysis volume and sentiment breakdowns across equities, FX, crypto, commodities, and indices. Documented as GET /dashboard/assets in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "source_urls": ["https://api.alpharidge.ai/openapi.json"],
+      "url": "https://api.alpharidge.ai/dashboard/assets"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-45-alpharidge-dashboard-validators",
+      "kind": "data-artifact",
+      "name": "AlphaRidge.ai validator leaderboard",
+      "notes": "Public no-auth GET /dashboard/validators on api.alpharidge.ai returning per-validator (hotkey-keyed) scoring throughput (total_scored, per-source counts, completion counts). Documented as GET /dashboard/validators in the subnet's own OpenAPI schema; distinct from the miner-scoped dashboard/miners surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "source_urls": ["https://api.alpharidge.ai/openapi.json"],
+      "url": "https://api.alpharidge.ai/dashboard/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-45-alpharidge-dashboard-preview",
+      "kind": "data-artifact",
+      "name": "AlphaRidge.ai dashboard preview feed",
+      "notes": "Public no-auth GET /dashboard/preview on api.alpharidge.ai returning a preview feed of recently-analyzed content. Documented as GET /dashboard/preview in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "source_urls": ["https://api.alpharidge.ai/openapi.json"],
+      "url": "https://api.alpharidge.ai/dashboard/preview"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-45-alpharidge-dashboard-articles-sources",
+      "kind": "data-artifact",
+      "name": "AlphaRidge.ai tracked news sources",
+      "notes": "Public no-auth GET /dashboard/articles/sources on api.alpharidge.ai returning the list of news sources the subnet ingests articles from. Documented as GET /dashboard/articles/sources in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "source_urls": ["https://api.alpharidge.ai/openapi.json"],
+      "url": "https://api.alpharidge.ai/dashboard/articles/sources"
+    }
+  ],
+  "website_url": "https://ai.talisman.xyz/"
+}

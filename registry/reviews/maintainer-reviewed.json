@@ -632,13 +632,14 @@
       "netuid": 45,
       "slug": "sn-45",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:10:00.000Z",
+      "reviewed_at": "2026-07-16T02:20:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://ai.talisman.xyz/",
-        "https://github.com/Team-Rizzo/talisman-ai"
+        "https://github.com/Team-Rizzo/alpharidge-ai",
+        "https://api.alpharidge.ai/openapi.json"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/talisman-ai.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "This subnet was previously reviewed under the \"Talisman AI\" identity (registry/subnets/talisman-ai.json). Re-reviewed this pass: on-chain SubnetIdentitiesV3 native_name and description now both point to \"AlphaRidge.ai\" (same team, Team-Rizzo), corroborated by github.com/Team-Rizzo/talisman-ai permanently redirecting to github.com/Team-Rizzo/alpharidge-ai and the tracked API host/OpenAPI title already using the new branding. File renamed talisman-ai.json -> alpharidge-ai.json to match slugify(name)."
     },
     {
       "netuid": 47,
