@@ -1,0 +1,15 @@
+# Superagent (https://superagent.sh) GitHub App configuration — PR security scanning + contributor trust
+# scoring. All fields are optional; anything omitted falls back to Superagent's own defaults.
+prScan:
+  enabled: true
+
+contributorTrust:
+  enabled: true
+  blockBelowScore: 30
+  # These are established, high-volume repeat contributors (dozens of merged PRs each) who kept tripping
+  # the trust scorer on volume/velocity alone, not on any real signal. Exempts them from contributor-trust
+  # scoring entirely going forward.
+  trustedAuthors: [dhgoal, shin-core, andriypolanski]
+
+comments:
+  mode: detailed
