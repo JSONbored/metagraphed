@@ -12,6 +12,7 @@
       "Previously discovered Mainframe docs URL currently returns 404.",
       "Previously discovered Mainframe API documentation URL currently returns 404.",
       "Previously discovered dashboard URL redirects to the general Macrocosmos homepage.",
+      "The registered website_url (macrocosmos.ai/sn25) now also redirects to the general Macrocosmos homepage rather than SN25-specific content, the same failure mode as the previously-flagged dashboard URL; not promoted as a website surface.",
       "No verified OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet."
     ],
@@ -24,7 +25,7 @@
   "dashboard_url": "https://taomarketcap.com/subnets/25",
   "name": "Mainframe",
   "netuid": 25,
-  "notes": "Reviewed overlay for SN25 using the official Mainframe source repository. Previously discovered Mainframe docs/API URLs currently return 404 and the old dashboard URL redirects to the general Macrocosmos homepage, so they are not promoted.",
+  "notes": "Reviewed overlay for SN25 using the official Mainframe source repository. Previously discovered Mainframe docs/API URLs currently return 404 and the old dashboard URL redirects to the general Macrocosmos homepage, so they are not promoted. Re-tested live this pass: also found the registered website_url now redirects to the same generic homepage, so it is not promoted as a website surface either. 1 community-submitted surface (wandb dashboard) had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. All 4 tracked surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-25",
   "social": {
@@ -110,6 +111,12 @@
       "kind": "dashboard",
       "name": "Mainframe (folding-openmm) Weights & Biases dashboard",
       "notes": "Public Weights & Biases project the SN25 Mainframe validators log to (wandb.ai/macrocosmos/folding-openmm) — live protein-folding validation runs and metrics (260k+ runs). Project 'folding-openmm' and entity 'macrocosmos' are the validator defaults in the official macrocosm-os/mainframe config (folding/utils/config.py), and wandb.init runs from folding/utils/logging.py. Publicly readable via the W&B API. Distinct host from the sn25 API and object storage.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
