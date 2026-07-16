@@ -989,14 +989,15 @@
       "netuid": 74,
       "slug": "gittensor",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-06T00:00:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://docs.gittensor.io/",
         "https://docs.gittensor.io/repository-hyperparameters",
-        "https://github.com/entrius/gittensor"
+        "https://github.com/entrius/gittensor",
+        "https://api.gittensor.io/swagger-json"
       ],
-      "notes": "Gittensor pilot surfaces reviewed from provider docs, public repository config, and source repository."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 3 missing probe blocks, renamed a generic-name surface (prs -> \"Gittensor merged pull requests\"), and diffed the api.gittensor.io OpenAPI schema (35 paths) for undiscovered public GET endpoints -- added 7 new no-param surfaces (lines/hist-trend, lines/total, repos/commits, commits, prices, prices/history, configurations/general). Also found gittensory-api.aethereal.dev fails DNS resolution entirely; documented in gap_notes rather than removing the 2 surfaces it backs."
     },
     {
       "netuid": 75,
