@@ -271,6 +271,7 @@ import { handleBadgeRequest } from "../src/badge.mjs";
 import { handleOgImage } from "../src/og-image.mjs";
 import { handleIconProxy } from "../src/icon-proxy.mjs";
 import { handleGraphQLRequest } from "../src/graphql.mjs";
+import { recordUsageEvent } from "../src/usage-telemetry.mjs";
 import {
   aiEnabled,
   askQuestion,
@@ -1134,6 +1135,63 @@ async function handleChainFirehoseIngest(request, env) {
 }
 
 export async function handleRequest(request, env = {}, ctx = {}) {
+  // #6032: the single shared REST + GraphQL usage chokepoint. Every request --
+  // REST routes and the /api/v1/graphql POST alike -- funnels through here, so
+  // one timing wrapper records exactly one usage event per request (route + ok
+  // + coarse latency, nothing from bodies/payloads) without instrumenting each
+  // of the ~50 individual route handlers. Telemetry is scheduled after the
+  // response is resolved so it never changes the response shape, and it can
+  // never throw into or block the request path (see scheduleRequestUsageEvent).
+  const startedMs = Date.now();
+  let response;
+  try {
+    response = await routeRequest(request, env, ctx);
+    return response;
+  } finally {
+    scheduleRequestUsageEvent(env, ctx, request, response, startedMs);
+  }
+}
+
+// Best-effort request usage capture (#6032). Prefer ctx.waitUntil so the Workers
+// isolate doesn't freeze before the PostHog capture fetch completes; fall back to
+// a fire-and-forget promise in tests / local without an executionCtx. The
+// recorder itself never throws; this wrapper also guards against a test-injected
+// recorder that does, and against a malformed request URL.
+function scheduleRequestUsageEvent(env, ctx, request, response, startedMs) {
+  let event;
+  try {
+    const { pathname } = new URL(request.url);
+    event = {
+      // Raw pathname as the route label -- matches usage-telemetry.mjs's own
+      // "/api/v1/subnets/1" test fixtures; sanitizeLabel bounds its length. The
+      // /api/v1/graphql POST records under that path, so the GraphQL transport
+      // is covered at this same point (distinguished by its route value).
+      route: pathname,
+      // Server-side failure only: a 4xx is a correctly-handled rejection, a 5xx
+      // (or a thrown/absent response) is a real failure.
+      ok: (response?.status ?? 500) < 500,
+      durationMs: Math.max(0, Date.now() - startedMs),
+    };
+  } catch {
+    return;
+  }
+  const record = ctx?.recordUsageEvent ?? recordUsageEvent;
+  let pending;
+  try {
+    pending = Promise.resolve(
+      record(env, event, ctx?.usageTelemetryDeps),
+    ).catch(() => {});
+  } catch {
+    return;
+  }
+  if (typeof ctx?.waitUntil === "function") {
+    ctx.waitUntil(pending);
+    return;
+  }
+  void pending;
+}
+
+async function routeRequest(request, env = {}, ctx = {}) {
   let url = new URL(request.url);
 
   if (request.method === "OPTIONS") {
