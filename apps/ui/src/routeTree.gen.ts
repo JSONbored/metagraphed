@@ -27,7 +27,6 @@ import { Route as SudoIndexRouteImport } from './routes/sudo.index'
 import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
 import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
-import { Route as GraphqlIndexRouteImport } from './routes/graphql.index'
 import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
 import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.index'
@@ -133,11 +132,6 @@ const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
   path: '/providers/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GraphqlIndexRoute = GraphqlIndexRouteImport.update({
-  id: '/graphql/',
-  path: '/graphql/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ExtrinsicsIndexRoute = ExtrinsicsIndexRouteImport.update({
   id: '/extrinsics/',
   path: '/extrinsics/',
@@ -237,7 +231,6 @@ export interface FileRoutesByFullPath {
   '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
-  '/graphql/': typeof GraphqlIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/runtime/': typeof RuntimeIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
@@ -272,7 +265,6 @@ export interface FileRoutesByTo {
   '/admin-changes': typeof AdminChangesIndexRoute
   '/blocks': typeof BlocksIndexRoute
   '/extrinsics': typeof ExtrinsicsIndexRoute
-  '/graphql': typeof GraphqlIndexRoute
   '/providers': typeof ProvidersIndexRoute
   '/runtime': typeof RuntimeIndexRoute
   '/subnets': typeof SubnetsIndexRoute
@@ -308,7 +300,6 @@ export interface FileRoutesById {
   '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
-  '/graphql/': typeof GraphqlIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/runtime/': typeof RuntimeIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
@@ -345,7 +336,6 @@ export interface FileRouteTypes {
     | '/admin-changes/'
     | '/blocks/'
     | '/extrinsics/'
-    | '/graphql/'
     | '/providers/'
     | '/runtime/'
     | '/subnets/'
@@ -380,7 +370,6 @@ export interface FileRouteTypes {
     | '/admin-changes'
     | '/blocks'
     | '/extrinsics'
-    | '/graphql'
     | '/providers'
     | '/runtime'
     | '/subnets'
@@ -415,7 +404,6 @@ export interface FileRouteTypes {
     | '/admin-changes/'
     | '/blocks/'
     | '/extrinsics/'
-    | '/graphql/'
     | '/providers/'
     | '/runtime/'
     | '/subnets/'
@@ -451,7 +439,6 @@ export interface RootRouteChildren {
   AdminChangesIndexRoute: typeof AdminChangesIndexRoute
   BlocksIndexRoute: typeof BlocksIndexRoute
   ExtrinsicsIndexRoute: typeof ExtrinsicsIndexRoute
-  GraphqlIndexRoute: typeof GraphqlIndexRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
   RuntimeIndexRoute: typeof RuntimeIndexRoute
   SubnetsIndexRoute: typeof SubnetsIndexRoute
@@ -587,13 +574,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProvidersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/graphql/': {
-      id: '/graphql/'
-      path: '/graphql'
-      fullPath: '/graphql/'
-      preLoaderRoute: typeof GraphqlIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/extrinsics/': {
       id: '/extrinsics/'
       path: '/extrinsics'
@@ -723,7 +703,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminChangesIndexRoute: AdminChangesIndexRoute,
   BlocksIndexRoute: BlocksIndexRoute,
   ExtrinsicsIndexRoute: ExtrinsicsIndexRoute,
-  GraphqlIndexRoute: GraphqlIndexRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
   RuntimeIndexRoute: RuntimeIndexRoute,
   SubnetsIndexRoute: SubnetsIndexRoute,

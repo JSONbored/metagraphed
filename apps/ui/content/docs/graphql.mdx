@@ -1,0 +1,96 @@
+---
+title: GraphQL
+description: Shape one request across the registry — a subnet with health, surfaces, endpoints, and economics, a provider with its subnets, or the economic opportunity boards. No API key.
+---
+
+## Endpoint
+
+POST a GraphQL document. GET returns the published SDL. Introspection is enabled. Mainnet-only path.
+
+```
+POST/GET https://api.metagraph.sh/api/v1/graphql
+```
+
+GraphQL isn't part of the typed `@jsonbored/metagraphed` / `metagraphed` SDKs — they're built around the REST envelope. Plain HTTP works with any client:
+
+```bash tab="cURL"
+curl -X POST https://api.metagraph.sh/api/v1/graphql \
+  -H 'content-type: application/json' \
+  -d '{"query":"{ subnet(netuid: 7) { name health { status } surfaces { kind url } economics { emission_share } } }"}'
+```
+
+```js tab="JavaScript"
+const res = await fetch("https://api.metagraph.sh/api/v1/graphql", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    query:
+      "{ subnet(netuid: 7) { name health { status } surfaces { kind url } economics { emission_share } } }",
+  }),
+});
+const { data } = await res.json();
+```
+
+```python tab="Python"
+from urllib.request import Request, urlopen
+import json
+
+query = "{ subnet(netuid: 7) { name health { status } surfaces { kind url } economics { emission_share } } }"
+req = Request(
+    "https://api.metagraph.sh/api/v1/graphql",
+    data=json.dumps({"query": query}).encode(),
+    headers={"content-type": "application/json"},
+)
+with urlopen(req) as res:
+    data = json.load(res)["data"]
+```
+
+## Explorer
+
+<Card
+  title="Open the GraphQL Explorer"
+  description="Interactive GraphiQL IDE, full height, on its own page — schema-aware autocomplete, docs, and history against the live endpoint."
+  href="/graphql/explorer"
+/>
+
+## Schema
+
+GET the endpoint for the live SDL. Introspection queries (`__schema` / `__type`) are allowed and exempt from the depth and complexity budgets applied to product queries.
+
+- `GET /api/v1/graphql` → SDL document
+- `POST /api/v1/graphql` → `{ "query", "variables?", "operationName?" }`
+- Field names mirror artifact JSON keys (snake_case) so resolvers read registry rows directly.
+
+## Root queries
+
+Ten Query roots cover the same registry surfaces as REST. List roots take cursor pagination; relationship fields (fresh nested artifacts) cost more against the complexity budget.
+
+| Field                | Args                    | Returns              | Summary                                                           |
+| -------------------- | ----------------------- | -------------------- | ----------------------------------------------------------------- |
+| `subnets`            | `limit, cursor`         | `SubnetList!`        | Paginated active-subnet index.                                    |
+| `subnet`             | `netuid!`               | `Subnet`             | One subnet with health, surfaces, endpoints, and economics.       |
+| `providers`          | `limit, cursor`         | `ProviderList!`      | Paginated provider/source registry.                               |
+| `provider`           | `id!`                   | `Provider`           | One provider with its subnets.                                    |
+| `economics`          | `limit, cursor`         | `EconomicsList!`     | Paginated per-subnet economic + validator metrics.                |
+| `surfaces`           | `netuid, limit, cursor` | `SurfaceList!`       | Curated public surfaces, optionally scoped to one subnet.         |
+| `endpoints`          | `netuid, limit, cursor` | `EndpointList!`      | Endpoint/resource registry, optionally scoped to one subnet.      |
+| `health`             | —                       | `GlobalHealth`       | Global operational health rollup with per-subnet summaries.       |
+| `opportunity_boards` | `limit`                 | `OpportunityBoards!` | Cross-subnet economic opportunity boards.                         |
+| `compare`            | `netuids!, dimensions`  | `Compare!`           | Side-by-side registry / economics / health for requested netuids. |
+
+Subscriptions: `chainEvents` over the same path via `graphql-transport-ws` (WebSocket). See [For agents](/agents) for other machine surfaces.
+
+## Limits
+
+Hard caps enforced on every POST. Matching constants live in `src/graphql.mjs`; rate limiting is keyed per client IP alongside the RPC proxy.
+
+| Limit              | Value                | Notes                                                                |
+| ------------------ | -------------------- | -------------------------------------------------------------------- |
+| Max depth          | 7                    | Nested selection sets beyond this fail validation.                   |
+| Max complexity     | 50                   | Default field cost 1; relationship roots cost 5.                     |
+| Max POST body      | 64 KiB               | HTTP request body size cap for `POST /api/v1/graphql`.               |
+| Max query document | 16 KiB               | Raw query string / document length cap.                              |
+| Page size          | 20 default · 100 max | Cursor pagination on list roots (subnets, providers, …).             |
+| Rate limit         | 100 / 60s            | Per-client IP, shared policy with the RPC proxy (429 + retry-after). |
+
+<ApiSourceFooter paths={["/api/v1/graphql"]} />
