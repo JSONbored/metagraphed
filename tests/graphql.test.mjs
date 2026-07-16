@@ -565,6 +565,24 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     );
   });
 
+  test("subnets filters exclude rows missing the filtered field", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, name: "A", slug: "a", status: "active" },
+          { netuid: 2, name: "B", slug: "b" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ subnets(status: "active") { items { netuid } total } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnets.total, 1);
+    assert.deepEqual(body.data.subnets.items, [{ netuid: 1 }]);
+  });
+
   test("subnets filters by domain via derived_categories", async () => {
     const env = fixtureEnv({
       "/metagraph/subnets.json": {
