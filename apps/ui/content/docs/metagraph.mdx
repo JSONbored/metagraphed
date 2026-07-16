@@ -1,0 +1,96 @@
+---
+title: Subnet metagraph & validators
+description: GET /api/v1/subnets/{netuid}/metagraph, /validators, /neurons/{uid}, and the global /api/v1/validators surface — trust, incentive, consensus, dividends, and nominators explained. No API key.
+---
+
+A metagraph is the on-chain snapshot of everything happening in one subnet at a given block: every registered neuron (miner or validator), its stake, and the weight relationships between them — the data structure this API reads so you don't need to run a node to see a subnet's current state.
+
+Both miners and validators are "neurons" — a `uid` (a per-subnet slot number, not a global identity) paired with a hotkey/coldkey. Miners produce the subnet's actual output and earn **incentive**; validators periodically submit a weight vector scoring that output and earn **dividends** for doing so credibly. A validator needs a stake-gated "validator permit" for its weights to count.
+
+```
+GET https://api.metagraph.sh/api/v1/subnets/{netuid}/metagraph
+```
+
+## Per-subnet metagraph & neurons
+
+| Path                                                 | Purpose                                               | Params                                  |
+| ---------------------------------------------------- | ----------------------------------------------------- | --------------------------------------- |
+| `GET /api/v1/subnets/{netuid}/metagraph`             | Full per-UID metagraph — every neuron on this subnet. | `?validator_permit=true`, `?format=csv` |
+| `GET /api/v1/subnets/{netuid}/validators`            | Just the validator-permit rows, ranked by stake.      | `?format=csv`                           |
+| `GET /api/v1/subnets/{netuid}/neurons/{uid}`         | One neuron's full state.                              | —                                       |
+| `GET /api/v1/subnets/{netuid}/neurons/{uid}/history` | Daily time series of one UID's fields.                | `?window=7d\|30d\|90d\|1y\|all`         |
+
+## What each field means
+
+| Field             | Meaning                                                                                                                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `trust`           | How much a neuron's contributions are relied on by others, built up from behavior over time.                                                                                                               |
+| `validator_trust` | For validators specifically: how closely a validator's weight-settings track what the rest of the (stake-weighted) validator set agrees on.                                                                |
+| `incentive`       | A miner's share of the subnet's emission pool, from how validators scored its work. Sums to 1 across a subnet's miners.                                                                                    |
+| `consensus`       | How much validators agree on a miner's score. Yuma Consensus down-weights any validator whose weights diverge too far from the group, so this also acts as a check against one validator skewing outcomes. |
+| `dividends`       | A validator's share of emissions, from its stake and how well its weights align with consensus. Sums to 1 across a subnet's validators — this is the pool nominators draw their cut from.                  |
+| `emission`        | The actual per-epoch reward (in the subnet's alpha token), computed from incentive or dividends × the subnet's emission budget. An epoch is ~360 blocks, roughly 72 minutes on mainnet.                    |
+| `rank`            | A raw, pre-consensus weighted score — an intermediate Yuma Consensus signal, not the same as final standing.                                                                                               |
+
+<Callout title="subnetValidators vs globalValidators aren't the same question">
+  `subnetValidators` answers "who validates inside subnet N, ranked by stake?" — plain per-subnet
+  rows. `globalValidators` below answers "which hotkeys validate anywhere, and how big is their
+  total footprint?" — one row per hotkey, grouped across every subnet it holds a permit on. Don't
+  expect the two to line up 1:1.
+</Callout>
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/subnets/7/metagraph?validator_permit=true'
+```
+
+## Global validators
+
+| Path                                         | Purpose                                                            | Params                                                                                       |
+| -------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `GET /api/v1/validators`                     | Cross-subnet validator/operator leaderboard.                       | `?sort=` (7 options, default `subnet_count`), `?limit=1-100` (default 20), `?format=csv`     |
+| `GET /api/v1/validators/{hotkey}`            | One validator's aggregated cross-subnet totals + per-subnet table. | — (a cold hotkey returns a zeroed 200, never 404)                                            |
+| `GET /api/v1/validators/{hotkey}/history`    | Daily cross-subnet staked/rewards history.                         | `?window=7d\|30d\|90d\|1y\|all`                                                              |
+| `GET /api/v1/validators/{hotkey}/nominators` | Who has staked to this validator's hotkey, cross-subnet.           | `?window=7d\|30d\|90d` (default `30d`), `?sort=`, `?limit=1-100`, `?coldkey=`, `?format=csv` |
+
+Each `globalValidators` row carries `subnet_count`, `uid_count`, `total_stake_tao`/`total_emission_tao` summed across memberships, a `root_stake_tao` vs `alpha_stake_tao` split, `stake_dominance`, average/max `validator_trust`, an APY estimate, and a self-declared identity.
+
+## Nominators
+
+Nominators (sometimes called delegators) are TAO holders who stake to a validator's hotkey instead of running their own. `validatorNominators` isn't a stake-position snapshot — it's a **windowed flow** derived from raw stake-add/-remove events: each row is one nominator that staked or unstaked against this hotkey during the window, with `staked_tao`, `unstaked_tao`, `net_staked_tao` (can be negative), and `event_count`.
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/validators/5F.../nominators?window=30d'
+```
+
+<Callout title="Two different nominator counts — they won't reconcile">
+  `validatorNominators` is a windowed flow. The separate `nominator_count` field on
+  `globalValidators`/`validatorDetail` rows is an all-time, unwindowed count of distinct coldkeys
+  currently holding nonzero stake, from a lower-frequency full-chain scan — `null` (not `0`) when
+  that side table hasn't captured the hotkey yet. Don't expect the two numbers to match.
+</Callout>
+
+```js tab="JavaScript"
+const res = await fetch("https://api.metagraph.sh/api/v1/validators?sort=total_stake_tao&limit=20");
+const { data } = await res.json();
+```
+
+```python tab="Python"
+import requests
+
+data = requests.get(
+    "https://api.metagraph.sh/api/v1/validators", params={"sort": "total_stake_tao", "limit": 20}
+).json()["data"]
+```
+
+None of these eight routes have a dedicated rate limiter; all are cached 60s and edge-cached on the shared health-cron snapshot stamp.
+
+<ApiSourceFooter
+  paths={[
+    "/api/v1/subnets/{netuid}/metagraph",
+    "/api/v1/subnets/{netuid}/validators",
+    "/api/v1/subnets/{netuid}/neurons/{uid}",
+    "/api/v1/validators",
+    "/api/v1/validators/{hotkey}",
+    "/api/v1/validators/{hotkey}/nominators",
+  ]}
+/>

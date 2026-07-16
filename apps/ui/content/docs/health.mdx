@@ -1,0 +1,79 @@
+---
+title: Health & readiness
+description: GET /api/v1/health, /health/history/{date}, /health/trends, /incidents, and the per-subnet health/uptime/percentile/incident routes — probe-derived, never hand-set. No API key.
+---
+
+Every surface metagraphed tracks (an archive node, an SDK, a subnet API, a dashboard) gets checked on a live 15-minute cron sweep. Status here is never self-reported or manually set — it comes exclusively from that probe, classified `ok`, `degraded`, `failed`, or `unknown`.
+
+```
+GET https://api.metagraph.sh/api/v1/health
+```
+
+## Live status
+
+| Path                                  | Scope         | Notes                                                                                         |
+| ------------------------------------- | ------------- | --------------------------------------------------------------------------------------------- |
+| `GET /api/v1/health`                  | Registry-wide | `netuid`, `status`, `fields`, `limit` (≤1000), `cursor`, `sort`, `order`.                     |
+| `GET /api/v1/subnets/{netuid}/health` | One subnet    | `kind`, `provider`, `status`, `classification`, `fields`, `limit`, `cursor`, `sort`, `order`. |
+
+Both are live-only — a cold store returns an explicit `unknown` payload, never a stale baked value and never a 404. `kind` scopes to a surface type (`archive`, `subtensor-rpc`, `subnet-api`, `docs`, and similar); `classification` narrows to the probe's own outcome (`live`, `dead`, `timeout`, `rate-limited`, `wrong-chain`, and similar).
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/subnets/7/health?status=failed'
+```
+
+## Incidents
+
+Reconstructed from raw probe history with a gap-island SQL query, not stored as discrete rows: consecutive failing checks group into one incident when the gap between them is under 30 minutes (cadence plus one missed-run buffer), and a lone failed probe that recovers on the next tick doesn't count — only ≥2 consecutive failures (roughly 4+ minutes sustained) become a real incident.
+
+| Path                                            | Scope      | Params                                                                                             |
+| ----------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/incidents`                         | Global     | `window` (`7d`\|`30d`)                                                                             |
+| `GET /api/v1/subnets/{netuid}/health/incidents` | One subnet | `window` (`7d`\|`30d`) — also returns a per-surface SLA (uptime ratio) alongside the incident list |
+
+<Callout title="A single missed probe isn't an incident">
+  The ≥2-consecutive threshold is deliberate — roughly three-quarters of raw failure rows are a lone
+  probe recovering on the very next 15-minute tick. Don't treat one failed check in the history
+  endpoints below as downtime; check `/incidents` for what actually cleared the threshold.
+</Callout>
+
+## History, trends, percentiles, uptime
+
+| Path                                              | Window / notes                                                                                                                                                 |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/health/history/{date}`               | `date` = `YYYY-MM-DD`. Filters: `netuid`, `kind`, `provider`, `status`, `classification`, `fields`, `limit`, `cursor`, `sort`, `order`.                        |
+| `GET /api/v1/health/trends`                       | Bulk 7d/30d uptime + latency trend for every subnet, fixed windows.                                                                                            |
+| `GET /api/v1/subnets/{netuid}/health/trends`      | Same, one subnet, both windows returned together.                                                                                                              |
+| `GET /api/v1/subnets/{netuid}/health/percentiles` | p50/p95/p99 + avg/min/max latency per surface. `window` = `7d`\|`30d`. Successful checks only.                                                                 |
+| `GET /api/v1/subnets/{netuid}/uptime`             | Long-term daily uptime from the durable rollup table (raw checks prune after 30d, this survives). `window` = `90d`\|`1y`. `min_samples` drops low-sample days. |
+
+```js tab="JavaScript"
+const res = await fetch("https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d");
+const { data } = await res.json();
+```
+
+```python tab="Python"
+import requests
+
+data = requests.get(
+    "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles", params={"window": "30d"}
+).json()["data"]
+```
+
+Every route on this page is mainnet-only — none accept a `/{network}/` prefix. All are cached 60s and edge-cached keyed on the health cron's own `last_run_at` stamp, so repeated requests within the same 15-minute window are served without re-running the aggregation.
+
+<Callout title="This is registry health, not a readiness probe">
+  The bare `GET /health` (no `/api/v1` prefix) is a different thing entirely — a lightweight
+  liveness/readiness check for this API's own infrastructure (bindings, data-publish freshness, cron
+  staleness), not registry content. Don't confuse the two when wiring up a monitor.
+</Callout>
+
+<ApiSourceFooter
+  paths={[
+    "/api/v1/health",
+    "/api/v1/health/history/{date}",
+    "/api/v1/health/trends",
+    "/api/v1/incidents",
+    "/api/v1/subnets/{netuid}/health",
+  ]}
+/>

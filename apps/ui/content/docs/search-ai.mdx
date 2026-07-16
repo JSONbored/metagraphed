@@ -1,0 +1,88 @@
+---
+title: Search & AI
+description: GET /api/v1/search, /search/semantic, and POST /api/v1/ask — keyword search, vector search, and grounded question-answering over the registry. 503s cleanly when AI isn't enabled. No API key.
+---
+
+Two ways to search the registry, plus a question-answering endpoint built on top of the same index. Keyword search matches literal substrings; semantic search encodes your query into a vector and finds conceptually related results even with zero shared words — the standard keyword-vs-embedding distinction from information retrieval.
+
+```
+GET https://api.metagraph.sh/api/v1/search?q=inference
+```
+
+## Keyword search
+
+| Path                       | Difference                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| `GET /api/v1/search`       | Full search-index artifact, including per-document match tokens.              |
+| `GET /api/v1/search-index` | The slim artifact — identical documents, no tokens. Meant for fast typeahead. |
+
+Both share one query engine: `q` (≤200 chars) splits on whitespace and requires every term to appear (AND, not OR) across a document's title/subtitle/slug/tokens; plus `fields` (projection), `limit` (1–1000), `cursor`, `sort` (`kind`\|`netuid`\|`slug`\|`title`), `order`. This is a static-artifact scan — refreshes on the registry's normal 6h publish cycle, not live per-request.
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/search?q=inference&limit=10'
+```
+
+## Semantic search
+
+`GET /api/v1/search/semantic` — embeds your query (`q`, required, ≤1000 chars) and finds registry documents whose own pre-computed embeddings are nearest in vector space, live on every request via Cloudflare Vectorize.
+
+| Param   | Notes                                                               |
+| ------- | ------------------------------------------------------------------- |
+| `q`     | Required, ≤1000 chars.                                              |
+| `limit` | 1–20, default 10.                                                   |
+| `type`  | Repeatable — `subnet`, `surface`, or `provider`. Omit for no scope. |
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/search/semantic?q=cross-lingual+translation&type=subnet'
+```
+
+## Ask (grounded question-answering)
+
+`POST /api/v1/ask` doesn't let the model answer from its own training knowledge — it first runs the same semantic retrieval above to pull real, current registry documents as context, then instructs the model to answer only from that context, with numbered citations, or say plainly it doesn't know.
+
+```json title="Request body"
+{ "question": "which subnets expose an inference API?", "topK": 6, "type": "subnet" }
+```
+
+| Field      | Notes                                                       |
+| ---------- | ----------------------------------------------------------- |
+| `question` | Required, ≤1000 chars.                                      |
+| `topK`     | 1–6, default 6 — how many sources the model sees.           |
+| `type`     | Same three-value scope as semantic search, string or array. |
+
+What actually feeds the grounding: the same embedded registry documents semantic search uses, **live-probed health status** (not a build-time snapshot — fetched fresh per request so "is subnet X's API up right now" reflects real-time state), and the agent-catalog artifact for actionability facets (callable service count, base URL, health).
+
+<Callout title="Reliable for registry facts, not general Bittensor knowledge">
+  `/ask` answers well when the question is groundable in the registry's own data — which subnets
+  expose an API, whether a given endpoint is healthy, what a provider runs. Questions about chain
+  mechanics or tokenomics theory outside what's in the registry correctly get "I don't know" rather
+  than a guess — that's the point of grounding it.
+</Callout>
+
+```js tab="JavaScript"
+const res = await fetch("https://api.metagraph.sh/api/v1/ask", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ question: "which subnets expose an inference API?", type: "subnet" }),
+});
+const { data } = await res.json();
+```
+
+```python tab="Python"
+import requests
+
+data = requests.post(
+    "https://api.metagraph.sh/api/v1/ask",
+    json={"question": "which subnets expose an inference API?", "type": "subnet"},
+).json()["data"]
+```
+
+<Callout title="503 when AI isn't enabled">
+  `/search/semantic` and `/ask` both require an AI-enabled deployment. Off by default in local dev
+  and CI — every request gets a uniform `503 ai_unavailable` regardless of query. Keyword search
+  (`/search`, `/search-index`) has no such dependency and always works.
+</Callout>
+
+Both AI routes share a 20 requests/60s per-client-IP rate limit — tighter than the general API since `/ask` drives an LLM call. `/ask`'s body caps at 4 KB.
+
+<ApiSourceFooter paths={["/api/v1/search", "/api/v1/search/semantic", "/api/v1/ask"]} />

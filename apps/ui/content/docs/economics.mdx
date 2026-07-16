@@ -1,0 +1,67 @@
+---
+title: Economics
+description: GET /api/v1/economics and /economics/trends — the dynamic-TAO per-subnet snapshot and network-wide daily time series. Alpha pools, emission share, FDV. No API key.
+---
+
+Bittensor runs a dynamic-TAO (dTAO) model: every subnet mints its own "alpha" token and runs a constant-product AMM pool holding TAO and alpha reserves. Staking TAO into a subnet buys alpha from that pool, and the reserve ratio sets the alpha price in TAO — each subnet's share of newly minted TAO is proportional to its alpha price relative to every other subnet's, a market-priced allocation rather than a vote-based one. These two routes expose that model as data.
+
+```
+GET https://api.metagraph.sh/api/v1/economics
+```
+
+## GET /api/v1/economics
+
+Per-subnet economic/validator snapshot — one row per subnet, live at the current moment.
+
+| Param                  | Notes                                                                                                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `netuid`               | Scope to one subnet.                                                                                                                                                        |
+| `registration_allowed` | `true` / `false`.                                                                                                                                                           |
+| `q`                    | Name/slug search, ≤200 chars.                                                                                                                                               |
+| `fields`               | Comma-separated partial field selection.                                                                                                                                    |
+| `limit` / `cursor`     | 1–1000, keyset paging.                                                                                                                                                      |
+| `sort` / `order`       | Sort key (`alpha_fdv_tao`, `alpha_price_tao`, `emission_share`, `total_stake_tao`, `netuid`, and more) + `asc`/`desc` (default `desc`, and default sort is emission share). |
+| `format`               | `csv` for a flat export.                                                                                                                                                    |
+
+**Response fields** worth knowing: `alpha_price_tao` (the AMM's current TAO/alpha exchange rate), `tao_in_pool_tao` / `alpha_in_pool` / `alpha_out_pool` (the pool reserves), `emission_share` (this subnet's cut of new TAO issuance), `alpha_market_cap_tao` / `alpha_fdv_tao` (derived, not on-chain — FDV is alpha price × the fixed 21,000,000 per-subnet alpha max supply, the same cap structure as TAO's own 21M), `registration_cost_tao` (the current dynamic recycle-burn cost to register a new UID), and `total_stake_tao`.
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/economics?sort=alpha_fdv_tao&order=desc&limit=10'
+```
+
+## GET /api/v1/economics/trends
+
+A network-wide daily time series — the aggregate across every subnet, one point per UTC day, not a per-subnet breakdown.
+
+| Param    | Notes                                                   |
+| -------- | ------------------------------------------------------- |
+| `window` | `7d` \| `30d` \| `90d` \| `1y` \| `all`, default `30d`. |
+| `format` | `csv`.                                                  |
+
+Each day rolls up summed `total_stake_tao`, a stake-weighted mean alpha price, an unweighted median alpha price, summed validator/miner counts, and mean emission share — network-wide, not per subnet. A cold rollup returns `{ day_count: 0, days: [] }` rather than erroring.
+
+```bash
+curl -s https://api.metagraph.sh/api/v1/economics/trends?window=90d
+```
+
+<Callout title="60000-row cap on window=all">
+  `/economics/trends?window=all` is bounded to 60,000 raw rows — sized for roughly 129 subnets × 365
+  days. Hitting the cap drops the oldest day rather than serving a truncated one silently.
+</Callout>
+
+```js tab="JavaScript"
+const res = await fetch("https://api.metagraph.sh/api/v1/economics?sort=emission_share&limit=20");
+const { data } = await res.json();
+```
+
+```python tab="Python"
+import requests
+
+data = requests.get(
+    "https://api.metagraph.sh/api/v1/economics", params={"sort": "emission_share", "limit": 20}
+).json()["data"]
+```
+
+Both routes are cached 60s. `/economics` prefers a live KV snapshot (falling back to the last published R2 artifact, so it never 404s); `/economics/trends` is edge-cached and busts on the same publish stamp as the sibling history/trajectory routes.
+
+<ApiSourceFooter paths={["/api/v1/economics", "/api/v1/economics/trends"]} />

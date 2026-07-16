@@ -1,0 +1,124 @@
+---
+title: Subnets
+description: GET /api/v1/subnets and its structure, lifecycle, market, decentralization, and curation sub-resources — everything about a subnet except who's currently on its metagraph. No API key.
+---
+
+A Bittensor subnet is an independent incentive mechanism — its own miners, validators, and reward rules — identified on-chain by a `netuid`. Since the February 2025 dynamic-TAO upgrade, every subnet runs a constant-product AMM between TAO and its own alpha token: price moves with every stake/unstake, and a subnet's share of new TAO issuance is set by that market rather than a root-validator vote.
+
+This page covers what a subnet _is_ and how it's _behaved_ — structure, activity, market data, decentralization metrics, curated metadata. For who's registered on it right now (the live neuron table), see [Subnet metagraph & validators](/docs/metagraph).
+
+```
+GET https://api.metagraph.sh/api/v1/subnets/{netuid}
+```
+
+## Structure & configuration
+
+| Path                                                   | Purpose                                                            |
+| ------------------------------------------------------ | ------------------------------------------------------------------ |
+| `GET /api/v1/subnets`                                  | List/filter/sort every subnet.                                     |
+| `GET /api/v1/subnets/movers`                           | Cross-subnet stake/emission/validator/neuron momentum leaderboard. |
+| `GET /api/v1/subnets/{netuid}`                         | Full subnet detail.                                                |
+| `GET /api/v1/subnets/{netuid}/overview`                | Composed profile + health + curation + gaps summary.               |
+| `GET /api/v1/subnets/{netuid}/hyperparameters`         | Current consensus/economic/governance knobs.                       |
+| `GET /api/v1/subnets/{netuid}/hyperparameters/history` | Append-only hyperparameter-change timeline.                        |
+| `GET /api/v1/subnets/{netuid}/identity-history`        | Append-only on-chain identity change timeline.                     |
+
+`/subnets` takes 25+ filter params — `domain`, `subnet_type`, `curation_level`, `coverage_level`, `q` (free text), `fields` (sparse fieldset), and `min_*`/`max_*` range filters on tempo/participant count/surface count and similar — plus `cursor`/`limit` (≤1000)/`sort`/`order`/`format=csv`.
+
+A subnet's **hyperparameters** are its owner-tunable knobs: `tempo` (blocks per epoch — default 360, sets weight-update cadence), `immunity_period` (blocks a freshly-registered neuron is shielded from deregistration), `kappa` (softmax steepness turning validator weights into incentive), `commit_reveal_enabled` (encrypts weights for a window to stop weight-copying), and roughly two dozen more.
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/subnets?domain=inference&sort=participant_count&order=desc'
+```
+
+## Lifecycle & activity
+
+Raw chain-event churn, mostly windowed `?window=7d|30d|90d`:
+
+| Path                                           | Purpose                                                                           |
+| ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| `GET /api/v1/subnets/{netuid}/registrations`   | Neuron registration activity.                                                     |
+| `GET /api/v1/subnets/{netuid}/deregistrations` | Neuron deregistration activity.                                                   |
+| `GET /api/v1/subnets/{netuid}/axon-removals`   | Axon teardown announcements.                                                      |
+| `GET /api/v1/subnets/{netuid}/serving`         | Axon-serving announcements.                                                       |
+| `GET /api/v1/subnets/{netuid}/prometheus`      | Telemetry-endpoint announcements.                                                 |
+| `GET /api/v1/subnets/{netuid}/recycled`        | Live cumulative TAO recycled for registration on this subnet.                     |
+| `GET /api/v1/subnets/{netuid}/event-summary`   | Windowed activity summary.                                                        |
+| `GET /api/v1/subnets/{netuid}/events`          | Raw curated event feed, CSV-exportable.                                           |
+| `GET /api/v1/subnets/{netuid}/history`         | Per-day neuron/validator/stake/emission rollup — `?window=7d\|30d\|90d\|1y\|all`. |
+| `GET /api/v1/subnets/{netuid}/turnover`        | Validator-set churn + stability score between window snapshots.                   |
+
+Registration on a subnet costs TAO that's **recycled**, not burned — returned to the pool that funds future block emissions rather than destroyed. The price decays over time and rises with each successful registration.
+
+## Market & economics-adjacent
+
+| Path                                           | Purpose                                                                                 |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `GET /api/v1/subnets/{netuid}/ohlc`            | Alpha-price OHLCV candles. `?interval=1h\|1d` (default 1h), `?days=1-365` (default 90). |
+| `GET /api/v1/subnets/{netuid}/volume`          | Rolling 24h buy/sell alpha volume + sentiment.                                          |
+| `GET /api/v1/subnets/{netuid}/stake-flow`      | Net stake in/out.                                                                       |
+| `GET /api/v1/subnets/{netuid}/stake-moves`     | Re-delegation churn.                                                                    |
+| `GET /api/v1/subnets/{netuid}/stake-transfers` | Cross-account stake-ownership transfers.                                                |
+| `GET /api/v1/subnets/{netuid}/stake-quote`     | Read-only AMM slippage quote for a hypothetical stake/unstake.                          |
+| `GET /api/v1/subnets/{netuid}/trajectory`      | Weekly structural completeness/surface-count trend.                                     |
+| `GET /api/v1/subnets/{netuid}/yield`           | Per-UID emission-yield ranking.                                                         |
+| `GET /api/v1/subnets/{netuid}/yield/history`   | Daily yield trend.                                                                      |
+
+OHLC candles are reconstructed from the same stake-add/-remove event stream, not a separate price oracle — price per trade is `amount_tao / alpha_amount`. Root (netuid 0) has no AMM and is excluded.
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/subnets/64/ohlc?interval=1d&days=30'
+```
+
+## Decentralization & consensus-weight metrics
+
+| Path                                                 | Purpose                                                                                             |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/subnets/{netuid}/concentration`         | Gini, HHI, Nakamoto coefficient, entropy across three lenses (per-UID, per-entity, validator-only). |
+| `GET /api/v1/subnets/{netuid}/concentration/history` | Daily trend of the above.                                                                           |
+| `GET /api/v1/subnets/{netuid}/performance`           | Reward-concentration + trust/consensus score spread.                                                |
+| `GET /api/v1/subnets/{netuid}/performance/history`   | Daily trend of the above.                                                                           |
+| `GET /api/v1/subnets/{netuid}/weights`               | Weight-setting activity aggregate for this subnet.                                                  |
+| `GET /api/v1/subnets/{netuid}/weights/setters`       | Per-validator weight-setting leaderboard for this subnet.                                           |
+
+<Callout title="Nakamoto coefficient and entropy, not just top-N%">
+  Concentration here isn't just a top-holder percentage — it includes the Nakamoto coefficient (the
+  minimum number of colluding parties needed to control the subnet) and Shannon entropy alongside
+  Gini and HHI, the same toolkit used in published Bittensor decentralization research. Independent
+  analysis of live subnets has found wide variance — some controllable by coalitions as small as
+  1-2%.
+</Callout>
+
+## Curated metadata
+
+Registry-native metadata, not chain-derived:
+
+| Path                                      | Purpose                                                           |
+| ----------------------------------------- | ----------------------------------------------------------------- |
+| `GET /api/v1/subnets/{netuid}/profile`    | Public-safe curated subnet profile.                               |
+| `GET /api/v1/subnets/{netuid}/surfaces`   | Curated, promoted public surfaces (docs, repo, API, and similar). |
+| `GET /api/v1/subnets/{netuid}/candidates` | Unpromoted candidate surfaces awaiting review.                    |
+
+```js tab="JavaScript"
+const res = await fetch("https://api.metagraph.sh/api/v1/subnets/64/concentration");
+const { data } = await res.json();
+```
+
+```python tab="Python"
+import requests
+
+data = requests.get("https://api.metagraph.sh/api/v1/subnets/64/concentration").json()["data"]
+```
+
+No route in this group has a dedicated per-IP rate limiter. `limit` caps at 1000 for most list/history routes (100 for `movers`, 50 for `event-summary`'s recent events), `days` caps at 365 for OHLC, and `recycled` carries its own 600s cache.
+
+<ApiSourceFooter
+  paths={[
+    "/api/v1/subnets",
+    "/api/v1/subnets/{netuid}",
+    "/api/v1/subnets/{netuid}/hyperparameters",
+    "/api/v1/subnets/{netuid}/ohlc",
+    "/api/v1/subnets/{netuid}/concentration",
+    "/api/v1/subnets/{netuid}/profile",
+  ]}
+/>

@@ -1,0 +1,100 @@
+---
+title: Extrinsics
+description: GET /api/v1/extrinsics, /extrinsics/{hash}, /governance/config-changes, and /sudo — the on-chain call feed, root-origin hyperparameter changes, and why governance/sudo are just filtered views of the same table. No API key.
+---
+
+An extrinsic is Substrate's term for anything that originates outside the chain's runtime and ends up in a block — signed (a user submits and pays for it), unsigned, or inherent (inserted by the block author itself, like the per-block timestamp). Every on-chain action on Bittensor's subtensor chain — a stake move, a weight-set, a subnet registration, a hyperparameter change — is one, decoded here into `call_module` (the pallet, e.g. `SubtensorModule`) and `call_function` (the specific call, e.g. `add_stake`).
+
+```
+GET https://api.metagraph.sh/api/v1/extrinsics
+```
+
+## GET /api/v1/extrinsics
+
+Recent-extrinsic feed, newest first, across every pallet. Filters compose (AND-ed, never OR).
+
+| Param                           | Notes                                                                                                    |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `limit`                         | 1–100, default 50.                                                                                       |
+| `offset` / `cursor`             | Offset paging or keyset paging (`cursor`, an opaque token, preferred for stable deep paging).            |
+| `block`                         | Scope to one block number.                                                                               |
+| `signer`                        | Scope to one SS58 signer.                                                                                |
+| `call_module` / `call_function` | Scope to one pallet / one call within it.                                                                |
+| `call_hash`                     | `0x` + 64 hex. Requires `call_module` also be set — keeps the decoded-args scan bounded, 400s otherwise. |
+| `success`                       | `true` or `false`.                                                                                       |
+| `block_start` / `block_end`     | Block-number range.                                                                                      |
+| `from` / `to`                   | Epoch-ms time range.                                                                                     |
+| `format`                        | `csv` downloads a narrow projection instead of the JSON envelope.                                        |
+
+**Response** — `{ schema_version, extrinsic_count, limit, offset, next_cursor, extrinsics: Extrinsic[] }`. Each `Extrinsic` is `{ block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args, success, fee_tao, tip_tao, observed_at }` — `call_args` is the decoded call payload (nested calls, EVM addresses, large u64/u128 values all normalized server-side), never raw SCALE.
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/extrinsics?call_module=SubtensorModule&call_function=add_stake&limit=5'
+```
+
+## GET /api/v1/extrinsics/\{hash\}
+
+Single-extrinsic detail, plus its emitted `account_events` (bounded to 50).
+
+`{hash}` accepts either a `0x…` extrinsic hash or the composite `<block_number>-<extrinsic_index>` id — the hash is best-effort in the decoder, so the composite id is the identifier guaranteed to always be present. An unknown ref never 404s: it returns `{ extrinsic: null, events: [] }` with a 200.
+
+```bash
+curl -s https://api.metagraph.sh/api/v1/extrinsics/5000000-3
+```
+
+## Root-origin calls: governance & sudo
+
+Bittensor originally had a bicameral governance structure — a Triumvirate that proposed changes and a Senate of top-K delegates that approved them by majority vote. That structure was removed from subtensor; what's left of on-chain governance today is a single privileged root key (the `Sudo` pallet) plus `AdminUtils`, subtensor's own pallet for root-origin hyperparameter and network-config changes (tempo, max UIDs, burn bounds, immunity period, and similar — mostly `sudo_set_*` calls).
+
+`/api/v1/governance/config-changes` and `/api/v1/sudo` aren't a different store or shape — they're the same extrinsics feed above, pre-filtered to `call_module = 'AdminUtils'` and `call_module = 'Sudo'` respectively. They get dedicated routes because most `AdminUtils` calls don't emit a dedicated chain event: the extrinsic and its decoded `call_args` are the only reliable record of what changed and to what value, so this surface can't be derived from an events feed the way most "what happened" questions can.
+
+## GET /api/v1/governance/config-changes
+
+Root-origin hyperparameter and network-config changes. Same params as the general feed above, minus `signer` / `call_module` / `call_hash` (module is fixed).
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/governance/config-changes?call_function=sudo_set_tempo&limit=10'
+```
+
+## GET /api/v1/sudo
+
+The root-key call table — every extrinsic where `call_module = 'Sudo'`. Same param set as `config-changes` above.
+
+```bash
+curl -s https://api.metagraph.sh/api/v1/sudo?limit=10
+```
+
+<Callout title="Related: GET /api/v1/sudo/key">
+  A separate, RPC-live route (1h cache) returning the account that currently holds `Sudo::Key` — not
+  an extrinsics-shaped route, so it isn't covered above, but it's the account you'll see as `signer`
+  on every row `/api/v1/sudo` returns.
+</Callout>
+
+## Limits & caching
+
+None of the four routes above are individually rate-limited. All are cached 60s with a weak ETag (`Cache-Control: public, max-age=60, stale-while-revalidate=300`) and support `?format=csv` for a narrow row export.
+
+```js tab="JavaScript"
+const res = await fetch(
+  "https://api.metagraph.sh/api/v1/extrinsics?call_module=SubtensorModule&limit=5",
+);
+const { data } = await res.json();
+```
+
+```python tab="Python"
+import requests
+
+data = requests.get(
+    "https://api.metagraph.sh/api/v1/extrinsics",
+    params={"call_module": "SubtensorModule", "limit": 5},
+).json()["data"]
+```
+
+<ApiSourceFooter
+  paths={[
+    "/api/v1/extrinsics",
+    "/api/v1/extrinsics/{hash}",
+    "/api/v1/governance/config-changes",
+    "/api/v1/sudo",
+  ]}
+/>

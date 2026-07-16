@@ -1,0 +1,98 @@
+---
+title: Chain analytics
+description: GET /api/v1/chain/* — chain-wide rollups and leaderboards over activity, transfers, stake movement, weights, and concentration. Distinct from the raw /chain-events firehose. No API key.
+---
+
+The [chain events reference](/docs/chain-events) covers the raw, unfiltered `pallet.method` event firehose. This page is the other `/api/v1/chain/*` surface — pre-aggregated, chain-wide rollups and leaderboards, built from the same curated event/neuron stores that back the per-account and per-subnet analytics elsewhere in the API. Where chain events answers "what happened, unfiltered," these routes answer "what happened, ranked and summed across every subnet."
+
+```
+GET https://api.metagraph.sh/api/v1/chain/activity
+```
+
+All 21 routes below are mainnet-only (no `/{network}/` prefix support). Most share one windowed-leaderboard shape: `?window=7d|30d` (default `7d`), `?limit=` (varies by route, capped at 100), `?format=csv` for the row-level leaderboard only — network rollups and distributions stay JSON-only.
+
+## Activity & liveness
+
+| Path                         | Purpose                                                                      | Extra params                                      |
+| ---------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------- |
+| `GET /api/v1/chain/activity` | Daily block/extrinsic/event counts, success rate, unique signers.            | —                                                 |
+| `GET /api/v1/chain/calls`    | Extrinsic call-mix — count and share per pallet module (or module.function). | `call_module`, `group_by=module\|module_function` |
+| `GET /api/v1/chain/signers`  | Most-active-account leaderboard, by tx count or total fee paid.              | `call_module`, `sort=tx_count\|total_fee_tao`     |
+| `GET /api/v1/chain/fees`     | Daily fee/tip series + top fee payers + median fee.                          | `call_module`                                     |
+
+## Transfers & relationships
+
+| Path                               | Purpose                                                                         | Extra params         |
+| ---------------------------------- | ------------------------------------------------------------------------------- | -------------------- |
+| `GET /api/v1/chain/transfers`      | Network-wide TAO transfer volume + top senders/receivers + concentration share. | —                    |
+| `GET /api/v1/chain/transfer-pairs` | Top sender→receiver TAO corridors, ranked by volume or count.                   | `sort=volume\|count` |
+
+## Stake movement & market
+
+| Path                                | Purpose                                                                      | Params                                             |
+| ----------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------- |
+| `GET /api/v1/chain/stake-flow`      | Net stake added minus removed per subnet — capital flow.                     | window/limit                                       |
+| `GET /api/v1/chain/stake-moves`     | Stake re-delegation churn per subnet (same coldkey, no unstake).             | window/limit                                       |
+| `GET /api/v1/chain/stake-transfers` | Stake ownership moved to a _different_ coldkey — origin side only.           | window/limit                                       |
+| `GET /api/v1/chain/alpha-volume`    | Rolling 24h buy/sell alpha-volume leaderboard + network sentiment.           | fixed 24h window, `limit`, `format` — no `?window` |
+| `GET /api/v1/chain/yield`           | Network-wide emission/stake return rate, validator vs miner, p10–p90 spread. | none                                               |
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/chain/stake-flow?window=30d&limit=20'
+```
+
+## Registration & serving churn
+
+| Path                                | What it counts                                                              |
+| ----------------------------------- | --------------------------------------------------------------------------- |
+| `GET /api/v1/chain/registrations`   | `NeuronRegistered` leaderboard — registration demand per subnet.            |
+| `GET /api/v1/chain/deregistrations` | `NeuronDeregistered` leaderboard — exit/eviction activity per subnet.       |
+| `GET /api/v1/chain/axon-removals`   | `AxonInfoRemoved` leaderboard — serving-infrastructure teardown per subnet. |
+| `GET /api/v1/chain/serving`         | `AxonServed` leaderboard — which subnets are announcing serving endpoints.  |
+| `GET /api/v1/chain/prometheus`      | `PrometheusServed` leaderboard — which subnets run telemetry endpoints.     |
+
+## Weights & network state
+
+| Path                                 | Purpose                                                                                       | Params                                       |
+| ------------------------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `GET /api/v1/chain/weights`          | `WeightsSet` leaderboard per subnet — aggregate only, doesn't name setters.                   | window/limit                                 |
+| `GET /api/v1/chain/weights/setters`  | The individual validators behind the above, ranked by total `WeightsSet` events network-wide. | window/limit                                 |
+| `GET /api/v1/chain/concentration`    | Network-wide stake/emission concentration across five lenses.                                 | none — pure snapshot                         |
+| `GET /api/v1/chain/performance`      | Network-wide reward-distribution concentration + trust-score spread.                          | none                                         |
+| `GET /api/v1/chain/identity-history` | Most-recent on-chain identity changes across every subnet, newest-first.                      | `limit` (default 50, max 200)                |
+| `GET /api/v1/chain/turnover`         | Validator-set churn between window-boundary snapshots.                                        | `window=7d\|30d\|90d` (default 30d), `limit` |
+
+<Callout title="Chain-scope concentration isn't just the per-subnet view summed">
+  The per-subnet `/subnets/{netuid}/concentration` route measures a subnet's own neuron set.
+  Chain-scope `concentration` adds two lenses the per-subnet view structurally can't compute —
+  `entity_emission`/`entity_stake` — which collapse an operator's hotkeys *across every subnet*
+  before measuring concentration. An operator diversified across five subnets looks decentralized in
+  each one individually but concentrated at network scale; only this route sees that.
+</Callout>
+
+```js tab="JavaScript"
+const res = await fetch(
+  "https://api.metagraph.sh/api/v1/chain/signers?sort=total_fee_tao&limit=20",
+);
+const { data } = await res.json();
+```
+
+```python tab="Python"
+import requests
+
+data = requests.get(
+    "https://api.metagraph.sh/api/v1/chain/signers", params={"sort": "total_fee_tao", "limit": 20}
+).json()["data"]
+```
+
+Only `/chain/fees` carries a dedicated rate limit (60 req/60s, when it runs through the deep-history Postgres tier) — every other route here relies on edge caching alone. All are cached 60s, keyed on the shared health-cron snapshot stamp.
+
+<ApiSourceFooter
+  paths={[
+    "/api/v1/chain/activity",
+    "/api/v1/chain/transfers",
+    "/api/v1/chain/stake-flow",
+    "/api/v1/chain/concentration",
+    "/api/v1/chain/weights",
+  ]}
+/>

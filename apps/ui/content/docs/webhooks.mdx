@@ -1,0 +1,104 @@
+---
+title: Webhooks
+description: POST/GET/DELETE /api/v1/webhooks/subscriptions — subscribe to the registry's publish change feed with HMAC-signed, at-least-once delivery. No API key required beyond a subscription secret.
+---
+
+Subscribe to metagraphed's own publish cycle: every time the registry rebuilds and publishes (a push to a human-input registry path, or a daily floor schedule), subscribers get an HMAC-signed POST describing what changed. This is a separate system from anything on-chain — it's this app's own change-feed infrastructure.
+
+```
+POST https://api.metagraph.sh/api/v1/webhooks/subscriptions
+```
+
+## Create a subscription
+
+`POST /api/v1/webhooks/subscriptions`, authenticated with a shared token in the `x-metagraph-webhook-subscription-token` header (contact the maintainers for one — the route 503s with a distinct code if creation is disabled entirely).
+
+```json title="Request body"
+{
+  "url": "https://example.com/hooks/metagraphed",
+  "filters": { "kinds": ["subnets"], "netuids": [7, 64] },
+  "secret": "optional — a 16-256 char string; generated for you if omitted"
+}
+```
+
+`url` must be `https://`, no embedded credentials, no localhost/private/link-local address, and (for a hostname) contain at least one dot — re-checked at delivery time too, as SSRF defense-in-depth. `filters` is optional; omitting it (or sending `{}`) matches every event.
+
+<Callout title="An explicit empty array means match nothing, not match all">
+  `{"filters": {"kinds": []}}` is not the same as omitting `kinds` — an explicitly empty array
+  for a present key means "match nothing" on that facet. Only *omitting* the key means unrestricted.
+</Callout>
+
+The response (`201`) includes your subscription `id`, the `secret` — **returned once, here only, never echoed by GET** — and a `delivery` block describing exactly how signed payloads will arrive:
+
+```json title="201 response (excerpt)"
+{
+  "id": "…",
+  "secret": "…",
+  "delivery": {
+    "method": "POST",
+    "signature_header": "x-metagraph-signature",
+    "signature_algorithm": "hmac-sha256-hex",
+    "idempotency_header": "x-metagraph-idempotency-key"
+  }
+}
+```
+
+## Inspect or remove a subscription
+
+| Path                                         | Auth                                                                                                                                  | Notes                                                                                                                                                                     |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/webhooks/subscriptions/{id}`    | None — the id itself is the lookup key.                                                                                               | Returns the subscription (no secret) plus a `delivery` health block: `status` (`ok`\|`retrying`\|`dead_letter`), pending/dead-letter counts, and the last failure if any. |
+| `DELETE /api/v1/webhooks/subscriptions/{id}` | `x-metagraph-webhook-secret` header, matching _this subscription's own_ secret — a different credential from the shared create token. | `403` on mismatch, `404` if the id doesn't exist.                                                                                                                         |
+
+```bash
+curl -s https://api.metagraph.sh/api/v1/webhooks/subscriptions/<id>
+```
+
+## How delivery works
+
+Delivery isn't a fixed interval — it fires from the publish pipeline itself, right after a build's R2/KV upload completes. Every subscription whose `filters` match the resulting change event gets an HMAC-SHA256-signed POST, headers:
+
+| Header                        | Content                                                                                                                                                                                              |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `x-metagraph-signature`       | Hex HMAC-SHA256 of the raw request body, keyed by your subscription's secret. Verify by recomputing over the raw bytes and comparing in constant time — the same pattern Stripe/GitHub webhooks use. |
+| `x-metagraph-event-id`        | Stable across every subscriber and redelivery of the same event content.                                                                                                                             |
+| `x-metagraph-idempotency-key` | Stable per (subscriber, event) pair across retries — dedupe on this, not the event id alone.                                                                                                         |
+
+Delivery is **at-least-once**: up to 3 fresh attempts with exponential backoff, then a failure is parked and swept on later publish runs with backoff up to 12h, dead-lettering after 8 rounds. A non-retryable failure (any 4xx other than a timeout, or a redirect — redirects aren't followed) fails immediately without parking; a 5xx, 429, network error, or timeout retries.
+
+<Callout title="Two different 503s, two different causes">
+  If the subscription store itself isn't configured, every route 503s `webhooks_unavailable` — the
+  whole feature is off. If only the shared create token is unset, `POST` specifically returns
+  `webhook_subscriptions_disabled` — creation is off, but `GET`/`DELETE` on subscriptions that
+  already exist may still work.
+</Callout>
+
+```js tab="JavaScript"
+const res = await fetch("https://api.metagraph.sh/api/v1/webhooks/subscriptions", {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    "x-metagraph-webhook-subscription-token": token,
+  },
+  body: JSON.stringify({
+    url: "https://example.com/hooks/metagraphed",
+    filters: { kinds: ["subnets"] },
+  }),
+});
+const { data } = await res.json();
+```
+
+```python tab="Python"
+import requests
+
+res = requests.post(
+    "https://api.metagraph.sh/api/v1/webhooks/subscriptions",
+    headers={"x-metagraph-webhook-subscription-token": token},
+    json={"url": "https://example.com/hooks/metagraphed", "filters": {"kinds": ["subnets"]}},
+)
+data = res.json()["data"]
+```
+
+Create/delete share one rate limit — 10 requests/60s per client IP. Subscription bodies cap at 8 KB; `filters.netuids` caps at 64 entries, `filters.kinds` at 8. Subscriptions expire 180 days after creation.
+
+<ApiSourceFooter paths={["/api/v1/webhooks/subscriptions"]} />

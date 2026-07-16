@@ -338,7 +338,7 @@ function SiteFooter() {
         aria-hidden
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent"
       />
-      <div className="max-w-shell-max mx-auto px-4 md:px-10 py-14 grid gap-10 md:grid-cols-4 text-[12px] text-ink-muted">
+      <div className="max-w-shell-max mx-auto px-4 md:px-10 py-14 grid gap-10 md:grid-cols-5 text-[12px] text-ink-muted">
         <div className="md:col-span-2">
           <div className="font-display text-base font-semibold text-ink-strong inline-flex items-baseline gap-1">
             Metagraphed
@@ -400,13 +400,25 @@ function SiteFooter() {
           <FooterLink to="/health">Health</FooterLink>
           <FooterLink to="/status">Status</FooterLink>
           <FooterLink to="/schemas">Schemas</FooterLink>
-          <FooterLink to="/docs/graphql">GraphQL</FooterLink>
-          <FooterLink to="/docs/rpc">RPC</FooterLink>
-          <FooterLink to="/docs/feeds">Feeds</FooterLink>
           <FooterLink to="/gaps">Gaps</FooterLink>
-          <FooterLink to="/docs/chain-events">Chain events reference</FooterLink>
           <FooterLink to="/agents">For agents</FooterLink>
           <FooterLink to="/about">About</FooterLink>
+        </FooterCol>
+        <FooterCol title="Guides">
+          <FooterLink to="/docs/blocks">Blocks</FooterLink>
+          <FooterLink to="/docs/extrinsics">Extrinsics</FooterLink>
+          <FooterLink to="/docs/accounts">Accounts</FooterLink>
+          <FooterLink to="/docs/subnets">Subnets</FooterLink>
+          <FooterLink to="/docs/metagraph">Metagraph & validators</FooterLink>
+          <FooterLink to="/docs/economics">Economics</FooterLink>
+          <FooterLink to="/docs/health">Health & readiness</FooterLink>
+          <FooterLink to="/docs/chain-analytics">Chain analytics</FooterLink>
+          <FooterLink to="/docs/chain-events">Chain events</FooterLink>
+          <FooterLink to="/docs/webhooks">Webhooks</FooterLink>
+          <FooterLink to="/docs/search-ai">Search & AI</FooterLink>
+          <FooterLink to="/docs/feeds">Feeds</FooterLink>
+          <FooterLink to="/docs/graphql">GraphQL</FooterLink>
+          <FooterLink to="/docs/rpc">RPC</FooterLink>
         </FooterCol>
       </div>
       <div className="border-t border-border/70">

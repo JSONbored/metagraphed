@@ -1,0 +1,91 @@
+---
+title: Blocks
+description: GET /api/v1/blocks, block detail/extrinsics/events, block-production analytics, and the runtime-version transition timeline — the base layer everything else is anchored to. No API key.
+---
+
+Bittensor's subtensor chain is a Substrate chain, producing a finalized block roughly every 12 seconds. Each block has a header (a parent hash linking it to the one before, plus a state root and extrinsics root committing to what changed) and a body — the ordered extrinsics it carried. This page covers the block-level surface everything else (extrinsics, chain events, account activity) is anchored to.
+
+```
+GET https://api.metagraph.sh/api/v1/blocks
+```
+
+## GET /api/v1/blocks
+
+Recent-block feed, newest first.
+
+| Param                           | Notes                                                                 |
+| ------------------------------- | --------------------------------------------------------------------- |
+| `limit`                         | 1–100, default 50.                                                    |
+| `offset` / `cursor`             | Offset or keyset paging. Out-of-range values clamp rather than error. |
+| `author`                        | Scope to one block-authoring validator.                               |
+| `spec_version`                  | Scope to one runtime spec version.                                    |
+| `block_start` / `block_end`     | Block-number range.                                                   |
+| `from` / `to`                   | Epoch-ms observed-at range.                                           |
+| `min_extrinsics` / `min_events` | Floor filters — numeric input, 400s on non-integer.                   |
+| `format`                        | `csv`.                                                                |
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/blocks?min_extrinsics=5&limit=10'
+```
+
+## GET /api/v1/blocks/\{ref\}
+
+One block's header — `{ref}` accepts either a decimal block number or a `0x` + 64-hex block hash. An unknown block never 404s: it returns `{ block: null }` with a 200. The response includes the nearest stored `prev`/`next_block_number` for chain-walk navigation.
+
+```bash
+curl -s https://api.metagraph.sh/api/v1/blocks/5000000
+```
+
+## Extrinsics & events in one block
+
+| Path                                    | Returns                                                                                                   | Params                                    |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `GET /api/v1/blocks/{ref}/extrinsics`   | The extrinsics in this block, index-ascending.                                                            | `limit` (≤100), `offset`, `format=csv`    |
+| `GET /api/v1/blocks/{ref}/events`       | Curated, account-attributed events (a fixed allowlist of "interesting" kinds).                            | `limit` (≤1000), `offset`, `format=csv`   |
+| `GET /api/v1/blocks/{ref}/chain-events` | **Every** raw `pallet.method` event in this block, unfiltered — no limit/offset, returns the whole block. | numeric `block_number` only, no hash form |
+
+<Callout title="chain-events is a proxy with its own rate limit">
+  `/blocks/{ref}/chain-events` forwards to a separate deep-history Worker over a service binding,
+  the same tier documented in full on the [chain events reference](/docs/chain-events) — including
+  its own 60 req/60s rate limiter and the 503 you'll get if that binding isn't wired into a
+  deployment. See that page rather than duplicating it here.
+</Callout>
+
+## Block-production analytics & runtime versions
+
+| Path                         | Purpose                                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/blocks/summary` | Inter-block timing, throughput, author decentralization, spec-version spread.                               |
+| `GET /api/v1/runtime`        | The runtime spec-version transition timeline — every distinct `spec_version` seen, earliest block for each. |
+
+`/api/v1/runtime` reports only `spec_version` (not the full Substrate `RuntimeVersion` struct), read directly off each block's own `spec_version` column — that column only started being captured from a fixed point on, so `coverage_from_block`/`coverage_from_at` mark where the recorded history actually begins. It's grouped with Blocks rather than a general "chain" surface because it's a pure aggregate over the same block-header data `/blocks/summary`'s `latest_spec_version` field also derives from.
+
+<Callout title="current_spec_version isn't just the last transition">
+  Grouping by spec version collapses each one to its *earliest* block — so if a version were ever
+  superseded and then reappeared, naively reading the last transition would report the wrong one as
+  current. `current_spec_version` is computed as a separate query instead.
+</Callout>
+
+```js tab="JavaScript"
+const res = await fetch("https://api.metagraph.sh/api/v1/blocks/summary");
+const { data } = await res.json();
+```
+
+```python tab="Python"
+import requests
+
+data = requests.get("https://api.metagraph.sh/api/v1/blocks/summary").json()["data"]
+```
+
+`/blocks/{ref}` caches 600s once resolved (finalized blocks are immutable) and 60s while unknown; every other route here caches 60s.
+
+<ApiSourceFooter
+  paths={[
+    "/api/v1/blocks",
+    "/api/v1/blocks/summary",
+    "/api/v1/blocks/{ref}",
+    "/api/v1/blocks/{ref}/extrinsics",
+    "/api/v1/blocks/{ref}/events",
+    "/api/v1/runtime",
+  ]}
+/>

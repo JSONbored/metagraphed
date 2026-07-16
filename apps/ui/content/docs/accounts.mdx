@@ -1,0 +1,103 @@
+---
+title: Accounts
+description: GET /api/v1/accounts/{ss58} and its 22 sub-resources — identity, balance, holdings, activity feeds, network participation, and stake movement for one SS58 address. No API key.
+---
+
+An SS58 address encodes a 32-byte public key plus a network-prefix byte and checksum — the same underlying key can be re-encoded for different Substrate chains, so an SS58 string is a chain-scoped representation, not the key itself. Every Bittensor wallet splits into two: a **coldkey** that holds TAO and has final authority (stake movement, transfers — keep it offline), and a **hotkey** used for day-to-day operational signing (registering a neuron, setting weights, serving an axon). One coldkey can own many hotkeys.
+
+```
+GET https://api.metagraph.sh/api/v1/accounts/{ss58}
+```
+
+## Identity & lookup
+
+| Path                                           | Purpose                                                                |
+| ---------------------------------------------- | ---------------------------------------------------------------------- |
+| `GET /api/v1/accounts`                         | Site-wide leaderboard of every registered hotkey, cross-subnet totals. |
+| `GET /api/v1/accounts/{ss58}`                  | Cross-subnet activity summary for one account.                         |
+| `GET /api/v1/accounts/{ss58}/identity`         | Latest on-chain identity (name, description, socials).                 |
+| `GET /api/v1/accounts/{ss58}/identity-history` | Diff timeline of identity changes.                                     |
+| `GET /api/v1/sudo/key`                         | Current holder of `Sudo::Key` — see the callout below.                 |
+
+An account's on-chain identity is a separate, optional pallet from its core neuron/stake data — most accounts never call `set_identity`, so `has_identity: false` is the common case.
+
+## Balance & holdings
+
+| Path                                                   | Purpose                                                               |
+| ------------------------------------------------------ | --------------------------------------------------------------------- |
+| `GET /api/v1/accounts/{ss58}/balance`                  | Live free + reserved TAO balance, RPC-sourced.                        |
+| `GET /api/v1/accounts/{ss58}/portfolio`                | Cross-subnet neuron positions (hotkey-scoped) with economics + yield. |
+| `GET /api/v1/accounts/{ss58}/positions`                | Nominator-side delegated positions — distinct from portfolio.         |
+| `GET /api/v1/accounts/{ss58}/subnets`                  | Subnets where the hotkey is currently registered.                     |
+| `GET /api/v1/accounts/{ss58}/subnets/{netuid}/history` | One wallet's position on one subnet over time.                        |
+
+## Activity feeds
+
+| Path                                         | Notes                                                                                                                                                |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/accounts/{ss58}/events`         | Curated chain-event history. `limit` (1–1000, default 100), `offset`/`cursor`, `kind`, `netuid`, `block_start`/`block_end`, `format=csv`.            |
+| `GET /api/v1/accounts/{ss58}/extrinsics`     | Extrinsics signed by this account. Same pagination as `events`.                                                                                      |
+| `GET /api/v1/accounts/{ss58}/transfers`      | Native-TAO transfer feed. Same pagination.                                                                                                           |
+| `GET /api/v1/accounts/{ss58}/history`        | Durable per-day activity rollup. `from`/`to` (`YYYY-MM-DD`) — an inverted range returns an empty page rather than erroring.                          |
+| `GET /api/v1/accounts/{ss58}/counterparties` | Per-counterparty fund-flow rollup (`limit` 1–100, default 20), or pass `?counterparty=<ss58>` for one relationship's drilldown (`limit` default 50). |
+
+## Network participation
+
+Seven windowed footprint routes share one shape — a per-subnet count, first/last timestamp, HHI concentration, and dominant subnet — over `?window=7d|30d|90d` (default `30d`):
+
+| Path                                          | What it counts                                                                          |
+| --------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `GET /api/v1/accounts/{ss58}/registrations`   | Per-subnet neuron registrations.                                                        |
+| `GET /api/v1/accounts/{ss58}/deregistrations` | Per-subnet deregistrations/evictions.                                                   |
+| `GET /api/v1/accounts/{ss58}/serving`         | Axon-serving announcements — the endpoint a miner publishes so validators can reach it. |
+| `GET /api/v1/accounts/{ss58}/axon-removals`   | Axon teardown announcements.                                                            |
+| `GET /api/v1/accounts/{ss58}/prometheus`      | Telemetry-endpoint announcements.                                                       |
+| `GET /api/v1/accounts/{ss58}/weight-setters`  | Validator weight-setting activity.                                                      |
+| `GET /api/v1/accounts/{ss58}/stake-flow`      | Net/gross stake added vs. removed per subnet. Also takes `?direction=all\|in\|out`.     |
+
+<Callout title="weight-setters only supports 7d/30d">
+  Every other windowed route above also accepts `90d` — `weight-setters` is the one outlier
+  (`?window=7d|30d` only, default `7d`). An unsupported value 400s with the valid set listed.
+</Callout>
+
+## Stake movement
+
+`GET /api/v1/accounts/{ss58}/stake-moves` — stake re-delegation (`StakeMoved`, same coldkey, no unstake) footprint, same `?window=` shape as above.
+
+```bash
+curl -s https://api.metagraph.sh/api/v1/accounts/5F.../portfolio
+```
+
+```js tab="JavaScript"
+const res = await fetch("https://api.metagraph.sh/api/v1/accounts/5F.../events?limit=50");
+const { data } = await res.json();
+```
+
+```python tab="Python"
+import requests
+
+data = requests.get(
+    "https://api.metagraph.sh/api/v1/accounts/5F.../events", params={"limit": 50}
+).json()["data"]
+```
+
+<Callout title="Sudo::Key lives here, not with the extrinsics feed">
+  `GET /api/v1/sudo/key` returns `{ hotkey, queried_at }` — the account that currently holds root
+  authority (subtensor has no Council/Senate; sudo is the only remaining privileged key). It's an
+  account lookup, not an extrinsic — the extrinsics-shaped [`/api/v1/sudo`](/docs/extrinsics) feed
+  of Sudo-pallet calls is a separate, sibling route.
+</Callout>
+
+Unlisted query params 400 rather than being silently ignored. Feed routes clamp `limit` at 1000, `offset` at 1,000,000. `/balance` is the one rate-limited route in this group — 100 requests/60s per client IP; everything else is D1/Postgres-backed with no per-route limiter.
+
+<ApiSourceFooter
+  paths={[
+    "/api/v1/accounts",
+    "/api/v1/accounts/{ss58}",
+    "/api/v1/accounts/{ss58}/balance",
+    "/api/v1/accounts/{ss58}/portfolio",
+    "/api/v1/accounts/{ss58}/events",
+    "/api/v1/accounts/{ss58}/stake-flow",
+    "/api/v1/sudo/key",
+  ]}
+/>
