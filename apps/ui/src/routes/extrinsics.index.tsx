@@ -15,7 +15,7 @@ import {
   SelectFilter,
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { AccountCell } from "@/components/metagraphed/account-cell";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import {
   TimeAgo,
   PageHero,
@@ -375,7 +375,7 @@ function ExtrinsicsTable() {
                   {extrinsicCall(x.call_module, x.call_function)}
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  <AccountCell
+                  <AccountAddress
                     ss58={x.signer}
                     fallback={
                       x.signer ? <CopyableCode value={x.signer} className="max-w-full" /> : "—"

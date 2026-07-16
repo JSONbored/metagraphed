@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-ro
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Boxes, FileText, Zap } from "lucide-react";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
@@ -417,21 +418,12 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                         {eventKindLabel(event.event_kind)}
                       </td>
                       <td className="px-4 py-2.5 font-mono text-[11px] text-ink">
-                        {event.hotkey ? (
-                          <div className="flex items-center gap-1.5">
-                            <Link
-                              to="/accounts/$ss58"
-                              params={{ ss58: event.hotkey }}
-                              className="hover:underline"
-                              title={event.hotkey}
-                            >
-                              {shortHash(event.hotkey, 10)}
-                            </Link>
-                            <CopyButton value={event.hotkey} label="hotkey" className="-my-3.5" />
-                          </div>
-                        ) : (
-                          "—"
-                        )}
+                        <AccountAddress
+                          ss58={event.hotkey}
+                          keep={10}
+                          copyButtonClassName="-my-3.5"
+                          fallback="—"
+                        />
                       </td>
                       <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
                         {amount}
