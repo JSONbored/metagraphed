@@ -565,12 +565,16 @@
     },
     {
       "netuid": 40,
-      "slug": "chunking",
+      "slug": "ralph",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T15:00:00.000Z",
+      "reviewed_at": "2026-07-16T01:30:00.000Z",
       "confidence": "high",
-      "source_urls": ["https://subnet.chunking.com/"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/chunking.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "source_urls": [
+        "https://www.ralphlabs.ai/",
+        "https://github.com/RalphLabsAI/ralph",
+        "https://github.com/RalphLabsAI/recipe"
+      ],
+      "notes": "This netuid was previously reviewed under the \"Chunking\" identity (registry/subnets/chunking.json, VectorChat's text-chunking/RAG subnet). Re-reviewed and re-keyed this pass: on-chain SubnetIdentitiesV3 native_name, source_repo, and description now all point to \"Ralph\" (RalphLabsAI's training-recipe research subnet), corroborated by the old chunking_subnet repo being dead 2+ years, subnet.chunking.com's expired TLS certificate, and RalphLabsAI/ralph's own README self-identifying as \"Live on Bittensor mainnet, netuid 40\". File renamed chunking.json -> ralph.json to match slugify(name); this decision entry's slug updated to match."
     },
     {
       "netuid": 42,
