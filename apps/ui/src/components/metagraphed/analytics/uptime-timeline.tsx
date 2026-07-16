@@ -8,7 +8,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { classNames, durationLabel, formatNumber, formatRelative } from "@/lib/metagraphed/format";
 import { formatFreshness } from "@/lib/metagraphed/freshness";
-import { Skeleton, EmptyState } from "@/components/metagraphed/states";
+import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { Tooltip, TooltipContent, TooltipTrigger, InfoTooltip, TimeAgo } from "@jsonbored/ui-kit";
 import { useTimeRange, RANGE_LABEL } from "./time-range-context";
 import type { FlatSurfaceIncident, HealthTrendSurface } from "@/lib/metagraphed/types";
@@ -69,7 +69,13 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
   // 1h/24h have no sub-7d window upstream; surface that the bars are a 7d view.
   const usingFallbackWindow = range === "1h" || range === "24h";
 
-  const { data: tRes, isLoading } = useQuery(subnetHealthTrendsQuery(netuid));
+  const {
+    data: tRes,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(subnetHealthTrendsQuery(netuid));
   const { data: iRes } = useQuery(subnetHealthIncidentsQuery(netuid, winKey));
 
   const window = tRes?.data?.windows?.[winKey];
@@ -99,6 +105,14 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
 
   if (isLoading) {
     return <Skeleton className="h-48 w-full" />;
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6">
+        <ErrorState error={error} onRetry={() => refetch()} context="uptime timeline" />
+      </div>
+    );
   }
 
   if (surfaces.length === 0) {

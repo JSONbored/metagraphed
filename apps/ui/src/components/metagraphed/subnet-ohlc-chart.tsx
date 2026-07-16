@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { subnetOhlcQuery } from "@/lib/metagraphed/queries";
 import { CandlestickMini, type CandlestickDatum } from "@jsonbored/ui-kit";
-import { Skeleton, EmptyState } from "@/components/metagraphed/states";
+import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { classNames, formatTao } from "@/lib/metagraphed/format";
 
 const INTERVALS = ["1h", "1d"] as const;
@@ -27,7 +27,13 @@ function fmtOhlcPrice(v: number): string {
  */
 export function SubnetOhlcChart({ netuid }: { netuid: number }) {
   const [interval, setIntervalState] = useState<Interval>("1h");
-  const { data: res, isLoading } = useQuery(subnetOhlcQuery(netuid, { interval }));
+  const {
+    data: res,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(subnetOhlcQuery(netuid, { interval }));
   const data = res?.data;
 
   const candles = useMemo<CandlestickDatum[]>(() => {
@@ -64,6 +70,10 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
       ))}
     </div>
   );
+
+  if (isError) {
+    return <ErrorState error={error} onRetry={() => refetch()} context="subnet OHLC" />;
+  }
 
   if (data?.root_excluded) {
     return (

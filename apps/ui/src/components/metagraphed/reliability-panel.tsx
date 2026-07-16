@@ -5,6 +5,7 @@ import {
   subnetHealthIncidentsQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
+import { ErrorState } from "@/components/metagraphed/states";
 import type { SurfaceLatencyPercentiles, SurfaceSla } from "@/lib/metagraphed/types";
 
 // #1114: per-surface reliability — uptime SLA + latency percentiles (p50/p95/p99)
@@ -47,12 +48,20 @@ function uptimeTone(u?: number): string {
 
 export function ReliabilityPanel({ netuid }: { netuid: number }) {
   const [window, setWindow] = useState<WindowKey>("7d");
-  const { data: pctRes, isPending: pctPending } = useQuery(
-    subnetHealthPercentilesQuery(netuid, window),
-  );
-  const { data: slaRes, isPending: slaPending } = useQuery(
-    subnetHealthIncidentsQuery(netuid, window),
-  );
+  const {
+    data: pctRes,
+    isPending: pctPending,
+    isError: pctError,
+    error: pctErrorObj,
+    refetch: refetchPct,
+  } = useQuery(subnetHealthPercentilesQuery(netuid, window));
+  const {
+    data: slaRes,
+    isPending: slaPending,
+    isError: slaIsError,
+    error: slaErrorObj,
+    refetch: refetchSla,
+  } = useQuery(subnetHealthIncidentsQuery(netuid, window));
 
   const percentiles: SurfaceLatencyPercentiles[] = pctRes?.data ?? [];
   const slas: SurfaceSla[] = slaRes?.data ?? [];
@@ -75,6 +84,8 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
   }
   const rows = [...byId.values()].sort((a, b) => (a.uptime ?? 1) - (b.uptime ?? 1));
   const loading = pctPending || slaPending;
+  const isError = pctError || slaIsError;
+  const errorObj = pctErrorObj ?? slaErrorObj;
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -102,6 +113,17 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
       </div>
       {loading && rows.length === 0 ? (
         <div className="p-4 text-xs text-ink-muted">Loading reliability…</div>
+      ) : isError ? (
+        <div className="p-4">
+          <ErrorState
+            error={errorObj}
+            onRetry={() => {
+              void refetchPct();
+              void refetchSla();
+            }}
+            context="reliability"
+          />
+        </div>
       ) : rows.length === 0 ? (
         <div className="p-4 text-xs text-ink-muted">
           No probe history for this subnet in the {window} window yet.
