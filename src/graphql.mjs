@@ -92,6 +92,7 @@ import {
   clampOffset,
 } from "../workers/request-params.mjs";
 import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
+import { loadChainIdentityHistory } from "./chain-identity-history.mjs";
 import {
   buildGlobalHealth,
   formatLeaderboards,
@@ -400,6 +401,8 @@ export const SDL = `
     subnet_movers(window: String, sort: String, limit: Int): SubnetMovers!
     "Network-wide validator-set churn across all subnets over a 7d/30d/90d window (default 30d): every subnet ranked by gross validator churn (entered + exited) between the window's start and end snapshots, each with its retention and 0-100 stability score, plus a network rollup and the network-wide stability spread. neuron_daily-derived; comparable is false and the leaderboard empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/chain/turnover."
     chain_turnover(window: String, limit: Int): ChainTurnover!
+    "Network-wide identity-change feed: the most-recent SubnetIdentitiesV3 changes across every subnet (each entry carries its netuid), newest first, capped by limit; a cold/absent store resolves to a schema-stable empty feed (count 0), never null. Mirrors GET /api/v1/chain/identity-history."
+    chain_identity_history(limit: Int): ChainIdentityHistory!
     "Network-wide validator weight-setting activity leaderboard over a 7d/30d window (default 7d): subnets ranked by WeightsSet events with each's distinct-setter count and sets-per-setter update intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. Mirrors GET /api/v1/chain/weights."
     chain_weights(window: String, limit: Int): ChainWeights!
     "Network-wide axon-serving announcement leaderboard over a 7d/30d window (default 7d): subnets ranked by AxonServed announcements with each's distinct-server count and announcements-per-server re-announcement intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide counterpart of subnet_serving. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/serving."
@@ -1337,6 +1340,28 @@ export const SDL = `
     discord: String
     logo_url: String
     identity_hash: String
+  }
+
+  "One cross-subnet identity change in the network-wide feed (carries its netuid)."
+  type ChainIdentityHistoryEntry {
+    netuid: Int
+    block_number: Int
+    observed_at: String
+    subnet_name: String
+    symbol: String
+    description: String
+    github_repo: String
+    subnet_url: String
+    discord: String
+    logo_url: String
+    identity_hash: String
+  }
+
+  type ChainIdentityHistory {
+    schema_version: Int!
+    count: Int!
+    subnet_count: Int!
+    changes: [ChainIdentityHistoryEntry!]!
   }
 
   "Per-subnet neuron-registration activity over a window (#5720). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/registrations."
@@ -2608,6 +2633,7 @@ export const FIELD_COMPLEXITY = {
   subnet_concentration_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_trajectory: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   runtime: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3424,6 +3450,34 @@ const rootValue = {
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
       entries: data.entries || [],
+    };
+  },
+
+  async chain_identity_history({ limit }, context) {
+    // Same FEED_PAGINATION clamp REST applies. This chain-wide feed is
+    // limit-only (no offset/cursor) -- the network view returns the most-recent
+    // changes across every subnet in one pass.
+    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_SUBNET_IDENTITY_SOURCE) ->
+    // loadChainIdentityHistory fallback contract handleChainIdentityHistory
+    // uses; a store with no identity changes is a schema-stable empty feed
+    // (count 0), never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/identity-history", params),
+        "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+      )) ??
+      (await loadChainIdentityHistory(graphqlD1(context), {
+        limit: safeLimit,
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      count: data.count ?? 0,
+      subnet_count: data.subnet_count ?? 0,
+      changes: data.changes || [],
     };
   },
 
