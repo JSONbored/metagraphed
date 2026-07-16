@@ -38,3 +38,46 @@ body.graphiql-dark [data-radix-popper-content-wrapper] {
 .mg-graphiql-frame .graphiql-container {
   border-radius: inherit;
 }
+
+/*
+ * GraphiQL's icon sidebar (--sidebar-width) and per-editor toolbar
+ * (--toolbar-width) are fixed desktop-sized rails with no built-in responsive
+ * behavior — at mobile/tablet widths they eat a disproportionate share of the
+ * frame. Narrow them progressively.
+ *
+ * The query/response split (a JS-driven flex-grow ratio, see
+ * graphiql-explorer-body.tsx) is left at its default below 1024px: flex
+ * items default to min-width: auto, so CodeMirror's unwrapped query content
+ * already keeps the editor pane at a readable width and naturally collapses
+ * the (empty, until a query runs) response pane on narrow viewports --
+ * forcing min-width: 0 there to let a wider ratio apply instead just clips
+ * the query text. At >=1024px there's enough absolute width that CodeMirror
+ * never needs the min-width floor, so it's safe to let the (wider) seeded
+ * ratio govern and reclaim the otherwise-empty response pane.
+ */
+@media (min-width: 1024px) {
+  .mg-graphiql-frame .graphiql-editors,
+  .mg-graphiql-frame .graphiql-response {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 1023px) {
+  .mg-graphiql-frame .graphiql-container {
+    --sidebar-width: 48px;
+    --toolbar-width: 36px;
+  }
+}
+
+@media (max-width: 767px) {
+  .mg-graphiql-frame .graphiql-container {
+    --sidebar-width: 40px;
+    --toolbar-width: 32px;
+  }
+
+  /* Reclaim session-header space on narrow viewports; the page's own
+     "Explorer" heading already identifies the widget. */
+  .mg-graphiql-frame .graphiql-logo {
+    display: none;
+  }
+}

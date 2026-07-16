@@ -16,7 +16,6 @@ import { Route as SchemasRouteImport } from './routes/schemas'
 import { Route as RpcRouteImport } from './routes/rpc'
 import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
 import { Route as HealthRouteImport } from './routes/health'
-import { Route as GraphqlRouteImport } from './routes/graphql'
 import { Route as GapsRouteImport } from './routes/gaps'
 import { Route as FeedsRouteImport } from './routes/feeds'
 import { Route as ExplorerRouteImport } from './routes/explorer'
@@ -30,6 +29,7 @@ import { Route as SudoIndexRouteImport } from './routes/sudo.index'
 import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
 import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
+import { Route as GraphqlIndexRouteImport } from './routes/graphql.index'
 import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
 import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.index'
@@ -37,6 +37,7 @@ import { Route as AccountsIndexRouteImport } from './routes/accounts.index'
 import { Route as ValidatorsHotkeyRouteImport } from './routes/validators.$hotkey'
 import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
+import { Route as GraphqlExplorerRouteImport } from './routes/graphql.explorer'
 import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
 import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
 import { Route as AccountsSs58RouteImport } from './routes/accounts.$ss58'
@@ -74,11 +75,6 @@ const LeaderboardsRoute = LeaderboardsRouteImport.update({
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GraphqlRoute = GraphqlRouteImport.update({
-  id: '/graphql',
-  path: '/graphql',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GapsRoute = GapsRouteImport.update({
@@ -146,6 +142,11 @@ const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
   path: '/providers/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GraphqlIndexRoute = GraphqlIndexRouteImport.update({
+  id: '/graphql/',
+  path: '/graphql/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExtrinsicsIndexRoute = ExtrinsicsIndexRouteImport.update({
   id: '/extrinsics/',
   path: '/extrinsics/',
@@ -181,6 +182,11 @@ const ProvidersSlugRoute = ProvidersSlugRouteImport.update({
   path: '/providers/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GraphqlExplorerRoute = GraphqlExplorerRouteImport.update({
+  id: '/graphql/explorer',
+  path: '/graphql/explorer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExtrinsicsHashRoute = ExtrinsicsHashRouteImport.update({
   id: '/extrinsics/$hash',
   path: '/extrinsics/$hash',
@@ -206,7 +212,6 @@ export interface FileRoutesByFullPath {
   '/explorer': typeof ExplorerRoute
   '/feeds': typeof FeedsRoute
   '/gaps': typeof GapsRoute
-  '/graphql': typeof GraphqlRoute
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/rpc': typeof RpcRoute
@@ -217,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/blocks/$ref': typeof BlocksRefRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
+  '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
+  '/graphql/': typeof GraphqlIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/runtime/': typeof RuntimeIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
@@ -239,7 +246,6 @@ export interface FileRoutesByTo {
   '/explorer': typeof ExplorerRoute
   '/feeds': typeof FeedsRoute
   '/gaps': typeof GapsRoute
-  '/graphql': typeof GraphqlRoute
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/rpc': typeof RpcRoute
@@ -250,6 +256,7 @@ export interface FileRoutesByTo {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/blocks/$ref': typeof BlocksRefRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
+  '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
@@ -257,6 +264,7 @@ export interface FileRoutesByTo {
   '/admin-changes': typeof AdminChangesIndexRoute
   '/blocks': typeof BlocksIndexRoute
   '/extrinsics': typeof ExtrinsicsIndexRoute
+  '/graphql': typeof GraphqlIndexRoute
   '/providers': typeof ProvidersIndexRoute
   '/runtime': typeof RuntimeIndexRoute
   '/subnets': typeof SubnetsIndexRoute
@@ -273,7 +281,6 @@ export interface FileRoutesById {
   '/explorer': typeof ExplorerRoute
   '/feeds': typeof FeedsRoute
   '/gaps': typeof GapsRoute
-  '/graphql': typeof GraphqlRoute
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/rpc': typeof RpcRoute
@@ -284,6 +291,7 @@ export interface FileRoutesById {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/blocks/$ref': typeof BlocksRefRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
+  '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
@@ -291,6 +299,7 @@ export interface FileRoutesById {
   '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
+  '/graphql/': typeof GraphqlIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/runtime/': typeof RuntimeIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
@@ -308,7 +317,6 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/feeds'
     | '/gaps'
-    | '/graphql'
     | '/health'
     | '/leaderboards'
     | '/rpc'
@@ -319,6 +327,7 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/blocks/$ref'
     | '/extrinsics/$hash'
+    | '/graphql/explorer'
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/validators/$hotkey'
@@ -326,6 +335,7 @@ export interface FileRouteTypes {
     | '/admin-changes/'
     | '/blocks/'
     | '/extrinsics/'
+    | '/graphql/'
     | '/providers/'
     | '/runtime/'
     | '/subnets/'
@@ -341,7 +351,6 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/feeds'
     | '/gaps'
-    | '/graphql'
     | '/health'
     | '/leaderboards'
     | '/rpc'
@@ -352,6 +361,7 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/blocks/$ref'
     | '/extrinsics/$hash'
+    | '/graphql/explorer'
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/validators/$hotkey'
@@ -359,6 +369,7 @@ export interface FileRouteTypes {
     | '/admin-changes'
     | '/blocks'
     | '/extrinsics'
+    | '/graphql'
     | '/providers'
     | '/runtime'
     | '/subnets'
@@ -374,7 +385,6 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/feeds'
     | '/gaps'
-    | '/graphql'
     | '/health'
     | '/leaderboards'
     | '/rpc'
@@ -385,6 +395,7 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/blocks/$ref'
     | '/extrinsics/$hash'
+    | '/graphql/explorer'
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/validators/$hotkey'
@@ -392,6 +403,7 @@ export interface FileRouteTypes {
     | '/admin-changes/'
     | '/blocks/'
     | '/extrinsics/'
+    | '/graphql/'
     | '/providers/'
     | '/runtime/'
     | '/subnets/'
@@ -408,7 +420,6 @@ export interface RootRouteChildren {
   ExplorerRoute: typeof ExplorerRoute
   FeedsRoute: typeof FeedsRoute
   GapsRoute: typeof GapsRoute
-  GraphqlRoute: typeof GraphqlRoute
   HealthRoute: typeof HealthRoute
   LeaderboardsRoute: typeof LeaderboardsRoute
   RpcRoute: typeof RpcRoute
@@ -419,6 +430,7 @@ export interface RootRouteChildren {
   AccountsSs58Route: typeof AccountsSs58Route
   BlocksRefRoute: typeof BlocksRefRoute
   ExtrinsicsHashRoute: typeof ExtrinsicsHashRoute
+  GraphqlExplorerRoute: typeof GraphqlExplorerRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   SubnetsNetuidRoute: typeof SubnetsNetuidRoute
   ValidatorsHotkeyRoute: typeof ValidatorsHotkeyRoute
@@ -426,6 +438,7 @@ export interface RootRouteChildren {
   AdminChangesIndexRoute: typeof AdminChangesIndexRoute
   BlocksIndexRoute: typeof BlocksIndexRoute
   ExtrinsicsIndexRoute: typeof ExtrinsicsIndexRoute
+  GraphqlIndexRoute: typeof GraphqlIndexRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
   RuntimeIndexRoute: typeof RuntimeIndexRoute
   SubnetsIndexRoute: typeof SubnetsIndexRoute
@@ -482,13 +495,6 @@ declare module '@tanstack/react-router' {
       path: '/health'
       fullPath: '/health'
       preLoaderRoute: typeof HealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/graphql': {
-      id: '/graphql'
-      path: '/graphql'
-      fullPath: '/graphql'
-      preLoaderRoute: typeof GraphqlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gaps': {
@@ -582,6 +588,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProvidersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/graphql/': {
+      id: '/graphql/'
+      path: '/graphql'
+      fullPath: '/graphql/'
+      preLoaderRoute: typeof GraphqlIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/extrinsics/': {
       id: '/extrinsics/'
       path: '/extrinsics'
@@ -631,6 +644,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProvidersSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/graphql/explorer': {
+      id: '/graphql/explorer'
+      path: '/graphql/explorer'
+      fullPath: '/graphql/explorer'
+      preLoaderRoute: typeof GraphqlExplorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/extrinsics/$hash': {
       id: '/extrinsics/$hash'
       path: '/extrinsics/$hash'
@@ -664,7 +684,6 @@ const rootRouteChildren: RootRouteChildren = {
   ExplorerRoute: ExplorerRoute,
   FeedsRoute: FeedsRoute,
   GapsRoute: GapsRoute,
-  GraphqlRoute: GraphqlRoute,
   HealthRoute: HealthRoute,
   LeaderboardsRoute: LeaderboardsRoute,
   RpcRoute: RpcRoute,
@@ -675,6 +694,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsSs58Route: AccountsSs58Route,
   BlocksRefRoute: BlocksRefRoute,
   ExtrinsicsHashRoute: ExtrinsicsHashRoute,
+  GraphqlExplorerRoute: GraphqlExplorerRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   SubnetsNetuidRoute: SubnetsNetuidRoute,
   ValidatorsHotkeyRoute: ValidatorsHotkeyRoute,
@@ -682,6 +702,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminChangesIndexRoute: AdminChangesIndexRoute,
   BlocksIndexRoute: BlocksIndexRoute,
   ExtrinsicsIndexRoute: ExtrinsicsIndexRoute,
+  GraphqlIndexRoute: GraphqlIndexRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
   RuntimeIndexRoute: RuntimeIndexRoute,
   SubnetsIndexRoute: SubnetsIndexRoute,

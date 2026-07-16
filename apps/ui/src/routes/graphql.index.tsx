@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 import { CopyButton, PageHero, SectionHeading } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { GraphiqlExplorer } from "@/components/metagraphed/graphiql-explorer";
 import { API_BASE, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import {
   GRAPHQL_ENDPOINT_PATH,
@@ -11,7 +11,7 @@ import {
   buildGraphqlLimitRows,
 } from "@/lib/metagraphed/graphql-docs";
 
-export const Route = createFileRoute("/graphql")({
+export const Route = createFileRoute("/graphql/")({
   head: () => ({
     meta: [
       { title: "GraphQL — Metagraphed" },
@@ -80,9 +80,23 @@ function GraphqlDocsPage() {
         <section id="explorer">
           <SectionHeading
             title="Explorer"
-            intro="Run a query against the live endpoint — schema-aware autocomplete, docs, and history, right in the browser."
+            intro="Run a query against the live endpoint — schema-aware autocomplete, docs, and history, in a full-page workspace."
           />
-          <GraphiqlExplorer endpoint={ENDPOINT_URL} />
+          <Link
+            to="/graphql/explorer"
+            className="group flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-accent/40"
+          >
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-ink-strong">Open the GraphQL Explorer</div>
+              <div className="mt-0.5 text-[13px] text-ink-muted">
+                Interactive GraphiQL IDE, full height, on its own page.
+              </div>
+            </div>
+            <ArrowRight
+              aria-hidden
+              className="size-4 shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5 group-hover:text-accent"
+            />
+          </Link>
         </section>
 
         <section>
