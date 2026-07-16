@@ -1,16 +1,69 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "genomics",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "synthetic-data"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified docs site yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "The subnet also declares a GROUND_TRUTH_URL (/api/tasks/ground_truth) in its validator constants, but it rejects GET (405 Method Not Allowed) -- not a readable public endpoint, so it was not tracked."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T04:40:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-16T04:40:00.000Z"
   },
   "name": "NIOME",
   "netuid": 55,
+  "notes": "First maintainer-reviewed pass for SN55 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 2 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the official validator constants.py for undiscovered API endpoints: found GROUND_TRUTH_URL alongside the already-tracked TASK_URL and MINER_SCORE_URL, but it rejects GET (405) so it was not promoted.",
   "schema_version": 1,
   "slug": "sn-55",
   "source_repo": "https://github.com/genomesio/subnet-niome",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-55-niome-website",
+      "kind": "website",
+      "name": "NIOME website",
+      "notes": "Official NIOME (SN55) website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "niome",
+      "public_safe": true,
+      "source_urls": ["https://github.com/genomesio/subnet-niome"],
+      "url": "https://niome.genomes.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-55-niome-source-repo",
+      "kind": "source-repo",
+      "name": "NIOME source repository",
+      "notes": "Official NIOME (SN55) source repository, in the genomesio GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "niome",
+      "public_safe": true,
+      "source_urls": ["https://niome.genomes.io/"],
+      "url": "https://github.com/genomesio/subnet-niome"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -42,6 +95,12 @@
       "kind": "data-artifact",
       "name": "NIOME miner scores dataset",
       "notes": "Public no-auth GET returning SN55 NIOME's per-miner scoring dataset as JSON — an items[] array of scored genome-annotation submissions (annotation_score, f1_score, final_score, VCF score, per-submission log and timestamps) produced by the validator. Served on niome-api.genomes.io (the subnet's official API host) and declared as MINER_SCORE_URL alongside the already-registered TASK_URL in the official genomesio/subnet-niome validator constants. Distinct from the existing tasks surface — this is the scored-output dataset, not the task feed.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "niome",
       "public_safe": true,
       "review": {
@@ -60,6 +119,12 @@
       "kind": "dashboard",
       "name": "NIOME Weights & Biases dashboard",
       "notes": "Public Weights & Biases project the SN55 NIOME validators log to (wandb.ai/genomes/niome) — live validation runs and metrics. Entity 'genomes' and project 'niome' are the defaults set in the official genomesio/subnet-niome validator config (niome_subnet/utils/config.py), and wandb.init is called from neurons/validator.py. Publicly readable via the W&B API. Distinct host from the niome-api.genomes.io API.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "niome",
       "public_safe": true,
       "review": {

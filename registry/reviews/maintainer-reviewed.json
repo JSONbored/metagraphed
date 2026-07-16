@@ -763,6 +763,19 @@
       "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 5-path Miner Stats API OpenAPI schema: all no-auth no-param routes were already tracked; the sole remaining route, /miners/{miner_uid}, has no stable canonical value and was excluded."
     },
     {
+      "netuid": 55,
+      "slug": "sn-55",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T04:40:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://niome.genomes.io/",
+        "https://github.com/genomesio/subnet-niome",
+        "https://github.com/genomesio/subnet-niome/blob/main/niome_subnet/utils/constants.py"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the official validator constants.py for undiscovered API endpoints: found GROUND_TRUTH_URL alongside the already-tracked TASK_URL and MINER_SCORE_URL, but it rejects GET (405) so it was not promoted."
+    },
+    {
       "netuid": 56,
       "slug": "gradients",
       "decision": "maintainer-reviewed",
