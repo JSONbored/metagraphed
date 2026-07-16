@@ -25,13 +25,15 @@
 //   route) serves the same spec unwrapped -- verified via a direct fetch
 //   (top-level keys: openapi/info/paths/…, not ok/data/meta) -- and is what
 //   this script and every generated page's `document` prop use instead.
-// - The spec's `summary` field holds full explanatory paragraphs (up to
-//   ~1100 chars; 115 of 159 operations exceed 80 chars) with `description`
-//   left empty on every operation -- fumadocs-openapi uses `summary` as the
-//   page title verbatim (no truncation), and that title is what this app's
-//   docs.$.tsx renders as the sidebar label, breadcrumb, H1, and browser
-//   tab. splitOperationSummaries() below fixes this at the source: derives
-//   a short title from the operationId, and moves the original paragraph to
+// - The spec's `summary` field holds full explanatory sentences/paragraphs
+//   on every operation (24-1100 chars) with `description` left empty --
+//   fumadocs-openapi uses `summary` as the page title verbatim (no
+//   truncation), and that title is what this app's docs.$.tsx renders as
+//   the sidebar label, breadcrumb, H1, and browser tab. splitOperationSummaries()
+//   below fixes this at the source for every operation, not just the
+//   longest ones (a sidebar mixing short-but-still-sentence-length titles
+//   next to properly-short ones reads as inconsistent): derives a short
+//   Title Case title from the operationId, and moves the original text to
 //   `description` (rendered by <DocsDescription>, right under the H1 --
 //   same layout the 4 hand-written docs pages already use). Applied twice,
 //   independently, once here (bakes the fix into the generated frontmatter)
@@ -71,8 +73,16 @@ const WORD_OVERRIDES = {
   dx: "DX",
 };
 
+// Whole-operationId overrides for cases the camelCase splitter can't catch
+// -- an acronym only recognizable as a *substring* of a single-word,
+// all-lowercase operationId (no camelCase boundary to split on at all).
+const ID_OVERRIDES = {
+  openapi: "OpenAPI",
+};
+
 /** "accountAxonRemovals" -> "Account Axon Removals"; "rpcEndpoints" -> "RPC Endpoints". */
 function humanizeOperationId(id) {
+  if (ID_OVERRIDES[id]) return ID_OVERRIDES[id];
   return id
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/([A-Za-z])([0-9])/g, "$1 $2")
@@ -83,17 +93,22 @@ function humanizeOperationId(id) {
 }
 
 /**
- * Mutates a parsed OpenAPI document in place: for every operation whose
- * `summary` reads like a paragraph rather than a title, swaps in a short
- * operationId-derived title and moves the original text to `description`
- * (only if `description` isn't already set -- never overwrites real data).
+ * Mutates a parsed OpenAPI document in place: for every operation, swaps in
+ * a short operationId-derived title and moves the original summary text to
+ * `description` (only if `description` isn't already set -- never
+ * overwrites real data). Applied unconditionally, not just to the longest
+ * summaries -- a sidebar mixing "Account Axon Removals" next to "Fetch
+ * Bittensor RPC endpoint status." (a 37-char summary, technically short,
+ * but still a full sentence that wraps across lines as a nav item) reads as
+ * inconsistent; every title in the reference should follow the same short,
+ * Title Case pattern.
  */
 function splitOperationSummaries(spec) {
   for (const methods of Object.values(spec.paths ?? {})) {
     for (const op of Object.values(methods)) {
       if (!op || typeof op !== "object" || !op.operationId) continue;
       const summary = op.summary ?? "";
-      if (summary.length <= 80) continue;
+      if (!summary) continue;
       if (!op.description) op.description = summary;
       op.summary = humanizeOperationId(op.operationId);
     }

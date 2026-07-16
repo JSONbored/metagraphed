@@ -31,7 +31,15 @@ const WORD_OVERRIDES: Record<string, string> = {
   dx: "DX",
 };
 
+// Whole-operationId overrides for cases the camelCase splitter can't catch
+// -- an acronym only recognizable as a *substring* of a single-word,
+// all-lowercase operationId (no camelCase boundary to split on at all).
+const ID_OVERRIDES: Record<string, string> = {
+  openapi: "OpenAPI",
+};
+
 function humanizeOperationId(id: string): string {
+  if (ID_OVERRIDES[id]) return ID_OVERRIDES[id];
   return id
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/([A-Za-z])([0-9])/g, "$1 $2")
@@ -47,13 +55,19 @@ interface OpenAPIOperationLike {
   description?: string;
 }
 
+// Applied unconditionally, not just to the longest summaries -- a sidebar
+// mixing "Account Axon Removals" next to "Fetch Bittensor RPC endpoint
+// status." (a 37-char summary, technically short, but still a full
+// sentence that wraps across lines as a nav item) reads as inconsistent;
+// every title in the reference should follow the same short, Title Case
+// pattern. Kept in sync with scripts/generate-openapi-docs.mjs's twin.
 function splitOperationSummaries(spec: { paths?: Record<string, Record<string, unknown>> }): void {
   for (const methods of Object.values(spec.paths ?? {})) {
     for (const op of Object.values(methods)) {
       const operation = op as OpenAPIOperationLike;
       if (!operation || typeof operation !== "object" || !operation.operationId) continue;
       const summary = operation.summary ?? "";
-      if (summary.length <= 80) continue;
+      if (!summary) continue;
       if (!operation.description) operation.description = summary;
       operation.summary = humanizeOperationId(operation.operationId);
     }
