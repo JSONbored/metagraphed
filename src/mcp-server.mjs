@@ -2298,22 +2298,26 @@ export const MCP_TOOLS = [
         },
         min_candidate_count: {
           type: "integer",
-          description: "Only subnets with at least this many surface candidates.",
+          description:
+            "Only subnets with at least this many surface candidates.",
           minimum: 0,
         },
         max_candidate_count: {
           type: "integer",
-          description: "Only subnets with at most this many surface candidates.",
+          description:
+            "Only subnets with at most this many surface candidates.",
           minimum: 0,
         },
         min_mechanism_count: {
           type: "integer",
-          description: "Only subnets with at least this many registered mechanisms.",
+          description:
+            "Only subnets with at least this many registered mechanisms.",
           minimum: 0,
         },
         max_mechanism_count: {
           type: "integer",
-          description: "Only subnets with at most this many registered mechanisms.",
+          description:
+            "Only subnets with at most this many registered mechanisms.",
           minimum: 0,
         },
         min_participant_count: {
