@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Scale, UserMinus } from "lucide-react";
+import { Scale, UserMinus, Coins } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
@@ -20,11 +20,12 @@ import {
 import {
   chainDeregistrationsQuery,
   chainWeightsQuery,
+  economicsQuery,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
-import type { Subnet } from "@/lib/metagraphed/types";
+import type { Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
 
 const leaderboardsSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -40,13 +41,13 @@ export const Route = createFileRoute("/leaderboards")({
       {
         name: "description",
         content:
-          "Network-wide Bittensor leaderboards — validator weight-setting activity and neuron deregistrations ranked by subnet over 7d and 30d windows.",
+          "Network-wide Bittensor leaderboards — top emission share, validator weight-setting activity, and neuron deregistrations ranked by subnet.",
       },
       { property: "og:title", content: "Leaderboards — Metagraphed" },
       {
         property: "og:description",
         content:
-          "Network-wide Bittensor leaderboards — validator weight-setting activity and neuron deregistrations ranked by subnet over 7d and 30d windows.",
+          "Network-wide Bittensor leaderboards — top emission share, validator weight-setting activity, and neuron deregistrations ranked by subnet.",
       },
     ],
   }),
@@ -72,9 +73,14 @@ function LeaderboardsPage() {
         eyebrow="Explorer"
         live
         title="Leaderboards"
-        description="Network-wide chain activity boards — ranked by subnet from live chain-direct analytics."
+        description="Network-wide chain activity boards — live economics and ranked chain analytics by subnet."
         actions={
           <ActionBar>
+            <DownloadCsvButton
+              url={buildUrl("/api/v1/economics", { sort: "emission_share", order: "desc" })}
+              label="Emissions CSV"
+              bare
+            />
             <DownloadCsvButton
               url={buildUrl("/api/v1/chain/weights", { window: win })}
               label="Weight-setting CSV"
@@ -107,6 +113,11 @@ function LeaderboardsPage() {
       <div className="space-y-12">
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-[32rem] w-full" />}>
+            <EmissionsLeaderboard />
+          </Suspense>
+        </QueryErrorBoundary>
+        <QueryErrorBoundary>
+          <Suspense fallback={<Skeleton className="h-[32rem] w-full" />}>
             <WeightSettingLeaderboard win={win} />
           </Suspense>
         </QueryErrorBoundary>
@@ -116,7 +127,9 @@ function LeaderboardsPage() {
           </Suspense>
         </QueryErrorBoundary>
       </div>
-      <ApiSourceFooter paths={["/api/v1/chain/weights", "/api/v1/chain/deregistrations"]} />
+      <ApiSourceFooter
+        paths={["/api/v1/economics", "/api/v1/chain/weights", "/api/v1/chain/deregistrations"]}
+      />
     </AppShell>
   );
 }
@@ -130,6 +143,191 @@ function useSubnetById(): Map<number, Subnet> {
     for (const s of (snRes.data ?? []) as Subnet[]) m.set(s.netuid, s);
     return m;
   }, [snRes]);
+}
+
+function fmtEmissionShare(share: number | null | undefined): string {
+  return share != null ? `${(share * 100).toFixed(3)}%` : "—";
+}
+
+function emissionsRows(economics: SubnetEconomics[]): SubnetEconomics[] {
+  return economics
+    .filter((row) => typeof row.emission_share === "number" && Number.isFinite(row.emission_share))
+    .sort((a, b) => (b.emission_share ?? 0) - (a.emission_share ?? 0));
+}
+
+function EmissionsLeaderboard() {
+  const { data: econRes } = useSuspenseQuery(economicsQuery());
+  const subnetById = useSubnetById();
+  const rows = useMemo(() => emissionsRows(econRes.data ?? []), [econRes.data]);
+  const shares = rows.map((row) => row.emission_share!);
+  const totalShare = shares.reduce((sum, share) => sum + share, 0);
+  const topShare = shares.length > 0 ? Math.max(...shares) : null;
+  const meanShare = shares.length > 0 ? totalShare / shares.length : null;
+  const observedAt = econRes.meta?.generated_at ?? null;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Top emitters
+        </h2>
+        <p className="mt-1 text-sm text-ink-muted">
+          Live emission share ranked by subnet — current on-chain economics snapshot, not windowed
+          like the chain boards below.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatTile
+          icon={Coins}
+          eyebrow="Ranked subnets"
+          value={formatNumber(rows.length)}
+          hint="with live emission share"
+          tone="accent"
+        />
+        <StatTile
+          icon={Coins}
+          eyebrow="Top share"
+          value={fmtEmissionShare(topShare)}
+          hint="largest single subnet"
+        />
+        <StatTile
+          icon={Coins}
+          eyebrow="Mean share"
+          value={fmtEmissionShare(meanShare)}
+          hint="across ranked subnets"
+        />
+      </div>
+
+      {rows.length === 0 ? (
+        <EmptyState
+          title="No emission share data yet"
+          description="The economics snapshot has not published emission_share for any subnet yet."
+          lastChecked={observedAt ?? undefined}
+        />
+      ) : (
+        <section className="rounded-lg border border-border bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+              Per-subnet rankings
+            </span>
+            <span className="font-mono text-[11px] text-ink-muted">
+              {formatNumber(rows.length)} subnets
+              {observedAt ? (
+                <>
+                  {" "}
+                  · observed <TimeAgo at={observedAt} />
+                </>
+              ) : null}
+            </span>
+          </div>
+          <div className="md:hidden space-y-2 p-3">
+            {rows.map((row, i) => {
+              const subnet = subnetById.get(row.netuid);
+              const name = subnet?.name ?? row.name ?? `Subnet ${row.netuid}`;
+              return (
+                <div key={row.netuid} className="rounded border border-border bg-card p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: row.netuid }}
+                      className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
+                    >
+                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                        {i + 1}
+                      </span>
+                      <BrandIcon
+                        size={18}
+                        name={name}
+                        fallback={row.netuid}
+                        netuid={row.netuid}
+                        subnetSlug={
+                          typeof subnet?.slug === "string"
+                            ? subnet.slug
+                            : typeof row.slug === "string"
+                              ? row.slug
+                              : undefined
+                        }
+                      />
+                      <span className="truncate text-sm text-ink-strong">{name}</span>
+                    </Link>
+                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-strong">
+                      {fmtEmissionShare(row.emission_share)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                    <span>
+                      {row.alpha_price_tao != null
+                        ? `${row.alpha_price_tao.toFixed(4)} τ alpha`
+                        : "— alpha"}
+                    </span>
+                    <span>{formatTao(row.total_stake_tao)} stake</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Rank</th>
+                  <th className={TH}>Subnet</th>
+                  <th className={`${TH} text-right`}>Emission share</th>
+                  <th className={`${TH} text-right`}>Alpha price</th>
+                  <th className={`${TH} text-right`}>Total stake</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((row, i) => {
+                  const subnet = subnetById.get(row.netuid);
+                  const name = subnet?.name ?? row.name ?? `Subnet ${row.netuid}`;
+                  return (
+                    <tr key={row.netuid} className="hover:bg-surface/40">
+                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {i + 1}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: row.netuid }}
+                          className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
+                        >
+                          <BrandIcon
+                            size={18}
+                            name={name}
+                            fallback={row.netuid}
+                            netuid={row.netuid}
+                            subnetSlug={
+                              typeof subnet?.slug === "string"
+                                ? subnet.slug
+                                : typeof row.slug === "string"
+                                  ? row.slug
+                                  : undefined
+                            }
+                          />
+                          <span className="truncate text-sm text-ink-strong">{name}</span>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-strong">
+                        {fmtEmissionShare(row.emission_share)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {row.alpha_price_tao != null ? `${row.alpha_price_tao.toFixed(4)} τ` : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {formatTao(row.total_stake_tao)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </div>
+  );
 }
 
 function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
