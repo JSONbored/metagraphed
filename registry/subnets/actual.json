@@ -28,15 +28,15 @@
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T18:08:00.000Z",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
     "source_count": 5,
-    "verified_at": "2026-06-08T18:08:00.000Z"
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
   "dashboard_url": "https://backprop.finance/dtao/subnets/95-actual",
   "docs_url": null,
   "name": "Actual",
   "netuid": 95,
-  "notes": "Reviewed overlay for SN95 Actual. The Actual Computer website metadata identifies the project with Bittensor, Subnet 95, decentralized AI, and inference software. The previous GitHub organization candidate currently returns 404 and is not promoted.",
+  "notes": "Reviewed overlay for SN95 Actual. The Actual Computer website metadata identifies the project with Bittensor, Subnet 95, decentralized AI, and inference software. The previous GitHub organization candidate currently returns 404 and is not promoted. Re-review pass (2026-07-15): fixed 1 missing probe block; still no GitHub source repository reference found anywhere on the site.",
   "schema_version": 1,
   "slug": "actual",
   "source_repo": null,
@@ -85,6 +85,12 @@
       "kind": "subnet-api",
       "name": "Actual API health",
       "notes": "Public no-auth GET /api/health on actual.inc returning application liveness JSON. Served on the official Actual Computer website host registered in this manifest.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "actual-computer",
       "public_safe": true,
       "review": {
