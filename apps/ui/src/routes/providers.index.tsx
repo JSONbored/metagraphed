@@ -20,6 +20,7 @@ import {
   type ProviderCounts,
 } from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
 import { resolveProviderCard } from "@/lib/metagraphed/provider-card-fields";
@@ -30,6 +31,7 @@ import {
   PageHero,
   ViewModeToggle,
   ShareButton,
+  DownloadCsvButton,
   TimeAgo,
   ActionBar,
   Donut,
@@ -78,6 +80,7 @@ function ProvidersPage() {
     search.q || search.kind || search.authority || (search.sort && search.sort !== "name"),
   );
   const onReset = () => navigate({ search: { view: search.view } as never, replace: true });
+  const providersCsvUrl = buildUrl("/api/v1/providers");
   return (
     <AppShell>
       <PageHero
@@ -99,6 +102,7 @@ function ProvidersPage() {
             />
             <ActionBar>
               <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+              <DownloadCsvButton url={providersCsvUrl} bare />
               <ShareButton bare />
             </ActionBar>
           </>

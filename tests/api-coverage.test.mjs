@@ -1263,10 +1263,10 @@ describe("subnets CSV export", () => {
   });
 
   test("Accept: text/csv is ignored for collection routes without CSV contracts", async () => {
-    // /api/v1/providers is a list route that intentionally has no CSV contract,
-    // so content negotiation must fall through to the JSON envelope.
+    // /api/v1/source-snapshots is a list route that intentionally has no CSV
+    // contract, so content negotiation must fall through to the JSON envelope.
     const res = await handleRequest(
-      req("/api/v1/providers?limit=1", {
+      req("/api/v1/source-snapshots?limit=1", {
         headers: { accept: "text/csv" },
       }),
       createLocalArtifactEnv(),
@@ -1277,7 +1277,6 @@ describe("subnets CSV export", () => {
 
     const body = await res.json();
     assert.equal(body.ok, true);
-    assert.equal(Array.isArray(body.data.providers), true);
   });
 
   test("empty projected CSV exports retain the requested header row", async () => {
@@ -1434,6 +1433,7 @@ describe("registry list CSV export", () => {
     "subnet-candidates",
     "profiles",
     "coverage-depth",
+    "providers",
   ];
 
   test("every wired registry route advertises the CSV contract", () => {
@@ -1450,7 +1450,7 @@ describe("registry list CSV export", () => {
   });
 
   test("list routes without a CSV contract stay JSON-only", () => {
-    for (const id of ["providers", "rpc-endpoints", "source-snapshots"]) {
+    for (const id of ["rpc-endpoints", "source-snapshots"]) {
       const entry = API_ROUTES.find((route) => route.id === id);
       assert.ok(entry, `route ${id} should exist`);
       assert.notEqual(entry.csv_response, true, `${id} must stay JSON-only`);
@@ -1466,6 +1466,7 @@ describe("registry list CSV export", () => {
     ["/api/v1/candidates", "candidates.csv"],
     ["/api/v1/profiles", "profiles.csv"],
     ["/api/v1/coverage-depth", "coverage-depth.csv"],
+    ["/api/v1/providers", "providers.csv"],
   ]) {
     test(`${path}?format=csv returns a named text/csv download`, async () => {
       const res = await handleRequest(
