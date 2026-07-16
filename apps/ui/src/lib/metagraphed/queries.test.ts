@@ -15,6 +15,7 @@ import {
   getNextPageParam,
   normalizeSubnetGaps,
   validateNextCursor,
+  normalizeFreshnessSources,
 } from "./queries";
 
 // These tests lock the canonical-only reads after #1756 collapsed the redundant
@@ -22,6 +23,40 @@ import {
 // served by /api/v1/subnets, /subnets/{n}/profile, /gaps, /compare as of the PR)
 // plus the edge cases #226 (stringArrayFromUnknown) and #1757 (null timestamps)
 // guard. A future API regression that drops a canonical field is caught here.
+
+describe("normalizeFreshnessSources", () => {
+  const NOW = Date.parse("2026-07-15T00:00:00.000Z");
+
+  it("excludes a 1970 placeholder timestamp from the freshness/staleness domain (#6021)", () => {
+    const out = normalizeFreshnessSources(
+      [
+        { id: "placeholder", as_of: "1970-01-01T00:00:00.000Z" },
+        { id: "fresh", as_of: "2026-07-14T00:00:00.000Z" },
+      ],
+      NOW,
+    );
+    // The placeholder must NOT feed a multi-decade age into the aggregates -- the
+    // only usable source (1 day old) drives maxAge/avgAge, so both are 86400s.
+    expect(out.maxAgeSeconds).toBe(86_400);
+    expect(out.avgAgeSeconds).toBe(86_400);
+    // And the placeholder is not counted stale via its (excluded) age.
+    expect(out.staleCount).toBe(0);
+    // The placeholder source still appears in the list, just with no last_seen.
+    const placeholder = out.sources.find((s) => s.name === "placeholder");
+    expect(placeholder?.last_seen).toBeUndefined();
+    const fresh = out.sources.find((s) => s.name === "fresh");
+    expect(fresh?.last_seen).toBe("2026-07-14T00:00:00.000Z");
+  });
+
+  it("still ages a genuinely stale (post-2000) source", () => {
+    const out = normalizeFreshnessSources(
+      [{ id: "old", as_of: "2026-07-01T00:00:00.000Z", stale_after_hours: 24 }],
+      NOW,
+    );
+    expect(out.maxAgeSeconds).toBe(14 * 86_400);
+    expect(out.staleCount).toBe(1);
+  });
+});
 
 describe("normalizeAccountEvent", () => {
   it("normalizes primitive event fields before rendering", () => {

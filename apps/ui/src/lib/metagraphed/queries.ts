@@ -5,6 +5,7 @@ import { blockRefPathSegment } from "./blocks";
 import { extrinsicHashPathSegment } from "./extrinsics";
 import { isValidSs58, ss58PathSegment } from "./accounts";
 import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
+import { isUsableTimestamp } from "./format";
 import type {
   AdapterSnapshot,
   AgentResource,
@@ -592,14 +593,19 @@ function normalizeUptime(raw: Partial<Uptime> | undefined): Uptime {
   };
 }
 
-function normalizeFreshnessSources(raw: unknown, now = Date.now()) {
+export function normalizeFreshnessSources(raw: unknown, now = Date.now()) {
   let staleCount = 0;
   let ageTotal = 0;
   let ageCount = 0;
   let maxAgeSeconds: number | undefined;
 
   const sources = freshnessSourceRecords(raw).map<NormalizedFreshnessSource>((s) => {
-    const ts = finiteTimestamp(s.as_of) ?? finiteTimestamp(s.timestamp);
+    const candidate = finiteTimestamp(s.as_of) ?? finiteTimestamp(s.timestamp);
+    // Apply the same pre-2000 placeholder exclusion isUsableTimestamp enforces,
+    // so a "1970-01-01T00:00:00.000Z" registry placeholder isn't fed as a
+    // multi-decade age into the freshness/staleness domain (staleCount,
+    // avgAgeSeconds, maxAgeSeconds) the UI renders.
+    const ts = isUsableTimestamp(candidate) ? candidate : undefined;
     const ageSec =
       ts !== undefined ? Math.max(0, Math.round((now - Date.parse(ts)) / 1000)) : undefined;
 
