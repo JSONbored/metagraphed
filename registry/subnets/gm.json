@@ -4,28 +4,28 @@
     "identity-reviewed",
     "llm-inference",
     "marketplace",
+    "official-source-repo",
+    "official-website",
     "tee"
   ],
   "contact": "hi@saygm.com",
   "curation": {
     "gap_notes": [
-      "No verified official website yet.",
-      "No verified live source repository yet.",
       "No verified official docs site yet beyond public directory/community pages.",
       "No verified SSE/event stream yet.",
       "SubnetRadar published Discord-derived news about a TEE-enabled model routing marketplace, but that is not treated as an official operational interface."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "reviewed_at": "2026-07-15T23:59:00.000Z",
     "source_count": 6,
-    "verified_at": "2026-06-08T15:00:00.000Z"
+    "verified_at": "2026-07-15T23:59:00.000Z"
   },
   "dashboard_url": null,
   "docs_url": null,
   "name": "gm",
   "netuid": 28,
-  "notes": "Reviewed overlay for SN28 gm. Public news/directory sources describe a TEE-enabled LLM inference marketplace, but no official public website, source repository, API, OpenAPI schema, or docs site has been verified.",
+  "notes": "Reviewed overlay for SN28 gm. Public news/directory sources describe a TEE-enabled LLM inference marketplace. This pass added the missing website and source-repo surfaces (both already set as top-level website_url/source_repo fields, live-verified, but previously untracked as surfaces) and fixed all 4 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. The 4 documented gm Gateway API paths (chat/completions, responses, messages, v1beta model actions) all require bearer auth per the OpenAPI schema's global security requirement and are write/inference-call endpoints, so none are promoted as additional surfaces. No dedicated docs subdomain found (docs.saygm.com unresolvable, saygm.com/docs 404s).",
   "schema_version": 1,
   "slug": "gm",
   "social": {
@@ -36,10 +36,52 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-28-gm-website",
+      "kind": "website",
+      "name": "gm website",
+      "notes": "Official gm website for SN28. Registered as this subnet's website_url and the host serving the already-tracked OpenAPI spec and health surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taostat/gm-miner"],
+      "url": "https://saygm.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-28-gm-source-repo",
+      "kind": "source-repo",
+      "name": "gm miner source repository",
+      "notes": "Official gm miner image and CLI source repository. README confirms this is the gm Bittensor subnet, netuid 28 mainnet, and links the registered saygm.com website.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "source_urls": ["https://saygm.com/"],
+      "url": "https://github.com/taostat/gm-miner"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-28-gm-openapi",
       "kind": "openapi",
       "name": "gm Gateway API OpenAPI spec",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "gm",
       "public_safe": true,
       "review": {
@@ -57,6 +99,12 @@
       "id": "sn-28-gm-subnet-api",
       "kind": "subnet-api",
       "name": "gm model catalog API",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "gm",
       "public_safe": true,
       "review": {
@@ -73,6 +121,12 @@
       "kind": "subnet-api",
       "name": "gm gateway health",
       "notes": "Public no-auth GET /healthz on saygm.com returning gateway liveness (observed plain-text response: ok). Served on the same host as the registered OpenAPI spec and website surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "gm",
       "public_safe": true,
       "review": {
@@ -89,6 +143,12 @@
       "kind": "data-artifact",
       "name": "gm miner Envoy data-plane configuration",
       "notes": "Public no-auth machine-readable Envoy configuration for the SN28 gm miner data plane, committed in the official taostat/gm-miner repository (its README identifies the repo as the gm Bittensor subnet, netuid 28 mainnet, and links the registered saygm.com website). It is the canonical definition of the gm miner data plane: the provider routing table (Anthropic/OpenAI/Gemini/Chutes plus a benchmark route keyed on the x-gm-provider header), the inbound node-key auth Lua filter, HTTP local rate-limiting and load-shedding, the Prometheus metrics listener, and the RA-TLS attestation ingress listener. No secrets are present (keys and the node secret are rendered from container env at start).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "gm",
       "public_safe": true,
       "review": {
