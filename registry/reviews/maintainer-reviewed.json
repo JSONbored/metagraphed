@@ -750,6 +750,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/efficientfrontier.json (reviewed_at 2026-06-08T14:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 54,
+      "slug": "sn-54",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T04:30:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.yanez.ai/",
+        "https://github.com/yanez-compliance/MIID-subnet",
+        "https://miners-stats.yanezcompliance.net/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 5-path Miner Stats API OpenAPI schema: all no-auth no-param routes were already tracked; the sole remaining route, /miners/{miner_uid}, has no stable canonical value and was excluded."
+    },
+    {
       "netuid": 56,
       "slug": "gradients",
       "decision": "maintainer-reviewed",

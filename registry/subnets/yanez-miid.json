@@ -1,12 +1,27 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "compliance",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "synthetic-data"
+  ],
   "contact": "jose@yanezcompliance.com",
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified docs site yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T04:30:00.000Z",
+    "source_count": 3,
+    "verified_at": "2026-07-16T04:30:00.000Z"
   },
   "name": "Yanez MIID",
   "netuid": 54,
+  "notes": "First maintainer-reviewed pass for SN54 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 5-path Miner Stats API OpenAPI schema: all no-auth no-param routes are already tracked; the sole remaining route, /miners/{miner_uid}, has no stable canonical value (254 possible miner UIDs) and was excluded.",
   "schema_version": 1,
   "slug": "sn-54",
   "social": {
@@ -17,11 +32,53 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-54-yanez-miid-website",
+      "kind": "website",
+      "name": "Yanez MIID website",
+      "notes": "Official Yanez MIID (SN54) website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "yanez-compliance",
+      "public_safe": true,
+      "source_urls": ["https://github.com/yanez-compliance/MIID-subnet"],
+      "url": "https://www.yanez.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-54-yanez-miid-source-repo",
+      "kind": "source-repo",
+      "name": "Yanez MIID source repository",
+      "notes": "Official Yanez MIID (SN54) source repository, in the yanez-compliance GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "yanez-compliance",
+      "public_safe": true,
+      "source_urls": ["https://www.yanez.ai/"],
+      "url": "https://github.com/yanez-compliance/MIID-subnet"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-54-yanez-compliance-openapi",
       "kind": "openapi",
       "name": "Yanez MIID Miner Stats API",
       "notes": "Machine-readable OpenAPI 3.1 spec for the SN54 Yanez MIID public Miner Stats API. The yanezcompliance.net host matches the subnet's registered source-repo org (yanez-compliance) and contact domain, and powers the official leaderboard dashboard linked from the repo README.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "yanez-compliance",
       "public_safe": true,
       "review": {
@@ -43,6 +100,12 @@
       "kind": "subnet-api",
       "name": "Yanez MIID subnet-api",
       "notes": "Public no-auth JSON endpoint of the SN54 Yanez MIID Miner Stats API (latest per-miner quality/similarity scores). Sibling endpoints: /miners and /miners/{miner_uid}; the full contract is the openapi surface. Powers the subnet's official leaderboard dashboard.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "yanez-compliance",
       "public_safe": true,
       "review": {
@@ -62,6 +125,12 @@
       "kind": "data-artifact",
       "name": "Yanez MIID miner UID catalog",
       "notes": "Public no-auth GET returning the full catalog of registered SN54 miner UIDs (254 entries observed), distinct from the miners_stats scoring payload already registered as the subnet-api surface. Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"List Miners\" (operationId list_miners_miners_get), same host as the registered openapi/subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "yanez-compliance",
       "public_safe": true,
       "review": {
