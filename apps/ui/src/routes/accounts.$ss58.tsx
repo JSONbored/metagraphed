@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { SelectFilter, FilterChip } from "@/components/metagraphed/table-controls";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import {
@@ -66,7 +66,7 @@ import {
   accountSubnetsQuery,
   accountTransfersQuery,
 } from "@/lib/metagraphed/queries";
-import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
@@ -160,7 +160,9 @@ function AccountDetail({ ss58 }: { ss58: string }) {
 
 function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const sourceRef = ss58PathSegment(ss58);
-  const account = useSuspenseQuery(accountQuery(ss58)).data.data as AccountSummary;
+  const accountResult = useSuspenseQuery(accountQuery(ss58)).data;
+  const account = accountResult.data as AccountSummary;
+  const generatedAt = accountResult.meta?.generated_at ?? null;
   // Balance is a separate live-RPC call: fetched non-blocking so a slow/failed
   // RPC never stalls or errors the rest of the entity page.
   const balanceResult = useQuery(accountBalanceQuery(ss58));
@@ -229,6 +231,13 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             >
               API endpoints
             </a>
+            {isStaleFreshness(generatedAt) ? (
+              <StaleBanner
+                compact
+                generatedAt={generatedAt}
+                refreshQueryKeys={[accountQuery(ss58).queryKey]}
+              />
+            ) : null}
           </>
         }
         aside={
