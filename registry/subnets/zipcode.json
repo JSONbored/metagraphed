@@ -1,12 +1,23 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "real-estate"
+  ],
   "contact": "support@resilabs.ai",
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": ["No verified SSE/event stream yet."],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T02:30:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-07-16T02:30:00.000Z"
   },
   "name": "Zipcode",
   "netuid": 46,
+  "notes": "First maintainer-reviewed pass for SN46 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 4 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full Zip Code Portal OpenAPI schema (41 paths): all /api/portal/* and /api/v1/real_estate/* routes require PortalJWT/PortalApiKey auth (explicitly declared in the schema); the parameterized model-detail and validation-history routes have no stable canonical value. Added one new surface: the dashboard-scoped OpenAPI document (distinct title/schema from the top-level portal one, already cited as a source_url throughout this file but never itself tracked).",
   "schema_version": 1,
   "slug": "sn-46",
   "social": {
@@ -17,11 +28,53 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-46-zipcode-website",
+      "kind": "website",
+      "name": "Zipcode website",
+      "notes": "Official Zipcode (SN46) website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "source_urls": ["https://github.com/resi-labs-ai/RESI-models"],
+      "url": "https://zipcode.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-46-zipcode-source-repo",
+      "kind": "source-repo",
+      "name": "RESI models source repository",
+      "notes": "Official Zipcode (SN46) source repository, in the resi-labs-ai GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "source_urls": ["https://zipcode.ai/"],
+      "url": "https://github.com/resi-labs-ai/RESI-models"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-46-zipcode-openapi",
       "kind": "openapi",
       "name": "Zipcode Portal OpenAPI",
       "notes": "Machine-readable OpenAPI schema for Zipcode's public portal and dashboard API routes.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "zipcode",
       "public_safe": true,
       "review": {
@@ -38,11 +91,37 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-46-zipcode-dashboard-openapi",
+      "kind": "openapi",
+      "name": "RESI Dashboard OpenAPI schema",
+      "notes": "Machine-readable OpenAPI schema for the dashboard-scoped RESI Subnet 46 API (title: \"RESI Subnet 46 API\") -- distinct from the top-level Zip Code Portal OpenAPI document above, which covers the full portal surface including the auth-gated project/asset endpoints. Already cited as a source_url throughout this file's other surfaces prior to this pass.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://zipcode.ai/api/dashboard/docs",
+      "source_urls": ["https://zipcode.ai/openapi.json"],
+      "url": "https://zipcode.ai/api/dashboard/docs"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-46-zipcode-subnet-api",
       "kind": "subnet-api",
       "name": "Zipcode dashboard stats API",
       "notes": "Public no-auth dashboard endpoint for SN46 network statistics, scores, emissions, and prize pool data.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "zipcode",
       "public_safe": true,
       "review": {
@@ -62,6 +141,12 @@
       "kind": "data-artifact",
       "name": "Zipcode model leaderboard data",
       "notes": "Public no-auth JSON feed of SN46 miner model leaderboard and evaluation metadata.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "zipcode",
       "public_safe": true,
       "review": {
@@ -81,6 +166,12 @@
       "kind": "subnet-api",
       "name": "Zipcode daily emissions API",
       "notes": "Public no-auth GET /api/dashboard/stats/emissions on zipcode.ai returning SN46 daily TAO emissions and block height. Documented in the subnet OpenAPI on the same host as existing dashboard surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "zipcode",
       "public_safe": true,
       "review": {
