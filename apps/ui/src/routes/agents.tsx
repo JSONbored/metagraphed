@@ -210,6 +210,7 @@ function AgentsBody() {
       {/* Every machine-readable surface — a calm list, not a card wall */}
       <section>
         <SectionHeading
+          id="agent-resources"
           title="Everything else, fetchable directly"
           intro={`A paste-ready agent prompt, a Bittensor skill, llms.txt, the OpenAPI contract, grounded Q&A, semantic search, and bulk data — ${res.summary.callable_service_count} callable services across ${res.summary.subnet_count} subnets, all indexed at /api/v1/agent-resources.`}
         />
