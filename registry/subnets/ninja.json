@@ -17,9 +17,9 @@
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T07:45:00.000Z",
+    "reviewed_at": "2026-07-16T06:20:00.000Z",
     "source_count": 7,
-    "verified_at": "2026-06-08T07:45:00.000Z"
+    "verified_at": "2026-07-16T06:20:00.000Z"
   },
   "dashboard_url": "https://ninja66.ai/",
   "docs_url": "https://github.com/ninja-subnet/ninja/blob/main/README.md",
@@ -32,7 +32,7 @@
   ],
   "name": "ninja",
   "netuid": 66,
-  "notes": "Reviewed overlay for SN66. Migrated from the unarbos/ninja.arbos.life identity to the ninja-subnet org / ninja66.ai domain -- verified live 2026-07-15 (ninja.arbos.life now 404s site-wide; ninja66.ai's own page links to github.com/ninja-subnet/ninja and ninja-validator, both actively pushed the same day). Official website, source repositories, and health endpoint verified live under the new identity. The obvious OpenAPI JSON paths currently serve HTML or 404, so schema-backed status remains a gap.",
+  "notes": "Reviewed overlay for SN66. Migrated from the unarbos/ninja.arbos.life identity to the ninja-subnet org / ninja66.ai domain -- verified live 2026-07-15 (ninja.arbos.life now 404s site-wide; ninja66.ai's own page links to github.com/ninja-subnet/ninja and ninja-validator, both actively pushed the same day). Official website, source repositories, and health endpoint verified live under the new identity. The obvious OpenAPI JSON paths currently serve HTML or 404, so schema-backed status remains a gap. This re-review pass fixed 1 surface having no probe config at all -- the registry-wide gap tracked in #5932 -- and re-confirmed the migrated identity, on-chain identity match, and OpenAPI gap all still hold as of 2026-07-16.",
   "schema_version": 1,
   "slug": "sn-66",
   "source_repo": "https://github.com/ninja-subnet/ninja",
@@ -220,6 +220,12 @@
       "kind": "data-artifact",
       "name": "Ninja accepted private-submission metadata dataset",
       "notes": "Public no-auth GET https://ninja66.ai/api/submissions returning application/json with an updated_at timestamp and the accepted public submission metadata ledger (submission_id, uid, hotkey, submitted_block, submitted_at, status) for SN66 private miner harness submissions. The official miner CLI harness README (migrated from unarbos/ninja to ninja-subnet/katana-cli) documents this route as the public visibility endpoint for accepted submission metadata and explicitly states it does not expose agent.py contents or hotkey signatures.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "unarbos",
       "public_safe": true,
       "review": {
