@@ -15368,6 +15368,171 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     assert.match(bad.body.result.content[0].text, /ss58/i);
   });
 
+  // compare_validators (#6035): a read-only side-by-side of several validators
+  // for a stake/delegate decision, one get_validator_detail-shaped load per
+  // hotkey, projected to take/APY/nominator-count/identity + aggregates.
+  const HOTKEY2 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc6";
+
+  test("compare_validators returns a schema-stable comparison over the empty base", async () => {
+    const res = await callTool("compare_validators", {
+      hotkeys: [HOTKEY, HOTKEY2],
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, null);
+    assert.equal(out.validator_count, 2);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      [HOTKEY, HOTKEY2],
+    );
+    // Cold base: the decision fields resolve to their null aggregates.
+    assert.equal(out.validators[0].take, null);
+    assert.equal(out.validators[0].coldkey_identity, null);
+    assert.equal(out.validators[0].apy_estimate, null);
+    assert.equal(out.validators[0].subnet_context, null);
+  });
+
+  test("compare_validators dedupes repeated hotkeys", async () => {
+    const res = await callTool("compare_validators", {
+      hotkeys: [HOTKEY, HOTKEY, HOTKEY2],
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 2);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      [HOTKEY, HOTKEY2],
+    );
+  });
+
+  test("compare_validators output carries no transaction/signing fields", async () => {
+    const res = await callTool("compare_validators", { hotkeys: [HOTKEY] });
+    const keys = [];
+    const walk = (value) => {
+      if (Array.isArray(value)) {
+        for (const item of value) walk(item);
+      } else if (value && typeof value === "object") {
+        for (const [key, child] of Object.entries(value)) {
+          keys.push(key);
+          walk(child);
+        }
+      }
+    };
+    walk(res.body.result.structuredContent);
+    const forbidden =
+      /sign|signature|transaction|extrinsic|mnemonic|seed|private|wallet|custody/i;
+    const offending = keys.filter((key) => forbidden.test(key));
+    assert.deepEqual(offending, [], `unexpected fields: ${offending}`);
+  });
+
+  test("compare_validators: flag=postgres projects each detail and extracts the netuid subnet_context", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const hotkey = decodeURIComponent(
+            new URL(req.url).pathname.split("/").pop(),
+          );
+          return Response.json({
+            schema_version: 1,
+            hotkey,
+            coldkey: "5Cold",
+            coldkey_identity: { has_identity: true, name: "Alice" },
+            take: 0.18,
+            apy_estimate: 0.2,
+            apy_estimate_eligible_subnet_count: 1,
+            nominator_count: 42,
+            total_stake_tao: 1000,
+            total_emission_tao: 5,
+            avg_validator_trust: 0.9,
+            max_validator_trust: 0.99,
+            subnet_count: 1,
+            subnets: [{ netuid: 7, uid: 3, stake_tao: 800 }],
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "compare_validators",
+      { hotkeys: [HOTKEY], netuid: 7 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.validators[0].take, 0.18);
+    assert.equal(out.validators[0].nominator_count, 42);
+    assert.deepEqual(out.validators[0].coldkey_identity, {
+      has_identity: true,
+      name: "Alice",
+    });
+    assert.deepEqual(out.validators[0].subnet_context, {
+      netuid: 7,
+      uid: 3,
+      stake_tao: 800,
+    });
+    // The raw detail's subnets[] is not passed through -- only the projection.
+    assert.equal(out.validators[0].subnets, undefined);
+  });
+
+  test("compare_validators: flag=postgres falls back to the empty base on failure", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "compare_validators",
+      { hotkeys: [HOTKEY] },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.validator_count, 1);
+    assert.equal(out.validators[0].take, null);
+  });
+
+  test("compare_validators rejects missing/empty/malformed hotkey lists", async () => {
+    const missing = await callTool("compare_validators", {});
+    assert.equal(missing.body.result.isError, true);
+    assert.match(missing.body.result.content[0].text, /hotkeys/);
+
+    const empty = await callTool("compare_validators", { hotkeys: [] });
+    assert.equal(empty.body.result.isError, true);
+
+    const nonString = await callTool("compare_validators", { hotkeys: [123] });
+    assert.equal(nonString.body.result.isError, true);
+
+    const badSs58 = await callTool("compare_validators", {
+      hotkeys: [HOTKEY, "not-ss58"],
+    });
+    assert.equal(badSs58.body.result.isError, true);
+
+    // More than COMPARE_VALIDATORS_MAX (16) distinct valid hotkeys.
+    const b58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    const base = HOTKEY.slice(0, -1);
+    const tooMany = Array.from({ length: 17 }, (_, i) => base + b58[i]);
+    const over = await callTool("compare_validators", { hotkeys: tooMany });
+    assert.equal(over.body.result.isError, true);
+    assert.match(over.body.result.content[0].text, /hotkeys/);
+  });
+
+  test("compare_validators rejects an invalid netuid", async () => {
+    const negative = await callTool("compare_validators", {
+      hotkeys: [HOTKEY],
+      netuid: -1,
+    });
+    assert.equal(negative.body.result.isError, true);
+
+    const nonInt = await callTool("compare_validators", {
+      hotkeys: [HOTKEY],
+      netuid: "seven",
+    });
+    assert.equal(nonInt.body.result.isError, true);
+    assert.match(nonInt.body.result.content[0].text, /netuid/);
+  });
+
   test("get_validator_nominators returns a schema-stable empty ranked list with defaults", async () => {
     const res = await callTool("get_validator_nominators", { hotkey: HOTKEY });
     const out = res.body.result.structuredContent;

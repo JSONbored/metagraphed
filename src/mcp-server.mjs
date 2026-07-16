@@ -398,6 +398,7 @@ import {
   buildSubnetValidators,
   buildGlobalValidators,
   buildValidatorDetail,
+  composeValidatorComparison,
   GLOBAL_VALIDATOR_SORTS,
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -1777,6 +1778,29 @@ function requireHotkey(args) {
     );
   }
   return value;
+}
+
+// Upper bound on compare_validators' hotkey list: each hotkey is one detail
+// load, so the fan-out is capped to keep a single compare call bounded (a
+// side-by-side view of more than this many validators isn't a comparison
+// anyone reads anyway). Mirrors parseCompareNetuidList's own cap-and-dedupe
+// shape, but validates SS58 hotkeys instead of netuids.
+const COMPARE_VALIDATORS_MAX = 16;
+
+function parseHotkeyList(hotkeys) {
+  if (!Array.isArray(hotkeys) || hotkeys.length === 0) return null;
+  const result = [];
+  const seen = new Set();
+  for (const value of hotkeys) {
+    if (typeof value !== "string" || !SS58_ADDRESS_PATTERN.test(value)) {
+      return null;
+    }
+    if (seen.has(value)) continue;
+    seen.add(value);
+    result.push(value);
+  }
+  if (result.length > COMPARE_VALIDATORS_MAX) return null;
+  return result;
 }
 
 // The optional `blocks` window for get_chain_activity: a missing value defaults
@@ -4954,6 +4978,72 @@ export const MCP_TOOLS = [
           "METAGRAPH_NEURONS_SOURCE",
         )) ?? buildValidatorDetail([], hotkey)
       );
+    },
+  },
+  {
+    name: "compare_validators",
+    title: "Compare validators side by side (read-only)",
+    description:
+      "Place several validators side by side for a stake/delegate decision: " +
+      "for each hotkey, its take rate, estimated APY, nominator count, and " +
+      "on-chain (coldkey) identity, plus the cross-subnet stake/emission/trust " +
+      "aggregates that give those numbers context -- the same per-validator " +
+      "detail list_global_validators / get_validator_detail expose, projected " +
+      "to the fields that drive a delegate choice. Pass an optional netuid to " +
+      "add each validator's membership in that one subnet (subnet_context). " +
+      "Strictly READ-ONLY and decision-support only: it builds no transaction, " +
+      "produces no signable/extrinsic artifact, and never touches a wallet or " +
+      "key -- the validator equivalent of compare_subnets.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        hotkeys: {
+          type: "array",
+          items: { type: "string", pattern: SS58_PATTERN_SOURCE },
+          minItems: 1,
+          maxItems: COMPARE_VALIDATORS_MAX,
+          description:
+            "Validator hotkeys (SS58 addresses) to compare, in display order.",
+        },
+        netuid: {
+          type: "integer",
+          minimum: 0,
+          description:
+            "Optional subnet context -- when set, each validator also carries " +
+            "its membership row in that subnet (subnet_context), or null when " +
+            "it holds no validator permit there.",
+        },
+      },
+      required: ["hotkeys"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const hotkeys = parseHotkeyList(args?.hotkeys);
+      if (!hotkeys) {
+        throw toolError(
+          "invalid_params",
+          `hotkeys must be a non-empty array of 1-${COMPARE_VALIDATORS_MAX} distinct valid SS58 validator addresses.`,
+        );
+      }
+      const netuid = optionalNonNegativeInt(args, "netuid");
+      // One detail load per hotkey, each via the exact Postgres-tier-or-empty
+      // path get_validator_detail uses -- no new data source, just the same
+      // cross-subnet aggregate fetched for each compared validator, then
+      // projected side by side. Sequential (not parallel) to keep the
+      // fan-out's request pattern identical to N get_validator_detail calls.
+      const details = [];
+      for (const hotkey of hotkeys) {
+        details.push(
+          (await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(
+              `/api/v1/validators/${encodeURIComponent(hotkey)}`,
+            ),
+            "METAGRAPH_NEURONS_SOURCE",
+          )) ?? buildValidatorDetail([], hotkey),
+        );
+      }
+      return composeValidatorComparison(details, { netuid });
     },
   },
   {
@@ -11720,6 +11810,17 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       block_number: NULLABLE_INT,
       subnets: { type: "array", items: { type: "object" } },
+    },
+  },
+  compare_validators: {
+    type: "object",
+    additionalProperties: true,
+    required: ["validator_count", "validators"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: NULLABLE_INT,
+      validator_count: { type: "integer" },
+      validators: { type: "array", items: { type: "object" } },
     },
   },
   get_webhook_subscription: {

@@ -7,6 +7,7 @@ import {
   buildGlobalValidators,
   buildNeuronDetail,
   buildValidatorDetail,
+  composeValidatorComparison,
   overlayFeaturedValidators,
   loadSubnetValidators,
   loadGlobalValidators,
@@ -1822,5 +1823,124 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
       env,
     );
     assert.equal(badFormat.res.status, 400);
+  });
+});
+
+describe("composeValidatorComparison (#6035)", () => {
+  // A minimal buildValidatorDetail-shaped object -- only the fields the
+  // comparison projects, plus a subnets[] for the subnet_context path.
+  function detail(overrides = {}) {
+    return {
+      schema_version: 1,
+      hotkey: "5Hk-a",
+      coldkey: "5Co-a",
+      coldkey_identity: { has_identity: false, name: null },
+      take: 0.18,
+      apy_estimate: 0.2,
+      apy_estimate_eligible_subnet_count: 2,
+      nominator_count: 42,
+      total_stake_tao: 1000,
+      total_emission_tao: 5,
+      avg_validator_trust: 0.9,
+      max_validator_trust: 0.99,
+      subnet_count: 2,
+      subnets: [
+        { netuid: 7, uid: 3, stake_tao: 800, validator_trust: 0.9 },
+        { netuid: 12, uid: 4, stake_tao: 200, validator_trust: 0.8 },
+      ],
+      ...overrides,
+    };
+  }
+
+  test("projects the decision fields for each validator, preserving order", () => {
+    const out = composeValidatorComparison([
+      detail({ hotkey: "5Hk-a" }),
+      detail({ hotkey: "5Hk-b", take: 0.05, nominator_count: 7 }),
+    ]);
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, null);
+    assert.equal(out.validator_count, 2);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["5Hk-a", "5Hk-b"],
+    );
+    const first = out.validators[0];
+    // Exactly the projected fields -- no subnets[] pass-through, and no
+    // transaction/signing field ever appears.
+    assert.deepEqual(Object.keys(first).sort(), [
+      "apy_estimate",
+      "apy_estimate_eligible_subnet_count",
+      "avg_validator_trust",
+      "coldkey",
+      "coldkey_identity",
+      "hotkey",
+      "max_validator_trust",
+      "nominator_count",
+      "subnet_context",
+      "subnet_count",
+      "take",
+      "total_emission_tao",
+      "total_stake_tao",
+    ]);
+    assert.equal(first.take, 0.18);
+    assert.equal(first.nominator_count, 42);
+    assert.deepEqual(first.coldkey_identity, {
+      has_identity: false,
+      name: null,
+    });
+    // netuid omitted -> no subnet context on any row.
+    assert.equal(first.subnet_context, null);
+    assert.equal(out.validators[1].subnet_context, null);
+  });
+
+  test("with a netuid, each row carries its membership in that subnet or null", () => {
+    const out = composeValidatorComparison(
+      [
+        detail({ hotkey: "5Hk-a" }),
+        // A validator that does not validate on netuid 7.
+        detail({
+          hotkey: "5Hk-b",
+          subnets: [{ netuid: 12, uid: 9, stake_tao: 200 }],
+        }),
+      ],
+      { netuid: 7 },
+    );
+    assert.equal(out.netuid, 7);
+    assert.deepEqual(out.validators[0].subnet_context, {
+      netuid: 7,
+      uid: 3,
+      stake_tao: 800,
+      validator_trust: 0.9,
+    });
+    assert.equal(out.validators[1].subnet_context, null);
+  });
+
+  test("missing fields and a missing subnets[] degrade to null, never throw", () => {
+    const out = composeValidatorComparison(
+      [
+        // No coldkey_identity, no take, no subnets -- every gap becomes null.
+        { hotkey: "5Hk-c" },
+        // A null element must not crash the projection.
+        null,
+      ],
+      { netuid: 7 },
+    );
+    assert.equal(out.validator_count, 2);
+    const sparse = out.validators[0];
+    assert.equal(sparse.hotkey, "5Hk-c");
+    assert.equal(sparse.take, null);
+    assert.equal(sparse.coldkey_identity, null);
+    assert.equal(sparse.subnet_context, null);
+    const nullRow = out.validators[1];
+    assert.equal(nullRow.hotkey, null);
+    assert.equal(nullRow.subnet_context, null);
+  });
+
+  test("a non-array `details` yields an empty, schema-stable comparison", () => {
+    const out = composeValidatorComparison(undefined);
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, null);
+    assert.equal(out.validator_count, 0);
+    assert.deepEqual(out.validators, []);
   });
 });

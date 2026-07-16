@@ -815,3 +815,55 @@ export async function loadValidatorDetail(d1, hotkey) {
   );
   return buildValidatorDetail(rows, hotkey);
 }
+
+// The buildValidatorDetail fields a stake-decision comparison actually reads
+// (#6035): the take rate, estimated APY, nominator count, and on-chain identity
+// the delegate-selection UI (#5245) surfaces, plus the cross-subnet stake/
+// emission/trust aggregates that give those numbers context. Every field is
+// copied verbatim from the already-loaded detail -- nothing is recomputed here.
+const VALIDATOR_COMPARISON_FIELDS = [
+  "hotkey",
+  "coldkey",
+  "coldkey_identity",
+  "take",
+  "apy_estimate",
+  "apy_estimate_eligible_subnet_count",
+  "nominator_count",
+  "total_stake_tao",
+  "total_emission_tao",
+  "avg_validator_trust",
+  "max_validator_trust",
+  "subnet_count",
+];
+
+// Place several validators side by side for a stake/delegate decision (#6035):
+// project each buildValidatorDetail-shaped `detail` down to the decision-
+// relevant fields above (take rate, estimated APY, nominator count, on-chain
+// identity, plus supporting aggregates), preserving the caller's order. This is
+// a pure READ-ONLY projection of already-loaded detail objects -- it constructs
+// no transaction, references no key material, and derives nothing new from
+// chain state. When `netuid` is provided (the subnet context), each row also
+// carries that validator's membership row in that subnet (`subnet_context`), or
+// null when the validator holds no permit there -- letting a caller weigh the
+// global picture against one subnet at a time. `details` that isn't an array is
+// treated as an empty comparison, mirroring the cold-safe builders above.
+export function composeValidatorComparison(details, { netuid = null } = {}) {
+  const list = Array.isArray(details) ? details : [];
+  const validators = list.map((detail) => {
+    const projected = {};
+    for (const field of VALIDATOR_COMPARISON_FIELDS) {
+      projected[field] = detail?.[field] ?? null;
+    }
+    projected.subnet_context =
+      netuid == null
+        ? null
+        : (detail?.subnets?.find((subnet) => subnet.netuid === netuid) ?? null);
+    return projected;
+  });
+  return {
+    schema_version: 1,
+    netuid,
+    validator_count: validators.length,
+    validators,
+  };
+}
