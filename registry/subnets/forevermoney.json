@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 98,
-  "name": "ForeverMoney",
-  "slug": "sn-98",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "finance",
@@ -11,141 +6,145 @@
     "official-source-repo",
     "official-website"
   ],
-  "source_repo": "https://github.com/SN98-ForeverMoney/forever-money",
-  "dashboard_url": "https://taomarketcap.com/subnets/98",
-  "website_url": "https://forevermoney.ai/",
-  "notes": "Reviewed overlay for SN98 using the official ForeverMoney website and source repository.",
+  "contact": "gm@forevermoney.ai",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified machine-readable OpenAPI/Swagger schema yet -- dashboard.forevermoney.ai/openapi.json, /api/openapi.json, and /docs all return the dashboard SPA's HTML shell (200 text/html), not a real schema.",
+      "sn-98-forevermoney-vaults-tvl-api (dashboard.forevermoney.ai/api/vaults/tvl) is currently returning a consistent HTTP 502 (Cloudflare bad gateway) as of 2026-07-16, while the dashboard host itself is otherwise live (200 on /). Kept tracked with its probe enabled since the base host is healthy and this looks like a backend-specific outage rather than a dead domain.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/98",
+  "name": "ForeverMoney",
+  "netuid": 98,
+  "notes": "Reviewed overlay for SN98 using the official ForeverMoney website and source repository. Root->128 accuracy audit re-review pass (#5903): the vault TVL API is currently 502ing (backend-specific outage, base dashboard host still live) -- documented in gap_notes, surface kept tracked.",
+  "schema_version": 1,
+  "slug": "sn-98",
+  "social": {
+    "x": "https://x.com/forevermoney_ai"
+  },
+  "source_repo": "https://github.com/SN98-ForeverMoney/forever-money",
+  "status": "active",
   "surfaces": [
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-98-forevermoney-website",
-      "name": "ForeverMoney website",
       "kind": "website",
-      "url": "https://forevermoney.ai/",
-      "provider": "forevermoney",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/SN98-ForeverMoney/forever-money"],
+      "name": "ForeverMoney website",
+      "notes": "Official ForeverMoney website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official ForeverMoney website."
-    },
-    {
-      "id": "sn-98-forevermoney-source",
-      "name": "ForeverMoney source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/SN98-ForeverMoney/forever-money",
       "provider": "forevermoney",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
       "source_urls": ["https://github.com/SN98-ForeverMoney/forever-money"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official ForeverMoney source repository."
+      "url": "https://forevermoney.ai/"
     },
     {
-      "id": "sn-98-forevermoney-vaults-tvl-api",
-      "name": "ForeverMoney vault TVL API",
-      "kind": "subnet-api",
-      "url": "https://dashboard.forevermoney.ai/api/vaults/tvl",
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-98-forevermoney-source",
+      "kind": "source-repo",
+      "name": "ForeverMoney source repository",
+      "notes": "Official ForeverMoney source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "forevermoney",
+      "public_safe": true,
+      "source_urls": ["https://github.com/SN98-ForeverMoney/forever-money"],
+      "url": "https://github.com/SN98-ForeverMoney/forever-money"
+    },
+    {
       "auth_required": false,
       "authority": "community",
+      "id": "sn-98-forevermoney-vaults-tvl-api",
+      "kind": "subnet-api",
+      "name": "ForeverMoney vault TVL API",
+      "notes": "Public no-auth GET returning vault TVL aggregates grouped by trading pair on the official ForeverMoney Insights dashboard API host.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "forevermoney",
       "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
       "source_urls": [
         "https://forevermoney.ai/",
         "https://dashboard.forevermoney.ai/api/vaults/tvl"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "json",
-        "timeout_ms": 15000
-      },
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "bohdansolovie",
-        "confidence": "medium"
-      },
-      "notes": "Public no-auth GET returning vault TVL aggregates grouped by trading pair on the official ForeverMoney Insights dashboard API host."
+      "url": "https://dashboard.forevermoney.ai/api/vaults/tvl"
     },
     {
-      "id": "sn-98-forevermoney-min-compute-spec",
-      "name": "ForeverMoney minimum compute requirements",
-      "kind": "data-artifact",
-      "url": "https://raw.githubusercontent.com/SN98-ForeverMoney/forever-money/main/min_compute.yml",
-      "provider": "forevermoney",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-98-forevermoney-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "ForeverMoney minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official SN98-ForeverMoney/forever-money repository as min_compute.yml. Documents baseline CPU, memory, storage, and network bandwidth requirements for SN98 ForeverMoney miners and validators.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "forevermoney",
       "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
       "source_urls": [
         "https://github.com/SN98-ForeverMoney/forever-money/blob/main/min_compute.yml",
         "https://github.com/SN98-ForeverMoney/forever-money/blob/main/setup.py"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "any",
-        "timeout_ms": 15000
-      },
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "davion-knight",
-        "confidence": "medium"
-      },
-      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official SN98-ForeverMoney/forever-money repository as min_compute.yml. Documents baseline CPU, memory, storage, and network bandwidth requirements for SN98 ForeverMoney miners and validators."
+      "url": "https://raw.githubusercontent.com/SN98-ForeverMoney/forever-money/main/min_compute.yml"
     },
     {
-      "id": "sn-98-forevermoney-liquidity-manager-abi",
-      "name": "ForeverMoney LiquidityManager contract ABI",
-      "kind": "data-artifact",
-      "url": "https://raw.githubusercontent.com/SN98-ForeverMoney/forever-money/7acfc5422a4e1714670275bf8dc2b32c1f815756/validator/utils/abis/LiquidityManager.json",
-      "provider": "forevermoney",
       "auth_required": false,
       "authority": "community",
-      "public_safe": true,
-      "source_urls": [
-        "https://github.com/SN98-ForeverMoney/forever-money/blob/7acfc5422a4e1714670275bf8dc2b32c1f815756/validator/utils/abis/LiquidityManager.json",
-        "https://github.com/SN98-ForeverMoney/forever-money"
-      ],
+      "id": "sn-98-forevermoney-liquidity-manager-abi",
+      "kind": "data-artifact",
+      "name": "ForeverMoney LiquidityManager contract ABI",
+      "notes": "Public no-auth machine-readable JSON ABI for the on-chain LiquidityManager smart contract loaded by the SN98 ForeverMoney validator, committed in the official SN98-ForeverMoney/forever-money repository at validator/utils/abis/LiquidityManager.json. Describes the constructor, functions, and events of the core liquidity-management contract the subnet's validator interacts with. Pinned to an immutable commit. Distinct from the min_compute hardware spec already registered.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 15000
       },
+      "provider": "forevermoney",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "ultrahighsuper"
       },
-      "notes": "Public no-auth machine-readable JSON ABI for the on-chain LiquidityManager smart contract loaded by the SN98 ForeverMoney validator, committed in the official SN98-ForeverMoney/forever-money repository at validator/utils/abis/LiquidityManager.json. Describes the constructor, functions, and events of the core liquidity-management contract the subnet's validator interacts with. Pinned to an immutable commit. Distinct from the min_compute hardware spec already registered."
+      "source_urls": [
+        "https://github.com/SN98-ForeverMoney/forever-money/blob/7acfc5422a4e1714670275bf8dc2b32c1f815756/validator/utils/abis/LiquidityManager.json",
+        "https://github.com/SN98-ForeverMoney/forever-money"
+      ],
+      "url": "https://raw.githubusercontent.com/SN98-ForeverMoney/forever-money/7acfc5422a4e1714670275bf8dc2b32c1f815756/validator/utils/abis/LiquidityManager.json"
     }
   ],
-  "social": {
-    "x": "https://x.com/forevermoney_ai"
-  },
-  "contact": "gm@forevermoney.ai"
+  "website_url": "https://forevermoney.ai/"
 }

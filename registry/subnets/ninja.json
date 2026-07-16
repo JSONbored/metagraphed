@@ -13,30 +13,29 @@
   "curation": {
     "gap_notes": [
       "Swagger/OpenAPI routes currently serve HTML UI only; no verified machine-readable schema URL yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T07:45:00.000Z",
+    "reviewed_at": "2026-07-16T06:20:00.000Z",
     "source_count": 7,
-    "verified_at": "2026-06-08T07:45:00.000Z"
+    "verified_at": "2026-07-16T06:20:00.000Z"
   },
-  "dashboard_url": "https://ninja.arbos.life/",
-  "docs_url": "https://github.com/unarbos/tau/blob/main/README.md",
+  "dashboard_url": "https://ninja66.ai/",
+  "docs_url": "https://github.com/ninja-subnet/ninja/blob/main/README.md",
   "links": [
     {
       "label": "Miner harness",
-      "source_url": "https://github.com/unarbos/tau",
-      "url": "https://github.com/unarbos/ninja"
+      "source_url": "https://github.com/ninja-subnet/ninja",
+      "url": "https://github.com/ninja-subnet/katana-cli"
     }
   ],
   "name": "ninja",
   "netuid": 66,
-  "notes": "Reviewed overlay for SN66 using the official Ninja/Unarbos website, tau workflow repository, miner harness repository, health endpoint, and Swagger UI. The obvious OpenAPI JSON paths currently serve HTML, so schema-backed status remains a gap.",
+  "notes": "Reviewed overlay for SN66. Migrated from the unarbos/ninja.arbos.life identity to the ninja-subnet org / ninja66.ai domain -- verified live 2026-07-15 (ninja.arbos.life now 404s site-wide; ninja66.ai's own page links to github.com/ninja-subnet/ninja and ninja-validator, both actively pushed the same day). Official website, source repositories, and health endpoint verified live under the new identity. The obvious OpenAPI JSON paths currently serve HTML or 404, so schema-backed status remains a gap. This re-review pass fixed 1 surface having no probe config at all -- the registry-wide gap tracked in #5932 -- and re-confirmed the migrated identity, on-chain identity match, and OpenAPI gap all still hold as of 2026-07-16.",
   "schema_version": 1,
   "slug": "sn-66",
-  "source_repo": "https://github.com/unarbos/tau",
+  "source_repo": "https://github.com/ninja-subnet/ninja",
   "status": "active",
   "surfaces": [
     {
@@ -45,7 +44,7 @@
       "id": "sn-66-ninja-website",
       "kind": "website",
       "name": "Ninja website",
-      "notes": "Official Ninja SN66 public website.",
+      "notes": "Official Ninja SN66 public website. Migrated from ninja.arbos.life (now 404) to ninja66.ai -- verified live 2026-07-15.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -54,16 +53,16 @@
       },
       "provider": "unarbos",
       "public_safe": true,
-      "source_urls": ["https://ninja.arbos.life/"],
-      "url": "https://ninja.arbos.life/"
+      "source_urls": ["https://ninja66.ai/"],
+      "url": "https://ninja66.ai/"
     },
     {
       "auth_required": false,
       "authority": "official",
       "id": "sn-66-ninja-tau-source",
       "kind": "source-repo",
-      "name": "Ninja tau source repository",
-      "notes": "Official staged workflow repository for Ninja SN66.",
+      "name": "Ninja agent source repository",
+      "notes": "Official published-agent repository for Ninja SN66. Migrated from unarbos/tau to the ninja-subnet org's \"ninja\" repo (description: \"Subnet 66 published ninja king agent\") -- verified live 2026-07-15, pushed same day.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -73,18 +72,18 @@
       "provider": "unarbos",
       "public_safe": true,
       "source_urls": [
-        "https://github.com/unarbos/tau",
-        "https://github.com/unarbos/tau/blob/main/README.md"
+        "https://github.com/ninja-subnet/ninja",
+        "https://ninja66.ai/"
       ],
-      "url": "https://github.com/unarbos/tau"
+      "url": "https://github.com/ninja-subnet/ninja"
     },
     {
       "auth_required": false,
       "authority": "official",
       "id": "sn-66-ninja-harness-source",
       "kind": "source-repo",
-      "name": "Ninja miner harness source repository",
-      "notes": "Official SN66 miner starter harness repository referenced by the tau README.",
+      "name": "Ninja CLI harness source repository",
+      "notes": "Official SN66 miner CLI harness repository. Migrated from unarbos/ninja to the ninja-subnet org's \"katana-cli\" repo (description: \"Claude Code-style CLI harness for the Subnet 66 ninja agent\") -- verified live 2026-07-15.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -94,10 +93,10 @@
       "provider": "unarbos",
       "public_safe": true,
       "source_urls": [
-        "https://github.com/unarbos/tau",
-        "https://github.com/unarbos/ninja"
+        "https://github.com/ninja-subnet/ninja",
+        "https://github.com/ninja-subnet/katana-cli"
       ],
-      "url": "https://github.com/unarbos/ninja"
+      "url": "https://github.com/ninja-subnet/katana-cli"
     },
     {
       "auth_required": false,
@@ -105,7 +104,7 @@
       "id": "sn-66-ninja-readme-docs",
       "kind": "docs",
       "name": "Ninja README docs",
-      "notes": "Official tau README documentation for Ninja task generation, execution, validation, and scoring workflow.",
+      "notes": "Official README documentation for Ninja task generation, execution, validation, and scoring workflow. Migrated from unarbos/tau to ninja-subnet/ninja -- verified live 2026-07-15.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -115,10 +114,10 @@
       "provider": "unarbos",
       "public_safe": true,
       "source_urls": [
-        "https://github.com/unarbos/tau",
-        "https://github.com/unarbos/tau/blob/main/README.md"
+        "https://github.com/ninja-subnet/ninja",
+        "https://github.com/ninja-subnet/ninja/blob/main/README.md"
       ],
-      "url": "https://github.com/unarbos/tau/blob/main/README.md"
+      "url": "https://github.com/ninja-subnet/ninja/blob/main/README.md"
     },
     {
       "auth_required": false,
@@ -126,36 +125,35 @@
       "id": "sn-66-ninja-health",
       "kind": "subnet-api",
       "name": "Ninja health endpoint",
-      "notes": "Health path returns HTTP 404 (the host is up; the /health route does not exist) — verified 2026-06-15. Probe disabled pending a valid health URL.",
+      "notes": "Public no-auth GET returning HTTP 200 on the new ninja66.ai host -- verified live 2026-07-15 (the old ninja.arbos.life/health always 404'd; that whole domain is now dead). Re-enabled probing under the migrated identity.",
       "probe": {
-        "enabled": false,
+        "enabled": true,
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "unarbos",
       "public_safe": true,
-      "source_urls": ["https://ninja.arbos.life/health"],
-      "url": "https://ninja.arbos.life/health"
+      "source_urls": ["https://ninja66.ai/"],
+      "url": "https://ninja66.ai/health"
     },
     {
       "auth_required": false,
       "authority": "official",
-      "id": "sn-66-ninja-swagger-ui",
-      "kind": "docs",
-      "name": "Ninja Swagger UI",
-      "notes": "Swagger UI route for Ninja. Obvious JSON schema paths currently serve HTML and are not treated as machine-readable OpenAPI.",
+      "id": "sn-66-ninja-validator-source",
+      "kind": "source-repo",
+      "name": "Ninja validator source repository",
+      "notes": "Official validator/task code repository for Ninja SN66, under the same ninja-subnet org as the migrated agent/harness repos -- verified live 2026-07-15, pushed same day.",
       "probe": {
         "enabled": true,
-        "expect": "html",
+        "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
       "provider": "unarbos",
       "public_safe": true,
-      "schema_status": "ui-only",
-      "source_urls": ["https://ninja.arbos.life/swagger"],
-      "url": "https://ninja.arbos.life/swagger"
+      "source_urls": ["https://github.com/ninja-subnet/ninja"],
+      "url": "https://github.com/ninja-subnet/ninja-validator"
     },
     {
       "auth_required": false,
@@ -221,16 +219,24 @@
       "id": "sn-66-unarbos-data-artifact",
       "kind": "data-artifact",
       "name": "Ninja accepted private-submission metadata dataset",
-      "notes": "Public no-auth GET https://ninja66.ai/api/submissions returning application/json with an updated_at timestamp and the accepted public submission metadata ledger (submission_id, uid, hotkey, submitted_block, submitted_at, status) for SN66 private miner harness submissions. The official unarbos/ninja miner harness README documents this route as the public visibility endpoint for accepted submission metadata and explicitly states it does not expose agent.py contents or hotkey signatures.",
+      "notes": "Public no-auth GET https://ninja66.ai/api/submissions returning application/json with an updated_at timestamp and the accepted public submission metadata ledger (submission_id, uid, hotkey, submitted_block, submitted_at, status) for SN66 private miner harness submissions. The official miner CLI harness README (migrated from unarbos/ninja to ninja-subnet/katana-cli) documents this route as the public visibility endpoint for accepted submission metadata and explicitly states it does not expose agent.py contents or hotkey signatures.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "unarbos",
       "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "jimcody1995"
       },
-      "source_urls": ["https://github.com/unarbos/ninja/blob/main/README.md"],
+      "source_urls": [
+        "https://github.com/ninja-subnet/katana-cli/blob/main/README.md"
+      ],
       "url": "https://ninja66.ai/api/submissions"
     }
   ],
-  "website_url": "https://ninja.arbos.life/"
+  "website_url": "https://ninja66.ai/"
 }

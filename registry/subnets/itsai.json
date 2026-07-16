@@ -1,157 +1,181 @@
 {
-  "schema_version": 1,
-  "netuid": 32,
-  "name": "ItsAI",
-  "slug": "sn-32",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo",
     "official-website"
   ],
-  "source_repo": "https://github.com/It-s-AI/llm-detection",
-  "dashboard_url": "https://taomarketcap.com/subnets/32",
-  "website_url": "https://its-ai.org/en",
-  "notes": "Reviewed overlay for SN32 using the official ItsAI website and LLM-detection source repository.",
+  "contact": "support@its-ai.org",
   "curation": {
+    "gap_notes": [
+      "No verified OpenAPI/Swagger schema yet (api.its-ai.org and docs.its-ai.org both 404 on /openapi.json and /docs).",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
+    "reviewed_at": "2026-07-16T00:20:00.000Z",
     "source_count": 4,
-    "gap_notes": [
-      "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-07-16T00:20:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/32",
+  "name": "ItsAI",
+  "netuid": 32,
+  "notes": "Reviewed overlay for SN32 using the official ItsAI website and LLM-detection source repository. This pass fixed 5 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. All 8 surfaces re-verified live.",
+  "schema_version": 1,
+  "slug": "sn-32",
+  "social": {
+    "x": "https://x.com/ai_detection"
+  },
+  "source_repo": "https://github.com/It-s-AI/llm-detection",
+  "status": "active",
   "surfaces": [
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-32-itsai-website",
-      "name": "ItsAI website",
       "kind": "website",
-      "url": "https://its-ai.org/en",
-      "provider": "its-ai",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/It-s-AI/llm-detection"],
+      "name": "ItsAI website",
+      "notes": "Official ItsAI website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official ItsAI website."
-    },
-    {
-      "id": "sn-32-itsai-source",
-      "name": "ItsAI source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/It-s-AI/llm-detection",
       "provider": "its-ai",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
       "source_urls": ["https://github.com/It-s-AI/llm-detection"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official ItsAI source repository."
+      "url": "https://its-ai.org/en"
     },
     {
-      "id": "sn-32-itsai-sdk",
-      "name": "ItsAI Python SDK (PyPI)",
-      "kind": "sdk",
-      "url": "https://pypi.org/project/its-ai/",
-      "provider": "its-ai",
       "auth_required": false,
-      "authority": "community",
-      "public_safe": true,
-      "source_urls": ["https://its-ai.org/en"],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Published PyPI package `its-ai` (\"Typed Python SDK client for ITS-AI API\", author ITS AI <support@its-ai.org>), linked as the \"Python SDK\" from the official homepage."
-    },
-    {
-      "id": "sn-32-itsai-docs",
-      "name": "ItsAI API documentation",
-      "kind": "docs",
-      "url": "https://docs.its-ai.org/",
-      "provider": "its-ai",
-      "auth_required": false,
-      "authority": "community",
-      "public_safe": true,
-      "source_urls": ["https://its-ai.org/en"],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Official ItsAI documentation (page title \"AI content detection API\") on the team's docs.its-ai.org subdomain, linked from the homepage. Fills the file's noted missing-docs gap."
-    },
-    {
-      "id": "sn-32-itsai-api-repo",
-      "name": "ItsAI API repository",
+      "authority": "official",
+      "id": "sn-32-itsai-source",
       "kind": "source-repo",
-      "url": "https://github.com/It-s-AI/api",
+      "name": "ItsAI source repository",
+      "notes": "Official ItsAI source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "its-ai",
+      "public_safe": true,
+      "source_urls": ["https://github.com/It-s-AI/llm-detection"],
+      "url": "https://github.com/It-s-AI/llm-detection"
+    },
+    {
       "auth_required": false,
       "authority": "community",
+      "id": "sn-32-itsai-sdk",
+      "kind": "sdk",
+      "name": "ItsAI Python SDK (PyPI)",
+      "notes": "Published PyPI package `its-ai` (\"Typed Python SDK client for ITS-AI API\", author ITS AI <support@its-ai.org>), linked as the \"Python SDK\" from the official homepage.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "its-ai",
       "public_safe": true,
-      "source_urls": ["https://github.com/It-s-AI/api"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "ItsAI API repository in the team's It-s-AI org; its README describes a FastAPI app that queries miners in \"Subnet32: It's AI\". Distinct from the registered llm-detection repo."
+      "source_urls": ["https://its-ai.org/en"],
+      "url": "https://pypi.org/project/its-ai/"
     },
     {
-      "id": "sn-32-itsai-subnet-api",
-      "name": "ItsAI API health",
-      "kind": "subnet-api",
-      "url": "https://api.its-ai.org/api/health",
-      "provider": "its-ai",
       "auth_required": false,
       "authority": "community",
-      "public_safe": true,
-      "source_urls": ["https://its-ai.org/en", "https://docs.its-ai.org/"],
+      "id": "sn-32-itsai-docs",
+      "kind": "docs",
+      "name": "ItsAI API documentation",
+      "notes": "Official ItsAI documentation (page title \"AI content detection API\") on the team's docs.its-ai.org subdomain, linked from the homepage. Fills the file's noted missing-docs gap.",
       "probe": {
         "enabled": true,
-        "method": "GET",
-        "expect": "json",
+        "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
+      "provider": "its-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": ["https://its-ai.org/en"],
+      "url": "https://docs.its-ai.org/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-32-itsai-api-repo",
+      "kind": "source-repo",
+      "name": "ItsAI API repository",
+      "notes": "ItsAI API repository in the team's It-s-AI org; its README describes a FastAPI app that queries miners in \"Subnet32: It's AI\". Distinct from the registered llm-detection repo.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "its-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": ["https://github.com/It-s-AI/api"],
+      "url": "https://github.com/It-s-AI/api"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-32-itsai-subnet-api",
+      "kind": "subnet-api",
+      "name": "ItsAI API health",
+      "notes": "Public no-auth GET returning the ItsAI (SN32) content-detection API health as JSON. Hosted on api.its-ai.org, the API subdomain of the registered website its-ai.org; the API is documented at docs.its-ai.org and implemented in the team's It-s-AI/api FastAPI repo. Fills the file's noted missing public-API-endpoint gap.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "its-ai",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "nickmopen"
       },
-      "notes": "Public no-auth GET returning the ItsAI (SN32) content-detection API health as JSON. Hosted on api.its-ai.org, the API subdomain of the registered website its-ai.org; the API is documented at docs.its-ai.org and implemented in the team's It-s-AI/api FastAPI repo. Fills the file's noted missing public-API-endpoint gap."
+      "source_urls": ["https://its-ai.org/en", "https://docs.its-ai.org/"],
+      "url": "https://api.its-ai.org/api/health"
     },
     {
-      "id": "sn-32-its-ai-data-artifact",
-      "name": "ItsAI SN32 leaderboard (Hugging Face Space)",
-      "kind": "data-artifact",
-      "url": "https://huggingface.co/spaces/sergak0/ai-detection-leaderboard",
-      "provider": "its-ai",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-32-its-ai-data-artifact",
+      "kind": "data-artifact",
+      "name": "ItsAI SN32 leaderboard (Hugging Face Space)",
+      "notes": "Live SN32 miner leaderboard (UID/incentive/emission plus F1, false-positive, and average-precision scores from the Yuma validator) hosted as a public, no-auth Hugging Face Space. Explicitly named as the team's own leaderboard in docs/FAQ.md (\"Yes, we do have a leaderboard based on OTF scores\"); the app itself titles the page \"Subnet 32 Leaderboard\" and links back to github.com/It-s-AI/llm-detection. Fills the file's noted missing standalone-data-artifact gap.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "its-ai",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/It-s-AI/llm-detection/blob/main/docs/FAQ.md"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "galuis116"
       },
-      "notes": "Live SN32 miner leaderboard (UID/incentive/emission plus F1, false-positive, and average-precision scores from the Yuma validator) hosted as a public, no-auth Hugging Face Space. Explicitly named as the team's own leaderboard in docs/FAQ.md (\"Yes, we do have a leaderboard based on OTF scores\"); the app itself titles the page \"Subnet 32 Leaderboard\" and links back to github.com/It-s-AI/llm-detection. Fills the file's noted missing standalone-data-artifact gap."
+      "source_urls": [
+        "https://github.com/It-s-AI/llm-detection/blob/main/docs/FAQ.md"
+      ],
+      "url": "https://huggingface.co/spaces/sergak0/ai-detection-leaderboard"
     },
     {
       "auth_required": false,
@@ -160,6 +184,12 @@
       "kind": "dashboard",
       "name": "ItsAI validator W&B dashboard",
       "notes": "Public Weights & Biases project for SN32 ItsAI (It's AI / LLM-detection) validator runs (entity itsai-dev, project subnet32; 119,000+ logged runs). Declared as the subnet's public W&B dashboard in the official It-s-AI/llm-detection repo — docs/FAQ.md (\"Yes, https://wandb.ai/itsai-dev/subnet32\") and detection/__init__.py (WANDB_ENTITY = 'itsai-dev', WANDB_PROJECT = 'subnet32', netuid default 32). Publicly readable, no auth; on a distinct host (wandb.ai) from the subnet's site and API.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "its-ai",
       "public_safe": true,
       "review": {
@@ -172,6 +202,5 @@
       "url": "https://wandb.ai/itsai-dev/subnet32"
     }
   ],
-  "social": { "x": "https://x.com/ai_detection" },
-  "contact": "support@its-ai.org"
+  "website_url": "https://its-ai.org/en"
 }

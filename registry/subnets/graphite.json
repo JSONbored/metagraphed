@@ -11,21 +11,18 @@
   "curation": {
     "gap_notes": [
       "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:35:00.000Z",
+    "reviewed_at": "2026-07-16T02:00:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T10:35:00.000Z"
+    "verified_at": "2026-07-16T02:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/43",
   "name": "Graphite",
   "netuid": 43,
-  "notes": "Reviewed overlay for SN43 using the official Graphite source repository and website. No official docs/API/OpenAPI surface is verified yet.",
+  "notes": "Reviewed overlay for SN43 using the official Graphite source repository and website. This pass fixed 4 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full Knowledge Graph OpenAPI schema (30 paths): the admin, miners, tasks, and most graph/* routes are 401-gated despite the schema declaring no security scheme; found and added one new genuine no-auth public endpoint, GET /api/v1/graph/data. All 10 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-43",
   "social": {
@@ -107,6 +104,12 @@
       "kind": "data-artifact",
       "name": "Graphite past problems dataset",
       "notes": "Official Graphite SN43 dataset of past TSP problems, pushed daily as .tsv files; the GraphiteAI subnet_tools repo syncs from this HF_REPO.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "graphite-ai",
       "public_safe": true,
       "review": {
@@ -144,6 +147,12 @@
       "id": "sn-43-graphite-ai-coverage-stats",
       "kind": "data-artifact",
       "name": "Graphite coverage stats",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "graphite-ai",
       "public_safe": true,
       "review": {
@@ -163,6 +172,12 @@
       "kind": "subnet-api",
       "name": "Graphite API health",
       "notes": "Public no-auth GET /health returning Graphite API status plus knowledge-graph entity/relationship/fact counts. Documented as GET /health in the subnet's OpenAPI spec on the same host as the existing stats subnet-api surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "graphite-ai",
       "public_safe": true,
       "review": {
@@ -207,6 +222,12 @@
       "kind": "data-artifact",
       "name": "Graphite minimum compute requirements",
       "notes": "Public no-auth min_compute.yml committed at the root of SN43 Graphite's official GraphiteAI/Graphite-Subnet repository — the minimum and recommended hardware specification (CPU, RAM, storage, OS, and network bandwidth) for running a Graphite miner or validator. Served read-only via raw.githubusercontent from the same official repo registered as the subnet's source-repo; a standalone machine-readable reference artifact distinct from the existing Graphite past-problems dataset and API surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "graphite-ai",
       "public_safe": true,
       "review": {
@@ -217,6 +238,24 @@
         "https://github.com/GraphiteAI/Graphite-Subnet/blob/main/min_compute.yml"
       ],
       "url": "https://raw.githubusercontent.com/GraphiteAI/Graphite-Subnet/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-43-graphite-graph-data",
+      "kind": "data-artifact",
+      "name": "Graphite knowledge-graph data dump",
+      "notes": "Public no-auth GET /api/v1/graph/data on api.graphite-ai.net returning a machine-readable dump of SN43 Graphite's knowledge-graph entities (entity_id, entity_type, name, source_url/source_date, provenance) drawn from sourced filings and documents. Documented as GET /api/v1/graph/data in the subnet's own OpenAPI schema; distinct from the already-tracked stats/health/miner-stats endpoints on the same host. Most other /api/v1/graph/* and /api/v1/miners/* routes are 401-gated despite the schema declaring no security scheme; this one is confirmed genuinely public.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/graph/data"
     }
   ],
   "website_url": "https://graphite-ai.net/"

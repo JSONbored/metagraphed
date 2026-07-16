@@ -9,24 +9,23 @@
   ],
   "curation": {
     "gap_notes": [
-      "Native chain name currently reports as hard_sign; public directories identify SN116 as TaoLend.",
-      "Official website currently returns 500/server-error responses to simple probes and should appear degraded until it recovers.",
+      "Native chain name has continued to drift and now reports as \"Memo\" (previously \"hard_sign\" at the last review); public directories, the website, and the source repository all still identify SN116 consistently as TaoLend, so the on-chain SubnetIdentitiesV3 subnetName field looks unreliable for this subnet rather than a real rebrand.",
+      "subnet_emission_enabled is currently false per the TaoMarketCap snapshot -- worth re-checking on the next pass.",
+      "Official website currently still returns 500/server-error responses to simple probes (unchanged since the last review) and should appear degraded until it recovers.",
       "Previously discovered GitHub source repository currently returns 404.",
-      "No verified live source repository yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T14:15:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 6,
-    "verified_at": "2026-06-08T14:15:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "name": "TaoLend",
   "netuid": 116,
-  "notes": "Reviewed overlay for SN116 TaoLend. Native chain identity currently reports hard_sign, while public subnet directories identify SN116 as TaoLend. The official website is tracked but currently returns server errors to simple probes. The previously discovered source repository currently returns 404 and is not promoted.",
+  "notes": "Reviewed overlay for SN116 TaoLend. Native chain identity has drifted again (now \"Memo\", previously \"hard_sign\"), while public subnet directories, the website, and the source repository all still identify SN116 as TaoLend. The official website is tracked but currently returns server errors to simple probes. The previously discovered source repository currently returns 404 and is not promoted. Root->128 accuracy audit re-review pass (#5903): fixed 1 missing probe block; noted subnet_emission_enabled is currently false.",
   "schema_version": 1,
   "slug": "taolend",
   "source_repo": null,
@@ -81,6 +80,12 @@
       "kind": "data-artifact",
       "name": "TaoLend contract and precompile constants",
       "notes": "Public no-auth TypeScript constants file from the official oxylok/116-taolend repository publishing SN116 TaoLend deployed LendingPoolV1 address (0xE41852a75e51812adA39C8D0aae18c7c59935C0d) and Bittensor EVM precompile addresses (metagraph, neuron, staking, alpha, subnet, balance transfer) used by the lending protocol CLI and validator.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taolend",
       "public_safe": true,
       "review": {
@@ -99,7 +104,13 @@
       "id": "sn-116-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "TaoLend TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/116 on api.taomarketcap.com returning machine-readable JSON for SN116 TaoLend on-chain subnet state, hyperparameters, economics, and dTAO market fields. TaoLend exposes no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/116/ on api.taomarketcap.com returning machine-readable JSON for SN116 TaoLend on-chain subnet state, hyperparameters, economics, and dTAO market fields. TaoLend exposes no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -110,7 +121,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/oxylok/116-taolend"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/116"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/116/"
     }
   ],
   "website_url": "https://taolend.io/"

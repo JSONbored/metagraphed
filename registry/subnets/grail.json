@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 81,
-  "name": "Grail",
-  "slug": "sn-81",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "decentralized-training",
@@ -12,87 +7,88 @@
     "official-docs",
     "official-source-repo"
   ],
-  "source_repo": "https://github.com/one-covenant/grail",
-  "docs_url": "https://github.com/one-covenant/grail/tree/main/docs",
-  "dashboard_url": "https://grail-grafana.tplr.ai/",
-  "website_url": null,
-  "notes": "Reviewed overlay for SN81 using the live One Covenant Grail repository, repository documentation, and public dashboards. Native chain identity currently reports a deprecated placeholder, so this remains an explicit identity-drift entry rather than a silent rename.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "needs-review",
-    "reviewed_at": "2026-06-08T11:05:00.000Z",
-    "verified_at": "2026-06-08T11:05:00.000Z",
-    "source_count": 6,
     "gap_notes": [
       "Native chain name currently reports as deprecated.",
       "No verified standalone website yet.",
       "Official miner, validator, FAQ, incentive, and operational docs are maintained inside the public source repository.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "needs-review",
+    "reviewed_at": "2026-06-08T11:05:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-06-08T11:05:00.000Z"
   },
+  "dashboard_url": "https://grail-grafana.tplr.ai/",
+  "docs_url": "https://github.com/one-covenant/grail/tree/main/docs",
+  "name": "Grail",
+  "netuid": 81,
+  "notes": "Reviewed overlay for SN81 using the live One Covenant Grail repository, repository documentation, and public dashboards. Native chain identity currently reports a deprecated placeholder, so this remains an explicit identity-drift entry rather than a silent rename.",
+  "schema_version": 1,
+  "slug": "sn-81",
+  "source_repo": "https://github.com/one-covenant/grail",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-81-grail-source",
-      "name": "Grail source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/one-covenant/grail",
-      "provider": "one-covenant",
       "auth_required": false,
       "authority": "provider-claimed",
+      "id": "sn-81-grail-source",
+      "kind": "source-repo",
+      "name": "Grail source repository",
+      "notes": "Public Grail source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
       "public_safe": true,
       "source_urls": [
         "https://github.com/one-covenant/grail",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/81/subnet.json"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public Grail source repository."
+      "url": "https://github.com/one-covenant/grail"
     },
     {
-      "id": "sn-81-grail-docs",
-      "name": "Grail repository documentation",
-      "kind": "docs",
-      "url": "https://github.com/one-covenant/grail/tree/main/docs",
-      "provider": "one-covenant",
       "auth_required": false,
       "authority": "provider-claimed",
+      "id": "sn-81-grail-docs",
+      "kind": "docs",
+      "name": "Grail repository documentation",
+      "notes": "Public Grail docs directory with miner, validator, FAQ, incentive, and operational setup documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
       "public_safe": true,
       "source_urls": [
         "https://github.com/one-covenant/grail/tree/main/docs",
         "https://github.com/one-covenant/grail"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public Grail docs directory with miner, validator, FAQ, incentive, and operational setup documentation."
+      "url": "https://github.com/one-covenant/grail/tree/main/docs"
     },
     {
-      "id": "sn-81-grail-grafana",
-      "name": "Grail Grafana dashboard",
-      "kind": "dashboard",
-      "url": "https://grail-grafana.tplr.ai/",
-      "provider": "one-covenant",
       "auth_required": false,
       "authority": "provider-claimed",
-      "public_safe": true,
-      "source_urls": ["https://github.com/one-covenant/grail"],
+      "id": "sn-81-grail-grafana",
+      "kind": "dashboard",
+      "name": "Grail Grafana dashboard",
+      "notes": "Public Grafana dashboard linked from the Grail repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Public Grafana dashboard linked from the Grail repository."
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": ["https://github.com/one-covenant/grail"],
+      "url": "https://grail-grafana.tplr.ai/"
     },
     {
       "auth_required": false,
@@ -114,22 +110,22 @@
       "url": "https://grail-grafana.tplr.ai/api/health"
     },
     {
-      "id": "sn-81-grail-wandb",
-      "name": "Grail W&B dashboard",
-      "kind": "dashboard",
-      "url": "https://wandb.ai/tplr/grail",
-      "provider": "one-covenant",
       "auth_required": false,
       "authority": "provider-claimed",
-      "public_safe": true,
-      "source_urls": ["https://github.com/one-covenant/grail"],
+      "id": "sn-81-grail-wandb",
+      "kind": "dashboard",
+      "name": "Grail W&B dashboard",
+      "notes": "Public W&B dashboard linked from the Grail repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Public W&B dashboard linked from the Grail repository."
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": ["https://github.com/one-covenant/grail"],
+      "url": "https://wandb.ai/tplr/grail"
     },
     {
       "auth_required": false,
@@ -157,25 +153,26 @@
       "kind": "openapi",
       "name": "Grail Grafana HTTP API OpenAPI",
       "notes": "Public no-auth OpenAPI 3 schema (title \"Grafana HTTP API.\") served at grail-grafana.tplr.ai/public/openapi3.json — the same host already registered as this file's dashboard and subnet-api (health) surfaces. Same operator (one-covenant / tplr.ai) and identical publish convention already accepted for the sibling Templar (SN3) subnet's Grafana OpenAPI surface (grafana.tplr.ai/public/openapi3.json).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
       "provider": "one-covenant",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
       "schema_status": "machine-readable",
       "schema_url": "https://grail-grafana.tplr.ai/public/openapi3.json",
       "source_urls": [
         "https://grail-grafana.tplr.ai/",
         "https://github.com/one-covenant/grail"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "json",
-        "timeout_ms": 15000
-      },
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "galuis116"
-      },
       "url": "https://grail-grafana.tplr.ai/public/openapi3.json"
     }
-  ]
+  ],
+  "website_url": null
 }

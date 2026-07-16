@@ -9,23 +9,26 @@
   "curation": {
     "gap_notes": [
       "No verified source repository has been promoted as official because the discovered repository identifies a different Rich Kids of TAO subnet identity.",
-      "No verified OpenAPI/Swagger surface yet.",
-      "No verified SSE/event stream yet."
+      "No verified SSE/event stream yet.",
+      "Diffed the 99-path GreenCompute Gateway OpenAPI schema for undiscovered public GET endpoints -- the schema declares no security on everything, but nearly all of it (platform/users, platform/secrets, platform/admin/*, platform/billing/admin/*, platform/v1/debug/*, builds/workloads/deployments management, etc.) is actually 401-gated in practice. Only /readyz and /_metrics were genuinely public and added as new surfaces."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T07:12:52.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 7,
-    "verified_at": "2026-06-08T07:12:52.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/110",
   "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx",
   "links": [],
   "name": "Green Compute",
   "netuid": 110,
-  "notes": "Reviewed overlay for SN110. The official Green Compute website advertises a public model directory and API host; the discovered Rich Kids of TAO repository is retained only as registry-observed evidence pending identity review.",
+  "notes": "Reviewed overlay for SN110. The official Green Compute website advertises a public model directory and API host; the discovered Rich Kids of TAO repository is retained only as registry-observed evidence pending identity review. Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks; diffed the 99-path OpenAPI schema and added 2 new surfaces (readyz, Prometheus metrics) after live-testing every no-param candidate -- most declare no security but are actually 401-gated in practice.",
   "schema_version": 1,
   "slug": "sn-110",
+  "social": {
+    "x": "https://x.com/vocence_bt"
+  },
   "source_repo": "https://github.com/Rich-Kids-of-TAO/rkt-subnet",
   "status": "active",
   "surfaces": [
@@ -185,6 +188,12 @@
       "kind": "subnet-api",
       "name": "Green Compute gateway healthz",
       "notes": "Public no-auth GET /healthz on api.green-compute.com returning gateway liveness JSON (observed: {\"status\":\"ok\",\"service\":\"greencompute-gateway\"}). Documented as GET /healthz in the subnet OpenAPI spec on the same host as the existing chat-completions and openapi surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "green-compute",
       "public_safe": true,
       "review": {
@@ -204,6 +213,12 @@
       "kind": "subnet-api",
       "name": "Green Compute billing bonus rates API",
       "notes": "Public no-auth GET returning platform billing bonus rates by payment method (stripe, usdt, usdc, tao, alpha). Documented in the subnet's own OpenAPI (api.green-compute.com/openapi.json, path /platform/billing/bonus-rates); same host as the existing healthz and openapi surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "green-compute",
       "public_safe": true,
       "review": {
@@ -215,10 +230,51 @@
         "https://www.green-compute.com/"
       ],
       "url": "https://api.green-compute.com/platform/billing/bonus-rates"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-110-green-compute-readyz",
+      "kind": "subnet-api",
+      "name": "Green Compute gateway readiness",
+      "notes": "Public no-auth GET /readyz on api.green-compute.com returning gateway readiness JSON including database connectivity (observed: {\"status\":\"ok\",\"service\":\"greencompute-gateway\",\"database\":\"ok\"}). Documented in the subnet's own OpenAPI schema; distinct from the existing /healthz liveness surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.green-compute.com/openapi.json"],
+      "url": "https://api.green-compute.com/readyz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-110-green-compute-metrics",
+      "kind": "data-artifact",
+      "name": "Green Compute gateway Prometheus metrics",
+      "notes": "Public no-auth GET /_metrics on api.green-compute.com returning Prometheus-format gateway metrics (service info, auth-failure counters, and other operational gauges/counters). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.green-compute.com/openapi.json"],
+      "url": "https://api.green-compute.com/_metrics"
     }
   ],
-  "social": {
-    "x": "https://x.com/vocence_bt"
-  },
   "website_url": "https://www.green-compute.com/"
 }

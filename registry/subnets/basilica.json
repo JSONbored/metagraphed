@@ -9,22 +9,19 @@
   "curation": {
     "gap_notes": [
       "Native chain name currently reports as deprecated.",
-      "No verified docs site yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "needs-review",
-    "reviewed_at": "2026-06-08T11:05:00.000Z",
+    "reviewed_at": "2026-07-16T01:25:00.000Z",
     "source_count": 5,
-    "verified_at": "2026-06-08T11:05:00.000Z"
+    "verified_at": "2026-07-16T01:25:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/39",
   "name": "Basilica",
   "netuid": 39,
-  "notes": "Reviewed overlay for SN39 using the live One Covenant Basilica repository and website. Native chain identity currently reports a deprecated placeholder, so this remains an explicit identity-drift entry rather than a silent rename.",
+  "notes": "Reviewed overlay for SN39 using the live One Covenant Basilica repository and website. Native chain identity currently reports a deprecated placeholder (re-confirmed live this pass, native_name_quality: chain -- a genuine on-chain read, not a fallback), so this remains an explicit identity-drift entry rather than a silent rename. This pass fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Re-checked for an OpenAPI schema on api.basilica.ai (/openapi.json, /docs both still 404) -- gap_notes remain accurate. All 7 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-39",
   "source_repo": "https://github.com/one-covenant/basilica",
@@ -118,6 +115,12 @@
       "kind": "subnet-api",
       "name": "Basilica API health",
       "notes": "Public, unauthenticated JSON health endpoint for the Basilica validator API (api.basilica.ai is the documented BASILICA_API_URL base). Returns service status, version, and validator counts.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "basilica",
       "public_safe": true,
       "review": {
@@ -137,6 +140,12 @@
       "kind": "data-artifact",
       "name": "Basilica A100 SXM5 GPU-host hardware profile",
       "notes": "Public lshw hardware profile of an NVIDIA A100 SXM5 80GB GPU host (CPU, memory, PCI topology, GPU) serving as a reference capability sample for SN39 Basilica's validator hardware attestation. No-auth static JSON, pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "one-covenant",
       "public_safe": true,
       "review": {
@@ -155,6 +164,12 @@
       "kind": "data-artifact",
       "name": "Basilica docs llms-full.txt index",
       "notes": "Public no-auth machine-readable llms-full.txt full-text index of the official SN39 Basilica documentation, served at docs.basilica.ai (the same domain as the registered website basilica.ai, api.basilica.ai subnet-api, and docs.basilica.ai/miners docs surfaces). The document itself states 'netuid = 39' / 'subnet 39', self-identifying it as SN39's docs. An agent-consumable full-text Markdown map of the Basilica docs (GPU rental / verifiable compute), distinct from the docs.basilica.ai/miners HTML docs page already registered.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "one-covenant",
       "public_safe": true,
       "review": {

@@ -7,26 +7,27 @@
   ],
   "curation": {
     "gap_notes": [
-      "No verified official website yet.",
       "No verified docs site yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet."
+      "No verified SSE/event stream yet.",
+      "The universal_qa Hugging Face dataset now requires authentication (HTTP 401 on both GET and HEAD, observed live) -- it appears to have been gated or made private since originally registered; its probe is disabled pending re-verification.",
+      "The EvolAI Proxy API (evolai-gate.hf.space) is currently returning 503 \"Backend unavailable\" on all routes, including its own /openapi.json and /docs -- consistent with a Hugging Face Space outage rather than an access restriction; left enabled so live-status monitoring reflects the outage."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "reviewed_at": "2026-07-16T02:40:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T09:25:00.000Z"
+    "verified_at": "2026-07-16T02:40:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/47",
   "name": "EvolAI",
   "netuid": 47,
-  "notes": "Reviewed overlay for SN47 using the official EvolAI source repository, referenced public Hugging Face dataset, and universal TaoMarketCap dashboard. No verified official website, OpenAPI, safe public subnet API, or SSE surface has been promoted yet.",
+  "notes": "Reviewed overlay for SN47 using the official EvolAI source repository, referenced public Hugging Face dataset, and universal TaoMarketCap dashboard. This pass corrected stale top-level notes text that claimed no website or subnet-api surface existed despite both already being tracked (community-submitted, on-chain website_url now confirms evolai.ai). Also found and documented two live regressions: the universal_qa dataset now requires authentication (previously public), and the EvolAI Proxy API Space is currently down (503 Backend unavailable). No verified official OpenAPI, docs site, or SSE surface has been promoted yet.",
   "schema_version": 1,
   "slug": "sn-47",
   "source_repo": "https://github.com/openevolai/evolai",
   "status": "active",
+  "website_url": "https://evolai.ai/",
   "surfaces": [
     {
       "auth_required": false,
@@ -52,9 +53,9 @@
       "id": "sn-47-evolai-universal-qa-dataset",
       "kind": "data-artifact",
       "name": "EvolAI Universal QA dataset",
-      "notes": "Public Hugging Face dataset referenced by the EvolAI repository.",
+      "notes": "Hugging Face dataset referenced by the EvolAI repository. Previously public; now returns HTTP 401 on both GET and HEAD (live-tested), consistent with the dataset having been gated or made private since originally registered. Probe disabled pending re-verification rather than removed, since this may be reversed by the operator.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -95,7 +96,7 @@
       "id": "sn-47-evolai-subnet-api",
       "kind": "subnet-api",
       "name": "EvolAI Proxy API",
-      "notes": "Public GET /datasets list endpoint on the EvolAI-operated Hugging Face Space proxy at https://evolai-gate.hf.space.",
+      "notes": "Public GET /datasets list endpoint on the EvolAI-operated Hugging Face Space proxy at https://evolai-gate.hf.space. At review time the Space is returning 503 \"Backend unavailable\" on all routes (including its own /openapi.json and /docs) -- consistent with a Space outage; probe left enabled so live-status monitoring reflects it.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -122,17 +123,17 @@
       "kind": "data-artifact",
       "name": "EvolAI validator configuration",
       "notes": "Public no-auth machine-readable validator-configuration module (evolai/validator/config.py) committed in the official openevolai/evolai repository, defining the SN47 EvolAI evaluation parameters the validator runs against: reference tokenizer/model, per-stage generation token budgets (think/KL/side-quest max-new-tokens), fast-transformer and Mamba2 evaluation toggles, and CUDA memory settings. Pinned to an immutable commit. Verified 200, SS58-clean and contains no secret values (the one API-key field reads an env var with a locally-generated default). Distinct from the universal_qa dataset already registered.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "evolai",
       "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "ultrahighsuper"
-      },
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "any",
-        "timeout_ms": 10000
       },
       "source_urls": [
         "https://github.com/openevolai/evolai/blob/4cc0040eca74e3541178661ce8b5dd29fa2d343a/evolai/validator/config.py",

@@ -402,13 +402,12 @@ function windowCutoffDate(url, windows, defaultLabel) {
 }
 
 // The newest `last_observed` epoch-ms across a row set, as an ISO string (or
-// null for an empty/cold result) -- matches every account-level D1 loader's
-// own `{ data, generatedAt }` contract (loadValidatorNominators,
-// loadAccountWeightSetters, loadAccountStakeFlow, loadSubnetStakeFlow,
-// loadAccountStakeMoves, and the 5 account-footprint loaders all compute this
-// identically). entities.mjs destructures `generatedAt` straight off the
-// tryPostgresTier body, so this route MUST nest under `data` too, not return
-// buildX(...)'s object flat the way the subnet-level (single-object) routes do.
+// null for an empty/cold result) -- matches the `{ data, generatedAt }` contract
+// the surviving account-level D1 loaders (and the former loadAccountStakeFlow /
+// loadSubnetStakeFlow pair removed in #6016) all compute identically.
+// entities.mjs destructures `generatedAt` straight off the tryPostgresTier body,
+// so this route MUST nest under `data` too, not return buildX(...)'s object flat
+// the way the subnet-level (single-object) routes do.
 function latestObservedIso(rows, field = "last_observed") {
   let latest = null;
   for (const row of rows) {
@@ -3812,9 +3811,9 @@ export default {
         }
 
         // GET /api/v1/extrinsics/:ref — per-extrinsic detail + embedded
-        // account_events (up to MAX_EMBEDDED_EVENTS), mirroring
-        // src/extrinsic-detail.mjs's loadExtrinsicDetail. ref is a 0x hash or a
-        // composite "block_number-extrinsic_index".
+        // account_events (up to MAX_EMBEDDED_EVENTS), mirroring the former
+        // src/extrinsic-detail.mjs D1 loader (removed in #4772). ref is a 0x hash
+        // or a composite "block_number-extrinsic_index".
         const extrinsicRef = url.pathname.match(
           /^\/api\/v1\/extrinsics\/([^/]+)$/,
         );
@@ -3858,8 +3857,8 @@ export default {
         // GET /api/v1/accounts/:ss58 (#4832 Tier 1c): cross-subnet account
         // summary -- event aggregates, per-kind counts, 10 newest events,
         // current registrations, and bounded signing activity from the
-        // extrinsics tier, mirroring src/account-events.mjs's
-        // loadAccountSummary. Postgres has no INDEXED BY equivalent and
+        // extrinsics tier, mirroring the former src/account-events.mjs
+        // account-summary D1 loader (removed in #4772). Postgres has no INDEXED BY equivalent and
         // evaluates (hotkey = $1 OR coldkey = $1) as one plan, so the D1
         // path's two-branch UNION-of-seeks (each capped, then re-merged and
         // re-capped) collapses to a single bounded ORDER BY/LIMIT scan here --
@@ -3926,9 +3925,9 @@ export default {
         }
 
         // GET /api/v1/accounts/:ss58/subnets (#4832 Tier 1c): the subnets where
-        // this account's hotkey is currently registered, mirroring
-        // src/account-events.mjs's loadAccountSubnets -- neurons-derived (the
-        // live registration snapshot), not account_events.
+        // this account's hotkey is currently registered, mirroring the former
+        // src/account-events.mjs account-subnets D1 loader (removed in #4772) --
+        // neurons-derived (the live registration snapshot), not account_events.
         const acctSubnets = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/subnets$/,
         );
@@ -3941,8 +3940,9 @@ export default {
         }
 
         // GET /api/v1/accounts/:ss58/events — the per-account signed-event feed
-        // (#4696), mirroring src/account-events.mjs's loadAccountEvents filter
-        // set (kind, netuid, block_start/block_end, cursor). account_events has
+        // (#4696), mirroring the former src/account-events.mjs account event-feed
+        // D1 loader's filter set (removed in #4772: kind, netuid,
+        // block_start/block_end, cursor). account_events has
         // no shape-parity risk (11 scalar columns, its own dedicated writer,
         // never a generic call_args/chain_events-style SCALE dump) -- unlike
         // extrinsics/blocks, this tier only needed the query layer built, not a
@@ -3999,8 +3999,9 @@ export default {
         }
 
         // GET /api/v1/subnets/:netuid/events (#4832 Tier 1b): the per-subnet
-        // signed-event feed, mirroring src/account-events.mjs's loadSubnetEvents
-        // filter set (kind, block_start/block_end, cursor). Same account_events
+        // signed-event feed, mirroring the former src/account-events.mjs subnet
+        // event-feed D1 loader's filter set (removed in #4772: kind,
+        // block_start/block_end, cursor). Same account_events
         // table/columns as the account feed above, filtered by netuid instead of
         // hotkey/coldkey -- a single indexed WHERE, no UNION needed.
         const subnetEventsRoute = url.pathname.match(
@@ -4045,7 +4046,8 @@ export default {
 
         // GET /api/v1/subnets/:netuid/event-summary (#4832 Tier 1b): windowed
         // account_events aggregates by kind/category plus a recent evidence
-        // slice, mirroring src/account-events.mjs's loadSubnetEventSummary. The
+        // slice, mirroring the former src/account-events.mjs subnet event-summary
+        // D1 loader (removed in #4772). The
         // distinct-actor count uses the same hotkey-or-(netuid,uid) identity as
         // the weight-setters routes (WeightsSet ingestion can omit hotkey).
         const subnetEventSummaryRoute = url.pathname.match(
@@ -4119,8 +4121,8 @@ export default {
 
         // GET /api/v1/accounts/:ss58/extrinsics — extrinsics SIGNED by this account
         // (the `signer` column only, not a hotkey/coldkey union -- `extrinsics` has
-        // no hotkey/coldkey columns), mirroring src/account-events.mjs's
-        // loadAccountExtrinsics.
+        // no hotkey/coldkey columns), mirroring the former src/account-events.mjs
+        // account-extrinsics D1 loader (removed in #4772).
         const acctExtrinsics = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/extrinsics$/,
         );
@@ -4275,8 +4277,8 @@ export default {
         }
 
         // GET /api/v1/subnets/:netuid/weights (#4832 Tier 1b): the aggregate
-        // WeightsSet activity for this subnet, mirroring src/subnet-weights.mjs's
-        // loadSubnetWeights. Distinct from /weights/setters below (the per-setter
+        // WeightsSet activity for this subnet, mirroring the former
+        // src/subnet-weights.mjs D1 loader (removed in #4772). Distinct from /weights/setters below (the per-setter
         // leaderboard) -- this is the single-row summary.
         const subnetWeights = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/weights$/,

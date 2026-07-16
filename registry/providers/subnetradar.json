@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
-  "id": "subnetradar",
-  "name": "SubnetRadar",
-  "kind": "data-provider",
-  "website_url": "https://subnetradar.com/",
-  "docs_url": "https://subnetradar.com/about",
   "authority": "provider-claimed",
-  "notes": "Third-party Bittensor subnet analytics and risk/health dashboard. Tracked as dashboard enrichment only; Metagraphed's endpoint health remains probe-derived from our own monitors."
+  "docs_url": "https://subnetradar.com/about",
+  "id": "subnetradar",
+  "kind": "data-provider",
+  "logo_url": "https://metagraph.sh/logos/subnetradar.png",
+  "name": "SubnetRadar",
+  "notes": "Third-party Bittensor subnet analytics and risk/health dashboard. Tracked as dashboard enrichment only; Metagraphed's endpoint health remains probe-derived from our own monitors.",
+  "schema_version": 1,
+  "website_url": "https://subnetradar.com/"
 }

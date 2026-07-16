@@ -4,16 +4,67 @@
   "name": "lium.io",
   "slug": "sn-51",
   "status": "active",
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "compute",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified docs site yet.",
+      "No verified SSE/event stream yet.",
+      "The Lium Backend API also exposes generic SaaS scaffolding with no subnet-specific data (e.g. /locations/country_codes, /referrals/program-info, /stripe/connect/supported-countries, /users/get-ip) -- deliberately left untracked as out of scope."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T03:20:00.000Z",
+    "source_count": 3,
+    "verified_at": "2026-07-16T03:20:00.000Z"
   },
+  "notes": "First maintainer-reviewed pass for SN51 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 1 surface having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 149-path Lium Backend API OpenAPI schema: the large majority of routes require JwtAccessBearer auth or a path parameter with no stable canonical value (miner/validator hotkeys, pod/executor/volume IDs). Added 6 new no-auth no-param surfaces exposing real subnet-relevant data: per-validator-coldkey revenue, live and total executor counts, the latest on-chain set_weights call, marketplace shared config (regional pricing multipliers, default Docker images), and a signed watchtower digest. Excluded generic SaaS scaffolding routes with no subnet-specific data (see gap_notes).",
   "social": {
     "x": "https://x.com/lium_io"
   },
   "website_url": "https://lium.io/",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-51-lium-io-website",
+      "kind": "website",
+      "name": "lium.io website",
+      "notes": "Official lium.io (SN51) website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Datura-ai/lium-io"],
+      "url": "https://lium.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-51-lium-io-source-repo",
+      "kind": "source-repo",
+      "name": "lium.io source repository",
+      "notes": "Official lium.io (SN51) source repository, in the Datura-ai GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "source_urls": ["https://lium.io/"],
+      "url": "https://github.com/Datura-ai/lium-io"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -71,6 +122,12 @@
       "kind": "subnet-api",
       "name": "Lium API version health",
       "notes": "Public no-auth GET /version on the Lium Backend API (served at /api/version) returning liveness JSON with started_at and uptime_seconds. Documented as GET /version in the registered OpenAPI spec on the same host as the existing machines subnet-api surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "lium",
       "public_safe": true,
       "review": {
@@ -154,6 +211,114 @@
         "https://lium.io/api/machines/capacity"
       ],
       "url": "https://lium.io/api/machines/capacity"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-51-lium-revenue-for-validators",
+      "kind": "data-artifact",
+      "name": "Lium per-validator revenue history",
+      "notes": "Public no-auth GET /billing/revenue-for-validators on the Lium Backend API, returning monthly revenue totals keyed by validator coldkey (an already-public on-chain SS58 address) for the SN51 lium.io compute marketplace. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/billing/revenue-for-validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-51-lium-executors-count",
+      "kind": "subnet-api",
+      "name": "Lium live executor count",
+      "notes": "Public no-auth GET /executors/count on the Lium Backend API, returning the current count of available (unrented) executors -- distinct from /executors/total-count, which reports all registered executors. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/executors/count"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-51-lium-executors-total-count",
+      "kind": "subnet-api",
+      "name": "Lium total registered executor count",
+      "notes": "Public no-auth GET /executors/total-count on the Lium Backend API, returning the total count of all registered executors on the SN51 lium.io compute marketplace -- distinct from /executors/count, which reports currently-available executors. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/executors/total-count"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-51-lium-latest-set-weights",
+      "kind": "subnet-api",
+      "name": "Lium latest set_weights call",
+      "notes": "Public no-auth GET /latest-set-weights on the Lium Backend API, returning the SN51 validator's most recent on-chain set_weights call (uids, weights, version_key, current_block, timestamps). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/latest-set-weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-51-lium-shared-config",
+      "kind": "data-artifact",
+      "name": "Lium marketplace shared configuration",
+      "notes": "Public no-auth GET /v1/shared-config on the Lium Backend API, returning marketplace-wide operational configuration (billing processing schedule, default Docker images with pinned CUDA/PyTorch/Python versions) for the SN51 lium.io compute marketplace. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/v1/shared-config"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-51-lium-watchtower-digest",
+      "kind": "data-artifact",
+      "name": "Lium watchtower signed digest",
+      "notes": "Public no-auth GET /watchtower/digest on the Lium Backend API, returning a signed SHA-256 digest and timestamp used to verify deployment/container integrity across the SN51 lium.io compute marketplace. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/watchtower/digest"
     }
   ],
   "source_repo": "https://github.com/Datura-ai/lium-io"

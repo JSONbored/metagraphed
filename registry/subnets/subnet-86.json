@@ -38,7 +38,13 @@
       "id": "sn-86-taomarketcap-subnet-snapshot",
       "kind": "data-artifact",
       "name": "SN86 on-chain subnet snapshot",
-      "notes": "Public no-auth GET /public/v1/subnets/86 on api.taomarketcap.com returning a machine-readable JSON snapshot of SN86 on-chain subnet state and SubnetIdentitiesV3 metadata (subnetName \"⚒\", owner description about building a methodical foundation and onboarding a senior data scientist, plus economics, registration/burn parameters, and dTAO market fields). SN86 exposes no first-party API, repository, or static dataset; this is the indexed public JSON feed for netuid 86 documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/86/ on api.taomarketcap.com returning a machine-readable JSON snapshot of SN86 on-chain subnet state and SubnetIdentitiesV3 metadata (subnetName \"⚒\", owner description about building a methodical foundation and onboarding a senior data scientist, plus economics, registration/burn parameters, and dTAO market fields). SN86 exposes no first-party API, repository, or static dataset; this is the indexed public JSON feed for netuid 86 documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -49,7 +55,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://backprop.finance/dtao/subnets/86-subnet-86"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/86"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/86/"
     },
     {
       "auth_required": false,

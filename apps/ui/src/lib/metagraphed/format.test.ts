@@ -4,6 +4,7 @@ import {
   humaniseSeconds,
   durationLabel,
   formatRelative,
+  relativeFromDiff,
   isStaleFreshness,
   formatTao,
 } from "./format";
@@ -116,6 +117,27 @@ describe("formatRelative", () => {
   });
 });
 
+describe("relativeFromDiff (#6020 shared time-ago core)", () => {
+  it("defaults reproduce formatRelative: 1s floor, 24h→days, future shown as 'in'", () => {
+    expect(relativeFromDiff(400)).toBe("1s ago"); // sub-second floored to 1s
+    expect(relativeFromDiff(30_000)).toBe("30s ago");
+    expect(relativeFromDiff(90 * 60_000)).toBe("2h ago");
+    expect(relativeFromDiff(25 * 3_600_000)).toBe("1d ago"); // 24h cap → days
+    expect(relativeFromDiff(-5 * 60_000)).toBe("in 5m"); // future surfaced
+  });
+
+  it("clampFuture collapses a future diff to the zero point (the freshness stamp's behaviour)", () => {
+    expect(relativeFromDiff(-5_000, { clampFuture: true, secondsFloor: 0 })).toBe("0s ago");
+    expect(relativeFromDiff(-3_600_000, { clampFuture: true, secondsFloor: 0 })).toBe("0s ago");
+  });
+
+  it("secondsFloor 0 allows a bare '0s'; hourCapHours 48 keeps hours to 47h", () => {
+    expect(relativeFromDiff(0, { secondsFloor: 0 })).toBe("0s ago");
+    expect(relativeFromDiff(47 * 3_600_000, { hourCapHours: 48 })).toBe("47h ago");
+    expect(relativeFromDiff(48 * 3_600_000, { hourCapHours: 48 })).toBe("2d ago");
+  });
+});
+
 describe("isStaleFreshness", () => {
   it("treats unusable timestamps as stale (conservative)", () => {
     expect(isStaleFreshness(undefined)).toBe(true);
@@ -161,5 +183,17 @@ describe("formatTao", () => {
     expect(formatTao(999_999)).toBe("1000.0k τ"); // still < 1e6 → k-tier
     expect(formatTao(1_000_000)).toBe("1.00M τ"); // lower boundary of M-tier
     expect(formatTao(2_500_000)).toBe("2.50M τ");
+  });
+
+  // #6019: tiering is by magnitude (|v|), not v itself, so a negative amount
+  // gets the same tier a positive one of equal size would.
+  it("tiers negative amounts by magnitude, preserving the sign", () => {
+    expect(formatTao(-0.48213)).toBe("-0.4821 τ"); // sub-unit
+    expect(formatTao(-256.5)).toBe("-256.50 τ"); // whole-unit, 2dp
+    expect(formatTao(-1_000)).toBe("-1.0k τ"); // lower boundary of k-tier
+    expect(formatTao(-12_345)).toBe("-12.3k τ");
+    expect(formatTao(-999_999)).toBe("-1000.0k τ"); // still < 1e6 → k-tier
+    expect(formatTao(-1_000_000)).toBe("-1.00M τ"); // lower boundary of M-tier
+    expect(formatTao(-2_500_000)).toBe("-2.50M τ");
   });
 });

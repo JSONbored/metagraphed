@@ -1,0 +1,69 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "contact": "contact@glyph-research.org",
+  "curation": {
+    "gap_notes": [
+      "No verified docs site yet -- glyph-research.org/docs currently returns 403.",
+      "No verified safe public subnet API endpoint yet -- /api/health and /leaderboard on glyph-research.org both return the site's HTML shell, not JSON.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 3,
+    "verified_at": "2026-07-16T00:00:00.000Z"
+  },
+  "dashboard_url": "https://taomarketcap.com/subnets/117",
+  "name": "Glyph",
+  "netuid": 117,
+  "notes": "Root->128 accuracy audit pass (#5903): resolved a prior identity-dispute flag (native chain name was a placeholder; TaoMarketCap and Tensorplex disagreed on the SN117 source repository, with the file previously tracking a BrainPlay/shiftlayer-llc identity). The on-chain SubnetIdentitiesV3 record now shows a complete, professional Glyph Research identity (subnetName \"glyph\", live website, real contact email, Discord link, description \"decentralized Hutter Prize\") that did not exist at the last review. The official glyph-research/glyph-subnet repository's README explicitly and consistently documents --netuid 117 for mainnet across every command example (the brainplay-subnet repo's --netuid 335 references are all under --subtensor.network test, i.e. testnet, not a mainnet claim on the same netuid). Re-slugged this file from brainplay.json to glyph.json to match. Removed the BrainPlay-specific surfaces (health API, Codenames deployment profile, leaderboard dashboard) since they belong to a different, no-longer-associated tenant rather than a degraded version of the current one; added Glyph's official website and source repository.",
+  "schema_version": 1,
+  "slug": "glyph",
+  "source_repo": "https://github.com/glyph-research/glyph-subnet",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-117-glyph-website",
+      "kind": "website",
+      "name": "Glyph website",
+      "notes": "Official SN117 Glyph Research website (page title \"Glyph Research\") -- verified live 2026-07-16, matching the on-chain SubnetIdentitiesV3 subnetUrl field.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "glyph-research",
+      "public_safe": true,
+      "source_urls": ["https://github.com/glyph-research/glyph-subnet"],
+      "url": "https://glyph-research.org"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-117-glyph-source-repo",
+      "kind": "source-repo",
+      "name": "Glyph source repository",
+      "notes": "Official SN117 Glyph Research source repository -- verified live 2026-07-16. README explicitly documents --netuid 117 for mainnet miner registration, commit, and validator commands, matching the on-chain SubnetIdentitiesV3 githubRepo field.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "glyph-research",
+      "public_safe": true,
+      "source_urls": ["https://github.com/glyph-research/glyph-subnet"],
+      "url": "https://github.com/glyph-research/glyph-subnet"
+    }
+  ],
+  "website_url": "https://glyph-research.org"
+}

@@ -1,20 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 11,
-  "name": "TrajectoryRL",
-  "slug": "sn-11",
-  "status": "active",
-  "categories": [
-    "baseline-curated",
-    "identity-reviewed",
-    "official-docs",
-    "official-source-repo",
-    "official-website"
-  ],
-  "website_url": "https://trajrl.com/",
-  "docs_url": "https://trajrl.com/docs",
-  "source_repo": "https://github.com/trajectoryRL/trajectoryRL",
-  "dashboard_url": "https://trajrl.com/leaderboard",
   "baseline_excluded_surface_ids": [
     "sn-11-taomarketcap-source-repo",
     "sn-11-taomarketcap-website",
@@ -29,212 +13,240 @@
     "sn-11-website-link-trajrl-com-website-2",
     "sn-11-website-link-trajrl-com-website-4"
   ],
-  "notes": "Reviewed overlay for SN11 TrajectoryRL using the official website, docs, leaderboard, live, winners, benchmark pages, and source repository. Common API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "contact": "trajectoryrl@gmail.com",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T20:25:00.000Z",
-    "verified_at": "2026-06-08T20:25:00.000Z",
-    "source_count": 8,
     "gap_notes": [
       "Official website, docs, leaderboard, live, winners, benchmark pages, and source repository are verified live.",
       "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:25:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-06-08T20:25:00.000Z"
   },
+  "dashboard_url": "https://trajrl.com/leaderboard",
+  "docs_url": "https://trajrl.com/docs",
+  "name": "TrajectoryRL",
+  "netuid": 11,
+  "notes": "Reviewed overlay for SN11 TrajectoryRL using the official website, docs, leaderboard, live, winners, benchmark pages, and source repository. Common API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces. Two community-submitted surfaces (api-docs, subnet-api) had no probe config at all -- not disabled, just absent, meaning they were silently excluded from operational-surfaces.json / live health tracking despite being valid public endpoints (see #5932 for the registry-wide scope of this class of gap). Both confirmed live and given probe configs matching their sibling surfaces' conventions.",
+  "schema_version": 1,
+  "slug": "sn-11",
+  "social": {
+    "x": "https://x.com/trajectoryrl"
+  },
+  "source_repo": "https://github.com/trajectoryRL/trajectoryRL",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-11-trajectoryrl-website",
-      "name": "TrajectoryRL website",
-      "kind": "website",
-      "url": "https://trajrl.com/",
-      "provider": "trajectoryrl",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-11-trajectoryrl-website",
+      "kind": "website",
+      "name": "TrajectoryRL website",
+      "notes": "Official TrajectoryRL website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
       "public_safe": true,
       "source_urls": [
         "https://trajrl.com/",
         "https://github.com/trajectoryRL/trajectoryRL"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official TrajectoryRL website."
+      "url": "https://trajrl.com/"
     },
     {
-      "id": "sn-11-trajectoryrl-docs",
-      "name": "TrajectoryRL docs",
-      "kind": "docs",
-      "url": "https://trajrl.com/docs",
-      "provider": "trajectoryrl",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-11-trajectoryrl-docs",
+      "kind": "docs",
+      "name": "TrajectoryRL docs",
+      "notes": "Official TrajectoryRL documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
       "public_safe": true,
       "source_urls": ["https://trajrl.com/docs"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official TrajectoryRL documentation."
+      "url": "https://trajrl.com/docs"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-11-trajectoryrl-leaderboard",
+      "kind": "dashboard",
       "name": "TrajectoryRL leaderboard",
-      "kind": "dashboard",
-      "url": "https://trajrl.com/leaderboard",
-      "provider": "trajectoryrl",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://trajrl.com/"],
+      "notes": "Official TrajectoryRL leaderboard.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official TrajectoryRL leaderboard."
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "source_urls": ["https://trajrl.com/"],
+      "url": "https://trajrl.com/leaderboard"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-11-trajectoryrl-live",
+      "kind": "dashboard",
       "name": "TrajectoryRL live",
-      "kind": "dashboard",
-      "url": "https://trajrl.com/live",
-      "provider": "trajectoryrl",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://trajrl.com/"],
+      "notes": "Official TrajectoryRL live page.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official TrajectoryRL live page."
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "source_urls": ["https://trajrl.com/"],
+      "url": "https://trajrl.com/live"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-11-trajectoryrl-winners",
+      "kind": "dashboard",
       "name": "TrajectoryRL winners",
-      "kind": "dashboard",
-      "url": "https://trajrl.com/winners",
-      "provider": "trajectoryrl",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://trajrl.com/"],
+      "notes": "Official TrajectoryRL winners page.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official TrajectoryRL winners page."
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "source_urls": ["https://trajrl.com/"],
+      "url": "https://trajrl.com/winners"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-11-trajectoryrl-bench",
-      "name": "TrajectoryRL benchmark",
       "kind": "dashboard",
-      "url": "https://trajrl.com/bench",
-      "provider": "trajectoryrl",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://trajrl.com/"],
+      "name": "TrajectoryRL benchmark",
+      "notes": "Official TrajectoryRL benchmark page.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official TrajectoryRL benchmark page."
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "source_urls": ["https://trajrl.com/"],
+      "url": "https://trajrl.com/bench"
     },
     {
-      "id": "sn-11-trajectoryrl-source",
-      "name": "TrajectoryRL source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/trajectoryRL/trajectoryRL",
-      "provider": "trajectoryrl",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-11-trajectoryrl-source",
+      "kind": "source-repo",
+      "name": "TrajectoryRL source repository",
+      "notes": "Official TrajectoryRL source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
       "public_safe": true,
       "source_urls": ["https://github.com/trajectoryRL/trajectoryRL"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official TrajectoryRL source repository."
+      "url": "https://github.com/trajectoryRL/trajectoryRL"
     },
     {
-      "id": "sn-11-trajectoryrl-api-docs",
-      "name": "TrajectoryRL API documentation",
-      "kind": "docs",
-      "url": "https://github.com/trajectoryRL/trajectoryRL/blob/main/docs/API.md",
-      "provider": "trajectoryrl",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-11-trajectoryrl-api-docs",
+      "kind": "docs",
+      "name": "TrajectoryRL API documentation",
+      "notes": "Public request/response API specification for TrajectoryRL validator and miner integration, covering the web-submit channel, pre-eval checks, score submission, winner lookup, heartbeat, and log-upload flows.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/trajectoryRL/trajectoryRL/blob/main/docs/VALIDATOR_OPERATIONS.md",
-        "https://github.com/trajectoryRL/trajectoryRL/blob/main/docs/MINER_OPERATIONS.md"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "jakearmstrong59"
       },
-      "notes": "Public request/response API specification for TrajectoryRL validator and miner integration, covering the web-submit channel, pre-eval checks, score submission, winner lookup, heartbeat, and log-upload flows."
+      "source_urls": [
+        "https://github.com/trajectoryRL/trajectoryRL/blob/main/docs/VALIDATOR_OPERATIONS.md",
+        "https://github.com/trajectoryRL/trajectoryRL/blob/main/docs/MINER_OPERATIONS.md"
+      ],
+      "url": "https://github.com/trajectoryRL/trajectoryRL/blob/main/docs/API.md"
     },
     {
-      "id": "sn-11-trajectoryrl-subnet-api",
-      "name": "TrajectoryRL network stats API",
-      "kind": "subnet-api",
-      "url": "https://trajrl.com/api/stats",
-      "provider": "trajectoryrl",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-11-trajectoryrl-subnet-api",
+      "kind": "subnet-api",
+      "name": "TrajectoryRL network stats API",
+      "notes": "Public read-only REST JSON endpoint reporting SN11 network totals (reports, LLM calls, tokens, cost); no auth. Documented in the official trajrl API client.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/trajectoryRL/trajrl/blob/main/trajrl/subnet/api.py"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "boskodev790"
       },
-      "notes": "Public read-only REST JSON endpoint reporting SN11 network totals (reports, LLM calls, tokens, cost); no auth. Documented in the official trajrl API client."
+      "source_urls": [
+        "https://github.com/trajectoryRL/trajrl/blob/main/trajrl/subnet/api.py"
+      ],
+      "url": "https://trajrl.com/api/stats"
     },
     {
-      "id": "sn-11-trajectoryrl-miners",
-      "name": "TrajectoryRL miner directory",
-      "kind": "data-artifact",
-      "url": "https://trajrl.com/api/miners",
-      "provider": "trajectoryrl",
       "auth_required": false,
       "authority": "community",
-      "public_safe": true,
-      "source_urls": ["https://trajrl.com/"],
+      "id": "sn-11-trajectoryrl-miners",
+      "kind": "data-artifact",
+      "name": "TrajectoryRL miner directory",
+      "notes": "Public no-auth GET returning the TrajectoryRL (SN11) miner directory as JSON — aggregate counters (total / active / qualified miner counts, validator count) plus a per-miner array of 256 rows carrying uid, name, incentive, score, rank, activity flags, and latest-model fields. Served on trajrl.com, the subnet's own registered domain (same host as the existing website and /api/stats subnet-api), and distinct from that aggregate-only stats surface.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "trajectoryrl",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "nickmopen"
       },
-      "notes": "Public no-auth GET returning the TrajectoryRL (SN11) miner directory as JSON — aggregate counters (total / active / qualified miner counts, validator count) plus a per-miner array of 256 rows carrying uid, name, incentive, score, rank, activity flags, and latest-model fields. Served on trajrl.com, the subnet's own registered domain (same host as the existing website and /api/stats subnet-api), and distinct from that aggregate-only stats surface."
+      "source_urls": ["https://trajrl.com/"],
+      "url": "https://trajrl.com/api/miners"
     }
   ],
-  "social": { "x": "https://x.com/trajectoryrl" },
-  "contact": "trajectoryrl@gmail.com"
+  "website_url": "https://trajrl.com/"
 }

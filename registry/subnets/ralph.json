@@ -1,0 +1,168 @@
+{
+  "categories": [
+    "baseline-curated",
+    "distributed-training",
+    "identity-reviewed",
+    "language-models",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "The README mentions a Streamlit monitoring dashboard (\"Ralph Live\"), but it is a locally-run tool (streamlit run dashboard/app.py), not a hosted public URL, so it is not tracked."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T01:30:00.000Z",
+    "source_count": 7,
+    "verified_at": "2026-07-16T01:30:00.000Z"
+  },
+  "docs_url": "https://github.com/RalphLabsAI/ralph/blob/main/docs/Ralph-Whitepaper-v1.3.pdf",
+  "name": "Ralph",
+  "netuid": 40,
+  "notes": "This netuid was previously tracked under the \"Chunking\" identity (VectorChat's text-chunking/RAG subnet, github.com/salahawk/chunking_subnet). On-chain SubnetIdentitiesV3 native_name, source_repo, and description now all point to \"Ralph\" (RalphLabsAI's decentralized, autonomous AI training-recipe research subnet) -- the same pivot pattern as SN3 Templar/Crusades, but more conclusively corroborated: the old chunking_subnet repo has been dead for 2+ years (last push 2024-05-26), subnet.chunking.com has an expired TLS certificate, and RalphLabsAI/ralph's own README explicitly self-identifies as \"Live on Bittensor mainnet, netuid 40\" and was pushed 13 days before this review. This is a full identity/ownership pivot, not cosmetic drift, so the old Chunking-era surfaces are retired rather than kept alongside the new ones. File renamed from chunking.json to ralph.json to match slugify(name). Ralph funds an open, continuously-improving training recipe (a canonical recipe repo miners patch, a public knowledge corpus of every evaluated change, and open-weights demonstration models) verified via attested execution (TDX + nvtrust hardware attestation). No public API, OpenAPI schema, or hosted dashboard found.",
+  "schema_version": 1,
+  "slug": "ralph",
+  "source_repo": "https://github.com/RalphLabsAI/ralph",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-40-ralph-website",
+      "kind": "website",
+      "name": "Ralph website",
+      "notes": "Official Ralph (SN40) website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ralphlabs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/RalphLabsAI/ralph"],
+      "url": "https://www.ralphlabs.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-40-ralph-protocol-source-repo",
+      "kind": "source-repo",
+      "name": "Ralph protocol source repository",
+      "notes": "Official Ralph (SN40) protocol source repository -- validator, proof-test runner, attestation, scoring, and submission tooling. Self-identifies as \"Live on Bittensor mainnet, netuid 40\" in its own README.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ralphlabs",
+      "public_safe": true,
+      "source_urls": ["https://www.ralphlabs.ai/"],
+      "url": "https://github.com/RalphLabsAI/ralph"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-40-ralph-recipe-source-repo",
+      "kind": "source-repo",
+      "name": "Ralph canonical recipe repository",
+      "notes": "Official Ralph (SN40) canonical training-recipe repository -- the model/recipe/config/data the network's miners patch and the merged history of accepted improvements. Distinct from the protocol repository already registered (this one is the patchable deliverable; the protocol repo is restricted infrastructure).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ralphlabs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/RalphLabsAI/ralph"],
+      "url": "https://github.com/RalphLabsAI/recipe"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-40-ralph-whitepaper",
+      "kind": "docs",
+      "name": "Ralph whitepaper",
+      "notes": "Official Ralph whitepaper (v1.3, PDF), linked from the official protocol repository's README.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ralphlabs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/RalphLabsAI/ralph"],
+      "url": "https://github.com/RalphLabsAI/ralph/blob/main/docs/Ralph-Whitepaper-v1.3.pdf"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-40-ralph-wandb",
+      "kind": "dashboard",
+      "name": "Ralph Weights & Biases dashboard",
+      "notes": "Public Weights & Biases project (entity ralphlabs-hub, project ralph) for real-time Ralph training loss curves, linked from the official protocol repository's README.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ralphlabs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/RalphLabsAI/ralph"],
+      "url": "https://wandb.ai/ralphlabs-hub/ralph"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-40-ralph-github-discussions",
+      "kind": "docs",
+      "name": "Ralph GitHub Discussions",
+      "notes": "Official Ralph org-level GitHub Discussions forum, linked from the protocol repository's README and used to publish phase results (e.g. the Phase 0.5 results discussion).",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ralphlabs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/RalphLabsAI/ralph"],
+      "url": "https://github.com/orgs/RalphLabsAI/discussions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-40-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Ralph TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/40/ on api.taomarketcap.com returning machine-readable JSON for SN40 on-chain subnet state, hyperparameters, economics, and dTAO market fields. Ralph has no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "reyanthony062001-ops"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/RalphLabsAI/ralph"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/40/"
+    }
+  ],
+  "website_url": "https://www.ralphlabs.ai/"
+}

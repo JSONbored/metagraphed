@@ -1,69 +1,70 @@
 {
-  "schema_version": 1,
-  "netuid": 121,
-  "name": "sundae_bar",
-  "slug": "sn-121",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo",
     "official-website"
   ],
-  "source_repo": "https://github.com/sundae-bar/bittensor-subnet",
-  "dashboard_url": "https://taomarketcap.com/subnets/121",
-  "website_url": "https://www.sundaebar.ai/",
-  "notes": "Reviewed overlay for SN121 using the official Sundae Bar website and source repository.",
+  "contact": "hello@sundaebar.ai",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/121",
+  "name": "sundae_bar",
+  "netuid": 121,
+  "notes": "Reviewed overlay for SN121 using the official Sundae Bar website and source repository. Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks. The site's llms.txt documents its API as \"Public, read-only, and unauthenticated\" -- added 3 new no-param surfaces (categories, skill-categories, skill-creators) after live-testing; the remaining documented routes are all path-parameterized.",
+  "schema_version": 1,
+  "slug": "sn-121",
+  "social": {
+    "x": "https://x.com/sundae_bar_"
+  },
+  "source_repo": "https://github.com/sundae-bar/bittensor-subnet",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-121-sundae-bar-website",
-      "name": "Sundae Bar website",
-      "kind": "website",
-      "url": "https://www.sundaebar.ai/",
-      "provider": "sundae-bar",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "id": "sn-121-sundae-bar-website",
+      "kind": "website",
+      "name": "Sundae Bar website",
+      "notes": "Official Sundae Bar website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Sundae Bar website."
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "url": "https://www.sundaebar.ai/"
     },
     {
-      "id": "sn-121-sundae-bar-source",
-      "name": "Sundae Bar source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/sundae-bar/bittensor-subnet",
-      "provider": "sundae-bar",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "id": "sn-121-sundae-bar-source",
+      "kind": "source-repo",
+      "name": "Sundae Bar source repository",
+      "notes": "Official Sundae Bar source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Sundae Bar source repository."
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "url": "https://github.com/sundae-bar/bittensor-subnet"
     },
     {
       "auth_required": false,
@@ -72,6 +73,12 @@
       "kind": "subnet-api",
       "name": "Sundae Bar coordinator API",
       "notes": "Public no-auth GET on the SN121 coordinator API host documented in the official sb-validator README as API_URL (e.g. https://api.sundaebar.ai/api/v2/validators). Returns JSON liveness (observed: {\"status\":\"ok\"}).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "sundae-bar",
       "public_safe": true,
       "review": {
@@ -90,6 +97,12 @@
       "kind": "data-artifact",
       "name": "Sundae Bar SBC9 skill evaluation dataset",
       "notes": "Public no-auth JSONL benchmark dataset of customer-email response scenarios with rubric ground-truth metadata, published in the official SN121 sb-validator repository at python/dataset_sbc9.jsonl. Loaded at grader runtime by skill_evaluation.py (_load_variant_specifics) for skill-integrity checks during validator evaluation flows.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "sundae-bar",
       "public_safe": true,
       "review": {
@@ -151,10 +164,73 @@
         "https://www.sundaebar.ai/"
       ],
       "url": "https://www.sundaebar.ai/api/products"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-121-sundae-bar-categories-api",
+      "kind": "subnet-api",
+      "name": "Sundae Bar categories API",
+      "notes": "Public no-auth GET /api/categories on www.sundaebar.ai returning the category tree for agents, workflows, and prompts. Explicitly documented in the site's own llms.txt as \"Public, read-only, and unauthenticated\".",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://www.sundaebar.ai/llms.txt"],
+      "url": "https://www.sundaebar.ai/api/categories"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-121-sundae-bar-skill-categories-api",
+      "kind": "subnet-api",
+      "name": "Sundae Bar skill categories API",
+      "notes": "Public no-auth GET /api/skill-categories on www.sundaebar.ai returning the category list for skills. Explicitly documented in the site's own llms.txt as \"Public, read-only, and unauthenticated\".",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://www.sundaebar.ai/llms.txt"],
+      "url": "https://www.sundaebar.ai/api/skill-categories"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-121-sundae-bar-skill-creators-api",
+      "kind": "subnet-api",
+      "name": "Sundae Bar skill creators API",
+      "notes": "Public no-auth GET /api/skill-creators on www.sundaebar.ai returning the distinct list of skill creator names (values usable for the /api/products creators filter). Explicitly documented in the site's own llms.txt as \"Public, read-only, and unauthenticated\".",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://www.sundaebar.ai/llms.txt"],
+      "url": "https://www.sundaebar.ai/api/skill-creators"
     }
   ],
-  "social": {
-    "x": "https://x.com/sundae_bar_"
-  },
-  "contact": "hello@sundaebar.ai"
+  "website_url": "https://www.sundaebar.ai/"
 }

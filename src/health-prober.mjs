@@ -33,6 +33,10 @@ import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
 } from "./kv-keys.mjs";
+import {
+  diffChangedSubnetNetuids,
+  notifySubnetStatusChanged,
+} from "./subnet-status-subscribe.mjs";
 
 // Re-export so existing importers (workers/api.mjs, mcp-server, discovery) keep
 // resolving the KV health keys through the prober; the names now live in kv-keys.
@@ -507,7 +511,14 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   sanitizeRpcLatestBlocks(probed);
 
   const d1Persist = await persistToD1(db, probed, runAt);
-  await persistToKv(kv, probed, runAt);
+  const priorCurrent = await readHealthCurrentSnapshot(kv);
+  const nextCurrent = await persistToKv(kv, probed, runAt);
+  const changedNetuids = diffChangedSubnetNetuids(priorCurrent, nextCurrent);
+  // Best-effort: never fail the probe sweep because a status subscriber
+  // notify couldn't land (#6034).
+  if (changedNetuids.length > 0) {
+    await notifySubnetStatusChanged(env, changedNetuids);
+  }
   await syncHealthChecksToPostgres(env, probed);
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
@@ -606,8 +617,19 @@ async function persistToD1(db, probed, runAt) {
   }
 }
 
+async function readHealthCurrentSnapshot(kv) {
+  if (!kv?.get) return null;
+  try {
+    const raw = await kv.get(KV_HEALTH_CURRENT);
+    if (!raw) return null;
+    return typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    return null;
+  }
+}
+
 async function persistToKv(kv, probed, runAt) {
-  if (!kv?.put) return;
+  if (!kv?.put) return null;
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   for (const row of probed) counts[normalizeProbeStatus(row.status)] += 1;
 
@@ -689,6 +711,7 @@ async function persistToKv(kv, probed, runAt) {
     kv.put(KV_HEALTH_RPC_POOL, JSON.stringify(rpcPool)),
     kv.put(KV_HEALTH_META, JSON.stringify(meta)),
   ]);
+  return current;
 }
 
 // #4832 gap-closure: best-effort Postgres mirror of the D1 write above --

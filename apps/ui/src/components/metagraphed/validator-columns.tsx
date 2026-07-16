@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { CopyButton } from "@jsonbored/ui-kit";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
-import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
+import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-table";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
 import { formatApyPct, formatTakePct } from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
@@ -40,7 +41,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     tdClassName: TD_BASE,
     cell: (v) => (
       <div className="flex items-center gap-1.5">
-        {v.featured ? <FeaturedBadge /> : null}
+        {v.featured ? <SponsoredBadge /> : null}
         <ValidatorIdentityChip hotkey={v.hotkey} identity={v.coldkey_identity} size={20} />
       </div>
     ),
@@ -50,14 +51,17 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     thClassName: TH_BASE,
     tdClassName: `${TD_BASE} text-ink-muted`,
     cell: (v) => (
-      <Link
-        to="/validators/$hotkey"
-        params={{ hotkey: v.hotkey }}
-        className="text-ink-strong hover:text-accent hover:underline"
-        title={v.hotkey}
-      >
-        {shortHash(v.hotkey) ?? v.hotkey}
-      </Link>
+      <div className="flex items-center gap-1.5">
+        <Link
+          to="/validators/$hotkey"
+          params={{ hotkey: v.hotkey }}
+          className="text-ink-strong hover:text-accent hover:underline"
+          title={v.hotkey}
+        >
+          {shortHash(v.hotkey) ?? v.hotkey}
+        </Link>
+        <CopyButton value={v.hotkey} label="hotkey" className="-my-3.5" />
+      </div>
     ),
   },
   {
@@ -66,14 +70,17 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     tdClassName: `${TD_BASE} text-ink-muted`,
     cell: (v) =>
       v.coldkey ? (
-        <Link
-          to="/accounts/$ss58"
-          params={{ ss58: v.coldkey }}
-          className="hover:text-accent hover:underline"
-          title={v.coldkey}
-        >
-          {shortHash(v.coldkey) ?? v.coldkey}
-        </Link>
+        <div className="flex items-center gap-1.5">
+          <Link
+            to="/accounts/$ss58"
+            params={{ ss58: v.coldkey }}
+            className="hover:text-accent hover:underline"
+            title={v.coldkey}
+          >
+            {shortHash(v.coldkey) ?? v.coldkey}
+          </Link>
+          <CopyButton value={v.coldkey} label="coldkey" className="-my-3.5" />
+        </div>
       ) : (
         "—"
       ),

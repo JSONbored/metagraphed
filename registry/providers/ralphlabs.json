@@ -1,0 +1,10 @@
+{
+  "authority": "official",
+  "github_url": "https://github.com/RalphLabsAI/ralph",
+  "id": "ralphlabs",
+  "kind": "subnet-team",
+  "name": "RalphLabsAI",
+  "notes": "Provider entry for Ralph, SN40 on Bittensor (netuid 40). Confirmed via on-chain SubnetIdentitiesV3 (native_name, source_repo, description) and the RalphLabsAI/ralph repository's own README, which self-identifies as \"Live on Bittensor mainnet, netuid 40\". This netuid was previously operated by a different team under the \"Chunking\" identity (see registry/providers/vectorchat.json).",
+  "schema_version": 1,
+  "website_url": "https://www.ralphlabs.ai/"
+}

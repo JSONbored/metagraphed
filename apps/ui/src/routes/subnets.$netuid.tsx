@@ -110,8 +110,10 @@ import { ResourceExplorer } from "@/components/metagraphed/resource-explorer";
 import { GittensorRegisteredRepos } from "@/components/metagraphed/gittensor-registered-repos";
 import { SubnetProfilePanel } from "@/components/metagraphed/subnet-profile-panel";
 import { SubnetPulseStrip } from "@/components/metagraphed/subnet-pulse-strip";
+import { SubnetValidatorsPreview } from "@/components/metagraphed/subnet-validators-preview";
 import { SubnetFilterProvider } from "@/components/metagraphed/subnet-filter-context";
 import { SubnetCompareDrawer } from "@/components/metagraphed/subnet-compare-drawer";
+import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 
 type SearchParams = {
   tab?: string;
@@ -291,6 +293,8 @@ function ProfileShell({ netuid }: { netuid: number }) {
             ) : null
           }
         />
+
+        <SubnetValidatorsPreview netuid={netuid} />
 
         <SubnetPulseStrip netuid={netuid} />
 
@@ -1557,6 +1561,7 @@ function ValidatorsPanel({ netuid }: { netuid: number }) {
       subtitle="Active validator set ranked by stake — emission, trust, and consensus."
       info="GET /api/v1/subnets/{netuid}/validators — the permitted, stake-ranked validator set from the latest snapshot. Select a UID to open it in the Metagraph tab."
     >
+      <ValidatorGuide />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-64 w-full" />}>
           <ValidatorsTableLoader

@@ -1,33 +1,65 @@
 {
-  "schema_version": 1,
-  "netuid": 69,
-  "name": "ain",
-  "slug": "ain",
-  "status": "active",
   "categories": ["baseline-curated", "identity-reviewed"],
-  "source_repo": null,
-  "website_url": "https://www.heraldmedia.ai/",
-  "docs_url": null,
-  "dashboard_url": null,
-  "notes": "Reviewed overlay for SN69 ain. Public directories and analytics pages list the subnet, but no official team, website, source repository, API, OpenAPI schema, or docs site has been verified.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:00:00.000Z",
-    "verified_at": "2026-06-08T15:00:00.000Z",
-    "source_count": 5,
     "gap_notes": [
       "No publicly verified team/operator profile yet.",
-      "No verified official website yet.",
-      "No verified live source repository yet.",
       "No verified official docs site yet beyond public directory/community pages.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified machine-readable OpenAPI/Swagger schema yet (heraldmedia.ai/openapi.json and /api/openapi.json both 404).",
+      "No verified safe first-party public subnet API endpoint yet (heraldmedia.ai/api and /api/health both 404); the tracked TaoMarketCap feed is third-party.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
+  "dashboard_url": null,
+  "docs_url": null,
+  "name": "ain",
+  "netuid": 69,
+  "notes": "Reviewed overlay for SN69 ain (Herald). Website and source repository now verified live and tracked as surfaces (heraldmedia.ai, HeraldMedia/herald) -- both were previously flagged as unverified. Fixed 2 missing probe blocks (#5932). No first-party API, OpenAPI schema, or docs site beyond the README has been found.",
+  "schema_version": 1,
+  "slug": "ain",
+  "source_repo": "https://github.com/HeraldMedia/herald",
+  "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-69-ain-website",
+      "kind": "website",
+      "name": "ain (Herald) website",
+      "notes": "Official Herald SN69 public website -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "source_urls": ["https://www.heraldmedia.ai/"],
+      "url": "https://www.heraldmedia.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-69-ain-source-repo",
+      "kind": "source-repo",
+      "name": "ain (Herald) source repository",
+      "notes": "Official SN69 miner/validator source repository -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "source_urls": ["https://github.com/HeraldMedia/herald"],
+      "url": "https://github.com/HeraldMedia/herald"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -35,6 +67,12 @@
       "kind": "data-artifact",
       "name": "Herald outlet registry seed data",
       "notes": "Public no-auth JSON seed outlet registry (version_id, outlet_id, tier, domains) for SN69 Herald verified media placement. Default load path in herald/validator/news/registry.py via _SEED_PATH and load_registry(); validators map article URLs to approved outlet tiers during oracle scoring. Pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "herald",
       "public_safe": true,
       "review": {
@@ -53,7 +91,13 @@
       "id": "sn-69-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "ain TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/69 on api.taomarketcap.com returning machine-readable JSON for SN69 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Herald (ain) exposes outlet registry seed data and heraldmedia.ai but no verified no-auth first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/69/ on api.taomarketcap.com returning machine-readable JSON for SN69 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Herald (ain) exposes outlet registry seed data and heraldmedia.ai but no verified no-auth first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -64,7 +108,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/HeraldMedia/herald/blob/4de1577e82b74807d4081c3f61edffaee9ed718a/README.md"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/69"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/69/"
     },
     {
       "auth_required": false,
@@ -73,6 +117,12 @@
       "kind": "data-artifact",
       "name": "ain minimum compute requirements",
       "notes": "Public no-auth machine-readable min_compute.yml from the official SN69 ain (Herald) repository (HeraldMedia/herald), pinned to an immutable commit. Specifies the minimum CPU and RAM requirements for running SN69 miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "herald",
       "public_safe": true,
       "review": {
@@ -85,5 +135,6 @@
       ],
       "url": "https://raw.githubusercontent.com/HeraldMedia/herald/4de1577e82b74807d4081c3f61edffaee9ed718a/min_compute.yml"
     }
-  ]
+  ],
+  "website_url": "https://www.heraldmedia.ai/"
 }

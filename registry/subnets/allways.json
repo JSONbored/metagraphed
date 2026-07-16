@@ -1,9 +1,9 @@
 {
-  "categories": ["bitcoin", "subnet-api", "pilot"],
+  "categories": ["defi", "bitcoin", "subnet-api", "pilot"],
   "curation": {
     "gap_notes": [
-      "No verified dashboard surface yet.",
-      "No verified data artifact yet."
+      "No verified dashboard surface yet (no dashboard link found on the website as of 2026-07-15).",
+      "Data-artifact surface exists (sn-7-allways-data-artifact) but is community-submitted, not yet maintainer-verified."
     ],
     "level": "adapter-backed",
     "review_state": "maintainer-reviewed",
@@ -247,15 +247,15 @@
       "id": "allways-crown-history",
       "kind": "subnet-api",
       "name": "Allways crown history",
-      "notes": "Listed as a public surface, but excluded from the default smoke probe because the endpoint may require query parameters and returns HTTP 400 for a blind GET.",
+      "notes": "Requires the direction query param (one of SOL-BTC, BTC-SOL, SOL-TAO, TAO-SOL -- SOL-BTC tracked here as the representative probe, confirmed live 2026-07-15). A blind GET without it returns HTTP 400, which previously left this surface unprobed entirely.",
       "probe": {
-        "enabled": false,
+        "enabled": true,
         "expect": "json",
         "method": "GET"
       },
       "provider": "allways",
       "public_safe": true,
-      "url": "https://api.all-ways.io/crown/history"
+      "url": "https://api.all-ways.io/crown/history?direction=SOL-BTC"
     },
     {
       "auth_required": false,
@@ -366,6 +366,281 @@
         "https://api.all-ways.io/swagger"
       ],
       "url": "https://api.all-ways.io/history/state"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-network-stats",
+      "kind": "subnet-api",
+      "name": "Allways network stats",
+      "notes": "Public no-auth GET returning aggregate totals: total swap count, total volume (SOL), active miner count, active swap count. Documented in the subnet's own OpenAPI (api.all-ways.io/swagger-json, path /stats); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-network-halt-state",
+      "kind": "subnet-api",
+      "name": "Allways network halt state",
+      "notes": "Public no-auth GET returning whether the network is currently halted plus the as-of timestamp. Documented in the subnet's own OpenAPI (path /network/halt-state); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/network/halt-state"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-network-scoring-state",
+      "kind": "subnet-api",
+      "name": "Allways network scoring state",
+      "notes": "Public no-auth GET returning the last-scored timestamp and updated-at time for the network's miner scoring cycle. Documented in the subnet's own OpenAPI (path /network/scoring-state); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/network/scoring-state"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-swaps-active",
+      "kind": "subnet-api",
+      "name": "Allways active swaps",
+      "notes": "Public no-auth GET returning the list of currently in-flight swaps. Documented in the subnet's own OpenAPI (path /swaps/active); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/swaps/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-swaps-count",
+      "kind": "subnet-api",
+      "name": "Allways swap count",
+      "notes": "Public no-auth GET returning the cumulative total swap count. Documented in the subnet's own OpenAPI (path /swaps/count); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/swaps/count"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-events",
+      "kind": "subnet-api",
+      "name": "Allways full event feed",
+      "notes": "Public no-auth GET returning the full protocol event feed (SwapCompleted and related on-chain events), unfiltered -- distinct from the already-tracked /events/latest convenience endpoint. Documented in the subnet's own OpenAPI (path /events); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/events"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-reservations",
+      "kind": "subnet-api",
+      "name": "Allways reservations",
+      "notes": "Public no-auth GET returning the full list of swap reservations. Documented in the subnet's own OpenAPI (path /reservations); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/reservations"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-reservations-active",
+      "kind": "subnet-api",
+      "name": "Allways active reservations",
+      "notes": "Public no-auth GET returning only currently-active swap reservations. Documented in the subnet's own OpenAPI (path /reservations/active); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/reservations/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-crown-time",
+      "kind": "subnet-api",
+      "name": "Allways crown time-share",
+      "notes": "Public no-auth GET returning per-miner crown time-share (seconds held, share of window, rate) for a swap direction; requires the direction query param (one of SOL-BTC, BTC-SOL, SOL-TAO, TAO-SOL -- SOL-BTC tracked here as the representative probe). Documented in the subnet's own OpenAPI (path /crown/time); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/crown/time?direction=SOL-BTC"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-crown-rate-history",
+      "kind": "subnet-api",
+      "name": "Allways crown rate history",
+      "notes": "Public no-auth GET returning the crown-holder rate history for a swap direction; requires the direction query param (one of SOL-BTC, BTC-SOL, SOL-TAO, TAO-SOL -- SOL-BTC tracked here as the representative probe). Documented in the subnet's own OpenAPI (path /crown/rate-history); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/crown/rate-history?direction=SOL-BTC"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "allways-history-rate",
+      "kind": "subnet-api",
+      "name": "Allways historical exchange rate",
+      "notes": "Public no-auth GET returning daily historical exchange rate time-series for a swap direction; requires the direction query param (one of SOL-BTC, BTC-SOL, SOL-TAO, TAO-SOL -- SOL-BTC tracked here as the representative probe). Documented in the subnet's own OpenAPI (path /history/rate); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/history/rate?direction=SOL-BTC"
     }
   ],
   "website_url": "https://all-ways.io/"

@@ -1,11 +1,24 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "verified_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet -- chat.albedo.tech/openapi.json and /docs both return the King Chat SPA's HTML shell (200 text/html), not a real schema.",
+      "The gateway's own source (chat_to_king/gateway.py) declares a no-auth GET /v1/models route, but the live host serves the same SPA HTML fallback at that path rather than the JSON the source implies -- only /health and /api/config are actually exposed as JSON through the edge, matching the config's own auth:true flag for the /v1/* chat API.",
+      "No verified SSE/event stream yet."
+    ]
   },
   "name": "Albedo",
   "netuid": 97,
+  "notes": "First maintainer review for SN97. Added the official source-repo surface (previously only cited, not tracked) and probe configs on all 4 existing surfaces. Live-tested the gateway source's declared /v1/models route: despite no declared auth, it resolves to the King Chat SPA's HTML shell rather than JSON, so it is not promoted.",
   "schema_version": 1,
   "slug": "sn-97",
   "source_repo": "https://github.com/unarbos/albedo",
@@ -18,6 +31,12 @@
       "id": "sn-97-albedo-subnet-api",
       "kind": "subnet-api",
       "name": "Albedo King Chat config API",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "albedo",
       "public_safe": true,
       "review": {
@@ -36,6 +55,12 @@
       "id": "sn-97-albedo-data-artifact",
       "kind": "data-artifact",
       "name": "Albedo live dashboard data",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "albedo",
       "public_safe": true,
       "review": {
@@ -54,6 +79,12 @@
       "kind": "subnet-api",
       "name": "Albedo King Chat health",
       "notes": "Public no-auth GET /health on chat.albedo.tech returning King Chat gateway liveness JSON (observed: {\"status\":true}). Documented as GET /health in chat_to_king/gateway.py on the same host as the existing config subnet-api surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "albedo",
       "public_safe": true,
       "review": {
@@ -73,6 +104,12 @@
       "kind": "dashboard",
       "name": "Albedo king-of-the-hill benchmark dashboard",
       "notes": "Public no-auth web dashboard for SN97 Albedo at albedo.tech — the subnet's king-of-the-hill benchmark board showing the current reigning model and weight holders, dataset mix, live benchmarks, the submission queue, run history, and failures. The page links back to the official unarbos/albedo source repository. Distinct host from the chat.albedo.tech API and s3.hippius.com data surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "albedo",
       "public_safe": true,
       "review": {
@@ -84,6 +121,24 @@
         "https://albedo.tech/"
       ],
       "url": "https://albedo.tech/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-97-albedo-source-repo",
+      "kind": "source-repo",
+      "name": "Albedo source repository",
+      "notes": "Official SN97 Albedo source repository -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "albedo",
+      "public_safe": true,
+      "source_urls": ["https://github.com/unarbos/albedo"],
+      "url": "https://github.com/unarbos/albedo"
     }
   ],
   "contact": "arbos@bittensor.com"

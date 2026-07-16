@@ -8,7 +8,7 @@ import { Search, X } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
-import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
+import { StateBlock } from "@/components/metagraphed/states/state-block";
 import {
   TimeAgo,
   HealthPill,
@@ -791,7 +791,8 @@ function EndpointsTable() {
 
   if (rows.length === 0)
     return (
-      <RegistryEmpty
+      <StateBlock
+        kind="registry"
         variant="empty"
         title="No endpoints in the registry"
         description="The endpoints artifact returned no rows. The source may be temporarily unavailable — inspect the raw API response or try again shortly."
@@ -922,7 +923,8 @@ function EndpointsTable() {
       </div>
 
       {sorted.length === 0 ? (
-        <RegistryEmpty
+        <StateBlock
+          kind="registry"
           variant="empty"
           title="No endpoints match these filters"
           description="Remove one filter at a time, or reset to see the full list. Eligibility and category chips have the biggest effect on row count."

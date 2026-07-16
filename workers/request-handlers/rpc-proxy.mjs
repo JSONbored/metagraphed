@@ -218,6 +218,21 @@ async function verifyMeta(env) {
 // outbound probes. An agent (or the verify_integration MCP tool) calls this to
 // confirm "callable right now" before wiring.
 export async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
+  // No request body — path param only — so this is a GET/HEAD action endpoint
+  // (same method set as handleBadgeSvgRequest). Reject anything else before the
+  // rate limiter or outbound probe can run (#6015).
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return errorResponse(
+      "method_not_allowed",
+      "Surface verify only accepts GET and HEAD.",
+      405,
+      {},
+      {
+        allow: "GET, HEAD, OPTIONS",
+      },
+    );
+  }
+
   if (env.RPC_RATE_LIMITER?.limit) {
     const clientKey = `verify:${resolveClientIp(request)}`;
     const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
@@ -668,12 +683,14 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   return new Response(response.body, { status: response.status, headers });
 }
 
-const RPC_MAX_ATTEMPTS = 3;
+// Exported so tests/docs-content-drift.test.mjs can assert content/docs/rpc.mdx
+// documents the real values instead of a second hand-copied literal.
+export const RPC_MAX_ATTEMPTS = 3;
 const RPC_ATTEMPT_TIMEOUT_MS = 6000;
 const RPC_CLASSIFY_BODY_LIMIT_BYTES = 64 * 1024;
 // /rpc/v1/{network} → the pool id served from rpc/pools.json. Adding a network
 // here (plus its pool + allowlisted origins) is all the proxy needs to serve it.
-const RPC_PROXY_POOLS = { finney: "finney-rpc", test: "test-rpc" };
+export const RPC_PROXY_POOLS = { finney: "finney-rpc", test: "test-rpc" };
 // Max blocks an endpoint may trail the freshest reported tip before the proxy
 // demotes it behind synced nodes. Bittensor block time is ~12s, so ~10 blocks
 // (~15 min) tolerates cross-provider probe-timing skew while still routing around
@@ -836,11 +853,12 @@ function streamRpcResponse(upstream, endpoint, attempts, status) {
 // Advisory rate-limit headers on RPC proxy responses. The Cloudflare rate-limit
 // binding (RPC_RATE_LIMITER) only returns {success}, so an exact remaining/reset
 // is unavailable — we surface the static policy (mirrors wrangler.jsonc:
-// 100 requests / 60s) plus Retry-After on a 429.
-const RPC_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
+// 100 requests / 60s) plus Retry-After on a 429. Exported (see
+// RPC_MAX_ATTEMPTS above) for the docs-content drift test.
+export const RPC_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 // Mirrors wrangler.jsonc's STATE_QUERY_RATE_LIMITER binding (#4344/9.2) --
 // a fifth of the general proxy's budget, its own separate bucket.
-const STATE_QUERY_RATE_LIMIT = { limit: 20, windowSeconds: 60 };
+export const STATE_QUERY_RATE_LIMIT = { limit: 20, windowSeconds: 60 };
 function setRpcRateLimitHeaders(headers) {
   headers.set("x-ratelimit-limit", String(RPC_RATE_LIMIT.limit));
   headers.set(
@@ -1239,6 +1257,13 @@ function isValidStateQueryHex(value) {
   );
 }
 
+// Substrate block hashes are H256 -- exactly 32 bytes as 0x-prefixed hex.
+// Narrower than isValidStateQueryHex (variable-length storage keys): an
+// optional `at` param that isn't this shape must not reach upstream (#6014).
+function isValidBlockHashHex(value) {
+  return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
+}
+
 // Validates + (for state_getKeysPaged) clamps the caller-supplied params for
 // a state-query method (#4344/9.2). Returns {ok:true, params} -- `params` is
 // the SAME array reference when nothing needed clamping, a new one otherwise,
@@ -1249,11 +1274,20 @@ function isValidStateQueryHex(value) {
 function validateStateQueryParams(method, params) {
   const args = Array.isArray(params) ? params : [];
   if (method === "state_getStorage") {
+    // state_getStorage: [key, at?]
     if (!isValidStateQueryHex(args[0])) {
       return {
         ok: false,
         message:
           "state_getStorage requires params[0] to be a 0x-prefixed hex storage key.",
+      };
+    }
+    // at (params[1]), when present, is a block hash (H256).
+    if (args[1] !== undefined && !isValidBlockHashHex(args[1])) {
+      return {
+        ok: false,
+        message:
+          "state_getStorage requires params[1] (at), when present, to be a 0x-prefixed 32-byte block hash.",
       };
     }
     return { ok: true, params };
@@ -1272,6 +1306,14 @@ function validateStateQueryParams(method, params) {
       ok: false,
       message:
         "state_getKeysPaged requires params[2] (startKey), when present, to be a 0x-prefixed hex key.",
+    };
+  }
+  // at (params[3]), when present, is a block hash (H256).
+  if (args[3] !== undefined && !isValidBlockHashHex(args[3])) {
+    return {
+      ok: false,
+      message:
+        "state_getKeysPaged requires params[3] (at), when present, to be a 0x-prefixed 32-byte block hash.",
     };
   }
   const rawCount = args[1];

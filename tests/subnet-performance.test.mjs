@@ -6,8 +6,6 @@ import {
   loadSubnetPerformance,
   parseSubnetPerformanceHistoryWindow,
   buildSubnetPerformanceHistory,
-  loadSubnetPerformanceHistory,
-  PERFORMANCE_HISTORY_ROW_CAP,
 } from "../src/subnet-performance.mjs";
 
 // A neurons-tier snapshot for one subnet: two validators (permit=1) and two
@@ -376,48 +374,5 @@ describe("buildSubnetPerformanceHistory", () => {
     // A day with no finite scores keeps the field null (schema-stable).
     const none = buildSubnetPerformanceHistory([day({ trust: null })], 7);
     assert.equal(none.points[0].trust_median, null);
-  });
-});
-
-describe("loadSubnetPerformanceHistory", () => {
-  test("issues a netuid + date-bounded neuron_daily read and shapes it", async () => {
-    let seen;
-    const d1 = async (sql, params) => {
-      seen = { sql, params };
-      return [
-        {
-          snapshot_date: "2026-06-27",
-          incentive: 0.5,
-          dividends: 0.5,
-          trust: 0.5,
-          consensus: 0.5,
-          validator_trust: 0.5,
-          validator_permit: 1,
-          active: 1,
-        },
-      ];
-    };
-    const data = await loadSubnetPerformanceHistory(d1, 7, {
-      windowLabel: "7d",
-      windowDays: 7,
-    });
-    assert.match(seen.sql, /FROM neuron_daily WHERE netuid = \?/);
-    assert.match(seen.sql, /snapshot_date >= \? ORDER BY snapshot_date DESC/);
-    assert.equal(seen.params[0], 7);
-    assert.equal(typeof seen.params[1], "string"); // YYYY-MM-DD cutoff
-    assert.equal(seen.params[2], PERFORMANCE_HISTORY_ROW_CAP);
-    assert.equal(data.netuid, 7);
-    assert.equal(data.window, "7d");
-    assert.equal(data.point_count, 1);
-  });
-
-  test("a cold store (no rows) yields empty points", async () => {
-    const data = await loadSubnetPerformanceHistory(async () => [], 9, {
-      windowLabel: "30d",
-      windowDays: 30,
-    });
-    assert.equal(data.netuid, 9);
-    assert.equal(data.point_count, 0);
-    assert.deepEqual(data.points, []);
   });
 });

@@ -24,6 +24,14 @@ describe("relative", () => {
     expect(relative(48 * 60 * 60_000)).toBe("2d ago");
     expect(relative(72 * 60 * 60_000)).toBe("3d ago");
   });
+
+  it("clamps a future timestamp to just-now — clock skew, not real future data (#6020)", () => {
+    // A generated_at/updated_at slightly ahead of the client clock must read
+    // "0s ago", never "in Xs" — the decided freshness behaviour, distinct from
+    // formatRelative which surfaces a genuine future event as "in Xunit".
+    expect(relative(-30_000)).toBe("0s ago");
+    expect(relative(-2 * 60 * 60_000)).toBe("0s ago");
+  });
 });
 
 describe("formatFreshness", () => {

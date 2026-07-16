@@ -332,11 +332,12 @@ describe("MCP resources (#742)", () => {
       method: "resources/templates/list",
     });
     const tpls = res.body.result.resourceTemplates;
-    assert.equal(tpls.length, 3);
+    assert.equal(tpls.length, 4);
     assert.deepEqual(tpls.map((t) => t.uriTemplate).sort(), [
       "metagraph://provider/{slug}",
       "metagraph://schema/{surface_id}",
       "metagraph://subnet/{netuid}",
+      "metagraph://subnet/{netuid}/status",
     ]);
     for (const t of tpls) {
       assert.ok(t.name && t.title && t.description && t.mimeType);
@@ -370,6 +371,7 @@ describe("MCP resources (#742)", () => {
     const uris = res.body.result.resources.map((r) => r.uri);
     assert.ok(uris.includes("metagraph://registry/summary"));
     assert.ok(uris.includes("metagraph://subnet/7"));
+    assert.ok(uris.includes("metagraph://subnet/7/status"));
     assert.ok(uris.includes("metagraph://provider/datura"));
     assert.ok(uris.includes("metagraph://schema/7:subnet-api:allways"));
     assert.equal(res.body.result.nextCursor, undefined);
@@ -658,6 +660,59 @@ describe("MCP resources/subscribe + resources/unsubscribe (#4983 MCP half)", () 
     assert.equal(hub.calls.length, 0);
   });
 
+  test("resources/subscribe accepts metagraph://subnet/{netuid}/status (#6034)", async () => {
+    const hub = fakeMcpSessionHubBinding();
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/subscribe",
+        params: { uri: "metagraph://subnet/42/status" },
+      },
+      {
+        headers: { "mcp-session-id": A_SESSION_ID },
+        env: { MCP_SESSION_HUB: hub },
+      },
+    );
+    assert.deepEqual(res.body.result, {});
+    assert.deepEqual(JSON.parse(hub.calls[0].init.body), {
+      sessionId: A_SESSION_ID,
+      uri: "metagraph://subnet/42/status",
+    });
+  });
+
+  test("resources/unsubscribe accepts metagraph://subnet/{netuid}/status (#6034)", async () => {
+    const hub = fakeMcpSessionHubBinding();
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/unsubscribe",
+        params: { uri: "metagraph://subnet/42/status" },
+      },
+      {
+        headers: { "mcp-session-id": A_SESSION_ID },
+        env: { MCP_SESSION_HUB: hub },
+      },
+    );
+    assert.deepEqual(res.body.result, {});
+    assert.match(hub.calls[0].url, /\/unsubscribe$/);
+  });
+
+  test("resources/read on subnet status returns live health overlay (#6034)", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "resources/read",
+      params: { uri: "metagraph://subnet/1/status" },
+    });
+    assert.equal(res.status, 200);
+    const data = JSON.parse(res.body.result.contents[0].text);
+    assert.equal(data.netuid, 1);
+    assert.ok(data.summary);
+    assert.ok(Array.isArray(data.surfaces));
+  });
+
   test("resources/unsubscribe forwards to the session hub's /unsubscribe route and succeeds, even for a uri never subscribed to", async () => {
     const hub = fakeMcpSessionHubBinding();
     const res = await rpc(
@@ -728,11 +783,18 @@ describe("MCP prompts (#742)", () => {
 
 describe("MCP resources/prompts — branch coverage", () => {
   test("resources/list paginates with a cursor over a large catalog", async () => {
-    const subnets = Array.from({ length: 130 }, (_, i) => ({
+    // Each subnet contributes two list entries (overview + status, #6034),
+    // plus FIXED_RESOURCES. Stub providers/schemas empty so the catalog size
+    // is deterministic: 5 fixed + 2*70 = 145 → page1 full, page2 final.
+    const subnets = Array.from({ length: 70 }, (_, i) => ({
       netuid: i,
       name: `SN${i}`,
     }));
-    const deps = makeDeps({ "/metagraph/subnets.json": { subnets } });
+    const deps = makeDeps({
+      "/metagraph/subnets.json": { subnets },
+      "/metagraph/providers.json": { providers: [] },
+      "/metagraph/schemas/index.json": { schemas: [] },
+    });
     const page1 = await rpc(
       { jsonrpc: "2.0", id: 1, method: "resources/list" },
       { deps },
@@ -1629,6 +1691,69 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(text.includes("latest/"), false);
     // Machine-readable error code for agents to branch on.
     assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
+  test("get_subnet_detail merges the live economics row onto the raw structural record", async () => {
+    const localDeps = makeDeps({
+      "/metagraph/subnets/7.json": {
+        schema_version: 1,
+        subnet: { netuid: 7, slug: "allways", name: "Allways", tempo: 360 },
+        surfaces: [],
+        endpoints: [],
+        gaps: [],
+      },
+      "/metagraph/economics.json": {
+        schema_version: 1,
+        summary: { with_economics_count: 1 },
+        subnets: [{ netuid: 7, registration_cost_tao: 0.5, open_slots: 3 }],
+      },
+    });
+    const res = await callTool(
+      "get_subnet_detail",
+      { netuid: 7 },
+      { deps: localDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet.netuid, 7);
+    assert.equal(out.subnet.tempo, 360);
+    assert.equal(out.economics.open_slots, 3);
+  });
+
+  test("get_subnet_detail omits economics when no live row exists for the netuid", async () => {
+    const localDeps = makeDeps({
+      "/metagraph/subnets/7.json": {
+        schema_version: 1,
+        subnet: { netuid: 7, slug: "allways", name: "Allways" },
+      },
+      "/metagraph/economics.json": {
+        schema_version: 1,
+        summary: {},
+        subnets: [],
+      },
+    });
+    const res = await callTool(
+      "get_subnet_detail",
+      { netuid: 7 },
+      { deps: localDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet.netuid, 7);
+    assert.equal("economics" in out, false);
+  });
+
+  test("get_subnet_detail maps a missing artifact to a clean not_found", async () => {
+    const res = await callTool("get_subnet_detail", { netuid: 999 }, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
+  test("get_subnet_detail rejects a non-integer netuid", async () => {
+    const res = await callTool(
+      "get_subnet_detail",
+      { netuid: "seven" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
   });
 
   test("get_subnet_health is live-only — ignores the static artifact, reports unknown when the live store is cold", async () => {
@@ -5797,6 +5922,105 @@ describe("MCP call_rpc", () => {
   });
 });
 
+describe("MCP query_graphql (#5591 — GraphQL bridge tool)", () => {
+  test("executes a query and returns { data, errors }", async () => {
+    const res = await callTool("query_graphql", { query: "{ __typename }" });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.deepEqual(out, { data: { __typename: "Query" }, errors: [] });
+  });
+
+  test("passes GraphQL variables through to the query", async () => {
+    const res = await callTool("query_graphql", {
+      query:
+        "query Q($netuid: Int!) { subnet_serving(netuid: $netuid) { netuid schema_version } }",
+      variables: { netuid: 7 },
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.deepEqual(out.errors, []);
+    // Cold env (no Postgres flag) -> the resolver's schema-stable zeroed card.
+    assert.equal(out.data.subnet_serving.netuid, 7);
+    assert.equal(out.data.subnet_serving.schema_version, 1);
+  });
+
+  test("surfaces GraphQL validation errors as a populated errors[] (never bypassing the schema)", async () => {
+    const res = await callTool("query_graphql", {
+      query: "{ definitely_not_a_real_field }",
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.equal(out.data, null);
+    assert.ok(Array.isArray(out.errors) && out.errors.length > 0);
+  });
+
+  test("a query that exceeds the complexity cap is rejected, proving the cap is reused", async () => {
+    // 11 aliased relationship fields (weight 5 each = 55) trip
+    // GRAPHQL_MAX_COMPLEXITY (50); the shared handler's maxComplexityRule
+    // rejects it, so the bridge can't bypass the GraphQL-side protection.
+    const aliases = Array.from(
+      { length: 11 },
+      (_unused, i) => `a${i}: subnet_serving(netuid: ${i}) { netuid }`,
+    ).join(" ");
+    const res = await callTool("query_graphql", { query: `{ ${aliases} }` });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.ok(Array.isArray(out.errors) && out.errors.length > 0);
+    assert.ok(/complex/i.test(JSON.stringify(out.errors)));
+  });
+
+  test("surfaces a non-2xx handler response (oversized query -> 413) as { data: null, errors[] }, never thrown", async () => {
+    // Pins the invariant the handler relies on: every handleGraphQLRequest path,
+    // including the non-2xx query-too-large (>16KB) response, returns a JSON
+    // errors[] body -- so the bridge shapes it into { data, errors } rather than
+    // throwing or dropping the error detail.
+    // Padded with a GraphQL comment (non-whitespace, so requireString's trim
+    // leaves it) to exceed GRAPHQL_MAX_QUERY_BYTES (16KB) -> the handler's 413.
+    const oversized = `{ __typename }\n#${"x".repeat(17000)}`;
+    const res = await callTool("query_graphql", { query: oversized });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError ?? false, false);
+    assert.equal(out.data, null);
+    assert.ok(Array.isArray(out.errors) && out.errors.length > 0);
+    assert.ok(/too large/i.test(JSON.stringify(out.errors)));
+  });
+
+  test("applies the GraphQL rate limiter, surfacing a throttle as an error (never bypassing it)", async () => {
+    // A saturated RPC_RATE_LIMITER makes graphqlRateLimited return its 429, so
+    // the bridge is throttled identically to the REST route rather than
+    // bypassing the GraphQL-specific per-client limit.
+    // Saturate only the GraphQL bucket (key `gql:*`); the MCP-dispatch limiter
+    // uses a different key and must still pass so the request reaches the tool.
+    const env = {
+      RPC_RATE_LIMITER: {
+        limit: async ({ key }) => ({ success: !key.startsWith("gql:") }),
+      },
+    };
+    const res = await callTool(
+      "query_graphql",
+      { query: "{ __typename }" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(/too many|rate/i.test(res.body.result.content[0].text));
+  });
+
+  test("requires a non-empty query string", async () => {
+    const res = await callTool("query_graphql", { query: "   " });
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("query"));
+  });
+
+  test("rejects a non-object variables argument", async () => {
+    const res = await callTool("query_graphql", {
+      query: "{ __typename }",
+      variables: [1, 2, 3],
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("variables"));
+  });
+});
+
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
@@ -7803,6 +8027,118 @@ describe("MCP economics + metagraph data tools", () => {
   test("get_subnet_stake_quote surfaces insufficient_liquidity when the subnet has no pool row", async () => {
     const res = await callTool(
       "get_subnet_stake_quote",
+      { netuid: 999, amount: 10, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /insufficient_liquidity/);
+  });
+
+  test("get_stake_action_preview previews a stake with a human-readable summary + disclaimer", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 1000, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 64);
+    assert.equal(out.direction, "stake");
+    assert.equal(out.estimated_out.unit, "alpha");
+    assert.ok(out.estimated_out.amount > 0);
+    assert.ok(out.price_impact_pct > 0);
+    assert.match(out.summary, /Staking 1000 TAO on subnet 64/);
+    assert.match(out.summary, /price impact \(slippage\)/);
+    assert.match(out.disclaimer, /does not execute/i);
+  });
+
+  test("get_stake_action_preview defaults direction to stake when omitted", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 10 },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.structuredContent.direction, "stake");
+  });
+
+  test("get_stake_action_preview previews an unstake (alpha in, TAO out)", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 500, direction: "unstake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.direction, "unstake");
+    assert.equal(out.estimated_out.unit, "tao");
+    assert.match(out.summary, /Unstaking 500 alpha on subnet 64/);
+    assert.ok(out.estimated_out.amount > 0);
+  });
+
+  test("get_stake_action_preview previews root (netuid 0) as 1:1 with no price impact", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 0, amount: 42, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 0);
+    assert.equal(out.price_impact_pct, 0);
+    assert.match(out.summary, /root/);
+    assert.match(out.summary, /no price impact/);
+  });
+
+  test("get_stake_action_preview output carries NO signable/extrinsic payload — only the human-readable summary", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 10, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    // The read-only guarantee: the response must be a plain summary with a
+    // disclaimer and expose nothing an agent could mistake for a submittable tx.
+    assert.ok(out.summary && out.disclaimer);
+    // Scan every field EXCEPT the disclaimer (which intentionally names these
+    // words to state the tool does none of them) for any transaction shape.
+    const { disclaimer: _disclaimer, ...scanned } = out;
+    const serialized = JSON.stringify(scanned).toLowerCase();
+    for (const forbidden of [
+      "extrinsic",
+      "unsigned",
+      "signraw",
+      "signature",
+      "call_data",
+      "calldata",
+      "0x",
+      "mortality",
+      "nonce",
+    ]) {
+      assert.ok(
+        !serialized.includes(forbidden),
+        `preview output must not contain a transaction-shaped field: "${forbidden}"`,
+      );
+    }
+  });
+
+  test("get_stake_action_preview surfaces insufficient_liquidity when the subnet has no pool row", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
       { netuid: 999, amount: 10, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
@@ -15155,6 +15491,171 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     const bad = await callTool("get_validator_detail", { hotkey: "not-ss58" });
     assert.equal(bad.body.result.isError, true);
     assert.match(bad.body.result.content[0].text, /ss58/i);
+  });
+
+  // compare_validators (#6035): a read-only side-by-side of several validators
+  // for a stake/delegate decision, one get_validator_detail-shaped load per
+  // hotkey, projected to take/APY/nominator-count/identity + aggregates.
+  const HOTKEY2 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc6";
+
+  test("compare_validators returns a schema-stable comparison over the empty base", async () => {
+    const res = await callTool("compare_validators", {
+      hotkeys: [HOTKEY, HOTKEY2],
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, null);
+    assert.equal(out.validator_count, 2);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      [HOTKEY, HOTKEY2],
+    );
+    // Cold base: the decision fields resolve to their null aggregates.
+    assert.equal(out.validators[0].take, null);
+    assert.equal(out.validators[0].coldkey_identity, null);
+    assert.equal(out.validators[0].apy_estimate, null);
+    assert.equal(out.validators[0].subnet_context, null);
+  });
+
+  test("compare_validators dedupes repeated hotkeys", async () => {
+    const res = await callTool("compare_validators", {
+      hotkeys: [HOTKEY, HOTKEY, HOTKEY2],
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 2);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      [HOTKEY, HOTKEY2],
+    );
+  });
+
+  test("compare_validators output carries no transaction/signing fields", async () => {
+    const res = await callTool("compare_validators", { hotkeys: [HOTKEY] });
+    const keys = [];
+    const walk = (value) => {
+      if (Array.isArray(value)) {
+        for (const item of value) walk(item);
+      } else if (value && typeof value === "object") {
+        for (const [key, child] of Object.entries(value)) {
+          keys.push(key);
+          walk(child);
+        }
+      }
+    };
+    walk(res.body.result.structuredContent);
+    const forbidden =
+      /sign|signature|transaction|extrinsic|mnemonic|seed|private|wallet|custody/i;
+    const offending = keys.filter((key) => forbidden.test(key));
+    assert.deepEqual(offending, [], `unexpected fields: ${offending}`);
+  });
+
+  test("compare_validators: flag=postgres projects each detail and extracts the netuid subnet_context", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const hotkey = decodeURIComponent(
+            new URL(req.url).pathname.split("/").pop(),
+          );
+          return Response.json({
+            schema_version: 1,
+            hotkey,
+            coldkey: "5Cold",
+            coldkey_identity: { has_identity: true, name: "Alice" },
+            take: 0.18,
+            apy_estimate: 0.2,
+            apy_estimate_eligible_subnet_count: 1,
+            nominator_count: 42,
+            total_stake_tao: 1000,
+            total_emission_tao: 5,
+            avg_validator_trust: 0.9,
+            max_validator_trust: 0.99,
+            subnet_count: 1,
+            subnets: [{ netuid: 7, uid: 3, stake_tao: 800 }],
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "compare_validators",
+      { hotkeys: [HOTKEY], netuid: 7 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.validators[0].take, 0.18);
+    assert.equal(out.validators[0].nominator_count, 42);
+    assert.deepEqual(out.validators[0].coldkey_identity, {
+      has_identity: true,
+      name: "Alice",
+    });
+    assert.deepEqual(out.validators[0].subnet_context, {
+      netuid: 7,
+      uid: 3,
+      stake_tao: 800,
+    });
+    // The raw detail's subnets[] is not passed through -- only the projection.
+    assert.equal(out.validators[0].subnets, undefined);
+  });
+
+  test("compare_validators: flag=postgres falls back to the empty base on failure", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool(
+      "compare_validators",
+      { hotkeys: [HOTKEY] },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.validator_count, 1);
+    assert.equal(out.validators[0].take, null);
+  });
+
+  test("compare_validators rejects missing/empty/malformed hotkey lists", async () => {
+    const missing = await callTool("compare_validators", {});
+    assert.equal(missing.body.result.isError, true);
+    assert.match(missing.body.result.content[0].text, /hotkeys/);
+
+    const empty = await callTool("compare_validators", { hotkeys: [] });
+    assert.equal(empty.body.result.isError, true);
+
+    const nonString = await callTool("compare_validators", { hotkeys: [123] });
+    assert.equal(nonString.body.result.isError, true);
+
+    const badSs58 = await callTool("compare_validators", {
+      hotkeys: [HOTKEY, "not-ss58"],
+    });
+    assert.equal(badSs58.body.result.isError, true);
+
+    // More than COMPARE_VALIDATORS_MAX (16) distinct valid hotkeys.
+    const b58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    const base = HOTKEY.slice(0, -1);
+    const tooMany = Array.from({ length: 17 }, (_, i) => base + b58[i]);
+    const over = await callTool("compare_validators", { hotkeys: tooMany });
+    assert.equal(over.body.result.isError, true);
+    assert.match(over.body.result.content[0].text, /hotkeys/);
+  });
+
+  test("compare_validators rejects an invalid netuid", async () => {
+    const negative = await callTool("compare_validators", {
+      hotkeys: [HOTKEY],
+      netuid: -1,
+    });
+    assert.equal(negative.body.result.isError, true);
+
+    const nonInt = await callTool("compare_validators", {
+      hotkeys: [HOTKEY],
+      netuid: "seven",
+    });
+    assert.equal(nonInt.body.result.isError, true);
+    assert.match(nonInt.body.result.content[0].text, /netuid/);
   });
 
   test("get_validator_nominators returns a schema-stable empty ranked list with defaults", async () => {

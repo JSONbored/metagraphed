@@ -1,0 +1,83 @@
+/*
+ * Harmonizes the embedded GraphiQL widget (#3499) with the Bone & Ink design
+ * system. GraphiQL toggles `body.graphiql-light` / `body.graphiql-dark`
+ * itself when the `forcedTheme` prop is set, and portals its dialogs and
+ * tooltips to <body>, so the overrides target those body classes directly
+ * (mirroring GraphiQL's own selector list) rather than our wrapper's scope.
+ */
+body.graphiql-light .graphiql-container,
+body.graphiql-light .CodeMirror-info,
+body.graphiql-light .CodeMirror-lint-tooltip,
+body.graphiql-light .graphiql-dialog,
+body.graphiql-light .graphiql-dialog-overlay,
+body.graphiql-light .graphiql-tooltip,
+body.graphiql-light [data-radix-popper-content-wrapper] {
+  --color-base: 48, 28%, 96%;
+  --color-neutral: 183, 21%, 8%;
+  --color-primary: 166, 100%, 39%;
+  --color-error: 1, 75%, 50%;
+  --font-family: var(--font-sans);
+  --font-family-mono: var(--font-mono);
+}
+
+body.graphiql-dark .graphiql-container,
+body.graphiql-dark .CodeMirror-info,
+body.graphiql-dark .CodeMirror-lint-tooltip,
+body.graphiql-dark .graphiql-dialog,
+body.graphiql-dark .graphiql-dialog-overlay,
+body.graphiql-dark .graphiql-tooltip,
+body.graphiql-dark [data-radix-popper-content-wrapper] {
+  --color-base: 212, 11%, 4%;
+  --color-neutral: 211, 27%, 95%;
+  --color-primary: 160, 78%, 64%;
+  --color-error: 4, 100%, 64%;
+  --font-family: var(--font-sans);
+  --font-family-mono: var(--font-mono);
+}
+
+.mg-graphiql-frame .graphiql-container {
+  border-radius: inherit;
+}
+
+/*
+ * GraphiQL's icon sidebar (--sidebar-width) and per-editor toolbar
+ * (--toolbar-width) are fixed desktop-sized rails with no built-in responsive
+ * behavior — at mobile/tablet widths they eat a disproportionate share of the
+ * frame. Narrow them progressively.
+ *
+ * The query/response split (a JS-driven flex-grow ratio, see
+ * graphiql-explorer-body.tsx) is left at its default below 1024px: flex
+ * items default to min-width: auto, so CodeMirror's unwrapped query content
+ * already keeps the editor pane at a readable width and naturally collapses
+ * the (empty, until a query runs) response pane on narrow viewports --
+ * forcing min-width: 0 there to let a wider ratio apply instead just clips
+ * the query text. At >=1024px there's enough absolute width that CodeMirror
+ * never needs the min-width floor, so it's safe to let the (wider) seeded
+ * ratio govern and reclaim the otherwise-empty response pane.
+ */
+@media (min-width: 1024px) {
+  .mg-graphiql-frame .graphiql-editors,
+  .mg-graphiql-frame .graphiql-response {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 1023px) {
+  .mg-graphiql-frame .graphiql-container {
+    --sidebar-width: 48px;
+    --toolbar-width: 36px;
+  }
+}
+
+@media (max-width: 767px) {
+  .mg-graphiql-frame .graphiql-container {
+    --sidebar-width: 40px;
+    --toolbar-width: 32px;
+  }
+
+  /* Reclaim session-header space on narrow viewports; the page's own
+     "Explorer" heading already identifies the widget. */
+  .mg-graphiql-frame .graphiql-logo {
+    display: none;
+  }
+}

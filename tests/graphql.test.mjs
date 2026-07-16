@@ -22,6 +22,11 @@ import {
   schema as chainEventsSchema,
 } from "../src/graphql.mjs";
 import { LEADERBOARD_BOARDS } from "../src/health-serving.mjs";
+import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.mjs";
+import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
+import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.mjs";
+import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.mjs";
+import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { resolveClientIp } from "../workers/config.mjs";
 import {
@@ -1766,6 +1771,158 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
   });
 });
 
+describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("sudo: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
+    const { status, body } = await gql(
+      "{ sudo { items { call_module } total next_cursor } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.sudo, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("sudo: resolves Postgres-tier rows from the Sudo feed, JSON-encoding call_args", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          extrinsic_count: 1,
+          limit: 20,
+          offset: 0,
+          next_cursor: "cursor-1",
+          extrinsics: [
+            {
+              block_number: 9,
+              extrinsic_index: 0,
+              extrinsic_hash: `0x${"b".repeat(64)}`,
+              signer: "5Sudo",
+              call_module: "Sudo",
+              call_function: "sudo",
+              call_args: [{ name: "call", value: "setWeights" }],
+              success: true,
+              fee_tao: 0,
+              tip_tao: 0,
+              observed_at: "2026-07-15T00:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ sudo { items { block_number call_module call_args success } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.sudo.total, 1);
+    assert.equal(body.data.sudo.next_cursor, "cursor-1");
+    const item = body.data.sudo.items[0];
+    assert.equal(item.call_module, "Sudo");
+    assert.equal(item.success, true);
+    assert.equal(
+      item.call_args,
+      JSON.stringify([{ name: "call", value: "setWeights" }]),
+    );
+  });
+
+  test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 5,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(
+      `{ sudo(limit: 5, offset: 2, block: 42, call_function: "sudo", success: true) { total } }`,
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/sudo");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("offset"), "2");
+    assert.equal(capturedUrl.searchParams.get("block"), "42");
+    assert.equal(capturedUrl.searchParams.get("call_function"), "sudo");
+    assert.equal(capturedUrl.searchParams.get("success"), "true");
+    // The route fixes call_module=Sudo, so the field exposes neither arg.
+    assert.equal(capturedUrl.searchParams.get("call_module"), null);
+    assert.equal(capturedUrl.searchParams.get("signer"), null);
+  });
+
+  test("sudo: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 20,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(`{ sudo(cursor: "abc123") { total } }`, env);
+    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+  });
+
+  test("sudo: a negative block filter is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql("{ sudo(block: -1) { total } }", env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("sudo: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      "{ sudo { items { call_module } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.sudo, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+});
+
 describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
@@ -1985,6 +2142,158 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   test("extrinsics / extrinsic are weighted as fan-out fields", () => {
     assert.equal(FIELD_COMPLEXITY.extrinsics, 5);
     assert.equal(FIELD_COMPLEXITY.extrinsic, 5);
+  });
+});
+
+describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("governance_config_changes: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
+    const { status, body } = await gql(
+      "{ governance_config_changes { items { call_module } total next_cursor } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.governance_config_changes, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("governance_config_changes: resolves Postgres-tier AdminUtils rows", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          extrinsic_count: 1,
+          limit: 20,
+          offset: 0,
+          next_cursor: "cursor-1",
+          extrinsics: [
+            {
+              block_number: 5,
+              extrinsic_index: 0,
+              extrinsic_hash: `0x${"a".repeat(64)}`,
+              signer: null,
+              call_module: "AdminUtils",
+              call_function: "sudo_set_weights_set_rate_limit",
+              call_args: [{ name: "netuid", value: 1 }],
+              success: true,
+              fee_tao: 0,
+              tip_tao: 0,
+              observed_at: "2026-07-14T00:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ governance_config_changes { items { block_number call_module call_function call_args success } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.governance_config_changes.total, 1);
+    assert.equal(body.data.governance_config_changes.next_cursor, "cursor-1");
+    const item = body.data.governance_config_changes.items[0];
+    assert.equal(item.call_module, "AdminUtils");
+    assert.equal(item.call_function, "sudo_set_weights_set_rate_limit");
+    assert.equal(item.success, true);
+    assert.equal(
+      item.call_args,
+      JSON.stringify([{ name: "netuid", value: 1 }]),
+    );
+  });
+
+  test("governance_config_changes: a partial Postgres-tier body degrades to a schema-stable empty page", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      // Body omits extrinsics / extrinsic_count / next_cursor entirely -- the
+      // resolver must fall back to [] / 0 / null rather than surface undefined.
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      "{ governance_config_changes { items { call_module } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.governance_config_changes, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("governance_config_changes: filter args are forwarded to the /governance/config-changes path (loader reuse, no signer/call_module)", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 5,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(
+      `{ governance_config_changes(limit: 5, block: 42, call_function: "sudo_set_tempo", success: true) { total } }`,
+      env,
+    );
+    // The worker fixes call_module=AdminUtils by path, so the resolver hits the
+    // governance route (not /extrinsics) and never forwards signer/call_module.
+    assert.equal(capturedUrl.pathname, "/api/v1/governance/config-changes");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("block"), "42");
+    assert.equal(
+      capturedUrl.searchParams.get("call_function"),
+      "sudo_set_tempo",
+    );
+    assert.equal(capturedUrl.searchParams.get("success"), "true");
+    assert.equal(capturedUrl.searchParams.get("signer"), null);
+    assert.equal(capturedUrl.searchParams.get("call_module"), null);
+  });
+
+  test("governance_config_changes: a cursor arg is forwarded as a query param", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 20,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(`{ governance_config_changes(cursor: "abc123") { total } }`, env);
+    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+  });
+
+  test("governance_config_changes: rejects a negative block with BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      "{ governance_config_changes(block: -1) { total } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("governance_config_changes is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.governance_config_changes, 5);
   });
 });
 
@@ -2434,6 +2743,272 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
   });
 });
 
+describe("graphql — account_position_history (#5889, Postgres-tier + empty-points fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty-points card, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 1) {
+          schema_version ss58 netuid window point_count points { snapshot_date }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_position_history, {
+      schema_version: 1,
+      ss58: SS58,
+      netuid: 1,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("resolves the Postgres-tier points for the requested window", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          netuid: 5,
+          window: "90d",
+          point_count: 1,
+          points: [
+            {
+              snapshot_date: "2026-07-01",
+              captured_at: "2026-07-01T00:00:00.000Z",
+              uid: 3,
+              coldkey: "5Cold",
+              role: "validator",
+              active: true,
+              stake_tao: 1000,
+              emission_tao: 4,
+              rank: 0.1,
+              trust: 0.2,
+              incentive: 0.3,
+              dividends: 0.4,
+              yield: 0.004,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 5, window: "90d") {
+          ss58 netuid window point_count
+          points { snapshot_date captured_at uid coldkey role active stake_tao emission_tao rank trust incentive dividends yield }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.account_position_history;
+    assert.equal(r.netuid, 5);
+    assert.equal(r.window, "90d");
+    assert.equal(r.point_count, 1);
+    assert.equal(r.points[0].role, "validator");
+    assert.equal(r.points[0].stake_tao, 1000);
+    assert.equal(r.points[0].yield, 0.004);
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the tier", async () => {
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "not-an-ss58", netuid: 1) { point_count } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("an out-of-range netuid is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 99999) { point_count } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("window is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 5, window: "7d") { window } }`,
+      env,
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.ok(
+      capturedUrl.pathname.endsWith(`/accounts/${SS58}/subnets/5/history`),
+    );
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 3, window: "30d") {
+          schema_version ss58 netuid window point_count points { snapshot_date }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_position_history, {
+      schema_version: 1,
+      ss58: SS58,
+      netuid: 3,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { status, body } = await gql(
+      `{ account_position_history(ss58: "${SS58}", netuid: 1, window: "99d") { point_count } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+});
+
+describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+  const EMPTY = {
+    schema_version: 1,
+    netuid: 1,
+    window: "30d",
+    start_date: null,
+    end_date: null,
+    comparable: false,
+    validators_start: 0,
+    validators_end: 0,
+    validators_entered: 0,
+    validators_exited: 0,
+    validator_retention: null,
+    neurons_start: 0,
+    neurons_end: 0,
+    uids_deregistered: 0,
+    neuron_retention: null,
+    stability_score: null,
+  };
+  const ALL_FIELDS =
+    "schema_version netuid window start_date end_date comparable validators_start validators_end validators_entered validators_exited validator_retention neurons_start neurons_end uids_deregistered neuron_retention stability_score";
+
+  test("cold store: no Postgres flag returns a schema-stable empty card, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 1) { ${ALL_FIELDS} } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_turnover, EMPTY);
+  });
+
+  test("resolves the Postgres-tier scorecard for the requested window", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          window: "90d",
+          start_date: "2026-04-01",
+          end_date: "2026-06-30",
+          comparable: true,
+          validators_start: 10,
+          validators_end: 12,
+          validators_entered: 3,
+          validators_exited: 1,
+          validator_retention: 0.9,
+          neurons_start: 100,
+          neurons_end: 110,
+          uids_deregistered: 4,
+          neuron_retention: 0.85,
+          stability_score: 88,
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 5, window: "90d") { ${ALL_FIELDS} } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.subnet_turnover;
+    assert.equal(r.netuid, 5);
+    assert.equal(r.window, "90d");
+    assert.equal(r.comparable, true);
+    assert.equal(r.validators_entered, 3);
+    assert.equal(r.validator_retention, 0.9);
+    assert.equal(r.stability_score, 88);
+  });
+
+  test("window + netuid are forwarded to the Postgres tier route", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(`{ subnet_turnover(netuid: 7, window: "7d") { window } }`, env);
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/7/turnover"));
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 1, window: "30d") { ${ALL_FIELDS} } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_turnover, EMPTY);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 1, window: "99d") { comparable } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("an out-of-range netuid is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 99999) { comparable } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+});
+
 describe("graphql — validator_history (#5710, Postgres-tier + empty-points fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
@@ -2551,6 +3126,145 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
 
   test("validator_history is weighted as a fan-out field", () => {
     assert.equal(FIELD_COMPLEXITY.validator_history, 5);
+  });
+});
+
+describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback)", () => {
+  const trajectoryQuery = `{ subnet_trajectory(netuid: 3) {
+    schema_version netuid point_count
+    points { date completeness_score surface_count total_stake_tao }
+    deltas { window from_date to_date completeness_score tao_in_pool_tao }
+  } }`;
+
+  // loadSubnetTrajectory issues a single SELECT over subnet_snapshots (no GROUP
+  // BY); formatTrajectory re-sorts ascending and derives the 7d/30d deltas.
+  function trajectoryD1(rows = []) {
+    return {
+      prepare() {
+        return {
+          bind() {
+            return {
+              async all() {
+                return { results: rows };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  const P1 = {
+    date: "2026-07-01",
+    completeness_score: 50,
+    surface_count: 4,
+    endpoint_count: 2,
+    validator_count: null,
+    miner_count: null,
+    total_stake_tao: 100,
+    alpha_price_tao: null,
+    emission_share: null,
+    tao_in_pool_tao: 10,
+    alpha_in_pool: null,
+    alpha_out_pool: null,
+    subnet_volume_tao: null,
+  };
+  const P2 = {
+    ...P1,
+    date: "2026-07-08",
+    completeness_score: 60,
+    tao_in_pool_tao: 15,
+  };
+
+  test("cold store: schema-stable empty trajectory", async () => {
+    const { status, body } = await gql(trajectoryQuery);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_trajectory, {
+      schema_version: 1,
+      netuid: 3,
+      point_count: 0,
+      points: [],
+      deltas: [],
+    });
+  });
+
+  test("resolves Postgres-tier data and flattens the window-keyed deltas map to a labelled list", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: 3,
+            point_count: 2,
+            points: [P1, P2],
+            deltas: {
+              "7d": {
+                from_date: "2026-07-01",
+                to_date: "2026-07-08",
+                completeness_score: 10,
+                surface_count: 0,
+                endpoint_count: 0,
+                tao_in_pool_tao: 5,
+                alpha_in_pool: null,
+                alpha_out_pool: null,
+              },
+              "30d": null,
+            },
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(trajectoryQuery, env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/subnets/3/trajectory");
+    assert.equal(body.data.subnet_trajectory.point_count, 2);
+    assert.equal(body.data.subnet_trajectory.points[0].date, "2026-07-01");
+    assert.equal(body.data.subnet_trajectory.points[1].completeness_score, 60);
+    // The window-keyed map becomes a list; the null 30d entry is dropped and
+    // the 7d entry carries its label.
+    assert.equal(body.data.subnet_trajectory.deltas.length, 1);
+    assert.equal(body.data.subnet_trajectory.deltas[0].window, "7d");
+    assert.equal(body.data.subnet_trajectory.deltas[0].completeness_score, 10);
+    assert.equal(body.data.subnet_trajectory.deltas[0].tao_in_pool_tao, 5);
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty trajectory", async () => {
+    const env = {
+      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(trajectoryQuery, env);
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet_trajectory.point_count, 0);
+    assert.deepEqual(body.data.subnet_trajectory.points, []);
+    assert.deepEqual(body.data.subnet_trajectory.deltas, []);
+  });
+
+  test("no Postgres tier flag: formats the subnet_snapshots rows straight off D1, deriving deltas", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: trajectoryD1([
+        { ...P2, snapshot_date: P2.date },
+        { ...P1, snapshot_date: P1.date },
+      ]),
+    };
+    const { status, body } = await gql(trajectoryQuery, env);
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet_trajectory.point_count, 2);
+    // formatTrajectory re-sorts ascending, so the earliest point is first.
+    assert.equal(body.data.subnet_trajectory.points[0].date, "2026-07-01");
+    assert.equal(body.data.subnet_trajectory.points[1].completeness_score, 60);
+    const d7 = body.data.subnet_trajectory.deltas.find(
+      (d) => d.window === "7d",
+    );
+    assert.ok(d7);
+    assert.equal(d7.completeness_score, 10);
+  });
+
+  test("subnet_trajectory is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_trajectory, 5);
   });
 });
 
@@ -2747,6 +3461,105 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
 
   test("subnet_identity_history is weighted as a fan-out field", () => {
     assert.equal(FIELD_COMPLEXITY.subnet_identity_history, 5);
+  });
+});
+
+describe("graphql — chain_identity_history (#5878, Postgres-tier + empty-feed fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag / no D1 rows returns a schema-stable empty feed, never null", async () => {
+    const { status, body } = await gql(
+      `{ chain_identity_history {
+          schema_version count subnet_count changes { netuid subnet_name identity_hash }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_identity_history, {
+      schema_version: 1,
+      count: 0,
+      subnet_count: 0,
+      changes: [],
+    });
+  });
+
+  test("resolves the Postgres-tier network feed, mapping each cross-subnet change", async () => {
+    const env = {
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          count: 2,
+          subnet_count: 2,
+          changes: [
+            {
+              netuid: 7,
+              block_number: 4200,
+              observed_at: "2026-07-01T00:00:00.000Z",
+              subnet_name: "Example",
+              symbol: "EX",
+              description: "desc",
+              github_repo: "https://github.com/example/repo",
+              subnet_url: "https://example.com",
+              discord: "https://discord.gg/example",
+              logo_url: "https://example.com/logo.png",
+              identity_hash: "abc123",
+            },
+            {
+              netuid: 12,
+              block_number: 4180,
+              observed_at: "2026-06-30T00:00:00.000Z",
+              subnet_name: "Other",
+              symbol: "OT",
+              description: null,
+              github_repo: null,
+              subnet_url: null,
+              discord: null,
+              logo_url: null,
+              identity_hash: "def456",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ chain_identity_history(limit: 50) {
+          schema_version count subnet_count
+          changes { netuid block_number observed_at subnet_name symbol identity_hash }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.chain_identity_history;
+    assert.equal(r.count, 2);
+    assert.equal(r.subnet_count, 2);
+    assert.equal(r.changes.length, 2);
+    assert.equal(r.changes[0].netuid, 7);
+    assert.equal(r.changes[0].subnet_name, "Example");
+    assert.equal(r.changes[1].netuid, 12);
+    assert.equal(r.changes[1].identity_hash, "def456");
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ chain_identity_history {
+          schema_version count subnet_count changes { netuid }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_identity_history, {
+      schema_version: 1,
+      count: 0,
+      subnet_count: 0,
+      changes: [],
+    });
   });
 });
 
@@ -3601,6 +4414,277 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
   });
 });
 
+describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-card fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function query(argsClause) {
+    return `{ account_subnets${argsClause} {
+      schema_version ss58 subnet_count
+      subnets { netuid uid stake_tao validator_permit active }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty footprint, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_subnets, {
+      schema_version: 1,
+      ss58: SS58,
+      subnet_count: 0,
+      subnets: [],
+    });
+  });
+
+  test("resolves the Postgres-tier footprint (flat body, unlike the account-event footprint family)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            subnet_count: 2,
+            subnets: [
+              {
+                netuid: 3,
+                uid: 5,
+                stake_tao: 1000,
+                validator_permit: true,
+                active: true,
+              },
+              {
+                netuid: 7,
+                uid: 9,
+                stake_tao: 500,
+                validator_permit: false,
+                active: false,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    const s = body.data.account_subnets;
+    assert.equal(s.subnet_count, 2);
+    assert.equal(s.subnets[0].netuid, 3);
+    assert.equal(s.subnets[0].validator_permit, true);
+    assert.equal(s.subnets[0].active, true);
+    assert.equal(s.subnets[1].netuid, 7);
+    assert.equal(s.subnets[1].validator_permit, false);
+    assert.equal(s.subnets[1].active, false);
+  });
+
+  test("ss58 is forwarded on the Postgres-tier request path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            subnet_count: 0,
+            subnets: [],
+          });
+        },
+      },
+    };
+    await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/subnets`);
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty footprint", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_subnets, {
+      schema_version: 1,
+      ss58: SS58,
+      subnet_count: 0,
+      subnets: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query('(ss58: "not-a-valid-address")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("account_subnets is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_subnets, 5);
+  });
+});
+
+describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function query(argsClause) {
+    return `{ account_extrinsics${argsClause} {
+      schema_version ss58 extrinsic_count limit offset next_cursor
+      extrinsics { block_number extrinsic_index call_module call_function call_args success fee_tao }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty page, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_extrinsics, {
+      schema_version: 1,
+      ss58: SS58,
+      extrinsic_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      extrinsics: [],
+    });
+  });
+
+  test("resolves the Postgres-tier feed, JSON-encoding call_args to the String field", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            extrinsic_count: 1,
+            limit: 100,
+            offset: 0,
+            next_cursor: "cursor-1",
+            extrinsics: [
+              {
+                block_number: 5,
+                extrinsic_index: 0,
+                extrinsic_hash: `0x${"a".repeat(64)}`,
+                signer: SS58,
+                call_module: "SubtensorModule",
+                call_function: "register",
+                call_args: [{ name: "netuid", value: 1 }],
+                success: true,
+                fee_tao: 0.001,
+                tip_tao: 0,
+                observed_at: "2026-07-14T00:00:00.000Z",
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    const s = body.data.account_extrinsics;
+    assert.equal(s.extrinsic_count, 1);
+    assert.equal(s.next_cursor, "cursor-1");
+    const item = s.extrinsics[0];
+    assert.equal(item.block_number, 5);
+    assert.equal(item.call_module, "SubtensorModule");
+    assert.equal(item.call_function, "register");
+    assert.equal(item.success, true);
+    assert.equal(
+      item.call_args,
+      JSON.stringify([{ name: "netuid", value: 1 }]),
+    );
+  });
+
+  test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            extrinsic_count: 0,
+            limit: 5,
+            offset: 10,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(
+      query(
+        `(ss58: "${SS58}", limit: 5, offset: 10, cursor: "abc123", block_start: 100, block_end: 200)`,
+      ),
+      env,
+    );
+    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/extrinsics`);
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("offset"), "10");
+    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+    assert.equal(capturedUrl.searchParams.get("block_start"), "100");
+    assert.equal(capturedUrl.searchParams.get("block_end"), "200");
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_extrinsics, {
+      schema_version: 1,
+      ss58: SS58,
+      extrinsic_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      extrinsics: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query('(ss58: "not-a-valid-address")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("account_extrinsics is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_extrinsics, 5);
+  });
+});
+
 // --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
 //
 // The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,
@@ -3815,6 +4899,126 @@ describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback
       throughput: null,
       author_concentration: null,
       latest_spec_version: null,
+    });
+  });
+});
+
+describe("graphql — runtime (#5898, Postgres-tier spec-version timeline + retired-D1 fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty timeline, never null", async () => {
+    const { status, body } = await gql(
+      `{ runtime {
+          schema_version transition_count current_spec_version
+          coverage_from_block coverage_from_at
+          transitions { spec_version block_number observed_at }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.runtime, {
+      schema_version: 1,
+      transition_count: 0,
+      current_spec_version: null,
+      coverage_from_block: null,
+      coverage_from_at: null,
+      transitions: [],
+    });
+  });
+
+  test("resolves the Postgres-tier spec-version transition timeline", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          transitions: [
+            {
+              spec_version: 200,
+              block_number: 100,
+              observed_at: "2026-06-25T00:00:00.000Z",
+            },
+            {
+              spec_version: 201,
+              block_number: 500,
+              observed_at: "2026-07-01T00:00:00.000Z",
+            },
+          ],
+          transition_count: 2,
+          current_spec_version: 201,
+          coverage_from_block: 100,
+          coverage_from_at: "2026-06-25T00:00:00.000Z",
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ runtime {
+          schema_version transition_count current_spec_version
+          coverage_from_block coverage_from_at
+          transitions { spec_version block_number observed_at }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.runtime, {
+      schema_version: 1,
+      transition_count: 2,
+      current_spec_version: 201,
+      coverage_from_block: 100,
+      coverage_from_at: "2026-06-25T00:00:00.000Z",
+      transitions: [
+        {
+          spec_version: 200,
+          block_number: 100,
+          observed_at: "2026-06-25T00:00:00.000Z",
+        },
+        {
+          spec_version: 201,
+          block_number: 500,
+          observed_at: "2026-07-01T00:00:00.000Z",
+        },
+      ],
+    });
+  });
+
+  test("forwards to /api/v1/runtime with no query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({ schema_version: 1, transition_count: 0 });
+        },
+      },
+    };
+    await gql("{ runtime { transition_count } }", env);
+    assert.equal(capturedUrl.pathname, "/api/v1/runtime");
+    assert.equal(capturedUrl.search, "");
+  });
+
+  test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      // Every field absent -- the resolver's own ?? / || defaults must fill them in.
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ runtime {
+          schema_version transition_count current_spec_version
+          coverage_from_block coverage_from_at transitions { spec_version }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.runtime, {
+      schema_version: 1,
+      transition_count: 0,
+      current_spec_version: null,
+      coverage_from_block: null,
+      coverage_from_at: null,
+      transitions: [],
     });
   });
 });
@@ -4205,6 +5409,592 @@ describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fal
 
   test("subnet_performance is weighted as a fan-out field", () => {
     assert.equal(FIELD_COMPLEXITY.subnet_performance, 5);
+  });
+});
+
+describe("graphql — subnet_concentration (#5901, Postgres-tier + zeroed-card fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_concentration(netuid: 5) {
+          schema_version netuid neuron_count entity_count uids_per_entity captured_at
+          stake { holders gini } emission { holders }
+          entity_stake { holders } entity_emission { holders } validator_stake { holders }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_concentration, {
+      schema_version: 1,
+      netuid: 5,
+      neuron_count: 0,
+      entity_count: 0,
+      uids_per_entity: null,
+      captured_at: null,
+      stake: null,
+      emission: null,
+      entity_stake: null,
+      entity_emission: null,
+      validator_stake: null,
+    });
+  });
+
+  test("resolves the Postgres-tier stake + emission concentration blocks", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          neuron_count: 4,
+          entity_count: 3,
+          uids_per_entity: 1.3333,
+          captured_at: "2026-07-01T00:00:00.000Z",
+          stake: {
+            holders: 4,
+            total: 1000,
+            gini: 0.4,
+            hhi: 0.5,
+            hhi_normalized: 0.25,
+            nakamoto_coefficient: 1,
+            top_1pct_share: 0.6,
+            top_5pct_share: 0.6,
+            top_10pct_share: 0.6,
+            top_20pct_share: 0.9,
+            entropy: 1.4,
+            entropy_normalized: 0.8,
+          },
+          emission: {
+            holders: 3,
+            total: 12.5,
+            gini: 0.2,
+            hhi: 0.7,
+            hhi_normalized: 0.4,
+            nakamoto_coefficient: 1,
+            top_1pct_share: 0.83,
+            top_5pct_share: 0.83,
+            top_10pct_share: 0.83,
+            top_20pct_share: 1,
+            entropy: 0.9,
+            entropy_normalized: 0.9,
+          },
+          validator_stake: {
+            holders: 2,
+            total: 800,
+            gini: 0.1,
+            hhi: 0.55,
+            hhi_normalized: 0.1,
+            nakamoto_coefficient: 1,
+            top_1pct_share: 0.7,
+            top_5pct_share: 0.7,
+            top_10pct_share: 0.7,
+            top_20pct_share: 1,
+            entropy: 0.8,
+            entropy_normalized: 0.8,
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_concentration(netuid: 7) {
+          netuid neuron_count entity_count uids_per_entity captured_at
+          stake { holders gini nakamoto_coefficient top_10pct_share }
+          emission { holders total }
+          validator_stake { holders gini }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const c = body.data.subnet_concentration;
+    assert.equal(c.netuid, 7);
+    assert.equal(c.neuron_count, 4);
+    assert.equal(c.entity_count, 3);
+    assert.equal(c.uids_per_entity, 1.3333);
+    assert.equal(c.captured_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(c.stake.holders, 4);
+    assert.equal(c.stake.nakamoto_coefficient, 1);
+    assert.equal(c.stake.top_10pct_share, 0.6);
+    assert.equal(c.emission.holders, 3);
+    assert.equal(c.emission.total, 12.5);
+    assert.equal(c.validator_stake.holders, 2);
+    assert.equal(c.validator_stake.gini, 0.1);
+  });
+
+  test("forwards the concentration path to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql("{ subnet_concentration(netuid: 3) { neuron_count } }", env);
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/concentration"));
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ subnet_concentration(netuid: 9) {
+          schema_version netuid neuron_count entity_count uids_per_entity
+          stake { holders } validator_stake { holders }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_concentration, {
+      schema_version: 1,
+      netuid: 9,
+      neuron_count: 0,
+      entity_count: 0,
+      uids_per_entity: null,
+      stake: null,
+      validator_stake: null,
+    });
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty card", async () => {
+    const { body } = await gql(
+      "{ subnet_concentration(netuid: -1) { neuron_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_concentration ?? null, null);
+  });
+
+  test("subnet_concentration is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_concentration, 5);
+  });
+});
+
+describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + window validation)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty series, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_concentration_history(netuid: 5) {
+          schema_version netuid window point_count points { snapshot_date stake_gini }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_concentration_history, {
+      schema_version: 1,
+      netuid: 5,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("resolves the Postgres-tier per-day trend points", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          window: "7d",
+          point_count: 2,
+          points: [
+            {
+              snapshot_date: "2026-07-02",
+              neuron_count: 4,
+              stake_gini: 0.42,
+              stake_nakamoto_coefficient: 2,
+              stake_top_10pct_share: 0.55,
+              emission_gini: 0.3,
+              emission_nakamoto_coefficient: 1,
+              emission_top_10pct_share: 0.7,
+            },
+            {
+              snapshot_date: "2026-07-01",
+              neuron_count: 3,
+              stake_gini: 0.4,
+              stake_nakamoto_coefficient: 2,
+              stake_top_10pct_share: 0.5,
+              emission_gini: 0.28,
+              emission_nakamoto_coefficient: 1,
+              emission_top_10pct_share: 0.68,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_concentration_history(netuid: 7, window: "7d") {
+          netuid window point_count
+          points { snapshot_date neuron_count stake_gini stake_nakamoto_coefficient emission_top_10pct_share }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const h = body.data.subnet_concentration_history;
+    assert.equal(h.netuid, 7);
+    assert.equal(h.window, "7d");
+    assert.equal(h.point_count, 2);
+    assert.equal(h.points.length, 2);
+    assert.equal(h.points[0].snapshot_date, "2026-07-02");
+    assert.equal(h.points[0].stake_gini, 0.42);
+    assert.equal(h.points[0].stake_nakamoto_coefficient, 2);
+    assert.equal(h.points[1].emission_top_10pct_share, 0.68);
+  });
+
+  test("forwards the window to the concentration/history Postgres path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ subnet_concentration_history(netuid: 3, window: "90d") { point_count } }',
+      env,
+    );
+    assert.ok(
+      capturedUrl.pathname.endsWith("/subnets/3/concentration/history"),
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent series", async () => {
+    const { body } = await gql(
+      '{ subnet_concentration_history(netuid: 5, window: "5d") { point_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_concentration_history ?? null, null);
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty series", async () => {
+    const { body } = await gql(
+      "{ subnet_concentration_history(netuid: -1) { point_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_concentration_history ?? null, null);
+  });
+
+  test("subnet_concentration_history is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_concentration_history, 5);
+  });
+});
+
+describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable card with neuron:null, never null", async () => {
+    const { status, body } = await gql(
+      `{ neuron(netuid: 5, uid: 12) {
+          schema_version netuid captured_at block_number
+          neuron { uid hotkey }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.neuron, {
+      schema_version: 1,
+      netuid: 5,
+      captured_at: null,
+      block_number: null,
+      neuron: null,
+    });
+  });
+
+  test("resolves the Postgres-tier neuron detail row", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          captured_at: "2026-07-01T00:00:00.000Z",
+          block_number: 8621331,
+          neuron: {
+            uid: 12,
+            hotkey: "5Hot",
+            coldkey: "5Cold",
+            active: true,
+            validator_permit: false,
+            rank: 0.1,
+            trust: 0.2,
+            validator_trust: 0,
+            consensus: 0.15,
+            incentive: 0.05,
+            dividends: 0,
+            emission_tao: 1.25,
+            stake_tao: 100.5,
+            registered_at_block: 8000000,
+            is_immunity_period: false,
+            axon: "1.2.3.4:8091",
+            take: 0.18,
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ neuron(netuid: 5, uid: 12) {
+          netuid captured_at block_number
+          neuron {
+            uid hotkey coldkey active validator_permit
+            rank trust stake_tao emission_tao axon take
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const n = body.data.neuron;
+    assert.equal(n.block_number, 8621331);
+    assert.deepEqual(n.neuron, {
+      uid: 12,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      active: true,
+      validator_permit: false,
+      rank: 0.1,
+      trust: 0.2,
+      stake_tao: 100.5,
+      emission_tao: 1.25,
+      axon: "1.2.3.4:8091",
+      take: 0.18,
+    });
+  });
+
+  test("hits /api/v1/subnets/{netuid}/neurons/{uid} on the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql("{ neuron(netuid: 3, uid: 7) { netuid neuron { uid } } }", env);
+    assert.equal(capturedUrl.pathname, "/api/v1/subnets/3/neurons/7");
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ neuron(netuid: 9, uid: 1) {
+          schema_version netuid captured_at block_number neuron { uid }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.neuron, {
+      schema_version: 1,
+      netuid: 9,
+      captured_at: null,
+      block_number: null,
+      neuron: null,
+    });
+  });
+
+  test("a negative netuid is a GraphQL error, not a null card", async () => {
+    const { body } = await gql(
+      "{ neuron(netuid: -1, uid: 0) { neuron { uid } } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.neuron ?? null, null);
+  });
+
+  test("a negative uid is a GraphQL error, not a null card", async () => {
+    const { body } = await gql(
+      "{ neuron(netuid: 5, uid: -1) { neuron { uid } } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/uid/i.test(body.errors[0].message));
+    assert.equal(body.data?.neuron ?? null, null);
+  });
+
+  test("neuron is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.neuron, 5);
+  });
+});
+
+describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag / no neuron_daily rows returns a schema-stable empty-points card, never null", async () => {
+    const { status, body } = await gql(
+      `{ neuron_history(netuid: 5, uid: 12) {
+          schema_version netuid uid window point_count points { snapshot_date }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.neuron_history, {
+      schema_version: 1,
+      netuid: 5,
+      uid: 12,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("resolves the Postgres-tier points for the requested window", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          uid: 12,
+          window: "90d",
+          point_count: 1,
+          points: [
+            {
+              snapshot_date: "2026-07-01",
+              captured_at: "2026-07-01T00:00:00.000Z",
+              block_number: 8621331,
+              uid: 12,
+              hotkey: "5Hot",
+              coldkey: "5Cold",
+              active: true,
+              validator_permit: true,
+              stake_tao: 200,
+              emission_tao: 3.5,
+              rank: 0.4,
+              trust: 0.5,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ neuron_history(netuid: 5, uid: 12, window: "90d") {
+          netuid uid window point_count
+          points {
+            snapshot_date captured_at block_number uid hotkey
+            stake_tao emission_tao rank trust
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.neuron_history;
+    assert.equal(r.netuid, 5);
+    assert.equal(r.uid, 12);
+    assert.equal(r.window, "90d");
+    assert.equal(r.point_count, 1);
+    assert.deepEqual(r.points, [
+      {
+        snapshot_date: "2026-07-01",
+        captured_at: "2026-07-01T00:00:00.000Z",
+        block_number: 8621331,
+        uid: 12,
+        hotkey: "5Hot",
+        stake_tao: 200,
+        emission_tao: 3.5,
+        rank: 0.4,
+        trust: 0.5,
+      },
+    ]);
+  });
+
+  test("window is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ neuron_history(netuid: 3, uid: 7, window: "7d") { window } }',
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/subnets/3/neurons/7/history");
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ neuron_history(netuid: 9, uid: 1, window: "30d") {
+          schema_version netuid uid window point_count points { snapshot_date }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.neuron_history, {
+      schema_version: 1,
+      netuid: 9,
+      uid: 1,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent series", async () => {
+    const { body } = await gql(
+      '{ neuron_history(netuid: 5, uid: 12, window: "5d") { point_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window/i.test(body.errors[0].message));
+    assert.equal(body.data?.neuron_history ?? null, null);
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty series", async () => {
+    const { body } = await gql(
+      "{ neuron_history(netuid: -1, uid: 0) { point_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.neuron_history ?? null, null);
+  });
+
+  test("a negative uid is a GraphQL error, not an empty series", async () => {
+    const { body } = await gql(
+      "{ neuron_history(netuid: 5, uid: -1) { point_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/uid/i.test(body.errors[0].message));
+    assert.equal(body.data?.neuron_history ?? null, null);
+  });
+
+  test("neuron_history is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.neuron_history, 5);
   });
 });
 
@@ -4923,6 +6713,113 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
     assert.ok(body.errors, "expected a GraphQL error");
     assert.ok(/window|7d/i.test(body.errors[0].message));
     assert.equal(body.data?.subnet_serving ?? null, null);
+  });
+});
+
+describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fallback)", () => {
+  const NETUID = 3;
+
+  function incidentsQuery(argsClause) {
+    return `{ subnet_health_incidents${argsClause} {
+      schema_version netuid window observed_at source surfaces
+    } }`;
+  }
+
+  test("cold store: schema-stable empty surfaces via the D1-live loader", async () => {
+    const { status, body } = await gql(incidentsQuery(`(netuid: ${NETUID})`));
+    assert.equal(status, 200);
+    const d = body.data.subnet_health_incidents;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.netuid, NETUID);
+    assert.equal(d.window, "7d");
+    assert.equal(d.observed_at, null);
+    assert.equal(d.source, "live-cron-prober");
+    assert.deepEqual(d.surfaces, []);
+  });
+
+  test("resolves Postgres-tier data, forwarding netuid in the path + window param", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: NETUID,
+            window: "30d",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            source: "live-cron-prober",
+            surfaces: [
+              {
+                surface_id: "srf-1",
+                samples: 100,
+                uptime_ratio: 0.98,
+                incident_count: 1,
+                downtime_ms: 60000,
+                incidents: [
+                  {
+                    started_at: 1000,
+                    ended_at: 61000,
+                    duration_ms: 60000,
+                    failed_samples: 3,
+                  },
+                ],
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      incidentsQuery(`(netuid: ${NETUID}, window: "30d")`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(
+      capturedUrl.pathname,
+      `/api/v1/subnets/${NETUID}/health/incidents`,
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    const d = body.data.subnet_health_incidents;
+    assert.equal(d.window, "30d");
+    const s = d.surfaces[0];
+    assert.equal(s.surface_id, "srf-1");
+    assert.equal(s.uptime_ratio, 0.98);
+    assert.equal(s.incident_count, 1);
+    assert.equal(s.incidents[0].duration_ms, 60000);
+    assert.equal(s.incidents[0].failed_samples, 3);
+  });
+
+  test("an empty Postgres-tier body degrades to schema-stable defaults with empty surfaces", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      incidentsQuery(`(netuid: ${NETUID})`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_health_incidents, {
+      schema_version: 1,
+      netuid: NETUID,
+      window: "7d",
+      observed_at: null,
+      source: null,
+      surfaces: [],
+    });
+  });
+
+  test("rejects an unsupported window with BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      incidentsQuery(`(netuid: ${NETUID}, window: "99d")`),
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("subnet_health_incidents is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_health_incidents, 5);
   });
 });
 
@@ -5659,6 +7556,1071 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
     assert.ok(body.errors, "expected a GraphQL error");
     assert.ok(/window|30d/i.test(body.errors[0].message));
     assert.equal(body.data?.account_stake_moves ?? null, null);
+  });
+});
+
+describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 zero card)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+  const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zero list card, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}") {
+          schema_version ss58 counterparty_count transfers_scanned scan_capped
+          total_sent_tao total_received_tao
+          counterparties { address sent_tao received_tao net_tao transfer_count last_block }
+          relationship { counterparty }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_counterparties, {
+      schema_version: 1,
+      ss58: SS58,
+      counterparty_count: 0,
+      transfers_scanned: 0,
+      scan_capped: false,
+      total_sent_tao: 0,
+      total_received_tao: 0,
+      counterparties: [],
+      relationship: null,
+    });
+  });
+
+  test("resolves the Postgres-tier list envelope, mapping each ranked counterparty", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          counterparty_count: 2,
+          transfers_scanned: 7,
+          scan_capped: false,
+          total_sent_tao: 12.5,
+          total_received_tao: 4.25,
+          counterparties: [
+            {
+              address: OTHER,
+              sent_tao: 10,
+              received_tao: 4.25,
+              net_tao: -5.75,
+              transfer_count: 5,
+              last_block: 4321,
+            },
+            {
+              address: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+              sent_tao: 2.5,
+              received_tao: 0,
+              net_tao: -2.5,
+              transfer_count: 2,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", limit: 5) {
+          ss58 counterparty_count transfers_scanned scan_capped
+          total_sent_tao total_received_tao
+          counterparties { address sent_tao received_tao net_tao transfer_count last_block }
+          relationship { counterparty }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.account_counterparties;
+    assert.equal(r.counterparty_count, 2);
+    assert.equal(r.transfers_scanned, 7);
+    assert.equal(r.total_sent_tao, 12.5);
+    assert.equal(r.relationship, null);
+    assert.deepEqual(r.counterparties, [
+      {
+        address: OTHER,
+        sent_tao: 10,
+        received_tao: 4.25,
+        net_tao: -5.75,
+        transfer_count: 5,
+        last_block: 4321,
+      },
+      {
+        address: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+        sent_tao: 2.5,
+        received_tao: 0,
+        net_tao: -2.5,
+        transfer_count: 2,
+        last_block: null,
+      },
+    ]);
+  });
+
+  test("relationship mode: maps the Postgres-tier composite envelope with transfer evidence", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          counterparty_count: 1,
+          transfers_scanned: 3,
+          scan_capped: false,
+          total_sent_tao: 8,
+          total_received_tao: 1,
+          counterparties: [
+            {
+              address: OTHER,
+              sent_tao: 8,
+              received_tao: 1,
+              net_tao: -7,
+              transfer_count: 3,
+              last_block: 900,
+            },
+          ],
+          relationship: {
+            schema_version: 1,
+            ss58: SS58,
+            counterparty: OTHER,
+            transfer_count: 3,
+            transfers_scanned: 3,
+            scan_capped: false,
+            total_sent_tao: 8,
+            total_received_tao: 1,
+            net_tao: -7,
+            first_block: 700,
+            last_block: 900,
+            first_seen_at: "2026-05-01T00:00:00.000Z",
+            last_seen_at: "2026-06-01T00:00:00.000Z",
+            limit: 50,
+            transfers: [
+              {
+                block_number: 900,
+                event_index: 2,
+                netuid: 0,
+                from: SS58,
+                to: OTHER,
+                amount_tao: 5,
+                direction: "sent",
+                observed_at: "2026-06-01T00:00:00.000Z",
+              },
+            ],
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}", limit: 50) {
+          counterparty_count
+          counterparties { address transfer_count }
+          relationship {
+            counterparty transfer_count net_tao first_block last_block
+            first_seen_at last_seen_at limit
+            transfers { block_number event_index netuid from to amount_tao direction observed_at }
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.account_counterparties;
+    assert.equal(r.counterparty_count, 1);
+    assert.deepEqual(r.counterparties, [{ address: OTHER, transfer_count: 3 }]);
+    assert.equal(r.relationship.counterparty, OTHER);
+    assert.equal(r.relationship.net_tao, -7);
+    assert.equal(r.relationship.first_block, 700);
+    assert.equal(r.relationship.limit, 50);
+    assert.deepEqual(r.relationship.transfers, [
+      {
+        block_number: 900,
+        event_index: 2,
+        netuid: 0,
+        from: SS58,
+        to: OTHER,
+        amount_tao: 5,
+        direction: "sent",
+        observed_at: "2026-06-01T00:00:00.000Z",
+      },
+    ]);
+  });
+
+  test("relationship mode cold store: a schema-stable empty relationship envelope, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}") {
+          counterparty_count
+          counterparties { address }
+          relationship { counterparty transfer_count scan_capped limit transfers { direction } }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.account_counterparties;
+    assert.equal(r.counterparty_count, 0);
+    assert.deepEqual(r.counterparties, []);
+    assert.equal(r.relationship.counterparty, OTHER);
+    assert.equal(r.relationship.transfer_count, 0);
+    assert.equal(r.relationship.scan_capped, false);
+    assert.equal(r.relationship.limit, 50);
+    assert.deepEqual(r.relationship.transfers, []);
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({ counterparties: [{ address: OTHER }] }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}") {
+          schema_version ss58 counterparty_count transfers_scanned scan_capped
+          total_sent_tao total_received_tao
+          counterparties { address sent_tao received_tao net_tao transfer_count last_block }
+          relationship { counterparty }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_counterparties, {
+      schema_version: 1,
+      ss58: SS58,
+      counterparty_count: 0,
+      transfers_scanned: 0,
+      scan_capped: false,
+      total_sent_tao: 0,
+      total_received_tao: 0,
+      counterparties: [
+        {
+          address: OTHER,
+          sent_tao: 0,
+          received_tao: 0,
+          net_tao: 0,
+          transfer_count: 0,
+          last_block: null,
+        },
+      ],
+      relationship: null,
+    });
+  });
+
+  test("a Postgres-tier body with no counterparties key degrades to an empty list, never null", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({ schema_version: 1 })),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}") {
+          schema_version ss58 counterparty_count transfers_scanned scan_capped
+          total_sent_tao total_received_tao
+          counterparties { address }
+          relationship { counterparty }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_counterparties, {
+      schema_version: 1,
+      ss58: SS58,
+      counterparty_count: 0,
+      transfers_scanned: 0,
+      scan_capped: false,
+      total_sent_tao: 0,
+      total_received_tao: 0,
+      counterparties: [],
+      relationship: null,
+    });
+  });
+
+  test("relationship mode: a bare relationship object degrades every field to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          counterparties: [{ address: OTHER }],
+          relationship: {},
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}") {
+          relationship {
+            schema_version ss58 counterparty transfer_count transfers_scanned
+            scan_capped total_sent_tao total_received_tao net_tao
+            first_block last_block first_seen_at last_seen_at limit
+            transfers { direction }
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_counterparties.relationship, {
+      schema_version: 1,
+      ss58: SS58,
+      counterparty: OTHER,
+      transfer_count: 0,
+      transfers_scanned: 0,
+      scan_capped: false,
+      total_sent_tao: 0,
+      total_received_tao: 0,
+      net_tao: 0,
+      first_block: null,
+      last_block: null,
+      first_seen_at: null,
+      last_seen_at: null,
+      limit: 0,
+      transfers: [],
+    });
+  });
+
+  test("relationship mode: a partial transfer row degrades its nullable fields, keeping the required direction", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          counterparties: [{ address: OTHER }],
+          relationship: {
+            counterparty: OTHER,
+            transfers: [{ direction: "received" }],
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}") {
+          relationship {
+            transfers { block_number event_index netuid from to amount_tao direction observed_at }
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_counterparties.relationship.transfers, [
+      {
+        block_number: null,
+        event_index: null,
+        netuid: null,
+        from: null,
+        to: null,
+        amount_tao: 0,
+        direction: "received",
+        observed_at: null,
+      },
+    ]);
+  });
+
+  test("a malformed ss58 address is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ account_counterparties(ss58: "not-an-address") { counterparty_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/ss58/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_counterparties ?? null, null);
+  });
+
+  test("a malformed counterparty address is a GraphQL error", async () => {
+    const { body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "not-an-address") { counterparty_count } }`,
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/counterparty/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_counterparties ?? null, null);
+  });
+
+  test("a counterparty equal to ss58 is a GraphQL error", async () => {
+    const { body } = await gql(
+      `{ account_counterparties(ss58: "${SS58}", counterparty: "${SS58}") { counterparty_count } }`,
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/differ/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_counterparties ?? null, null);
+  });
+
+  test("account_counterparties is weighted as a relationship field", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.account_counterparties,
+      FIELD_COMPLEXITY.account_identity_history,
+    );
+  });
+});
+
+describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+  const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function dataApi(response, capture) {
+    return {
+      fetch: async (req) => {
+        if (capture) capture.url = new URL(req.url);
+        return response;
+      },
+    };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty feed, never null", async () => {
+    const { status, body } = await gql(
+      `{ account_transfers(ss58: "${SS58}") {
+          schema_version ss58 transfer_count limit offset next_cursor
+          transfers { block_number event_index from to amount_tao direction observed_at }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_transfers, {
+      schema_version: 1,
+      ss58: SS58,
+      transfer_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      transfers: [],
+    });
+  });
+
+  test("resolves the flat Postgres-tier envelope, mapping each transfer's fields", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          transfer_count: 1,
+          limit: 50,
+          offset: 0,
+          next_cursor: "b:1200:3",
+          transfers: [
+            {
+              block_number: 1200,
+              event_index: 3,
+              from: SS58,
+              to: OTHER,
+              amount_tao: 1.5,
+              direction: "sent",
+              observed_at: "2026-07-15T00:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_transfers(ss58: "${SS58}") {
+          schema_version ss58 transfer_count limit offset next_cursor
+          transfers { block_number event_index from to amount_tao direction observed_at }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_transfers, {
+      schema_version: 1,
+      ss58: SS58,
+      transfer_count: 1,
+      limit: 50,
+      offset: 0,
+      next_cursor: "b:1200:3",
+      transfers: [
+        {
+          block_number: 1200,
+          event_index: 3,
+          from: SS58,
+          to: OTHER,
+          amount_tao: 1.5,
+          direction: "sent",
+          observed_at: "2026-07-15T00:00:00.000Z",
+        },
+      ],
+    });
+  });
+
+  test("hits /api/v1/accounts/{ss58}/transfers and forwards every filter", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          transfer_count: 0,
+          limit: 5,
+          offset: 2,
+          next_cursor: null,
+          transfers: [],
+        }),
+        capture,
+      ),
+    };
+    const { status } = await gql(
+      `{ account_transfers(ss58: "${SS58}", limit: 5, offset: 2, cursor: "c:9:1", direction: "received", block_start: 10, block_end: 20) { transfer_count } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/transfers`);
+    assert.equal(capture.url.searchParams.get("limit"), "5");
+    assert.equal(capture.url.searchParams.get("offset"), "2");
+    assert.equal(capture.url.searchParams.get("cursor"), "c:9:1");
+    assert.equal(capture.url.searchParams.get("direction"), "received");
+    assert.equal(capture.url.searchParams.get("block_start"), "10");
+    assert.equal(capture.url.searchParams.get("block_end"), "20");
+  });
+
+  test("clamps limit/offset to FEED_PAGINATION bounds before forwarding", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({}), capture),
+    };
+    await gql(
+      `{ account_transfers(ss58: "${SS58}", limit: 100000, offset: -5) { transfer_count } }`,
+      env,
+    );
+    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
+    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
+    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
+    assert.equal(forwardedOffset, 0);
+    // No filter params were supplied, so none are forwarded.
+    assert.equal(capture.url.searchParams.get("cursor"), null);
+    assert.equal(capture.url.searchParams.get("direction"), null);
+    assert.equal(capture.url.searchParams.get("block_start"), null);
+    assert.equal(capture.url.searchParams.get("block_end"), null);
+  });
+
+  test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ account_transfers(ss58: "${SS58}") {
+          schema_version ss58 transfer_count limit offset next_cursor transfers { from }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_transfers, {
+      schema_version: 1,
+      ss58: SS58,
+      transfer_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      transfers: [],
+    });
+  });
+
+  test("a transfer row with missing fields degrades each to null", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          transfer_count: 1,
+          next_cursor: null,
+          transfers: [{}],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ account_transfers(ss58: "${SS58}") {
+          transfers { block_number event_index from to amount_tao direction observed_at }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_transfers.transfers, [
+      {
+        block_number: null,
+        event_index: null,
+        from: null,
+        to: null,
+        amount_tao: null,
+        direction: null,
+        observed_at: null,
+      },
+    ]);
+  });
+
+  test("an invalid ss58 is a GraphQL error and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { body } = await gql(
+      '{ account_transfers(ss58: "not-an-address") { transfer_count } }',
+      env,
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/ss58/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_transfers ?? null, null);
+    assert.equal(called, false);
+  });
+
+  test("account_transfers is weighted as a relationship field", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.account_transfers,
+      FIELD_COMPLEXITY.account_identity_history,
+    );
+  });
+});
+
+describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+  const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function dataApi(response, capture) {
+    return {
+      fetch: async (req) => {
+        if (capture) capture.url = new URL(req.url);
+        return response;
+      },
+    };
+  }
+
+  function query(argsClause) {
+    return `{ account_events${argsClause} {
+      schema_version ss58 event_count limit offset next_cursor
+      events { block_number event_index event_kind hotkey coldkey netuid uid amount_tao alpha_amount observed_at extrinsic_index }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty feed, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_events, {
+      schema_version: 1,
+      ss58: SS58,
+      event_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      events: [],
+    });
+  });
+
+  test("resolves the Postgres-tier envelope, mapping each event's fields", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          event_count: 1,
+          limit: 50,
+          offset: 0,
+          next_cursor: "b:1200:3",
+          events: [
+            {
+              block_number: 1200,
+              event_index: 3,
+              event_kind: "StakeAdded",
+              hotkey: SS58,
+              coldkey: OTHER,
+              netuid: 7,
+              uid: 42,
+              amount_tao: 1.5,
+              alpha_amount: 2.25,
+              observed_at: "2026-07-15T00:00:00.000Z",
+              extrinsic_index: 4,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_events, {
+      schema_version: 1,
+      ss58: SS58,
+      event_count: 1,
+      limit: 50,
+      offset: 0,
+      next_cursor: "b:1200:3",
+      events: [
+        {
+          block_number: 1200,
+          event_index: 3,
+          event_kind: "StakeAdded",
+          hotkey: SS58,
+          coldkey: OTHER,
+          netuid: 7,
+          uid: 42,
+          amount_tao: 1.5,
+          alpha_amount: 2.25,
+          observed_at: "2026-07-15T00:00:00.000Z",
+          extrinsic_index: 4,
+        },
+      ],
+    });
+  });
+
+  test("hits /api/v1/accounts/{ss58}/events and forwards every filter", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          event_count: 0,
+          limit: 5,
+          offset: 2,
+          next_cursor: null,
+          events: [],
+        }),
+        capture,
+      ),
+    };
+    const { status } = await gql(
+      query(
+        `(ss58: "${SS58}", kind: "StakeAdded", netuid: 7, block_start: 10, block_end: 20, limit: 5, offset: 2, cursor: "c:9:1")`,
+      ),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/events`);
+    assert.equal(capture.url.searchParams.get("limit"), "5");
+    assert.equal(capture.url.searchParams.get("offset"), "2");
+    assert.equal(capture.url.searchParams.get("kind"), "StakeAdded");
+    assert.equal(capture.url.searchParams.get("netuid"), "7");
+    assert.equal(capture.url.searchParams.get("cursor"), "c:9:1");
+    assert.equal(capture.url.searchParams.get("block_start"), "10");
+    assert.equal(capture.url.searchParams.get("block_end"), "20");
+  });
+
+  test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({}), capture),
+    };
+    await gql(query(`(ss58: "${SS58}", limit: 100000, offset: -5)`), env);
+    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
+    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
+    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
+    assert.equal(forwardedOffset, 0);
+    // No filter params were supplied, so none are forwarded.
+    assert.equal(capture.url.searchParams.get("kind"), null);
+    assert.equal(capture.url.searchParams.get("netuid"), null);
+    assert.equal(capture.url.searchParams.get("cursor"), null);
+    assert.equal(capture.url.searchParams.get("block_start"), null);
+    assert.equal(capture.url.searchParams.get("block_end"), null);
+  });
+
+  test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_events, {
+      schema_version: 1,
+      ss58: SS58,
+      event_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      events: [],
+    });
+  });
+
+  test("an event row with missing fields degrades each to null", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          event_count: 1,
+          next_cursor: null,
+          events: [{}],
+        }),
+      ),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_events.events, [
+      {
+        block_number: null,
+        event_index: null,
+        event_kind: null,
+        hotkey: null,
+        coldkey: null,
+        netuid: null,
+        uid: null,
+        amount_tao: null,
+        alpha_amount: null,
+        observed_at: null,
+        extrinsic_index: null,
+      },
+    ]);
+  });
+
+  test("an invalid ss58 is a GraphQL error and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { body } = await gql(query('(ss58: "not-an-address")'), env);
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/ss58/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_events ?? null, null);
+    assert.equal(called, false);
+  });
+
+  test("account_events is weighted as a relationship field", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.account_events,
+      FIELD_COMPLEXITY.account_transfers,
+    );
+  });
+});
+
+describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHistory fallback)", () => {
+  const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  function dataApi(response, capture) {
+    return {
+      fetch: async (req) => {
+        if (capture) capture.url = new URL(req.url);
+        return response;
+      },
+    };
+  }
+
+  function query(argsClause) {
+    return `{ account_history${argsClause} {
+      schema_version ss58 day_count limit offset next_cursor
+      days { day netuid event_count event_kinds first_block last_block }
+    } }`;
+  }
+
+  // loadAccountHistory issues exactly one SELECT per call, so the mock ignores
+  // the SQL text and always returns the given rows.
+  function accountHistoryD1(rows = []) {
+    return {
+      prepare: () => ({
+        bind: () => ({ all: async () => ({ results: rows }) }),
+      }),
+    };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty series, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_history, {
+      schema_version: 1,
+      ss58: SS58,
+      day_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      days: [],
+    });
+  });
+
+  test("resolves the Postgres-tier envelope, mapping each day's fields", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          day_count: 1,
+          limit: 50,
+          offset: 0,
+          next_cursor: "c:20260625:7",
+          days: [
+            {
+              day: "2026-06-25",
+              netuid: 7,
+              event_count: 3,
+              event_kinds: ["StakeAdded", "WeightsSet"],
+              first_block: 1000,
+              last_block: 1200,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_history, {
+      schema_version: 1,
+      ss58: SS58,
+      day_count: 1,
+      limit: 50,
+      offset: 0,
+      next_cursor: "c:20260625:7",
+      days: [
+        {
+          day: "2026-06-25",
+          netuid: 7,
+          event_count: 3,
+          event_kinds: ["StakeAdded", "WeightsSet"],
+          first_block: 1000,
+          last_block: 1200,
+        },
+      ],
+    });
+  });
+
+  test("hits /api/v1/accounts/{ss58}/history and forwards every filter", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          day_count: 0,
+          limit: 5,
+          offset: 2,
+          next_cursor: null,
+          days: [],
+        }),
+        capture,
+      ),
+    };
+    const { status } = await gql(
+      query(
+        `(ss58: "${SS58}", netuid: 7, from: "2026-06-01", to: "2026-06-30", limit: 5, offset: 2, cursor: "c:20260615:3")`,
+      ),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/history`);
+    assert.equal(capture.url.searchParams.get("limit"), "5");
+    assert.equal(capture.url.searchParams.get("offset"), "2");
+    assert.equal(capture.url.searchParams.get("netuid"), "7");
+    assert.equal(capture.url.searchParams.get("from"), "2026-06-01");
+    assert.equal(capture.url.searchParams.get("to"), "2026-06-30");
+    assert.equal(capture.url.searchParams.get("cursor"), "c:20260615:3");
+  });
+
+  test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({}), capture),
+    };
+    await gql(query(`(ss58: "${SS58}", limit: 100000, offset: -5)`), env);
+    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
+    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
+    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
+    assert.equal(forwardedOffset, 0);
+    assert.equal(capture.url.searchParams.get("netuid"), null);
+    assert.equal(capture.url.searchParams.get("from"), null);
+    assert.equal(capture.url.searchParams.get("to"), null);
+    assert.equal(capture.url.searchParams.get("cursor"), null);
+  });
+
+  test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_history, {
+      schema_version: 1,
+      ss58: SS58,
+      day_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      days: [],
+    });
+  });
+
+  test("a day row with missing fields degrades each to null / empty kinds", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({ days: [{}] })),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_history.days, [
+      {
+        day: null,
+        netuid: null,
+        event_count: null,
+        event_kinds: [],
+        first_block: null,
+        last_block: null,
+      },
+    ]);
+  });
+
+  test("no Postgres tier flag: reads the daily rollup straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: accountHistoryD1([
+        {
+          day: "2026-06-25",
+          netuid: 7,
+          event_count: 2,
+          event_kinds: "StakeAdded,WeightsSet",
+          first_block: 1000,
+          last_block: 1100,
+        },
+      ]),
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.account_history.ss58, SS58);
+    assert.equal(body.data.account_history.day_count, 1);
+    assert.deepEqual(body.data.account_history.days, [
+      {
+        day: "2026-06-25",
+        netuid: 7,
+        event_count: 2,
+        event_kinds: ["StakeAdded", "WeightsSet"],
+        first_block: 1000,
+        last_block: 1100,
+      },
+    ]);
+  });
+
+  test("rejects a malformed ss58 before hitting the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { body } = await gql(query('(ss58: "not-an-address")'), env);
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/ss58/i.test(body.errors[0].message));
+    assert.equal(body.data?.account_history ?? null, null);
+    assert.equal(called, false);
+  });
+
+  test("account_history is weighted as a relationship field", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.account_history,
+      FIELD_COMPLEXITY.account_events,
+    );
   });
 });
 
@@ -6502,6 +9464,633 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
   });
 });
 
+describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fallback)", () => {
+  function callsQuery(argsClause) {
+    return `{ chain_calls${argsClause} {
+      schema_version window group_by observed_at total_extrinsics call_count
+      calls { call_module call_function count share }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable empty breakdown (7d/module)", async () => {
+    const { status, body } = await gql(callsQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_calls, {
+      schema_version: 1,
+      window: "7d",
+      group_by: "module",
+      observed_at: null,
+      total_extrinsics: 0,
+      call_count: 0,
+      calls: [],
+    });
+  });
+
+  test("resolves Postgres-tier call-mix rows", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "30d",
+            group_by: "module_function",
+            observed_at: "2026-07-14T00:00:00.000Z",
+            total_extrinsics: 8,
+            call_count: 1,
+            calls: [
+              {
+                call_module: "SubtensorModule",
+                call_function: "set_weights",
+                count: 6,
+                share: 0.75,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      callsQuery(`(window: "30d", group_by: "module_function")`),
+      env,
+    );
+    assert.equal(status, 200);
+    const d = body.data.chain_calls;
+    assert.equal(d.window, "30d");
+    assert.equal(d.group_by, "module_function");
+    assert.equal(d.total_extrinsics, 8);
+    assert.equal(d.call_count, 1);
+    const c = d.calls[0];
+    assert.equal(c.call_module, "SubtensorModule");
+    assert.equal(c.call_function, "set_weights");
+    assert.equal(c.count, 6);
+    assert.equal(c.share, 0.75);
+  });
+
+  test("a partial Postgres-tier body degrades every missing field to its schema-stable default", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      // Only a row's call_module present; envelope + row omit the rest, so
+      // every ?? default fallback must fire (not surface undefined).
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ calls: [{ call_module: "Balances" }] }),
+      },
+    };
+    const { status, body } = await gql(callsQuery(""), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_calls;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.window, "7d");
+    assert.equal(d.group_by, "module");
+    assert.equal(d.observed_at, null);
+    assert.equal(d.total_extrinsics, 0);
+    assert.equal(d.call_count, 0);
+    const c = d.calls[0];
+    assert.equal(c.call_module, "Balances");
+    assert.equal(c.call_function, null);
+    assert.equal(c.count, 0);
+    assert.equal(c.share, null);
+  });
+
+  test("an empty Postgres-tier body (no calls key) degrades to a schema-stable empty breakdown", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(callsQuery(""), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_calls, {
+      schema_version: 1,
+      window: "7d",
+      group_by: "module",
+      observed_at: null,
+      total_extrinsics: 0,
+      call_count: 0,
+      calls: [],
+    });
+  });
+
+  test("window/group_by/limit/call_module args are forwarded to the /chain/calls path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            group_by: "module",
+            total_extrinsics: 0,
+            call_count: 0,
+            calls: [],
+          });
+        },
+      },
+    };
+    await gql(
+      callsQuery(
+        `(window: "30d", group_by: "module", limit: 5, call_module: "SubtensorModule")`,
+      ),
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/calls");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("group_by"), "module");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(
+      capturedUrl.searchParams.get("call_module"),
+      "SubtensorModule",
+    );
+  });
+
+  test("rejects an unsupported window with BAD_USER_INPUT", async () => {
+    const { body } = await gql(callsQuery(`(window: "99d")`));
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("rejects an unsupported group_by with BAD_USER_INPUT", async () => {
+    const { body } = await gql(callsQuery(`(group_by: "signer")`));
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("rejects an over-long call_module with BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      callsQuery(`(call_module: "${"x".repeat(101)}")`),
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("chain_calls is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_calls, 5);
+  });
+});
+
+describe("graphql — chain_activity (#5879, Postgres-tier activity series + cold-store fallback)", () => {
+  function activityQuery(argsClause) {
+    return `{ chain_activity${argsClause} {
+      schema_version window observed_at day_count
+      days { day block_count extrinsic_count event_count successful_extrinsics success_rate unique_signers }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable empty series (7d)", async () => {
+    const { status, body } = await gql(activityQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_activity, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      day_count: 0,
+      days: [],
+    });
+  });
+
+  test("resolves the Postgres-tier per-day series", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-14T00:00:00.000Z",
+            day_count: 1,
+            days: [
+              {
+                day: "2026-07-14",
+                block_count: 7,
+                extrinsic_count: 4,
+                event_count: 12,
+                successful_extrinsics: 3,
+                success_rate: 0.75,
+                unique_signers: 2,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(activityQuery(`(window: "30d")`), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_activity;
+    assert.equal(d.window, "30d");
+    assert.equal(d.day_count, 1);
+    assert.equal(d.days[0].day, "2026-07-14");
+    assert.equal(d.days[0].block_count, 7);
+    assert.equal(d.days[0].success_rate, 0.75);
+    assert.equal(d.days[0].unique_signers, 2);
+  });
+
+  test("partial day rows degrade missing fields to their schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      // The day row carries only its required key; every other field is omitted
+      // so the per-item ?? default fallbacks must fire.
+      DATA_API: {
+        fetch: async () => Response.json({ days: [{ day: "2026-07-14" }] }),
+      },
+    };
+    const { status, body } = await gql(activityQuery(""), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_activity;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.window, "7d");
+    assert.equal(d.observed_at, null);
+    assert.equal(d.day_count, 0);
+    const day = d.days[0];
+    assert.equal(day.block_count, 0);
+    assert.equal(day.extrinsic_count, 0);
+    assert.equal(day.event_count, 0);
+    assert.equal(day.successful_extrinsics, 0);
+    assert.equal(day.success_rate, null);
+    assert.equal(day.unique_signers, 0);
+  });
+
+  test("an empty Postgres-tier body (no days key) degrades to an empty series", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(activityQuery(""), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_activity, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      day_count: 0,
+      days: [],
+    });
+  });
+
+  test("the window arg is forwarded to the /chain/activity path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            day_count: 0,
+            days: [],
+          });
+        },
+      },
+    };
+    await gql(activityQuery(`(window: "30d")`), env);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/activity");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+  });
+
+  test("rejects an unsupported window with BAD_USER_INPUT", async () => {
+    const { body } = await gql(activityQuery(`(window: "99d")`));
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("chain_activity is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_activity, 5);
+  });
+});
+
+describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store fallback)", () => {
+  function feesQuery(argsClause) {
+    return `{ chain_fees${argsClause} {
+      schema_version window observed_at day_count
+      daily { day extrinsic_count total_fee_tao avg_fee_tao median_fee_tao total_tip_tao avg_tip_tao median_tip_tao }
+      top_fee_payers { signer total_fee_tao total_tip_tao extrinsic_count }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable empty series (7d)", async () => {
+    const { status, body } = await gql(feesQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_fees, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      day_count: 0,
+      daily: [],
+      top_fee_payers: [],
+    });
+  });
+
+  test("resolves Postgres-tier daily series + top payers", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-14T00:00:00.000Z",
+            day_count: 1,
+            daily: [
+              {
+                day: "2026-07-14",
+                extrinsic_count: 4,
+                total_fee_tao: 0.4,
+                avg_fee_tao: 0.1,
+                median_fee_tao: 0.1,
+                total_tip_tao: 0.02,
+                avg_tip_tao: 0.005,
+                median_tip_tao: 0.004,
+              },
+            ],
+            top_fee_payers: [
+              {
+                signer: "5Signer",
+                total_fee_tao: 0.4,
+                total_tip_tao: 0.02,
+                extrinsic_count: 4,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(feesQuery(`(window: "30d")`), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_fees;
+    assert.equal(d.window, "30d");
+    assert.equal(d.day_count, 1);
+    assert.equal(d.daily[0].day, "2026-07-14");
+    assert.equal(d.daily[0].total_fee_tao, 0.4);
+    assert.equal(d.daily[0].median_tip_tao, 0.004);
+    assert.equal(d.top_fee_payers[0].signer, "5Signer");
+    assert.equal(d.top_fee_payers[0].extrinsic_count, 4);
+  });
+
+  test("partial rows in each list degrade missing fields to their schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      // Each row carries only its required key; every other field is omitted so
+      // the per-item ?? default fallbacks (both lists) must fire.
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            daily: [{ day: "2026-07-14" }],
+            top_fee_payers: [{ signer: "5Signer" }],
+          }),
+      },
+    };
+    const { status, body } = await gql(feesQuery(""), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_fees;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.window, "7d");
+    assert.equal(d.observed_at, null);
+    assert.equal(d.day_count, 0);
+    const day = d.daily[0];
+    assert.equal(day.extrinsic_count, 0);
+    assert.equal(day.total_fee_tao, null);
+    assert.equal(day.avg_fee_tao, null);
+    assert.equal(day.median_fee_tao, null);
+    assert.equal(day.total_tip_tao, null);
+    assert.equal(day.avg_tip_tao, null);
+    assert.equal(day.median_tip_tao, null);
+    const payer = d.top_fee_payers[0];
+    assert.equal(payer.total_fee_tao, null);
+    assert.equal(payer.total_tip_tao, null);
+    assert.equal(payer.extrinsic_count, 0);
+  });
+
+  test("an empty Postgres-tier body (no daily/top_fee_payers keys) degrades to empty lists", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(feesQuery(""), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_fees, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      day_count: 0,
+      daily: [],
+      top_fee_payers: [],
+    });
+  });
+
+  test("window/limit/call_module args are forwarded to the /chain/fees path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            day_count: 0,
+            daily: [],
+            top_fee_payers: [],
+          });
+        },
+      },
+    };
+    await gql(
+      feesQuery(`(window: "30d", limit: 5, call_module: "Balances")`),
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/fees");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("call_module"), "Balances");
+  });
+
+  test("rejects an unsupported window with BAD_USER_INPUT", async () => {
+    const { body } = await gql(feesQuery(`(window: "99d")`));
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("rejects an over-long call_module with BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      feesQuery(`(call_module: "${"x".repeat(101)}")`),
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("chain_fees is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_fees, 5);
+  });
+});
+
+describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", () => {
+  function servingQuery(argsClause) {
+    return `{ chain_serving${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_servers announcements announcements_per_server }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_servers announcements announcements_per_server }
+    } }`;
+  }
+
+  // The network aggregate (COUNT DISTINCT hotkey / MAX(observed_at)) has no
+  // GROUP BY; the per-subnet leaderboard is GROUP BY netuid -- same two-query
+  // shape loadChainServing always issues. The subnet query only fires when the
+  // network row carries a non-null newest_observed.
+  function chainServingD1({ network, subnets = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY netuid")) {
+                  return { results: subnets };
+                }
+                return { results: network ? [network] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard", async () => {
+    const { status, body } = await gql(servingQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_serving, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_servers: 0,
+        announcements: 0,
+        announcements_per_server: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_servers: 4,
+              announcements: 40,
+              announcements_per_server: 10,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 10,
+              min: 10,
+              p25: 10,
+              median: 10,
+              p75: 10,
+              p90: 10,
+              max: 10,
+            },
+            subnets: [
+              {
+                netuid: 3,
+                distinct_servers: 4,
+                announcements: 40,
+                announcements_per_server: 10,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      servingQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/serving");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_serving.window, "30d");
+    assert.equal(body.data.chain_serving.subnet_count, 1);
+    assert.equal(body.data.chain_serving.network.distinct_servers, 4);
+    assert.equal(body.data.chain_serving.network.announcements_per_server, 10);
+    assert.equal(body.data.chain_serving.intensity_distribution.median, 10);
+    assert.equal(body.data.chain_serving.subnets[0].netuid, 3);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(servingQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_serving.window, "7d");
+    assert.equal(body.data.chain_serving.subnet_count, 0);
+    assert.equal(body.data.chain_serving.network.announcements, 0);
+    assert.equal(
+      body.data.chain_serving.network.announcements_per_server,
+      null,
+    );
+    assert.equal(body.data.chain_serving.intensity_distribution, null);
+    assert.deepEqual(body.data.chain_serving.subnets, []);
+  });
+
+  test("no Postgres tier flag: rolls up the account_events AxonServed stream straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainServingD1({
+        network: {
+          distinct_servers: 4,
+          newest_observed: 1_750_000_000_000,
+        },
+        subnets: [{ netuid: 3, announcements: 40, distinct_servers: 4 }],
+      }),
+    };
+    const { status, body } = await gql(servingQuery('(window: "7d")'), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_serving.window, "7d");
+    assert.equal(body.data.chain_serving.subnet_count, 1);
+    assert.equal(body.data.chain_serving.network.distinct_servers, 4);
+    assert.equal(body.data.chain_serving.network.announcements, 40);
+    assert.equal(body.data.chain_serving.network.announcements_per_server, 10);
+    assert.equal(body.data.chain_serving.subnets[0].netuid, 3);
+    assert.equal(body.data.chain_serving.intensity_distribution.count, 1);
+    assert.ok(body.data.chain_serving.observed_at);
+  });
+
+  test("a D1 query error degrades to a schema-stable empty leaderboard (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(servingQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_serving.subnet_count, 0);
+    assert.deepEqual(body.data.chain_serving.subnets, []);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(servingQuery('(window: "99d")'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /99d/);
+  });
+
+  test("chain_serving is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_serving, 5);
+  });
+});
+
 describe("graphql — chain_weight_setters (#5689, Postgres-tier + D1-live fallback)", () => {
   function weightSettersQuery(argsClause) {
     return `{ chain_weight_setters${argsClause} {
@@ -7041,6 +10630,574 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 });
 
+describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallback)", () => {
+  const NETUID = 3;
+
+  function trendsQuery(netuid) {
+    return `{ subnet_health_trends(netuid: ${netuid}) { schema_version netuid observed_at source windows } }`;
+  }
+
+  test("cold store: schema-stable zeroed windows via the D1-live loader", async () => {
+    const { status, body } = await gql(trendsQuery(NETUID));
+    assert.equal(status, 200);
+    const d = body.data.subnet_health_trends;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.netuid, NETUID);
+    assert.equal(d.observed_at, null);
+    assert.equal(d.source, "live-cron-prober");
+    assert.equal(d.windows["7d"].samples, 0);
+    assert.deepEqual(d.windows["7d"].surfaces, []);
+    assert.equal(d.windows["30d"].samples, 0);
+  });
+
+  test("resolves Postgres-tier data, forwarding the netuid in the path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: NETUID,
+            observed_at: "2026-07-10T00:00:00.000Z",
+            source: "live-cron-prober",
+            windows: {
+              "7d": {
+                samples: 20,
+                uptime_ratio: 0.95,
+                latency_sample_count: 18,
+                surfaces: [{ surface_id: "srf-1", samples: 20 }],
+              },
+              "30d": {
+                samples: 80,
+                uptime_ratio: 0.9,
+                latency_sample_count: 70,
+                surfaces: [{ surface_id: "srf-1", samples: 80 }],
+              },
+            },
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(trendsQuery(NETUID), env);
+    assert.equal(status, 200);
+    assert.equal(
+      capturedUrl.pathname,
+      `/api/v1/subnets/${NETUID}/health/trends`,
+    );
+    const d = body.data.subnet_health_trends;
+    assert.equal(d.netuid, NETUID);
+    assert.equal(d.observed_at, "2026-07-10T00:00:00.000Z");
+    assert.equal(d.windows["7d"].uptime_ratio, 0.95);
+    assert.equal(d.windows["30d"].surfaces[0].surface_id, "srf-1");
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(trendsQuery(NETUID), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_health_trends, {
+      schema_version: 1,
+      netuid: NETUID,
+      observed_at: null,
+      source: null,
+      windows: {},
+    });
+  });
+
+  test("subnet_health_trends is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_health_trends, 5);
+  });
+});
+
+describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", () => {
+  const NETUID = 7;
+
+  function uptimeQuery(args = `netuid: ${NETUID}`) {
+    return `{ subnet_uptime(${args}) {
+      schema_version netuid window observed_at source
+      reliability { score grade uptime_ratio sample_count window }
+      surfaces {
+        surface_id day_count samples uptime_ratio
+        days { day samples uptime_ratio status avg_latency_ms }
+      }
+    } }`;
+  }
+
+  // loadSubnetUptime issues a single GROUP BY over surface_uptime_daily; the
+  // mock only needs to answer all() with the aggregated day rows.
+  function uptimeD1(rows = []) {
+    return {
+      prepare() {
+        return {
+          bind() {
+            return {
+              async all() {
+                return { results: rows };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store: schema-stable empty surfaces via the D1-live loader", async () => {
+    const { status, body } = await gql(uptimeQuery());
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_uptime, {
+      schema_version: 1,
+      netuid: NETUID,
+      window: "90d",
+      observed_at: null,
+      source: "live-cron-prober",
+      reliability: null,
+      surfaces: [],
+    });
+  });
+
+  test("resolves Postgres-tier data and forwards window + min_samples", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: NETUID,
+            window: "1y",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            source: "live-cron-prober",
+            reliability: {
+              score: 99,
+              grade: "A",
+              uptime_ratio: 0.995,
+              sample_count: 100,
+              window: "1y",
+            },
+            surfaces: [
+              {
+                surface_id: "api-root",
+                day_count: 1,
+                samples: 100,
+                uptime_ratio: 0.995,
+                days: [
+                  {
+                    day: "2026-07-09",
+                    samples: 100,
+                    uptime_ratio: 0.995,
+                    status: "ok",
+                    avg_latency_ms: 80,
+                  },
+                ],
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      uptimeQuery(`netuid: ${NETUID}, window: "1y", min_samples: 5`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, `/api/v1/subnets/${NETUID}/uptime`);
+    assert.equal(capturedUrl.searchParams.get("window"), "1y");
+    assert.equal(capturedUrl.searchParams.get("min_samples"), "5");
+    const d = body.data.subnet_uptime;
+    assert.equal(d.window, "1y");
+    assert.equal(d.reliability.score, 99);
+    assert.equal(d.surfaces[0].surface_id, "api-root");
+    assert.equal(d.surfaces[0].days[0].uptime_ratio, 0.995);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(uptimeQuery(), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_uptime, {
+      schema_version: 1,
+      netuid: NETUID,
+      window: "90d",
+      observed_at: null,
+      source: null,
+      reliability: null,
+      surfaces: [],
+    });
+  });
+
+  test("no Postgres tier flag: formats surface_uptime_daily rows straight off D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: uptimeD1([
+        {
+          surface_id: "api-root",
+          surface_key: "api-root",
+          day: "2026-07-09",
+          samples: 50,
+          ok_count: 45,
+          uptime_ratio: 0.9,
+          avg_latency_ms: 90,
+          latency_samples: 45,
+          p50: 80,
+          p95: 110,
+          p99: 130,
+          status: "degraded",
+        },
+      ]),
+    };
+    const { status, body } = await gql(uptimeQuery(), env);
+    assert.equal(status, 200);
+    const d = body.data.subnet_uptime;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.window, "90d");
+    assert.equal(d.source, "live-cron-prober");
+    assert.equal(d.surfaces.length, 1);
+    assert.equal(d.surfaces[0].surface_id, "api-root");
+    assert.equal(d.surfaces[0].samples, 50);
+    assert.equal(d.surfaces[0].days[0].status, "degraded");
+    assert.ok(d.reliability);
+    assert.equal(d.reliability.sample_count, 50);
+  });
+
+  test("unsupported window is a BAD_USER_INPUT error", async () => {
+    const { status, body } = await gql(
+      uptimeQuery(`netuid: ${NETUID}, window: "7d"`),
+    );
+    assert.equal(status, 200);
+    assert.ok(
+      body.errors?.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+      `expected BAD_USER_INPUT, got: ${JSON.stringify(body.errors)}`,
+    );
+  });
+
+  test("negative min_samples is a BAD_USER_INPUT error", async () => {
+    const { status, body } = await gql(
+      uptimeQuery(`netuid: ${NETUID}, min_samples: -1`),
+    );
+    assert.equal(status, 200);
+    assert.ok(
+      body.errors?.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+      `expected BAD_USER_INPUT, got: ${JSON.stringify(body.errors)}`,
+    );
+  });
+
+  test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          return key === KV_HEALTH_META
+            ? { last_run_at: "2026-06-23T00:00:00.000Z" }
+            : null;
+        },
+      },
+      METAGRAPH_HEALTH_DB: uptimeD1([]),
+    };
+    const { body } = await gql(uptimeQuery(), env);
+    assert.equal(
+      body.data.subnet_uptime.observed_at,
+      "2026-06-23T00:00:00.000Z",
+    );
+  });
+
+  test("subnet_uptime is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_uptime, 5);
+  });
+});
+
+describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () => {
+  function usageQuery(argsClause = "") {
+    return `{ rpc_usage${argsClause} {
+      schema_version window bucket_granularity observed_at source
+      summary {
+        total_requests ok_requests error_requests error_rate
+        failover_requests failover_rate cache_hits cache_hit_rate
+        latency_ms { p50 p95 avg }
+      }
+      endpoints { rank endpoint_id provider requests ok_requests error_rate avg_latency_ms }
+      networks { network requests ok_requests error_rate }
+      buckets { ts requests errors avg_latency_ms }
+    } }`;
+  }
+
+  // loadRpcUsage issues five parallel queries over rpc_proxy_events; the D1
+  // runner sees each SQL string, so route rows by the clause unique to each:
+  // the endpoint/network/bucket leaderboards GROUP BY their key, the latency
+  // query is the ROW_NUMBER percentile CTE, and the aggregate totals row has
+  // no GROUP BY at all.
+  function rpcUsageD1({
+    totals,
+    latency,
+    endpoints = [],
+    networks = [],
+    buckets = [],
+  } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY endpoint_id")) {
+                  return { results: endpoints };
+                }
+                if (sql.includes("GROUP BY network")) {
+                  return { results: networks };
+                }
+                if (sql.includes("GROUP BY ts")) {
+                  return { results: buckets };
+                }
+                if (sql.includes("ROW_NUMBER")) {
+                  return { results: latency ? [latency] : [] };
+                }
+                return { results: totals ? [totals] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable zeroed card", async () => {
+    const { status, body } = await gql(usageQuery());
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.rpc_usage, {
+      schema_version: 1,
+      window: "7d",
+      bucket_granularity: "1h",
+      observed_at: null,
+      source: "rpc-proxy",
+      summary: {
+        total_requests: 0,
+        ok_requests: 0,
+        error_requests: 0,
+        error_rate: null,
+        failover_requests: 0,
+        failover_rate: null,
+        cache_hits: 0,
+        cache_hit_rate: null,
+        latency_ms: { p50: null, p95: null, avg: null },
+      },
+      endpoints: [],
+      networks: [],
+      buckets: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window, forwarding it as a query param", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            bucket_granularity: "6h",
+            observed_at: "2026-07-10T00:00:00.000Z",
+            source: "rpc-proxy",
+            summary: {
+              total_requests: 100,
+              ok_requests: 95,
+              error_requests: 5,
+              error_rate: 0.05,
+              failover_requests: 3,
+              failover_rate: 0.03,
+              cache_hits: 40,
+              cache_hit_rate: 0.4,
+              latency_ms: { p50: 20, p95: 80, avg: 30 },
+            },
+            endpoints: [
+              {
+                rank: 1,
+                endpoint_id: "ep-a",
+                provider: "prov-a",
+                requests: 60,
+                ok_requests: 58,
+                error_rate: 0.0333,
+                avg_latency_ms: 25,
+              },
+            ],
+            networks: [
+              {
+                network: "finney",
+                requests: 100,
+                ok_requests: 95,
+                error_rate: 0.05,
+              },
+            ],
+            buckets: [
+              {
+                ts: 1_750_000_000_000,
+                requests: 10,
+                errors: 1,
+                avg_latency_ms: 22,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(usageQuery('(window: "30d")'), env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/rpc/usage");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    const usage = body.data.rpc_usage;
+    assert.equal(usage.window, "30d");
+    assert.equal(usage.bucket_granularity, "6h");
+    assert.equal(usage.observed_at, "2026-07-10T00:00:00.000Z");
+    assert.equal(usage.summary.total_requests, 100);
+    assert.equal(usage.summary.error_rate, 0.05);
+    assert.equal(usage.summary.cache_hit_rate, 0.4);
+    assert.equal(usage.summary.latency_ms.p95, 80);
+    assert.equal(usage.endpoints[0].endpoint_id, "ep-a");
+    assert.equal(usage.endpoints[0].error_rate, 0.0333);
+    assert.equal(usage.networks[0].network, "finney");
+    assert.equal(usage.buckets[0].ts, 1_750_000_000_000);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(usageQuery(), env);
+    assert.equal(status, 200);
+    const usage = body.data.rpc_usage;
+    assert.equal(usage.schema_version, 1);
+    assert.equal(usage.window, "7d");
+    assert.equal(usage.bucket_granularity, null);
+    assert.equal(usage.observed_at, null);
+    assert.equal(usage.source, null);
+    assert.deepEqual(usage.summary, {
+      total_requests: 0,
+      ok_requests: 0,
+      error_requests: 0,
+      error_rate: null,
+      failover_requests: 0,
+      failover_rate: null,
+      cache_hits: 0,
+      cache_hit_rate: null,
+      latency_ms: { p50: null, p95: null, avg: null },
+    });
+    assert.deepEqual(usage.endpoints, []);
+    assert.deepEqual(usage.networks, []);
+    assert.deepEqual(usage.buckets, []);
+  });
+
+  test("no Postgres tier flag: computes the card straight off the rpc_proxy_events D1 telemetry", async () => {
+    const env = {
+      METAGRAPH_RPC_USAGE_SOURCE: "d1",
+      METAGRAPH_HEALTH_DB: rpcUsageD1({
+        totals: {
+          total: 200,
+          ok_count: 190,
+          failover_count: 8,
+          cache_hits: 120,
+          avg_latency_ms: 27,
+        },
+        latency: { p50: 18, p95: 70 },
+        endpoints: [
+          {
+            endpoint_id: "ep-1",
+            provider: "prov-1",
+            requests: 120,
+            ok_count: 116,
+            avg_latency_ms: 24,
+          },
+        ],
+        networks: [{ network: "finney", requests: 200, ok_count: 190 }],
+        buckets: [
+          {
+            ts: 1_750_000_000_000,
+            requests: 30,
+            errors: 2,
+            avg_latency_ms: 26,
+          },
+        ],
+      }),
+    };
+    const { status, body } = await gql(usageQuery('(window: "7d")'), env);
+    assert.equal(status, 200);
+    const usage = body.data.rpc_usage;
+    assert.equal(usage.window, "7d");
+    assert.equal(usage.bucket_granularity, "1h");
+    assert.equal(usage.source, "rpc-proxy");
+    assert.equal(usage.summary.total_requests, 200);
+    assert.equal(usage.summary.ok_requests, 190);
+    assert.equal(usage.summary.error_requests, 10);
+    assert.equal(usage.summary.error_rate, 0.05);
+    assert.equal(usage.summary.failover_requests, 8);
+    assert.equal(usage.summary.cache_hits, 120);
+    assert.equal(usage.summary.cache_hit_rate, 0.6);
+    assert.equal(usage.summary.latency_ms.p50, 18);
+    assert.equal(usage.summary.latency_ms.p95, 70);
+    assert.equal(usage.summary.latency_ms.avg, 27);
+    assert.equal(usage.endpoints[0].rank, 1);
+    assert.equal(usage.endpoints[0].endpoint_id, "ep-1");
+    assert.equal(usage.endpoints[0].error_rate, 0.0333);
+    assert.equal(usage.networks[0].network, "finney");
+    assert.equal(usage.networks[0].error_rate, 0.05);
+    assert.equal(usage.buckets[0].requests, 30);
+    assert.equal(usage.buckets[0].errors, 2);
+  });
+
+  test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          return key === KV_HEALTH_META
+            ? { last_run_at: "2026-06-23T00:00:00.000Z" }
+            : null;
+        },
+      },
+      METAGRAPH_HEALTH_DB: rpcUsageD1(),
+    };
+    const { body } = await gql(usageQuery(), env);
+    assert.equal(body.data.rpc_usage.observed_at, "2026-06-23T00:00:00.000Z");
+  });
+
+  test("a D1 query error degrades to a schema-stable zeroed card (no throw)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("db unavailable");
+        },
+      },
+    };
+    const { status, body } = await gql(usageQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.rpc_usage.summary.total_requests, 0);
+    assert.deepEqual(body.data.rpc_usage.endpoints, []);
+    assert.deepEqual(body.data.rpc_usage.buckets, []);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silently substituted default", async () => {
+    const { status, body } = await gql(usageQuery('(window: "99d")'));
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err);
+    assert.match(err.message, /99d/);
+  });
+
+  test("rpc_usage is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.rpc_usage, 5);
+  });
+});
+
 describe("Subscription.chainEvents", () => {
   test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
     const hub = fakeChainFirehose((repeater) => {
@@ -7498,6 +11655,102 @@ describe("graphql — chain_performance (#5688, Postgres-tier + zeroed-card fall
   });
 });
 
+describe("graphql — chain_concentration (#5872, Postgres-tier + zeroed-card fallback)", () => {
+  const CONCENTRATION_QUERY = `{ chain_concentration {
+    schema_version subnet_count neuron_count entity_count uids_per_entity captured_at
+    stake { holders total gini hhi hhi_normalized nakamoto_coefficient top_1pct_share top_5pct_share top_10pct_share top_20pct_share entropy entropy_normalized }
+    emission { holders gini nakamoto_coefficient }
+    entity_stake { holders gini }
+    entity_emission { holders gini }
+    validator_stake { holders total gini }
+  } }`;
+
+  test("cold store: schema-stable zeroed card with every metric block null", async () => {
+    const { status, body } = await gql(CONCENTRATION_QUERY);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_concentration, {
+      schema_version: 1,
+      subnet_count: 0,
+      neuron_count: 0,
+      entity_count: 0,
+      uids_per_entity: null,
+      captured_at: null,
+      stake: null,
+      emission: null,
+      entity_stake: null,
+      entity_emission: null,
+      validator_stake: null,
+    });
+  });
+
+  test("resolves Postgres-tier data, requesting the mirrored REST path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            subnet_count: 2,
+            neuron_count: 3,
+            entity_count: 2,
+            uids_per_entity: 1.5,
+            captured_at: "2026-07-10T00:00:00.000Z",
+            stake: {
+              holders: 3,
+              total: 6,
+              gini: 0.22,
+              hhi: 0.38,
+              hhi_normalized: 0.07,
+              nakamoto_coefficient: 2,
+              top_1pct_share: 0.5,
+              top_5pct_share: 0.5,
+              top_10pct_share: 0.5,
+              top_20pct_share: 0.5,
+              entropy: 1.46,
+              entropy_normalized: 0.92,
+            },
+            emission: { holders: 3, gini: 0.11, nakamoto_coefficient: 1 },
+            entity_stake: { holders: 2, gini: 0.33 },
+            entity_emission: { holders: 2, gini: 0.25 },
+            validator_stake: { holders: 2, total: 4, gini: 0.15 },
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(CONCENTRATION_QUERY, env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/concentration");
+    assert.equal(body.data.chain_concentration.subnet_count, 2);
+    assert.equal(body.data.chain_concentration.neuron_count, 3);
+    assert.equal(body.data.chain_concentration.entity_count, 2);
+    assert.equal(body.data.chain_concentration.uids_per_entity, 1.5);
+    assert.equal(body.data.chain_concentration.stake.nakamoto_coefficient, 2);
+    assert.equal(body.data.chain_concentration.emission.holders, 3);
+    assert.equal(body.data.chain_concentration.entity_stake.gini, 0.33);
+    assert.equal(body.data.chain_concentration.entity_emission.gini, 0.25);
+    assert.equal(body.data.chain_concentration.validator_stake.total, 4);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(CONCENTRATION_QUERY, env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_concentration.schema_version, 1);
+    assert.equal(body.data.chain_concentration.subnet_count, 0);
+    assert.equal(body.data.chain_concentration.entity_count, 0);
+    assert.equal(body.data.chain_concentration.uids_per_entity, null);
+    assert.equal(body.data.chain_concentration.captured_at, null);
+    assert.equal(body.data.chain_concentration.stake, null);
+    assert.equal(body.data.chain_concentration.entity_stake, null);
+    assert.equal(body.data.chain_concentration.validator_stake, null);
+  });
+});
+
 describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
@@ -7662,6 +11915,74 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
   });
 });
 
+describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.mjs)", () => {
+  // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
+  // in tests/sudo-key.test.mjs.
+  function withFetchStub(stub, fn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  test("resolves the sudo hotkey from a live RPC hit", async () => {
+    await withFetchStub(
+      async () => ({
+        ok: true,
+        json: async () => ({
+          jsonrpc: "2.0",
+          id: 1,
+          result: "0x" + "11".repeat(32), // a valid 32-byte AccountId32
+        }),
+      }),
+      async () => {
+        const { status, body } = await gql(
+          "{ sudo_key { schema_version hotkey queried_at } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.sudo_key;
+        assert.equal(r.schema_version, 1);
+        assert.equal(typeof r.hotkey, "string");
+        assert.ok(r.hotkey.length > 0);
+        assert.ok(r.queried_at);
+      },
+    );
+  });
+
+  test("RPC failure degrades hotkey to null, never a GraphQL error", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("network unreachable");
+      },
+      async () => {
+        const { status, body } = await gql(
+          "{ sudo_key { schema_version hotkey queried_at } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.sudo_key;
+        assert.equal(r.schema_version, 1);
+        assert.equal(r.hotkey, null);
+        assert.ok(r.queried_at);
+      },
+    );
+  });
+
+  test("a renounced sudo (null storage) resolves hotkey to null without error", async () => {
+    await withFetchStub(
+      async () => ({ ok: true, json: async () => ({ result: null }) }),
+      async () => {
+        const { status, body } = await gql("{ sudo_key { hotkey } }");
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.sudo_key.hotkey, null);
+      },
+    );
+  });
+});
+
 describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.mjs)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/subnet-recycled.test.mjs.
@@ -7747,6 +12068,89 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
     assert.equal(FIELD_COMPLEXITY.subnet_recycled, 10);
     assert.ok(
       FIELD_COMPLEXITY.subnet_recycled > FIELD_COMPLEXITY.chain_weights,
+    );
+  });
+});
+
+describe("graphql — account_balance (#5700, live chain RPC via account-balance.mjs)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
+  // in tests/account-balance.test.mjs.
+  function withFetchStub(stub, fn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  test("resolves balance_tao (free + reserved) from a live RPC hit", async () => {
+    await withFetchStub(
+      async () => ({
+        ok: true,
+        json: async () => ({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { data: { free: 2_000_000_000, reserved: 500_000_000 } },
+        }),
+      }),
+      async () => {
+        const { status, body } = await gql(
+          `{ account_balance(ss58: "${SS58}") { schema_version ss58 balance_tao queried_at } }`,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.account_balance;
+        assert.equal(r.schema_version, 1);
+        assert.equal(r.ss58, SS58);
+        assert.equal(r.balance_tao, 2.5);
+        assert.ok(r.queried_at);
+      },
+    );
+  });
+
+  test("RPC failure degrades balance_tao to null, never a GraphQL error", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("network unreachable");
+      },
+      async () => {
+        const { status, body } = await gql(
+          `{ account_balance(ss58: "${SS58}") { balance_tao } }`,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.account_balance.balance_tao, null);
+      },
+    );
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the RPC", async () => {
+    let called = false;
+    await withFetchStub(
+      async () => {
+        called = true;
+        return { ok: true, json: async () => ({ result: { data: {} } }) };
+      },
+      async () => {
+        const { status, body } = await gql(
+          '{ account_balance(ss58: "not-an-address") { balance_tao } }',
+        );
+        assert.equal(status, 200);
+        assert.equal(body.data.account_balance, null);
+        assert.ok(
+          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+        );
+        assert.equal(called, false);
+      },
+    );
+  });
+
+  test("account_balance is weighted at the live-RPC complexity, heavier than a Postgres-tier relationship field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_balance, 10);
+    assert.ok(
+      FIELD_COMPLEXITY.account_balance > FIELD_COMPLEXITY.chain_weights,
     );
   });
 });
@@ -8240,6 +12644,1152 @@ describe("Query.account_identity", () => {
     assert.equal(
       FIELD_COMPLEXITY.account_identity,
       FIELD_COMPLEXITY.account_identity_history,
+    );
+  });
+});
+
+describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)", () => {
+  function prometheusQuery(argsClause) {
+    return `{ chain_prometheus${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_exporters announcements announcements_per_exporter }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_exporters announcements announcements_per_exporter }
+    } }`;
+  }
+
+  // Mirrors chainServingD1: loadChainPrometheus issues the network aggregate
+  // (COUNT DISTINCT hotkey / MAX(observed_at), no GROUP BY) and only then the
+  // GROUP BY netuid leaderboard, and only when newest_observed is non-null.
+  function chainPrometheusD1({ network, subnets = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY netuid")) {
+                  return { results: subnets };
+                }
+                return { results: network ? [network] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard, never an error", async () => {
+    const { status, body } = await gql(prometheusQuery(""));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_prometheus, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_exporters: 0,
+        announcements: 0,
+        announcements_per_exporter: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves the D1-live tier: per-subnet leaderboard + network rollup", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainPrometheusD1({
+        network: { distinct_exporters: 3, newest_observed: 1780000000000 },
+        subnets: [
+          { netuid: 1, announcements: 10, distinct_exporters: 2 },
+          { netuid: 7, announcements: 4, distinct_exporters: 2 },
+        ],
+      }),
+    };
+    const { status, body } = await gql(prometheusQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const got = body.data.chain_prometheus;
+    assert.equal(got.subnet_count, 2);
+    assert.equal(got.observed_at, new Date(1780000000000).toISOString());
+    // The network rollup is the true distinct count, not the sum of per-subnet
+    // exporters (a hotkey announcing on several subnets counts once).
+    assert.deepEqual(got.network, {
+      distinct_exporters: 3,
+      announcements: 14,
+      // 14 announcements / 3 distinct exporters, rounded to the builder's 2dp.
+      announcements_per_exporter: 4.67,
+    });
+    assert.deepEqual(got.subnets, [
+      {
+        netuid: 1,
+        distinct_exporters: 2,
+        announcements: 10,
+        announcements_per_exporter: 5,
+      },
+      {
+        netuid: 7,
+        distinct_exporters: 2,
+        announcements: 4,
+        announcements_per_exporter: 2,
+      },
+    ]);
+    assert.equal(got.intensity_distribution.count, 2);
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-01T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_exporters: 5,
+              announcements: 20,
+              announcements_per_exporter: 4,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 4,
+              min: 4,
+              p25: 4,
+              median: 4,
+              p75: 4,
+              p90: 4,
+              max: 4,
+            },
+            subnets: [
+              {
+                netuid: 3,
+                distinct_exporters: 5,
+                announcements: 20,
+                announcements_per_exporter: 4,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      prometheusQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/prometheus");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_prometheus.window, "30d");
+    assert.equal(body.data.chain_prometheus.subnet_count, 1);
+    assert.equal(body.data.chain_prometheus.network.distinct_exporters, 5);
+  });
+
+  test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
+    // The tier's shape is upstream-controlled, so every field falls back rather
+    // than surfacing null through a non-null SDL field.
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(prometheusQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_prometheus, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_exporters: 0,
+        announcements: 0,
+        announcements_per_exporter: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("clamps an over-max limit to the route's own ceiling", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(prometheusQuery("(limit: 99999)"), env);
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+  });
+
+  test("every documented window is accepted", async () => {
+    for (const window of Object.keys(CHAIN_PROMETHEUS_WINDOWS)) {
+      const { status, body } = await gql(
+        prometheusQuery(`(window: "${window}")`),
+      );
+      assert.equal(status, 200, window);
+      assert.equal(body.errors, undefined);
+      assert.equal(body.data.chain_prometheus.window, window);
+    }
+  });
+
+  test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(prometheusQuery('(window: "1y")'), env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_prometheus,
+      FIELD_COMPLEXITY.chain_serving,
+    );
+  });
+});
+
+describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallback)", () => {
+  function removalsQuery(argsClause) {
+    return `{ chain_axon_removals${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_removers removals removals_per_remover }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_removers removals removals_per_remover }
+    } }`;
+  }
+
+  // loadChainAxonRemovals issues the network aggregate (COUNT DISTINCT hotkey /
+  // MAX(observed_at), no GROUP BY) and only then the GROUP BY netuid
+  // leaderboard, and only when newest_observed is non-null.
+  function chainAxonRemovalsD1({ network, subnets = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY netuid")) {
+                  return { results: subnets };
+                }
+                return { results: network ? [network] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard, never an error", async () => {
+    const { status, body } = await gql(removalsQuery(""));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_axon_removals, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_removers: 0,
+        removals: 0,
+        removals_per_remover: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves the D1-live tier: per-subnet leaderboard + network rollup", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainAxonRemovalsD1({
+        network: { distinct_removers: 3, newest_observed: 1780000000000 },
+        subnets: [
+          { netuid: 1, removals: 9, distinct_removers: 3 },
+          { netuid: 7, removals: 3, distinct_removers: 1 },
+        ],
+      }),
+    };
+    const { status, body } = await gql(removalsQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const got = body.data.chain_axon_removals;
+    assert.equal(got.subnet_count, 2);
+    assert.equal(got.observed_at, new Date(1780000000000).toISOString());
+    // The rollup uses the true network-wide distinct count (3), not the sum of
+    // the per-subnet removers (4) -- a hotkey tearing down on several subnets
+    // counts once.
+    assert.deepEqual(got.network, {
+      distinct_removers: 3,
+      removals: 12,
+      removals_per_remover: 4,
+    });
+    assert.deepEqual(got.subnets, [
+      {
+        netuid: 1,
+        distinct_removers: 3,
+        removals: 9,
+        removals_per_remover: 3,
+      },
+      {
+        netuid: 7,
+        distinct_removers: 1,
+        removals: 3,
+        removals_per_remover: 3,
+      },
+    ]);
+    assert.equal(got.intensity_distribution.count, 2);
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-01T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_removers: 5,
+              removals: 20,
+              removals_per_remover: 4,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 4,
+              min: 4,
+              p25: 4,
+              median: 4,
+              p75: 4,
+              p90: 4,
+              max: 4,
+            },
+            subnets: [
+              {
+                netuid: 3,
+                distinct_removers: 5,
+                removals: 20,
+                removals_per_remover: 4,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      removalsQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/axon-removals");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_axon_removals.window, "30d");
+    assert.equal(body.data.chain_axon_removals.network.distinct_removers, 5);
+  });
+
+  test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
+    // The tier's shape is upstream-controlled, so every field falls back rather
+    // than surfacing null through a non-null SDL field.
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(removalsQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_axon_removals, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_removers: 0,
+        removals: 0,
+        removals_per_remover: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("clamps an over-max limit to the route's own ceiling", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(removalsQuery("(limit: 99999)"), env);
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+  });
+
+  test("every documented window is accepted", async () => {
+    for (const window of Object.keys(CHAIN_AXON_REMOVALS_WINDOWS)) {
+      const { status, body } = await gql(
+        removalsQuery(`(window: "${window}")`),
+      );
+      assert.equal(status, 200, window);
+      assert.equal(body.errors, undefined);
+      assert.equal(body.data.chain_axon_removals.window, window);
+    }
+  });
+
+  test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(removalsQuery('(window: "1y")'), env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_axon_removals,
+      FIELD_COMPLEXITY.chain_serving,
+    );
+  });
+});
+
+describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallback)", () => {
+  function regQuery(argsClause) {
+    return `{ chain_registrations${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_registrants registrations registrations_per_registrant }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_registrants registrations registrations_per_registrant }
+    } }`;
+  }
+
+  // loadChainRegistrations issues the network aggregate (COUNT DISTINCT hotkey
+  // / MAX(observed_at), no GROUP BY) and only then the GROUP BY netuid
+  // leaderboard, and only when newest_observed is non-null.
+  function chainRegD1({ network, subnets = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY netuid")) {
+                  return { results: subnets };
+                }
+                return { results: network ? [network] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard, never an error", async () => {
+    const { status, body } = await gql(regQuery(""));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_registrations, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_registrants: 0,
+        registrations: 0,
+        registrations_per_registrant: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves the D1-live tier: per-subnet leaderboard + network rollup", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainRegD1({
+        network: {
+          distinct_registrants: 3,
+          newest_observed: 1780000000000,
+        },
+        subnets: [
+          { netuid: 1, registrations: 9, distinct_registrants: 3 },
+          { netuid: 7, registrations: 3, distinct_registrants: 1 },
+        ],
+      }),
+    };
+    const { status, body } = await gql(regQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const got = body.data.chain_registrations;
+    assert.equal(got.subnet_count, 2);
+    assert.equal(got.observed_at, new Date(1780000000000).toISOString());
+    // The rollup uses the true network-wide distinct count (3), not the sum of
+    // the per-subnet hotkeys (4) -- a hotkey registered on several subnets
+    // counts once.
+    assert.deepEqual(got.network, {
+      distinct_registrants: 3,
+      registrations: 12,
+      registrations_per_registrant: 4,
+    });
+    assert.deepEqual(got.subnets, [
+      {
+        netuid: 1,
+        distinct_registrants: 3,
+        registrations: 9,
+        registrations_per_registrant: 3,
+      },
+      {
+        netuid: 7,
+        distinct_registrants: 1,
+        registrations: 3,
+        registrations_per_registrant: 3,
+      },
+    ]);
+    assert.equal(got.intensity_distribution.count, 2);
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-01T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_registrants: 5,
+              registrations: 20,
+              registrations_per_registrant: 4,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 4,
+              min: 4,
+              p25: 4,
+              median: 4,
+              p75: 4,
+              p90: 4,
+              max: 4,
+            },
+            subnets: [
+              {
+                netuid: 3,
+                distinct_registrants: 5,
+                registrations: 20,
+                registrations_per_registrant: 4,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      regQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/registrations");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_registrations.window, "30d");
+    assert.equal(body.data.chain_registrations.network.distinct_registrants, 5);
+  });
+
+  test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
+    // The tier's shape is upstream-controlled, so every field falls back rather
+    // than surfacing null through a non-null SDL field.
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(regQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_registrations, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_registrants: 0,
+        registrations: 0,
+        registrations_per_registrant: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("clamps an over-max limit to the route's own ceiling", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(regQuery("(limit: 99999)"), env);
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+  });
+
+  test("every documented window is accepted", async () => {
+    for (const window of Object.keys(CHAIN_REGISTRATIONS_WINDOWS)) {
+      const { status, body } = await gql(regQuery(`(window: "${window}")`));
+      assert.equal(status, 200, window);
+      assert.equal(body.errors, undefined);
+      assert.equal(body.data.chain_registrations.window, window);
+    }
+  });
+
+  test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(regQuery('(window: "1y")'), env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_registrations,
+      FIELD_COMPLEXITY.chain_serving,
+    );
+  });
+});
+
+describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fallback)", () => {
+  function deregQuery(argsClause) {
+    return `{ chain_deregistrations${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey }
+    } }`;
+  }
+
+  // loadChainDeregistrations issues the network aggregate (COUNT DISTINCT hotkey
+  // / MAX(observed_at), no GROUP BY) and only then the GROUP BY netuid
+  // leaderboard, and only when newest_observed is non-null.
+  function chainDeregD1({ network, subnets = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              async all() {
+                if (sql.includes("GROUP BY netuid")) {
+                  return { results: subnets };
+                }
+                return { results: network ? [network] : [] };
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard, never an error", async () => {
+    const { status, body } = await gql(deregQuery(""));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_deregistrations, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_deregistered_hotkeys: 0,
+        deregistrations: 0,
+        deregistrations_per_hotkey: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves the D1-live tier: per-subnet leaderboard + network rollup", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: chainDeregD1({
+        network: {
+          distinct_deregistered_hotkeys: 3,
+          newest_observed: 1780000000000,
+        },
+        subnets: [
+          { netuid: 1, deregistrations: 9, distinct_deregistered_hotkeys: 3 },
+          { netuid: 7, deregistrations: 3, distinct_deregistered_hotkeys: 1 },
+        ],
+      }),
+    };
+    const { status, body } = await gql(deregQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const got = body.data.chain_deregistrations;
+    assert.equal(got.subnet_count, 2);
+    assert.equal(got.observed_at, new Date(1780000000000).toISOString());
+    // The rollup uses the true network-wide distinct count (3), not the sum of
+    // the per-subnet hotkeys (4) -- a hotkey deregistered from several subnets
+    // counts once.
+    assert.deepEqual(got.network, {
+      distinct_deregistered_hotkeys: 3,
+      deregistrations: 12,
+      deregistrations_per_hotkey: 4,
+    });
+    assert.deepEqual(got.subnets, [
+      {
+        netuid: 1,
+        distinct_deregistered_hotkeys: 3,
+        deregistrations: 9,
+        deregistrations_per_hotkey: 3,
+      },
+      {
+        netuid: 7,
+        distinct_deregistered_hotkeys: 1,
+        deregistrations: 3,
+        deregistrations_per_hotkey: 3,
+      },
+    ]);
+    assert.equal(got.intensity_distribution.count, 2);
+  });
+
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-01T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_deregistered_hotkeys: 5,
+              deregistrations: 20,
+              deregistrations_per_hotkey: 4,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 4,
+              min: 4,
+              p25: 4,
+              median: 4,
+              p75: 4,
+              p90: 4,
+              max: 4,
+            },
+            subnets: [
+              {
+                netuid: 3,
+                distinct_deregistered_hotkeys: 5,
+                deregistrations: 20,
+                deregistrations_per_hotkey: 4,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      deregQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/deregistrations");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_deregistrations.window, "30d");
+    assert.equal(
+      body.data.chain_deregistrations.network.distinct_deregistered_hotkeys,
+      5,
+    );
+  });
+
+  test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
+    // The tier's shape is upstream-controlled, so every field falls back rather
+    // than surfacing null through a non-null SDL field.
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(deregQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_deregistrations, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_deregistered_hotkeys: 0,
+        deregistrations: 0,
+        deregistrations_per_hotkey: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("clamps an over-max limit to the route's own ceiling", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(deregQuery("(limit: 99999)"), env);
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+  });
+
+  test("every documented window is accepted", async () => {
+    for (const window of Object.keys(CHAIN_DEREGISTRATIONS_WINDOWS)) {
+      const { status, body } = await gql(deregQuery(`(window: "${window}")`));
+      assert.equal(status, 200, window);
+      assert.equal(body.errors, undefined);
+      assert.equal(body.data.chain_deregistrations.window, window);
+    }
+  });
+
+  test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(deregQuery('(window: "1y")'), env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_deregistrations,
+      FIELD_COMPLEXITY.chain_serving,
+    );
+  });
+});
+
+describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", () => {
+  const SIGNER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function signersQuery(argsClause) {
+    return `{ chain_signers${argsClause} {
+      schema_version window sort observed_at signer_count
+      signers { signer tx_count total_fee_tao total_tip_tao last_tx_block }
+    } }`;
+  }
+
+  // loadChainSigners issues one ranked extrinsics-tier read; the rows carry the
+  // per-signer aggregate.
+  function signersD1(rows = []) {
+    return {
+      prepare: () => ({
+        bind: () => ({ all: async () => ({ results: rows }) }),
+      }),
+    };
+  }
+
+  test("cold store, default args: schema-stable empty leaderboard, never an error", async () => {
+    const { status, body } = await gql(signersQuery(""));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_signers, {
+      schema_version: 1,
+      window: "7d",
+      sort: "tx_count",
+      observed_at: null,
+      signer_count: 0,
+      signers: [],
+    });
+  });
+
+  test("resolves the D1-live tier and shapes each signer row", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: signersD1([
+        {
+          signer: SIGNER,
+          tx_count: 12,
+          total_fee_tao: 1.5,
+          total_tip_tao: 0.25,
+          last_tx_block: 5000000,
+        },
+      ]),
+    };
+    const { status, body } = await gql(signersQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const got = body.data.chain_signers;
+    assert.equal(got.signer_count, 1);
+    assert.equal(got.sort, "tx_count");
+    assert.deepEqual(got.signers, [
+      {
+        signer: SIGNER,
+        tx_count: 12,
+        total_fee_tao: 1.5,
+        total_tip_tao: 0.25,
+        last_tx_block: 5000000,
+      },
+    ]);
+  });
+
+  test("resolves Postgres-tier data, forwarding window/limit/sort/call_module", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            sort: "total_fee_tao",
+            observed_at: "2026-07-01T00:00:00.000Z",
+            signer_count: 1,
+            signers: [
+              {
+                signer: SIGNER,
+                tx_count: 3,
+                total_fee_tao: 9.5,
+                total_tip_tao: 0,
+                last_tx_block: 42,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      signersQuery(
+        '(window: "30d", limit: 5, sort: "total_fee_tao", call_module: "Balances")',
+      ),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/signers");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("sort"), "total_fee_tao");
+    assert.equal(capturedUrl.searchParams.get("call_module"), "Balances");
+    assert.equal(body.data.chain_signers.sort, "total_fee_tao");
+    assert.equal(body.data.chain_signers.signers[0].total_fee_tao, 9.5);
+  });
+
+  test("omits the optional sort/call_module params when the caller supplies neither", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({ signers: [] });
+        },
+      },
+    };
+    await gql(signersQuery(""), env);
+    assert.equal(capturedUrl.searchParams.get("sort"), null);
+    assert.equal(capturedUrl.searchParams.get("call_module"), null);
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "50");
+  });
+
+  test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
+    // The tier's shape is upstream-controlled, so every field falls back rather
+    // than surfacing null through a non-null SDL field.
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(signersQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_signers, {
+      schema_version: 1,
+      window: "7d",
+      sort: "tx_count",
+      observed_at: null,
+      signer_count: 0,
+      signers: [],
+    });
+  });
+
+  test("a signer row missing every optional metric resolves to nulls, not an error", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => Response.json({ signers: [{ signer: SIGNER }] }),
+      },
+    };
+    const { status, body } = await gql(signersQuery(""), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_signers.signers, [
+      {
+        signer: SIGNER,
+        tx_count: 0,
+        total_fee_tao: null,
+        total_tip_tao: null,
+        last_tx_block: null,
+      },
+    ]);
+  });
+
+  test("clamps an over-max limit to the route's own ceiling", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(signersQuery("(limit: 99999)"), env);
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+  });
+
+  test("every documented sort is accepted", async () => {
+    for (const sort of CHAIN_SIGNERS_SORTS) {
+      const { status, body } = await gql(signersQuery(`(sort: "${sort}")`));
+      assert.equal(status, 200, sort);
+      assert.equal(body.errors, undefined);
+      assert.equal(body.data.chain_signers.sort, sort);
+    }
+  });
+
+  test("an unsupported sort is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      signersQuery('(sort: "not_a_real_sort")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("an unsupported window is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(signersQuery('(window: "1y")'), env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("an over-long call_module is BAD_USER_INPUT, matching REST's 100-char bound", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      signersQuery(`(call_module: "${"x".repeat(101)}")`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(called, false);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_signers,
+      FIELD_COMPLEXITY.chain_weight_setters,
     );
   });
 });

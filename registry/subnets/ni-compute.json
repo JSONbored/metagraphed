@@ -1,11 +1,27 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "compute",
+    "dashboard",
+    "identity-reviewed"
+  ],
   "curation": {
-    "level": "candidate-discovered",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "The registered operator domain (neuralinternet.ai, including its docs subdomain) currently fails TLS (Cloudflare 525/520) and is not promoted as a website/docs surface.",
+      "On-chain SubnetIdentitiesV3 asserts native_name 'Orion' for this netuid (independently corroborated by Taostats' page title), but this conflicts with every other live signal: the actively-maintained source repository (neuralinternet/SN27-opencompute, pushed 2025-12-17) and its own W&B/config data are unambiguously a GPU-compute marketplace, not the data-curation subnet the on-chain description text claims. Not treated as a rename pending stronger corroboration (e.g. an official announcement or matching website/docs content).",
+      "The GitHub org (github.com/neuralinternet) has itself been renamed 'Nodexo' at the platform level, which is why the existing community-submitted surfaces already use provider 'nodexo' -- this is a distinct fact from the on-chain 'Orion' identity claim above and does not by itself justify renaming this subnet entry (a different, unrelated subnet at netuid 106 already uses the 'nodexo' slug/filename).",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T23:55:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-15T23:55:00.000Z"
   },
   "name": "NI Compute",
   "netuid": 27,
+  "notes": "First maintainer-reviewed pass for SN27 (previously candidate-discovered/unreviewed, categories empty). 3 of 4 surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. Investigated the on-chain SubnetIdentitiesV3 native_name 'Orion' (also shown by Taostats) as a possible rebrand, matching the pattern used for prior confirmed pivots (e.g. SN3 Templar/Crusades): unlike that case, nothing here corroborates it -- the operator's own live repository, W&B project, and config data are all still the original GPU-compute marketplace, and the operator domain (neuralinternet.ai) is currently unreachable rather than repointed. Not renaming on a single, uncorroborated on-chain field; documented in gap_notes for a future pass to revisit if independent confirmation appears. Also confirmed the GitHub org's platform-level rename to 'Nodexo' (github.com/neuralinternet now reports org name 'Nodexo'), matching the provider field already used on this subnet's community surfaces, but left the subnet name unchanged since a same-named, unrelated subnet already exists at netuid 106.",
   "schema_version": 1,
   "slug": "sn-27",
   "status": "active",
@@ -41,6 +57,12 @@
       "kind": "data-artifact",
       "name": "NI Compute GPU performance reference config",
       "notes": "Public no-auth static YAML data file committed in SN27 NI Compute's official neuralinternet/SN27-opencompute repository — the validator's GPU scoring reference data: gpu_performance (per-GPU-model FP16 TFLOPS + effective-VRAM tables), gpu_time_models, merkle_proof challenge parameters, and subnet_config used to score miner compute. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo. Public-safe: contains only hardware reference tables and challenge parameters, no credentials.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nodexo",
       "public_safe": true,
       "review": {
@@ -59,6 +81,12 @@
       "kind": "dashboard",
       "name": "NI Compute OpenCompute W&B dashboard",
       "notes": "Public Weights & Biases project for SN27 NI Compute's OpenCompute GPU-hardware metrics (entity neuralinternet, project opencompute; 6000+ logged runs). Declared as the subnet's PUBLIC W&B source in the official neuralinternet/SN27-opencompute repository — server.py sets PUBLIC_WANDB_ENTITY = 'neuralinternet' and PUBLIC_WANDB_NAME = 'opencompute', and that repo's .env.example pins NETUID=27. It is the data source for the public opencompute.streamlit.app GPU dashboard the repo deploys. Publicly readable, no auth.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "nodexo",
       "public_safe": true,
       "review": {
@@ -77,7 +105,13 @@
       "id": "sn-27-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "NI Compute TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/27 on api.taomarketcap.com returning machine-readable JSON for SN27 NI Compute on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. NI Compute has no separately registered first-party public subnet-state API; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/27/ on api.taomarketcap.com returning machine-readable JSON for SN27 NI Compute on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. NI Compute has no separately registered first-party public subnet-state API; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -85,7 +119,7 @@
         "submitted_by": "jaytbarimbao-collab"
       },
       "source_urls": ["https://api.taomarketcap.com/developer/documentation/"],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/27"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/27/"
     }
   ]
 }

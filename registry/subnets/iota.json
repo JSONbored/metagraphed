@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 9,
-  "name": "iota",
-  "slug": "sn-9",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -12,134 +7,172 @@
     "official-source-repo",
     "official-website"
   ],
-  "source_repo": "https://github.com/macrocosm-os/iota",
-  "dashboard_url": "https://iota.macrocosmos.ai/dashboard/mainnet",
-  "website_url": "https://iota.macrocosmos.ai/",
-  "notes": "Reviewed overlay for SN9 using the official IOTA website, public dashboard, and source repository. The previously discovered Macrocosmos IOTA mining setup URL currently returns 404 and is intentionally not promoted.",
+  "contact": "support@macrocosmos.ai",
   "curation": {
+    "gap_notes": [
+      "Previously discovered IOTA docs URL currently returns 404.",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T09:50:00.000Z",
-    "verified_at": "2026-06-08T09:50:00.000Z",
     "source_count": 5,
-    "gap_notes": [
-      "Previously discovered IOTA docs URL currently returns 404.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-06-08T09:50:00.000Z"
   },
+  "dashboard_url": "https://iota.macrocosmos.ai/dashboard/mainnet",
+  "name": "iota",
+  "netuid": 9,
+  "notes": "Reviewed overlay for SN9 using the official IOTA website, public dashboard, and source repository. The previously discovered Macrocosmos IOTA mining setup URL currently returns 404 and is intentionally not promoted. The orchestrator OpenAPI schema documents 35 total paths; 5 are tracked here (healthcheck, openapi.json, metrics, run info) plus the codeparrot dataset. Of the rest: most are miner/validator protocol endpoints (register, submit_weights, heartbeat, and similar) meant for a specific registered hotkey, not public dashboard consumption -- global_miner_scores returned HTTP 400 unsigned, consistent with requiring Epistula request signing despite no OpenAPI-declared security scheme. get_run_epoch needs a specific run_id and isn't tracked for the same staleness reason as Numinous's (#5914) per-miner endpoints; get_run_info (tracked, zero params) is how a client discovers the current run_id instead.",
+  "schema_version": 1,
+  "slug": "sn-9",
+  "source_repo": "https://github.com/macrocosm-os/iota",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-9-iota-website",
-      "name": "IOTA website",
-      "kind": "website",
-      "url": "https://iota.macrocosmos.ai/",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/macrocosm-os/iota"],
+      "id": "sn-9-iota-website",
+      "kind": "website",
+      "name": "IOTA website",
+      "notes": "Official IOTA website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official IOTA website."
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": ["https://github.com/macrocosm-os/iota"],
+      "url": "https://iota.macrocosmos.ai/"
     },
     {
-      "id": "sn-9-iota-dashboard",
-      "name": "IOTA dashboard",
-      "kind": "dashboard",
-      "url": "https://iota.macrocosmos.ai/dashboard/mainnet",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-9-iota-dashboard",
+      "kind": "dashboard",
+      "name": "IOTA dashboard",
+      "notes": "Official public IOTA dashboard linked from the source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
       "public_safe": true,
       "source_urls": [
         "https://github.com/macrocosm-os/iota/blob/main/README.md"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official public IOTA dashboard linked from the source repository."
+      "url": "https://iota.macrocosmos.ai/dashboard/mainnet"
     },
     {
-      "id": "sn-9-iota-source",
-      "name": "IOTA source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/macrocosm-os/iota",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/macrocosm-os/iota"],
+      "id": "sn-9-iota-source",
+      "kind": "source-repo",
+      "name": "IOTA source repository",
+      "notes": "Official IOTA source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official IOTA source repository."
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": ["https://github.com/macrocosm-os/iota"],
+      "url": "https://github.com/macrocosm-os/iota"
     },
     {
-      "id": "sn-9-iota-codeparrot-dataset",
-      "name": "IOTA code pretraining dataset",
-      "kind": "data-artifact",
-      "url": "https://huggingface.co/datasets/macrocosm-os/code-parrot-github-code",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-9-iota-codeparrot-dataset",
+      "kind": "data-artifact",
+      "name": "IOTA code pretraining dataset",
+      "notes": "Public Macrocosmos HuggingFace GitHub-code corpus (repo_name/path/size/content/license columns; 32 languages) in the macrocosm-os org, a pretraining-data source fit for the IOTA (SN9) LLM-pretraining subnet; not gated. The IOTA repo README (source) declares Macrocosmos operates subnet 9 and links docs.macrocosmos.ai/subnets/subnet-9-pre-training.",
+      "provider": "macrocosmos",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/macrocosm-os/iota",
-        "https://huggingface.co/macrocosm-os"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Public Macrocosmos HuggingFace GitHub-code corpus (repo_name/path/size/content/license columns; 32 languages) in the macrocosm-os org, a pretraining-data source fit for the IOTA (SN9) LLM-pretraining subnet; not gated. The IOTA repo README (source) declares Macrocosmos operates subnet 9 and links docs.macrocosmos.ai/subnets/subnet-9-pre-training."
+      "source_urls": [
+        "https://github.com/macrocosm-os/iota",
+        "https://huggingface.co/macrocosm-os"
+      ],
+      "url": "https://huggingface.co/datasets/macrocosm-os/code-parrot-github-code"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-9-iota-openapi",
-      "name": "IOTA orchestrator API OpenAPI schema",
       "kind": "openapi",
-      "url": "https://iota.api.macrocosmos.ai/openapi.json",
+      "name": "IOTA orchestrator API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai — documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo.",
       "provider": "macrocosmos",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
-      "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
-      "schema_url": "https://iota.api.macrocosmos.ai/openapi.json",
-      "schema_status": "machine-readable",
       "review": {
         "state": "community-submitted",
         "submitted_by": "codevector96"
       },
-      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai — documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo."
+      "schema_status": "machine-readable",
+      "schema_url": "https://iota.api.macrocosmos.ai/openapi.json",
+      "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
+      "url": "https://iota.api.macrocosmos.ai/openapi.json"
     },
     {
-      "id": "sn-9-iota-healthcheck",
-      "name": "IOTA orchestrator healthcheck",
-      "kind": "subnet-api",
-      "url": "https://iota.api.macrocosmos.ai/healthcheck",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-9-iota-healthcheck",
+      "kind": "subnet-api",
+      "name": "IOTA orchestrator healthcheck",
+      "notes": "Public no-auth GET /healthcheck on the IOTA SN9 orchestrator returning liveness JSON (observed: {\"status\":\"healthy\"}); documented as GET /healthcheck in the subnet OpenAPI spec.",
+      "provider": "macrocosmos",
       "public_safe": true,
-      "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "codevector96"
       },
-      "notes": "Public no-auth GET /healthcheck on the IOTA SN9 orchestrator returning liveness JSON (observed: {\"status\":\"healthy\"}); documented as GET /healthcheck in the subnet OpenAPI spec."
+      "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
+      "url": "https://iota.api.macrocosmos.ai/healthcheck"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-9-iota-metrics",
+      "kind": "subnet-api",
+      "name": "IOTA orchestrator Prometheus metrics",
+      "notes": "Public no-auth GET returning Prometheus text-exposition-format process/runtime metrics (python_gc_objects_collected_total and similar). Documented in the subnet's own OpenAPI schema (path /metrics); plain-text response, not JSON, so tracked with expect: any. Same pattern as the SN1 Apex orchestrator's own /metrics surface (same macrocosm-os org).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
+      "url": "https://iota.api.macrocosmos.ai/metrics"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-9-iota-run-info",
+      "kind": "subnet-api",
+      "name": "IOTA training run info",
+      "notes": "Public no-auth GET /common/get_run_info on the IOTA orchestrator, returning the current decentralized pre-training run's configuration (run_id, num_miners, incentive_perc, run_flags) with no parameters required. Distinct from /common/get_run_epoch, which needs a specific run_id and is not tracked here since the current run_id changes over time (this endpoint is how a client discovers it).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
+      "url": "https://iota.api.macrocosmos.ai/common/get_run_info"
     }
   ],
-  "contact": "support@macrocosmos.ai"
+  "website_url": "https://iota.macrocosmos.ai/"
 }

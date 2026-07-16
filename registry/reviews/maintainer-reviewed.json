@@ -245,6 +245,35 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitads.json (reviewed_at 2026-06-08T20:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 17,
+      "slug": "sn-17",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T22:35:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.404.xyz/",
+        "https://github.com/404-Repo/404-gen-subnet",
+        "https://github.com/404-Repo/404-active-competition",
+        "https://gen.404.xyz/api/health",
+        "https://github.com/404-Repo/gateway-rs/blob/main/docs/api/client_api.md"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite the top-level fields already being set). Verified the official website, source repository, and the separate live 404-active-competition state repository; confirmed the gateway API's task-submission endpoints require x-api-key and the portal's docs/OpenAPI routes are deliberately disabled in production (HTTP 200, empty body) rather than missing."
+    },
+    {
+      "netuid": 18,
+      "slug": "sn-18",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T22:50:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.zeussubnet.com/",
+        "https://github.com/Orpheus-AI/Zeus",
+        "https://docs.zeussubnet.com/docs/introduction",
+        "https://api.zeussubnet.com/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo/docs surfaces despite the top-level fields already being set). Verified the official website, source repository, and docs; confirmed the BOREAS Edge API's forecast endpoints require a real API key (401 Invalid API key, live-tested) despite the OpenAPI schema marking the key optional, and /metrics is WAF-blocked."
+    },
+    {
       "netuid": 19,
       "slug": "sn-19",
       "decision": "maintainer-reviewed",
@@ -341,17 +370,45 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/mainframe.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 26,
+      "slug": "sn-26",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T23:40:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.perturbai.io/",
+        "https://github.com/0xsigurd/Perturb",
+        "https://www.perturbai.io/whitepaper"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website, source repository, and whitepaper; confirmed the existing community-submitted health and burn-rate API surfaces and whitepaper doc surface live. Checked the website for additional surfaces: /playground is an interactive image-upload demo, not a data feed or leaderboard, so it was not tracked. No OpenAPI schema or separate docs subdomain found."
+    },
+    {
+      "netuid": 27,
+      "slug": "sn-27",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T23:55:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/neuralinternet/SN27-opencompute",
+        "https://github.com/neuralinternet/SN27-opencompute/blob/main/config.yaml",
+        "https://wandb.ai/neuralinternet/opencompute",
+        "https://api.taomarketcap.com/public/v1/subnets/27"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty). 3 of 4 surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. Investigated the on-chain SubnetIdentitiesV3 native_name 'Orion' (independently shown by Taostats) as a possible rebrand: unlike confirmed prior pivots, nothing here corroborates it -- the operator's own live repository, W&B project, and config data are unambiguously still the original GPU-compute marketplace, and the operator domain (neuralinternet.ai) is currently unreachable (Cloudflare 525/520) rather than repointed to new content. Not renaming on a single, uncorroborated on-chain field; documented in gap_notes for a future pass. Also confirmed the GitHub org itself was platform-renamed 'Nodexo', matching the provider field already used on this subnet's surfaces, but left the subnet name unchanged since an unrelated subnet already exists at netuid 106 under the 'nodexo' slug."
+    },
+    {
       "netuid": 106,
       "slug": "nodexo",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T14:15:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://nodexo.ai/",
         "https://docs.nodexo.ai/",
-        "https://console.nodexo.ai/"
+        "https://console.nodexo.ai/",
+        "https://github.com/nodexo-ai/nodexo"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/nodexo.json (reviewed_at 2026-06-08T14:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): the official nodexo-ai/nodexo source repository is now live (previously documented as 404) -- added as its own tracked surface. The main nodexo.ai website is now consistently reachable and probe-enabled; docs.nodexo.ai and console.nodexo.ai still reject simple probes. Fixed 2 missing probe blocks on the inventory and health APIs."
     },
     {
       "netuid": 28,
@@ -441,6 +498,60 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitmind.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 35,
+      "slug": "sn-35",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:50:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.0xmarkets.io/",
+        "https://github.com/General-Tao-Ventures/cartha-validator",
+        "https://docs.0xmarkets.io/",
+        "https://api.cartha.finance/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website, source repository, and docs. Diffed the full Cartha Verifier OpenAPI schema (58 paths): most are 401/403-gated in practice despite the schema declaring no security scheme, and the remaining unauthenticated GETs are either already tracked or require query parameters with no stable canonical value. Added one new genuine no-auth public endpoint, GET /pools."
+    },
+    {
+      "netuid": 36,
+      "slug": "sn-36",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T01:05:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://eirel.ai/",
+        "https://github.com/RendixNetwork/eirel-ai",
+        "https://eirel.ai/docs",
+        "https://api.eirel.ai/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full owner-api OpenAPI schema (121 paths): the admin/internal/operators/validators/serving/submissions-prefixed routes all live-tested as 401-gated despite the schema declaring no security scheme. Found and added 5 new genuine no-auth public endpoints: /metrics, /v1/weights, /api/v1/dashboard/submissions/queued, /v1/workflow-corpus, and /v1/workflow-composition/registry."
+    },
+    {
+      "netuid": 37,
+      "slug": "sn-37",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T01:10:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
+        "https://new-collector-api-production.up.railway.app/docs",
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no source-repo surface despite source_repo already being set). Added the missing source-repo surface; the registered website (aureliusaligned.ai) is currently unreachable (DNS resolves, connection times out on both ports 80/443) so no website surface is promoted. Diffed the full Aurelius Central API OpenAPI schema (58 paths): the work-token/admin, config, submissions, benchmark, novelty, classifier, stats, reports, and admin/api prefixes all live-tested as 401-gated despite the schema declaring no security scheme for several of them. Found and added one new genuine no-auth public endpoint, GET /work-token/deposit-address/verify."
+    },
+    {
+      "netuid": 38,
+      "slug": "sn-38",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T01:20:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://chronollm.com/",
+        "https://github.com/chronollm/sn38",
+        "https://github.com/chronollm/sn38/blob/main/README.md"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces; the registered website_url (chronollm.crunchdao.com) permanently redirects (301) to the operator's new canonical domain chronollm.com, tracked there instead. Added the validator docs and ChronoGPT arXiv paper from the README's \"Getting started\" table. Confirmed via the README that the evaluation backend is intentionally private (TEE-protected), so no public API surface is expected."
+    },
+    {
       "netuid": 39,
       "slug": "sn-39",
       "decision": "maintainer-reviewed",
@@ -455,12 +566,29 @@
     },
     {
       "netuid": 40,
-      "slug": "chunking",
+      "slug": "ralph",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T15:00:00.000Z",
+      "reviewed_at": "2026-07-16T01:30:00.000Z",
       "confidence": "high",
-      "source_urls": ["https://subnet.chunking.com/"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/chunking.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "source_urls": [
+        "https://www.ralphlabs.ai/",
+        "https://github.com/RalphLabsAI/ralph",
+        "https://github.com/RalphLabsAI/recipe"
+      ],
+      "notes": "This netuid was previously reviewed under the \"Chunking\" identity (registry/subnets/chunking.json, VectorChat's text-chunking/RAG subnet). Re-reviewed and re-keyed this pass: on-chain SubnetIdentitiesV3 native_name, source_repo, and description now all point to \"Ralph\" (RalphLabsAI's training-recipe research subnet), corroborated by the old chunking_subnet repo being dead 2+ years, subnet.chunking.com's expired TLS certificate, and RalphLabsAI/ralph's own README self-identifying as \"Live on Bittensor mainnet, netuid 40\". File renamed chunking.json -> ralph.json to match slugify(name); this decision entry's slug updated to match."
+    },
+    {
+      "netuid": 41,
+      "slug": "sn-41",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T01:40:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://almanac.market/",
+        "https://github.com/sportstensor/sn41",
+        "https://api.almanac.market/health"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Replaced a hardcoded single-market snapshot surface (pinned to one specific prediction market's event_id, with no stable canonical value) with a genuine no-parameter markets-listing endpoint on the same host."
     },
     {
       "netuid": 42,
@@ -489,16 +617,43 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/graphite.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 44,
+      "slug": "sn-44",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T02:10:00.000Z",
+      "confidence": "medium",
+      "source_urls": [
+        "https://www.wearescore.com/",
+        "https://github.com/score-technologies/turbovision",
+        "https://github.com/score-technologies/score-vision"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty). Added the missing website surface and a source-repo surface for turbovision (the on-chain-declared, actively-developed repo). Left as needs-review: the live website still links score-vision (not pushed to since December 2025) as its GitHub/docs reference, an unresolved discrepancy with the on-chain source_repo pointing to turbovision -- both repos are tracked pending clarification."
+    },
+    {
       "netuid": 45,
       "slug": "sn-45",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:10:00.000Z",
+      "reviewed_at": "2026-07-16T02:20:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://ai.talisman.xyz/",
-        "https://github.com/Team-Rizzo/talisman-ai"
+        "https://github.com/Team-Rizzo/alpharidge-ai",
+        "https://api.alpharidge.ai/openapi.json"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/talisman-ai.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "This subnet was previously reviewed under the \"Talisman AI\" identity (registry/subnets/talisman-ai.json). Re-reviewed this pass: on-chain SubnetIdentitiesV3 native_name and description now both point to \"AlphaRidge.ai\" (same team, Team-Rizzo), corroborated by github.com/Team-Rizzo/talisman-ai permanently redirecting to github.com/Team-Rizzo/alpharidge-ai and the tracked API host/OpenAPI title already using the new branding. File renamed talisman-ai.json -> alpharidge-ai.json to match slugify(name)."
+    },
+    {
+      "netuid": 46,
+      "slug": "sn-46",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T02:30:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://zipcode.ai/",
+        "https://github.com/resi-labs-ai/RESI-models",
+        "https://zipcode.ai/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full Zip Code Portal OpenAPI schema (41 paths): all /api/portal/* and /api/v1/real_estate/* routes require PortalJWT/PortalApiKey auth. Added one new surface, the dashboard-scoped OpenAPI document (distinct from the top-level portal one)."
     },
     {
       "netuid": 47,
@@ -543,6 +698,32 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/nepher-robotics.json (reviewed_at 2026-06-08T07:12:52.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 50,
+      "slug": "sn-50",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T03:10:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://synthdata.co/",
+        "https://github.com/synthdataco/synth-subnet",
+        "https://api.synthdata.co/swagger.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 48-path Swagger 2.0 schema: the 17 /insights/* routes declare no security in the schema but return HTTP 400 \"missing key in request header\" live -- an undocumented auth gate, left untracked. Added one new no-auth no-param surface, /v2/meta-leaderboard/latest. The on-chain-declared source_repo (mode-network/synth-subnet) now permanently redirects to synthdataco/synth-subnet -- same repo, org renamed; tracked URL updated accordingly."
+    },
+    {
+      "netuid": 51,
+      "slug": "sn-51",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T03:20:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://lium.io/",
+        "https://github.com/Datura-ai/lium-io",
+        "https://lium.io/api/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 149-path Lium Backend API OpenAPI schema: the large majority of routes require JwtAccessBearer auth or a path parameter with no stable canonical value. Added 6 new no-auth no-param surfaces with real subnet-relevant data (per-validator revenue, executor counts, latest set_weights call, shared config, watchtower digest); excluded generic SaaS scaffolding routes with no subnet-specific data."
+    },
+    {
       "netuid": 52,
       "slug": "sn-52",
       "decision": "maintainer-reviewed",
@@ -568,6 +749,32 @@
         "https://t.signalplus.com/mining"
       ],
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/efficientfrontier.json (reviewed_at 2026-06-08T14:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+    },
+    {
+      "netuid": 54,
+      "slug": "sn-54",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T04:30:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.yanez.ai/",
+        "https://github.com/yanez-compliance/MIID-subnet",
+        "https://miners-stats.yanezcompliance.net/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 5-path Miner Stats API OpenAPI schema: all no-auth no-param routes were already tracked; the sole remaining route, /miners/{miner_uid}, has no stable canonical value and was excluded."
+    },
+    {
+      "netuid": 55,
+      "slug": "sn-55",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T04:40:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://niome.genomes.io/",
+        "https://github.com/genomesio/subnet-niome",
+        "https://github.com/genomesio/subnet-niome/blob/main/niome_subnet/utils/constants.py"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the official validator constants.py for undiscovered API endpoints: found GROUND_TRUTH_URL alongside the already-tracked TASK_URL and MINER_SCORE_URL, but it rejects GET (405) so it was not promoted."
     },
     {
       "netuid": 56,
@@ -621,10 +828,27 @@
       "netuid": 59,
       "slug": "sn-59",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-20T00:00:00.000Z",
+      "reviewed_at": "2026-07-16T05:20:00.000Z",
       "confidence": "high",
-      "source_urls": ["https://api.babelbit.ai/"],
-      "notes": "Elevated from the provenance review queue (#1235): a live subnet-api is hosted on this subnet's on-chain-asserted domain (babelbit.ai, Subtensor SubnetIdentitiesV3). Maintainer-confirmed."
+      "source_urls": [
+        "https://babelbit.ai/",
+        "https://github.com/babelbit/babelbit_subnet",
+        "https://api.babelbit.ai/"
+      ],
+      "notes": "Elevated from the provenance review queue (#1235): a live subnet-api is hosted on this subnet's on-chain-asserted domain (babelbit.ai, Subtensor SubnetIdentitiesV3). Maintainer-confirmed. Reconciled 2026-07-16: the subnet overlay's own curation.level had drifted from this decision (still read community-seeded/unreviewed); brought into sync with website/source-repo surfaces added and a full OpenAPI diff performed."
+    },
+    {
+      "netuid": 60,
+      "slug": "sn-60",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T05:35:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://bitsec.ai/",
+        "https://github.com/Bitsec-AI/sandbox",
+        "https://bitsec.ai/api/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 30-path OpenAPI schema and added 10 new no-auth no-param surfaces spanning agents, analytics, jobs, and projects; excluded two schema-declared routes whose live behavior didn't match (500 and 422 respectively)."
     },
     {
       "netuid": 61,
@@ -680,6 +904,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/chutes.json (reviewed_at 2026-06-08T07:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 65,
+      "slug": "sn-65",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T06:15:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://tpn.taofu.xyz/",
+        "https://github.com/taofu-labs/tpn-subnet",
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 13-path OpenAPI schema (base path /api/v1): added one new no-auth no-param surface, /api/v1/version. Two other no-auth routes (/vpn/countries, /vpn/stats) consistently time out live and were not promoted; three routes require apiKeyAuth."
+    },
+    {
       "netuid": 66,
       "slug": "sn-66",
       "decision": "maintainer-reviewed",
@@ -698,19 +935,74 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ninja.json (reviewed_at 2026-06-08T07:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 67,
+      "slug": "sn-67",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://harnyx.ai/",
+        "https://github.com/harnyx/harnyx",
+        "https://harnyx.ai/healthz",
+        "https://dashboard.harnyx.ai/benchmark",
+        "https://github.com/harnyx/harnyx/blob/main/README.md"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN67. Added website + source-repo surfaces, fixed 3 missing probe blocks, and diffed the repo's generated API reference docs (docs/api/generated/) for undiscovered public GET endpoints -- all 4 documented GET routes require Bittensor-signed auth, nothing new to add. On-chain identity confirmed via metagraph.sh, no rename needed."
+    },
+    {
+      "netuid": 68,
+      "slug": "sn-68",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.metanova-labs.ai/",
+        "https://github.com/metanova-labs/nova",
+        "https://vali-score-share-api.metanova-labs.ai/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN68. Added website + source-repo surfaces, fixed 6 missing probe blocks. Diffed the Boltz score-share OpenAPI schema for undiscovered public GET endpoints -- the sole no-param candidate was already tracked, nothing new to add."
+    },
+    {
       "netuid": 69,
       "slug": "ain",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T15:00:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
-      "source_urls": [],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ain.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "source_urls": [
+        "https://www.heraldmedia.ai/",
+        "https://github.com/HeraldMedia/herald"
+      ],
+      "notes": "Root->128 accuracy audit re-review pass (#5903): added website + source-repo surfaces (both previously unverified, now confirmed live) and fixed 2 missing probe blocks."
+    },
+    {
+      "netuid": 70,
+      "slug": "sn-70",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.nexisgen.ai/",
+        "https://github.com/RendixNetwork/nexisgen"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN70. Added website + source-repo surfaces. api.nexisgen.ai (validator API host) was returning HTTP 502 on all tested routes during this pass -- documented as an observed outage in gap_notes; existing probes are already correctly configured to catch it."
+    },
+    {
+      "netuid": 71,
+      "slug": "sn-71",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://leadpoet.com/",
+        "https://github.com/leadpoet/leadpoet"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN71. Added website + source-repo surfaces, fixed 1 missing probe block. Diffed the OpenAPI schema for undiscovered public GET endpoints -- full coverage already existed."
     },
     {
       "netuid": 72,
       "slug": "sn-72",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T08:35:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.natix.network/",
@@ -720,7 +1012,7 @@
         "https://www.natix.network/vx360-depin-dashcam",
         "https://huggingface.co/natix-network-org"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/streetvision-by-natix.json (reviewed_at 2026-06-08T08:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): discovered the roadwork dataset and its rows API, previously public, are now HF-auth-gated (401) as of 2026-07-15. Corrected auth_required to true and disabled their probes rather than removing the surfaces."
     },
     {
       "netuid": 73,
@@ -735,51 +1027,93 @@
       "netuid": 74,
       "slug": "gittensor",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-06T00:00:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://docs.gittensor.io/",
         "https://docs.gittensor.io/repository-hyperparameters",
-        "https://github.com/entrius/gittensor"
+        "https://github.com/entrius/gittensor",
+        "https://api.gittensor.io/swagger-json",
+        "https://loopover.ai/",
+        "https://api.loopover.ai/openapi.json"
       ],
-      "notes": "Gittensor pilot surfaces reviewed from provider docs, public repository config, and source repository."
+      "notes": "Domain-migration correction (2026-07-16): gittensory-api.aethereal.dev (previously reported DNS-unresolvable) is a permanently dead host -- the contribution-interface and MCP surfaces have moved to api.loopover.ai, and the website surface moved to loopover.ai (the rebranded \"LoopOver\" product). Diffed the new 100-path LoopOver API OpenAPI schema for undiscovered public GET endpoints -- added 2 (mcp/compatibility, public/stats); the rest require bearer/session auth."
     },
     {
       "netuid": 75,
       "slug": "sn-75",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:25:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://hippius.com/",
         "https://docs.hippius.com/",
         "https://docs.hippius.com/blockchain/api",
         "https://github.com/thenervelab/hippius-validator",
-        "https://github.com/thenervelab/hippius-storage-miner"
+        "https://github.com/thenervelab/hippius-storage-miner",
+        "https://api.hippius.com/swagger.json"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/hippius.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 3 missing probe blocks. Diffed the api.hippius.com swagger.json (204 paths, schema declares no security on all of them) for undiscovered public GET endpoints -- spot-checking confirmed most routes are actually auth-gated live; added 4 genuinely public general-info surfaces (TAO price, VM flavor catalog, registry plans, storage-control health)."
     },
     {
       "netuid": 76,
       "slug": "sn-76",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:25:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
-      "source_urls": ["https://www.byzantiumai.net/"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/byzantium.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "source_urls": [
+        "https://www.byzantiumai.net/",
+        "https://github.com/byzantiumaitao-arch/byzantium"
+      ],
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed the source-repo surface, which was misattributed to an unrelated subnet's repository (safe-scan-ai/cancer-ai, the SafeScan cancer-detection subnet) and never matched the file's own top-level source_repo field. Now correctly points to byzantiumaitao-arch/byzantium."
+    },
+    {
+      "netuid": 77,
+      "slug": "sn-77",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://sn77.xyz/",
+        "https://github.com/creativebuilds/sn77"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN77. Added website + source-repo surfaces, fixed 2 missing probe blocks. Diffed the subnet's own live-served API reference (validator/api-server-docs.json, 14 endpoints) for undiscovered public GET endpoints -- added 5 new no-param surfaces (allVotes, allHolders, allAddresses, allMiners, positions)."
+    },
+    {
+      "netuid": 78,
+      "slug": "sn-78",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.vocence.ai/",
+        "https://github.com/vocence-78/vocence"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN78. Added website + source-repo surfaces, fixed 3 missing probe blocks. Diffed the OpenAPI schema (46 paths, schema declares no security) for undiscovered public GET endpoints -- spot-checking confirms the entire developer API is auth-gated except the already-tracked /health route."
     },
     {
       "netuid": 79,
       "slug": "sn-79",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:50:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://taos.im/",
         "https://simulate.trading/taos-im-paper",
-        "https://github.com/taos-im/sn-79"
+        "https://github.com/taos-im/sn-79",
+        "https://mvtrx.fi/",
+        "https://mvtrx.simulate.trading/"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/mvtrx.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): added mvtrx.fi (the MVTRX exchange product site, matching the file's contact domain) and mvtrx.simulate.trading (a public Simulation Terminal dashboard), both badge-linked from the official README but previously untracked."
+    },
+    {
+      "netuid": 80,
+      "slug": "sn-80",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": ["https://github.com/dogelayer-ai/dogelayer"],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN80. Removed a duplicate types.json surface (byte-identical content tracked twice under different framing), added the source-repo surface, and added the F2Pool upstream mining-pool observer dashboard linked from the official README. No official website URL found."
     },
     {
       "netuid": 81,
@@ -808,17 +1142,29 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/compelle.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 83,
+      "slug": "sn-83",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://cliqueai.toptensor.ai/",
+        "https://github.com/toptensor/CliqueAI"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN83. Added website + source-repo surfaces, fixed 2 missing probe blocks. cliqueai.toptensor.ai/openapi.json returns HTTP 200 but serves the SPA's HTML fallback, not a real schema -- no OpenAPI diff performed."
+    },
+    {
       "netuid": 84,
       "slug": "sn-84",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:45:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.chipforge.io/",
         "https://docs.chipforge.io/",
         "https://github.com/TatsuProject/ChipForge_SN84"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ansuz.json (reviewed_at 2026-06-08T10:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): confirmed the openapi.json the docs' own llms.txt links to returns an empty 200 response, and the API-reference stub pages don't state a base host to test the documented endpoints against. All existing surfaces re-verified live."
     },
     {
       "netuid": 85,
@@ -845,7 +1191,7 @@
       "netuid": 87,
       "slug": "sn-87",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-07T00:00:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://luminar.network/",
@@ -853,15 +1199,16 @@
         "https://demo.luminar.network/",
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx",
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/87",
-        "https://taomarketcap.com/subnets/87"
+        "https://taomarketcap.com/subnets/87",
+        "https://github.com/Luminar-Network/luminar-sn"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/luminar-network.json (reviewed_at 2026-06-07T00:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): gave the source-repo surface a proper name/notes (was the generic placeholder \"unknown community source-repo\") and added the missing top-level source_repo field."
     },
     {
       "netuid": 88,
       "slug": "sn-88",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:50:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://investing88.ai/",
@@ -869,73 +1216,104 @@
         "https://api.investing88.ai/assets",
         "https://github.com/mobiusfund/investing"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/investing.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): diffed Investing/core/api.py for undiscovered public GET endpoints -- added /pnl and /dist, the 2 remaining GET routes beyond the already-tracked /days and /ratio."
     },
     {
       "netuid": 89,
       "slug": "sn-89",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:25:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://github.com/backend-developers-ltd/InfiniteHash",
         "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/infinitehash.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): infinitehash.xyz has regressed from HTTP 402 (paywalled but live) to a lapsed/parked-looking domain (TLS SNI rejected, HTTP redirects to /lander). Documented in gap_notes; source repository and docs remain the maintained official surfaces."
     },
     {
       "netuid": 90,
       "slug": "sn-90",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T13:45:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
-      "source_urls": ["https://subnet90.com/", "https://degenbrain.com/"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/degenbrain.json (reviewed_at 2026-06-08T13:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "source_urls": [
+        "https://subnet90.com/",
+        "https://degenbrain.com/",
+        "https://api.subnet90.com/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 5 missing probe blocks and renamed the OpenAPI surface (was the placeholder-ish \"ogham community openapi\"). Diffed the Brain-API OpenAPI schema for undiscovered public GET endpoints -- full coverage already existed."
     },
     {
       "netuid": 91,
       "slug": "sn-91",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:25:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
-        "https://bitstarter.ai/",
+        "https://www.bitstarter.ai/",
         "https://github.com/AlphaCoreBittensor/alphacore",
         "https://app.bitstarter.ai/",
         "https://app.bitstarter.ai/how-it-works/",
         "https://app.bitstarter.ai/submit-a-project/incubator/"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitstarter-1.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): updated the website surface to the canonical www.bitstarter.ai URL after bitstarter.ai started 307-redirecting."
     },
     {
       "netuid": 92,
       "slug": "sn-92",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-09T12:25:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://taomarketcap.com/subnets/92",
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
         "https://www.tensorclaw.ai/",
         "https://github.com/tensorclaw/tensorclaw",
-        "https://www.tensorclaw.ai/dashboard"
+        "https://www.tensorclaw.ai/dashboard",
+        "https://github.com/fx-integral/academia-archives/tree/main/repos/tensorclaw__tensorclaw"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/tensorclaw.json (reviewed_at 2026-06-09T12:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): the project looks fully abandoned -- website 521, GitHub org deleted (404), emission disabled, on-chain identity re-drifted to a new blank placeholder (\"wgmi\"). Added a surface for the third-party academia-archives mirror, now the only remaining copy of the source. Dead surfaces kept tracked, not removed."
+    },
+    {
+      "netuid": 94,
+      "slug": "sn-94",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://bitsota.ai/",
+        "https://github.com/AlveusLabs/SN94-BitSota",
+        "https://autoresearch.bitsota.com/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN94. Added website + source-repo surfaces, fixed 4 missing probe blocks. Diffed the 37-path OpenAPI schema for undiscovered public GET endpoints -- added 3 new surfaces; 2 candidates turned out to be auth-gated despite the schema saying otherwise."
+    },
+    {
+      "netuid": 93,
+      "slug": "sn-93",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.bitcast.network/",
+        "https://github.com/bitcast-network/bitcast",
+        "https://bitcast-api.bitcast.network/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN93. Fixed 10 missing probe blocks, added the main source-repo surface (previously cited but untracked), corrected website_url from the legacy stats subdomain to the canonical www.bitcast.network, and diffed the 165-path OpenAPI schema for undiscovered public GET endpoints -- added 3 new no-auth validator-facing routes."
     },
     {
       "netuid": 95,
       "slug": "actual",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T18:08:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": ["https://actual.inc/", "https://models.actual.inc/"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/actual.json (reviewed_at 2026-06-08T18:08:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 1 missing probe block. Still no GitHub source repository reference found anywhere on the site."
     },
     {
       "netuid": 96,
       "slug": "sn-96",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T07:45:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://verathos.ai/",
@@ -945,85 +1323,145 @@
         "https://api.verathos.ai/v1/models",
         "https://verathos.ai/chat",
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/96"
+        "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/96",
+        "https://api.verathos.ai/openapi.json"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/verathos.json (reviewed_at 2026-06-08T07:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 4 missing probe blocks. Diffed both OpenAPI schemas (protocol + validator proxy, 59 combined paths) for undiscovered public GET endpoints -- added 12 new no-param surfaces; excluded account-scoped and consistently-503 routes."
+    },
+    {
+      "netuid": 97,
+      "slug": "sn-97",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://albedo.tech/",
+        "https://github.com/unarbos/albedo",
+        "https://chat.albedo.tech/api/config"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN97. Added the official source-repo surface (previously only cited), fixed 4 missing probe blocks. The gateway source declares a no-auth GET /v1/models route, but the live host serves the King Chat SPA's HTML shell at that path instead of JSON, so it was not promoted."
     },
     {
       "netuid": 98,
       "slug": "sn-98",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:10:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://forevermoney.ai/",
         "https://github.com/SN98-ForeverMoney/forever-money"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/forevermoney.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): all 5 surfaces re-verified. The vault TVL API (dashboard.forevermoney.ai/api/vaults/tvl) is currently 502ing while the base dashboard host stays live -- documented in gap_notes, kept tracked."
+    },
+    {
+      "netuid": 99,
+      "slug": "sn-99",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://leoma.ai/",
+        "https://github.com/RendixNetwork/leoma",
+        "https://api.leoma.ai/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN99. Added website + source-repo surfaces, fixed 2 missing probe blocks. Diffed the 28-path OpenAPI schema for undiscovered public GET endpoints -- added 6 new surfaces; 2 candidates (miners/valid, miners/all) turned out to require validator-signed headers despite the schema saying no auth."
     },
     {
       "netuid": 100,
       "slug": "sn-100",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T19:30:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.platform.network/",
         "https://www.platform.network/docs",
         "https://github.com/PlatformNetwork/platform"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/pla-form.json (reviewed_at 2026-06-08T19:30:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): all 7 surfaces re-verified live, fixed 1 missing probe block. Diffed the 27-path BASE Challenge Proxy OpenAPI schema -- no new candidates promoted (remaining routes are HTTPBearer-gated or path-parameterized; /v1/weights/latest is real but currently 404s pending a sealed weight vector)."
     },
     {
       "netuid": 101,
       "slug": "eni",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T15:00:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
-      "source_urls": [],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/eni.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "source_urls": [
+        "http://tag101.ai/",
+        "https://github.com/tag101-ai/tag101"
+      ],
+      "notes": "Root->128 accuracy audit re-review pass (#5903): the official website and source repository are now both live and added as tracked surfaces (previously only cited via top-level fields, not tracked). Website only serves over plain HTTP. No public API, OpenAPI schema, or docs site beyond what was already tracked."
     },
     {
       "netuid": 102,
       "slug": "sn-102",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:50:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://connito.ai/",
-        "https://github.com/Connito-AI/Connito"
+        "https://github.com/Connito-AI/Connito",
+        "https://cycle-api.connito.ai/openapi.json"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/connitoai.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 3 missing probe blocks. Diffed the 7-path Phase Service OpenAPI schema -- added 1 new surface (root status/phase-config endpoint); excluded /get_cycle_config as currently Cloudflare-WAF-blocked (403) despite declaring no security in the schema."
     },
     {
       "netuid": 103,
       "slug": "sn-103",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:10:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.djinn.gg/",
         "https://github.com/Djinn-Inc/djinn"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/djinn.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 3 missing probe blocks. Enumerated the web/app/api directory tree in the source repository and live-tested every discovered route -- added 7 new no-param public surfaces (sports, delegates, miners/discover, network/config, network/matrix, network/status, validators/discover); excluded 3 candidates that require an unguessed query parameter."
     },
     {
       "netuid": 104,
       "slug": "for-sale-uid1",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T15:00:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/for-sale-burn-to-uid1.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): still genuinely parked (subnet_emission_enabled false, sale-placeholder identity unchanged, no website/repo). Fixed the candle-chart surface URL to the canonical trailing-slash form (TaoMarketCap-wide change)."
+    },
+    {
+      "netuid": 105,
+      "slug": "sn-105",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://b1m.ai/",
+        "https://github.com/Beam-Network/beam",
+        "https://beamcore.b1m.ai/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN105. Corrected source_repo from a generic org repositories-listing page to the specific Beam-Network/beam repo. Added website + source-repo surfaces. Diffed the 53-path BeamCore OpenAPI schema and live-tested every no-param candidate: most declare no security but are actually 401-gated in practice; only 2 genuinely public routes were promoted."
     },
     {
       "netuid": 107,
       "slug": "sn-107",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-20T00:00:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
-      "source_urls": ["https://api.theminos.ai/"],
-      "notes": "Elevated from the provenance review queue (#1235): a live subnet-api is hosted on this subnet's on-chain-asserted domain (theminos.ai, Subtensor SubnetIdentitiesV3). Maintainer-confirmed."
+      "source_urls": [
+        "https://theminos.ai/",
+        "https://github.com/minos-protocol/minos_subnet",
+        "https://api.theminos.ai/"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): this decision was recorded on 2026-06-20 but never materialized onto registry/subnets/minos.json (the overlay was still community-seeded/unreviewed) -- this pass corrects that. Added website + source-repo surfaces and the official Minos MCP server (streamable-HTTP JSON-RPC, protocol-negotiation-gated rather than probeable)."
+    },
+    {
+      "netuid": 108,
+      "slug": "sn-108",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.talkhead.ai/",
+        "https://github.com/talkheadai/talkhead-subnet"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN108. Added website + source-repo surfaces and fixed 3 missing probe blocks. No OpenAPI/Swagger schema or additional API routes found."
     },
     {
       "netuid": 109,
@@ -1041,7 +1479,7 @@
       "netuid": 110,
       "slug": "sn-110",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T07:12:52.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.green-compute.com/",
@@ -1053,38 +1491,51 @@
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/110",
         "https://taomarketcap.com/subnets/110"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/green-compute.json (reviewed_at 2026-06-08T07:12:52.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks. Diffed the 99-path GreenCompute Gateway OpenAPI schema and live-tested every no-param candidate -- most declare no security but are actually 401-gated in practice; only 2 genuinely public routes were promoted (readyz, Prometheus metrics)."
     },
     {
       "netuid": 111,
       "slug": "sn-111",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:35:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://oneoneone.io/",
         "https://github.com/oneoneone-io/subnet-111"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/oneoneone.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): the website is currently down with a Cloudflare origin-DNS error (1016) on every attempt, while the source repo stays active (pushed 2026-06-11, not archived) -- documented in gap_notes, probe disabled on the website surface only. Fixed 3 missing probe blocks on the data-artifact surfaces."
+    },
+    {
+      "netuid": 112,
+      "slug": "sn-112",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://minotaursubnet.com/",
+        "https://github.com/subnet112/minotaur_subnet",
+        "https://api.minotaursubnet.com/health"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN112. Added website + source-repo surfaces, fixed 3 missing probe blocks. Read the app-management API doc and added 2 new no-param surfaces (v1/chains, v1/apps/); the other documented reads are all path-parameterized."
     },
     {
       "netuid": 113,
       "slug": "sn-113",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:50:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://tensorusd.com/",
         "https://docs.tensorusd.com/components/subnet",
         "https://github.com/TensorUSD/subnet"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/tensorusd.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks. Added agent-api.tensorusd.com/health as a new surface -- the official TENSORUSD_SN_BACKEND_URL for the Mechanism 1 prediction-agent backend, distinct from the already-tracked api.tensorusd.com host."
     },
     {
       "netuid": 114,
       "slug": "sn-114",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T19:30:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://thesoma.ai/",
@@ -1094,43 +1545,43 @@
         "https://github.com/DendriteHQ/SOMA",
         "https://github.com/Level114/level114-subnet"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/soma.json (reviewed_at 2026-06-08T19:30:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks. Diffed the 46-path SOMA platform OpenAPI schema -- both the private and \"public\"-frontend-key route groups declare no security but are actually gated in practice (403 / 401); no new candidates promoted."
     },
     {
       "netuid": 115,
       "slug": "sn-115",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:50:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": ["https://github.com/hashi115/hashichain"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/hashichain.json (reviewed_at 2026-06-08T10:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): all 3 surfaces re-verified live, fixed 1 missing probe block. Still no verified website, docs, or first-party API."
     },
     {
       "netuid": 116,
       "slug": "taolend",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T14:15:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": ["https://taolend.io/"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/taolend.json (reviewed_at 2026-06-08T14:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 1 missing probe block. On-chain identity has drifted again (now \"Memo\", previously \"hard_sign\") while the website/repo/community consistently identify SN116 as TaoLend -- the subnetName field looks unreliable for this subnet. Noted subnet_emission_enabled is currently false. Website still 500s (unchanged)."
     },
     {
       "netuid": 117,
-      "slug": "sn-117",
+      "slug": "glyph",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:50:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
-        "https://github.com/shiftlayer-llc/brainplay-subnet",
-        "https://play.shiftlayer.ai/"
+        "https://glyph-research.org",
+        "https://github.com/glyph-research/glyph-subnet"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/brainplay.json (reviewed_at 2026-06-08T10:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit pass (#5903): resolved a prior identity-dispute flag. The on-chain SubnetIdentitiesV3 record now shows a complete Glyph Research identity that did not exist at the last review, and the glyph-subnet repository's README explicitly documents --netuid 117 for mainnet across every command example. Re-slugged from brainplay.json/sn-117 to glyph.json/glyph; the prior BrainPlay/shiftlayer-llc surfaces were removed as no longer associated with this netuid, not tracked as historical evidence of the same project."
     },
     {
       "netuid": 118,
       "slug": "sn-118",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T19:30:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://heyditto.ai/",
@@ -1141,7 +1592,7 @@
         "https://assistant.heyditto.ai/",
         "https://github.com/orgs/ditto-assistant/repositories"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ditto.json (reviewed_at 2026-06-08T19:30:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): all 13 surfaces re-verified live, fixed 2 missing probe blocks. Diffed the Admin API OpenAPI schema -- an honest schema (every route explicitly requires AdminKey), no new candidates."
     },
     {
       "netuid": 119,
@@ -1153,54 +1604,122 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/satori.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 120,
+      "slug": "sn-120",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.affine.io/",
+        "https://github.com/AffineFoundation/affine-cortex",
+        "https://api.affine.io/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN120. Added website + source-repo surfaces, fixed 3 missing probe blocks. Diffed the 10-path OpenAPI schema for undiscovered public GET endpoints -- added 1 new surface (config); the API root is declared no-auth but currently 500s."
+    },
+    {
       "netuid": 121,
       "slug": "sn-121",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:10:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.sundaebar.ai/",
         "https://github.com/sundae-bar/bittensor-subnet"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/sundae-bar.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks. The site's own llms.txt documents its API as \"Public, read-only, and unauthenticated\" -- added 3 new no-param surfaces (categories, skill-categories, skill-creators)."
     },
     {
       "netuid": 122,
       "slug": "sn-122",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:35:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.bitrecs.ai/",
         "https://bitrecs.gitbook.io/bitrecs-docs/",
-        "https://github.com/bitrecs/bitrecs-subnet"
+        "https://github.com/bitrecs/bitrecs-subnet",
+        "https://www.bitrecs.ai/llms.txt"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitrecs.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): live-verified all 5 surfaces (all HTTP 200), fixed 2 missing probe blocks (amazon-fashion-sample, llms-txt), and confirmed via the official llms.txt that a REST API/MCP server are still coming soon, not yet live."
     },
     {
       "netuid": 123,
       "slug": "sn-123",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:50:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://github.com/Barbariandev/MANTIS",
-        "https://github.com/Barbariandev/mantis_model_iteration_tool"
+        "https://github.com/Barbariandev/mantis_model_iteration_tool",
+        "https://mantis123.com/",
+        "https://mantis123.com/dashboard/static/app.js"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/mantis.json (reviewed_at 2026-06-08T10:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): confirmed mantis123.com is a live network console (previously only cited via website_url, not tracked), added as a website surface; discovered 2 new no-param public subnet-api endpoints (dashboard snap/meta, history/incentive) by reading the console's app.js, both live-tested and free of wallet/hotkey data; fixed 3 missing probe blocks."
+    },
+    {
+      "netuid": 124,
+      "slug": "sn-124",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/swarm-subnet/swarm",
+        "https://swarm124.com/",
+        "https://github.com/swarm-subnet/swarm/blob/main/docs/king_of_the_hill.md",
+        "https://github.com/swarm-subnet/swarm/blob/main/swarm/validator/backend_api.py"
+      ],
+      "notes": "Root->128 accuracy audit first review pass (#5903): promoted from community-seeded/unreviewed. Added website (swarm124.com) and source-repo surfaces, fixed 4 missing probe blocks on pre-existing community-submitted surfaces, and added a new public no-param surface (kings/diagnostics) explicitly documented alongside the existing kings/active route. Confirmed via backend_api.py that the SSE event stream and validator sync/next-task routes all require signed per-request auth headers -- not promotable."
     },
     {
       "netuid": 125,
       "slug": "eightball",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T15:00:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://8ball125.com/",
         "https://github.com/Barbariandev/8Ball_miner",
         "https://github.com/Barbariandev/8Ball_miner#readme"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/8-ball.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): the official website and its markets API are currently returning a consistent nginx 502 (observed across 3 attempts) while the site's static deployment.json asset stays live; documented as a backend outage rather than a dead domain, all surfaces kept tracked. Fixed 2 missing probe blocks (markets API, deployment manifest)."
+    },
+    {
+      "netuid": 126,
+      "slug": "sn-126",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet",
+        "https://poker44.net/",
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md"
+      ],
+      "notes": "Root->128 accuracy audit first review pass (#5903): promoted from community-seeded/unreviewed. Added website, source-repo, and whitepaper surfaces, fixed 3 missing probe blocks on pre-existing community-submitted surfaces, and added a new public no-param surface (benchmark/releases) explicitly documented alongside the already-tracked benchmark status endpoint."
+    },
+    {
+      "netuid": 127,
+      "slug": "sn-127",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/astridintelligence/sn-127",
+        "https://astrid.global/",
+        "https://github.com/astridintelligence/sn-127/blob/master/src/core/arena/api.ts"
+      ],
+      "notes": "Root->128 accuracy audit first review pass (#5903): promoted from community-seeded/unreviewed. Added website (astrid.global) and source-repo surfaces, fixed 3 missing probe blocks on pre-existing community-submitted surfaces. Confirmed via the official validator client source that the only other documented route (executions/presence) requires a participantIds query parameter -- not promotable."
+    },
+    {
+      "netuid": 128,
+      "slug": "sn-128",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/byteleapai/byteleap-Validator",
+        "https://byteleap.ai/"
+      ],
+      "notes": "Root->128 accuracy audit first review pass (#5903): promoted from community-seeded/unreviewed. Added website and source-repo surfaces, previously not tracked despite the top-level website_url/source_repo fields already existing. Reverse-engineered the official byteleap.ai frontend bundle to find its backend API host and confirmed via live-testing that it is entirely auth-gated (every path, including nonsense ones, returns an identical 406 error) -- not promotable. The already-tracked TaoMarketCap indexed feed remains the only public API surface. Created a new registry/providers/byteleap.json (previously missing)."
     }
   ]
 }

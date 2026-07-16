@@ -12,9 +12,7 @@
     "gap_notes": [
       "Official website, docs, source repository, and miner API contract documentation are verified live.",
       "The miner API contract describes required miner-hosted endpoints rather than a shared hosted public subnet API endpoint.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -26,13 +24,13 @@
   "docs_url": "https://cacheon.ai/docs",
   "name": "Cacheon",
   "netuid": 14,
-  "notes": "Reviewed overlay for SN14 Cacheon. The public docs include miner API contract documentation for OpenAI-compatible inference endpoints, but no shared hosted public subnet API endpoint is promoted from that contract.",
+  "notes": "Reviewed overlay for SN14 Cacheon. The public docs include miner API contract documentation for OpenAI-compatible inference endpoints, but no shared hosted public subnet API endpoint is promoted from that contract. The team renamed and archived their GitHub repo from latent-to/cacheon to latent-to/cacheon-old (2026-07-07); source_repo updated to the canonical location. Confirmed NOT a subnet rebrand: live on-chain native_name for SN14 is still \"Cacheon\", and the archived repo's own content still matches the on-chain description exactly. The org's separate 'optima' repo (very recently active) is an unrelated testnet-only project, not SN14's successor.",
   "schema_version": 1,
   "slug": "cacheon",
   "social": {
     "x": "https://x.com/cacheon_ai"
   },
-  "source_repo": "https://github.com/latent-to/cacheon",
+  "source_repo": "https://github.com/latent-to/cacheon-old",
   "status": "active",
   "surfaces": [
     {
@@ -52,7 +50,7 @@
       "public_safe": true,
       "source_urls": [
         "https://cacheon.ai/",
-        "https://github.com/latent-to/cacheon"
+        "https://github.com/latent-to/cacheon-old"
       ],
       "url": "https://cacheon.ai/"
     },
@@ -73,7 +71,7 @@
       "public_safe": true,
       "source_urls": [
         "https://cacheon.ai/docs",
-        "https://github.com/latent-to/cacheon"
+        "https://github.com/latent-to/cacheon-old"
       ],
       "url": "https://cacheon.ai/docs"
     },
@@ -83,7 +81,7 @@
       "id": "sn-14-cacheon-source-repo",
       "kind": "source-repo",
       "name": "Cacheon source repository",
-      "notes": "Public Cacheon source repository.",
+      "notes": "Public Cacheon source repository. The team renamed and archived the repo from latent-to/cacheon to latent-to/cacheon-old (2026-07-07); the old URL still 301-redirects here, but this is the canonical, non-redirecting location. Content unchanged and still matches the live on-chain SN14 description -- confirmed this is NOT a subnet rebrand: the org's separate 'optima' repo is an unrelated testnet-only project (mentions testnet netuid 307), and the live on-chain native_name for SN14 is still 'Cacheon'.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -93,10 +91,10 @@
       "provider": "cacheon",
       "public_safe": true,
       "source_urls": [
-        "https://github.com/latent-to/cacheon",
+        "https://github.com/latent-to/cacheon-old",
         "https://cacheon.ai/"
       ],
-      "url": "https://github.com/latent-to/cacheon"
+      "url": "https://github.com/latent-to/cacheon-old"
     },
     {
       "auth_required": false,
@@ -115,7 +113,7 @@
       "public_safe": true,
       "source_urls": [
         "https://cacheon.ai/docs/miners/api-contract",
-        "https://github.com/latent-to/cacheon"
+        "https://github.com/latent-to/cacheon-old"
       ],
       "url": "https://cacheon.ai/docs/miners/api-contract"
     },
@@ -124,7 +122,8 @@
       "authority": "community",
       "id": "sn-14-cacheon-data-artifact",
       "kind": "data-artifact",
-      "name": "Cacheon community data-artifact",
+      "name": "Cacheon container logs listing",
+      "notes": "Public no-auth GET returning the list of available validator container evaluation log files (label, filename, size_bytes). Documented in the subnet's own OpenAPI schema; same host as the other api.cacheon.ai subnet-api surfaces.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -146,7 +145,8 @@
       "authority": "community",
       "id": "sn-14-cacheon-openapi",
       "kind": "openapi",
-      "name": "Cacheon community openapi",
+      "name": "Cacheon monitoring API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI schema (title \"Cacheon Monitoring API\") for the SN14 coordinator/monitoring API on api.cacheon.ai, documenting the health, status, leader, evaluations, rounds, and log-listing endpoints tracked elsewhere in this file.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -170,7 +170,8 @@
       "authority": "community",
       "id": "sn-14-cacheon-subnet-api",
       "kind": "subnet-api",
-      "name": "Cacheon community subnet-api",
+      "name": "Cacheon coordinator status API",
+      "notes": "Public no-auth GET returning current coordinator status (leader UID/score/image, evaluated/active/disqualified miner counts, last evaluation/weights-set block). Documented in the subnet's own OpenAPI schema; same host as the other api.cacheon.ai subnet-api surfaces.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -262,6 +263,94 @@
         "https://cacheon.ai/docs/miners/api-contract"
       ],
       "url": "https://api.cacheon.ai/api/leader/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-evaluations",
+      "kind": "subnet-api",
+      "name": "Cacheon evaluations",
+      "notes": "Public no-auth GET returning current miner evaluation entries (uid, hotkey, commit_block, image). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.cacheon.ai/api/evaluations"],
+      "url": "https://api.cacheon.ai/api/evaluations"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-eval-progress",
+      "kind": "subnet-api",
+      "name": "Cacheon eval progress",
+      "notes": "Public no-auth GET returning live evaluation round progress (status, phase, round_block, challengers). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.cacheon.ai/api/eval-progress"],
+      "url": "https://api.cacheon.ai/api/eval-progress"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-validator-logs",
+      "kind": "subnet-api",
+      "name": "Cacheon validator logs",
+      "notes": "Public no-auth GET returning a list of available validator GPU evaluation log files (label, filename, size_bytes). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.cacheon.ai/api/validator-logs"],
+      "url": "https://api.cacheon.ai/api/validator-logs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-eval-job",
+      "kind": "subnet-api",
+      "name": "Cacheon current eval job",
+      "notes": "Public no-auth GET returning the current evaluation job detail (block, block_hash, challengers). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.cacheon.ai/api/eval-job"],
+      "url": "https://api.cacheon.ai/api/eval-job"
     }
   ],
   "website_url": "https://cacheon.ai/"

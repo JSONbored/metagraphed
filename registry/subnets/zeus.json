@@ -1,11 +1,25 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website",
+    "weather-forecasting"
+  ],
   "curation": {
-    "level": "candidate-discovered",
-    "review_state": "unreviewed"
+    "gap_notes": ["No verified SSE/event stream yet."],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T22:50:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-07-15T22:50:00.000Z"
   },
+  "dashboard_url": null,
+  "docs_url": "https://docs.zeussubnet.com/docs/introduction",
   "name": "Zeus",
   "netuid": 18,
+  "notes": "First maintainer-reviewed pass for SN18 (previously unreviewed, categories empty, no website/source-repo/docs surfaces despite website_url and source_repo already being set at the top level). Zeus (by Orpheus AI) forecasts environmental variables (temperature, wind, solar radiation) from ERA5 reanalysis data using on-chain commit-reveal validation. Added the missing website, source-repo, and docs surfaces. Diffed the tracked OpenAPI schema (8 paths) against tracked surfaces: /v1/forecast/point and /v1/forecast/area both confirmed live-tested to require a real API key (401 \"Invalid API key\" despite the schema marking X-API-Key optional); the two /v1/billing/* routes are payment endpoints; /metrics is WAF-blocked (403, HTML challenge page, not the API). None are new public surfaces. 4 of the 5 pre-existing community-submitted surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed.",
   "schema_version": 1,
   "slug": "sn-18",
   "social": {
@@ -16,10 +30,70 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-18-zeus-website",
+      "kind": "website",
+      "name": "Zeus website",
+      "notes": "Official Zeus website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Orpheus-AI/Zeus"],
+      "url": "https://www.zeussubnet.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-18-zeus-source-repo",
+      "kind": "source-repo",
+      "name": "Zeus source repository",
+      "notes": "Official Zeus environmental forecasting subnet source repository (SN18, per the README's own title).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "source_urls": ["https://www.zeussubnet.com/"],
+      "url": "https://github.com/Orpheus-AI/Zeus"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-18-zeus-docs",
+      "kind": "docs",
+      "name": "Zeus docs",
+      "notes": "Official Zeus documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Orpheus-AI/Zeus"],
+      "url": "https://docs.zeussubnet.com/docs/introduction"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-18-zeus-subnet-api",
       "kind": "subnet-api",
       "name": "Zeus subnet-api",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "zeus",
       "public_safe": true,
       "review": {
@@ -36,6 +110,12 @@
       "kind": "openapi",
       "name": "Zeus BOREAS Edge API (public)",
       "notes": "Machine-readable spec for the public BOREAS Edge API documented by Zeus.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "zeus",
       "public_safe": true,
       "review": {
@@ -57,6 +137,12 @@
       "kind": "subnet-api",
       "name": "Zeus BOREAS Edge API health",
       "notes": "Public no-auth health probe for the Zeus BOREAS Edge API; GET /v1/health returns {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing /v1/meta subnet-api surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "zeus",
       "public_safe": true,
       "review": {
@@ -76,6 +162,12 @@
       "kind": "data-artifact",
       "name": "Zeus latitude-weighting array for RMSE scoring",
       "notes": "Public NumPy (.npy) array of per-latitude weights that SN18 Zeus applies to compute area-weighted RMSE when scoring miner weather/climate forecasts (correcting for grid-cell area shrinking toward the poles). Committed in the validator repository alongside its generator script. No-auth static file, pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "zeus",
       "public_safe": true,
       "review": {
@@ -86,6 +178,28 @@
         "https://github.com/Orpheus-AI/Zeus/blob/8b79e8ea117d085f959decd6fea9ae17da1b1494/zeus/data/weights/latitude_weights_for_rmse.npy"
       ],
       "url": "https://raw.githubusercontent.com/Orpheus-AI/Zeus/8b79e8ea117d085f959decd6fea9ae17da1b1494/zeus/data/weights/latitude_weights_for_rmse.npy"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-18-zeus-ready",
+      "kind": "subnet-api",
+      "name": "Zeus readiness check",
+      "notes": "Public no-auth GET returning readiness status including vault and database connectivity. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.zeussubnet.com/v1/ready"],
+      "url": "https://api.zeussubnet.com/v1/ready"
     }
   ],
   "website_url": "https://www.zeussubnet.com/"

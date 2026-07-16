@@ -5,11 +5,11 @@
 // markers in README.md.
 //
 // Source = the COMMITTED curated overlays (registry/subnets/*.json), which change
-// only on human contributions — NOT the 6h live data refresh. So the README never
-// churns on a data publish; it regenerates only when an overlay changes (the
-// gittensor flywheel: an enriched subnet shows up in the catalog → visibility →
-// more contributions). Live health/readiness links out to the profile rather than
-// being inlined, so there are no per-view badge requests baked into git.
+// only on human contributions — NOT the event-driven + daily-floor data publish.
+// So the README never churns on a data publish; it regenerates only when an overlay
+// changes (the gittensor flywheel: an enriched subnet shows up in the catalog →
+// visibility → more contributions). Live health/readiness links out to the profile
+// rather than being inlined, so there are no per-view badge requests baked into git.
 //
 //   node scripts/generate-registry-readme-section.mjs           # write README.md
 //   node scripts/generate-registry-readme-section.mjs --check    # verify up-to-date

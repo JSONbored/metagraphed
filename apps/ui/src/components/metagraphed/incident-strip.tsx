@@ -131,9 +131,9 @@ export function IncidentStrip() {
             });
           }}
           aria-label="Dismiss incident"
-          className="shrink-0 inline-flex size-5 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface"
+          className="shrink-0 -my-1 inline-flex size-8 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface"
         >
-          <X className="size-3" />
+          <X className="size-4" />
         </button>
       </div>
     </div>

@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 125,
-  "name": "8 Ball",
-  "slug": "eightball",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -11,122 +6,137 @@
     "official-website",
     "prediction-market"
   ],
-  "website_url": "https://8ball125.com/",
-  "docs_url": "https://github.com/Barbariandev/8Ball_miner#readme",
-  "source_repo": "https://github.com/Barbariandev/8Ball_miner",
-  "notes": "Reviewed overlay for SN125 8 Ball. The public website is live and the public miner/source repository documents Ethereum wallet binding, reward mechanics, Polygon contracts, and miner setup for netuid 125.",
   "curation": {
+    "gap_notes": [
+      "The official website and its markets API currently return a consistent nginx 502 Bad Gateway from the origin; the site's static deployment.json asset is unaffected. The miner/source repository stays live and unarchived.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:00:00.000Z",
-    "verified_at": "2026-06-08T15:00:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 7,
-    "gap_notes": [
-      "Official website and miner/source repository are verified live.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
+  "docs_url": "https://github.com/Barbariandev/8Ball_miner#readme",
+  "name": "8 Ball",
+  "netuid": 125,
+  "notes": "Reviewed overlay for SN125 8 Ball. The public miner/source repository documents Ethereum wallet binding, reward mechanics, Polygon contracts, and miner setup for netuid 125. Root->128 accuracy audit re-review pass (#5903): the official website and its markets API are currently returning a consistent nginx 502 (observed across 3 attempts, ~2s apart) while the site's static deployment.json asset stays live -- documented as a backend outage rather than a dead domain, all surfaces kept tracked. Fixed 2 missing probe blocks (markets API, deployment manifest).",
+  "schema_version": 1,
+  "slug": "eightball",
+  "source_repo": "https://github.com/Barbariandev/8Ball_miner",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-125-eightball-website",
-      "name": "8 Ball website",
-      "kind": "website",
-      "url": "https://8ball125.com/",
-      "provider": "eightball",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-125-eightball-website",
+      "kind": "website",
+      "name": "8 Ball website",
+      "notes": "Official 8 Ball website linked from the public SN125 miner repository. Currently returning a consistent nginx 502 Bad Gateway from the origin (observed across 3 attempts); the site's static deployment.json asset is unaffected and still serves 200, so this looks like a backend outage rather than a dead domain. Kept tracked and probed so status recovers automatically.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "eightball",
       "public_safe": true,
       "source_urls": [
         "https://8ball125.com/",
         "https://github.com/Barbariandev/8Ball_miner"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official 8 Ball website linked from the public SN125 miner repository."
+      "url": "https://8ball125.com/"
     },
     {
-      "id": "sn-125-eightball-source-repo",
-      "name": "8 Ball miner repository",
-      "kind": "source-repo",
-      "url": "https://github.com/Barbariandev/8Ball_miner",
-      "provider": "eightball",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-125-eightball-source-repo",
+      "kind": "source-repo",
+      "name": "8 Ball miner repository",
+      "notes": "Public repository for SN125 miner wallet binding and reward participation.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "eightball",
       "public_safe": true,
       "source_urls": [
         "https://github.com/Barbariandev/8Ball_miner",
         "https://8ball125.com/"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public repository for SN125 miner wallet binding and reward participation."
+      "url": "https://github.com/Barbariandev/8Ball_miner"
     },
     {
-      "id": "sn-125-eightball-docs",
-      "name": "8 Ball miner documentation",
-      "kind": "docs",
-      "url": "https://github.com/Barbariandev/8Ball_miner#readme",
-      "provider": "eightball",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/Barbariandev/8Ball_miner"],
+      "id": "sn-125-eightball-docs",
+      "kind": "docs",
+      "name": "8 Ball miner documentation",
+      "notes": "README documentation covering SN125 wallet binding, R2-hosted binding bundles, reward mechanics, and Polygon contract addresses.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "README documentation covering SN125 wallet binding, R2-hosted binding bundles, reward mechanics, and Polygon contract addresses."
+      "provider": "eightball",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Barbariandev/8Ball_miner"],
+      "url": "https://github.com/Barbariandev/8Ball_miner#readme"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-125-eightball-subnet-api",
-      "name": "8 Ball markets API",
       "kind": "subnet-api",
-      "url": "https://8ball125.com/api/markets",
+      "name": "8 Ball markets API",
+      "notes": "Public no-auth REST API for SN125 prediction markets (markets, market by id, fee, price-history); documented on the official 8ball125.com site. Rate limited per IP. Currently returning the same nginx 502 as the website (same origin) -- kept tracked as a previously-working, documented route rather than a dead one.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eightball",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
-      "source_urls": [
-        "https://8ball125.com/",
-        "https://github.com/Barbariandev/8Ball_miner"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "dev-miro26"
       },
-      "notes": "Public no-auth REST API for SN125 prediction markets (markets, market by id, fee, price-history); documented on the official 8ball125.com site. Rate limited per IP."
+      "source_urls": [
+        "https://8ball125.com/",
+        "https://github.com/Barbariandev/8Ball_miner"
+      ],
+      "url": "https://8ball125.com/api/markets"
     },
     {
-      "id": "sn-125-eightball-data-artifact",
-      "name": "8 Ball deployment manifest",
-      "kind": "data-artifact",
-      "url": "https://8ball125.com/deployment.json",
-      "provider": "eightball",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-125-eightball-data-artifact",
+      "kind": "data-artifact",
+      "name": "8 Ball deployment manifest",
+      "notes": "Static JSON manifest of the SN125 on-chain deployment (Polygon chain 137: USDC/CTF and prediction-market contract addresses); referenced by the public 8ball125.com API docs. Confirmed still live (200) even while the main site/API origin currently 502s, since it's served as a static asset.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eightball",
       "public_safe": true,
-      "source_urls": [
-        "https://8ball125.com/",
-        "https://github.com/Barbariandev/8Ball_miner"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "dev-miro26"
       },
-      "notes": "Static JSON manifest of the SN125 on-chain deployment (Polygon chain 137: USDC/CTF and prediction-market contract addresses); referenced by the public 8ball125.com API docs."
+      "source_urls": [
+        "https://8ball125.com/",
+        "https://github.com/Barbariandev/8Ball_miner"
+      ],
+      "url": "https://8ball125.com/deployment.json"
     }
-  ]
+  ],
+  "website_url": "https://8ball125.com/"
 }

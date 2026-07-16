@@ -12,8 +12,7 @@
   "curation": {
     "gap_notes": [
       "Official website, source repository, Swagger UI, OpenAPI schema, and health endpoint are verified live.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -25,7 +24,7 @@
   "docs_url": "https://api.numinouslabs.io/api/docs",
   "name": "Numinous",
   "netuid": 6,
-  "notes": "Reviewed overlay for SN6 Numinous. The public API exposes Swagger UI, a machine-readable OpenAPI 3.1 schema, and a read-only health endpoint.",
+  "notes": "Reviewed overlay for SN6 Numinous. The public API exposes Swagger UI, a machine-readable OpenAPI 3.1 schema, and a read-only health endpoint. The OpenAPI schema documents 20 total paths; 3 are tracked here (health, leaderboard, benchmarks/baseline). Of the remaining 17: 3 explicitly require an API key (forecasters/predictions, internal/liveuamap/events, internal/liveuamap/regions) and are correctly gated; the other 14 are per-miner (miner_uid + miner_hotkey, sometimes also event_id/version_id/run_id) or per-query (free-text \"question\") lookups with no stable canonical parameter value to probe against -- unlike this file's leaderboard/benchmarks endpoints, which need none. Not tracked as surfaces: a hardcoded miner_uid would silently go stale the moment that specific miner deregisters, misrepresenting an API problem that doesn't exist.",
   "schema_version": 1,
   "slug": "numinous",
   "social": {
@@ -170,6 +169,7 @@
       "id": "sn-6-numinous-data-artifact",
       "kind": "data-artifact",
       "name": "Numinous community data-artifact",
+      "notes": "Public no-auth GET returning a daily time series comparing baseline vs. top-miner forecasting performance (Brier score, 7-day moving average, accuracy) split by track (main/signal). Documented as 'Get Baseline Benchmark' in the Numinous OpenAPI schema.",
       "probe": {
         "enabled": true,
         "expect": "any",

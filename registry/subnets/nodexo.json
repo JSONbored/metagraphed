@@ -1,21 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 106,
-  "name": "Nodexo",
-  "slug": "nodexo",
-  "status": "active",
-  "categories": [
-    "baseline-curated",
-    "compute",
-    "gpu",
-    "identity-reviewed",
-    "official-docs",
-    "official-website"
-  ],
-  "website_url": "https://nodexo.ai/",
-  "docs_url": "https://docs.nodexo.ai/",
-  "dashboard_url": "https://console.nodexo.ai/",
-  "source_repo": "https://github.com/nodexo-ai/nodexo",
   "baseline_excluded_surface_ids": [
     "sn-106-taomarketcap-source-repo",
     "sn-106-taomarketcap-website",
@@ -26,80 +9,105 @@
     "sn-106-website-common-swagger",
     "sn-106-website-common-swagger-json"
   ],
-  "notes": "Reviewed overlay for SN106 Nodexo Compute (on-chain SubnetIdentitiesV3 netuid 106 = subnet_name \"Nodexo\", subnet_url nodexo.ai; re-keyed from netuid 27, which on-chain is \"Team TBC\"). Official browser-facing website, docs, and console surfaces are known, but simple Node/HEAD probes currently receive connection resets. The previously discovered source repository candidate currently returns 404 and is not promoted.",
+  "categories": [
+    "baseline-curated",
+    "compute",
+    "gpu",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
+    "gap_notes": [
+      "docs.nodexo.ai and console.nodexo.ai still reject simple machine probes (TLS handshake failure / connection reset), so these two surfaces remain listed without recurring probe monitoring -- nodexo.ai itself (the main website) is now consistently reachable and probe-enabled.",
+      "Common /docs, /api, /health, /openapi.json, and Swagger paths on nodexo.ai return 404 or the HTML SPA shell, not a real machine-readable schema.",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T14:15:00.000Z",
-    "verified_at": "2026-06-08T14:15:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 6,
-    "gap_notes": [
-      "Official website/docs/console are browser-facing but currently reject simple machine probes with connection resets, so these surfaces are listed without recurring probe monitoring.",
-      "Common /docs, /api, /health, /openapi.json, and Swagger paths on nodexo.ai are not promoted because the origin rejects simple machine probes.",
-      "Previously discovered GitHub source repository candidates currently return 404.",
-      "No verified live source repository yet.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
-  "social": { "x": "https://x.com/nodex0_" },
+  "dashboard_url": "https://console.nodexo.ai/",
+  "docs_url": "https://docs.nodexo.ai/",
+  "name": "Nodexo",
+  "netuid": 106,
+  "notes": "Reviewed overlay for SN106 Nodexo Compute (on-chain SubnetIdentitiesV3 netuid 106 = subnet_name \"Nodexo\", subnet_url nodexo.ai; re-keyed from netuid 27, which on-chain is \"Team TBC\"). Root->128 accuracy audit re-review pass (#5903): the official nodexo-ai/nodexo source repository is now live (previously documented as 404) -- added as its own tracked surface, correcting a stale gap_notes claim. The main nodexo.ai website is now consistently reachable and probe-enabled; docs.nodexo.ai and console.nodexo.ai still reject simple probes. Fixed 2 missing probe blocks on the inventory and health APIs.",
+  "schema_version": 1,
+  "slug": "nodexo",
+  "social": {
+    "x": "https://x.com/nodex0_"
+  },
+  "source_repo": "https://github.com/nodexo-ai/nodexo",
+  "status": "active",
   "surfaces": [
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-106-nodexo-website",
-      "name": "Nodexo website",
       "kind": "website",
-      "url": "https://nodexo.ai/",
+      "name": "Nodexo website",
+      "notes": "Official Nodexo Compute website. Now consistently reachable (verified live 2026-07-16) -- probe re-enabled after previously receiving connection resets.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "nodexo",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
       "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
-      "rate_limit_notes": "Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
-      "notes": "Official Nodexo Compute website."
+      "url": "https://nodexo.ai/"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-106-nodexo-docs",
-      "name": "Nodexo docs",
       "kind": "docs",
-      "url": "https://docs.nodexo.ai/",
+      "name": "Nodexo docs",
+      "notes": "Official Nodexo Compute documentation.",
       "provider": "nodexo",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
-      "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
       "rate_limit_notes": "Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
-      "notes": "Official Nodexo Compute documentation."
+      "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
+      "url": "https://docs.nodexo.ai/"
     },
     {
-      "id": "sn-106-nodexo-console",
-      "name": "Nodexo console",
-      "kind": "dashboard",
-      "url": "https://console.nodexo.ai/",
-      "provider": "nodexo",
       "auth_required": true,
       "authority": "official",
+      "id": "sn-106-nodexo-console",
+      "kind": "dashboard",
+      "name": "Nodexo console",
+      "notes": "Official Nodexo console surface. Authentication may be required for account-specific workflows.",
+      "provider": "nodexo",
       "public_safe": true,
-      "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
       "rate_limit_notes": "Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
-      "notes": "Official Nodexo console surface. Authentication may be required for account-specific workflows."
+      "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
+      "url": "https://console.nodexo.ai/"
     },
     {
-      "id": "sn-106-nodexo-subnet-api",
-      "name": "Nodexo inventory API",
-      "kind": "subnet-api",
-      "url": "https://nodexo.ai/api/inventory",
-      "provider": "nodexo",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-106-nodexo-subnet-api",
+      "kind": "subnet-api",
+      "name": "Nodexo inventory API",
+      "notes": "Public Nodexo (SN106) GPU marketplace inventory API. Returns live JSON offers with GPU model, VRAM, pricing (USDC/hour), availability, and reliability metrics. No auth required.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nodexo",
       "public_safe": true,
-      "source_urls": ["https://nodexo.ai/"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "seekmistar01"
       },
-      "notes": "Public Nodexo (SN106) GPU marketplace inventory API. Returns live JSON offers with GPU model, VRAM, pricing (USDC/hour), availability, and reliability metrics. No auth required."
+      "source_urls": ["https://nodexo.ai/"],
+      "url": "https://nodexo.ai/api/inventory"
     },
     {
       "auth_required": false,
@@ -108,6 +116,12 @@
       "kind": "subnet-api",
       "name": "Nodexo app health",
       "notes": "Public no-auth GET /api/health on nodexo.ai returning app liveness JSON with database, redis, and validator checks (observed: {\"ok\":true,\"service\":\"nodexo-app\",...}). Served on the same host as the existing inventory subnet-api surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nodexo",
       "public_safe": true,
       "review": {
@@ -188,6 +202,25 @@
         "https://github.com/nodexo-ai/nodexo"
       ],
       "url": "https://raw.githubusercontent.com/nodexo-ai/nodexo/f104f2fa848da6bc7d02b7ac00a2c9a7f1a5af73/abis/SubnetConfig.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-106-nodexo-source-repo",
+      "kind": "source-repo",
+      "name": "Nodexo source repository",
+      "notes": "Official SN106 Nodexo source repository -- now live (verified 2026-07-16), correcting a stale gap_notes claim that it 404s. Already cited as the source of 3 tracked data-artifact surfaces (mainnet chain config, bundled subnet config, SubnetConfig ABI) but was not itself tracked as a source-repo surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nodexo",
+      "public_safe": true,
+      "source_urls": ["https://github.com/nodexo-ai/nodexo"],
+      "url": "https://github.com/nodexo-ai/nodexo"
     }
-  ]
+  ],
+  "website_url": "https://nodexo.ai/"
 }

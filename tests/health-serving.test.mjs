@@ -17,7 +17,6 @@ import {
   formatUptime,
   loadSubnetReliability,
   loadReliabilityAggregate,
-  parseLive,
   resolveLiveHealth,
   subnetBadgeStatus,
   summarizeRows,
@@ -511,24 +510,6 @@ describe("subnetBadgeStatus", () => {
     const live = { subnets: [{ netuid: 7, status: "degraded" }] };
     assert.equal(subnetBadgeStatus(live, 7).status, "degraded");
     assert.equal(subnetBadgeStatus(live, 9), null);
-  });
-});
-
-describe("parseLive", () => {
-  test("null/undefined/empty → null", () => {
-    assert.equal(parseLive(null), null);
-    assert.equal(parseLive(undefined), null);
-    assert.equal(parseLive(""), null);
-  });
-  test("already-an-object passes through unchanged", () => {
-    const obj = { a: 1 };
-    assert.equal(parseLive(obj), obj);
-  });
-  test("valid JSON string parses", () => {
-    assert.deepEqual(parseLive('{"a":1}'), { a: 1 });
-  });
-  test("malformed JSON string → null", () => {
-    assert.equal(parseLive("{not json"), null);
   });
 });
 

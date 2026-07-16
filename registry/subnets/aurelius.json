@@ -4,12 +4,44 @@
   "name": "Aurelius",
   "slug": "sn-37",
   "status": "active",
-  "categories": [],
+  "categories": [
+    "alignment",
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo"
+  ],
   "curation": {
-    "level": "candidate-discovered",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "The registered website (aureliusaligned.ai) currently fails to connect over both HTTP and HTTPS (DNS resolves, but the connection times out) and is not promoted as a website surface.",
+      "No verified OpenAPI/Swagger schema without an existing surface -- see the tracked openapi surface.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T01:10:00.000Z",
+    "source_count": 10,
+    "verified_at": "2026-07-16T01:10:00.000Z"
   },
+  "notes": "First maintainer-reviewed pass for SN37 (previously candidate-discovered/unreviewed, categories empty, no source-repo surface despite source_repo already being set). Added the missing source-repo surface; the registered website (aureliusaligned.ai) is currently unreachable (DNS resolves, connection times out on both ports 80/443) so no website surface is promoted. Fixed all 9 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full Aurelius Central API OpenAPI schema (58 paths): the /work-token/admin/*, /config, /submissions/*, /benchmark/*, /novelty/*, /classifier/*, /stats/*, /reports/*, and /admin/api/* prefixes all live-tested as 401-gated despite the schema declaring no security scheme for several of them (a documentation gap on the operator's side, not a registry concern). Found and added one new genuine no-auth public endpoint: GET /work-token/deposit-address/verify, returning the designated multisig deposit address and its verification instructions (public on-chain address only, no secrets).",
   "surfaces": [
+    {
+      "id": "sn-37-aurelius-source-repo",
+      "name": "Aurelius source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
+      "provider": "aurelius",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "source_urls": ["https://aureliusaligned.ai/"],
+      "notes": "Official Aurelius (SN37) source repository."
+    },
     {
       "id": "sn-37-aurelius-api-docs",
       "name": "Aurelius Central API documentation",
@@ -25,6 +57,12 @@
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
+      },
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
       },
       "notes": "Interactive (Swagger UI) documentation for the mainnet (SN37) Aurelius Central API. The official README documents this production host as the finney/mainnet api_url (the -staging host is testnet SN455)."
     },
@@ -47,6 +85,12 @@
         "state": "community-submitted",
         "submitted_by": "nickmopen"
       },
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
       "notes": "Machine-readable OpenAPI spec for the mainnet (SN37) Aurelius Central API — the same spec the existing /docs Swagger UI renders. The official README documents this production host as the finney/mainnet api_url (the -staging host is testnet SN455)."
     },
     {
@@ -66,6 +110,12 @@
         "state": "community-submitted",
         "submitted_by": "kiannidev"
       },
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
       "notes": "Public no-auth GET returning Central API health (status, db, db_pool, classifier, novelty). Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health); same host as the existing openapi + docs surfaces. The official README documents this production host as the finney/mainnet api_url and recommends curl against /health for connectivity checks."
     },
     {
@@ -81,11 +131,37 @@
         "state": "community-submitted",
         "submitted_by": "kiannidev"
       },
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
       "source_urls": [
         "https://new-collector-api-production.up.railway.app/openapi.json",
         "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
       ],
       "url": "https://new-collector-api-production.up.railway.app/work-token/designated-address"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-37-aurelius-deposit-address-verify",
+      "kind": "subnet-api",
+      "name": "Aurelius work-token deposit-address verification",
+      "notes": "Public no-auth GET /work-token/deposit-address/verify on new-collector-api-production.up.railway.app returning the designated multisig deposit address, threshold, and verification instructions (public on-chain address only, no secrets). Documented as GET /work-token/deposit-address/verify in the subnet's own OpenAPI schema; distinct from the already-registered work-token/designated-address surface.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/deposit-address/verify"
     },
     {
       "auth_required": false,
@@ -99,6 +175,12 @@
       "review": {
         "state": "community-submitted",
         "submitted_by": "kiannidev"
+      },
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
       },
       "source_urls": [
         "https://new-collector-api-production.up.railway.app/openapi.json",
@@ -119,6 +201,12 @@
         "state": "community-submitted",
         "submitted_by": "kiannidev"
       },
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
       "source_urls": [
         "https://new-collector-api-production.up.railway.app/openapi.json",
         "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
@@ -138,6 +226,12 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
       "source_urls": [
         "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/data/seed_dataset.jsonl"
       ],
@@ -155,6 +249,12 @@
       "review": {
         "state": "community-submitted",
         "submitted_by": "lourincedaging0-commits"
+      },
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
       },
       "source_urls": [
         "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/aurelius/common/schema_v1.json"

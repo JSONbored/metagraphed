@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 23,
-  "name": "Trishool",
-  "slug": "sn-23",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -11,97 +6,110 @@
     "official-source-repo",
     "subnet-api-observed"
   ],
-  "source_repo": "https://github.com/TrishoolAI/trishool-phase2",
-  "dashboard_url": "https://trishool.ai/dashboard",
-  "website_url": "https://trishool.ai/",
-  "notes": "Reviewed overlay for SN23 using the official Trishool dashboard, phase-two source repository, and public API landing URL. The API root returns a public landing response, but OpenAPI and docs paths currently require auth or return 404, so no schema-backed API is promoted.",
+  "contact": "nav@astroware.ai",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:50:00.000Z",
-    "verified_at": "2026-06-08T09:50:00.000Z",
-    "source_count": 6,
     "gap_notes": [
       "Trishool API root is public, but `/openapi.json` and `/docs` currently return 401 and `/swagger.json` returns 404.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:50:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-06-08T09:50:00.000Z"
   },
+  "dashboard_url": "https://trishool.ai/dashboard",
+  "name": "Trishool",
+  "netuid": 23,
+  "notes": "Reviewed overlay for SN23 using the official Trishool dashboard, phase-two source repository, and public API landing URL. The API root returns a public landing response, but OpenAPI and docs paths currently require auth or return 404, so no schema-backed API is promoted (re-tested live, still accurate). 3 community-submitted surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. All 6 surfaces re-verified live.",
+  "schema_version": 1,
+  "slug": "sn-23",
+  "social": {
+    "x": "https://x.com/trishoolai"
+  },
+  "source_repo": "https://github.com/TrishoolAI/trishool-phase2",
+  "status": "active",
   "surfaces": [
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-23-trishool-dashboard",
-      "name": "Trishool dashboard",
       "kind": "dashboard",
-      "url": "https://trishool.ai/dashboard",
-      "provider": "trishool",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": [
-        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md"
-      ],
+      "name": "Trishool dashboard",
+      "notes": "Official Trishool dashboard.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Trishool dashboard."
-    },
-    {
-      "id": "sn-23-trishool-api-root",
-      "name": "Trishool API landing",
-      "kind": "subnet-api",
-      "url": "https://api.trishool.ai/",
       "provider": "trishool",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
       "source_urls": [
         "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public Trishool API landing surface. This is not schema-backed and should not be treated as an OpenAPI surface."
+      "url": "https://trishool.ai/dashboard"
     },
     {
-      "id": "sn-23-trishool-source",
-      "name": "Trishool phase two source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/TrishoolAI/trishool-phase2",
-      "provider": "trishool",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-23-trishool-api-root",
+      "kind": "subnet-api",
+      "name": "Trishool API landing",
+      "notes": "Public Trishool API landing surface. This is not schema-backed and should not be treated as an OpenAPI surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "trishool",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md"
+      ],
+      "url": "https://api.trishool.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-23-trishool-source",
+      "kind": "source-repo",
+      "name": "Trishool phase two source repository",
+      "notes": "Official Trishool phase two source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trishool",
       "public_safe": true,
       "source_urls": ["https://github.com/TrishoolAI/trishool-phase2"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Trishool phase two source repository."
+      "url": "https://github.com/TrishoolAI/trishool-phase2"
     },
     {
-      "id": "sn-23-trishool-docs",
-      "name": "Trishool documentation",
-      "kind": "docs",
-      "url": "https://docs.trishool.ai",
-      "provider": "trishool",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-23-trishool-docs",
+      "kind": "docs",
+      "name": "Trishool documentation",
+      "notes": "Official Trishool documentation site (docs.trishool.ai), hosted on the subnet's own domain and linked from the official website trishool.ai.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trishool",
       "public_safe": true,
-      "source_urls": ["https://trishool.ai/"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "devmixa702"
       },
-      "notes": "Official Trishool documentation site (docs.trishool.ai), hosted on the subnet's own domain and linked from the official website trishool.ai."
+      "source_urls": ["https://trishool.ai/"],
+      "url": "https://docs.trishool.ai"
     },
     {
       "auth_required": false,
@@ -110,6 +118,12 @@
       "kind": "data-artifact",
       "name": "Trishool tri-check submission schema template",
       "notes": "Public no-auth JSON template for the tri-check / alignet-style miner submission format (Q1–Q12 prompt object keys). Used for local testing and documentation of the expected batch submission shape.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "trishool",
       "public_safe": true,
       "review": {
@@ -123,27 +137,30 @@
       "url": "https://raw.githubusercontent.com/TrishoolAI/trishool-phase2/main/tri-check/data/submission_schema.json"
     },
     {
-      "id": "sn-23-trishool-litepaper-docs",
-      "name": "Trishool litepaper",
-      "kind": "docs",
-      "url": "https://litepaper.trishool.ai/",
-      "provider": "trishool",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-23-trishool-litepaper-docs",
+      "kind": "docs",
+      "name": "Trishool litepaper",
+      "notes": "Public no-auth Trishool litepaper (PDF) for SN23, served at litepaper.trishool.ai — a dedicated subdomain of the registered official website trishool.ai (same operator as the api.trishool.ai and docs.trishool.ai surfaces). A machine-readable primary-source document describing the subnet's design, mechanism, and roles. Distinct in URL from the docs.trishool.ai API documentation already registered.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trishool",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/TrishoolAI/trishool-phase2",
-        "https://trishool.ai/"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Public no-auth Trishool litepaper (PDF) for SN23, served at litepaper.trishool.ai — a dedicated subdomain of the registered official website trishool.ai (same operator as the api.trishool.ai and docs.trishool.ai surfaces). A machine-readable primary-source document describing the subnet's design, mechanism, and roles. Distinct in URL from the docs.trishool.ai API documentation already registered."
+      "source_urls": [
+        "https://github.com/TrishoolAI/trishool-phase2",
+        "https://trishool.ai/"
+      ],
+      "url": "https://litepaper.trishool.ai/"
     }
   ],
-  "social": {
-    "x": "https://x.com/trishoolai"
-  },
-  "contact": "nav@astroware.ai"
+  "website_url": "https://trishool.ai/"
 }

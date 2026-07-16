@@ -29,6 +29,7 @@ import {
   slugify,
   stableStringify,
   subnetSurfaceKey,
+  findUnmaterializedMaintainerReviews,
 } from "./lib.mjs";
 import {
   R2_STAGING_RELATIVE_ROOT,
@@ -1592,6 +1593,31 @@ for (const subnet of subnets) {
       `${subnet.slug}: curation.level "maintainer-reviewed" (netuid ${subnet.netuid}) has no backing decision in registry/reviews/maintainer-reviewed.json — add a decision there instead of hand-editing the overlay level`,
     );
   }
+}
+
+// Forward direction (#5992): the reverse gate above only enforces that a
+// maintainer-reviewed LEVEL has a backing decision — never that a recorded
+// decision actually PRODUCED the level. That let a decision sit in
+// maintainer-reviewed.json while the subnet's own overlay stayed at a lower
+// pre-tier (community-seeded etc.), invisibly, because promote-reviewed.mjs only
+// promoted a machine-verified starting level (the SN59/SN107 drift). Surface any
+// still-unmaterialized decision as a NON-BLOCKING advisory (mirrors the #5739
+// reviewed-tier convention advisory): materializing it edits an overlay's
+// curation.level, which is a maintainer-only action (a contributor PR touching
+// registry curation is gate-blocked), so this can't be a hard assert without
+// coupling the check to a maintainer registry edit. A maintainer resolves it with
+// `npm run promote-reviewed -- --write`.
+const subnetsByNetuidForReview = new Map(subnets.map((s) => [s.netuid, s]));
+const unmaterializedReviews = findUnmaterializedMaintainerReviews(
+  reviewDecisionsDocument.decisions || [],
+  subnetsByNetuidForReview,
+);
+if (unmaterializedReviews.length > 0) {
+  console.warn(
+    `advisory: maintainer-reviewed decision(s) recorded in registry/reviews/maintainer-reviewed.json but not yet materialized on the subnet overlay — run 'npm run promote-reviewed -- --write' (maintainer-only): ${unmaterializedReviews
+      .map((v) => `${v.slug} (netuid ${v.netuid}, level "${v.level}")`)
+      .join(", ")}`,
+  );
 }
 
 // Identity guardrail (the "Nodexo" class): a curated overlay's name matching

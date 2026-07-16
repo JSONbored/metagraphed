@@ -1,0 +1,10 @@
+{
+  "authority": "official",
+  "github_url": "https://github.com/glyph-research/glyph-subnet",
+  "id": "glyph-research",
+  "kind": "subnet-team",
+  "name": "Glyph Research",
+  "notes": "Provider entry for SN117 Glyph, a lossless neural text-compression benchmark subnet (\"a perpetual, decentralized Hutter Prize\"). Confirmed via the on-chain SubnetIdentitiesV3 record and the glyph-subnet repository's README, which explicitly documents --netuid 117 for mainnet across every command example.",
+  "schema_version": 1,
+  "website_url": "https://glyph-research.org"
+}

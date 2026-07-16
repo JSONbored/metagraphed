@@ -206,11 +206,17 @@ export function StaleBanner({
   generatedAt,
   refreshQueryKeys,
   refreshLabel = "Refresh now",
+  compact = false,
 }: {
   generatedAt?: string | null;
   /** When provided, renders a button that invalidates these query keys. */
   refreshQueryKeys?: QueryKey[];
   refreshLabel?: string;
+  /**
+   * Compact single-line variant for tight contexts (e.g. a hero actions row):
+   * shorter copy and an icon-only refresh button whose label moves to a tooltip.
+   */
+  compact?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<"idle" | "pending" | "ok" | "error">("idle");
@@ -250,14 +256,24 @@ export function StaleBanner({
     <div
       role="status"
       aria-live="polite"
-      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 font-mono text-[10px] text-ink-muted"
+      className={`flex items-center font-mono text-[10px] text-ink-muted ${
+        compact ? "gap-2" : "flex-wrap gap-x-3 gap-y-1.5"
+      }`}
     >
       <span className="inline-flex items-center gap-1.5 min-w-0">
         <Clock className="size-3 shrink-0" aria-hidden />
-        Snapshot from <TimeAgo at={generatedAt} /> — may be lagging behind live.
+        {compact ? (
+          <>
+            Snapshot <TimeAgo at={generatedAt} />
+          </>
+        ) : (
+          <>
+            Snapshot from <TimeAgo at={generatedAt} /> — may be lagging behind live.
+          </>
+        )}
       </span>
       {refreshQueryKeys?.length ? (
-        <span className="ml-auto flex items-center gap-2">
+        <span className={`flex items-center gap-2 ${compact ? "" : "ml-auto"}`}>
           {state === "error" && errorMsg ? (
             <span className="text-health-down truncate max-w-[18rem]" title={errorMsg}>
               {errorMsg}
@@ -265,18 +281,22 @@ export function StaleBanner({
           ) : null}
           {state === "ok" ? (
             <span className="inline-flex items-center gap-1 text-health-ok">
-              <CheckCircle2 className="size-3" /> Refreshed
+              <CheckCircle2 className="size-3" />
+              {compact ? null : " Refreshed"}
             </span>
           ) : null}
           <button
             type="button"
             onClick={onRefresh}
             disabled={state === "pending"}
-            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 font-medium text-ink-strong hover:border-ink/30 disabled:opacity-60 disabled:cursor-progress"
+            title={refreshLabel}
             aria-label={refreshLabel}
+            className={`inline-flex items-center gap-1.5 rounded border border-border bg-card font-medium text-ink-strong hover:border-ink/30 disabled:opacity-60 disabled:cursor-progress ${
+              compact ? "p-1" : "px-2 py-1"
+            }`}
           >
             <RefreshCw className={`size-3 ${state === "pending" ? "animate-spin" : ""}`} />
-            {state === "pending" ? "Refreshing…" : refreshLabel}
+            {compact ? null : state === "pending" ? "Refreshing…" : refreshLabel}
           </button>
         </span>
       ) : null}

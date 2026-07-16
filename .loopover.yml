@@ -1,0 +1,87 @@
+# Gittensory Gate scope manifest for metagraphed.
+#
+# wantedPaths  — patterns that signal this PR is a community data contribution
+#                (auto-adjudicate: merge/close/escalate on the gate's rules).
+# blockedPaths — if ANY changed file matches here the PR is NOT a community
+#                data submission (hold for human review / do not auto-merge).
+#
+# Aligns with the paths: filter in .github/workflows/publish-cloudflare.yml so
+# the gate's adjudication scope exactly tracks what a merged data PR publishes.
+
+wantedPaths:
+  - "registry/subnets/**"
+  - "registry/providers/**"
+  # registry/candidates/community/** — retired lane, no longer a valid PR path.
+  # Community surfaces now live in registry/subnets/<slug>.json (see CONTRIBUTING.md).
+  - "registry/reviews/**"
+  - "registry/adapters/**"
+
+blockedPaths:
+  # Root files can control trusted workflows, dependencies, deploys, or the
+  # gate itself. Any root-file edit makes the PR a maintainer-reviewed change,
+  # not an autonomously mergeable community data submission.
+  - "*"
+  - ".*"
+  - "src/**"
+  - "scripts/**"
+  - "workers/**"
+  - "schemas/**"
+  - "tests/**"
+  - "migrations/**"
+  - "packages/**"
+  - "public/**"
+  - ".github/**"
+  - ".claude/**"
+  # apps/ui — the frontend workspace (#3062). Owner-branch/maintainer-only
+  # work (repo-structure, CI, and Cloudflare deploy surgery), never a
+  # community data submission.
+  - "apps/**"
+
+# AI-judgment blocker promotion (JSONbored/gittensory#3907): the registry surface lane's own
+# deterministic checks (owner-match, freshness, dead/private source_url, duplicate detection) already
+# cover the failure modes a submission can have -- so by default (the engine-wide "advisory" setting)
+# a decisive surface-lane merge overrides even a confident AI-judgment-only finding, since an AI
+# opinion alone should never one-shot-close a structurally-clean submission. That default left a real
+# gap here: metagraphed's registry entries are validated for STRUCTURE and provenance, not semantic
+# correctness, so a content-correctness defect the AI reviewer correctly caught under "Blockers" (PR
+# #3910: a provider slug semantically wrong for its domain) still merged. "gate" lets that kind of
+# AI-judgment blocker survive into the gate's own decision instead of being silently overridden --
+# an explicit trade-off (a confident AI false positive can now one-shot-close a clean PR) accepted
+# because this repo's registry data has no other net for pure semantic-correctness defects.
+gate:
+  aiJudgmentBlockers: gate
+
+# Review-evasion protection (config-as-code override; layered OVER the dashboard's own default of
+# "off"): closing or converting-to-draft your OWN PR while gittensory has an active review pass
+# running, a prior recorded gate failure, or a repeated ready<->draft cycle on this PR, is treated
+# as dodging the one-shot review rather than an ordinary action.
+settings:
+  reviewEvasionProtection: close
+
+  # Config-as-code backfill (#6442): carries this repo's existing effective values forward now that
+  # these fields are moving off the dashboard's repository_settings row and onto config-as-code.
+  commentMode: all_prs
+  checkRunDetailLevel: standard
+  includeMaintainerAuthors: true
+
+  # Linked-issue label propagation (#4000): a PR closing an issue inherits that issue's point-bearing
+  # gittensor:* label, instead of the PR's own label being decided purely by commit-title regex. Mirrors
+  # the block already live on JSONbored/gittensory (#3903). bug/feature trust a maintainer-authored linked
+  # issue (routine categorization, no reward at stake); priority omits that flag -- it is the scarce,
+  # maintainer-hand-picked reward label and must still require the PR author to be the issue's actual
+  # author/assignee.
+  linkedIssueLabelPropagation:
+    enabled: true
+    mode: exclusive_type_label
+    mappings:
+      - issueLabel: "gittensor:bug"
+        prLabel: "gittensor:bug"
+        removeOtherTypeLabels: true
+        trustMaintainerAuthoredIssue: true
+      - issueLabel: "gittensor:feature"
+        prLabel: "gittensor:feature"
+        removeOtherTypeLabels: true
+        trustMaintainerAuthoredIssue: true
+      - issueLabel: "gittensor:priority"
+        prLabel: "gittensor:priority"
+        removeOtherTypeLabels: true

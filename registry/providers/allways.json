@@ -1,11 +1,12 @@
 {
   "authority": "provider-claimed",
   "docs_url": "https://docs.all-ways.io/how-it-works.html",
+  "github_url": "https://github.com/entrius/allways",
   "id": "allways",
   "kind": "subnet-team",
   "logo_url": "https://metagraph.sh/logos/allways.png",
   "name": "Allways",
-  "notes": "Seed provider entry for the Allways SN7 pilot.",
+  "notes": "Provider entry for Allways SN7. Trustless native cross-chain swaps (no wrapped tokens, no bridges, no custodian) settled by a Solana program (allways_swap_manager) that holds miner collateral, runs a reservation lottery, and enforces outcomes via validator consensus voting and slashing. Hub-and-spoke design with SOL as the hub numeraire and BTC/TAO as spokes (SOL<->BTC, SOL<->TAO). Same team (entrius) operates Gittensor/SN74.",
   "schema_version": 1,
   "website_url": "https://all-ways.io"
 }

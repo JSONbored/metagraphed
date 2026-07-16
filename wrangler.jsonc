@@ -397,6 +397,11 @@
       // comment for why it stays a separate DO rather than in-memory state
       // on ChainFirehoseHub.
       { "name": "ALERTER_HUB", "class_name": "AlerterHub" },
+      // #6034: inverted netuid → MCP-session index for
+      // metagraph://subnet/{netuid}/status subscriptions. Singleton
+      // (idFromName("global")), pinged from the health prober write path —
+      // not from ChainFirehoseHub.broadcast(). See workers/subnet-status-hub.mjs.
+      { "name": "SUBNET_STATUS_HUB", "class_name": "SubnetStatusHub" },
     ],
   },
   // Durable Object class migrations are one-way and versioned: adding a new
@@ -417,6 +422,10 @@
     {
       "tag": "v3-alerter-hub",
       "new_sqlite_classes": ["AlerterHub"],
+    },
+    {
+      "tag": "v4-subnet-status-hub",
+      "new_sqlite_classes": ["SubnetStatusHub"],
     },
   ],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV

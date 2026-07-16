@@ -104,8 +104,15 @@ const DEFAULT_ID: HealthPaletteId = "traffic-light";
 
 export function readId(): HealthPaletteId {
   if (typeof window === "undefined") return DEFAULT_ID;
-  const v = window.localStorage.getItem(STORAGE_KEY);
-  return (HEALTH_PALETTES.find((p) => p.id === v)?.id ?? DEFAULT_ID) as HealthPaletteId;
+  try {
+    const v = window.localStorage.getItem(STORAGE_KEY);
+    return (HEALTH_PALETTES.find((p) => p.id === v)?.id ?? DEFAULT_ID) as HealthPaletteId;
+  } catch {
+    // Match theme.ts's readChoice: a throwing localStorage (Safari private
+    // browsing, storage blocked by policy/extension) degrades to the default
+    // instead of throwing during the initial render.
+    return DEFAULT_ID;
+  }
 }
 
 export function cssFor(p: HealthPaletteDef): string {

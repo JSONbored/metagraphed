@@ -7,16 +7,17 @@
 // the JSON-RPC 2.0 envelope rather than pulling in `@modelcontextprotocol/sdk`
 // so the Worker bundle stays lean and the hot REST/RPC path is untouched.
 //
-// The ONE stateful exception (#4983 MCP half, ADR 0015): resources/subscribe
-// on `metagraph://chain/stream`. A subscribed session gets a Durable Object
-// (McpSessionHub, one per Mcp-Session-Id, minted at `initialize`) that holds
-// a bounded-duration GET-opened SSE stream and pushes
-// notifications/resources/updated when the realtime firehose (ChainFirehoseHub,
-// #4982) broadcasts a new chain event. Every OTHER method on this server is
-// unaffected -- stateless POST, no session required. See
-// workers/mcp-session-hub.mjs's own header comment for why this is a
-// separate DO from ChainFirehoseHub, and docs/realtime-firehose.md for the
-// full architecture.
+// The stateful exception (#4983 MCP half + #6034, ADR 0015): resources/subscribe
+// on `metagraph://chain/stream` and `metagraph://subnet/{netuid}/status`. A
+// subscribed session gets a Durable Object (McpSessionHub, one per
+// Mcp-Session-Id, minted at `initialize`) that holds a bounded-duration
+// GET-opened SSE stream and pushes notifications/resources/updated when the
+// realtime firehose (ChainFirehoseHub, #4982) broadcasts a new chain event, or
+// when the health prober (#6034) detects a per-subnet health/status/surface
+// change via SubnetStatusHub. Every OTHER method on this server is unaffected
+// -- stateless POST, no session required. See workers/mcp-session-hub.mjs's
+// own header comment for why this is a separate DO from ChainFirehoseHub, and
+// docs/realtime-firehose.md for the full architecture.
 //
 // Artifact/KV reads are injected (`deps.readArtifact`, `deps.readHealthKv`) so
 // this module is pure and unit-testable, and so it reuses the exact same
@@ -34,12 +35,20 @@
 // exists to prevent for a human clicking through a browser. Revisit only via
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
+import {
+  isUsageTelemetryConfigured,
+  recordUsageEvent,
+} from "./usage-telemetry.mjs";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
-import { handleRpcProxyRequest } from "../workers/request-handlers/rpc-proxy.mjs";
+import {
+  handleRpcProxyRequest,
+  graphqlRateLimited,
+} from "../workers/request-handlers/rpc-proxy.mjs";
+import { handleGraphQLRequest } from "./graphql.mjs";
 import {
   isValidSubscriptionId,
   subscriptionStorageKey,
@@ -53,6 +62,12 @@ import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   isValidMcpSessionId,
 } from "../workers/mcp-session-hub.mjs";
+import {
+  buildSubnetStatusResourceUri,
+  isSubscribableMcpResourceUri,
+  listSubscribableMcpResourceClasses,
+  parseSubnetStatusResourceUri,
+} from "./subnet-status-subscribe.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.mjs";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
@@ -394,6 +409,7 @@ import {
   buildSubnetValidators,
   buildGlobalValidators,
   buildValidatorDetail,
+  composeValidatorComparison,
   GLOBAL_VALIDATOR_SORTS,
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -1775,6 +1791,29 @@ function requireHotkey(args) {
   return value;
 }
 
+// Upper bound on compare_validators' hotkey list: each hotkey is one detail
+// load, so the fan-out is capped to keep a single compare call bounded (a
+// side-by-side view of more than this many validators isn't a comparison
+// anyone reads anyway). Mirrors parseCompareNetuidList's own cap-and-dedupe
+// shape, but validates SS58 hotkeys instead of netuids.
+const COMPARE_VALIDATORS_MAX = 16;
+
+function parseHotkeyList(hotkeys) {
+  if (!Array.isArray(hotkeys) || hotkeys.length === 0) return null;
+  const result = [];
+  const seen = new Set();
+  for (const value of hotkeys) {
+    if (typeof value !== "string" || !SS58_ADDRESS_PATTERN.test(value)) {
+      return null;
+    }
+    if (seen.has(value)) continue;
+    seen.add(value);
+    result.push(value);
+  }
+  if (result.length > COMPARE_VALIDATORS_MAX) return null;
+  return result;
+}
+
 // The optional `blocks` window for get_chain_activity: a missing value defaults
 // to 1000; a provided value must be a positive integer and is clamped to the
 // data Worker's 1-5000 bound so a stray large value is silently capped (the data
@@ -2416,6 +2455,38 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_detail",
+    title: "Get one subnet's raw structural detail",
+    description:
+      "Fetch one subnet's raw per-subnet record by netuid: chain-native " +
+      "structure, live economics, candidate surfaces, endpoints, gaps, and " +
+      "verified surfaces -- the underlying record get_subnet's composed " +
+      "overview is assembled from. Use get_subnet for the curated dashboard " +
+      "view (profile + health + curation + gaps + counts); use this for the " +
+      "raw structural record itself, or get_subnet_economics for economics " +
+      "alone. Mirrors GET /api/v1/subnets/{netuid}.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const detail = await loadArtifactData(
+        ctx,
+        `/metagraph/subnets/${netuid}.json`,
+      );
+      // Same live-economics overlay /api/v1/subnets/{netuid} attaches (#1308):
+      // one call carries validator/miner counts, registration, stake, and
+      // alpha price alongside the structural record.
+      const { economics } = await loadSubnetEconomics(ctx, netuid);
+      return economics ? { ...detail, economics } : detail;
+    },
+  },
+  {
     ...GET_NETWORK_HEALTH_MCP_TOOL,
     async handler(_args, ctx) {
       return loadGlobalOperationalHealth(
@@ -2703,6 +2774,110 @@ export const MCP_TOOLS = [
         throw toolError(result.code, result.error);
       }
       return { schema_version: 1, ...result.quote };
+    },
+  },
+  {
+    name: "get_stake_action_preview",
+    title: "Preview a hypothetical stake action (read-only)",
+    description:
+      "Produce a clearly-labeled, human-readable PREVIEW of what a hypothetical " +
+      "stake or unstake against one subnet would look like: the estimated " +
+      "resulting amount out, the effective vs spot price, and the estimated " +
+      "price-impact/slippage -- computed from the same live AMM pool economics " +
+      "get_subnet_stake_quote reads (direction stake spends amount TAO for " +
+      "alpha; unstake spends amount alpha for TAO; root netuid 0 is 1:1). This " +
+      "is INFORMATIONAL ONLY and strictly READ-ONLY: it does NOT execute, build, " +
+      "prepare, or sign any transaction, produces no signable/extrinsic " +
+      "artifact, and never touches a wallet or key. Submitting a stake requires " +
+      "a separate signed extrinsic outside this tool. Use it to explain a " +
+      "prospective stake's outcome to a user, not to act on-chain.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        amount: {
+          type: "number",
+          description:
+            "Amount to preview, in TAO for direction=stake or alpha for " +
+            "direction=unstake. Must be a finite number greater than 0.",
+          exclusiveMinimum: 0,
+        },
+        direction: {
+          type: "string",
+          enum: STAKE_QUOTE_DIRECTIONS,
+          description: 'Action direction: stake or unstake (default "stake").',
+        },
+      },
+      required: ["netuid", "amount"],
+      additionalProperties: false,
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer" },
+        direction: { type: "string" },
+        amount: { type: "number" },
+        summary: {
+          type: "string",
+          description: "Human-readable one-line preview of the action.",
+        },
+        estimated_out: {
+          type: "object",
+          properties: {
+            amount: { type: "number" },
+            unit: { type: "string" },
+          },
+          required: ["amount", "unit"],
+          additionalProperties: false,
+        },
+        spot_price_tao: { type: "number" },
+        effective_price_tao: { type: "number" },
+        price_impact_pct: { type: "number" },
+        disclaimer: { type: "string" },
+      },
+      required: ["netuid", "direction", "amount", "summary", "disclaimer"],
+      additionalProperties: true,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const amount = args?.amount;
+      const direction = optionalString(args, "direction") ?? "stake";
+      // Reuse the exact stake-quote data loader + pure-math calculation -- no
+      // duplicated economics logic. This is a presentation layer over the same
+      // numbers get_subnet_stake_quote returns.
+      const { economics } = await loadSubnetEconomics(ctx, netuid);
+      const result = computeStakeQuote({
+        netuid,
+        taoInPool: economics?.tao_in_pool_tao,
+        alphaInPool: economics?.alpha_in_pool,
+        amount,
+        direction,
+      });
+      if (!result.ok) {
+        throw toolError(result.code, result.error);
+      }
+      const q = result.quote;
+      const inUnit = direction === "stake" ? "TAO" : "alpha";
+      const outUnit = q.expected_out_unit === "alpha" ? "alpha" : "TAO";
+      const verb = direction === "stake" ? "Staking" : "Unstaking";
+      const summary = q.is_root
+        ? `${verb} ${amount} ${inUnit} on subnet ${netuid} (root) previews an estimated ${q.expected_out} ${outUnit} at a 1:1 price with no price impact.`
+        : `${verb} ${amount} ${inUnit} on subnet ${netuid} previews an estimated ${q.expected_out} ${outUnit} at an effective price of ${q.effective_price_tao} TAO/alpha (spot ${q.spot_price_tao}), with an estimated ${q.price_impact_pct}% price impact (slippage).`;
+      return {
+        netuid: q.netuid,
+        direction: q.direction,
+        amount: q.amount,
+        summary,
+        estimated_out: { amount: q.expected_out, unit: q.expected_out_unit },
+        spot_price_tao: q.spot_price_tao,
+        effective_price_tao: q.effective_price_tao,
+        price_impact_pct: q.price_impact_pct,
+        disclaimer:
+          "Informational preview only. This does not execute, build, prepare, " +
+          "or sign any transaction, produces no signable or extrinsic artifact, " +
+          "and makes no wallet or key interaction. Submitting a stake requires a " +
+          "separate signed extrinsic outside this tool.",
+      };
     },
   },
   {
@@ -4846,6 +5021,72 @@ export const MCP_TOOLS = [
           "METAGRAPH_NEURONS_SOURCE",
         )) ?? buildValidatorDetail([], hotkey)
       );
+    },
+  },
+  {
+    name: "compare_validators",
+    title: "Compare validators side by side (read-only)",
+    description:
+      "Place several validators side by side for a stake/delegate decision: " +
+      "for each hotkey, its take rate, estimated APY, nominator count, and " +
+      "on-chain (coldkey) identity, plus the cross-subnet stake/emission/trust " +
+      "aggregates that give those numbers context -- the same per-validator " +
+      "detail list_global_validators / get_validator_detail expose, projected " +
+      "to the fields that drive a delegate choice. Pass an optional netuid to " +
+      "add each validator's membership in that one subnet (subnet_context). " +
+      "Strictly READ-ONLY and decision-support only: it builds no transaction, " +
+      "produces no signable/extrinsic artifact, and never touches a wallet or " +
+      "key -- the validator equivalent of compare_subnets.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        hotkeys: {
+          type: "array",
+          items: { type: "string", pattern: SS58_PATTERN_SOURCE },
+          minItems: 1,
+          maxItems: COMPARE_VALIDATORS_MAX,
+          description:
+            "Validator hotkeys (SS58 addresses) to compare, in display order.",
+        },
+        netuid: {
+          type: "integer",
+          minimum: 0,
+          description:
+            "Optional subnet context -- when set, each validator also carries " +
+            "its membership row in that subnet (subnet_context), or null when " +
+            "it holds no validator permit there.",
+        },
+      },
+      required: ["hotkeys"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const hotkeys = parseHotkeyList(args?.hotkeys);
+      if (!hotkeys) {
+        throw toolError(
+          "invalid_params",
+          `hotkeys must be a non-empty array of 1-${COMPARE_VALIDATORS_MAX} distinct valid SS58 validator addresses.`,
+        );
+      }
+      const netuid = optionalNonNegativeInt(args, "netuid");
+      // One detail load per hotkey, each via the exact Postgres-tier-or-empty
+      // path get_validator_detail uses -- no new data source, just the same
+      // cross-subnet aggregate fetched for each compared validator, then
+      // projected side by side. Sequential (not parallel) to keep the
+      // fan-out's request pattern identical to N get_validator_detail calls.
+      const details = [];
+      for (const hotkey of hotkeys) {
+        details.push(
+          (await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(
+              `/api/v1/validators/${encodeURIComponent(hotkey)}`,
+            ),
+            "METAGRAPH_NEURONS_SOURCE",
+          )) ?? buildValidatorDetail([], hotkey),
+        );
+      }
+      return composeValidatorComparison(details, { netuid });
     },
   },
   {
@@ -9115,6 +9356,108 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "query_graphql",
+    title: "Run a GraphQL query",
+    description:
+      "Execute an arbitrary read-only GraphQL query against the metagraph " +
+      "GraphQL API (POST /api/v1/graphql) and return its { data, errors } " +
+      "result. Prefer this over the individual REST-mirrored tools (get_subnet, " +
+      "list_subnets, etc.) when you need arbitrary field selection or nested " +
+      "relations resolved in ONE round-trip; prefer a dedicated tool for a " +
+      "single well-known lookup. The endpoint is query-only (no mutations) and " +
+      "enforces the same depth (max 7) and complexity (max 50) limits as the " +
+      "REST GraphQL endpoint -- a query that exceeds them is rejected. Pass the " +
+      "query string in `query` and any GraphQL variables as an object in " +
+      "`variables`.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "The GraphQL query document, e.g. '{ subnet(netuid: 1) { name } }'.",
+        },
+        variables: {
+          type: "object",
+          description:
+            "Optional GraphQL variables keyed by name, e.g. { netuid: 1 }.",
+          additionalProperties: true,
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        data: {
+          type: "object",
+          description: "The query result, or null when the query errored.",
+          additionalProperties: true,
+          nullable: true,
+        },
+        errors: {
+          type: "array",
+          description:
+            "GraphQL errors (validation, depth/complexity, or resolver), when any.",
+          items: { type: "object", additionalProperties: true },
+        },
+      },
+      additionalProperties: true,
+    },
+    async handler(args, ctx) {
+      const query = requireString(args, "query");
+      if (
+        args?.variables !== undefined &&
+        (typeof args.variables !== "object" ||
+          args.variables === null ||
+          Array.isArray(args.variables))
+      ) {
+        throw toolError(
+          "invalid_params",
+          "Argument `variables`, when present, must be an object.",
+        );
+      }
+      // Forward through the SAME handler REST callers hit, so the depth and
+      // complexity validation rules (and any other GraphQL-side protection)
+      // apply identically -- this tool cannot bypass them. cf-connecting-ip is
+      // forged from ctx.clientIp (the real inbound caller) so the GraphQL rate
+      // limiter below keys on that caller, not this synthetic request.
+      const gqlRequest = new Request("https://d/api/v1/graphql", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "cf-connecting-ip": ctx.clientIp,
+        },
+        body: JSON.stringify({ query, variables: args?.variables }),
+      });
+      // Apply the SAME per-client GraphQL rate limiter the REST route runs
+      // before handleGraphQLRequest, so this bridge is throttled identically
+      // and cannot bypass GraphQL-specific limits (in addition to the MCP-path
+      // enforceMcpRateLimit that already ran before dispatch).
+      const limited = await graphqlRateLimited(gqlRequest, ctx.env);
+      if (limited) {
+        throw toolError(
+          "graphql_rate_limited",
+          "Too many GraphQL requests from this client; slow down.",
+        );
+      }
+      const response = await handleGraphQLRequest(gqlRequest, ctx.env);
+      // The POST path of handleGraphQLRequest always returns a JSON body -- the
+      // execution result on success, or an errors[] envelope on a parse /
+      // validation / depth-complexity failure -- so no non-JSON guard is needed.
+      const payload = await response.json();
+      // A malformed/oversized query is a non-2xx with a populated errors[]; a
+      // valid query that resolves to GraphQL-level errors is a 200 with errors[].
+      // Both are surfaced to the agent as { data, errors } rather than thrown,
+      // so it can read partial data and the error detail together.
+      return {
+        data: payload?.data ?? null,
+        errors: payload?.errors ?? [],
+      };
+    },
+  },
+  {
     name: "registry_summary",
     title: "Get the registry-wide summary",
     description:
@@ -9955,6 +10298,23 @@ const TOOL_OUTPUT_SCHEMAS = {
       gap_priorities: { type: "array" },
       operational_observed_at: NULLABLE_STRING,
       health_source: NULLABLE_STRING,
+    },
+  },
+  get_subnet_detail: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet"],
+    properties: {
+      schema_version: { type: "integer" },
+      generated_at: NULLABLE_STRING,
+      subnet: { type: "object" },
+      candidate_surfaces: { type: "array" },
+      candidates: { type: "array" },
+      endpoints: { type: "array" },
+      gaps: ANY,
+      surfaces: { type: "array" },
+      verified_surfaces: { type: "array" },
+      economics: { type: ["object", "null"] },
     },
   },
   get_subnet_health: {
@@ -11510,6 +11870,17 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       block_number: NULLABLE_INT,
       subnets: { type: "array", items: { type: "object" } },
+    },
+  },
+  compare_validators: {
+    type: "object",
+    additionalProperties: true,
+    required: ["validator_count", "validators"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: NULLABLE_INT,
+      validator_count: { type: "integer" },
+      validators: { type: "array", items: { type: "object" } },
     },
   },
   get_webhook_subscription: {
@@ -13343,9 +13714,10 @@ export function listToolDefinitions() {
 // the generated server-card so the two can never drift.
 export const MCP_CAPABILITIES = {
   tools: { listChanged: false },
-  // subscribe: true (#4983 MCP half) -- only metagraph://chain/stream is
-  // actually subscribable (SUBSCRIBABLE_RESOURCE_URIS below); every other
-  // resource is a static R2 artifact with no change signal to subscribe to.
+  // subscribe: true (#4983 MCP half + #6034) -- metagraph://chain/stream and
+  // metagraph://subnet/{netuid}/status are subscribable
+  // (isSubscribableMcpResourceUri); every other resource is a static R2
+  // artifact with no change signal to subscribe to.
   resources: { subscribe: true, listChanged: false },
   prompts: { listChanged: false },
 };
@@ -13359,6 +13731,18 @@ export const MCP_RESOURCE_TEMPLATES = [
     description:
       "Composed overview for one subnet by netuid: identity, completeness, " +
       `curated surfaces, health summary, and gaps. ${UNTRUSTED_DATA_NOTE}`,
+    mimeType: "application/json",
+  },
+  {
+    uriTemplate: "metagraph://subnet/{netuid}/status",
+    name: "subnet-status",
+    title: "Subnet live status",
+    description:
+      "Live operational health for one subnet (probe-derived status, " +
+      "per-surface checks). Subscribe via resources/subscribe to receive " +
+      "notifications/resources/updated when that subnet's health tier, " +
+      "uptime status, or registered operational surfaces change, then " +
+      `resources/read for the current payload. ${UNTRUSTED_DATA_NOTE}`,
     mimeType: "application/json",
   },
   {
@@ -13437,10 +13821,13 @@ const FIXED_RESOURCES = [
 
 // Resources a client may actually call resources/subscribe on -- deliberately
 // NOT "any URI resourceArtifactPath resolves": every resource other than the
-// live one above is a static R2 artifact with no change signal, so
-// subscribing to one would accept silently and then never fire. Checked in
-// the resources/subscribe dispatch case below.
-const SUBSCRIBABLE_RESOURCE_URIS = new Set([MCP_CHAIN_STREAM_RESOURCE_URI]);
+// live ones (chain stream + per-subnet status) is a static R2 artifact with
+// no change signal, so subscribing to one would accept silently and then
+// never fire. Checked in the resources/subscribe dispatch case below.
+// #6034: also metagraph://subnet/{netuid}/status (predicate, not a fixed set).
+function isSubscribableResourceUri(uri) {
+  return isSubscribableMcpResourceUri(uri);
+}
 
 const RESOURCE_PAGE_SIZE = 100;
 
@@ -13468,6 +13855,17 @@ async function listAllResources(ctx) {
         `subnet-${s.netuid}`,
         s.name ? `SN${s.netuid} — ${s.name}` : `Subnet ${s.netuid}`,
         UNTRUSTED_DATA_NOTE,
+        "application/json",
+      ),
+    );
+    out.push(
+      resourceEntry(
+        buildSubnetStatusResourceUri(s.netuid),
+        `subnet-${s.netuid}-status`,
+        s.name
+          ? `SN${s.netuid} status — ${s.name}`
+          : `Subnet ${s.netuid} status`,
+        "Live operational health; subscribable for status-change notifications.",
         "application/json",
       ),
     );
@@ -13572,10 +13970,39 @@ async function readLiveChainStreamResource(ctx) {
   return payload ?? { table: null, message: "no chain event observed yet" };
 }
 
+async function readSubnetStatusResource(ctx, netuid) {
+  const [live, reliability] = await Promise.all([
+    mcpLiveHealth(ctx),
+    loadSubnetReliability({ db: ctx.env?.METAGRAPH_HEALTH_DB, netuid }),
+  ]);
+  const overlaid = overlaySubnetHealth(null, live, netuid);
+  if (overlaid) {
+    return { ...overlaid, reliability };
+  }
+  return {
+    schema_version: 1,
+    netuid,
+    summary: { status: "unknown", surface_count: 0 },
+    operational_observed_at: null,
+    health_source: "unavailable",
+    reliability,
+    surfaces: [],
+  };
+}
+
 async function readResource(params, ctx) {
   const uri = params?.uri;
   if (uri === MCP_CHAIN_STREAM_RESOURCE_URI) {
     const data = await readLiveChainStreamResource(ctx);
+    return {
+      contents: [
+        { uri, mimeType: "application/json", text: JSON.stringify(data) },
+      ],
+    };
+  }
+  const statusNetuid = parseSubnetStatusResourceUri(uri);
+  if (statusNetuid != null) {
+    const data = await readSubnetStatusResource(ctx, statusNetuid);
     return {
       contents: [
         { uri, mimeType: "application/json", text: JSON.stringify(data) },
@@ -13599,20 +14026,21 @@ async function readResource(params, ctx) {
   };
 }
 
-// resources/subscribe and resources/unsubscribe (#4983 MCP half) -- both are
-// session-scoped (require ctx.sessionId, set by buildContext from the
-// Mcp-Session-Id header) and reused verbatim's-worth of validation:
-// SUBSCRIBABLE_RESOURCE_URIS is checked here rather than a second, looser
-// URI-shape check, mirroring the lesson from this session's graphql-ws fix
+// resources/subscribe and resources/unsubscribe (#4983 MCP half + #6034) --
+// both are session-scoped (require ctx.sessionId, set by buildContext from the
+// Mcp-Session-Id header). Subscribability is checked via
+// isSubscribableResourceUri rather than a second, looser URI-shape check,
+// mirroring the lesson from this session's graphql-ws fix
 // (validateChainEventsSubscribePayload) -- a hand-rolled second validation
 // path is exactly how a security guarantee quietly drifts from the first.
 async function subscribeResource(params, ctx) {
   const uri = params?.uri;
-  if (typeof uri !== "string" || !SUBSCRIBABLE_RESOURCE_URIS.has(uri)) {
+  if (typeof uri !== "string" || !isSubscribableResourceUri(uri)) {
     throw toolError(
       "invalid_params",
       `Resource is unknown or not subscribable: ${String(uri)}. Only ` +
-        `${[...SUBSCRIBABLE_RESOURCE_URIS].join(", ")} supports resources/subscribe.`,
+        `${listSubscribableMcpResourceClasses().join(", ")} support ` +
+        "resources/subscribe.",
     );
   }
   if (!ctx.sessionId) {
@@ -13775,7 +14203,43 @@ function negotiateProtocol(requested) {
     : MCP_LATEST_PROTOCOL;
 }
 
+// Product-usage telemetry (#6031 / #366). callTool is the one point every
+// tools/call passes through, so wrapping it records exactly one event per
+// invocation instead of instrumenting ~150 handlers individually. It also
+// already funnels every outcome into an isError result rather than throwing,
+// which is what makes success/failure readable here without touching any
+// handler. Nothing but the tool name, that flag, and elapsed time is recorded —
+// never arguments or response content.
 async function callTool(params, ctx) {
+  const startedAt = Date.now();
+  const result = await dispatchTool(params, ctx);
+  scheduleToolUsageEvent(ctx, {
+    mcpTool: typeof params?.name === "string" ? params.name : undefined,
+    ok: result.isError !== true,
+    durationMs: Date.now() - startedAt,
+  });
+  return result;
+}
+
+/**
+ * Hand a tool-usage event to the recorder without ever blocking or failing the
+ * tool response.
+ *
+ * @param {object} ctx
+ * @param {object} event
+ */
+function scheduleToolUsageEvent(ctx, event) {
+  try {
+    if (!isUsageTelemetryConfigured(ctx?.env)) return;
+    const record = ctx?.recordUsageEvent ?? recordUsageEvent;
+    const pending = Promise.resolve(record(ctx.env, event)).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+async function dispatchTool(params, ctx) {
   const name = params?.name;
   const tool = typeof name === "string" ? TOOLS_BY_NAME.get(name) : undefined;
   if (!tool) {
@@ -13948,6 +14412,11 @@ function buildContext(request, env, deps) {
     clientIp: mcpClientKey(request),
     readArtifact: deps.readArtifact,
     readHealthKv: deps.readHealthKv,
+    // The Worker's ExecutionContext, when the caller has one to give: only the
+    // real fetch entry does, so it stays optional and every direct-call test
+    // keeps working. Used solely to drain usage telemetry (#6031).
+    executionCtx: deps.executionCtx,
+    recordUsageEvent: deps.recordUsageEvent,
   };
 }
 

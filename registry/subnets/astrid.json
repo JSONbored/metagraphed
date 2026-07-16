@@ -1,11 +1,26 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "trading-strategies"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "The Arena API's executions/presence route requires a participantIds query parameter and is not promotable."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "name": "Astrid",
   "netuid": 127,
+  "notes": "Reviewed overlay for SN127 Astrid, an agent-trading competition subnet (the Astrid Arena). Root->128 accuracy audit first review pass (#5903): added website (astrid.global, the www subdomain 301-redirects there) and source-repo surfaces, fixed 3 missing probe blocks on the pre-existing community-submitted surfaces. Confirmed via the official validator client source (src/core/arena/api.ts) that the only other documented route (executions/presence) requires a participantIds query parameter -- not promotable.",
   "schema_version": 1,
   "slug": "sn-127",
   "status": "active",
@@ -16,7 +31,13 @@
       "id": "sn-127-astrid-subnet-api",
       "kind": "subnet-api",
       "name": "Astrid Arena API",
-      "notes": "Public no-auth REST API for SN127 Astrid's trading Arena (arena-api.astrid.global) exposing completed competitions, trades, and execution runs; GET /public/arena/completed-competitions returns JSON with no authentication. Documented in the official astridintelligence/sn-127 README.",
+      "notes": "Public no-auth REST API for SN127 Astrid's trading Arena (arena-api.astrid.global) exposing completed competitions, trades, and execution runs; GET /public/arena/completed-competitions returns JSON with no authentication. Documented in the official astridintelligence/sn-127 README. The sibling executions/presence route additionally requires a participantIds query parameter and is not promotable.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "astrid",
       "public_safe": true,
       "review": {
@@ -35,6 +56,12 @@
       "kind": "data-artifact",
       "name": "Astrid Arena competition wallet-activity dataset",
       "notes": "Public no-auth GET returning the full wallet-activity dataset (totals plus orders/positions/trades records) for a completed SN127 Astrid Arena competition (Miners Showdown 3). The competitionId is sourced from the public completed-competitions endpoint already in this manifest, and the wallet-activity dataset path is documented in the official astridintelligence/sn-127 validator client (src/core/arena/api.ts, fetchAllTrades). Returns application/json; distinct from the completed-competitions API surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "astrid",
       "public_safe": true,
       "review": {
@@ -54,6 +81,12 @@
       "kind": "dashboard",
       "name": "Astrid Arena dashboard",
       "notes": "Public no-auth Astrid Arena web dashboard for SN127 agent-trading competitions — the front end over the arena-api surfaces already in this manifest. The page self-identifies as SN127 (document title 'Astrid Arena · Agent Trading Competitions on Bittensor SN127') and is linked as 'Arena' from the official www.astrid.global homepage.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "astrid",
       "public_safe": true,
       "review": {
@@ -65,8 +98,44 @@
         "https://github.com/astridintelligence/sn-127/blob/master/README.md"
       ],
       "url": "https://arena.astrid.global"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-127-astrid-website",
+      "kind": "website",
+      "name": "Astrid website",
+      "notes": "Official Astrid website. The www subdomain 301-redirects to the canonical apex host.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "astrid",
+      "public_safe": true,
+      "source_urls": ["https://github.com/astridintelligence/sn-127"],
+      "url": "https://astrid.global/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-127-astrid-source",
+      "kind": "source-repo",
+      "name": "Astrid source repository",
+      "notes": "Official Astrid source repository for SN127.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "astrid",
+      "public_safe": true,
+      "source_urls": ["https://github.com/astridintelligence/sn-127"],
+      "url": "https://github.com/astridintelligence/sn-127"
     }
   ],
   "source_repo": "https://github.com/astridintelligence/sn-127",
-  "website_url": "https://www.astrid.global/"
+  "website_url": "https://astrid.global/"
 }

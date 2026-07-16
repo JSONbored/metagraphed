@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 4,
-  "name": "Targon",
-  "slug": "sn-4",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -11,191 +6,218 @@
     "official-source-repo",
     "official-website"
   ],
-  "source_repo": "https://github.com/manifold-inc/targon",
-  "docs_url": "https://docs.targon.com/",
-  "dashboard_url": null,
-  "website_url": "https://targon.com/",
-  "notes": "Reviewed overlay for SN4 using the official Targon website, docs, Intel whitepaper, and source repository. No public API, OpenAPI schema, SSE stream, or standalone data artifact is verified yet.",
+  "contact": "devs@manifold.inc",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T16:10:00.000Z",
-    "verified_at": "2026-06-08T16:10:00.000Z",
-    "source_count": 6,
     "gap_notes": [
       "Official website, docs, Intel whitepaper, and source repository are verified live.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T16:10:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-06-08T16:10:00.000Z"
   },
+  "dashboard_url": null,
+  "docs_url": "https://docs.targon.com/",
+  "name": "Targon",
+  "netuid": 4,
+  "notes": "Reviewed overlay for SN4 using the official Targon website, docs, Intel whitepaper, and source repository. The docs site's own sitemap lists 10 API categories (compute, health, heim, inventory, ssh-keys, templates, user, version, volumes, workloads); all but inventory and version are personal compute-rental account actions requiring a Bearer API key (create/manage workloads, templates, ssh keys, volumes), not eligible for public surface tracking. The documented no-auth health endpoints (/tha/v2/healthz, /tha/v2/readyz) currently 500 in production despite the docs describing them as working liveness/readiness checks -- not tracked as a surface since it would only generate false-unhealthy noise. No OpenAPI/Swagger schema, SSE stream, or standalone data artifact is verified yet.",
+  "schema_version": 1,
+  "slug": "sn-4",
+  "social": {
+    "x": "https://x.com/targoncompute"
+  },
+  "source_repo": "https://github.com/manifold-inc/targon",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-4-targon-website",
-      "name": "Targon website",
-      "kind": "website",
-      "url": "https://targon.com/",
-      "provider": "targon",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-4-targon-website",
+      "kind": "website",
+      "name": "Targon website",
+      "notes": "Official Targon website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
       "public_safe": true,
       "source_urls": ["https://github.com/manifold-inc/targon"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Targon website."
+      "url": "https://targon.com/"
     },
     {
-      "id": "sn-4-targon-docs",
-      "name": "Targon docs",
-      "kind": "docs",
-      "url": "https://docs.targon.com/",
-      "provider": "targon",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-4-targon-docs",
+      "kind": "docs",
+      "name": "Targon docs",
+      "notes": "Official Targon documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
       "public_safe": true,
       "source_urls": ["https://targon.com/", "https://docs.targon.com/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Targon documentation."
+      "url": "https://docs.targon.com/"
     },
     {
-      "id": "sn-4-targon-intel-whitepaper",
-      "name": "Targon Intel whitepaper",
-      "kind": "docs",
-      "url": "https://targon.com/releases/intel-whitepaper",
-      "provider": "targon",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-4-targon-intel-whitepaper",
+      "kind": "docs",
+      "name": "Targon Intel whitepaper",
+      "notes": "Official Targon Intel whitepaper / release page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
       "public_safe": true,
       "source_urls": [
         "https://targon.com/",
         "https://targon.com/releases/intel-whitepaper"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Targon Intel whitepaper / release page."
+      "url": "https://targon.com/releases/intel-whitepaper"
     },
     {
-      "id": "sn-4-targon-source",
-      "name": "Targon source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/manifold-inc/targon",
-      "provider": "targon",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-4-targon-source",
+      "kind": "source-repo",
+      "name": "Targon source repository",
+      "notes": "Official Targon source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
       "public_safe": true,
       "source_urls": ["https://github.com/manifold-inc/targon"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Targon source repository."
+      "url": "https://github.com/manifold-inc/targon"
     },
     {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-4-targon-subnet-api",
-      "name": "Targon inventory API",
       "kind": "subnet-api",
-      "url": "https://api.targon.com/tha/v2/inventory",
-      "provider": "targon",
-      "authority": "community",
-      "auth_required": false,
-      "public_safe": true,
-      "source_urls": ["https://docs.targon.com/api/inventory"],
+      "name": "Targon inventory API",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
-      "review": { "state": "community-submitted", "submitted_by": "nickmopen" }
+      "provider": "targon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "nickmopen"
+      },
+      "source_urls": ["https://docs.targon.com/api/inventory"],
+      "url": "https://api.targon.com/tha/v2/inventory"
     },
     {
-      "id": "sn-4-targon-sdk",
-      "name": "Targon Python SDK",
-      "kind": "sdk",
-      "url": "https://github.com/manifold-inc/targon-sdk",
-      "provider": "targon",
-      "authority": "community",
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-4-targon-version-api",
+      "kind": "subnet-api",
+      "name": "Targon Hub API version",
+      "notes": "Public no-auth GET /tha/v2/version on api.targon.com returning the Targon Hub API's own release metadata (name, version, gitHash, buildDate). Documented in the official Targon API docs.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
       "public_safe": true,
+      "source_urls": ["https://docs.targon.com/api/version"],
+      "url": "https://api.targon.com/tha/v2/version"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-4-targon-sdk",
+      "kind": "sdk",
+      "name": "Targon Python SDK",
+      "notes": "Official Targon Python SDK (PyPI: targon-sdk) by manifold-inc for interacting with Targon rentals and serverless. Same manifold-inc org as the registered official source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "source_urls": [
         "https://pypi.org/project/targon-sdk/",
         "https://github.com/manifold-inc/targon-sdk/blob/main/README.md"
       ],
+      "url": "https://github.com/manifold-inc/targon-sdk"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-4-targon-stats-dashboard",
+      "kind": "dashboard",
+      "name": "Targon Stats dashboard",
+      "notes": "Official Targon Stats dashboard (page title \"Targon Stats\"). Its first-party ownership is proven by the official manifold-inc/targon CLI source, which names https://stats.targon.com as a default endpoint host.",
       "probe": {
         "enabled": true,
+        "expect": "html",
         "method": "HEAD",
-        "expect": "any",
         "timeout_ms": 10000
       },
+      "provider": "targon",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Official Targon Python SDK (PyPI: targon-sdk) by manifold-inc for interacting with Targon rentals and serverless. Same manifold-inc org as the registered official source repository."
-    },
-    {
-      "id": "sn-4-targon-stats-dashboard",
-      "name": "Targon Stats dashboard",
-      "kind": "dashboard",
-      "url": "https://stats.targon.com/",
-      "provider": "targon",
-      "authority": "community",
-      "auth_required": false,
-      "public_safe": true,
       "source_urls": [
         "https://github.com/manifold-inc/targon/blob/main/targon/cli/get/errors.go"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Official Targon Stats dashboard (page title \"Targon Stats\"). Its first-party ownership is proven by the official manifold-inc/targon CLI source, which names https://stats.targon.com as a default endpoint host."
+      "url": "https://stats.targon.com/"
     },
     {
-      "id": "sn-4-targon-miner-stats-api",
-      "name": "Targon miner stats API",
-      "kind": "subnet-api",
-      "url": "https://stats.targon.com/api/miners",
-      "provider": "targon",
-      "authority": "community",
       "auth_required": false,
-      "public_safe": true,
-      "source_urls": ["https://stats.targon.com/docs"],
+      "authority": "community",
+      "id": "sn-4-targon-miner-stats-api",
+      "kind": "subnet-api",
+      "name": "Targon miner stats API",
+      "notes": "Public no-auth JSON endpoint returning live SN4 per-miner stats (uid, payout, GPU card count, confidential-compute type), documented as 'Get All Miners' in the official Targon Stats HTTP API docs.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "targon",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "reyanthony062001-ops"
       },
-      "notes": "Public no-auth JSON endpoint returning live SN4 per-miner stats (uid, payout, GPU card count, confidential-compute type), documented as 'Get All Miners' in the official Targon Stats HTTP API docs."
+      "source_urls": ["https://stats.targon.com/docs"],
+      "url": "https://stats.targon.com/api/miners"
     }
   ],
-  "social": { "x": "https://x.com/targoncompute" },
-  "contact": "devs@manifold.inc"
+  "website_url": "https://targon.com/"
 }

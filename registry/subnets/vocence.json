@@ -1,15 +1,63 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "official-api",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Diffed the api.vocence.ai OpenAPI schema (46 paths, schema declares no security) for undiscovered public GET endpoints -- spot-checked the plausible catalog-style candidates (agents/templates, agents/models, voices/builtin, agent-tools) and all are actually auth-gated (401) despite the schema's no-security declaration. The full developer API is authenticated except the already-tracked /health endpoint."
+    ]
   },
   "name": "Vocence",
   "netuid": 78,
+  "notes": "First maintainer review for SN78. Added website + source-repo surfaces, fixed 3 missing probe blocks. Diffed the OpenAPI schema for undiscovered public GET endpoints -- confirmed the entire developer API is auth-gated except the already-tracked /health route.",
   "schema_version": 1,
   "slug": "sn-78",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-78-vocence-website",
+      "kind": "website",
+      "name": "Vocence website",
+      "notes": "Official Vocence SN78 public website -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vocence",
+      "public_safe": true,
+      "source_urls": ["https://www.vocence.ai/"],
+      "url": "https://www.vocence.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-78-vocence-source-repo",
+      "kind": "source-repo",
+      "name": "Vocence source repository",
+      "notes": "Official SN78 miner/validator/gateway source repository -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vocence",
+      "public_safe": true,
+      "source_urls": ["https://github.com/vocence-78/vocence"],
+      "url": "https://github.com/vocence-78/vocence"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -17,6 +65,12 @@
       "kind": "subnet-api",
       "name": "Vocence developer API health endpoint",
       "notes": "Public health endpoint for the official Vocence developer API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "vocence",
       "public_safe": true,
       "review": {
@@ -36,6 +90,12 @@
       "kind": "openapi",
       "name": "Vocence Developer API OpenAPI",
       "notes": "Official machine-readable OpenAPI spec for the Vocence developer API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "vocence",
       "public_safe": true,
       "review": {
@@ -57,6 +117,12 @@
       "kind": "data-artifact",
       "name": "Vocence documentation index",
       "notes": "Public no-auth machine-readable llms.txt documentation index published by the official Vocence website (www.vocence.ai). Catalogs SN78 Vocence Studio guides, Developer API reference, Python SDK, CLI, subnet miner/validator setup docs, and links the hosted OpenAPI spec at api.vocence.ai/openapi.json plus llms-full.txt for full-doc ingestion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "vocence",
       "public_safe": true,
       "review": {

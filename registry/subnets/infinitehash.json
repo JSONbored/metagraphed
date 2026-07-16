@@ -1,73 +1,73 @@
 {
-  "schema_version": 1,
-  "netuid": 89,
-  "name": "InfiniteHash",
-  "slug": "sn-89",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
     "official-docs",
     "official-source-repo"
   ],
-  "source_repo": "https://github.com/backend-developers-ltd/InfiniteHash",
-  "docs_url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
-  "dashboard_url": "https://taomarketcap.com/subnets/89",
-  "notes": "Reviewed overlay for SN89 using the official InfiniteHash source repository, repository documentation, and universal TaoMarketCap dashboard. The repository homepage points to infinitehash.xyz, but that deployment currently returns HTTP 402 and is not promoted as a monitored website/API surface.",
+  "contact": "btc@infinitehash.xyz",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:25:00.000Z",
-    "verified_at": "2026-06-08T09:25:00.000Z",
-    "source_count": 5,
     "gap_notes": [
-      "Project homepage currently returns HTTP 402.",
+      "Project homepage (infinitehash.xyz) has regressed further since last review: it no longer returns HTTP 402 -- the TLS handshake now fails entirely (\"unrecognized name\"), and plain HTTP redirects to /lander, characteristic of a lapsed/parked domain. Not promoted as a monitored surface.",
       "The subnet auction incentive mechanism is documented in the public source repository.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/89",
+  "docs_url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
+  "name": "InfiniteHash",
+  "netuid": 89,
+  "notes": "Reviewed overlay for SN89 using the official InfiniteHash source repository, repository documentation, and universal TaoMarketCap dashboard. The repository homepage points to infinitehash.xyz. Re-review pass (2026-07-15): the site has regressed from HTTP 402 (paywalled but live) to what looks like a lapsed/parked domain (TLS SNI rejected, HTTP redirects to a generic /lander page). Still not promoted as a monitored website/API surface; source repository and docs remain the maintained official surfaces.",
+  "schema_version": 1,
+  "slug": "sn-89",
+  "source_repo": "https://github.com/backend-developers-ltd/InfiniteHash",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-89-infinitehash-source",
-      "name": "InfiniteHash source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/backend-developers-ltd/InfiniteHash",
-      "provider": "infinitehash",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/backend-developers-ltd/InfiniteHash"],
+      "id": "sn-89-infinitehash-source",
+      "kind": "source-repo",
+      "name": "InfiniteHash source repository",
+      "notes": "Official InfiniteHash source repository for SN89.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official InfiniteHash source repository for SN89."
+      "provider": "infinitehash",
+      "public_safe": true,
+      "source_urls": ["https://github.com/backend-developers-ltd/InfiniteHash"],
+      "url": "https://github.com/backend-developers-ltd/InfiniteHash"
     },
     {
-      "id": "sn-89-infinitehash-auction-docs",
-      "name": "InfiniteHash auction incentive documentation",
-      "kind": "docs",
-      "url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
-      "provider": "infinitehash",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-89-infinitehash-auction-docs",
+      "kind": "docs",
+      "name": "InfiniteHash auction incentive documentation",
+      "notes": "Public InfiniteHash documentation for the subnet auction incentive mechanism.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "infinitehash",
       "public_safe": true,
       "source_urls": [
         "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
         "https://github.com/backend-developers-ltd/InfiniteHash"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public InfiniteHash documentation for the subnet auction incentive mechanism."
+      "url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md"
     },
     {
       "auth_required": false,
@@ -75,7 +75,13 @@
       "id": "sn-89-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "InfiniteHash TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/89 on api.taomarketcap.com returning machine-readable JSON for SN89 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. InfiniteHash's official infinitehash.xyz deployment currently returns HTTP 402 (Payment required), and no other first-party public API is verified; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/89/ on api.taomarketcap.com returning machine-readable JSON for SN89 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. InfiniteHash's official infinitehash.xyz deployment currently returns HTTP 402 (Payment required), and no other first-party public API is verified; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -86,7 +92,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/README.md"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/89"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/89/"
     },
     {
       "auth_required": false,
@@ -95,22 +101,22 @@
       "kind": "data-artifact",
       "name": "InfiniteHash validator runtime version spec",
       "notes": "Public no-auth JSON runtime-version specification (node-subtensor spec/impl names, spec version, transaction/apis versions) used by the InfiniteHash SN89 validator/consensus simulator, published in the official backend-developers-ltd/InfiniteHash repository. Documents the on-chain runtime version the subnet's consensus targets.",
-      "provider": "infinitehash",
-      "public_safe": true,
-      "source_urls": [
-        "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/app/src/infinite_hashes/testutils/simulator/runtime_version_318.json",
-        "https://github.com/backend-developers-ltd/InfiniteHash"
-      ],
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "infinitehash",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "davion-knight"
       },
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/app/src/infinite_hashes/testutils/simulator/runtime_version_318.json",
+        "https://github.com/backend-developers-ltd/InfiniteHash"
+      ],
       "url": "https://raw.githubusercontent.com/backend-developers-ltd/InfiniteHash/b0313ed2edc8c07c8312effb108e9cadd580e314/app/src/infinite_hashes/testutils/simulator/runtime_version_318.json"
     },
     {
@@ -120,25 +126,24 @@
       "kind": "data-artifact",
       "name": "InfiniteHash miner system constants",
       "notes": "Public no-auth machine-readable system-constants module (app/src/infinite_hashes/aps_miner/constants.py) published in the official backend-developers-ltd/InfiniteHash repository, defining SN89 InfiniteHash miner operational parameters: block time, auction ILP/CBC max nodes and max price multiplier, scheduler intervals (commitment/auction/job timeouts), and window-transition thresholds. These are the non-user-configurable system-level values the miner runs against. Pinned to an immutable commit. Verified 200, SS58-clean, no keys or secrets. Distinct from the validator runtime-version spec already registered.",
-      "provider": "infinitehash",
-      "public_safe": true,
-      "source_urls": [
-        "https://github.com/backend-developers-ltd/InfiniteHash/blob/b0313ed2edc8c07c8312effb108e9cadd580e314/app/src/infinite_hashes/aps_miner/constants.py",
-        "https://github.com/backend-developers-ltd/InfiniteHash"
-      ],
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "any",
+        "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "infinitehash",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "ultrahighsuper"
       },
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/InfiniteHash/blob/b0313ed2edc8c07c8312effb108e9cadd580e314/app/src/infinite_hashes/aps_miner/constants.py",
+        "https://github.com/backend-developers-ltd/InfiniteHash"
+      ],
       "url": "https://raw.githubusercontent.com/backend-developers-ltd/InfiniteHash/b0313ed2edc8c07c8312effb108e9cadd580e314/app/src/infinite_hashes/aps_miner/constants.py"
     }
   ],
-  "website_url": "https://infinitehash.xyz/",
-  "contact": "btc@infinitehash.xyz"
+  "website_url": "https://infinitehash.xyz/"
 }

@@ -1,12 +1,26 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "robotics"
+  ],
   "contact": "admin@swarm124.com",
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "The backend's /validators/events SSE stream and /validators/sync, /validators/next-task routes all require signed per-request auth headers (caller hotkey, signature, nonce, timestamp) per the official backend_api.py client -- not promotable despite no declared auth scheme visible from the docs alone."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 7,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "name": "Swarm",
   "netuid": 124,
+  "notes": "Reviewed overlay for SN124 Swarm using the official Swarm source repository, website, and backend API docs. Root->128 accuracy audit first review pass (#5903): added website (swarm124.com, the www subdomain 301-redirects here) and source-repo surfaces, fixed 4 missing probe blocks on the pre-existing community-submitted surfaces, and added a new public no-param surface (kings/diagnostics) explicitly documented alongside the existing kings/active route. Confirmed the backend's SSE event stream and validator sync/next-task routes all require signed per-request auth headers -- not promotable.",
   "schema_version": 1,
   "slug": "sn-124",
   "social": {
@@ -22,6 +36,12 @@
       "kind": "subnet-api",
       "name": "Swarm backend API health",
       "notes": "Public no-auth GET /health on api.swarm124.com returning application liveness JSON (observed: {\"status\":\"healthy\"}). Served on the SN124 Swarm backend API host documented as the default SWARM_BACKEND_API_URL in the official swarm-subnet CLI and validator backend API client.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "swarm",
       "public_safe": true,
       "review": {
@@ -42,6 +62,12 @@
       "kind": "data-artifact",
       "name": "Swarm king-of-the-hill active window",
       "notes": "Public no-auth GET /kings/active on api.swarm124.com returning the live \"king of the hill\" leaderboard window (per-lineage identifiers, github_url, score, share, rank). docs/king_of_the_hill.md documents this route as public on the same SWARM_BACKEND_API_URL host as the existing health surface (observed live: 10-entry active window with real scores/ranks).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "swarm",
       "public_safe": true,
       "review": {
@@ -59,6 +85,12 @@
       "id": "sn-124-swarm-leaderboard-api",
       "kind": "subnet-api",
       "name": "Swarm leaderboard API",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "swarm",
       "public_safe": true,
       "review": {
@@ -78,6 +110,12 @@
       "kind": "data-artifact",
       "name": "Swarm minimum compute requirements",
       "notes": "Public no-auth machine-readable min_compute.yml from the official SN124 Swarm repository (swarm-subnet/swarm), pinned to an immutable commit. Specifies the minimum and recommended CPU, memory, storage, and network requirements for running SN124 Swarm miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "swarm",
       "public_safe": true,
       "review": {
@@ -89,7 +127,67 @@
         "https://github.com/swarm-subnet/swarm/blob/d4bef9321e427b62d09cca88502f5b1b6c9abe74/min_compute.yml"
       ],
       "url": "https://raw.githubusercontent.com/swarm-subnet/swarm/d4bef9321e427b62d09cca88502f5b1b6c9abe74/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-124-swarm-website",
+      "kind": "website",
+      "name": "Swarm website",
+      "notes": "Official Swarm website. The www subdomain 301-redirects to the canonical apex host.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "swarm",
+      "public_safe": true,
+      "source_urls": ["https://github.com/swarm-subnet/swarm"],
+      "url": "https://swarm124.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-124-swarm-source",
+      "kind": "source-repo",
+      "name": "Swarm source repository",
+      "notes": "Official Swarm source repository for SN124.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "swarm",
+      "public_safe": true,
+      "source_urls": ["https://github.com/swarm-subnet/swarm"],
+      "url": "https://github.com/swarm-subnet/swarm"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-124-swarm-kings-diagnostics",
+      "kind": "subnet-api",
+      "name": "Swarm king-of-the-hill diagnostics",
+      "notes": "Public no-auth GET /kings/diagnostics on api.swarm124.com returning a small diagnostics snapshot (benchmark_version, window_size, active_kings, champion_uid, champion_score, crowning_floor, last_crowned_epoch). docs/king_of_the_hill.md explicitly documents this route as public alongside the already-tracked /kings/active on the same SWARM_BACKEND_API_URL host. No wallet/hotkey data.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "swarm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/swarm-subnet/swarm/blob/main/docs/king_of_the_hill.md"
+      ],
+      "url": "https://api.swarm124.com/kings/diagnostics"
     }
   ],
-  "website_url": "https://www.swarm124.com/"
+  "website_url": "https://swarm124.com/"
 }

@@ -36,7 +36,7 @@
   ],
   "name": "Quasar",
   "netuid": 24,
-  "notes": "Reviewed overlay for SN24 using the official SILX Labs website, Quasar source repository, README, and public model artifacts.",
+  "notes": "Reviewed overlay for SN24 using the official SILX Labs website, Quasar source repository, README, and public model artifacts. 2 community-submitted surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. Confirmed the remaining gap_notes are accurate, not stale: the TaoMarketCap surface is a third-party indexed snapshot, not a first-party subnet API, so \"no verified subnet API surface yet\" still correctly describes the lack of a first-party one. All 11 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-24",
   "source_repo": "https://github.com/SILX-LABS/QUASAR-SUBNET",
@@ -207,6 +207,12 @@
       "kind": "data-artifact",
       "name": "Quasar training corpus dataset",
       "notes": "Public SILX Labs HuggingFace tokenized training corpus for Quasar (SN24) — ~1.05M rows (tokens/loss/shard/bucket scoring columns) fitting the subnet's continued-pretraining task; parquet, not gated. Published by silx-ai, whose SILX-LABS/QUASAR-SUBNET README (source) declares Mainnet netuid 24. The -SN3 suffix is a model/series version label, not a subnet-3 reference.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "silx-labs",
       "public_safe": true,
       "review": {
@@ -225,7 +231,13 @@
       "id": "sn-24-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "Quasar TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/24 on api.taomarketcap.com returning machine-readable JSON for SN24 Quasar on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/24/ on api.taomarketcap.com returning machine-readable JSON for SN24 Quasar on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -236,7 +248,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/SILX-LABS/QUASAR-SUBNET"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/24"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/24/"
     },
     {
       "auth_required": false,

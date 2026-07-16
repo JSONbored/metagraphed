@@ -1,17 +1,32 @@
 {
-  "schema_version": 1,
-  "netuid": 105,
-  "name": "Beam",
-  "slug": "sn-105",
-  "status": "active",
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "contact": "info@b1m.ai",
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified SSE/event stream yet -- /logs/stream/{source} exists but is path-parameterized, not a bare no-param route.",
+      "The BeamCore OpenAPI schema declares no security on all 53 paths, but most are actually auth-gated in practice (401): auth/me, auth/keys, clients, destinations, transfers, orchestrators/pending-transfers, orchestrators/workers, Validator/epoch-summary/latest-epoch, jobs, internal/routing/live. Only validators/orchestrators and status/orchestrator-relays are genuinely public -- both added as new surfaces."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
+  "name": "Beam",
+  "netuid": 105,
+  "notes": "First maintainer review for SN105. Corrected source_repo from a generic Beam-Network org repositories-listing page to the specific Beam-Network/beam repo already cited throughout the file's existing surfaces. Added website + source-repo surfaces. Diffed the 53-path BeamCore OpenAPI schema and live-tested every no-param candidate: most declare no security but are actually 401-gated in practice; only 2 genuinely public routes were promoted.",
+  "schema_version": 1,
+  "slug": "sn-105",
   "social": {
     "x": "https://x.com/b1m_ai"
   },
+  "source_repo": "https://github.com/Beam-Network/beam",
+  "status": "active",
   "surfaces": [
     {
       "auth_required": false,
@@ -68,9 +83,131 @@
       },
       "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
       "url": "https://beamcore.b1m.ai/config/uid-ranges"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-105-beam-routing-orchestrators",
+      "kind": "subnet-api",
+      "name": "Beam routing orchestrators",
+      "notes": "Public no-auth GET returning active orchestrator nodes (hotkey, url, region). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/routing/orchestrators"],
+      "url": "https://beamcore.b1m.ai/routing/orchestrators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-105-beam-worker-capacity",
+      "kind": "subnet-api",
+      "name": "Beam worker capacity",
+      "notes": "Public no-auth GET returning total and per-orchestrator worker capacity. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/routing/worker-capacity"],
+      "url": "https://beamcore.b1m.ai/routing/worker-capacity"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-105-beam-website",
+      "kind": "website",
+      "name": "Beam website",
+      "notes": "Official SN105 Beam website -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Beam-Network/beam"],
+      "url": "https://b1m.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-105-beam-source-repo",
+      "kind": "source-repo",
+      "name": "Beam source repository",
+      "notes": "Official SN105 Beam source repository -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Beam-Network/beam"],
+      "url": "https://github.com/Beam-Network/beam"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-105-beam-validators-orchestrators",
+      "kind": "subnet-api",
+      "name": "Beam validator orchestrator list",
+      "notes": "Public no-auth GET /validators/orchestrators on beamcore.b1m.ai returning the orchestrator list as seen by validators (uid, hotkey, name, url, status, worker_count, bandwidth_mbps). Documented in the subnet's own OpenAPI schema. Distinct from the already-registered /routing/orchestrators surface (a different endpoint on the same host).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/validators/orchestrators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrator-relays",
+      "kind": "data-artifact",
+      "name": "Beam orchestrator relay hotkeys",
+      "notes": "Public no-auth GET /status/orchestrator-relays on beamcore.b1m.ai returning the list of orchestrator relay hotkeys. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/status/orchestrator-relays"
     }
   ],
-  "source_repo": "https://github.com/orgs/Beam-Network/repositories",
-  "website_url": "https://b1m.ai/",
-  "contact": "info@b1m.ai"
+  "website_url": "https://b1m.ai/"
 }

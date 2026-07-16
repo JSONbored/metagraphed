@@ -14,19 +14,20 @@
       "Machine-readable OpenAPI schema is verified at https://api.gradients.io/openapi.json.",
       "Read-only performance API endpoints are public and probe-enabled.",
       "Task creation, account, validator, voucher, and other write/auth flows require API keys or signatures and are intentionally not promoted as public-safe read endpoints.",
-      "No verified SSE/event stream yet."
+      "No verified SSE/event stream yet.",
+      "The OpenAPI schema also declares GET /v1/tasks/organic/completed with no auth or required params, but it returns 404 live -- not tracked."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T18:12:00.000Z",
+    "reviewed_at": "2026-07-16T04:50:00.000Z",
     "source_count": 7,
-    "verified_at": "2026-06-08T18:12:00.000Z"
+    "verified_at": "2026-07-16T04:50:00.000Z"
   },
   "dashboard_url": "https://backprop.finance/dtao/subnets/56-gradients",
   "docs_url": "https://api.gradients.io/docs",
   "name": "Gradients",
   "netuid": 56,
-  "notes": "Reviewed overlay for SN56 Gradients. The website describes decentralized AI training on Bittensor and exposes a public API host with machine-readable OpenAPI. Only read-only public performance endpoints are promoted; credentialed/write task and account flows are intentionally excluded.",
+  "notes": "Reviewed overlay for SN56 Gradients. The website describes decentralized AI training on Bittensor and exposes a public API host with machine-readable OpenAPI. Only read-only public performance endpoints are promoted; credentialed/write task and account flows are intentionally excluded. This pass removed a duplicate surface (sn-56-gradients-data-artifact and sn-56-gradients-subnet-api pointed to the identical /v1/network/status URL; kept the correctly-classified subnet-api one) and fixed 4 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 56-path OpenAPI schema and added one new no-auth no-param surface, /tournament/latest/details; the schema's other undiscovered no-param route, /v1/tasks/organic/completed, 404s live and was not promoted. On-chain identity re-confirmed unchanged.",
   "schema_version": 1,
   "slug": "gradients",
   "source_repo": "https://github.com/gradients-ai/G.O.D",
@@ -199,32 +200,16 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-56-gradients-data-artifact",
-      "kind": "data-artifact",
-      "name": "Gradients community data-artifact",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "gradients",
-      "public_safe": true,
-      "review": {
-        "confidence": "medium",
-        "state": "community-submitted",
-        "submitted_by": "kiannidev"
-      },
-      "source_urls": ["https://api.gradients.io/docs"],
-      "url": "https://api.gradients.io/v1/network/status"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "id": "sn-56-gradients-subnet-api",
       "kind": "subnet-api",
       "name": "Gradients network status API",
       "notes": "Public no-auth GET returning live network job counts for the Gradients (rayon) subnet. Documented in the subnet's own OpenAPI (api.gradients.io/openapi.json); same host as the existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "gradients",
       "public_safe": true,
       "review": {
@@ -244,6 +229,12 @@
       "kind": "subnet-api",
       "name": "Gradients API healthz",
       "notes": "Public no-auth GET /healthz on api.gradients.io returning API liveness JSON (observed: {\"ok\":true}). Served on the Gradients API host documented by the subnet OpenAPI spec alongside the existing performance and network-status subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "gradients",
       "public_safe": true,
       "review": {
@@ -263,6 +254,12 @@
       "kind": "subnet-api",
       "name": "Gradients tournament fees API",
       "notes": "Public no-auth GET returning participation fee amounts (in rao) for text, image, and environment tournaments. Documented in the subnet's own OpenAPI (api.gradients.io/openapi.json, path /tournament/fees); same host as the existing network-status and healthz subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "gradients",
       "public_safe": true,
       "review": {
@@ -282,6 +279,12 @@
       "kind": "subnet-api",
       "name": "Gradients auditing tasks API",
       "notes": "Public no-auth GET /auditing/tasks — audited task records (task id, organic flag, status, model) for the SN56 Gradients tournament. Documented in the subnet's openapi and served on the same api.gradients.io host as the subnet's registered API surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "gradients",
       "public_safe": true,
       "review": {
@@ -298,6 +301,12 @@
       "kind": "data-artifact",
       "name": "Gradients challenger code-review config",
       "notes": "Public no-auth machine-readable JSON config from the official SN56 Gradients (G.O.D) validator repository (gradients-ai/G.O.D), pinned to an immutable commit. Defines the forensic code-review policy the validators apply to challenger repositories in the training tournament — the system prompt and rules used to detect cheating (undeclared external datasets, benchmark leakage, external pretrained weights). Static artifact documenting the subnet's anti-cheat evaluation logic.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "gradients",
       "public_safe": true,
       "review": {
@@ -309,6 +318,46 @@
         "https://github.com/gradients-ai/G.O.D/blob/f0d3a1b790b0a34009ead27707916ae19e5e7201/validator/infrastructure/challenger_code_review_config.json"
       ],
       "url": "https://raw.githubusercontent.com/gradients-ai/G.O.D/f0d3a1b790b0a34009ead27707916ae19e5e7201/validator/infrastructure/challenger_code_review_config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-scores-url",
+      "kind": "subnet-api",
+      "name": "Gradients validator scores URL",
+      "notes": "Public no-auth GET returning a signed URL to the latest validator scores JSON snapshot for independent auditing. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.gradients.io/auditing/scores-url"],
+      "url": "https://api.gradients.io/auditing/scores-url"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-56-gradients-tournament-latest-details",
+      "kind": "subnet-api",
+      "name": "Gradients latest tournament details",
+      "notes": "Public no-auth GET /tournament/latest/details on api.gradients.io, returning the current tournament's boss/challenger scores per task (task type, threshold, performance difference, winner). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/tournament/latest/details"
     }
   ],
   "website_url": "https://www.gradients.io/"

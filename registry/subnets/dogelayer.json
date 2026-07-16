@@ -1,15 +1,43 @@
 {
-  "categories": [],
+  "categories": ["baseline-curated", "official-source-repo"],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "No verified official website URL yet -- the README only says to \"login to the DogeLayer website\" without linking one; SUBNET_PROXY_API_URL and the DogeLayer login host are internal/operational, not a public marketing site.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "Removed a duplicate surface (sn-80-dogelayer-poolinfo-types) that tracked byte-identical content to sn-80-dogelayer-chain-types (same types.json file, unpinned main vs. a pinned commit) -- kept the pinned-commit surface."
+    ]
   },
   "name": "dogelayer",
   "netuid": 80,
+  "notes": "First maintainer review for SN80. Removed a duplicate types.json surface, added the official source-repo surface, and added the F2Pool upstream mining-pool observer dashboard linked from the official README. No official website URL has been found (the README references logging into \"the DogeLayer website\" without a link).",
   "schema_version": 1,
   "slug": "sn-80",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-80-dogelayer-source-repo",
+      "kind": "source-repo",
+      "name": "dogelayer source repository",
+      "notes": "Official SN80 miner/validator source repository -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "dogelayer",
+      "public_safe": true,
+      "source_urls": ["https://github.com/dogelayer-ai/dogelayer"],
+      "url": "https://github.com/dogelayer-ai/dogelayer"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -17,6 +45,12 @@
       "kind": "docs",
       "name": "DogeLayer proxy API reference",
       "notes": "Documents the /api/workers/stats and /api/workers/timerange proxy endpoints. The doc page itself is public with no auth; the underlying proxy API it describes requires a Bearer token and has no published OpenAPI/Swagger spec, so this is filed as docs rather than subnet-api.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "dogelayer",
       "public_safe": true,
       "review": {
@@ -31,30 +65,16 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-80-dogelayer-poolinfo-types",
-      "kind": "data-artifact",
-      "name": "DogeLayer PoolInfo SCALE type registry",
-      "notes": "Public no-auth JSON PortableRegistry schema defining the SN80 DogeLayer PoolInfo on-chain commitment structure (pool_index, ip, port, domain, username, password, high_diff_port). Published in the official dogelayer-ai/dogelayer repository and loaded by dogelayer/core/chain_data/pool_info.py for encode_pool_info/decode_pool_info when validators publish stratum pool metadata to the chain.",
-      "provider": "dogelayer",
-      "public_safe": true,
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "claytonlin1110"
-      },
-      "source_urls": [
-        "https://github.com/dogelayer-ai/dogelayer/blob/main/dogelayer/core/chain_data/types.json",
-        "https://github.com/dogelayer-ai/dogelayer/blob/main/dogelayer/core/chain_data/pool_info.py",
-        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
-      ],
-      "url": "https://raw.githubusercontent.com/dogelayer-ai/dogelayer/main/dogelayer/core/chain_data/types.json"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "id": "sn-80-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "DogeLayer TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/80 on api.taomarketcap.com returning machine-readable JSON for SN80 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. DogeLayer's documented proxy API requires Bearer auth and has no verified no-auth first-party public endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/80/ on api.taomarketcap.com returning machine-readable JSON for SN80 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. DogeLayer's documented proxy API requires Bearer auth and has no verified no-auth first-party public endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -65,7 +85,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/dogelayer-ai/dogelayer"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/80"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/80/"
     },
     {
       "auth_required": false,
@@ -73,7 +93,13 @@
       "id": "sn-80-dogelayer-chain-types",
       "kind": "data-artifact",
       "name": "dogelayer chain type registry",
-      "notes": "Public no-auth machine-readable chain type registry (types.json) from the official SN80 dogelayer repository (dogelayer-ai/dogelayer), pinned to an immutable commit. Defines the SCALE-encoded type definitions the subnet's core uses to decode on-chain data. Static JSON artifact useful for agents decoding SN80 chain state.",
+      "notes": "Public no-auth machine-readable chain type registry (types.json) from the official SN80 dogelayer repository (dogelayer-ai/dogelayer), pinned to an immutable commit. Defines the SCALE-encoded type definitions the subnet's core uses to decode on-chain data, including the PoolInfo commitment structure (pool_index, ip, port, domain, username, password, high_diff_port) that validators publish when they commit stratum pool metadata to the chain. Static JSON artifact useful for agents decoding SN80 chain state.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "dogelayer",
       "public_safe": true,
       "review": {
@@ -85,6 +111,31 @@
         "https://github.com/dogelayer-ai/dogelayer/blob/2d29e575c50c5328787405a46080e827e0cff33d/dogelayer/core/chain_data/types.json"
       ],
       "url": "https://raw.githubusercontent.com/dogelayer-ai/dogelayer/2d29e575c50c5328787405a46080e827e0cff33d/dogelayer/core/chain_data/types.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-80-dogelayer-f2pool-observer",
+      "kind": "dashboard",
+      "name": "DogeLayer F2Pool upstream observer",
+      "notes": "Public read-only F2Pool mining-user dashboard (user \"taosub\") for SN80 DogeLayer's Litecoin/Dogecoin merged-mining upstream pool, explicitly linked from the official README as \"F2Pool observer -- DogeLayer upstream (taosub)\" for upstream-audit purposes. Distinct from any SN80-operated surface; a third-party pool operator's own public account page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "dogelayer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "url": "https://www.f2pool.com/mining-user-ltc/4c4d13e15249e898a3ba76d49c8aaa60?user_name=taosub"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/dogelayer-ai/dogelayer"
 }

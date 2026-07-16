@@ -12,10 +12,7 @@
   ],
   "contact": "giga@desearch.ai",
   "curation": {
-    "gap_notes": [
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ],
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T07:45:00.000Z",
@@ -33,7 +30,7 @@
   ],
   "name": "Desearch",
   "netuid": 22,
-  "notes": "Reviewed overlay for SN22 using the official Desearch website, docs, public OpenAPI schema, console, and source repository. The OpenAPI schema advertises api.desearch.ai as the API server; protected method calls require separate review before proxy eligibility.",
+  "notes": "Reviewed overlay for SN22 using the official Desearch website, docs, public OpenAPI schema, console, and source repository. The OpenAPI schema advertises api.desearch.ai as the API server; protected method calls require separate review before proxy eligibility. Confirmed the schema's global security requirement (ApiKeyAuth) applies to all 35 documented paths with no exceptions -- the only genuinely public surfaces on this host are the base URL, /health, and the OpenAPI schema itself, all already tracked. 4 surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed.",
   "schema_version": 1,
   "slug": "sn-22",
   "social": {
@@ -149,6 +146,12 @@
       "kind": "subnet-api",
       "name": "Desearch API",
       "notes": "Public API host advertised by the Desearch OpenAPI schema. Protected methods require authentication, so proxy eligibility requires separate review.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "desearch",
       "public_safe": true,
       "rate_limit_notes": "OpenAPI schema is public; method-level auth and rate limits must be reviewed before routing.",
@@ -249,6 +252,12 @@
       "kind": "data-artifact",
       "name": "Desearch Search Evals (Hugging Face)",
       "notes": "Public CC-BY-4.0 Hugging Face dataset of Desearch search-quality evaluations, published and documented in the official Desearch-ai/desearch-search-evals repo.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "desearch",
       "public_safe": true,
       "review": {
@@ -267,6 +276,12 @@
       "kind": "data-artifact",
       "name": "Desearch search benchmark dataset",
       "notes": "Public Desearch (SN22) HuggingFace benchmark of ~196k fresh web + X search questions (id/question/difficulty/date-window columns), regenerated daily from recent news and posts; not gated, no answer keys. Distinct from the already-registered search-evals results dataset. The subnet-22 README (source) declares the Bittensor subnet and the desearch HF org owns it.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "desearch",
       "public_safe": true,
       "review": {
@@ -286,6 +301,12 @@
       "kind": "subnet-api",
       "name": "Desearch API health",
       "notes": "Public no-auth GET /health on api.desearch.ai returning API liveness JSON (observed: {\"status\":\"health\"}). Served on the API host advertised by the Desearch OpenAPI schemas (www.desearch.ai/openapi.json and api.desearch.ai/openapi.json) alongside the existing sn-22-desearch-api surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "desearch",
       "public_safe": true,
       "review": {

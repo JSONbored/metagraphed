@@ -1,9 +1,5 @@
 {
-  "schema_version": 1,
-  "netuid": 92,
-  "name": "Tensorclaw",
-  "slug": "sn-92",
-  "status": "active",
+  "baseline_excluded_surface_ids": ["sn-92-taomarketcap-website"],
   "categories": [
     "baseline-curated",
     "inference",
@@ -13,122 +9,125 @@
     "official-website",
     "stale-source-restored"
   ],
-  "source_repo": "https://github.com/tensorclaw/tensorclaw",
-  "dashboard_url": "https://www.tensorclaw.ai/dashboard",
-  "website_url": "https://www.tensorclaw.ai/",
-  "baseline_excluded_surface_ids": ["sn-92-taomarketcap-website"],
-  "notes": "Reviewed overlay for SN92 using the live Tensorclaw Network website, dashboard, and source repository. Native chain identity currently reports luis, so this remains an explicit identity-drift entry rather than a silent rename. The website links https://github.com/tensorclaw/tensorclaw and the repository README identifies it as Bittensor Tensorclaw Subnet 92.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-09T12:25:00.000Z",
-    "verified_at": "2026-06-09T12:25:00.000Z",
-    "source_count": 6,
     "gap_notes": [
-      "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
-      "Official website, dashboard, and source repository are verified live.",
+      "Project appears fully abandoned as of 2026-07-15: the official website (www.tensorclaw.ai, including the /dashboard page) now returns HTTP 521 (Cloudflare: web server is down), the GitHub org github.com/tensorclaw is fully deleted (404, not just the repo), subnet_emission_enabled is false, and the on-chain identity has drifted again -- from the previously-noted \"luis\" placeholder to a new placeholder \"wgmi\" with every identity field (githubRepo, subnetUrl, contact, discord) now blank.",
+      "The official source repository is gone, but a third-party Bittensor-subnet archival project (fx-integral/academia-archives, description \"Bittensor Subnet Archives\") mirrors the full tensorclaw/tensorclaw tree as of the point it was archived -- now the only remaining evidence of the subnet's codebase. Tracked as a dedicated archived-mirror surface.",
+      "Website, source-repo, and live-demo surfaces kept tracked despite being dead (521/404) rather than removed, consistent with how outages are handled elsewhere in this registry -- their existing probes will correctly report the ongoing outage.",
       "No verified docs site yet beyond directory pages.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
+  "dashboard_url": "https://www.tensorclaw.ai/dashboard",
+  "name": "Tensorclaw",
+  "netuid": 92,
+  "notes": "Reviewed overlay for SN92 using the live Tensorclaw Network website, dashboard, and source repository. Native chain identity currently reports luis, so this remains an explicit identity-drift entry rather than a silent rename. The website links https://github.com/tensorclaw/tensorclaw and the repository README identifies it as Bittensor Tensorclaw Subnet 92. Re-review pass (2026-07-15): the project now looks fully abandoned -- website 521, GitHub org deleted, emission disabled, on-chain identity re-drifted to a new blank placeholder (\"wgmi\"). Added a surface for the third-party academia-archives mirror, now the only remaining copy of the source.",
+  "schema_version": 1,
+  "slug": "sn-92",
+  "source_repo": "https://github.com/tensorclaw/tensorclaw",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-92-taomarketcap-dashboard",
-      "name": "SN92 TaoMarketCap dashboard",
-      "kind": "dashboard",
-      "url": "https://taomarketcap.com/subnets/92",
-      "provider": "taomarketcap",
       "auth_required": false,
       "authority": "registry-observed",
-      "public_safe": true,
-      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/92"],
+      "id": "sn-92-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "SN92 TaoMarketCap dashboard",
+      "notes": "Directory dashboard retained while stale source evidence is excluded.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Directory dashboard retained while stale source evidence is excluded."
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/92"],
+      "url": "https://taomarketcap.com/subnets/92"
     },
     {
-      "id": "sn-92-tensorplex-docs",
-      "name": "SN92 Tensorplex metadata",
-      "kind": "docs",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
-      "provider": "tensorplex-subnet-docs",
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-92-tensorplex-docs",
+      "kind": "docs",
+      "name": "SN92 Tensorplex metadata",
+      "notes": "Directory metadata retained as registry-observed provenance; the stale Tensorclaw source URL is excluded.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Directory metadata retained as registry-observed provenance; the stale Tensorclaw source URL is excluded."
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92"
     },
     {
-      "id": "sn-92-tensorclaw-website",
-      "name": "Tensorclaw website",
-      "kind": "website",
-      "url": "https://www.tensorclaw.ai/",
-      "provider": "tensorclaw",
       "auth_required": false,
       "authority": "provider-claimed",
+      "id": "sn-92-tensorclaw-website",
+      "kind": "website",
+      "name": "Tensorclaw website",
+      "notes": "Website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92 and describes a decentralized LLM inference subnet for autonomous agents.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorclaw",
       "public_safe": true,
       "source_urls": ["https://www.tensorclaw.ai/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92 and describes a decentralized LLM inference subnet for autonomous agents."
+      "url": "https://www.tensorclaw.ai/"
     },
     {
-      "id": "sn-92-tensorclaw-source-repo",
-      "name": "Tensorclaw source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/tensorclaw/tensorclaw",
-      "provider": "tensorclaw",
       "auth_required": false,
       "authority": "provider-claimed",
+      "id": "sn-92-tensorclaw-source-repo",
+      "kind": "source-repo",
+      "name": "Tensorclaw source repository",
+      "notes": "The official Tensorclaw website links this public repository, and the README identifies it as Bittensor Tensorclaw Subnet 92.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorclaw",
       "public_safe": true,
       "source_urls": [
         "https://www.tensorclaw.ai/",
         "https://github.com/tensorclaw/tensorclaw"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "The official Tensorclaw website links this public repository, and the README identifies it as Bittensor Tensorclaw Subnet 92."
+      "url": "https://github.com/tensorclaw/tensorclaw"
     },
     {
-      "id": "sn-92-tensorclaw-dashboard",
-      "name": "Tensorclaw live demo",
-      "kind": "dashboard",
-      "url": "https://www.tensorclaw.ai/dashboard",
-      "provider": "tensorclaw",
       "auth_required": true,
       "authority": "provider-claimed",
-      "public_safe": true,
-      "source_urls": ["https://www.tensorclaw.ai/"],
+      "id": "sn-92-tensorclaw-dashboard",
+      "kind": "dashboard",
+      "name": "Tensorclaw live demo",
+      "notes": "Public live-demo page for SN92. The page uses Cloudflare Turnstile to unlock trial requests, so it is listed as an auth-gated dashboard surface rather than a public API.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Public live-demo page for SN92. The page uses Cloudflare Turnstile to unlock trial requests, so it is listed as an auth-gated dashboard surface rather than a public API."
+      "provider": "tensorclaw",
+      "public_safe": true,
+      "source_urls": ["https://www.tensorclaw.ai/"],
+      "url": "https://www.tensorclaw.ai/dashboard"
     },
     {
       "auth_required": false,
@@ -153,10 +152,40 @@
     {
       "auth_required": false,
       "authority": "community",
+      "id": "sn-92-tensorclaw-archived-source-mirror",
+      "kind": "source-repo",
+      "name": "Tensorclaw archived source mirror",
+      "notes": "Third-party archival mirror of the full tensorclaw/tensorclaw repository tree, hosted by fx-integral/academia-archives (\"Bittensor Subnet Archives\"). The official github.com/tensorclaw org has been fully deleted (404) as of 2026-07-15, making this the only remaining copy of the SN92 source code -- distinct from (and broader than) the single VALID_MODEL_SERIES.txt file already tracked.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorclaw",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/fx-integral/academia-archives/tree/main/repos/tensorclaw__tensorclaw"
+      ],
+      "url": "https://github.com/fx-integral/academia-archives/tree/main/repos/tensorclaw__tensorclaw"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "id": "sn-92-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "Tensorclaw TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/92 on api.taomarketcap.com returning machine-readable JSON for SN92 Tensorclaw on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/92/ on api.taomarketcap.com returning machine-readable JSON for SN92 Tensorclaw on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -167,7 +196,8 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/tensorclaw/tensorclaw"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/92"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/92/"
     }
-  ]
+  ],
+  "website_url": "https://www.tensorclaw.ai/"
 }

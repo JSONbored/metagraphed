@@ -131,8 +131,9 @@ export function buildAccountPortfolio(rows, ss58) {
 }
 
 // Shared D1 loader (REST + MCP parity): read every neuron registered under this
-// hotkey and shape the portfolio. Cold/absent -> empty card. Mirrors
-// loadAccountSubnets but reads the full economics columns.
+// hotkey and shape the portfolio. Cold/absent -> empty card. Like the former
+// account-subnets registration D1 loader (removed in #4772) but reads the full
+// economics columns.
 export async function loadAccountPortfolio(d1, ss58) {
   const rows = await d1(
     `SELECT ${ACCOUNT_PORTFOLIO_READ_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY netuid`,

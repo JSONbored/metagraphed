@@ -1,18 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 8,
-  "name": "Vanta",
-  "slug": "sn-8",
-  "status": "active",
-  "categories": [
-    "baseline-curated",
-    "identity-reviewed",
-    "official-source-repo",
-    "official-website"
-  ],
-  "website_url": "https://www.vantanetwork.io/",
-  "source_repo": "https://github.com/taoshidev/vanta-network",
-  "dashboard_url": "https://www.vantanetwork.io/dashboard",
   "baseline_excluded_surface_ids": [
     "sn-8-taomarketcap-source-repo",
     "sn-8-taomarketcap-website",
@@ -26,166 +12,200 @@
     "sn-8-website-link-www-vantanetwork-io-website-2",
     "sn-8-website-link-www-vantanetwork-io-website-3"
   ],
-  "notes": "Reviewed overlay for SN8 Vanta using the official Vanta Network website, dashboard, transparency, tokenomics, and source repository. Common docs/API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T20:25:00.000Z",
-    "verified_at": "2026-06-08T20:25:00.000Z",
-    "source_count": 6,
     "gap_notes": [
       "Official website, dashboard, transparency page, tokenomics page, and source repository are verified live.",
       "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404.",
-      "No verified docs site yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:25:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-06-08T20:25:00.000Z"
   },
+  "dashboard_url": "https://www.vantanetwork.io/dashboard",
+  "name": "Vanta",
+  "netuid": 8,
+  "notes": "Reviewed overlay for SN8 Vanta using the official Vanta Network website, dashboard, transparency, tokenomics, source repository, and Taoshi documentation site (docs.taoshi.io, linked from the source repo README, confirmed SN8-specific in scope). Common docs/API/OpenAPI/Swagger paths on vantanetwork.io itself currently return 404 and are not promoted as operational API surfaces; docs.taoshi.io is a separate, live host and fills the docs gap. The README's dashboard.taoshi.io link 404s and is superseded by the already-tracked vantanetwork.io/dashboard.",
+  "schema_version": 1,
+  "slug": "sn-8",
+  "social": {
+    "x": "https://x.com/taoshiio"
+  },
+  "source_repo": "https://github.com/taoshidev/vanta-network",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-8-vanta-website",
-      "name": "Vanta Network website",
-      "kind": "website",
-      "url": "https://www.vantanetwork.io/",
-      "provider": "vanta",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-8-vanta-website",
+      "kind": "website",
+      "name": "Vanta Network website",
+      "notes": "Official Vanta Network website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
       "public_safe": true,
       "source_urls": [
         "https://www.vantanetwork.io/",
         "https://github.com/taoshidev/vanta-network"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Vanta Network website."
+      "url": "https://www.vantanetwork.io/"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-8-vanta-dashboard",
-      "name": "Vanta dashboard",
       "kind": "dashboard",
-      "url": "https://www.vantanetwork.io/dashboard",
-      "provider": "vanta",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://www.vantanetwork.io/"],
+      "name": "Vanta dashboard",
+      "notes": "Official Vanta dashboard page.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Vanta dashboard page."
+      "provider": "vanta",
+      "public_safe": true,
+      "source_urls": ["https://www.vantanetwork.io/"],
+      "url": "https://www.vantanetwork.io/dashboard"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-8-vanta-tokenomics",
+      "kind": "docs",
       "name": "Vanta tokenomics",
-      "kind": "docs",
-      "url": "https://www.vantanetwork.io/tokenomics",
-      "provider": "vanta",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://www.vantanetwork.io/"],
+      "notes": "Official Vanta tokenomics information page.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Vanta tokenomics information page."
+      "provider": "vanta",
+      "public_safe": true,
+      "source_urls": ["https://www.vantanetwork.io/"],
+      "url": "https://www.vantanetwork.io/tokenomics"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-8-vanta-transparency",
-      "name": "Vanta transparency",
       "kind": "docs",
-      "url": "https://www.vantanetwork.io/transparency",
+      "name": "Vanta transparency",
+      "notes": "Official Vanta transparency page for open-source scoring rules.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "vanta",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
       "source_urls": ["https://www.vantanetwork.io/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Vanta transparency page for open-source scoring rules."
+      "url": "https://www.vantanetwork.io/transparency"
     },
     {
-      "id": "sn-8-vanta-source",
-      "name": "Vanta Network source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/taoshidev/vanta-network",
-      "provider": "vanta",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/taoshidev/vanta-network"],
+      "id": "sn-8-vanta-taoshi-docs",
+      "kind": "docs",
+      "name": "Taoshi documentation",
+      "notes": "Official Taoshi documentation site (docs.taoshi.io), linked from the source repository README. Confirmed in scope for SN8 Vanta specifically (not a broader multi-product hub) -- covers Bittensor/Vanta mechanics including carry fees, plagiarism/drawdown eliminations, and the scoring system referenced in the source repo. Distinct host from the tokenomics/transparency pages already tracked on the registered website (vantanetwork.io).",
       "probe": {
         "enabled": true,
+        "expect": "html",
         "method": "HEAD",
-        "expect": "any",
         "timeout_ms": 10000
       },
-      "notes": "Official Vanta Network source repository."
-    },
-    {
-      "id": "sn-8-vanta-model-parameters",
-      "name": "Vanta scoring model parameters",
-      "kind": "subnet-api",
-      "url": "https://github.com/taoshidev/vanta-network/raw/main/vali_objects/utils/model_parameters/all_model_parameters.json",
       "provider": "vanta",
-      "auth_required": false,
-      "authority": "community",
       "public_safe": true,
       "source_urls": [
-        "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/vali_bkp_utils.py",
-        "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/model_parameters/all_model_parameters.json"
+        "https://github.com/taoshidev/vanta-network",
+        "https://docs.taoshi.io/"
       ],
+      "url": "https://docs.taoshi.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-8-vanta-source",
+      "kind": "source-repo",
+      "name": "Vanta Network source repository",
+      "notes": "Official Vanta Network source repository.",
       "probe": {
         "enabled": true,
-        "method": "GET",
-        "expect": "json",
+        "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
+      "provider": "vanta",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taoshidev/vanta-network"],
+      "url": "https://github.com/taoshidev/vanta-network"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-8-vanta-model-parameters",
+      "kind": "subnet-api",
+      "name": "Vanta scoring model parameters",
+      "notes": "Public no-auth GET all_model_parameters.json on the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Provides the per-asset buy/sell slippage model parameters (intercept and coefficients) that the validator loads via vali_objects/utils/vali_bkp_utils.py to score miner positions.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "davion-knight"
       },
-      "notes": "Public no-auth GET all_model_parameters.json on the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Provides the per-asset buy/sell slippage model parameters (intercept and coefficients) that the validator loads via vali_objects/utils/vali_bkp_utils.py to score miner positions."
-    },
-    {
-      "id": "sn-8-vanta-slippage-estimates",
-      "name": "Vanta empirical slippage estimates dataset",
-      "kind": "data-artifact",
-      "url": "https://github.com/taoshidev/vanta-network/raw/main/vali_objects/utils/model_parameters/slippage_estimates.json",
-      "provider": "vanta",
-      "auth_required": false,
-      "authority": "community",
-      "public_safe": true,
       "source_urls": [
         "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/vali_bkp_utils.py",
-        "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/price_slippage_model.py"
+        "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/model_parameters/all_model_parameters.json"
       ],
+      "url": "https://github.com/taoshidev/vanta-network/raw/main/vali_objects/utils/model_parameters/all_model_parameters.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-8-vanta-slippage-estimates",
+      "kind": "data-artifact",
+      "name": "Vanta empirical slippage estimates dataset",
+      "notes": "Public no-auth static JSON dataset slippage_estimates.json committed in the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Distinct from the model-coefficients surface: this is the precomputed per-asset, per-trade-size empirical slippage lookup table (e.g. crypto BTCUSDC/ETHUSDC long/short across notional buckets). The path is resolved in vali_objects/utils/vali_bkp_utils.py and loaded by the PriceSlippageModel in vali_objects/utils/price_slippage_model.py to estimate execution slippage when scoring miner positions. Whitelisted for commit in .gitignore, so it is intentionally published.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "vanta",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "rust-toml"
       },
-      "notes": "Public no-auth static JSON dataset slippage_estimates.json committed in the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Distinct from the model-coefficients surface: this is the precomputed per-asset, per-trade-size empirical slippage lookup table (e.g. crypto BTCUSDC/ETHUSDC long/short across notional buckets). The path is resolved in vali_objects/utils/vali_bkp_utils.py and loaded by the PriceSlippageModel in vali_objects/utils/price_slippage_model.py to estimate execution slippage when scoring miner positions. Whitelisted for commit in .gitignore, so it is intentionally published."
+      "source_urls": [
+        "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/vali_bkp_utils.py",
+        "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/price_slippage_model.py"
+      ],
+      "url": "https://github.com/taoshidev/vanta-network/raw/main/vali_objects/utils/model_parameters/slippage_estimates.json"
     },
     {
       "auth_required": false,
@@ -207,7 +227,5 @@
       "url": "https://www.vantanetwork.io/llms.txt"
     }
   ],
-  "social": {
-    "x": "https://x.com/taoshiio"
-  }
+  "website_url": "https://www.vantanetwork.io/"
 }

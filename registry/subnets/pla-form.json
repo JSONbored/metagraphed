@@ -1,9 +1,11 @@
 {
-  "schema_version": 1,
-  "netuid": 100,
-  "name": "Plaτform",
-  "slug": "sn-100",
-  "status": "active",
+  "baseline_excluded_surface_ids": [
+    "sn-100-taomarketcap-source-repo",
+    "sn-100-taomarketcap-website",
+    "sn-100-tensorplex-source-repo-1",
+    "sn-100-tensorplex-source-repo-2",
+    "sn-100-website-common-docs"
+  ],
   "categories": [
     "ai-research",
     "baseline-curated",
@@ -12,95 +14,94 @@
     "official-source-repo",
     "official-website"
   ],
-  "website_url": "https://www.platform.network/",
-  "docs_url": "https://www.platform.network/docs",
-  "source_repo": "https://github.com/PlatformNetwork/platform",
-  "dashboard_url": "https://taomarketcap.com/subnets/100",
-  "baseline_excluded_surface_ids": [
-    "sn-100-taomarketcap-source-repo",
-    "sn-100-taomarketcap-website",
-    "sn-100-tensorplex-source-repo-1",
-    "sn-100-tensorplex-source-repo-2",
-    "sn-100-website-common-docs"
-  ],
-  "notes": "Reviewed overlay for SN100 Plaτform using the official Platform Network website, docs, and source repository. Common API, health, OpenAPI, and Swagger probe paths currently return 404 and are not promoted as public operational API surfaces.",
+  "contact": "platform@cortex.foundation",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T19:30:00.000Z",
-    "verified_at": "2026-06-08T19:30:00.000Z",
-    "source_count": 7,
     "gap_notes": [
       "Official website, docs, and source repository are verified.",
       "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
       "CortexLM/platform redirects to PlatformNetwork/platform and is excluded as duplicate source evidence.",
       "The PlatformNetwork GitHub organization page is not promoted as a source repository.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "Diffed the 27-path chain.joinbase.ai OpenAPI schema for undiscovered public GET endpoints -- everything not already tracked is either HTTPBearer-gated (/admin, /admin/challenges, /v1/admin/*, /v1/validators) or a path-parameterized detail route. /v1/weights/latest declares no security and is real (cited as evidence in the dashboard surface's notes) but currently 404s with \"no sealed weight vector available\" -- not promoted as its own surface until it stably returns data."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 7,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/100",
+  "docs_url": "https://www.platform.network/docs",
+  "name": "Plaτform",
+  "netuid": 100,
+  "notes": "Reviewed overlay for SN100 Plaτform using the official Platform Network website, docs, and source repository. Common API, health, OpenAPI, and Swagger probe paths currently return 404 and are not promoted as public operational API surfaces. Root->128 accuracy audit re-review pass (#5903): fixed 1 missing probe block; diffed the 27-path BASE Challenge Proxy OpenAPI schema, no new candidates promoted.",
+  "schema_version": 1,
+  "slug": "sn-100",
+  "social": {
+    "x": "https://x.com/platformnet"
+  },
+  "source_repo": "https://github.com/PlatformNetwork/platform",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-100-platform-website",
-      "name": "Platform Network website",
-      "kind": "website",
-      "url": "https://www.platform.network/",
-      "provider": "platform-network",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-100-platform-website",
+      "kind": "website",
+      "name": "Platform Network website",
+      "notes": "Official Platform Network website for SN100 Plaτform.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
       "public_safe": true,
       "source_urls": [
         "https://www.platform.network/",
         "https://github.com/PlatformNetwork/platform"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Platform Network website for SN100 Plaτform."
+      "url": "https://www.platform.network/"
     },
     {
-      "id": "sn-100-platform-docs",
-      "name": "Platform Network docs",
-      "kind": "docs",
-      "url": "https://www.platform.network/docs",
-      "provider": "platform-network",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-100-platform-docs",
+      "kind": "docs",
+      "name": "Platform Network docs",
+      "notes": "Official Platform Network documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
       "public_safe": true,
       "source_urls": [
         "https://www.platform.network/docs",
         "https://github.com/PlatformNetwork/platform"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Platform Network documentation."
+      "url": "https://www.platform.network/docs"
     },
     {
-      "id": "sn-100-platform-source",
-      "name": "Platform Network source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/PlatformNetwork/platform",
-      "provider": "platform-network",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/PlatformNetwork/platform"],
+      "id": "sn-100-platform-source",
+      "kind": "source-repo",
+      "name": "Platform Network source repository",
+      "notes": "Official Platform Network source repository. The repository describes Platform as a Bittensor subnet for decentralized collaborative AI research.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Platform Network source repository. The repository describes Platform as a Bittensor subnet for decentralized collaborative AI research."
+      "provider": "platform-network",
+      "public_safe": true,
+      "source_urls": ["https://github.com/PlatformNetwork/platform"],
+      "url": "https://github.com/PlatformNetwork/platform"
     },
     {
       "auth_required": false,
@@ -109,6 +110,12 @@
       "kind": "openapi",
       "name": "Plaτform BASE Challenge Proxy OpenAPI",
       "notes": "OpenAPI 3.1 spec for the BASE challenge proxy public edge at chain.joinbase.ai. The official SN100 source repository (PlatformNetwork/platform README) documents this host as the live public API front door for the multi-challenge subnet platform.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "platform-network",
       "public_safe": true,
       "review": {
@@ -165,10 +172,29 @@
         "https://chain.joinbase.ai/v1/weights/latest"
       ],
       "url": "https://chain.joinbase.ai/v1/challenges/dashboard.svg"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-joinbase-validators-public",
+      "kind": "subnet-api",
+      "name": "Base validators (public)",
+      "notes": "Public no-auth GET returning the public validator list (hotkey, uid, status, online, capabilities). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://chain.joinbase.ai/v1/validators/public"],
+      "url": "https://chain.joinbase.ai/v1/validators/public"
     }
   ],
-  "social": {
-    "x": "https://x.com/platformnet"
-  },
-  "contact": "platform@cortex.foundation"
+  "website_url": "https://www.platform.network/"
 }

@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 25,
-  "name": "Mainframe",
-  "slug": "sn-25",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "compute",
@@ -11,53 +6,66 @@
     "macrocosmos",
     "official-source-repo"
   ],
-  "source_repo": "https://github.com/macrocosm-os/mainframe",
-  "dashboard_url": "https://taomarketcap.com/subnets/25",
-  "website_url": "https://macrocosmos.ai/sn25",
-  "notes": "Reviewed overlay for SN25 using the official Mainframe source repository. Previously discovered Mainframe docs/API URLs currently return 404 and the old dashboard URL redirects to the general Macrocosmos homepage, so they are not promoted.",
+  "contact": "brian@macrocosmos.ai",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:50:00.000Z",
-    "verified_at": "2026-06-08T09:50:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "Previously discovered Mainframe docs URL currently returns 404.",
       "Previously discovered Mainframe API documentation URL currently returns 404.",
       "Previously discovered dashboard URL redirects to the general Macrocosmos homepage.",
-      "No verified safe public subnet API endpoint yet.",
+      "The registered website_url (macrocosmos.ai/sn25) now also redirects to the general Macrocosmos homepage rather than SN25-specific content, the same failure mode as the previously-flagged dashboard URL; not promoted as a website surface.",
       "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:50:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-06-08T09:50:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/25",
+  "name": "Mainframe",
+  "netuid": 25,
+  "notes": "Reviewed overlay for SN25 using the official Mainframe source repository. Previously discovered Mainframe docs/API URLs currently return 404 and the old dashboard URL redirects to the general Macrocosmos homepage, so they are not promoted. Re-tested live this pass: also found the registered website_url now redirects to the same generic homepage, so it is not promoted as a website surface either. 1 community-submitted surface (wandb dashboard) had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. All 4 tracked surfaces re-verified live.",
+  "schema_version": 1,
+  "slug": "sn-25",
+  "social": {
+    "x": "https://x.com/macrocosmosai"
+  },
+  "source_repo": "https://github.com/macrocosm-os/mainframe",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-25-mainframe-source",
-      "name": "Mainframe source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/macrocosm-os/mainframe",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/macrocosm-os/mainframe"],
+      "id": "sn-25-mainframe-source",
+      "kind": "source-repo",
+      "name": "Mainframe source repository",
+      "notes": "Official Mainframe source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Mainframe source repository."
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": ["https://github.com/macrocosm-os/mainframe"],
+      "url": "https://github.com/macrocosm-os/mainframe"
     },
     {
-      "id": "sn-25-macrocosm-os-macrobench-benchmark-dataset",
-      "name": "Macrocosmos Macrobench benchmark dataset",
-      "kind": "data-artifact",
-      "url": "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-25-macrocosm-os-macrobench-benchmark-dataset",
+      "kind": "data-artifact",
+      "name": "Macrocosmos Macrobench benchmark dataset",
+      "notes": "Public MIT-licensed benchmark data artifact published under the Macrocosmos (macrocosm-os) Hugging Face organization, the operator of SN25 Mainframe (github.com/macrocosm-os/mainframe, macrocosmos.ai). Daily parquet snapshots of a multiple-choice question benchmark with per-miner evaluation and voting records, spanning October 2024 through August 2025 in the 100K-1M row range.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
       "public_safe": true,
       "review": {
         "state": "community-submitted",
@@ -67,40 +75,34 @@
         "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01",
         "https://huggingface.co/macrocosm-os"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public MIT-licensed benchmark data artifact published under the Macrocosmos (macrocosm-os) Hugging Face organization, the operator of SN25 Mainframe (github.com/macrocosm-os/mainframe, macrocosmos.ai). Daily parquet snapshots of a multiple-choice question benchmark with per-miner evaluation and voting records, spanning October 2024 through August 2025 in the 100K-1M row range."
+      "url": "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01"
     },
     {
-      "id": "sn-25-mainframe-pdb-file-api",
-      "name": "Mainframe PDB structure file API",
-      "kind": "subnet-api",
-      "url": "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-25-mainframe-pdb-file-api",
+      "kind": "subnet-api",
+      "name": "Mainframe PDB structure file API",
+      "notes": "Public no-auth GET returning PDB structure text from the official SN25 DigitalOcean Spaces bucket. The folding API utility route checks this host first before falling back to RCSB/PDBe mirrors.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "macrocosmos",
       "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
       "source_urls": [
         "https://github.com/macrocosm-os/mainframe/blob/main/folding_api/utility_endpoints.py",
         "https://github.com/macrocosm-os/mainframe/blob/main/README.md",
         "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "any",
-        "timeout_ms": 15000
-      },
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "bohdansolovie",
-        "confidence": "medium"
-      },
-      "notes": "Public no-auth GET returning PDB structure text from the official SN25 DigitalOcean Spaces bucket. The folding API utility route checks this host first before falling back to RCSB/PDBe mirrors."
+      "url": "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb"
     },
     {
       "auth_required": false,
@@ -109,6 +111,12 @@
       "kind": "dashboard",
       "name": "Mainframe (folding-openmm) Weights & Biases dashboard",
       "notes": "Public Weights & Biases project the SN25 Mainframe validators log to (wandb.ai/macrocosmos/folding-openmm) — live protein-folding validation runs and metrics (260k+ runs). Project 'folding-openmm' and entity 'macrocosmos' are the validator defaults in the official macrocosm-os/mainframe config (folding/utils/config.py), and wandb.init runs from folding/utils/logging.py. Publicly readable via the W&B API. Distinct host from the sn25 API and object storage.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -121,8 +129,5 @@
       "url": "https://wandb.ai/macrocosmos/folding-openmm"
     }
   ],
-  "social": {
-    "x": "https://x.com/macrocosmosai"
-  },
-  "contact": "brian@macrocosmos.ai"
+  "website_url": "https://macrocosmos.ai/sn25"
 }

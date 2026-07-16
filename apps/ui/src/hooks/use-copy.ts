@@ -27,6 +27,24 @@ export function shouldUseNavigatorClipboard(navigatorValue: Navigator | undefine
 }
 
 /**
+ * Legacy `execCommand("copy")` fallback for environments without
+ * `navigator.clipboard`. Returns execCommand's boolean result verbatim: `false`
+ * means the copy was rejected (e.g. no user activation, or a permissions-policy
+ * denial) and must NOT be reported to the user as a success.
+ */
+export function legacyExecCommandCopy(value: string): boolean {
+  const ta = document.createElement("textarea");
+  ta.value = value;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  const ok = document.execCommand("copy");
+  document.body.removeChild(ta);
+  return ok;
+}
+
+/**
  * Shared copy hook used by every "copy this URL/value" interaction.
  * Returns `copied` (truthy for ~1.4s after success) so callers can swap an
  * icon for a green check, plus a `copy(value)` action.
@@ -43,15 +61,13 @@ export function useCopy(opts: CopyOpts = {}) {
         if (shouldUseNavigatorClipboard(typeof navigator !== "undefined" ? navigator : undefined)) {
           await navigator.clipboard.writeText(value);
         } else if (typeof document !== "undefined") {
-          // Fallback for older browsers / SSR-safe access pattern.
-          const ta = document.createElement("textarea");
-          ta.value = value;
-          ta.style.position = "fixed";
-          ta.style.opacity = "0";
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
+          // Fallback for older browsers / SSR-safe access pattern. execCommand
+          // returns false (without throwing) when the copy is rejected — route
+          // that through the shared catch below so the user sees an accurate
+          // failure instead of a false "Copied" success.
+          if (!legacyExecCommandCopy(value)) {
+            throw new Error("Clipboard copy command was rejected");
+          }
         }
         setCopied(true);
         if (toastOnSuccess) {

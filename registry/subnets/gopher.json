@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 42,
-  "name": "Gopher",
-  "slug": "sn-42",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "data",
@@ -14,176 +9,190 @@
     "official-website",
     "tee"
   ],
-  "docs_url": "https://developers.gopher-ai.com/docs/subnet/intro",
-  "source_repo": "https://github.com/gopher-lab/subnet-42",
-  "dashboard_url": "https://taomarketcap.com/subnets/42",
-  "website_url": "https://developers.gopher-ai.com/",
-  "notes": "Reviewed overlay for SN42 using the live Gopher developer portal, subnet documentation, miner documentation, and source repository. Native chain identity currently reports a placeholder name, so this remains an explicit identity-drift entry rather than a silent rename.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T20:15:00.000Z",
-    "verified_at": "2026-06-08T20:15:00.000Z",
-    "source_count": 7,
     "gap_notes": [
       "Native chain name currently reports as a placeholder.",
       "Official developer portal, subnet docs, miner docs, and source repository are verified live.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T01:50:00.000Z",
+    "source_count": 7,
+    "verified_at": "2026-07-16T01:50:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/42",
+  "docs_url": "https://developers.gopher-ai.com/docs/subnet/intro",
+  "name": "Gopher",
+  "netuid": 42,
+  "notes": "Reviewed overlay for SN42 using the live Gopher developer portal, subnet documentation, miner documentation, and source repository. Native chain identity currently reports a placeholder name (re-confirmed live this pass, native_name_quality: placeholder), so this remains an explicit identity-drift entry rather than a silent rename. This pass fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. All 8 surfaces re-verified live.",
+  "schema_version": 1,
+  "slug": "sn-42",
+  "source_repo": "https://github.com/gopher-lab/subnet-42",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-42-gopher-developer-portal",
-      "name": "Gopher developer portal",
-      "kind": "website",
-      "url": "https://developers.gopher-ai.com/",
-      "provider": "gopher-ai",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-42-gopher-developer-portal",
+      "kind": "website",
+      "name": "Gopher developer portal",
+      "notes": "Official Gopher developer portal.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
       "public_safe": true,
       "source_urls": [
         "https://developers.gopher-ai.com/",
         "https://developers.gopher-ai.com/docs/subnet/intro"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Gopher developer portal."
+      "url": "https://developers.gopher-ai.com/"
     },
     {
-      "id": "sn-42-gopher-docs",
-      "name": "Gopher subnet documentation",
-      "kind": "docs",
-      "url": "https://developers.gopher-ai.com/docs/subnet/intro",
-      "provider": "gopher-ai",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-42-gopher-docs",
+      "kind": "docs",
+      "name": "Gopher subnet documentation",
+      "notes": "Public Gopher subnet documentation. The docs identify the subnet as mainnet netuid 42 and link miner setup to the subnet source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
       "public_safe": true,
       "source_urls": [
         "https://developers.gopher-ai.com/docs/subnet/intro",
         "https://developers.gopher-ai.com/docs/subnet/miners",
         "https://github.com/gopher-lab/subnet-42"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Public Gopher subnet documentation. The docs identify the subnet as mainnet netuid 42 and link miner setup to the subnet source repository."
+      "url": "https://developers.gopher-ai.com/docs/subnet/intro"
     },
     {
-      "id": "sn-42-gopher-miner-docs",
-      "name": "Gopher miner documentation",
-      "kind": "docs",
-      "url": "https://developers.gopher-ai.com/docs/subnet/miners",
-      "provider": "gopher-ai",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-42-gopher-miner-docs",
+      "kind": "docs",
+      "name": "Gopher miner documentation",
+      "notes": "Official Gopher miner documentation for Subnet 42.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
       "public_safe": true,
       "source_urls": [
         "https://developers.gopher-ai.com/docs/subnet/miners",
         "https://github.com/gopher-lab/subnet-42"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Gopher miner documentation for Subnet 42."
+      "url": "https://developers.gopher-ai.com/docs/subnet/miners"
     },
     {
-      "id": "sn-42-gopher-source",
-      "name": "Gopher subnet source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/gopher-lab/subnet-42",
-      "provider": "gopher-ai",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-42-gopher-source",
+      "kind": "source-repo",
+      "name": "Gopher subnet source repository",
+      "notes": "Public source repository for Gopher Subnet 42 neuron logic.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
       "public_safe": true,
       "source_urls": [
         "https://github.com/gopher-lab/subnet-42",
         "https://developers.gopher-ai.com/docs/subnet/miners"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public source repository for Gopher Subnet 42 neuron logic."
+      "url": "https://github.com/gopher-lab/subnet-42"
     },
     {
-      "id": "sn-42-gopher-ai-subnet-api",
-      "name": "Gopher Data API live search",
-      "kind": "subnet-api",
-      "url": "https://data.gopher-ai.com/api/v1/search/live",
-      "provider": "gopher-ai",
-      "authority": "community",
       "auth_required": true,
+      "authority": "community",
+      "id": "sn-42-gopher-ai-subnet-api",
+      "kind": "subnet-api",
+      "name": "Gopher Data API live search",
+      "notes": "Official SN42 Gopher Data API live search (POST data.gopher-ai.com/api/v1/search/live). gopher-client defines jobEndpoint /v1/search/live on default base https://data.gopher-ai.com/api; gopher-mcp-server posts to /search/live on https://data.gopher-ai.com/api/v1.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "HEAD"
+      },
+      "provider": "gopher-ai",
       "public_safe": true,
       "rate_limit_notes": "Bearer API key required (GOPHER_CLIENT_TOKEN). POST-only credentialed endpoint; recurring read probes are intentionally disabled.",
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
       "source_urls": [
         "https://github.com/gopher-lab/gopher-client/blob/main/client/client.go#L15-L16",
         "https://github.com/gopher-lab/gopher-client/blob/main/config/config.go#L15-L16",
         "https://github.com/gopher-lab/gopher-mcp-server/blob/main/data/internal/client/client.go#L22-L23",
         "https://github.com/gopher-lab/gopher-mcp-server/blob/main/data/internal/client/client.go#L75-L76"
       ],
-      "probe": {
-        "enabled": false,
-        "expect": "json",
-        "method": "HEAD"
-      },
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "claytonlin1110"
-      },
-      "notes": "Official SN42 Gopher Data API live search (POST data.gopher-ai.com/api/v1/search/live). gopher-client defines jobEndpoint /v1/search/live on default base https://data.gopher-ai.com/api; gopher-mcp-server posts to /search/live on https://data.gopher-ai.com/api/v1."
+      "url": "https://data.gopher-ai.com/api/v1/search/live"
     },
     {
-      "id": "sn-42-gopher-webscrape-example",
-      "name": "Gopher web-scrape example dataset",
-      "kind": "data-artifact",
-      "url": "https://huggingface.co/datasets/Gopher-Lab/Bittensor_Whitepaper_Webscrape_Example",
-      "provider": "gopher-ai",
-      "authority": "community",
       "auth_required": false,
+      "authority": "community",
+      "id": "sn-42-gopher-webscrape-example",
+      "kind": "data-artifact",
+      "name": "Gopher web-scrape example dataset",
+      "notes": "Public Gopher-Lab HuggingFace example of the SN42 web-scraper output (title/url/description/content columns of cleaned, structured page text; tagged Bittensor / Subnet / Masa), MIT-licensed and not gated. The subnet-42 repo (source) and developer portal declare the Bittensor subnet, and the Gopher-Lab HF org matches the operator's gopher-lab GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/gopher-lab/subnet-42",
-        "https://huggingface.co/Gopher-Lab"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Public Gopher-Lab HuggingFace example of the SN42 web-scraper output (title/url/description/content columns of cleaned, structured page text; tagged Bittensor / Subnet / Masa), MIT-licensed and not gated. The subnet-42 repo (source) and developer portal declare the Bittensor subnet, and the Gopher-Lab HF org matches the operator's gopher-lab GitHub org."
-    },
-    {
-      "id": "sn-42-gopher-x-trending-topics",
-      "name": "Gopher X/Twitter trending-topics dataset",
-      "kind": "data-artifact",
-      "url": "https://huggingface.co/datasets/Gopher-Lab/X_Twitter_Trending_Topics_August2025",
-      "provider": "gopher-ai",
-      "authority": "community",
-      "auth_required": false,
-      "public_safe": true,
       "source_urls": [
         "https://github.com/gopher-lab/subnet-42",
         "https://huggingface.co/Gopher-Lab"
       ],
+      "url": "https://huggingface.co/datasets/Gopher-Lab/Bittensor_Whitepaper_Webscrape_Example"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-42-gopher-x-trending-topics",
+      "kind": "data-artifact",
+      "name": "Gopher X/Twitter trending-topics dataset",
+      "notes": "Public Gopher-Lab HuggingFace dataset of X/Twitter trending-topics scraped by the SN42 Gopher data network, not gated. The subnet-42 repo (source) declares the Bittensor subnet and the Gopher-Lab HF org matches the operator's gopher-lab GitHub org. Distinct from the subnet's registered web-scrape example dataset.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "davion-knight"
       },
-      "notes": "Public Gopher-Lab HuggingFace dataset of X/Twitter trending-topics scraped by the SN42 Gopher data network, not gated. The subnet-42 repo (source) declares the Bittensor subnet and the Gopher-Lab HF org matches the operator's gopher-lab GitHub org. Distinct from the subnet's registered web-scrape example dataset."
+      "source_urls": [
+        "https://github.com/gopher-lab/subnet-42",
+        "https://huggingface.co/Gopher-Lab"
+      ],
+      "url": "https://huggingface.co/datasets/Gopher-Lab/X_Twitter_Trending_Topics_August2025"
     },
     {
       "auth_required": false,
@@ -192,6 +201,12 @@
       "kind": "data-artifact",
       "name": "Gopher TikTok most-shared video transcription dataset",
       "notes": "Public no-auth Hugging Face dataset published by the official SN42 Gopher team org (Gopher-Lab): transcriptions of the most-shared TikTok videos, distributed as CSV. An example output of the subnet's social-media scraping and transcription pipeline, in the same Gopher-Lab dataset family as the Bittensor whitepaper webscrape and X/Twitter trending-topics datasets already registered for SN42.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "gopher-ai",
       "public_safe": true,
       "review": {
@@ -204,5 +219,6 @@
       ],
       "url": "https://huggingface.co/datasets/Gopher-Lab/TikTok_Most_Shared_Video_Transcription_Example"
     }
-  ]
+  ],
+  "website_url": "https://developers.gopher-ai.com/"
 }

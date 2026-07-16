@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isValidBlockRef, blockRefPathSegment, shortHash, isHashRef } from "./blocks";
+import { isValidBlockRef, blockRefPathSegment, shortHash } from "./blocks";
 
 describe("isValidBlockRef", () => {
   it("accepts decimal block numbers (no leading zeros, up to 20 digits)", () => {
@@ -64,19 +64,5 @@ describe("shortHash", () => {
 
   it("trims before measuring", () => {
     expect(shortHash("  0x1234  ")).toBe("0x1234");
-  });
-});
-
-describe("isHashRef", () => {
-  it("is true only for 0x-prefixed hex", () => {
-    expect(isHashRef("0xabc123")).toBe(true);
-    expect(isHashRef("0xDEAD")).toBe(true);
-  });
-
-  it("is false for decimals and malformed hex", () => {
-    expect(isHashRef("12345")).toBe(false);
-    expect(isHashRef("0x")).toBe(false);
-    expect(isHashRef("0xghij")).toBe(false);
-    expect(isHashRef("abc")).toBe(false);
   });
 });

@@ -1,11 +1,25 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "official-api",
+    "official-source-repo",
+    "official-website"
+  ],
+  "contact": "info@bitsota.ai",
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 8,
+    "gap_notes": [
+      "Diffed the autoresearch.bitsota.com OpenAPI schema (37 paths) for undiscovered public GET endpoints -- added 3 new no-param surfaces (reward-snapshot, readyz, disclaimer.md); /api/v1/submissions and /api/v1/reward-policy are actually auth-gated (401) live despite the schema declaring no security.",
+      "/readyz only supports GET (HEAD returns 405 Method Not Allowed) -- probe uses GET."
+    ]
   },
   "name": "Bitsota",
   "netuid": 94,
+  "notes": "First maintainer review for SN94. Added website + source-repo surfaces, fixed 4 missing probe blocks. Diffed the OpenAPI schema for undiscovered public GET endpoints -- added 3 new surfaces; 2 candidates turned out to be auth-gated despite the schema saying otherwise.",
   "schema_version": 1,
   "slug": "sn-94",
   "social": {
@@ -16,11 +30,53 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-94-bitsota-website",
+      "kind": "website",
+      "name": "Bitsota website",
+      "notes": "Official Bitsota SN94 public website -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "source_urls": ["https://bitsota.ai/"],
+      "url": "https://bitsota.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-94-bitsota-source-repo",
+      "kind": "source-repo",
+      "name": "Bitsota source repository",
+      "notes": "Official SN94 miner/validator source repository -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/AlveusLabs/SN94-BitSota"],
+      "url": "https://github.com/AlveusLabs/SN94-BitSota"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-94-alveus-labs-subnet-api",
       "kind": "subnet-api",
       "name": "Bitsota AutoResearch coordinator API",
       "notes": "Public no-auth endpoint of the SN94 Bitsota AutoResearch coordinator — live research task list served by the production coordinator at autoresearch.bitsota.com (documented in the official bitsota.ai backend-routes docs).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "alveus-labs",
       "public_safe": true,
       "review": {
@@ -37,6 +93,12 @@
       "kind": "openapi",
       "name": "Bitsota AutoResearch coordinator OpenAPI spec",
       "notes": "OpenAPI 3.1 spec for the Bitsota AutoResearch coordinator API. Host autoresearch.bitsota.com is the SN94 coordinator operated by Alveus Labs (referenced across the official AlveusLabs/SN94-BitSota repo docs); same host as the existing subnet-api surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "alveus-labs",
       "public_safe": true,
       "review": {
@@ -58,6 +120,12 @@
       "kind": "data-artifact",
       "name": "Bitsota idea rewards",
       "notes": "Public no-auth JSON feed of Bitsota's idea-reward allocations (rewarded research improvements per task), served by the official Bitsota API and defined in its OpenAPI spec. Distinct endpoint from the registered /api/v1/tasks route.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "alveus-labs",
       "public_safe": true,
       "review": {
@@ -74,6 +142,12 @@
       "kind": "subnet-api",
       "name": "Bitsota AutoResearch coordinator healthz",
       "notes": "Public no-auth GET /healthz on autoresearch.bitsota.com returning coordinator liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /healthz in the subnet OpenAPI spec on the same host as the registered tasks and idea-rewards surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "alveus-labs",
       "public_safe": true,
       "review": {
@@ -210,7 +284,163 @@
         "https://github.com/AlveusLabs/SN94-BitSota"
       ],
       "url": "https://raw.githubusercontent.com/AlveusLabs/SN94-BitSota/9a91af33b69a42ea9c124ea8a7ea4f05203fde04/capacitor_abi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-work-items",
+      "kind": "subnet-api",
+      "name": "Bitsota work items",
+      "notes": "Public no-auth GET returning active research work items (id, task_id, kind, strategy_key). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/api/v1/work-items"],
+      "url": "https://autoresearch.bitsota.com/api/v1/work-items"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-peer-evaluations",
+      "kind": "subnet-api",
+      "name": "Bitsota peer evaluations",
+      "notes": "Public no-auth GET returning peer evaluation records. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://autoresearch.bitsota.com/api/v1/peer-evaluations"
+      ],
+      "url": "https://autoresearch.bitsota.com/api/v1/peer-evaluations"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-verifications",
+      "kind": "subnet-api",
+      "name": "Bitsota verifications",
+      "notes": "Public no-auth GET returning submission verification records (id, submission_id, validator_hotkey). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/api/v1/verifications"],
+      "url": "https://autoresearch.bitsota.com/api/v1/verifications"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-onchain-status",
+      "kind": "subnet-api",
+      "name": "Bitsota on-chain status",
+      "notes": "Public no-auth GET returning on-chain connectivity status (configured, ws_url, contract, metadata_path). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/api/v1/onchain/status"],
+      "url": "https://autoresearch.bitsota.com/api/v1/onchain/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-reward-snapshot",
+      "kind": "data-artifact",
+      "name": "Bitsota reward snapshot",
+      "notes": "Public no-auth GET /api/v1/reward-snapshot on autoresearch.bitsota.com returning the current reward-policy snapshot (score_ema_days, competition_count, pool config, validator weight mode). Documented in the subnet's own OpenAPI schema on the same host as the existing dashboard and reward-related surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/reward-snapshot"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-readyz",
+      "kind": "subnet-api",
+      "name": "Bitsota AutoResearch coordinator readyz",
+      "notes": "Public no-auth GET /readyz on autoresearch.bitsota.com returning coordinator readiness (observed: HTTP 204 No Content). Only supports GET (HEAD returns 405 Method Not Allowed). Distinct from the existing /healthz liveness surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/readyz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-disclaimer-md",
+      "kind": "docs",
+      "name": "Bitsota disclaimer document",
+      "notes": "Public no-auth GET /api/v1/disclaimer.md on autoresearch.bitsota.com returning the plain-Markdown no-reward-guarantee disclaimer text. Distinct from the existing structured JSON /api/v1/disclaimer surface (same content, different format).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/disclaimer.md"
     }
   ],
-  "contact": "info@bitsota.ai"
+  "website_url": "https://bitsota.ai/"
 }

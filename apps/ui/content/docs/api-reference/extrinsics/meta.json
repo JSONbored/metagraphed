@@ -1,0 +1,9 @@
+{
+  "title": "Extrinsics",
+  "pages": [
+    "extrinsic-detail",
+    "extrinsics-feed",
+    "governance-config-changes",
+    "sudo-calls"
+  ]
+}

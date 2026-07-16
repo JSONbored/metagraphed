@@ -37,13 +37,6 @@ export function parseHistoryWindow(value) {
   return { label: v, days: HISTORY_WINDOWS[v] };
 }
 
-// Validates the ?date= param for as-of reads (YYYY-MM-DD). Range/real-date checks
-// are left to SQLite (an impossible date simply matches no rows → empty 200).
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-export function isValidSnapshotDate(value) {
-  return typeof value === "string" && DATE_RE.test(value);
-}
-
 function toIso(ms) {
   if (ms == null) return null;
   const n = Number(ms);

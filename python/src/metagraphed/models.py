@@ -62,12 +62,24 @@ class _Model:
 
 @dataclass
 class Subnet(_Model):
+    """One row from ``GET /api/v1/subnets`` (``SubnetIndexEntry``).
+
+    The compact index carries ``integration_readiness`` for list/ranking.
+    ``completeness_score`` is **not** part of that shape — it lives on the
+    per-subnet profile (``/api/v1/profiles``) and on
+    :class:`AgentCatalogSubnet`. When built via ``client.subnets()``,
+    ``completeness_score`` is therefore always ``None`` unless a non-index
+    payload that includes the field is passed to :meth:`from_dict`.
+    """
+
     netuid: Optional[int] = None
     slug: Optional[str] = None
     name: Optional[str] = None
     subnet_type: Optional[str] = None
     status: Optional[str] = None
     categories: Optional[List[str]] = None
+    # Absent from SubnetIndexEntry; kept Optional so from_dict stays tolerant
+    # if a richer payload is projected onto this model.
     completeness_score: Optional[float] = None
     integration_readiness: Optional[int] = None
     updated_at: Optional[str] = None
@@ -90,11 +102,11 @@ class Surface(_Model):
 
 @dataclass
 class Endpoint(_Model):
+    # EndpointResource uses ``url``; ``base_url`` is agent-catalog services[] only.
     surface_id: Optional[str] = None
     netuid: Optional[int] = None
     kind: Optional[str] = None
     url: Optional[str] = None
-    base_url: Optional[str] = None
     provider: Optional[str] = None
     classification: Optional[str] = None
     monitoring_status: Optional[str] = None
@@ -114,6 +126,12 @@ class Provider(_Model):
 
 @dataclass
 class AgentCatalogSubnet(_Model):
+    """One subnet from ``GET /api/v1/agent-catalog/{netuid}``.
+
+    Unlike the compact :class:`Subnet` index row, this payload includes
+    ``completeness_score`` when the backend provides it.
+    """
+
     netuid: Optional[int] = None
     slug: Optional[str] = None
     name: Optional[str] = None

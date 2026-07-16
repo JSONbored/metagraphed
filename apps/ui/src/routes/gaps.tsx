@@ -38,7 +38,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { GITHUB_REPO } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
-import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
+import { StateBlock } from "@/components/metagraphed/states/state-block";
 import type { CurationLevel, Gap, Subnet } from "@/lib/metagraphed/types";
 
 const STATUS_OPTIONS = ["all", "open", "in-review", "resolved", "wont-fix"] as const;
@@ -664,7 +664,8 @@ function OpenGapsSection() {
 
       {sorted.length === 0 ? (
         <div className="mt-6">
-          <RegistryEmpty
+          <StateBlock
+            kind="registry"
             variant="empty"
             title={rows.length === 0 ? "No open gaps" : "No gaps match these filters"}
             description={

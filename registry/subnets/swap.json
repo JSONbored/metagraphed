@@ -1,20 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 10,
-  "name": "Swap",
-  "slug": "sn-10",
-  "status": "active",
-  "categories": [
-    "baseline-curated",
-    "identity-reviewed",
-    "official-docs",
-    "official-source-repo",
-    "official-website"
-  ],
-  "website_url": "https://www.taofi.com/pool",
-  "docs_url": "https://docs.taofi.com/",
-  "source_repo": "https://github.com/Swap-Subnet/swap-subnet",
-  "dashboard_url": "https://taomarketcap.com/subnets/10",
   "baseline_excluded_surface_ids": [
     "sn-10-taomarketcap-source-repo",
     "sn-10-taomarketcap-website",
@@ -26,151 +10,164 @@
     "sn-10-website-common-swagger-json",
     "sn-10-website-subdomain-docs-docs-taofi-com"
   ],
-  "notes": "Reviewed overlay for SN10 Swap using the TaoFi pool page, TaoFi docs, and Swap source repository. Common www.taofi.com API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T20:25:00.000Z",
-    "verified_at": "2026-06-08T20:25:00.000Z",
-    "source_count": 5,
     "gap_notes": [
       "Official TaoFi pool page, docs, and Swap source repository are verified live.",
       "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:25:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-06-08T20:25:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/10",
+  "docs_url": "https://docs.taofi.com/",
+  "name": "Swap",
+  "netuid": 10,
+  "notes": "Reviewed overlay for SN10 Swap using the TaoFi pool page, TaoFi docs, and Swap source repository. Common www.taofi.com API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces. As of this pass, the entire www.taofi.com domain (the registered website, including /pool) returns HTTP 402 with header x-vercel-error: DEPLOYMENT_DISABLED -- the team's Vercel deployment appears disabled (likely a billing lapse, not a code issue). docs.taofi.com is unaffected (separate host/platform, still live). Not a registry misconfiguration -- the website surface is correctly probed and the live health tracker will reflect this outage; left as-is rather than disabling the probe, since this looks recoverable rather than permanently broken.",
+  "schema_version": 1,
+  "slug": "sn-10",
+  "source_repo": "https://github.com/Swap-Subnet/swap-subnet",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-10-taofi-pool",
-      "name": "TaoFi pool",
-      "kind": "website",
-      "url": "https://www.taofi.com/pool",
-      "provider": "taofi",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-10-taofi-pool",
+      "kind": "website",
+      "name": "TaoFi pool",
+      "notes": "Official TaoFi pool page for SN10 Swap.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taofi",
       "public_safe": true,
       "source_urls": [
         "https://www.taofi.com/pool",
         "https://github.com/Swap-Subnet/swap-subnet"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official TaoFi pool page for SN10 Swap."
+      "url": "https://www.taofi.com/pool"
     },
     {
-      "id": "sn-10-taofi-docs",
-      "name": "TaoFi docs",
-      "kind": "docs",
-      "url": "https://docs.taofi.com/",
-      "provider": "taofi",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-10-taofi-docs",
+      "kind": "docs",
+      "name": "TaoFi docs",
+      "notes": "Official TaoFi documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taofi",
       "public_safe": true,
       "source_urls": ["https://docs.taofi.com/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official TaoFi documentation."
+      "url": "https://docs.taofi.com/"
     },
     {
-      "id": "sn-10-swap-source",
-      "name": "Swap source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/Swap-Subnet/swap-subnet",
-      "provider": "taofi",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/Swap-Subnet/swap-subnet"],
+      "id": "sn-10-swap-source",
+      "kind": "source-repo",
+      "name": "Swap source repository",
+      "notes": "Official Swap subnet source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Swap subnet source repository."
+      "provider": "taofi",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Swap-Subnet/swap-subnet"],
+      "url": "https://github.com/Swap-Subnet/swap-subnet"
     },
     {
-      "id": "sn-10-taofi-openapi",
-      "name": "TaoFi API OpenAPI schema",
-      "kind": "openapi",
-      "url": "https://taofi-doc.web.app/openapi.yaml",
-      "provider": "taofi",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-10-taofi-openapi",
+      "kind": "openapi",
+      "name": "TaoFi API OpenAPI schema",
+      "notes": "Official TaoFi (SN10 Swap) OpenAPI 3.0.4 schema (title \"TaoFi - OpenAPI 3.0\", servers host https://taofi-api.web.app/) served behind the public Swagger UI at taofi-doc.web.app. Documents the swap/bridge quote-and-call endpoints (getBuyQuote, getSellQuote, getBalance, getNativeTaoQuote, etc.); no authentication scheme is defined. The taofi-api.web.app host is referenced in TaoFi's own repository (TaoFi-0x/taofi-swap).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofi",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "schema_status": "machine-readable",
       "schema_url": "https://taofi-doc.web.app/openapi.yaml",
       "source_urls": [
         "https://docs.taofi.com/",
         "https://taofi-doc.web.app/openapi.yaml"
       ],
+      "url": "https://taofi-doc.web.app/openapi.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-10-taofi-api",
+      "kind": "subnet-api",
+      "name": "TaoFi swap API",
+      "notes": "Public unauthenticated TaoFi (SN10 Swap) API — the servers host declared in the TaoFi OpenAPI schema. All 8 documented paths (getBuyQuote, getBuyCall, getSellQuote, getSellCall, getRefundCall, getBalance, getNativeTaoQuote, getNativeTaoCall) are POST-only; GET/HEAD to any of them returns 405, and the bare host root returns 404 (confirmed live). The registry's probe schema only supports GET/HEAD, so recurring read probes are intentionally disabled -- same pattern as gittensor.json's POST-only MCP surface. Documented at taofi-doc.web.app.",
       "probe": {
-        "enabled": true,
-        "method": "GET",
+        "enabled": false,
         "expect": "any",
+        "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "taofi",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Official TaoFi (SN10 Swap) OpenAPI 3.0.4 schema (title \"TaoFi - OpenAPI 3.0\", servers host https://taofi-api.web.app/) served behind the public Swagger UI at taofi-doc.web.app. Documents the swap/bridge quote-and-call endpoints (getBuyQuote, getSellQuote, getBalance, getNativeTaoQuote, etc.); no authentication scheme is defined. The taofi-api.web.app host is referenced in TaoFi's own repository (TaoFi-0x/taofi-swap)."
-    },
-    {
-      "id": "sn-10-taofi-api",
-      "name": "TaoFi swap API",
-      "kind": "subnet-api",
-      "url": "https://taofi-api.web.app/",
-      "provider": "taofi",
-      "auth_required": false,
-      "authority": "community",
-      "public_safe": true,
       "schema_url": "https://taofi-doc.web.app/openapi.yaml",
       "source_urls": [
         "https://docs.taofi.com/",
         "https://taofi-doc.web.app/openapi.yaml"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Public unauthenticated TaoFi (SN10 Swap) API — the servers host declared in the TaoFi OpenAPI schema. POST endpoints return live swap/bridge quotes and transaction call data (verified: getBuyQuote returned an HTTP 200 JSON quote). Documented at taofi-doc.web.app."
+      "url": "https://taofi-api.web.app/"
     },
     {
-      "id": "sn-10-swap-nfpm-abi",
-      "name": "Swap NonfungiblePositionManager contract ABI",
-      "kind": "data-artifact",
-      "url": "https://raw.githubusercontent.com/Swap-Subnet/swap-subnet/main/swap/abi/NonfungiblePositionManager.json",
-      "provider": "taofi",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-10-swap-nfpm-abi",
+      "kind": "data-artifact",
+      "name": "Swap NonfungiblePositionManager contract ABI",
+      "notes": "Public no-auth Uniswap-V3-style NonfungiblePositionManager contract ABI (46 entries) published in the official Swap-Subnet/swap-subnet repository at swap/abi/NonfungiblePositionManager.json. Used by SN10 Swap's on-chain liquidity-position logic; the same repo is already this file's registered source_repo.",
+      "provider": "taofi",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/Swap-Subnet/swap-subnet/blob/main/swap/abi/NonfungiblePositionManager.json",
-        "https://github.com/Swap-Subnet/swap-subnet"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "galuis116"
       },
-      "notes": "Public no-auth Uniswap-V3-style NonfungiblePositionManager contract ABI (46 entries) published in the official Swap-Subnet/swap-subnet repository at swap/abi/NonfungiblePositionManager.json. Used by SN10 Swap's on-chain liquidity-position logic; the same repo is already this file's registered source_repo."
+      "source_urls": [
+        "https://github.com/Swap-Subnet/swap-subnet/blob/main/swap/abi/NonfungiblePositionManager.json",
+        "https://github.com/Swap-Subnet/swap-subnet"
+      ],
+      "url": "https://raw.githubusercontent.com/Swap-Subnet/swap-subnet/main/swap/abi/NonfungiblePositionManager.json"
     }
-  ]
+  ],
+  "website_url": "https://www.taofi.com/pool"
 }

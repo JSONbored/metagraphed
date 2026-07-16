@@ -1,11 +1,12 @@
 {
-  "schema_version": 1,
-  "id": "handshake58",
-  "name": "Handshake58",
-  "kind": "subnet-team",
-  "website_url": "https://handshake58.com",
+  "authority": "official",
   "docs_url": "https://handshake58.com/skill.md",
   "github_url": "https://github.com/Handshake58/HS58",
-  "authority": "official",
-  "notes": "Provider entry for Handshake58 SN58 marketplace, API, OpenAPI, and subnet source repositories."
+  "id": "handshake58",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/handshake58.png",
+  "name": "Handshake58",
+  "notes": "Provider entry for Handshake58 SN58 marketplace, API, OpenAPI, and subnet source repositories.",
+  "schema_version": 1,
+  "website_url": "https://handshake58.com"
 }

@@ -544,31 +544,18 @@ test("buildChainSigners nulls blank and missing last_tx_block cells (not block 0
   assert.equal(numericString.signers[0].last_tx_block, 12345);
 });
 
-test("GET /api/v1/chain/signers ranks by tx_count via the signer GROUP BY", async () => {
-  const captured = [];
+// #4909/#6013: extrinsics' D1 write path is retired and the table is dropped
+// in production, so handleChainSigners no longer queries D1 at all -- even a
+// "warm" D1 mock (real rows) must not change the response. window/limit are
+// still shape-validated for REST contract stability but no longer feed a read.
+test("GET /api/v1/chain/signers never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+  let d1Called = false;
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            return {
-              all: () =>
-                Promise.resolve({
-                  results: [
-                    {
-                      signer: "5Top",
-                      tx_count: 900,
-                      total_fee_tao: 3.2,
-                      total_tip_tao: 0,
-                      last_tx_block: 8490697,
-                    },
-                  ],
-                }),
-            };
-          },
-        };
+      prepare() {
+        d1Called = true;
+        throw new Error("D1 must not be queried -- extrinsics is retired");
       },
     },
   };
@@ -582,71 +569,35 @@ test("GET /api/v1/chain/signers ranks by tx_count via the signer GROUP BY", asyn
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.sort, "tx_count");
-  assert.equal(body.data.signers[0].signer, "5Top");
-  assert.equal(body.data.signers[0].tx_count, 900);
-  const sql = captured[0].sql;
-  assert.match(sql, /GROUP BY signer/);
-  assert.match(sql, /ORDER BY tx_count DESC/);
-  assert.equal(captured[0].params.at(-1), 10);
+  assert.deepEqual(body.data.signers, []);
+  assert.equal(d1Called, false);
 });
 
-test("GET /api/v1/chain/signers ranks by total_fee_tao when requested", async () => {
-  const captured = [];
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            return { all: () => Promise.resolve({ results: [] }) };
-          },
-        };
-      },
-    },
-  };
+test("GET /api/v1/chain/signers echoes the requested sort with an empty leaderboard", async () => {
   const res = await handleRequest(
     new Request(
       "https://api.metagraph.sh/api/v1/chain/signers?sort=total_fee_tao",
     ),
-    env,
+    createLocalArtifactEnv(),
     {},
   );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.sort, "total_fee_tao");
-  const q = captured.find((c) => /FROM extrinsics/.test(c.sql));
-  assert.match(q.sql, /ORDER BY total_fee_tao DESC, signer ASC/);
+  assert.deepEqual(body.data.signers, []);
 });
 
-test("GET /api/v1/chain/signers scopes the leaderboard by call_module", async () => {
-  const captured = [];
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            return { all: () => Promise.resolve({ results: [] }) };
-          },
-        };
-      },
-    },
-  };
+test("GET /api/v1/chain/signers still shape-validates call_module even though it no longer feeds a read", async () => {
   const res = await handleRequest(
     new Request(
       "https://api.metagraph.sh/api/v1/chain/signers?call_module=Balances",
     ),
-    env,
+    createLocalArtifactEnv(),
     {},
   );
   assert.equal(res.status, 200);
-  // Target the extrinsics query explicitly (not captured[0]) so the assertion
-  // holds even if a meta/KV read issues a prepare first.
-  const q = captured.find((c) => /FROM extrinsics/.test(c.sql));
-  assert.match(q.sql, /AND call_module = \?/);
-  assert.ok(q.params.includes("Balances"));
+  const body = await res.json();
+  assert.deepEqual(body.data.signers, []);
 });
 
 test("GET /api/v1/chain/signers rejects unsupported sort values", async () => {
@@ -660,48 +611,17 @@ test("GET /api/v1/chain/signers rejects unsupported sort values", async () => {
   assert.equal(body.meta.parameter, "sort");
 });
 
-test("GET /api/v1/chain/transfers aggregates volume + ranks senders/receivers", async () => {
-  const captured = [];
+// #4909/#6013: account_events' D1 write path is retired and the table is
+// dropped in production, so handleChainTransfers no longer queries D1 at all
+// -- even a "warm" D1 mock (real rows) must not change the response.
+test("GET /api/v1/chain/transfers never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+  let d1Called = false;
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            return {
-              all: () => {
-                if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
-                  return Promise.resolve({
-                    results: [
-                      {
-                        transfer_count: 10,
-                        total_volume_tao: 100,
-                        unique_senders: 4,
-                        unique_receivers: 6,
-                      },
-                    ],
-                  });
-                }
-                if (/GROUP BY hotkey/.test(sql)) {
-                  return Promise.resolve({
-                    results: [
-                      { address: "5Sa", volume_tao: 80, transfer_count: 5 },
-                    ],
-                  });
-                }
-                if (/GROUP BY coldkey/.test(sql)) {
-                  return Promise.resolve({
-                    results: [
-                      { address: "5Rx", volume_tao: 60, transfer_count: 4 },
-                    ],
-                  });
-                }
-                return Promise.resolve({ results: [] });
-              },
-            };
-          },
-        };
+      prepare() {
+        d1Called = true;
+        throw new Error("D1 must not be queried -- account_events is retired");
       },
     },
   };
@@ -715,14 +635,11 @@ test("GET /api/v1/chain/transfers aggregates volume + ranks senders/receivers", 
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.window, "7d");
-  assert.equal(body.data.total_volume_tao, 100);
-  assert.equal(body.data.top_senders[0].address, "5Sa");
-  assert.equal(body.data.top_receivers[0].address, "5Rx");
-  assert.equal(body.data.top_sender_share, 0.8); // 80 / 100
+  assert.equal(body.data.total_volume_tao, 0);
+  assert.deepEqual(body.data.top_senders, []);
+  assert.deepEqual(body.data.top_receivers, []);
   assert.equal(body.meta.source, "live-cron-prober");
-  const senders = captured.find((c) => /GROUP BY hotkey/.test(c.sql));
-  assert.match(senders.sql, /event_kind = \?/);
-  assert.equal(senders.params.at(-1), 5); // limit
+  assert.equal(d1Called, false);
 });
 
 test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
@@ -785,6 +702,10 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
   };
 
   try {
+    // #4909/#6013: account_events is retired, so this "warm" D1 mock is never
+    // actually queried (captured stays empty throughout) -- the response is
+    // always the schema-stable empty stub. What this test still exercises:
+    // HEAD populates the edge cache and a subsequent GET reuses that body.
     const url = "https://api.metagraph.sh/api/v1/chain/transfers?window=7d";
     const first = await handleRequest(
       new Request(url, { method: "HEAD" }),
@@ -797,7 +718,7 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
     );
     assert.equal(first.status, 200);
     assert.equal(await first.text(), "");
-    assert.equal(captured.length, 3);
+    assert.equal(captured.length, 0);
     assert.equal(cache.putKeys.length, 1);
 
     const second = await handleRequest(
@@ -807,16 +728,16 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
     );
     assert.equal(second.status, 200);
     assert.equal(await second.text(), "");
-    assert.equal(captured.length, 3, "warm HEAD must not re-run D1");
+    assert.equal(captured.length, 0, "D1 is never queried");
     assert.equal(cache.matchCalls, 2);
 
     const get = await handleRequest(new Request(url), env, {});
     assert.equal(get.status, 200);
     const body = await get.json();
-    assert.equal(body.data.total_volume_tao, 2);
+    assert.equal(body.data.total_volume_tao, 0);
     assert.equal(
       captured.length,
-      3,
+      0,
       "GET should reuse the HEAD-populated body",
     );
   } finally {
@@ -904,7 +825,9 @@ const TRANSFERS_TOTALS = {
   unique_receivers: 6,
 };
 
-test("GET /api/v1/chain/transfers exports top senders + receivers as CSV with ?format=csv", async () => {
+// #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
+// export is always header-only now (account_events is retired).
+test("GET /api/v1/chain/transfers CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
   const res = await handleRequest(
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfers?window=7d&format=csv",
@@ -923,10 +846,8 @@ test("GET /api/v1/chain/transfers exports top senders + receivers as CSV with ?f
     /attachment; filename="chain-transfers\.csv"/,
   );
   const lines = (await res.text()).trim().split("\r\n");
+  assert.equal(lines.length, 1);
   assert.equal(lines[0], TRANSFERS_CSV_HEADER);
-  assert.equal(lines.length, 3); // header + 1 sender row + 1 receiver row
-  assert.equal(lines[1], "sender,5Sa,80,5");
-  assert.equal(lines[2], "receiver,5Rx,60,4");
 });
 
 test("GET /api/v1/chain/transfers honors Accept: text/csv the same as ?format=csv", async () => {
@@ -1010,6 +931,45 @@ test("GET /api/v1/chain/transfers: flag=postgres serves the DATA_API response, D
   assert.equal(d1Called, false);
 });
 
+// D1 is permanently skipped (#4909/#6013), so the only path that can ever
+// populate top_senders/top_receivers with real rows is a Postgres-tier hit --
+// this exercises the CSV row-mapping for both arrays.
+test("GET /api/v1/chain/transfers: CSV export maps Postgres-tier senders/receivers", async () => {
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          window: "7d",
+          observed_at: "2026-01-01T00:00:00.000Z",
+          total_volume_tao: 140,
+          transfer_count: 9,
+          unique_senders: 1,
+          unique_receivers: 1,
+          top_sender_share: 0.5714,
+          top_senders: [TRANSFERS_SENDER_ROW],
+          top_receivers: [TRANSFERS_RECEIVER_ROW],
+        }),
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/transfers?window=7d&format=csv",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/csv/);
+  const lines = (await res.text()).trim().split("\r\n");
+  assert.equal(lines[0], TRANSFERS_CSV_HEADER);
+  assert.equal(lines.length, 3);
+  assert.equal(lines[1], "sender,5Sa,80,5");
+  assert.equal(lines[2], "receiver,5Rx,60,4");
+});
+
 test("GET /api/v1/chain/transfers: flag=postgres falls back to D1 when DATA_API fails", async () => {
   const env = {
     ...createLocalArtifactEnv(),
@@ -1037,50 +997,17 @@ test("GET /api/v1/chain/transfers: flag=postgres falls back to D1 when DATA_API 
   assert.equal(body.data.total_volume_tao, 0);
 });
 
-test("GET /api/v1/chain/transfer-pairs ranks directed transfer corridors", async () => {
-  const captured = [];
+// #4909/#6013: account_events' D1 write path is retired and the table is
+// dropped in production, so handleChainTransferPairs no longer queries D1 at
+// all -- even a "warm" D1 mock (real rows) must not change the response.
+test("GET /api/v1/chain/transfer-pairs never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+  let d1Called = false;
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            return {
-              all: () => {
-                if (/WITH pair_totals/.test(sql)) {
-                  return Promise.resolve({
-                    results: [
-                      {
-                        transfer_count: 10,
-                        total_volume_tao: 100,
-                        unique_pairs: 4,
-                        top_pair_volume_tao: 80,
-                      },
-                    ],
-                  });
-                }
-                if (/ORDER BY/.test(sql)) {
-                  return Promise.resolve({
-                    results: [
-                      {
-                        from: "5Sa",
-                        to: "5Rx",
-                        volume_tao: 80,
-                        transfer_count: 5,
-                        last_block: "8454388",
-                        last_observed_at: Date.parse(
-                          "2026-07-03T00:00:00.000Z",
-                        ),
-                      },
-                    ],
-                  });
-                }
-                return Promise.resolve({ results: [] });
-              },
-            };
-          },
-        };
+      prepare() {
+        d1Called = true;
+        throw new Error("D1 must not be queried -- account_events is retired");
       },
     },
   };
@@ -1095,19 +1022,12 @@ test("GET /api/v1/chain/transfer-pairs ranks directed transfer corridors", async
   const body = await res.json();
   assert.equal(body.data.window, "7d");
   assert.equal(body.data.sort, "count");
-  assert.equal(body.data.total_volume_tao, 100);
-  assert.equal(body.data.unique_pairs, 4);
-  assert.equal(body.data.pair_count, 1);
-  assert.equal(body.data.top_pair_share, 0.8);
-  assert.equal(body.data.pairs[0].from, "5Sa");
-  assert.equal(body.data.pairs[0].to, "5Rx");
-  assert.equal(body.data.pairs[0].last_block, 8454388);
+  assert.equal(body.data.total_volume_tao, 0);
+  assert.equal(body.data.unique_pairs, 0);
+  assert.equal(body.data.pair_count, 0);
+  assert.deepEqual(body.data.pairs, []);
   assert.equal(body.meta.source, "live-cron-prober");
-  const pairs = captured.find((c) => /ORDER BY/.test(c.sql));
-  assert.match(pairs.sql, /hotkey <> coldkey/);
-  assert.match(pairs.sql, /amount_tao IS NOT NULL AND amount_tao >= 0/);
-  assert.match(pairs.sql, /ORDER BY transfer_count DESC, volume_tao DESC/);
-  assert.equal(pairs.params.at(-1), 5);
+  assert.equal(d1Called, false);
 });
 
 function transferPairsEnv({ pairs = [], totals } = {}) {
@@ -1158,7 +1078,9 @@ const PAIR_TOTALS = {
   top_pair_volume_tao: 80,
 };
 
-test("GET /api/v1/chain/transfer-pairs exports the ranked pairs as CSV with ?format=csv", async () => {
+// #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
+// export is always header-only now (account_events is retired).
+test("GET /api/v1/chain/transfer-pairs CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
   const res = await handleRequest(
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d&format=csv",
@@ -1173,9 +1095,8 @@ test("GET /api/v1/chain/transfer-pairs exports the ranked pairs as CSV with ?for
     /attachment; filename="chain-transfer-pairs\.csv"/,
   );
   const lines = (await res.text()).trim().split("\r\n");
+  assert.equal(lines.length, 1);
   assert.equal(lines[0], PAIRS_CSV_HEADER);
-  assert.equal(lines.length, 2); // header + 1 pair row
-  assert.equal(lines[1], "5Sa,5Rx,80,5,8454388,2026-07-03T00:00:00.000Z");
 });
 
 test("GET /api/v1/chain/transfer-pairs honors Accept: text/csv the same as ?format=csv", async () => {

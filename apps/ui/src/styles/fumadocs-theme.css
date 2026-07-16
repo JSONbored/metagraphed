@@ -1,0 +1,45 @@
+/*
+ * Reskins fumadocs-ui onto the Bone & Ink design system, rather than one of
+ * its 11 built-in presets (neutral/black/vitepress/...). Fumadocs ships a
+ * `shadcn.css` preset specifically for this: it points its own --color-fd-*
+ * variables at *standard* shadcn variable names (--background, --card,
+ * --primary, --border, --accent, --ring, --destructive, ...) instead of
+ * hardcoded colors. packages/ui-kit/src/styles.css already defines every one
+ * of those names (it's a shadcn-derived token set itself) -- so importing
+ * this preset picks up our real Bone & Ink palette automatically, no manual
+ * color mapping or OKLCH->HSL conversion needed (var() indirection doesn't
+ * care what color function the referenced token uses).
+ */
+@import "fumadocs-ui/css/preset.css";
+@import "fumadocs-ui/css/shadcn.css";
+/* Same --color-fd-* variable set as the two imports above -- the OpenAPI
+   reference pages (content/docs/api-reference/**) inherit the Bone & Ink
+   mapping already established here with no separate token work. */
+@import "fumadocs-openapi/css/preset.css";
+
+/*
+ * shadcn.css's own `#nd-sidebar` block references --sidebar-* variables our
+ * token set doesn't define (we have no existing sidebar concept). Alias them
+ * to real tokens rather than leaving them unset (which would fall through to
+ * Fumadocs' own hardcoded defaults, defeating the point of this file).
+ */
+:root,
+.dark {
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-border: var(--border);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-ring: var(--ring);
+  --sidebar-primary-foreground: var(--primary-foreground);
+}
+
+/* Map Callout semantics onto our existing health tokens where a clear
+   1:1 correspondence exists; --color-fd-error is already handled by
+   shadcn.css itself (-> --destructive). Leave info/idea at Fumadocs'
+   own defaults -- we don't have an existing "informational" semantic
+   color to borrow, and inventing one risks looking arbitrary. */
+@theme static {
+  --color-fd-success: var(--health-ok);
+  --color-fd-warning: var(--health-warn);
+}

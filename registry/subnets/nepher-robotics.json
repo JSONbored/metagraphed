@@ -12,15 +12,12 @@
   ],
   "contact": "contact@nepher.ai",
   "curation": {
-    "gap_notes": [
-      "No verified SSE/event stream yet.",
-      "No verified standalone data artifact yet."
-    ],
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T07:12:52.000Z",
+    "reviewed_at": "2026-07-16T03:00:00.000Z",
     "source_count": 8,
-    "verified_at": "2026-06-08T07:12:52.000Z"
+    "verified_at": "2026-07-16T03:00:00.000Z"
   },
   "dashboard_url": "https://tournament.nepher.ai",
   "docs_url": "https://docs.nepher.ai/",
@@ -38,7 +35,7 @@
   ],
   "name": "Nepher Robotics",
   "netuid": 49,
-  "notes": "Reviewed overlay for SN49 using the official Nepher Robotics README, website, docs, tournament app, and OpenAPI-backed tournament API.",
+  "notes": "Reviewed overlay for SN49 using the official Nepher Robotics README, website, docs, tournament app, and OpenAPI-backed tournament API. This pass fixed 7 surfaces having no probe config at all -- the registry-wide gap tracked in #5932 (the tournament-api surface itself remains intentionally unprobed pending method-level auth review). Diffed the full 138-path tournament-api OpenAPI schema for undiscovered public GET endpoints and added two: a /ready readiness probe distinct from the existing /health liveness surface, and the alpha/TAO pricing endpoint (subnet_uid=49 is this subnet's own permanent netuid, a stable canonical value, not an ephemeral parameter). On-chain identity (native_name, description, website_url, source_repo) re-confirmed unchanged. All 20 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-49",
   "social": {
@@ -252,6 +249,12 @@
       "kind": "subnet-api",
       "name": "Nepher tournament API health",
       "notes": "Public no-auth GET /health returning tournament-backend service health (status, timestamp, service, version). Documented in the subnet's OpenAPI spec on the same host as the existing tournament subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -271,6 +274,12 @@
       "kind": "subnet-api",
       "name": "Nepher tournament current block API",
       "notes": "Public no-auth GET returning the current finney chain block height used for tournament scheduling (current_block, network). Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/current-block); same host as existing tournament surfaces. Distinct from the active-tournaments list and health endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -290,6 +299,12 @@
       "kind": "subnet-api",
       "name": "Nepher tournaments list API",
       "notes": "Public no-auth GET returning the full tournament catalog with task names, versions, stages, contest windows, and repository links. Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/list); same host as existing tournament surfaces. Distinct from the active-tournaments list and current-block endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -309,6 +324,12 @@
       "kind": "subnet-api",
       "name": "Nepher active tournament ID API",
       "notes": "Public no-auth GET returning the UUID of the currently active tournament. Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/active/id); same host as existing tournament surfaces. Distinct from the tournaments list, active-tournaments list, and current-block endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -328,6 +349,12 @@
       "kind": "subnet-api",
       "name": "Nepher active tournament IDs API",
       "notes": "Public no-auth GET returning the UUIDs of all currently active tournaments (tournament_ids array). Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/active/ids); same host as existing tournament surfaces. Distinct from the singular active/id endpoint and the active-tournaments list.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -347,6 +374,12 @@
       "kind": "subnet-api",
       "name": "Nepher active tournament API",
       "notes": "Public no-auth GET returning the single newest active tournament with task name, version, stage, contest windows, and repository links. Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/active); same host as existing tournament surfaces. Distinct from the active/id, active/ids, and active/list endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -366,6 +399,12 @@
       "kind": "subnet-api",
       "name": "Nepher tournament evaluations API",
       "notes": "Public no-auth GET /api/v1/evaluations — per-agent evaluation records (score and tournament) from the SN49 tournament API. Documented in the subnet's openapi.json and served on the same tournament-api.nepher.ai host as the subnet's registered API surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -382,6 +421,12 @@
       "kind": "data-artifact",
       "name": "Nepher common configuration",
       "notes": "Public no-auth machine-readable common_config.yaml from the official SN49 Nepher Robotics repository (nepher-ai/nepher-subnet), pinned to an immutable commit. The project-maintained shared configuration for all Nepher validators and miners — it declares the subnet (network finney, subnet_uid 49) and the tournament API endpoint and related network settings. Static YAML artifact self-identifying as SN49.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nepher-robotics",
       "public_safe": true,
       "review": {
@@ -393,6 +438,42 @@
         "https://github.com/nepher-ai/nepher-subnet/blob/29c508fddd5ab3bf19797e197cbd818e9f56c4c7/config/common_config.yaml"
       ],
       "url": "https://raw.githubusercontent.com/nepher-ai/nepher-subnet/29c508fddd5ab3bf19797e197cbd818e9f56c4c7/config/common_config.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-tournament-readiness",
+      "kind": "subnet-api",
+      "name": "Nepher tournament API readiness",
+      "notes": "Public no-auth GET /ready on the tournament backend, returning readiness including a database connectivity check -- distinct from the liveness-only /health surface already tracked. Discovered via a full diff of the tournament API's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-tournament-pricing",
+      "kind": "subnet-api",
+      "name": "Nepher tournament alpha/TAO pricing API",
+      "notes": "Public no-auth GET /api/v1/tournaments/pricing?subnet_uid=49 on the tournament backend, returning live alpha_to_tao and tao_to_usd conversion rates for SN49. The subnet_uid query parameter is this subnet's own permanent netuid (49), not an ephemeral/resolving value, so it is a stable canonical URL. Discovered via a full diff of the tournament API's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/pricing?subnet_uid=49"
     }
   ],
   "website_url": "https://nepher.ai"

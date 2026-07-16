@@ -12,23 +12,22 @@
     "gap_notes": [
       "SignalPlus website is live and is tracked as the team/project website.",
       "The subnet mining app currently returns a 403/auth-challenge response to simple probes and is expected to appear degraded rather than healthy.",
-      "Previously discovered GitHub source repository currently returns 404.",
-      "No verified live source repository yet.",
+      "The community source repository (oxylok/53-EfficientFrontier) previously 404d; re-verified live (200) as of this pass.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "On-chain SubnetIdentitiesV3 for netuid 53 now reports subnetName \"engy\" / description \"Verified inference for frontier open models.\" -- a completely different identity than the tracked EfficientFrontier/SignalPlus branding, corroborated by two independent indexers (metagraph.sh, TaoMarketCap). The live website and source repository both still describe EfficientFrontier/SignalPlus with no mention of \"engy\", and no GitHub presence for \"engy\" was found. The on-chain snapshot also shows subnet_emission_enabled=false, consistent with a dormant/deregistered subnet possibly being repurposed by a new operator whose infrastructure is not yet discoverable. Deliberately NOT renamed given zero infrastructure corroboration for the new on-chain identity; flagging for close attention on the next pass."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T14:15:00.000Z",
+    "reviewed_at": "2026-07-16T04:20:00.000Z",
     "source_count": 6,
-    "verified_at": "2026-06-08T14:15:00.000Z"
+    "verified_at": "2026-07-16T04:20:00.000Z"
   },
   "dashboard_url": "https://t.signalplus.com/mining",
   "name": "EfficientFrontier",
   "netuid": 53,
-  "notes": "Reviewed overlay for SN53 EfficientFrontier by SignalPlus. The SignalPlus company website is live; the mining app surface returns an auth/challenge-style response to simple probes. The previously discovered EfficientFrontier source repository currently returns 404 and is not promoted.",
+  "notes": "Reviewed overlay for SN53 EfficientFrontier by SignalPlus. The SignalPlus company website is live; the mining app surface returns an auth/challenge-style response to simple probes. This pass re-verified the community source repository is now live (previously 404) and fixed 1 surface having no probe config at all -- the registry-wide gap tracked in #5932. Also found and documented a significant discrepancy: on-chain SubnetIdentitiesV3 now reports an entirely different identity (\"engy\") than the tracked EfficientFrontier/SignalPlus branding, with no corroborating infrastructure found for the new name -- deliberately not renamed (see gap_notes).",
   "schema_version": 1,
   "slug": "efficientfrontier",
   "source_repo": "https://github.com/oxylok/53-EfficientFrontier",
@@ -126,7 +125,13 @@
       "id": "sn-53-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "EfficientFrontier TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/53 on api.taomarketcap.com returning machine-readable JSON for SN53 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. SignalPlus EfficientFrontier documents validator scoring in its community source repository and mining app, but exposes no verified first-party no-auth public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/53/ on api.taomarketcap.com returning machine-readable JSON for SN53 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. SignalPlus EfficientFrontier documents validator scoring in its community source repository and mining app, but exposes no verified first-party no-auth public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -137,7 +142,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/53"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/53/"
     },
     {
       "auth_required": false,

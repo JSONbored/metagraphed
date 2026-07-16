@@ -14,13 +14,13 @@
   "curation": {
     "gap_notes": [
       "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "Diffed both OpenAPI schemas (verathos.ai/openapi.json \"Verathos\" 24 paths, api.verathos.ai/openapi.json \"Verathos Validator Proxy\" 35 paths) for undiscovered public GET endpoints -- added 11 new no-param surfaces (one candidate, api.verathos.ai/v1/models, was already tracked under a different surface id). Excluded clearly account-scoped routes (auth/me, deposits/*, api-keys, balance, usage, user/*, admin/*) and routes that consistently return 503 (tee/info, deposit-info, deposits/base -- capacity-dependent, not stably available) or ambiguous empty-array 200s (conversations/, likely session-scoped despite no declared security)."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T07:45:00.000Z",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
     "source_count": 8,
-    "verified_at": "2026-06-08T07:45:00.000Z"
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
   "dashboard_url": "https://verathos.ai/chat",
   "docs_url": "https://verathos.ai/docs",
@@ -241,6 +241,12 @@
       "kind": "data-artifact",
       "name": "Verathos on-chain model-registry snapshot",
       "notes": "Public no-auth JSON snapshot of SN96's Bittensor chain identity and on-chain model/miner registry contract addresses; path is declared in the official OpenAPI spec.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "verathos",
       "public_safe": true,
       "review": {
@@ -260,6 +266,12 @@
       "kind": "data-artifact",
       "name": "Verathos model presets catalog",
       "notes": "Public no-auth JSON catalog of SN96's supported model presets and quantization options; path is declared in the official OpenAPI spec.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "verathos",
       "public_safe": true,
       "review": {
@@ -279,6 +291,12 @@
       "kind": "subnet-api",
       "name": "Verathos circulating-supply API",
       "notes": "Public no-auth GET returning the subnet's circulating supply. Documented in the subnet's own OpenAPI (api.verathos.ai/openapi.json); same host as the existing subnet-api (/v1/models) surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "verathos",
       "public_safe": true,
       "review": {
@@ -298,6 +316,12 @@
       "kind": "subnet-api",
       "name": "Verathos API health",
       "notes": "Public no-auth GET /health returning Verathos API status. Live on api.verathos.ai, the same host as the existing models subnet-api surface; documented in the subnet's OpenAPI spec.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "verathos",
       "public_safe": true,
       "review": {
@@ -309,6 +333,316 @@
         "https://verathos.ai/docs"
       ],
       "url": "https://api.verathos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-validator-proxy-openapi",
+      "kind": "openapi",
+      "name": "Verathos validator proxy OpenAPI schema",
+      "notes": "Public no-auth machine-readable OpenAPI 3.x schema (title \"Verathos Validator Proxy\") for api.verathos.ai -- a distinct host/API from the already-tracked verathos.ai/openapi.json protocol schema, covering validator proxy network stats, supply, and TEE-inference routes.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.verathos.ai/openapi.json",
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-network-stats",
+      "kind": "subnet-api",
+      "name": "Verathos network stats",
+      "notes": "Public no-auth GET returning live per-miner network stats (address, ss58_address, uid, endpoint, model_id). Documented in the validator proxy's own OpenAPI schema (path /v1/network/stats).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/v1/network/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-supply-info",
+      "kind": "subnet-api",
+      "name": "Verathos supply info",
+      "notes": "Public no-auth GET returning full token supply info (circulating, total, max, minted_total, alpha_in_pool, alpha_staked, price_tao, volume_tao) in one call -- a superset of the already-tracked /v1/supply/circulating. Documented in the validator proxy's own OpenAPI schema (path /v1/supply/info).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/v1/supply/info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-protocol-health",
+      "kind": "subnet-api",
+      "name": "Verathos protocol API health",
+      "notes": "Public no-auth GET /api/health on verathos.ai returning protocol-side liveness (observed: {\"status\":\"ok\",\"mode\":\"proxy\"}). Documented in the protocol OpenAPI schema; distinct from the already-tracked api.verathos.ai/health on the validator-proxy host.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-models-status",
+      "kind": "subnet-api",
+      "name": "Verathos active model status",
+      "notes": "Public no-auth GET /api/models/status on verathos.ai returning the currently-loaded chat model's runtime status (loaded, preset_id, num_layers, quant_label, max_model_len). Documented in the protocol OpenAPI schema on the same host as the existing model-registry surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/models/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-docs-list",
+      "kind": "docs",
+      "name": "Verathos docs index",
+      "notes": "Public no-auth GET /api/docs/list on verathos.ai returning the machine-readable documentation index (slug, title, group per page). Documented in the protocol OpenAPI schema; the machine-readable counterpart to the already-tracked HTML /docs surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/docs/list"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-dashboard-api",
+      "kind": "data-artifact",
+      "name": "Verathos protocol dashboard snapshot",
+      "notes": "Public no-auth GET /api/dashboard on verathos.ai returning a live network snapshot (proxy_connected, epoch_number, per-miner address/ss58/uid/endpoint/model_id list). Documented in the protocol OpenAPI schema. Aggregate/public data only, no account-specific fields.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/dashboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-dashboard-timeseries",
+      "kind": "data-artifact",
+      "name": "Verathos protocol dashboard timeseries",
+      "notes": "Public no-auth GET /api/dashboard/timeseries on verathos.ai returning historical aggregate network metrics. Documented in the protocol OpenAPI schema on the same host as the existing dashboard-snapshot surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/dashboard/timeseries"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-capacity-audit-health",
+      "kind": "subnet-api",
+      "name": "Verathos capacity-audit health",
+      "notes": "Public no-auth GET /capacity/audit/v1/health on api.verathos.ai returning capacity-audit backend liveness (observed: {\"status\":\"ok\",\"service\":\"verathos-validator-proxy\",\"capacity_audit\":true,...}). Documented in the validator-proxy OpenAPI schema on the same host as the existing /health surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/capacity/audit/v1/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-subnet-config",
+      "kind": "data-artifact",
+      "name": "Verathos subnet scoring config",
+      "notes": "Public no-auth GET /v1/subnet-config on api.verathos.ai returning the live scoring configuration (tee_bonus_bps, ema_alpha_bps, throughput/proof-sample weighting) validators apply, plus effective_epoch and refresh interval. Documented in the validator-proxy OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/v1/subnet-config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-supply-total",
+      "kind": "data-artifact",
+      "name": "Verathos total supply",
+      "notes": "Public no-auth GET /v1/supply/total on api.verathos.ai returning the token's total supply figure. Documented in the validator-proxy OpenAPI schema on the same host as the existing circulating-supply and supply-info surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/v1/supply/total"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-supply-max",
+      "kind": "data-artifact",
+      "name": "Verathos max supply",
+      "notes": "Public no-auth GET /v1/supply/max on api.verathos.ai returning the token's max-supply figure. Documented in the validator-proxy OpenAPI schema on the same host as the existing supply surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/v1/supply/max"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-usage-timeseries",
+      "kind": "data-artifact",
+      "name": "Verathos network usage timeseries",
+      "notes": "Public no-auth GET /v1/network/usage-timeseries on api.verathos.ai returning aggregate request/token-volume buckets over time (range, bucket_seconds, per-bucket requests/tokens). Documented in the validator-proxy OpenAPI schema on the same host as the existing network-stats surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/v1/network/usage-timeseries"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-price-quote",
+      "kind": "subnet-api",
+      "name": "Verathos price quote",
+      "notes": "Public no-auth GET /v1/price on api.verathos.ai returning a default cost quote (model, input/output tokens, cost_usd, cost_tao). Documented in the validator-proxy OpenAPI schema on the same host as the existing models/supply surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.verathos.ai/openapi.json"],
+      "url": "https://api.verathos.ai/v1/price"
     }
   ],
   "website_url": "https://verathos.ai/"

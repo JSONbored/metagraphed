@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 63,
-  "name": "Enigma",
-  "slug": "sn-63",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -11,60 +6,66 @@
     "official-website",
     "quantum"
   ],
-  "source_repo": "https://github.com/qbittensor-labs/enigma",
-  "dashboard_url": "https://taomarketcap.com/subnets/63",
-  "website_url": "https://www.qbittensorlabs.com/",
-  "notes": "Reviewed overlay for SN63 using the official qBittensor Labs website and Enigma source repository.",
+  "contact": "qbittensorlabs@gmail.com",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T05:55:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-16T05:55:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/63",
+  "name": "Enigma",
+  "netuid": 63,
+  "notes": "Reviewed overlay for SN63 using the official qBittensor Labs website and Enigma source repository. This re-review pass fixed 2 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Re-checked for an OpenAPI schema (none found, matching gap_notes) and confirmed no dedicated Enigma subdomain exists on qbittensorlabs.com. On-chain identity re-confirmed unchanged.",
+  "schema_version": 1,
+  "slug": "sn-63",
+  "social": {
+    "x": "https://x.com/qbittensorlabs"
+  },
+  "source_repo": "https://github.com/qbittensor-labs/enigma",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-63-enigma-website",
-      "name": "qBittensor Labs website",
-      "kind": "website",
-      "url": "https://www.qbittensorlabs.com/",
-      "provider": "qbittensor-labs",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/qbittensor-labs/enigma"],
+      "id": "sn-63-enigma-website",
+      "kind": "website",
+      "name": "qBittensor Labs website",
+      "notes": "Official qBittensor Labs website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official qBittensor Labs website."
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/qbittensor-labs/enigma"],
+      "url": "https://www.qbittensorlabs.com/"
     },
     {
-      "id": "sn-63-enigma-source",
-      "name": "Enigma source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/qbittensor-labs/enigma",
-      "provider": "qbittensor-labs",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/qbittensor-labs/enigma"],
+      "id": "sn-63-enigma-source",
+      "kind": "source-repo",
+      "name": "Enigma source repository",
+      "notes": "Official Enigma source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Enigma source repository."
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/qbittensor-labs/enigma"],
+      "url": "https://github.com/qbittensor-labs/enigma"
     },
     {
       "auth_required": false,
@@ -73,6 +74,12 @@
       "kind": "subnet-api",
       "name": "qBittensor Labs API health",
       "notes": "Public no-auth GET /api/health on www.qbittensorlabs.com returning application liveness JSON. Served on the official qBittensor Labs website host linked from the Enigma source repository README.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "qbittensor-labs",
       "public_safe": true,
       "review": {
@@ -92,6 +99,12 @@
       "kind": "data-artifact",
       "name": "Enigma minimum compute requirements",
       "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official qbittensor-labs/enigma repository as min_compute.yml. Documents SN63 operator CPU/GPU/memory/storage/network floors.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "qbittensor-labs",
       "public_safe": true,
       "review": {
@@ -113,8 +126,8 @@
       "notes": "Public no-auth machine-readable constants module (qbittensor/constants.py) published in the official qbittensor-labs/enigma repository, defining the SN63 Enigma validator/miner operational parameters: cross-check timeout and max batch size, solution-container manager scheduling, max concurrent solutions, and related tuning values the subnet software runs against. Pinned to an immutable commit. Verified 200, SS58-clean (no keys or secrets). Distinct from the min_compute hardware spec already registered.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "any",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "qbittensor-labs",
@@ -130,8 +143,5 @@
       "url": "https://raw.githubusercontent.com/qbittensor-labs/enigma/c4f9082ea09d5bb3e834e856501a92ee47a65632/qbittensor/constants.py"
     }
   ],
-  "social": {
-    "x": "https://x.com/qbittensorlabs"
-  },
-  "contact": "qbittensorlabs@gmail.com"
+  "website_url": "https://www.qbittensorlabs.com/"
 }

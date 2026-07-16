@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 122,
-  "name": "Bitrecs",
-  "slug": "sn-122",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -12,81 +7,87 @@
     "official-website",
     "recommendations"
   ],
-  "website_url": "https://www.bitrecs.ai/",
-  "docs_url": "https://bitrecs.gitbook.io/bitrecs-docs/",
-  "source_repo": "https://github.com/bitrecs/bitrecs-subnet",
-  "dashboard_url": "https://taomarketcap.com/subnets/122",
-  "notes": "Reviewed overlay for SN122 using the official Bitrecs website, docs, and source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:35:00.000Z",
-    "verified_at": "2026-06-08T10:35:00.000Z",
-    "source_count": 5,
     "gap_notes": [
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified unauthenticated public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified unauthenticated public subnet API endpoint yet -- the official llms.txt states a REST API and MCP server for headless/agentic use are coming soon.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/122",
+  "docs_url": "https://bitrecs.gitbook.io/bitrecs-docs/",
+  "name": "Bitrecs",
+  "netuid": 122,
+  "notes": "Reviewed overlay for SN122 using the official Bitrecs website, docs, and source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet. Root->128 accuracy audit re-review pass (#5903): live-verified all 5 surfaces (all HTTP 200), fixed 2 missing probe blocks (amazon-fashion-sample, llms-txt), and confirmed via the official llms.txt that a REST API/MCP server are still coming soon, not yet live.",
+  "schema_version": 1,
+  "slug": "sn-122",
+  "social": {
+    "x": "https://x.com/cookingtao_"
+  },
+  "source_repo": "https://github.com/bitrecs/bitrecs-subnet",
+  "status": "active",
   "surfaces": [
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-122-bitrecs-website",
-      "name": "Bitrecs website",
       "kind": "website",
-      "url": "https://www.bitrecs.ai/",
-      "provider": "bitrecs",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://www.bitrecs.ai/"],
+      "name": "Bitrecs website",
+      "notes": "Official Bitrecs website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Bitrecs website."
+      "provider": "bitrecs",
+      "public_safe": true,
+      "source_urls": ["https://www.bitrecs.ai/"],
+      "url": "https://www.bitrecs.ai/"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-122-bitrecs-docs",
-      "name": "Bitrecs documentation",
       "kind": "docs",
-      "url": "https://bitrecs.gitbook.io/bitrecs-docs/",
-      "provider": "bitrecs",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://www.bitrecs.ai/"],
+      "name": "Bitrecs documentation",
+      "notes": "Official Bitrecs documentation linked from the official website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Bitrecs documentation linked from the official website."
+      "provider": "bitrecs",
+      "public_safe": true,
+      "source_urls": ["https://www.bitrecs.ai/"],
+      "url": "https://bitrecs.gitbook.io/bitrecs-docs/"
     },
     {
-      "id": "sn-122-bitrecs-source",
-      "name": "Bitrecs source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/bitrecs/bitrecs-subnet",
-      "provider": "bitrecs",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-122-bitrecs-source",
+      "kind": "source-repo",
+      "name": "Bitrecs source repository",
+      "notes": "Official Bitrecs source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitrecs",
       "public_safe": true,
       "source_urls": [
         "https://api.github.com/repos/bitrecs/bitrecs-subnet",
         "https://github.com/bitrecs/bitrecs-subnet"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Bitrecs source repository."
+      "url": "https://github.com/bitrecs/bitrecs-subnet"
     },
     {
       "auth_required": false,
@@ -95,6 +96,12 @@
       "kind": "data-artifact",
       "name": "Bitrecs Amazon fashion sample catalog",
       "notes": "Public no-auth JSON sample ecommerce product-review catalog (ASIN, rating, title, price metadata) published in the official SN122 Bitrecs source repository at tests/data/amazon/fashion/. Referenced by the repo README (sample data setup) and exercised by tests/test_json.py for local recommendation-engine validation.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitrecs",
       "public_safe": true,
       "review": {
@@ -108,26 +115,30 @@
       "url": "https://raw.githubusercontent.com/bitrecs/bitrecs-subnet/main/tests/data/amazon/fashion/amazon_fashion_sample_1000.json"
     },
     {
-      "id": "sn-122-bitrecs-llms-txt",
-      "name": "Bitrecs llms.txt docs index",
-      "kind": "data-artifact",
-      "url": "https://www.bitrecs.ai/llms.txt",
-      "provider": "bitrecs",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-122-bitrecs-llms-txt",
+      "kind": "data-artifact",
+      "name": "Bitrecs llms.txt docs index",
+      "notes": "Machine-readable llms.txt docs index published on the official Bitrecs website; self-identifies as Bittensor subnet 122 and links the homepage, Shopify app, and Taostats subnet page. States a REST API and MCP server for headless/agentic use are \"coming soon\" -- confirms no live public subnet-api surface exists yet, consistent with the tracked gap_notes.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitrecs",
       "public_safe": true,
-      "source_urls": [
-        "https://www.bitrecs.ai/llms.txt",
-        "https://www.bitrecs.ai/"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "shin-core"
       },
-      "notes": "Machine-readable llms.txt docs index published on the official Bitrecs website; self-identifies as Bittensor subnet 122 and links the homepage, Shopify app, and Taostats subnet page."
+      "source_urls": [
+        "https://www.bitrecs.ai/llms.txt",
+        "https://www.bitrecs.ai/"
+      ],
+      "url": "https://www.bitrecs.ai/llms.txt"
     }
   ],
-  "social": {
-    "x": "https://x.com/cookingtao_"
-  }
+  "website_url": "https://www.bitrecs.ai/"
 }

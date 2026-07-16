@@ -9,6 +9,8 @@ from unittest import mock
 import metagraphed.client as client
 
 from metagraphed import (
+    AgentCatalogSubnet,
+    Endpoint,
     MetagraphedClient,
     MetagraphedError,
     Provider,
@@ -115,6 +117,31 @@ class ClientTest(unittest.TestCase):
         self.assertIn("kind=openapi", captured["url"])
         self.assertIn("flags=true", captured["url"])
         self.assertIn("flags=false", captured["url"])
+
+    def test_sequence_query_drops_none_elements(self):
+        # None inside a list must be dropped (not stringified as "None" or "").
+        # Regression: urlencode(doseq=True) otherwise emitted kind=None.
+        captured = {}
+
+        def fake_urlopen(request, timeout=None):
+            captured["url"] = request.full_url
+            return _FakeResponse({"ok": True})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            metagraphed_fetch(
+                "/api/v1/surfaces",
+                query={"kind": ["docs", None, "openapi"]},
+            )
+
+        self.assertIn("kind=docs", captured["url"])
+        self.assertIn("kind=openapi", captured["url"])
+        self.assertNotIn("None", captured["url"])
+        self.assertNotIn("kind=&", captured["url"])
+        self.assertFalse(captured["url"].endswith("kind="))
+        self.assertEqual(
+            client._query_pairs({"kind": ["docs", None, "openapi"]}),
+            [("kind", ["docs", "openapi"])],
+        )
 
     def test_base_url_override(self):
         captured = {}
@@ -385,6 +412,23 @@ class ClientTest(unittest.TestCase):
                 metagraphed_rpc("finney", "nope")
         self.assertIn("Method not found", str(ctx.exception))
 
+    def test_rpc_malformed_non_dict_body_raises(self):
+        def fake_urlopen(request, timeout=None):
+            return _FakeResponse(["not", "an", "object"])
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            with self.assertRaises(MetagraphedError) as ctx:
+                metagraphed_rpc("finney", "system_health")
+        self.assertIn("malformed", str(ctx.exception).lower())
+
+    def test_rpc_null_result_returns_none(self):
+        def fake_urlopen(request, timeout=None):
+            return _FakeResponse({"jsonrpc": "2.0", "id": 1, "result": None})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            result = metagraphed_rpc("finney", "system_health")
+        self.assertIsNone(result)
+
     def test_rpc_retries_transient_error_then_succeeds(self):
         calls = {"n": 0}
 
@@ -506,6 +550,35 @@ class FetchAllAndModelsTest(unittest.TestCase):
         self.assertEqual(subnets[0].categories, ["inference"])
         self.assertEqual(subnets[0].raw["name"], "Allways")
 
+    def test_subnets_completeness_score_absent_from_index(self):
+        # SubnetIndexEntry carries integration_readiness for list/ranking, not
+        # completeness_score (that score lives on profiles / agent-catalog).
+        pages = [
+            {
+                "data": {
+                    "subnets": [
+                        {
+                            "netuid": 7,
+                            "name": "Allways",
+                            "integration_readiness": 72,
+                        }
+                    ]
+                },
+                "meta": {
+                    "pagination": {
+                        "collection": "subnets",
+                        "next_cursor": None,
+                    }
+                },
+            }
+        ]
+        with self._patch_pages(pages):
+            subnets = MetagraphedClient().subnets()
+        self.assertEqual(len(subnets), 1)
+        self.assertEqual(subnets[0].integration_readiness, 72)
+        self.assertIsNone(subnets[0].completeness_score)
+        self.assertNotIn("completeness_score", subnets[0].raw)
+
     def test_model_from_dict_ignores_unknown_and_keeps_raw(self):
         surface = Surface.from_dict(
             {"id": "x", "kind": "openapi", "unknown_field": 1}
@@ -540,6 +613,238 @@ class FetchAllAndModelsTest(unittest.TestCase):
         # up as a slug (Subnet has no such alias).
         subnet = Subnet.from_dict({"id": "x", "slug": "real-slug"})
         self.assertEqual(subnet.slug, "real-slug")
+
+    def test_client_paginate_follows_next_cursor_with_nested_collection(self):
+        # Mirrors README's client.paginate usage: list endpoints nest rows under
+        # data[meta.pagination.collection] and follow next_cursor across pages.
+        pages = [
+            {
+                "ok": True,
+                "data": {
+                    "subnets": [
+                        {
+                            "netuid": 1,
+                            "name": "Apex",
+                            "integration_readiness": 40,
+                        }
+                    ]
+                },
+                "meta": {
+                    "pagination": {
+                        "collection": "subnets",
+                        "next_cursor": "c2",
+                    }
+                },
+            },
+            {
+                "ok": True,
+                "data": {
+                    "subnets": [
+                        {
+                            "netuid": 7,
+                            "name": "Allways",
+                            "integration_readiness": 90,
+                        }
+                    ]
+                },
+                "meta": {
+                    "pagination": {
+                        "collection": "subnets",
+                        "next_cursor": None,
+                    }
+                },
+            },
+        ]
+        captured_urls = []
+        responses = iter(_FakeResponse(page) for page in pages)
+
+        def fake_urlopen(request, timeout=None):
+            captured_urls.append(request.full_url)
+            return next(responses)
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            seen = []
+            for page in MetagraphedClient().paginate(
+                "/api/v1/subnets", query={"limit": 1}
+            ):
+                seen.extend(page["data"]["subnets"])
+
+        self.assertEqual(
+            [(row["netuid"], row["name"], row["integration_readiness"]) for row in seen],
+            [(1, "Apex", 40), (7, "Allways", 90)],
+        )
+        self.assertIn("limit=1", captured_urls[0])
+        self.assertIn("cursor=c2", captured_urls[1])
+
+    def test_surfaces_convenience_returns_typed_models(self):
+        # Realistic SurfacesArtifact row shape (schemas/components/04-surfaces.schema.json).
+        pages = [
+            {
+                "data": {
+                    "surfaces": [
+                        {
+                            "id": "sn-7-openapi",
+                            "netuid": 7,
+                            "kind": "openapi",
+                            "name": "Allways OpenAPI",
+                            "url": "https://api.example.com/openapi.json",
+                            "provider": "allways",
+                            "auth_required": False,
+                            "authority": "official",
+                            "public_safe": True,
+                            "schema_url": "https://api.example.com/openapi.json",
+                        }
+                    ]
+                },
+                "meta": {
+                    "pagination": {
+                        "collection": "surfaces",
+                        "next_cursor": None,
+                    }
+                },
+            }
+        ]
+        with self._patch_pages(pages):
+            surfaces = MetagraphedClient().surfaces(kind="openapi")
+        self.assertEqual(len(surfaces), 1)
+        surface = surfaces[0]
+        self.assertIsInstance(surface, Surface)
+        self.assertEqual(surface.id, "sn-7-openapi")
+        self.assertEqual(surface.netuid, 7)
+        self.assertEqual(surface.kind, "openapi")
+        self.assertEqual(surface.name, "Allways OpenAPI")
+        self.assertEqual(surface.url, "https://api.example.com/openapi.json")
+        self.assertEqual(surface.provider, "allways")
+        self.assertIs(surface.auth_required, False)
+        self.assertIs(surface.public_safe, True)
+        self.assertEqual(surface.schema_url, "https://api.example.com/openapi.json")
+        self.assertEqual(surface.raw["authority"], "official")
+
+    def test_endpoints_convenience_returns_typed_models(self):
+        # Realistic EndpointResource shape (schemas/api-components.schema.json):
+        # the backend exposes `url`, not `base_url`.
+        pages = [
+            {
+                "data": {
+                    "endpoints": [
+                        {
+                            "id": "ep-sn-7-subnet-api",
+                            "surface_id": "sn-7-subnet-api",
+                            "surface_key": "hk7subnetapi",
+                            "netuid": 7,
+                            "layer": "subnet",
+                            "kind": "subnet-api",
+                            "url": "https://api.example.com/v1",
+                            "provider": "allways",
+                            "operator": "allways",
+                            "auth_required": False,
+                            "public_safe": True,
+                            "classification": "primary",
+                            "monitoring_policy": "probe",
+                            "monitoring_status": "monitored",
+                            "health_source": "probe-derived",
+                            "health_stale": False,
+                            "last_checked": "2026-07-15T00:00:00.000Z",
+                            "last_ok": "2026-07-15T00:00:00.000Z",
+                            "status": "ok",
+                            "score": 100,
+                        }
+                    ]
+                },
+                "meta": {
+                    "pagination": {
+                        "collection": "endpoints",
+                        "next_cursor": None,
+                    }
+                },
+            }
+        ]
+        with self._patch_pages(pages):
+            endpoints = MetagraphedClient().endpoints()
+        self.assertEqual(len(endpoints), 1)
+        endpoint = endpoints[0]
+        self.assertIsInstance(endpoint, Endpoint)
+        self.assertEqual(endpoint.surface_id, "sn-7-subnet-api")
+        self.assertEqual(endpoint.netuid, 7)
+        self.assertEqual(endpoint.kind, "subnet-api")
+        self.assertEqual(endpoint.url, "https://api.example.com/v1")
+        self.assertEqual(endpoint.provider, "allways")
+        self.assertEqual(endpoint.classification, "primary")
+        self.assertEqual(endpoint.monitoring_status, "monitored")
+        self.assertEqual(endpoint.raw["id"], "ep-sn-7-subnet-api")
+        self.assertEqual(endpoint.raw["url"], "https://api.example.com/v1")
+        self.assertFalse(hasattr(endpoint, "base_url"))
+
+    def test_endpoint_from_dict_populates_url_from_endpoint_resource(self):
+        # EndpointResource has ``url``; ``base_url`` is agent-catalog-only and
+        # must not be a typed Endpoint field (or it stays forever None).
+        endpoint = Endpoint.from_dict(
+            {
+                "surface_id": "sn-22-docs",
+                "netuid": 22,
+                "kind": "docs",
+                "url": "https://docs.example.com",
+                "base_url": "https://should-not-become-a-typed-field.example",
+                "provider": "desearch",
+                "classification": "reference",
+                "monitoring_status": "not_monitored",
+                "unknown_extra": True,
+            }
+        )
+        self.assertEqual(endpoint.url, "https://docs.example.com")
+        self.assertEqual(endpoint.surface_id, "sn-22-docs")
+        self.assertEqual(endpoint.kind, "docs")
+        self.assertFalse(hasattr(endpoint, "base_url"))
+        self.assertEqual(
+            endpoint.raw["base_url"],
+            "https://should-not-become-a-typed-field.example",
+        )
+        self.assertIs(endpoint.raw["unknown_extra"], True)
+
+    def test_agent_catalog_returns_typed_model(self):
+        # Realistic AgentCatalogSubnetArtifact data envelope
+        # (schemas/api-components.schema.json AgentCatalogSubnetArtifact).
+        def fake_urlopen(request, timeout=None):
+            self.assertIn("/api/v1/agent-catalog/7", request.full_url)
+            return _FakeResponse(
+                {
+                    "ok": True,
+                    "schema_version": 1,
+                    "data": {
+                        "netuid": 7,
+                        "slug": "allways",
+                        "name": "AllwaysAI",
+                        "subnet_type": "inference",
+                        "completeness_score": 82.5,
+                        "integration_readiness": 90,
+                        "service_count": 1,
+                        "services": [
+                            {
+                                "surface_id": "sn-7-subnet-api",
+                                "kind": "subnet-api",
+                                "base_url": "https://api.example.com/v1",
+                                "auth_required": False,
+                            }
+                        ],
+                    },
+                }
+            )
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            catalog = MetagraphedClient().agent_catalog(7)
+
+        self.assertIsInstance(catalog, AgentCatalogSubnet)
+        self.assertEqual(catalog.netuid, 7)
+        self.assertEqual(catalog.slug, "allways")
+        self.assertEqual(catalog.name, "AllwaysAI")
+        self.assertEqual(catalog.subnet_type, "inference")
+        self.assertEqual(catalog.completeness_score, 82.5)
+        self.assertEqual(catalog.integration_readiness, 90)
+        self.assertEqual(catalog.service_count, 1)
+        self.assertEqual(len(catalog.services), 1)
+        self.assertEqual(catalog.services[0]["base_url"], "https://api.example.com/v1")
+        self.assertEqual(catalog.services[0]["surface_id"], "sn-7-subnet-api")
+        self.assertEqual(catalog.raw["name"], "AllwaysAI")
 
 
 if __name__ == "__main__":

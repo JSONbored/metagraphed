@@ -1,11 +1,26 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "compute"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "The official platform's host-api.byteleap.ai/podsail/api backend is entirely auth-gated -- every tested path (including a nonexistent one) returns the same 406 \"Token not provided\" response, so no route on that host is promotable."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 3,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "name": "ByteLeap",
   "netuid": 128,
+  "notes": "Reviewed overlay for SN128 ByteLeap, the distributed compute-resource network on Bittensor SN128. Root->128 accuracy audit first review pass (#5903): added website and source-repo surfaces, previously not tracked despite the top-level website_url/source_repo fields already existing. Reverse-engineered the official byteleap.ai frontend bundle to find its backend API host (host-api.byteleap.ai/podsail/api) and confirmed via live-testing that it is entirely auth-gated (every path, including nonsense ones, returns the identical 406 \"Token not provided\" response) -- not promotable. The already-tracked TaoMarketCap indexed feed remains the only public API surface for this subnet.",
   "schema_version": 1,
   "slug": "sn-128",
   "status": "active",
@@ -16,7 +31,13 @@
       "id": "sn-128-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "ByteLeap TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/128 on api.taomarketcap.com returning machine-readable JSON for SN128 ByteLeap on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. ByteLeap is the distributed-compute network on Bittensor SN128 (the official byteleapai validator/miner repositories declare \"Bittensor SN128 Compute Network\"). This indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/128/ on api.taomarketcap.com returning machine-readable JSON for SN128 ByteLeap on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. ByteLeap is the distributed-compute network on Bittensor SN128 (the official byteleapai validator/miner repositories declare \"Bittensor SN128 Compute Network\"). This indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -27,9 +48,45 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/byteleapai/byteleap-Validator"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/128"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/128/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-128-byteleap-website",
+      "kind": "website",
+      "name": "ByteLeap website",
+      "notes": "Official ByteLeap website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "byteleap",
+      "public_safe": true,
+      "source_urls": ["https://github.com/byteleapai/byteleap-Validator"],
+      "url": "https://byteleap.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-128-byteleap-source",
+      "kind": "source-repo",
+      "name": "ByteLeap validator source repository",
+      "notes": "Official ByteLeap validator source repository for SN128.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "byteleap",
+      "public_safe": true,
+      "source_urls": ["https://github.com/byteleapai/byteleap-Validator"],
+      "url": "https://github.com/byteleapai/byteleap-Validator"
     }
   ],
   "source_repo": "https://github.com/byteleapai/byteleap-Validator",
-  "website_url": "https://byteleap.ai"
+  "website_url": "https://byteleap.ai/"
 }

@@ -1361,9 +1361,9 @@ export function normalizePublicUrl(value) {
 
   let candidate = value
     .trim()
-    .replace(/^<|>$/g, "")
+    .replace(/^[<`"']+|[>`"',.;:!]+$/g, "")
     .split("](")[0]
-    .replace(/\]+$/g, "");
+    .replace(/[\]`"',.;:!]+$/g, "");
   if (!candidate) {
     return null;
   }
@@ -1382,7 +1382,13 @@ export function normalizePublicUrl(value) {
       url.username ||
       url.password ||
       isCredentialedUrl(url.toString()) ||
-      isUnsafeUrl(url.toString())
+      isUnsafeUrl(url.toString()) ||
+      // #5990: the brand-impersonation guard (ADR 0004) previously ran only on
+      // the deprecated discovery path's local copy; run it here too so every
+      // contributor-submitted surface URL -- the path that actually ships today
+      // (validate-surface.mjs / surface-add.mjs) -- is checked, not just
+      // auto-discovered candidates.
+      isBrandImpersonationUrl(url.toString())
     ) {
       return null;
     }
@@ -1408,8 +1414,13 @@ export function normalizePublicHttpUrl(value) {
 
 // Placeholder/junk identity URLs some subnets carry on-chain (e.g. the
 // deprecated subnets' "https://deprecated.png" + "github.com/username/repo",
-// or "example.com" stubs). These must never surface as real links.
-const PLACEHOLDER_IDENTITY_URL = /deprecated|username\/repo|example\.com/i;
+// or "example.com" stubs), plus the README template stubs the discovery path
+// used to filter with its own local list (github.com/yourusername/yourrepo,
+// "yourwebsite", "your-org"). These must never surface as real links. The
+// `your*` tokens are word-anchored so a legitimate host that merely contains
+// the substring (e.g. myyour-organization.com) is not a false positive.
+const PLACEHOLDER_IDENTITY_URL =
+  /deprecated|username\/repo|example\.com|\byour-?org\b|\byourwebsite\b|\byourusername\b/i;
 
 export function isPlaceholderIdentityUrl(value) {
   return typeof value === "string" && PLACEHOLDER_IDENTITY_URL.test(value);
@@ -2396,3 +2407,50 @@ export {
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
 } from "./lib/endpoint-artifacts.mjs";
+
+// The two terminal trust-tier "ceiling" levels. The CurationLevel enum documents
+// a "maintainer-reviewed / adapter-backed ceiling" (schemas/api-components), so a
+// maintainer-reviewed decision promotes any lower pre-tier to maintainer-reviewed
+// but must NOT downgrade an adapter-backed overlay (first-party adapter
+// provenance) nor re-touch one already at maintainer-reviewed. (#5992)
+export const CEILING_TRUST_LEVELS = new Set([
+  "maintainer-reviewed",
+  "adapter-backed",
+]);
+
+// The curation.level a maintainer-reviewed decision materializes for an overlay
+// currently at `currentLevel`: promote any non-ceiling pre-tier
+// (native / candidate-discovered / community-seeded / machine-verified) to
+// maintainer-reviewed, per docs/curation-playbook.md's "reached ONLY by adding a
+// decision" contract; leave a ceiling level (adapter-backed / already
+// maintainer-reviewed) unchanged. A non-maintainer-reviewed decision never moves
+// the level. (#5992 — the bug was that only a machine-verified starting level was
+// promoted, so decisions against other pre-tiers silently never materialized.)
+export function promoteCurationLevel(currentLevel, decisionKind) {
+  if (decisionKind !== "maintainer-reviewed") return currentLevel;
+  if (CEILING_TRUST_LEVELS.has(currentLevel)) return currentLevel;
+  return "maintainer-reviewed";
+}
+
+// Forward-direction drift check (#5992): every recorded maintainer-reviewed
+// decision must have actually materialized on its subnet overlay — i.e. the
+// overlay sits at a ceiling trust tier (maintainer-reviewed or adapter-backed).
+// Returns the decisions whose overlay level is still a lower pre-tier (the drift
+// class that left SN59/SN107 with a recorded decision but an unpromoted level).
+// A decision for a netuid with no overlay is skipped (a separate concern).
+export function findUnmaterializedMaintainerReviews(
+  decisions,
+  subnetsByNetuid,
+) {
+  const violations = [];
+  for (const decision of decisions || []) {
+    if (decision.decision !== "maintainer-reviewed") continue;
+    const subnet = subnetsByNetuid.get(decision.netuid);
+    if (!subnet) continue;
+    const level = subnet.curation?.level;
+    if (!CEILING_TRUST_LEVELS.has(level)) {
+      violations.push({ netuid: decision.netuid, slug: subnet.slug, level });
+    }
+  }
+  return violations;
+}

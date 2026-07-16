@@ -45,7 +45,7 @@
 import { spawnSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { repoRoot } from "./lib.mjs";
+import { chunkRows, repoRoot } from "./lib.mjs";
 
 // Column order matches Postgres's `subnet_snapshots` exactly (verified via
 // `psql -c '\d subnet_snapshots'` against the live indexer instance), which
@@ -200,13 +200,12 @@ export function rowTuple(row) {
   return `(${COLUMNS.map((column) => sqlLiteral(column, row[column])).join(", ")})`;
 }
 
-export function chunkRows(array, size) {
-  const chunks = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
-}
+// Re-export the shared chunkRows from lib.mjs so existing importers keep a
+// single, canonical implementation. This module used to carry its own copy
+// that returned a bare [] for empty input, versus lib.mjs's "always at least
+// one chunk" ([[]]); the two never diverge here because main() throws on zero
+// rows before buildBackfillSql ever calls chunkRows.
+export { chunkRows };
 
 export function insertStatement(rows) {
   const values = rows.map(rowTuple).join(",\n  ");

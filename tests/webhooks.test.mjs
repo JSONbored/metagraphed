@@ -9,7 +9,6 @@ import {
   generateSubscriptionId,
   isPublicWebhookAddress,
   isPublicWebhookUrl,
-  isResolvedPublicWebhookUrl,
   isValidSubscriptionId,
   normalizeFilters,
   publicSubscriptionView,
@@ -64,28 +63,6 @@ describe("isPublicWebhookUrl", () => {
     assert.equal(isPublicWebhookAddress("10.0.0.1"), false);
     assert.equal(isPublicWebhookAddress("2606:4700:4700::1111"), true);
     assert.equal(isPublicWebhookAddress("fd00::1"), false);
-
-    assert.equal(
-      await isResolvedPublicWebhookUrl(
-        "https://hooks.example.com/mg",
-        async () => ["93.184.216.34"],
-      ),
-      true,
-    );
-    assert.equal(
-      await isResolvedPublicWebhookUrl(
-        "https://hooks.example.com/mg",
-        async () => ["93.184.216.34", "127.0.0.1"],
-      ),
-      false,
-    );
-    assert.equal(
-      await isResolvedPublicWebhookUrl(
-        "https://hooks.example.com/mg",
-        async () => [],
-      ),
-      false,
-    );
   });
 });
 

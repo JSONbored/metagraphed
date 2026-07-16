@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 84,
-  "name": "ansuz",
-  "slug": "sn-84",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "chip-design",
@@ -13,84 +8,87 @@
     "official-source-repo",
     "official-website"
   ],
-  "website_url": "https://www.chipforge.io/",
-  "docs_url": "https://docs.chipforge.io/",
-  "source_repo": "https://github.com/TatsuProject/ChipForge_SN84",
-  "dashboard_url": "https://taomarketcap.com/subnets/84",
-  "notes": "Reviewed overlay for SN84 using the official ChipForge website, docs, and source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet.",
   "curation": {
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet -- the schema URL the llms.txt index itself declares (docs.chipforge.io/api-reference/openapi.json) returns HTTP 200 with content-type application/json but a zero-byte (empty) body.",
+      "No verified unauthenticated public subnet API endpoint yet -- the docs.chipforge.io API-reference stub pages (active.md, info.md, batch/current, testcases/download, etc.) describe endpoint paths and one-line summaries but never state a base host or example request, so the live API cannot be located to test.",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:45:00.000Z",
-    "verified_at": "2026-06-08T10:45:00.000Z",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
     "source_count": 5,
-    "gap_notes": [
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified unauthenticated public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/84",
+  "docs_url": "https://docs.chipforge.io/",
+  "name": "ansuz",
+  "netuid": 84,
+  "notes": "Reviewed overlay for SN84 using the official ChipForge website, docs, and source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet. Re-review pass (2026-07-15): confirmed the openapi.json the docs' own llms.txt links to returns an empty 200 response, and the API-reference stub pages don't state a base host to test the documented endpoints against.",
+  "schema_version": 1,
+  "slug": "sn-84",
+  "source_repo": "https://github.com/TatsuProject/ChipForge_SN84",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-84-chipforge-website",
-      "name": "ChipForge website",
-      "kind": "website",
-      "url": "https://www.chipforge.io/",
-      "provider": "chipforge",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-84-chipforge-website",
+      "kind": "website",
+      "name": "ChipForge website",
+      "notes": "Official ChipForge website from the project source repository homepage.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chipforge",
       "public_safe": true,
       "source_urls": [
         "https://api.github.com/repos/TatsuProject/ChipForge_SN84",
         "https://www.chipforge.io/"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official ChipForge website from the project source repository homepage."
+      "url": "https://www.chipforge.io/"
     },
     {
-      "id": "sn-84-chipforge-docs",
-      "name": "ChipForge documentation",
-      "kind": "docs",
-      "url": "https://docs.chipforge.io/",
-      "provider": "chipforge",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-84-chipforge-docs",
+      "kind": "docs",
+      "name": "ChipForge documentation",
+      "notes": "Official ChipForge documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chipforge",
       "public_safe": true,
       "source_urls": ["https://www.chipforge.io/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official ChipForge documentation."
+      "url": "https://docs.chipforge.io/"
     },
     {
-      "id": "sn-84-chipforge-source",
-      "name": "ChipForge source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/TatsuProject/ChipForge_SN84",
-      "provider": "chipforge",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-84-chipforge-source",
+      "kind": "source-repo",
+      "name": "ChipForge source repository",
+      "notes": "Official ChipForge source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chipforge",
       "public_safe": true,
       "source_urls": [
         "https://api.github.com/repos/TatsuProject/ChipForge_SN84",
         "https://github.com/TatsuProject/ChipForge_SN84"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official ChipForge source repository."
+      "url": "https://github.com/TatsuProject/ChipForge_SN84"
     },
     {
       "auth_required": false,
@@ -117,7 +115,13 @@
       "id": "sn-84-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "ansuz TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/84 on api.taomarketcap.com returning machine-readable JSON for SN84 ansuz on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/84/ on api.taomarketcap.com returning machine-readable JSON for SN84 ansuz on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -128,7 +132,8 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/TatsuProject/ChipForge_SN84"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/84"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/84/"
     }
-  ]
+  ],
+  "website_url": "https://www.chipforge.io/"
 }

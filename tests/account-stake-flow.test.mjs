@@ -1,27 +1,24 @@
 import assert from "node:assert/strict";
-import { describe, test, vi } from "vitest";
+import { describe, test } from "vitest";
 import {
   buildAccountStakeFlow,
-  loadAccountStakeFlow,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
-  DEFAULT_STAKE_FLOW_WINDOW,
 } from "../src/account-stake-flow.mjs";
 
 // One GROUP BY netuid, event_kind row.
-function row(netuid, kind, tao, count, lastObserved) {
+function row(netuid, kind, tao, count) {
   return {
     netuid,
     event_kind: kind,
     total_tao: tao,
     event_count: count,
-    last_observed: lastObserved,
   };
 }
-const added = (netuid, tao, count = 1, at = 1000) =>
-  row(netuid, STAKE_ADDED_KIND, tao, count, at);
-const removed = (netuid, tao, count = 1, at = 1000) =>
-  row(netuid, STAKE_REMOVED_KIND, tao, count, at);
+const added = (netuid, tao, count = 1) =>
+  row(netuid, STAKE_ADDED_KIND, tao, count);
+const removed = (netuid, tao, count = 1) =>
+  row(netuid, STAKE_REMOVED_KIND, tao, count);
 
 const ADDR = "5GReferenceAccountAddressForStakeFlowTestssssssss";
 
@@ -183,7 +180,7 @@ describe("buildAccountStakeFlow", () => {
       [
         added(null, 100),
         added(-1, 100),
-        row(1, "Transfer", 100, 1, 1000),
+        row(1, "Transfer", 100, 1),
         added(1, 25),
       ],
       ADDR,
@@ -271,143 +268,5 @@ describe("buildAccountStakeFlow", () => {
     assert.equal(d.stake_events, 0);
     assert.equal(d.unstake_events, 0);
     assert.equal(d.subnet_count, 0);
-  });
-});
-
-describe("loadAccountStakeFlow", () => {
-  test("queries account_events by coldkey + stake kinds, shapes the result", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      return [added(1, 100, 2, 5000), removed(1, 30, 1, 6000)];
-    };
-    const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "30d" });
-    assert.match(calls[0].sql, /FROM account_events/);
-    // the staking account is the coldkey (StakeAdded/StakeRemoved decode as
-    // [coldkey, hotkey, ...]); the row's hotkey is the target validator.
-    assert.match(calls[0].sql, /INDEXED BY idx_account_events_coldkey/);
-    assert.match(calls[0].sql, /WHERE coldkey = \?/);
-    assert.match(calls[0].sql, /GROUP BY netuid, event_kind/);
-    assert.equal(calls[0].params[0], ADDR);
-    assert.equal(calls[0].params[1], STAKE_ADDED_KIND);
-    assert.equal(calls[0].params[2], STAKE_REMOVED_KIND);
-    assert.equal(d.data.net_flow_tao, 70);
-    // generatedAt = newest observed_at as ISO
-    assert.equal(d.generatedAt, new Date(6000).toISOString());
-  });
-
-  test("defaults to the 30d window", async () => {
-    const d1 = async () => [];
-    const d = await loadAccountStakeFlow(d1, ADDR, {});
-    assert.equal(d.data.window, DEFAULT_STAKE_FLOW_WINDOW);
-  });
-
-  test("direction=in queries StakeAdded only (#2694 parity)", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      return [added(1, 100, 3, 5000)];
-    };
-    const d = await loadAccountStakeFlow(d1, ADDR, {
-      windowLabel: "7d",
-      direction: "in",
-    });
-    // Only the StakeAdded kind is bound: [address, StakeAdded, cutoff].
-    assert.equal(calls[0].params.length, 3);
-    assert.equal(calls[0].params[1], STAKE_ADDED_KIND);
-    assert.equal(d.data.total_staked_tao, 100);
-    assert.equal(d.data.total_unstaked_tao, 0);
-    assert.equal(d.data.net_flow_tao, 100);
-  });
-
-  test("direction=out queries StakeRemoved only (#2694 parity)", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      return [removed(1, 40, 2, 6000)];
-    };
-    const d = await loadAccountStakeFlow(d1, ADDR, {
-      windowLabel: "7d",
-      direction: "out",
-    });
-    assert.equal(calls[0].params.length, 3);
-    assert.equal(calls[0].params[1], STAKE_REMOVED_KIND);
-    assert.equal(d.data.total_staked_tao, 0);
-    assert.equal(d.data.total_unstaked_tao, 40);
-    assert.equal(d.data.net_flow_tao, -40);
-  });
-
-  test("direction omitted sums both kinds (unchanged default)", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      return [added(1, 100, 2, 5000), removed(1, 30, 1, 6000)];
-    };
-    await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
-    // [address, StakeAdded, StakeRemoved, cutoff].
-    assert.equal(calls[0].params.length, 4);
-    assert.equal(calls[0].params[1], STAKE_ADDED_KIND);
-    assert.equal(calls[0].params[2], STAKE_REMOVED_KIND);
-  });
-
-  test("an unknown window label falls back to the 30d cutoff", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    let cutoff;
-    const d1 = async (sql, params) => {
-      cutoff = params[3];
-      return [];
-    };
-    await loadAccountStakeFlow(d1, ADDR, { windowLabel: "bogus" });
-    assert.equal(cutoff, Date.now() - 30 * 24 * 60 * 60 * 1000);
-    vi.useRealTimers();
-  });
-
-  test("cold store yields zeros + generatedAt null", async () => {
-    const d1 = async () => [];
-    const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
-    assert.equal(d.data.subnet_count, 0);
-    assert.equal(d.generatedAt, null);
-  });
-
-  test("a non-array result degrades to an empty card", async () => {
-    const d1 = async () => null;
-    const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
-    assert.deepEqual(d.data.subnets, []);
-    assert.equal(d.generatedAt, null);
-  });
-
-  test("generatedAt picks the max observed_at regardless of row order or bad cells", async () => {
-    const d1 = async () => [
-      added(1, 10, 1, 9000), // newest, seen first
-      removed(1, 5, 1, 3000), // older, must not overwrite
-      added(2, 1, 1, Number.NaN), // non-finite, ignored
-    ];
-    const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
-    assert.equal(d.generatedAt, new Date(9000).toISOString());
-  });
-
-  test("generatedAt coerces string-typed last_observed cells to ISO timestamps", async () => {
-    const d1 = async () => [added(1, 10, 1, "6000")];
-    const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
-    assert.equal(d.generatedAt, new Date(6000).toISOString());
-  });
-
-  test("generatedAt stays null for blank or out-of-range last_observed (not epoch 1970)", async () => {
-    for (const lastObserved of [
-      "",
-      "   ",
-      "not-a-date",
-      "8640000000000001",
-      null,
-    ]) {
-      const d1 = async () => [added(1, 10, 1, lastObserved)];
-      const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
-      assert.equal(
-        d.generatedAt,
-        null,
-        `lastObserved=${JSON.stringify(lastObserved)}`,
-      );
-    }
   });
 });

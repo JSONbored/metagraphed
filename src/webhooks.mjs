@@ -243,12 +243,6 @@ export async function resolvedWebhookUrlStatus(value, resolveHostnames) {
   return allPublic ? "ok" : "unsafe";
 }
 
-// Boolean convenience wrapper, preserved for existing callers/tests. A transient
-// "resolve-error" is not a public resolution, so it returns false here.
-export async function isResolvedPublicWebhookUrl(value, resolveHostnames) {
-  return (await resolvedWebhookUrlStatus(value, resolveHostnames)) === "ok";
-}
-
 // --- subscription validation --------------------------------------------------
 export function normalizeFilters(filters) {
   if (filters === undefined || filters === null) return {};

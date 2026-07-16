@@ -1,69 +1,66 @@
 {
-  "schema_version": 1,
-  "netuid": 82,
-  "name": "Compelle",
-  "slug": "sn-82",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo",
     "official-website"
   ],
-  "source_repo": "https://github.com/compelle/compelle-validator",
-  "dashboard_url": "https://taomarketcap.com/subnets/82",
-  "website_url": "https://compelle.com/",
-  "notes": "Reviewed overlay for SN82 using the official Compelle website and validator repository.",
   "curation": {
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
     "source_count": 4,
-    "gap_notes": [
-      "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-06-08T10:10:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/82",
+  "name": "Compelle",
+  "netuid": 82,
+  "notes": "Reviewed overlay for SN82 using the official Compelle website and validator repository.",
+  "schema_version": 1,
+  "slug": "sn-82",
+  "source_repo": "https://github.com/compelle/compelle-validator",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-82-compelle-website",
-      "name": "Compelle website",
-      "kind": "website",
-      "url": "https://compelle.com/",
-      "provider": "compelle",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/compelle/compelle-validator"],
+      "id": "sn-82-compelle-website",
+      "kind": "website",
+      "name": "Compelle website",
+      "notes": "Official Compelle website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Compelle website."
+      "provider": "compelle",
+      "public_safe": true,
+      "source_urls": ["https://github.com/compelle/compelle-validator"],
+      "url": "https://compelle.com/"
     },
     {
-      "id": "sn-82-compelle-source",
-      "name": "Compelle validator repository",
-      "kind": "source-repo",
-      "url": "https://github.com/compelle/compelle-validator",
-      "provider": "compelle",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/compelle/compelle-validator"],
+      "id": "sn-82-compelle-source",
+      "kind": "source-repo",
+      "name": "Compelle validator repository",
+      "notes": "Official Compelle validator repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Compelle validator repository."
+      "provider": "compelle",
+      "public_safe": true,
+      "source_urls": ["https://github.com/compelle/compelle-validator"],
+      "url": "https://github.com/compelle/compelle-validator"
     },
     {
       "auth_required": false,
@@ -119,5 +116,6 @@
       "source_urls": ["https://compelle.com/status", "https://compelle.com/"],
       "url": "https://compelle.com/status"
     }
-  ]
+  ],
+  "website_url": "https://compelle.com/"
 }

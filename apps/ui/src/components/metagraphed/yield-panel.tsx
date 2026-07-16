@@ -10,6 +10,7 @@ import {
   StatTile,
   BarMini,
   Sparkline,
+  CopyButton,
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
@@ -145,14 +146,17 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                     #{n.uid}
                   </span>
                   {n.hotkey ? (
-                    <Link
-                      to="/accounts/$ss58"
-                      params={{ ss58: n.hotkey }}
-                      className="truncate font-mono text-[12px] text-ink-strong hover:text-accent hover:underline"
-                      title={n.hotkey}
-                    >
-                      {shortHash(n.hotkey) ?? n.hotkey}
-                    </Link>
+                    <>
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: n.hotkey }}
+                        className="truncate font-mono text-[12px] text-ink-strong hover:text-accent hover:underline"
+                        title={n.hotkey}
+                      >
+                        {shortHash(n.hotkey) ?? n.hotkey}
+                      </Link>
+                      <CopyButton value={n.hotkey} label="hotkey" className="-my-3.5" />
+                    </>
                   ) : (
                     <span className="font-mono text-[12px] text-ink-muted">—</span>
                   )}
@@ -199,14 +203,17 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                   </td>
                   <td className="px-3 py-2.5 font-mono text-[11px]">
                     {n.hotkey ? (
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: n.hotkey }}
-                        className="text-ink-muted hover:text-ink hover:underline"
-                        title={n.hotkey}
-                      >
-                        {shortHash(n.hotkey) ?? n.hotkey}
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: n.hotkey }}
+                          className="text-ink-muted hover:text-ink hover:underline"
+                          title={n.hotkey}
+                        >
+                          {shortHash(n.hotkey) ?? n.hotkey}
+                        </Link>
+                        <CopyButton value={n.hotkey} label="hotkey" className="-my-3.5" />
+                      </div>
                     ) : (
                       "—"
                     )}

@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 21,
-  "name": "AdTAO",
-  "slug": "sn-21",
-  "status": "active",
   "categories": [
     "advertising",
     "baseline-curated",
@@ -11,134 +6,144 @@
     "official-source-repo",
     "official-website"
   ],
-  "source_repo": "https://github.com/ippcteam/SN21-adtao",
-  "dashboard_url": "https://taomarketcap.com/subnets/21",
-  "website_url": "https://adtao.io/",
-  "notes": "Reviewed overlay for SN21 using the official AdTAO website and source repository.",
+  "contact": "sn21@adtao.io",
   "curation": {
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified SSE/event stream yet."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
     "source_count": 4,
-    "gap_notes": [
-      "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+    "verified_at": "2026-06-08T10:10:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/21",
+  "name": "AdTAO",
+  "netuid": 21,
+  "notes": "Reviewed overlay for SN21 using the official AdTAO website and source repository. 1 community-submitted surface (training-episodes) had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. Diffed the tracked validator OpenAPI schema (16 paths) against tracked surfaces: /training/episodes, /training/summary, and /v1/registration-status all require a caller-identifying request header per the schema (confirmed live: 422 without it), not public; the /v1/epochs/* routes are parameterized by epoch_id with no stable canonical value. Not tracked: two internal debug endpoints (/debug/memory, /debug/tracemalloc) are unexpectedly public (200, no auth) but only expose Python process memory/GC stats -- no secrets or PII, low-value reconnaissance only, not the kind of intentional public product surface this registry curates.",
+  "schema_version": 1,
+  "slug": "sn-21",
+  "social": {
+    "x": "https://x.com/ppcrebel"
+  },
+  "source_repo": "https://github.com/ippcteam/SN21-adtao",
+  "status": "active",
   "surfaces": [
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-21-adtao-website",
-      "name": "AdTAO website",
       "kind": "website",
-      "url": "https://adtao.io/",
-      "provider": "adtao",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/ippcteam/SN21-adtao"],
+      "name": "AdTAO website",
+      "notes": "Official AdTAO website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official AdTAO website."
-    },
-    {
-      "id": "sn-21-adtao-source",
-      "name": "AdTAO source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/ippcteam/SN21-adtao",
       "provider": "adtao",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
       "source_urls": ["https://github.com/ippcteam/SN21-adtao"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official AdTAO source repository."
+      "url": "https://adtao.io/"
     },
     {
-      "id": "sn-21-adtao-validator-openapi",
-      "name": "AdTAO SN21 Validator OpenAPI schema",
-      "kind": "openapi",
-      "url": "https://validator.adtao.io/openapi.json",
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-21-adtao-source",
+      "kind": "source-repo",
+      "name": "AdTAO source repository",
+      "notes": "Official AdTAO source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "adtao",
+      "public_safe": true,
+      "source_urls": ["https://github.com/ippcteam/SN21-adtao"],
+      "url": "https://github.com/ippcteam/SN21-adtao"
+    },
+    {
       "auth_required": false,
       "authority": "community",
+      "id": "sn-21-adtao-validator-openapi",
+      "kind": "openapi",
+      "name": "AdTAO SN21 Validator OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1.0 schema (title \"SN21 Validator\", version 0.1.0) served by the official AdTAO validator API on the operator's validator.adtao.io host. Documents the public epoch/episode, prediction, commitment, verification, scores, and training routes plus /health. Unauthenticated GET returns the full paths object.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
       "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
       "schema_status": "machine-readable",
       "schema_url": "https://validator.adtao.io/openapi.json",
       "source_urls": [
         "https://github.com/ippcteam/SN21-adtao",
         "https://validator.adtao.io/openapi.json"
       ],
+      "url": "https://validator.adtao.io/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-21-adtao-validator-api",
+      "kind": "subnet-api",
+      "name": "AdTAO SN21 Validator API",
+      "notes": "Official public AdTAO (SN21) validator API on the operator's validator.adtao.io host. An unauthenticated GET on /health returns live JSON service status (service, current epoch label, episodes loaded, submission window, deadline). The /v1/epochs routes are described in the linked OpenAPI schema.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "adtao",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Machine-readable OpenAPI 3.1.0 schema (title \"SN21 Validator\", version 0.1.0) served by the official AdTAO validator API on the operator's validator.adtao.io host. Documents the public epoch/episode, prediction, commitment, verification, scores, and training routes plus /health. Unauthenticated GET returns the full paths object."
-    },
-    {
-      "id": "sn-21-adtao-validator-api",
-      "name": "AdTAO SN21 Validator API",
-      "kind": "subnet-api",
-      "url": "https://validator.adtao.io/health",
-      "provider": "adtao",
-      "auth_required": false,
-      "authority": "community",
-      "public_safe": true,
       "schema_url": "https://validator.adtao.io/openapi.json",
       "source_urls": [
         "https://github.com/ippcteam/SN21-adtao",
         "https://validator.adtao.io/"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "json",
-        "timeout_ms": 10000
-      },
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "glorydavid03023"
-      },
-      "notes": "Official public AdTAO (SN21) validator API on the operator's validator.adtao.io host. An unauthenticated GET on /health returns live JSON service status (service, current epoch label, episodes loaded, submission window, deadline). The /v1/epochs routes are described in the linked OpenAPI schema."
+      "url": "https://validator.adtao.io/health"
     },
     {
-      "id": "sn-21-adtao-training-episodes",
-      "name": "AdTAO training episodes sample dataset",
-      "kind": "data-artifact",
-      "url": "https://raw.githubusercontent.com/ippcteam/SN21-adtao/main/data/training/training_episodes.json",
-      "provider": "adtao",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-21-adtao-training-episodes",
+      "kind": "data-artifact",
+      "name": "AdTAO training episodes sample dataset",
+      "notes": "Public no-auth JSON dataset of bundled sample prediction episodes (account state, action context, and known outcomes) published in the official SN21 AdTAO source repository at data/training/. Documented in the repo README as the bundled sample data (10 episodes with known outcomes) and consumed by scripts/train_example_model.py for local baseline-model training.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/ippcteam/SN21-adtao/blob/main/README.md",
-        "https://github.com/ippcteam/SN21-adtao/blob/main/scripts/train_example_model.py"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "rust-toml"
       },
-      "notes": "Public no-auth JSON dataset of bundled sample prediction episodes (account state, action context, and known outcomes) published in the official SN21 AdTAO source repository at data/training/. Documented in the repo README as the bundled sample data (10 episodes with known outcomes) and consumed by scripts/train_example_model.py for local baseline-model training."
+      "source_urls": [
+        "https://github.com/ippcteam/SN21-adtao/blob/main/README.md",
+        "https://github.com/ippcteam/SN21-adtao/blob/main/scripts/train_example_model.py"
+      ],
+      "url": "https://raw.githubusercontent.com/ippcteam/SN21-adtao/main/data/training/training_episodes.json"
     }
   ],
-  "social": { "x": "https://x.com/ppcrebel" },
-  "contact": "sn21@adtao.io"
+  "website_url": "https://adtao.io/"
 }

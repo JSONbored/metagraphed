@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   copyErrorDescription,
   copySuccessTitle,
+  legacyExecCommandCopy,
   shouldUseNavigatorClipboard,
   truncateCopyPreview,
 } from "./use-copy";
@@ -51,5 +52,32 @@ describe("shouldUseNavigatorClipboard", () => {
   it("falls back when navigator or clipboard is missing", () => {
     expect(shouldUseNavigatorClipboard(undefined)).toBe(false);
     expect(shouldUseNavigatorClipboard({} as Navigator)).toBe(false);
+  });
+});
+
+describe("legacyExecCommandCopy", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const stubDocument = (execResult: boolean) => {
+    const textarea = { value: "", style: {} as Record<string, string>, select: vi.fn() };
+    vi.stubGlobal("document", {
+      createElement: vi.fn().mockReturnValue(textarea),
+      body: { appendChild: vi.fn(), removeChild: vi.fn() },
+      execCommand: vi.fn().mockReturnValue(execResult),
+    });
+    return textarea;
+  };
+
+  it("reports failure when execCommand is rejected (returns false, not a false success)", () => {
+    stubDocument(false);
+    // #6026: execCommand returns false without throwing (no user activation /
+    // permissions-policy denial); the fallback must propagate that as failure.
+    expect(legacyExecCommandCopy("hello")).toBe(false);
+  });
+
+  it("reports success when execCommand copies", () => {
+    const textarea = stubDocument(true);
+    expect(legacyExecCommandCopy("hello")).toBe(true);
+    expect(textarea.value).toBe("hello");
   });
 });

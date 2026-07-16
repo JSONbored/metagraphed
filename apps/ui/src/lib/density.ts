@@ -3,10 +3,17 @@ import { useCallback, useEffect, useState } from "react";
 export type Density = "comfortable" | "compact";
 const STORAGE_KEY = "mg-density";
 
-function readChoice(): Density {
+export function readChoice(): Density {
   if (typeof window === "undefined") return "comfortable";
-  const v = window.localStorage.getItem(STORAGE_KEY);
-  return v === "compact" ? "compact" : "comfortable";
+  try {
+    const v = window.localStorage.getItem(STORAGE_KEY);
+    return v === "compact" ? "compact" : "comfortable";
+  } catch {
+    // Match theme.ts's readChoice: a throwing localStorage (Safari private
+    // browsing, storage blocked by policy/extension) degrades to the default
+    // instead of throwing during the initial render.
+    return "comfortable";
+  }
 }
 
 function apply(d: Density) {

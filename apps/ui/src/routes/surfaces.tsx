@@ -4,7 +4,7 @@ import { Suspense, useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
+import { StateBlock } from "@/components/metagraphed/states/state-block";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import {
@@ -278,7 +278,8 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
   );
 
   const emptyNode = (
-    <RegistryEmpty
+    <StateBlock
+      kind="registry"
       variant="empty"
       title={filtersActive ? "No surfaces match these filters" : "No surfaces yet"}
       description={

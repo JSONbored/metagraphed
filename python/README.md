@@ -23,17 +23,19 @@ from metagraphed import MetagraphedClient, metagraphed_fetch
 client = MetagraphedClient()  # base_url defaults to https://api.metagraph.sh
 
 # List subnets (query params; None values are dropped). The /subnets collection
-# nests its rows under data.subnets:
+# nests its rows under data.subnets. Sort/rank by integration_readiness — the
+# compact index does not carry completeness_score (that lives on /profiles).
 subnets = client.fetch(
     "/api/v1/subnets",
-    query={"limit": 10, "sort": "completeness_score", "order": "desc"},
+    query={"limit": 10, "sort": "integration_readiness", "order": "desc"},
 )
 print(subnets["data"]["subnets"][0]["name"])
 
 # One subnet by netuid (path params)
 detail = client.fetch("/api/v1/subnets/{netuid}", path_params={"netuid": 7})
 
-# Which subnets are buildable? (integration readiness lives in the agent catalog)
+# Which subnets are buildable? (integration readiness lives in the agent catalog;
+# completeness_score is also present there and on /api/v1/profiles)
 catalog = client.fetch("/api/v1/agent-catalog")
 
 # Health of the registry itself:
@@ -86,12 +88,15 @@ client = MetagraphedClient(retries=3)
 # Auto-paginate a list endpoint and collect every item (flattened data arrays):
 all_surfaces = client.fetch_all("/api/v1/surfaces")
 
-# Typed convenience methods — IDE autocomplete, while .raw keeps the full dict:
+# Typed convenience methods — IDE autocomplete, while .raw keeps the full dict.
+# client.subnets() uses the compact index: integration_readiness is set;
+# completeness_score stays None (use agent_catalog /profiles for that score).
 for subnet in client.subnets():
     print(subnet.netuid, subnet.name, subnet.integration_readiness)
+    # subnet.completeness_score is None here — not an index field
 
 catalog = client.agent_catalog(7)  # -> AgentCatalogSubnet
-print(catalog.service_count, catalog.services)
+print(catalog.service_count, catalog.services, catalog.completeness_score)
 ```
 
 `fetch` / `fetch_all` still return raw dicts; the models (`Subnet`, `Surface`,

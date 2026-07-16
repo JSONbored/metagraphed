@@ -1,11 +1,24 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "verified_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 6,
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified SSE/event stream yet.",
+      "/miners/valid and /miners/all both declare no security in the OpenAPI schema but return 422 in practice requiring three custom auth headers (caller identity, request signature, timestamp) -- excluded as a schema-vs-reality mismatch."
+    ]
   },
   "name": "Leoma",
   "netuid": 99,
+  "notes": "First maintainer review for SN99. Added website + source-repo surfaces, fixed 2 missing probe blocks. Diffed the 28-path OpenAPI schema for undiscovered public GET endpoints -- added 6 new surfaces (scores, scores/rank, blacklist, blacklist/miners, tasks/latest, weights); 2 candidates (miners/valid, miners/all) turned out to require validator-signed headers despite the schema saying no auth.",
   "schema_version": 1,
   "slug": "sn-99",
   "social": {
@@ -21,6 +34,12 @@
       "kind": "subnet-api",
       "name": "Leoma API health",
       "notes": "Public no-auth GET /health on api.leoma.ai returning application liveness JSON (observed: status, version, database, metagraph_synced, last_sync). Documented in the subnet OpenAPI spec and implemented in the official RendixNetwork/leoma health route used by validator API clients.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "leoma",
       "public_safe": true,
       "review": {
@@ -41,6 +60,12 @@
       "kind": "data-artifact",
       "name": "Leoma network score summary",
       "notes": "Public no-auth GET /scores/stats on api.leoma.ai returning network-wide aggregate counters (total_validators, total_miners, total_samples, total_score_entries, overall_pass_rate). Documented as a route in the subnet's own OpenAPI schema (api.leoma.ai/openapi.json, already cited as a source for the existing health surface); same api.leoma.ai host.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "leoma",
       "public_safe": true,
       "review": {
@@ -57,14 +82,14 @@
       "kind": "openapi",
       "name": "Leoma validator API OpenAPI schema",
       "notes": "Public no-auth OpenAPI 3.x schema for the SN99 Leoma validator API (title \"Leoma API\", version 0.3.2, 28 paths) on api.leoma.ai. Documents /health, miner listing, samples, scores, and related validator routes; same host as the existing health and scores/stats surfaces.",
-      "provider": "leoma",
-      "public_safe": true,
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 15000
       },
+      "provider": "leoma",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "bohdansolovie"
@@ -77,6 +102,240 @@
         "https://github.com/RendixNetwork/leoma"
       ],
       "url": "https://api.leoma.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-miners-list",
+      "kind": "subnet-api",
+      "name": "Leoma miners list",
+      "notes": "Public no-auth GET returning the registered miners list (uid, hotkey, model_name, model_revision). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.leoma.ai/miners/list"],
+      "url": "https://api.leoma.ai/miners/list"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-samples-list",
+      "kind": "subnet-api",
+      "name": "Leoma samples list",
+      "notes": "Public no-auth GET returning evaluation sample records (id, task_id, validator_hotkey, miner_hotkey). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.leoma.ai/samples/list"],
+      "url": "https://api.leoma.ai/samples/list"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-scores-validators",
+      "kind": "subnet-api",
+      "name": "Leoma validator scores",
+      "notes": "Public no-auth GET returning per-validator scoring stats (total_samples, total_passed, avg_score). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.leoma.ai/scores/validators"],
+      "url": "https://api.leoma.ai/scores/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-99-leoma-website",
+      "kind": "website",
+      "name": "Leoma website",
+      "notes": "Official SN99 Leoma website -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "source_urls": ["https://github.com/RendixNetwork/leoma"],
+      "url": "https://leoma.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-99-leoma-source-repo",
+      "kind": "source-repo",
+      "name": "Leoma source repository",
+      "notes": "Official SN99 Leoma source repository -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "source_urls": ["https://github.com/RendixNetwork/leoma"],
+      "url": "https://github.com/RendixNetwork/leoma"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-scores",
+      "kind": "data-artifact",
+      "name": "Leoma per-miner scores",
+      "notes": "Public no-auth GET /scores on api.leoma.ai returning per-miner scoring aggregates keyed by hotkey (avg_score, total_samples, total_passed, pass_rate, validator_count). Documented in the subnet's own OpenAPI schema; same api.leoma.ai host as the existing scores/stats and scores/validators surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-scores-rank",
+      "kind": "data-artifact",
+      "name": "Leoma miner rank leaderboard",
+      "notes": "Public no-auth GET /scores/rank on api.leoma.ai returning the ranked miner leaderboard (miner_hotkey, uid, rank, passed_count, pass_rate, block, eligible). Documented in the subnet's own OpenAPI schema; same host as the other scores surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/scores/rank"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-blacklist",
+      "kind": "data-artifact",
+      "name": "Leoma blacklist records",
+      "notes": "Public no-auth GET /blacklist on api.leoma.ai returning full blacklist entries (hotkey, reason, added_by, created_at). Documented in the subnet's own OpenAPI schema. Distinct in shape from the hotkey-only /blacklist/miners list.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/blacklist"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-blacklist-miners",
+      "kind": "data-artifact",
+      "name": "Leoma blacklisted miner hotkeys",
+      "notes": "Public no-auth GET /blacklist/miners on api.leoma.ai returning a plain array of blacklisted miner hotkeys. Documented in the subnet's own OpenAPI schema. Distinct in shape from the full-record /blacklist surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/blacklist/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-tasks-latest",
+      "kind": "subnet-api",
+      "name": "Leoma latest task id",
+      "notes": "Public no-auth GET /tasks/latest on api.leoma.ai returning the most recent evaluation task_id. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/tasks/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-weights",
+      "kind": "subnet-api",
+      "name": "Leoma current weight-setting result",
+      "notes": "Public no-auth GET /weights on api.leoma.ai returning the current round's winning miner and per-miner weight allocation (winner_uid, miners[].miner_hotkey/uid/pass_rate/weight). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/weights"
     }
   ],
   "website_url": "https://leoma.ai/"

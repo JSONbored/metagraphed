@@ -5,6 +5,7 @@ import { blockRefPathSegment } from "./blocks";
 import { extrinsicHashPathSegment } from "./extrinsics";
 import { isValidSs58, ss58PathSegment } from "./accounts";
 import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
+import { isUsableTimestamp } from "./format";
 import type {
   AdapterSnapshot,
   AgentResource,
@@ -592,14 +593,19 @@ function normalizeUptime(raw: Partial<Uptime> | undefined): Uptime {
   };
 }
 
-function normalizeFreshnessSources(raw: unknown, now = Date.now()) {
+export function normalizeFreshnessSources(raw: unknown, now = Date.now()) {
   let staleCount = 0;
   let ageTotal = 0;
   let ageCount = 0;
   let maxAgeSeconds: number | undefined;
 
   const sources = freshnessSourceRecords(raw).map<NormalizedFreshnessSource>((s) => {
-    const ts = finiteTimestamp(s.as_of) ?? finiteTimestamp(s.timestamp);
+    const candidate = finiteTimestamp(s.as_of) ?? finiteTimestamp(s.timestamp);
+    // Apply the same pre-2000 placeholder exclusion isUsableTimestamp enforces,
+    // so a "1970-01-01T00:00:00.000Z" registry placeholder isn't fed as a
+    // multi-decade age into the freshness/staleness domain (staleCount,
+    // avgAgeSeconds, maxAgeSeconds) the UI renders.
+    const ts = isUsableTimestamp(candidate) ? candidate : undefined;
     const ageSec =
       ts !== undefined ? Math.max(0, Math.round((now - Date.parse(ts)) / 1000)) : undefined;
 
@@ -5610,6 +5616,7 @@ function normalizeMetagraphNeuron(raw: unknown): MetagraphNeuron | undefined {
     registered_at_block: coerceFiniteNumber(raw.registered_at_block),
     is_immunity_period: booleanValue(raw.is_immunity_period),
     axon: coerceString(raw.axon) ?? null,
+    take: coerceFiniteNumber(raw.take) ?? null,
     // Only /validators rows carry this (#5166); booleanValue already maps an
     // absent/non-boolean cell to undefined, so metagraph/neuron-detail rows
     // (which never send it) keep the field genuinely absent, not a false.
@@ -6672,33 +6679,6 @@ export function sortedHealthTrendSurfaces(window: HealthTrendWindow | undefined)
       })
     : [];
   return surfaces.sort((a, b) => (a.uptime_ratio ?? 1) - (b.uptime_ratio ?? 1));
-}
-
-/**
- * Extract honest per-surface distribution series from a health-trends window.
- *
- * The window has no time dimension — it is an aggregate snapshot with a
- * per-surface breakdown — so these are distributions ACROSS surfaces (worst
- * uptime first), not time-series. Use them for spread sparklines, never for a
- * "trend over time". Returns empty arrays when the window has no surfaces.
- */
-export function trendSurfaceSeries(window: HealthTrendWindow | undefined): {
-  uptimePct: number[];
-  p50: number[];
-  p95: number[];
-} {
-  const surfaces = sortedHealthTrendSurfaces(window);
-  const finite = (v: number | undefined): v is number =>
-    typeof v === "number" && Number.isFinite(v);
-  return {
-    uptimePct: surfaces
-      .map((s) => (finite(s.uptime_ratio) ? s.uptime_ratio * 100 : null))
-      .filter((v): v is number => v != null),
-    p50: surfaces
-      .map((s) => (finite(s.latency_ms?.p50) ? s.latency_ms!.p50! : (s.avg_latency_ms ?? null)))
-      .filter((v): v is number => v != null && Number.isFinite(v)),
-    p95: surfaces.map((s) => s.latency_ms?.p95).filter((v): v is number => finite(v)),
-  };
 }
 
 // Candidate rows carry `review_notes` (not `notes`) and a nested

@@ -6,8 +6,6 @@ import {
   loadSubnetYield,
   parseSubnetYieldHistoryWindow,
   buildSubnetYieldHistory,
-  loadSubnetYieldHistory,
-  YIELD_HISTORY_ROW_CAP,
 } from "../src/subnet-yield.mjs";
 
 const apiComponents = JSON.parse(
@@ -553,45 +551,5 @@ describe("buildSubnetYieldHistory", () => {
 
   test("an omitted window is emitted as null", () => {
     assert.equal(buildSubnetYieldHistory([], 5).window, null);
-  });
-});
-
-describe("loadSubnetYieldHistory", () => {
-  test("issues a netuid + date-bounded neuron_daily read and shapes it", async () => {
-    let seen;
-    const d1 = async (sql, params) => {
-      seen = { sql, params };
-      return [
-        {
-          snapshot_date: "2026-06-27",
-          stake_tao: 100,
-          emission_tao: 10,
-          validator_permit: 1,
-        },
-      ];
-    };
-    const data = await loadSubnetYieldHistory(d1, 7, {
-      windowLabel: "7d",
-      windowDays: 7,
-    });
-    assert.match(seen.sql, /FROM neuron_daily WHERE netuid = \?/);
-    assert.match(seen.sql, /snapshot_date >= \? ORDER BY snapshot_date DESC/);
-    assert.equal(seen.params[0], 7);
-    assert.equal(typeof seen.params[1], "string"); // YYYY-MM-DD cutoff
-    assert.equal(seen.params[2], YIELD_HISTORY_ROW_CAP);
-    assert.equal(data.netuid, 7);
-    assert.equal(data.window, "7d");
-    assert.equal(data.point_count, 1);
-    assert.equal(data.points[0].median_yield, 0.1);
-  });
-
-  test("a cold store (no rows) yields empty points", async () => {
-    const data = await loadSubnetYieldHistory(async () => [], 9, {
-      windowLabel: "30d",
-      windowDays: 30,
-    });
-    assert.equal(data.netuid, 9);
-    assert.equal(data.point_count, 0);
-    assert.deepEqual(data.points, []);
   });
 });

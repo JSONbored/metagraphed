@@ -35,7 +35,12 @@ import {
   unsupportedWindowMessage,
 } from "../../src/neuron-history.mjs";
 import { loadEconomicsTrends } from "../../src/economics-trends.mjs";
-import { growthRowsFromSamples } from "../../src/analytics-live.mjs";
+import {
+  COMPARE_DIMENSIONS,
+  growthRowsFromSamples,
+  parseCompareDimensions,
+  parseCompareNetuids,
+} from "../../src/analytics-live.mjs";
 import {
   formatLeaderboards,
   formatTrajectory,
@@ -160,9 +165,6 @@ export function configureAnalyticsRoutes(deps) {
 const LEADERBOARD_PROFILES_TTL_MS = 300_000;
 let leaderboardProfilesCache = null; // { subnetMeta, mostComplete, builtAt }
 
-const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
-const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
-
 async function envelopeWithD1Fallback(request, payload, cacheProfile, rowSets) {
   const response = await envelopeResponse(request, payload, cacheProfile);
   return hasD1FallbackRows(...rowSets)
@@ -204,7 +206,7 @@ export async function handleTrajectory(request, env, netuid, url) {
     isFallback = hasD1FallbackRows(rows);
   }
   if (csvRequested(url, request)) {
-    const csvRes = csvResponse(
+    const csvRes = await csvResponse(
       data.points,
       `subnet-${netuid}-trajectory`,
       "short",
@@ -260,7 +262,7 @@ export async function handleEconomicsTrends(request, env, url) {
     isFallback = hasD1FallbackRows(loaded.rows);
   }
   if (csvRequested(url, request)) {
-    const csvRes = csvResponse(
+    const csvRes = await csvResponse(
       data.days,
       "economics-trends",
       "short",
@@ -357,7 +359,7 @@ export async function handleUptime(request, env, netuid, url) {
     isFallback = hasD1FallbackRows(rows);
   }
   if (csvRequested(url, request)) {
-    const csvRes = csvResponse(
+    const csvRes = await csvResponse(
       uptimeCsvRows(data.surfaces),
       `subnet-${netuid}-uptime`,
       "short",
@@ -634,37 +636,11 @@ export async function handleLeaderboards(request, env, url) {
   );
 }
 
-function compareNetuids(netuidsRaw) {
-  if (!netuidsRaw || !COMPARE_NETUIDS_PATTERN.test(netuidsRaw)) return null;
-  const requestedNetuids = [];
-  const seenNetuids = new Set();
-  for (const part of netuidsRaw.split(",")) {
-    const netuid = Number(part);
-    if (seenNetuids.has(netuid)) continue;
-    seenNetuids.add(netuid);
-    requestedNetuids.push(netuid);
-  }
-  return requestedNetuids;
-}
-
-function compareDimensions(dimensionsRaw) {
-  if (dimensionsRaw === null) return COMPARE_DIMENSIONS;
-  const requested = [];
-  for (const part of dimensionsRaw.split(",")) {
-    const trimmed = part.trim();
-    if (trimmed === "") return null;
-    requested.push(trimmed);
-  }
-  const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
-  if (unknown !== undefined) return null;
-  return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
-}
-
 export function canonicalCompareCachePath(url) {
   if (validateQueryParams(url, ["netuids", "dimensions"])) return null;
-  const requestedNetuids = compareNetuids(url.searchParams.get("netuids"));
+  const requestedNetuids = parseCompareNetuids(url.searchParams.get("netuids"));
   if (!requestedNetuids) return null;
-  const dimensions = compareDimensions(url.searchParams.get("dimensions"));
+  const dimensions = parseCompareDimensions(url.searchParams.get("dimensions"));
   if (!dimensions) return null;
   const params = [`netuids=${encodeURIComponent(requestedNetuids.join(","))}`];
   if (dimensions.length !== COMPARE_DIMENSIONS.length) {
@@ -776,7 +752,7 @@ export async function handleCompare(request, env, url) {
   if (validationError) return analyticsQueryError(validationError);
 
   const netuidsRaw = url.searchParams.get("netuids");
-  const requestedNetuids = compareNetuids(netuidsRaw);
+  const requestedNetuids = parseCompareNetuids(netuidsRaw);
   if (!requestedNetuids) {
     return errorResponse(
       "invalid_query",
@@ -787,7 +763,7 @@ export async function handleCompare(request, env, url) {
   }
 
   const dimensionsRaw = url.searchParams.get("dimensions");
-  const dimensions = compareDimensions(dimensionsRaw);
+  const dimensions = parseCompareDimensions(dimensionsRaw);
   if (!dimensions) {
     const tokens = dimensionsRaw.split(",").map((d) => d.trim());
     const unknown =

@@ -129,6 +129,68 @@ function withCoverageDepthArchive(overrides = {}) {
   return env;
 }
 
+// Fixed fixture for review/gap-priorities.json so this suite doesn't depend
+// on at least one subnet in the live registry still being at
+// curation_level "candidate-discovered" -- the accuracy-audit sweep across
+// registry/subnets/*.json can (and eventually will) promote every subnet to
+// maintainer-reviewed, which would otherwise make the real generated
+// artifact always return zero candidate-discovered rows.
+const REVIEW_GAP_PRIORITIES_ARTIFACT = {
+  schema_version: 1,
+  contract_version: "test-fixture",
+  generated_at: "1970-01-01T00:00:00.000Z",
+  priorities: [
+    {
+      netuid: 93,
+      slug: "sn-93",
+      name: "Fixture Candidate Subnet",
+      curation_level: "candidate-discovered",
+      review_state: "unreviewed",
+      priority_score: 88,
+      surface_count: 21,
+      candidate_count: 12,
+      verified_candidate_count: 6,
+      missing_kinds: ["sse"],
+      suggested_next_action:
+        "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+    },
+    {
+      netuid: 7,
+      slug: "allways",
+      name: "Fixture Reviewed Subnet",
+      curation_level: "maintainer-reviewed",
+      review_state: "maintainer-reviewed",
+      priority_score: 12,
+      surface_count: 5,
+      candidate_count: 0,
+      verified_candidate_count: 0,
+      missing_kinds: [],
+      suggested_next_action: "none",
+    },
+  ],
+};
+
+function withReviewGapPrioritiesArchive(overrides = {}) {
+  const env = createLocalArtifactEnv(overrides);
+  const originalGet = env.METAGRAPH_ARCHIVE.get;
+  env.METAGRAPH_ARCHIVE.get = async (key) => {
+    const normalized = String(key).replace(/^latest\//, "");
+    if (normalized === "review/gap-priorities.json") {
+      const text = JSON.stringify(REVIEW_GAP_PRIORITIES_ARTIFACT);
+      return {
+        async json() {
+          return JSON.parse(text);
+        },
+        async text() {
+          return text;
+        },
+      };
+    }
+    return originalGet(key);
+  };
+  return env;
+}
+
 // RPC-proxy env that serves the pool artifact through ASSETS + R2.
 function rpcEnv(overrides = {}) {
   return {
@@ -1322,6 +1384,43 @@ describe("subnets CSV export", () => {
   });
 });
 
+// --- Providers CSV export (#5665) --------------------------------------------
+// The named-download + contract assertions ride the shared CSV_ROUTES lists
+// above; these cover what's specific to this collection.
+describe("providers CSV export", () => {
+  test("?format=csv honours field projection", async () => {
+    const res = await handleRequest(
+      req("/api/v1/providers?format=csv&fields=id,name&limit=2"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    const lines = (await res.text()).split("\r\n").filter(Boolean);
+    assert.equal(lines[0], "id,name");
+    assert.equal(lines.length, 3);
+  });
+
+  test("the non-scalar provider fields (netuids array, social object) serialize into CSV cells", async () => {
+    const res = await handleRequest(
+      req("/api/v1/providers?format=csv&fields=id,netuids,social&limit=5"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    const text = await res.text();
+    const lines = text.split("\r\n").filter(Boolean);
+    assert.equal(lines[0], "id,netuids,social");
+    // Nothing leaks a raw "[object Object]" — the shared serializer joins arrays
+    // with ";" and JSON-encodes objects, so no `exclude` option is needed here.
+    assert.ok(
+      !text.includes("[object Object]"),
+      "non-scalar cells must be serialized, not stringified via toString()",
+    );
+  });
+});
+
 // --- Review enrichment list CSV export (#2527) --------------------------------
 describe("review enrichment list CSV export", () => {
   const parseCsv = async (res) => {
@@ -1346,7 +1445,7 @@ describe("review enrichment list CSV export", () => {
       req(
         "/api/v1/review/gaps?format=csv&fields=netuid,priority_score,curation_level&sort=priority_score&limit=5&curation_level=candidate-discovered",
       ),
-      createLocalArtifactEnv(),
+      withReviewGapPrioritiesArchive(),
       {},
     );
     const { header, rows } = await parseCsv(res);
@@ -1424,6 +1523,7 @@ describe("registry list CSV export", () => {
 
   const CSV_ROUTES = [
     "economics",
+    "providers",
     "surfaces",
     "subnet-surfaces",
     "endpoints",
@@ -1461,6 +1561,7 @@ describe("registry list CSV export", () => {
   // a text/csv attachment named after the route id with a header row.
   for (const [path, filename] of [
     ["/api/v1/economics", "economics.csv"],
+    ["/api/v1/providers", "providers.csv"],
     ["/api/v1/surfaces", "surfaces.csv"],
     ["/api/v1/endpoints", "endpoints.csv"],
     ["/api/v1/candidates", "candidates.csv"],

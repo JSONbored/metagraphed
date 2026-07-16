@@ -1,12 +1,13 @@
 {
-  "schema_version": 1,
-  "id": "gopher-ai",
-  "name": "Gopher AI",
-  "kind": "subnet-team",
-  "website_url": "https://developers.gopher-ai.com/",
+  "authority": "official",
   "docs_url": "https://developers.gopher-ai.com/docs/subnet/intro",
   "github_url": "https://github.com/gopher-lab/subnet-42",
-  "authority": "official",
+  "id": "gopher-ai",
+  "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/gopher-ai.png",
+  "name": "Gopher AI",
+  "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet.",
   "public_notes": "Provider profile for Gopher AI / SN42. Public surfaces include the developer portal, subnet docs, miner docs, and source repository.",
-  "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet."
+  "schema_version": 1,
+  "website_url": "https://developers.gopher-ai.com/"
 }

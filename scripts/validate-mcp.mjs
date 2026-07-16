@@ -23,6 +23,8 @@ import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   McpSessionHub,
 } from "../workers/mcp-session-hub.mjs";
+import { SubnetStatusHub } from "../workers/subnet-status-hub.mjs";
+import { buildSubnetStatusResourceUri } from "../src/subnet-status-subscribe.mjs";
 import {
   artifactFilePath,
   createLocalArtifactEnv,
@@ -168,15 +170,19 @@ function fakeDoNamespace(makeInstance) {
   };
 }
 
-// Mutually-referencing by design (McpSessionHub tells ChainFirehoseHub about
-// a subscribe/unsubscribe; ChainFirehoseHub tells McpSessionHub about a new
-// event) -- safe because fakeDoNamespace only calls its factory lazily, by
-// which point both bindings below are fully initialized.
+// Mutually-referencing by design (McpSessionHub tells ChainFirehoseHub /
+// SubnetStatusHub about a subscribe/unsubscribe; those hubs tell
+// McpSessionHub about a new event) -- safe because fakeDoNamespace only
+// calls its factory lazily, by which point all bindings below are fully
+// initialized.
 const mcpSessionHubNS = fakeDoNamespace(
   () =>
     new McpSessionHub(
       { storage: inMemoryDoStorage() },
-      { CHAIN_FIREHOSE_HUB: chainFirehoseHubNS },
+      {
+        CHAIN_FIREHOSE_HUB: chainFirehoseHubNS,
+        SUBNET_STATUS_HUB: subnetStatusHubNS,
+      },
     ),
 );
 const chainFirehoseHubNS = fakeDoNamespace(
@@ -186,9 +192,17 @@ const chainFirehoseHubNS = fakeDoNamespace(
       { MCP_SESSION_HUB: mcpSessionHubNS },
     ),
 );
+const subnetStatusHubNS = fakeDoNamespace(
+  () =>
+    new SubnetStatusHub(
+      { storage: inMemoryDoStorage() },
+      { MCP_SESSION_HUB: mcpSessionHubNS },
+    ),
+);
 const lifecycleEnv = createLocalArtifactEnv({
   MCP_SESSION_HUB: mcpSessionHubNS,
   CHAIN_FIREHOSE_HUB: chainFirehoseHubNS,
+  SUBNET_STATUS_HUB: subnetStatusHubNS,
 });
 
 // --- Lifecycle -------------------------------------------------------------
@@ -1407,8 +1421,97 @@ assert.equal(
   "GET /mcp after DELETE must find no such session",
 );
 
+// --- MCP per-subnet status subscription lifecycle (#6034) ------------------
+//
+// Same session machinery as the chain-stream round trip above, but the
+// change signal comes from SubnetStatusHub /notify-changed (the health
+// prober's write path in production) rather than ChainFirehoseHub ingest.
+
+const statusLifecycleInit = await mcp(
+  { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+  { envOverride: lifecycleEnv },
+);
+const statusSessionId = statusLifecycleInit.headers.get("mcp-session-id");
+assert.ok(
+  statusSessionId,
+  "status-lifecycle initialize must mint a session id",
+);
+
+const statusUri = buildSubnetStatusResourceUri(1);
+const statusSubscribe = await mcp(
+  {
+    jsonrpc: "2.0",
+    id: 2,
+    method: "resources/subscribe",
+    params: { uri: statusUri },
+  },
+  {
+    envOverride: lifecycleEnv,
+    headers: { "mcp-session-id": statusSessionId },
+  },
+);
+assert.deepEqual(
+  statusSubscribe.body.result,
+  {},
+  "resources/subscribe on metagraph://subnet/{netuid}/status must succeed",
+);
+
+const statusStream = await mcpRaw(null, {
+  method: "GET",
+  headers: { "mcp-session-id": statusSessionId },
+  envOverride: lifecycleEnv,
+});
+assert.equal(statusStream.status, 200, "status subscription must open SSE");
+const statusReader = statusStream.body.getReader();
+
+const statusHubStub = subnetStatusHubNS.get(
+  subnetStatusHubNS.idFromName("global"),
+);
+const statusNotify = await statusHubStub.fetch(
+  "https://subnet-status-hub.internal/notify-changed",
+  {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ netuids: [1] }),
+  },
+);
+assert.equal(statusNotify.status, 200);
+const statusNotifyBody = await statusNotify.json();
+assert.equal(
+  statusNotifyBody.delivered,
+  1,
+  "SubnetStatusHub must deliver to the subscribed session",
+);
+
+const { value: statusFrameBytes } = await statusReader.read();
+const statusFrame = new TextDecoder().decode(statusFrameBytes);
+const statusNotification = JSON.parse(
+  statusFrame.slice(statusFrame.indexOf("data: ") + 6).trim(),
+);
+assert.deepEqual(statusNotification, {
+  jsonrpc: "2.0",
+  method: "notifications/resources/updated",
+  params: { uri: statusUri },
+});
+await statusReader.cancel();
+
+const statusUnsubscribe = await mcp(
+  {
+    jsonrpc: "2.0",
+    id: 4,
+    method: "resources/unsubscribe",
+    params: { uri: statusUri },
+  },
+  {
+    envOverride: lifecycleEnv,
+    headers: { "mcp-session-id": statusSessionId },
+  },
+);
+assert.deepEqual(statusUnsubscribe.body.result, {});
+
 console.log(
   `MCP validation passed: ${MCP_TOOLS.length} tools, lifecycle + ${
     schemaService ? "all" : "all-but-schema"
-  } tools/call + the resources/subscribe -> ingest -> notify round trip.`,
+  } tools/call + the resources/subscribe -> ingest -> notify round trip ` +
+    `+ the subnet-status subscribe -> notify-changed -> notify round trip.`,
 );

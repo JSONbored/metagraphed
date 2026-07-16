@@ -8,12 +8,7 @@
   ],
   "contact": "team@oroagents.com",
   "curation": {
-    "gap_notes": [
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ],
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T09:50:00.000Z",
@@ -24,7 +19,7 @@
   "docs_url": "https://docs.oroagents.com/docs/miners/quick-start",
   "name": "ORO",
   "netuid": 15,
-  "notes": "Reviewed overlay for SN15 using the official ORO website, miner quick-start docs, and source repository. No safe public API or machine-readable schema is verified yet.",
+  "notes": "Reviewed overlay for SN15 using the official ORO website, miner quick-start docs, and source repository. 10 community-submitted surfaces had no probe config at all -- the same registry-wide gap tracked in #5932 -- confirmed all 10 live and given probe configs matching sibling conventions. The OpenAPI schema documents 75 total paths; everything under /v1/admin, /v1/validator, /v1/miner, and /v1/auth is privileged and correctly untracked, and the remaining untracked /v1/public/* paths are either parameterized per-entity lookups (agent_version_id, eval_run_id, race_id, suite_id -- no stable canonical value, same reasoning as #5914/#5934) or POST write actions (download-url generation, waitlist signup), not GET-able data reads.",
   "schema_version": 1,
   "slug": "sn-15",
   "social": {
@@ -117,6 +112,13 @@
       "id": "sn-15-oro-subnet-api",
       "kind": "subnet-api",
       "name": "ORO public leaderboard API",
+      "notes": "Public no-auth GET returning the current ORO leaderboard (rank, agent, suite). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oro",
       "public_safe": true,
       "review": {
@@ -135,6 +137,13 @@
       "id": "sn-15-oro-data-artifact",
       "kind": "data-artifact",
       "name": "ORO top-miner snapshot",
+      "notes": "Public no-auth GET returning a snapshot of the current top-ranked ORO miner. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oro",
       "public_safe": true,
       "review": {
@@ -154,6 +163,12 @@
       "kind": "subnet-api",
       "name": "ORO public evaluation-suites API",
       "notes": "Public no-auth GET returning the ORO evaluation-suite catalog. Documented in the subnet's own OpenAPI (api.oroagents.com/openapi.json); same host as the existing openapi + subnet-api + data-artifact surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oro",
       "public_safe": true,
       "review": {
@@ -173,6 +188,12 @@
       "kind": "data-artifact",
       "name": "ORO SN15 ShoppingBench traces dataset",
       "notes": "Public ORO (SN15) HuggingFace dataset of 18,043 multi-turn agentic shopping trajectories (messages/tools/task_name columns) harvested from the subnet's ShoppingBench agentic-commerce benchmark; CC BY 4.0, not gated. The dataset card names \"ORO Subnet 15 (SN15), the Bittensor deployment\" and the ORO repo README (source) declares the subnet; the oro-ai HF org matches the operator's ORO-AI GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "oro",
       "public_safe": true,
       "review": {
@@ -192,6 +213,12 @@
       "kind": "data-artifact",
       "name": "ORO SN15 ShoppingBench SFT dataset",
       "notes": "Public ORO (SN15) Hugging Face supervised-fine-tuning dataset of ~15k agentic-commerce instruction/response pairs distilled from the subnet's ShoppingBench benchmark; CC BY 4.0, not gated. The dataset card names ORO Subnet 15 and the oro-ai HF org matches the operator's ORO-AI GitHub org (the ORO repo README declares the subnet). Distinct from the subnet's registered ShoppingBench traces dataset.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "oro",
       "public_safe": true,
       "review": {
@@ -211,6 +238,12 @@
       "kind": "subnet-api",
       "name": "ORO API health",
       "notes": "Public no-auth GET /health returning ORO API status and version. Documented in the subnet's OpenAPI spec on the same host as the existing leaderboard, suites, and snapshot surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oro",
       "public_safe": true,
       "review": {
@@ -230,6 +263,12 @@
       "kind": "subnet-api",
       "name": "ORO current active suite API",
       "notes": "Public no-auth GET returning the currently active ORO evaluation problem suite (suite_id, suite_version, is_active). Documented in the subnet's own OpenAPI (api.oroagents.com/openapi.json, path /v1/public/suites/current); same host as the existing suites catalog and leaderboard surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oro",
       "public_safe": true,
       "review": {
@@ -249,6 +288,12 @@
       "kind": "subnet-api",
       "name": "ORO current race API",
       "notes": "Public no-auth GET /v1/public/races/current on api.oroagents.com returning the active evaluation race for the current suite. Documented in the subnet OpenAPI on the same host as existing ORO public API surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oro",
       "public_safe": true,
       "review": {
@@ -268,6 +313,12 @@
       "kind": "subnet-api",
       "name": "ORO race history API",
       "notes": "Public no-auth GET /v1/public/races/history on api.oroagents.com returning paginated completed and cancelled evaluation races (most recent first). Documented in the subnet OpenAPI on the same host as existing ORO public API surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oro",
       "public_safe": true,
       "review": {
@@ -287,6 +338,12 @@
       "kind": "subnet-api",
       "name": "ORO API deep health",
       "notes": "Public no-auth GET /health/deep returning deep readiness JSON (status, version) that exercises the SQLAlchemy connection pool. Documented in the subnet's own OpenAPI (api.oroagents.com/openapi.json, path /health/deep); same host as the existing /health and public API surfaces. Distinct from the lightweight /health liveness endpoint.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oro",
       "public_safe": true,
       "review": {
@@ -348,6 +405,98 @@
         "https://oroagents.com/"
       ],
       "url": "https://api.oroagents.com/v1/public/inference/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-top-miner-payout",
+      "kind": "subnet-api",
+      "name": "Oro top miner payout",
+      "notes": "Public no-auth GET returning the current top-paid miner (hotkey, agent_name, tao_per_day, usd_per_day). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.oroagents.com/v1/public/top-miner-payout"],
+      "url": "https://api.oroagents.com/v1/public/top-miner-payout"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-validators",
+      "kind": "subnet-api",
+      "name": "Oro validators",
+      "notes": "Public no-auth GET returning the list of active validators (hotkey, name, status, registered_at). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.oroagents.com/v1/public/validators"],
+      "url": "https://api.oroagents.com/v1/public/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-evaluations-running",
+      "kind": "subnet-api",
+      "name": "Oro running evaluations",
+      "notes": "Public no-auth GET returning currently-running agent evaluation runs. Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.oroagents.com/v1/public/evaluations/running"
+      ],
+      "url": "https://api.oroagents.com/v1/public/evaluations/running"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-evaluations-pending",
+      "kind": "subnet-api",
+      "name": "Oro pending evaluations",
+      "notes": "Public no-auth GET returning pending evaluation queue summary and items (total_pending, total_runs_needed, projected_completion_at). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://api.oroagents.com/v1/public/evaluations/pending"
+      ],
+      "url": "https://api.oroagents.com/v1/public/evaluations/pending"
     }
   ],
   "website_url": "https://oroagents.com/"

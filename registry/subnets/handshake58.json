@@ -10,15 +10,12 @@
     "payments"
   ],
   "curation": {
-    "gap_notes": [
-      "No verified SSE/event stream yet.",
-      "No verified static data artifact yet."
-    ],
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T07:12:52.000Z",
+    "reviewed_at": "2026-07-16T05:10:00.000Z",
     "source_count": 9,
-    "verified_at": "2026-06-08T07:12:52.000Z"
+    "verified_at": "2026-07-16T05:10:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/58",
   "docs_url": "https://handshake58.com/skill.md",
@@ -36,9 +33,12 @@
   ],
   "name": "Handshake58",
   "netuid": 58,
-  "notes": "Reviewed identity overlay because the official repositories and website identify Bittensor SN58 as Handshake58 while native chain metadata currently displays Pending.",
+  "notes": "Reviewed identity overlay because the official repositories and website identify Bittensor SN58 as Handshake58 while native chain metadata previously displayed Pending. On-chain SubnetIdentitiesV3 has since resolved from Pending to native_name \"greevils\", consistent with the team's already-tracked social.x handle (x.com/greevils_ai) -- Handshake58 is the product/marketplace brand, Greevils is the operating team; not a discrepancy. This re-review pass removed a duplicate surface (the placeholder-named \"Pending community data-artifact\" and the properly-named skills-api surface both hit /api/skills with identical results, total=63 either way; kept the skills-api one) and gave the other placeholder-named surface (\"Pending community subnet-api\", /api/agent) a proper name and description. Diffed the current 4-path OpenAPI schema: all routes were already tracked.",
   "schema_version": 1,
   "slug": "sn-58",
+  "social": {
+    "x": "https://x.com/greevils_ai"
+  },
   "source_repo": "https://github.com/Handshake58/HS58-subnet",
   "status": "active",
   "surfaces": [
@@ -247,34 +247,13 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-58-handshake58-data-artifact",
-      "kind": "data-artifact",
-      "name": "Pending community data-artifact",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "handshake58",
-      "public_safe": true,
-      "review": {
-        "confidence": "medium",
-        "state": "community-submitted",
-        "submitted_by": "kiannidev"
-      },
-      "source_urls": ["https://handshake58.com/openapi.json"],
-      "url": "https://handshake58.com/api/skills"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "id": "sn-58-handshake58-subnet-api",
       "kind": "subnet-api",
-      "name": "Pending community subnet-api",
+      "name": "Handshake58 agent discovery API",
+      "notes": "Public no-auth GET returning the DRAIN protocol agent discovery manifest (links to skill.md, providers_api, signing_api, directory, source). Documented in the subnet's own OpenAPI schema (title \"Handshake58 DRAIN Protocol API\"); same host as the existing subnet-api surfaces.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -306,10 +285,29 @@
         "https://handshake58.com/skill.md"
       ],
       "url": "https://handshake58.com/api/validator/registry"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-58-handshake58-directory-providers",
+      "kind": "subnet-api",
+      "name": "Handshake58 provider directory",
+      "notes": "Public no-auth GET returning the directory of registered miner providers (id, name, apiUrl). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://handshake58.com/api/directory/providers"],
+      "url": "https://handshake58.com/api/directory/providers"
     }
   ],
-  "website_url": "https://handshake58.com",
-  "social": {
-    "x": "https://x.com/greevils_ai"
-  }
+  "website_url": "https://handshake58.com"
 }

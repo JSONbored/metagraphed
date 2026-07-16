@@ -23,6 +23,7 @@ import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { resolveProviderCard } from "@/lib/metagraphed/provider-card-fields";
 import { healthStatusSegments } from "@/lib/metagraphed/health-segments";
 import {

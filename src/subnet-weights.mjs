@@ -4,10 +4,8 @@
 // the network-wide leaderboard at /api/v1/chain/weights — that route ranks only the top-N
 // subnets and cannot be queried by an arbitrary netuid, so this fills the same per-subnet /
 // chain duality the turnover, concentration, stake-flow, and yield routes already have. Pure
-// shaping (buildSubnetWeights) + a thin D1 loader (loadSubnetWeights); the Worker adds the
+// shaping (buildSubnetWeights); the Worker reads the account_events aggregate and adds the
 // envelope. Null-safe: a cold store or a subnet with no WeightsSet events yields the zeroed card.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // The account_events kind emitted when a validator sets weights on a subnet.
 export const WEIGHTS_EVENT_KIND = "WeightsSet";
@@ -63,36 +61,4 @@ export function buildSubnetWeights(row, netuid, { window } = {}) {
     weight_sets: weightSets,
     sets_per_setter: setsPerSetter(weightSets, distinctSetters),
   };
-}
-
-// One subnet's weight-setting activity, computed live: read the account_events WeightsSet
-// stream for this netuid over the window (observed_at >= now - windowDays, epoch ms) as a
-// single aggregate (event count + true distinct setters + newest observed_at, served by
-// idx_account_events(netuid, event_kind, block_number) from migration 0024), and shape with
-// buildSubnetWeights. The handler resolves windowLabel/windowDays from the window param.
-// Cold/absent store -> the schema-stable zeroed card.
-export async function loadSubnetWeights(
-  d1,
-  netuid,
-  { windowLabel, windowDays } = {},
-) {
-  const cutoff = Date.now() - windowDays * DAY_MS;
-  // WeightsSet ingestion can omit hotkey, so count distinct setters over a
-  // hotkey-or-(netuid,uid) identity rather than COUNT(DISTINCT hotkey) alone --
-  // otherwise every hotkey-less WeightsSet collapses to a single NULL that
-  // COUNT(DISTINCT) drops, undercounting distinct_setters (and inflating
-  // sets_per_setter). Mirrors the network /chain/weights loader (#3011).
-  const setterIdentity =
-    "CASE " +
-    "WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey " +
-    "WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid " +
-    "ELSE NULL END";
-  const rows = await d1(
-    "SELECT COUNT(*) AS weight_sets, COUNT(DISTINCT " +
-      setterIdentity +
-      ") AS distinct_setters, MAX(observed_at) AS newest_observed " +
-      "FROM account_events WHERE netuid = ? AND event_kind = ? AND observed_at >= ?",
-    [netuid, WEIGHTS_EVENT_KIND, cutoff],
-  );
-  return buildSubnetWeights(rows?.[0] ?? null, netuid, { window: windowLabel });
 }

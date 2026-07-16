@@ -53,4 +53,18 @@ describe("readId", () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it("degrades to the default when localStorage.getItem throws (#6027)", () => {
+    // Safari private browsing / storage blocked by policy or an extension makes
+    // getItem throw; readId must not throw during the initial render.
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: vi.fn(() => {
+          throw new Error("localStorage is not available");
+        }),
+      },
+    });
+    expect(() => readId()).not.toThrow();
+    expect(readId()).toBe("traffic-light");
+  });
 });

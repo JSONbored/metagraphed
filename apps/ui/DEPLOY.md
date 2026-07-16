@@ -45,6 +45,21 @@ Notes:
 - Durable fallback if a future preset version changes the sandbox detection: set
   `nitro: true` inside the existing `defineConfig({ ... })` in `vite.config.ts`
   (the documented escape hatch) instead of `LOVABLE_SANDBOX=1`.
+- **Workers Builds' container OOMs during Nitro's SSR bundling pass on a
+  default Node heap** (`FATAL ERROR: ... JavaScript heap out of memory`,
+  consistently around a ~2GB ceiling — confirmed via a local repro
+  constraining Node to the same limit, and reproducible even after trimming
+  the largest single contributor, fumadocs-openapi's shiki syntax-highlight
+  bundle, down 93%). `apps/ui/package.json`'s own `build` script now sets
+  `NODE_OPTIONS=--max-old-space-size=4096` for exactly this reason — Node's
+  own heap-sizing heuristic is commonly more conservative than a container's
+  real available memory, and this repo's `npm run build` needs the room. If
+  the build still OOMs after this, the app's Nitro/SSR bundle has likely
+  grown large enough to need either a genuinely bigger Workers Builds
+  machine tier (if Cloudflare's dashboard exposes one) or further bundle
+  trimming (large unscoped dependencies are the usual culprit — check for
+  another shiki-style "whole package pulled in via a barrel import" case
+  first).
 
 ## Routing
 

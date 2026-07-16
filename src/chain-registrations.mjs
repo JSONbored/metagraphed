@@ -14,6 +14,11 @@ export const REGISTRATION_EVENT_KIND = "NeuronRegistered";
 export const CHAIN_REGISTRATIONS_LIMIT_DEFAULT = 20;
 export const CHAIN_REGISTRATIONS_LIMIT_MAX = 100;
 
+// Analytics windows this endpoint accepts (label -> days). Kept beside the loader so the
+// schema and runtime validation cannot drift from the endpoint.
+export const CHAIN_REGISTRATIONS_WINDOWS = { "7d": 7, "30d": 30 };
+export const DEFAULT_CHAIN_REGISTRATIONS_WINDOW = "7d";
+
 // Round a registrations-per-registrant ratio to a stable precision (2dp). Always finite and
 // non-negative here (events / distinct registrants, with the divisor guarded below).
 function round(value, dp = 2) {

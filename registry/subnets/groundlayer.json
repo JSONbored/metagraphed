@@ -1,13 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 20,
-  "name": "GroundLayer",
-  "slug": "sn-20",
-  "status": "active",
-  "categories": ["baseline-curated", "capital-markets", "identity-reviewed"],
-  "source_repo": null,
-  "dashboard_url": "https://taomarketcap.com/subnets/20",
-  "website_url": "https://www.groundlayer.xyz/",
   "baseline_excluded_surface_ids": [
     "sn-20-taomarketcap-source-repo",
     "sn-20-taomarketcap-website",
@@ -20,13 +11,9 @@
     "sn-20-website-link-groundlayer-xyz-website-1",
     "sn-20-website-link-groundlayer-xyz-website-2"
   ],
-  "notes": "Reviewed overlay for SN20 using the live GroundLayer website, subnet page, and roadmap. Previously discovered source repository candidates are not live and common API/docs/OpenAPI paths currently return 404.",
+  "categories": ["baseline-curated", "capital-markets", "identity-reviewed"],
+  "contact": "groundlayer@rizzo.network",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T11:15:00.000Z",
-    "verified_at": "2026-06-08T11:15:00.000Z",
-    "source_count": 6,
     "gap_notes": [
       "Official website, subnet, and roadmap pages are live and verified.",
       "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404 and are explicitly excluded from promoted surfaces.",
@@ -35,73 +22,88 @@
       "No verified docs site yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T11:15:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-06-08T11:15:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/20",
+  "name": "GroundLayer",
+  "netuid": 20,
+  "notes": "Reviewed overlay for SN20 using the live GroundLayer website, subnet page, and roadmap. Previously discovered source repository candidates are not live and common API/docs/OpenAPI paths currently return 404. Investigated rizzo.network (from the contact email groundlayer@rizzo.network) as a possible operator site/source-repo lead: confirmed it's a validator operator (Taostats-linked) with no on-page mention of GroundLayer/SN20, and its linked GitHub account (RogueTensor) has a single unrelated repo -- not added as a surface, source_repo remains null. 2 community-submitted surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed.",
+  "schema_version": 1,
+  "slug": "sn-20",
+  "social": {
+    "x": "https://x.com/groundlayerhq"
+  },
+  "source_repo": null,
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-20-groundlayer-website",
-      "name": "GroundLayer website",
-      "kind": "website",
-      "url": "https://www.groundlayer.xyz/",
-      "provider": "groundlayer",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-20-groundlayer-website",
+      "kind": "website",
+      "name": "GroundLayer website",
+      "notes": "Official GroundLayer website.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "groundlayer",
       "public_safe": true,
       "source_urls": [
         "https://www.groundlayer.xyz/",
         "https://api.taomarketcap.com/public/v1/subnets/20"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official GroundLayer website."
+      "url": "https://www.groundlayer.xyz/"
     },
     {
-      "id": "sn-20-groundlayer-subnet-page",
-      "name": "GroundLayer subnet page",
-      "kind": "website",
-      "url": "https://www.groundlayer.xyz/subnet",
-      "provider": "groundlayer",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-20-groundlayer-subnet-page",
+      "kind": "website",
+      "name": "GroundLayer subnet page",
+      "notes": "Official GroundLayer subnet information page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "groundlayer",
       "public_safe": true,
       "source_urls": [
         "https://www.groundlayer.xyz/",
         "https://www.groundlayer.xyz/subnet"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official GroundLayer subnet information page."
+      "url": "https://www.groundlayer.xyz/subnet"
     },
     {
-      "id": "sn-20-groundlayer-roadmap",
-      "name": "GroundLayer roadmap",
-      "kind": "website",
-      "url": "https://www.groundlayer.xyz/roadmap",
-      "provider": "groundlayer",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-20-groundlayer-roadmap",
+      "kind": "website",
+      "name": "GroundLayer roadmap",
+      "notes": "Official GroundLayer roadmap page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "groundlayer",
       "public_safe": true,
       "source_urls": [
         "https://www.groundlayer.xyz/",
         "https://www.groundlayer.xyz/roadmap"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official GroundLayer roadmap page."
+      "url": "https://www.groundlayer.xyz/roadmap"
     },
     {
       "auth_required": false,
@@ -110,6 +112,12 @@
       "kind": "data-artifact",
       "name": "GroundLayer OpenGraph card image",
       "notes": "Public no-auth PNG brand image served at www.groundlayer.xyz/og-groundlayer.png and referenced by the official GroundLayer homepage OpenGraph and Twitter card metadata for SN20 social previews.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "groundlayer",
       "public_safe": true,
       "review": {
@@ -128,7 +136,13 @@
       "id": "sn-20-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "GroundLayer TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/20 on api.taomarketcap.com returning machine-readable JSON for SN20 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. GroundLayer's official website paths under www.groundlayer.xyz do not expose a verified first-party public API; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/20/ on api.taomarketcap.com returning machine-readable JSON for SN20 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. GroundLayer's official website paths under www.groundlayer.xyz do not expose a verified first-party public API; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -139,9 +153,8 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://www.groundlayer.xyz/"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/20"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/20/"
     }
   ],
-  "social": { "x": "https://x.com/groundlayerhq" },
-  "contact": "groundlayer@rizzo.network"
+  "website_url": "https://www.groundlayer.xyz/"
 }

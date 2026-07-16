@@ -1,54 +1,53 @@
 {
-  "schema_version": 1,
-  "netuid": 115,
-  "name": "HashiChain",
-  "slug": "sn-115",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo"
   ],
-  "source_repo": "https://github.com/hashi115/hashichain",
-  "dashboard_url": "https://taomarketcap.com/subnets/115",
-  "website_url": null,
-  "notes": "Reviewed overlay for SN115 using the live HashiChain source repository. No standalone website, docs site, API, OpenAPI, SSE, or data artifact has been verified yet.",
+  "contact": "hashichain@outlook.com",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:50:00.000Z",
-    "verified_at": "2026-06-08T10:50:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "No verified standalone website yet.",
       "No verified docs site yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ]
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/115",
+  "name": "HashiChain",
+  "netuid": 115,
+  "notes": "Reviewed overlay for SN115 using the live HashiChain source repository. No standalone website, docs site, API, OpenAPI, SSE, or data artifact has been verified yet.",
+  "schema_version": 1,
+  "slug": "sn-115",
+  "source_repo": "https://github.com/hashi115/hashichain",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-115-hashichain-source",
-      "name": "HashiChain source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/hashi115/hashichain",
-      "provider": "hashichain",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-115-hashichain-source",
+      "kind": "source-repo",
+      "name": "HashiChain source repository",
+      "notes": "Public HashiChain source repository for SN115.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hashichain",
       "public_safe": true,
       "source_urls": [
         "https://github.com/hashi115/hashichain",
         "https://api.taomarketcap.com/public/v1/subnets/115"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public HashiChain source repository for SN115."
+      "url": "https://github.com/hashi115/hashichain"
     },
     {
       "auth_required": false,
@@ -56,7 +55,13 @@
       "id": "sn-115-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "HashiChain TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/115 on api.taomarketcap.com returning machine-readable JSON for SN115 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. HashiChain currently has no separately verified first-party public API; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/115/ on api.taomarketcap.com returning machine-readable JSON for SN115 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. HashiChain currently has no separately verified first-party public API; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -67,7 +72,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/hashi115/hashichain"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/115"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/115/"
     },
     {
       "auth_required": false,
@@ -76,6 +81,12 @@
       "kind": "data-artifact",
       "name": "HashiChain intro logo image",
       "notes": "Public no-auth PNG brand image published in the official hashi115/hashichain repository assets directory, referenced as the SN115 on-chain subnet logo in SubnetIdentitiesV3, and pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "hashichain",
       "public_safe": true,
       "review": {
@@ -89,5 +100,5 @@
       "url": "https://raw.githubusercontent.com/hashi115/hashichain/e4a0280c0d29cc858795b84a7cac932baae43088/assets/intro.png"
     }
   ],
-  "contact": "hashichain@outlook.com"
+  "website_url": null
 }

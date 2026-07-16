@@ -28,8 +28,3 @@ export function shortHash(value?: string | null, keep = 6): string | undefined {
   if (v.length <= keep * 2 + 1) return v;
   return `${v.slice(0, keep)}…${v.slice(-keep)}`;
 }
-
-/** True when a ref looks like a 0x-prefixed block hash (vs a numeric block_number). */
-export function isHashRef(ref: string): boolean {
-  return /^0x[0-9a-fA-F]+$/.test(ref);
-}

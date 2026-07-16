@@ -683,6 +683,90 @@ describe("state-query methods (#4344/9.2)", () => {
     assert.match(body.error.message, /startKey/);
   });
 
+  test("400 rpc_invalid_request for a malformed state_getStorage at (never reaches upstream)", async () => {
+    // #6014: optional block-hash `at` must be validated before forwarding.
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    globalThis.fetch = async (...args) => {
+      fetchCalls += 1;
+      return originalFetch(...args);
+    };
+    try {
+      const res = await handleRpcProxyRequest(
+        rpcPost({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "state_getStorage",
+          params: [HEX_KEY, "not-a-block-hash"],
+        }),
+        rpcEnv(poolWith(ep("a", SAFE_A))),
+        url("/rpc/v1/finney"),
+      );
+      const body = await errorJson(res, 400);
+      assert.equal(body.error.code, "rpc_invalid_request");
+      assert.match(body.error.message, /\bat\b/);
+      assert.equal(fetchCalls, 0, "malformed at must not reach upstream");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("400 rpc_invalid_request for a malformed state_getKeysPaged at (never reaches upstream)", async () => {
+    // #6014: optional block-hash `at` must be validated before forwarding.
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    globalThis.fetch = async (...args) => {
+      fetchCalls += 1;
+      return originalFetch(...args);
+    };
+    try {
+      const res = await handleRpcProxyRequest(
+        rpcPost({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "state_getKeysPaged",
+          params: [HEX_KEY, 10, HEX_KEY, "0xshort"],
+        }),
+        rpcEnv(poolWith(ep("a", SAFE_A))),
+        url("/rpc/v1/finney"),
+      );
+      const body = await errorJson(res, 400);
+      assert.equal(body.error.code, "rpc_invalid_request");
+      assert.match(body.error.message, /\bat\b/);
+      assert.equal(fetchCalls, 0, "malformed at must not reach upstream");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("forwards a well-formed state_getStorage at to upstream", async () => {
+    const BLOCK_HASH = `0x${"cd".repeat(32)}`;
+    const originalFetch = globalThis.fetch;
+    let forwardedBodyText = null;
+    globalThis.fetch = async (_endpointUrl, init) => {
+      forwardedBodyText = init?.body ?? null;
+      return jsonResponse(200, { jsonrpc: "2.0", id: 1, result: "0x01" });
+    };
+    try {
+      const res = await handleRpcProxyRequest(
+        rpcPost({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "state_getStorage",
+          params: [HEX_KEY, BLOCK_HASH],
+        }),
+        rpcEnv(poolWith(ep("a", SAFE_A))),
+        url("/rpc/v1/finney"),
+      );
+      assert.equal(res.status, 200);
+      assert.ok(forwardedBodyText, "expected the upstream fetch to be called");
+      const forwardedBody = JSON.parse(forwardedBodyText);
+      assert.equal(forwardedBody.params[1], BLOCK_HASH);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("400 rpc_invalid_request for a non-integer/negative state_getKeysPaged count", async () => {
     for (const count of [-1, "not-a-number", Number.NaN]) {
       const res = await handleRpcProxyRequest(

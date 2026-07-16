@@ -18,20 +18,19 @@
       "Level114/level114-subnet is live from Tensorplex evidence but is not promoted as the primary source repository.",
       "Common docs, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
       "The /api path currently fails simple safe fetch probes and is not promoted.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet."
+      "No verified SSE/event stream yet.",
+      "Diffed the 46-path SOMA platform OpenAPI schema for undiscovered public GET endpoints -- both the /api/private/frontend/* and /api/public/frontend-key/* route groups declare no security in the schema, but every no-param candidate in both groups is actually gated in practice (403 for private/frontend, 401 for public/frontend-key -- the \"public\" name is misleading, it still requires a frontend-key credential). No new candidates promoted."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T19:30:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 8,
-    "verified_at": "2026-06-08T19:30:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": "https://thesoma.ai/dashboard",
   "name": "SOMA",
   "netuid": 114,
-  "notes": "Reviewed overlay for SN114 SOMA using the public SOMA website, dashboard, MCP/access surfaces, and DendriteHQ source repository. Common docs/API/health/OpenAPI/Swagger probe paths currently return 404 or transient fetch failures and are not promoted.",
+  "notes": "Reviewed overlay for SN114 SOMA using the public SOMA website, dashboard, MCP/access surfaces, and DendriteHQ source repository. Common docs/API/health/OpenAPI/Swagger probe paths currently return 404 or transient fetch failures and are not promoted. Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks; diffed the 46-path platform OpenAPI schema, no new candidates promoted (both the private and \"public\"-named route groups are actually gated).",
   "schema_version": 1,
   "slug": "sn-114",
   "social": {
@@ -167,6 +166,12 @@
       "kind": "subnet-api",
       "name": "SOMA API health",
       "notes": "Public no-auth GET /api/health on thesoma.ai returning application liveness JSON. Served on the official SN114 website host registered in this manifest and linked from the DendriteHQ/SOMA source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "soma",
       "public_safe": true,
       "review": {
@@ -186,6 +191,12 @@
       "kind": "openapi",
       "name": "SOMA platform OpenAPI schema",
       "notes": "Public no-auth OpenAPI 3.1 schema (title \"MCP-subnet\", 46 paths) for the SN114 SOMA platform API on platform.thesoma.ai. The official DendriteHQ/SOMA validator/.env.example sets NETUID=114 and PLATFORM_URL=https://platform.thesoma.ai, tying this host to the subnet; Swagger UI is served at /docs on the same host. Distinct from thesoma.ai website and /api/health surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "soma",
       "public_safe": true,
       "review": {

@@ -10,23 +10,18 @@
   ],
   "contact": "intern@bitmind.ai",
   "curation": {
-    "gap_notes": [
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified unauthenticated public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
-    ],
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:35:00.000Z",
+    "reviewed_at": "2026-07-16T00:40:00.000Z",
     "source_count": 5,
-    "verified_at": "2026-06-08T10:35:00.000Z"
+    "verified_at": "2026-07-16T00:40:00.000Z"
   },
   "dashboard_url": "https://app.bitmind.ai/",
   "docs_url": "https://docs.bitmind.ai/",
   "name": "BitMind",
   "netuid": 34,
-  "notes": "Reviewed overlay for SN34 using BitMind's official website, docs, app, and subnet source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet.",
+  "notes": "Reviewed overlay for SN34 using BitMind's official website, docs, app, and subnet source repository. This pass removed sn-34-bitmind-data-artifact, a straight duplicate of sn-34-bitmind-subnet-api (identical url api.bitmind.ai/health, same submitter, mis-classified as kind data-artifact instead of subnet-api). Fixed 2 remaining surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full OpenAPI schema (10 paths): all remaining paths beyond the tracked /health are write-action detection/upload POST endpoints, so none are promoted as additional surfaces. All 9 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-34",
   "source_repo": "https://github.com/BitMind-AI/bitmind-subnet",
@@ -110,28 +105,6 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-34-bitmind-data-artifact",
-      "kind": "data-artifact",
-      "name": "BitMind community data-artifact",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "bitmind",
-      "public_safe": true,
-      "review": {
-        "confidence": "medium",
-        "state": "community-submitted",
-        "submitted_by": "kiannidev"
-      },
-      "source_urls": ["https://api.bitmind.ai/openapi.json"],
-      "url": "https://api.bitmind.ai/health"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "id": "sn-34-bitmind-openapi",
       "kind": "openapi",
       "name": "BitMind community openapi",
@@ -204,6 +177,12 @@
       "kind": "data-artifact",
       "name": "GAS-Station datasets (Hugging Face)",
       "notes": "BitMind's public GAS-Station Hugging Face org hosting the subnet's weekly-refreshed real/generated image and video datasets (gs-images / gs-videos), linked as \"GAS-Station\" in the official bitmind-subnet README.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "bitmind",
       "public_safe": true,
       "review": {
@@ -222,6 +201,12 @@
       "kind": "data-artifact",
       "name": "BitMind bm-real image dataset",
       "notes": "Public BitMind (SN34) HuggingFace corpus of ~28k real (non-generated) images in Parquet, a reference set for the subnet's synthetic-vs-real image detection task; not gated, image column only. The bitmind-subnet README (source) declares Bittensor SN34 and the bitmind HF org owns the dataset.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "bitmind",
       "public_safe": true,
       "review": {

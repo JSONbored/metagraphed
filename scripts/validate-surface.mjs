@@ -49,6 +49,32 @@ const GRANDFATHERED_DUPLICATE_URLS = new Set([
   "gradients.json|https://api.gradients.io/v1/network/status",
 ]);
 
+// Reviewed-tier authorship convention + its acknowledged exemptions (#5739).
+// Files at the `maintainer-reviewed` / `adapter-backed` curation tier normally
+// pair a non-null `curation.verified_at` with their `reviewed_at` and carry a
+// proving `source_urls` on every surface. Exactly three entries deviate — and
+// they are a recognized class of specially-seeded, self-referential / pilot
+// manifests, recognizable by structural fields (never a filename allowlist):
+//   - the netuid-0 root/base-layer overlay, whose surfaces ARE the canonical
+//     Bittensor properties (a source_url "proving" bittensor.com is official
+//     would be circular) and whose RPC/WSS/archive kinds are maintainer-curated
+//     infrastructure rather than contributor surfaces; and
+//   - `partnership.tier: "pilot"` manifests (metagraphed's own dogfood subnet
+//     plus pilot partners), hand-seeded ahead of the automated review pipeline.
+// Those are exempt. ANY OTHER reviewed-tier entry that drops `verified_at` or a
+// surface's `source_urls` is surfaced as a non-blocking advisory below, so a
+// real future data gap is flagged rather than sitting silently ambiguous.
+const REVIEWED_AUTHORSHIP_TIERS = new Set([
+  "maintainer-reviewed",
+  "adapter-backed",
+]);
+
+function conventionExemption(document) {
+  if (document.netuid === 0) return "netuid-0 base-layer overlay";
+  if (document.partnership?.tier === "pilot") return "pilot manifest";
+  return null;
+}
+
 // Build the set of (netuid, normalized-url) keys for native-chain candidates that
 // are already machine-promoted (classification live or redirected). A community
 // surface duplicating one of these adds no signal — the build pipeline injects it
@@ -91,6 +117,8 @@ const files =
     : await listJsonFiles(path.join(repoRoot, "registry/subnets"));
 
 const errors = [];
+const conventionAdvisories = [];
+const conventionExemptions = [];
 let surfaceCount = 0;
 for (const file of files) {
   let document;
@@ -187,6 +215,36 @@ for (const file of files) {
       );
     }
   }
+
+  // Reviewed-tier verified_at/source_urls convention (#5739). Advisory, never a
+  // hard error: exempt entries (root / pilot manifests) are acknowledged, and
+  // any other reviewed-tier entry that deviates is flagged rather than silent.
+  if (REVIEWED_AUTHORSHIP_TIERS.has(document.curation?.level)) {
+    const missingSourceUrls = (document.surfaces || []).filter(
+      (surface) =>
+        !Array.isArray(surface.source_urls) || surface.source_urls.length === 0,
+    ).length;
+    const verifiedAtNull = document.curation?.verified_at == null;
+    if (verifiedAtNull || missingSourceUrls > 0) {
+      const label = path.basename(file);
+      const exemption = conventionExemption(document);
+      if (exemption) {
+        conventionExemptions.push(`${label} (${exemption})`);
+      } else {
+        const gaps = [];
+        if (verifiedAtNull) gaps.push("curation.verified_at is null");
+        if (missingSourceUrls > 0) {
+          gaps.push(`${missingSourceUrls} surface(s) lack source_urls`);
+        }
+        conventionAdvisories.push(
+          `${label}: ${document.curation.level} entry deviates from the ` +
+            `reviewed-tier convention (${gaps.join("; ")}). Backfill to match ` +
+            "the reviewed-tier shape, or mark it exempt if it is a " +
+            "self-referential/pilot manifest.",
+        );
+      }
+    }
+  }
 }
 
 if (errors.length > 0) {
@@ -200,6 +258,21 @@ if (errors.length > 0) {
 console.log(
   `Surface validation passed: ${surfaceCount} surface(s) across ${files.length} subnet file(s).`,
 );
+
+// #5739 — make the reviewed-tier convention non-silent: name the acknowledged
+// exemptions, and loudly flag any non-exempt deviation as a real data gap.
+if (conventionExemptions.length > 0) {
+  console.log(
+    `Reviewed-tier convention: ${conventionExemptions.length} acknowledged exemption(s) ` +
+      `(self-referential / pilot manifests) — ${conventionExemptions.join(", ")}.`,
+  );
+}
+if (conventionAdvisories.length > 0) {
+  console.warn(
+    `\nReviewed-tier convention advisory (${conventionAdvisories.length} — not blocking):`,
+  );
+  for (const advisory of conventionAdvisories) console.warn(`- ${advisory}`);
+}
 
 // ajv.errorsText() collapses every error to its bare `message`, which for an
 // `enum` keyword is the unhelpful "must be equal to one of the allowed

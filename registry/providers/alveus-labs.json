@@ -3,6 +3,7 @@
   "github_url": "https://github.com/AlveusLabs/SN94-BitSota",
   "id": "alveus-labs",
   "kind": "subnet-team",
+  "logo_url": "https://metagraph.sh/logos/alveus-labs.png",
   "name": "Alveus Labs",
   "public_notes": "Subnet 94 (Bitsota) team profile — Alveus Labs operates the Bitsota AutoResearch coordinator (autoresearch.bitsota.com). Identity from the official bitsota.ai site and the AlveusLabs/SN94-BitSota source repo. Review input only (authority: community).",
   "schema_version": 1,

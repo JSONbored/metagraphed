@@ -77,7 +77,13 @@
       "id": "sn-109-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "Academia TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/109 on api.taomarketcap.com returning machine-readable JSON for SN109 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Academia exposes source repositories and archives but no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/109/ on api.taomarketcap.com returning machine-readable JSON for SN109 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Academia exposes source repositories and archives but no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -88,7 +94,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/fx-integral/academia"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/109"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/109/"
     }
   ]
 }

@@ -12,14 +12,13 @@
   "contact": "support@chutes.ai",
   "curation": {
     "gap_notes": [
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet."
+      "The OpenAPI schema also declares generic auth/login scaffolding (/.well-known/openid-configuration, /idp/*, /users/login/nonce, /users/registration_token, /instances/nonce, /servers/nonce) with no subnet-specific data, plus /_metrics (403), /chutes/miner_means (HTML directory index, not a data payload), /instances/token_check (ambiguous without params), /invocations/exports/recent (500 live), and /miner/instance_logs (actually auth-gated despite the schema's no-auth declaration) -- none of these were promoted."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T07:45:00.000Z",
+    "reviewed_at": "2026-07-16T06:10:00.000Z",
     "source_count": 9,
-    "verified_at": "2026-06-08T07:45:00.000Z"
+    "verified_at": "2026-07-16T06:10:00.000Z"
   },
   "dashboard_url": "https://chutes.ai/app?type=llm",
   "docs_url": "https://chutes.ai/docs",
@@ -37,7 +36,7 @@
   ],
   "name": "Chutes",
   "netuid": 64,
-  "notes": "Reviewed overlay for SN64 using the official Chutes website, docs, source repositories, app catalog, and public pricing endpoint. The pricing endpoint is GET-backed; HEAD behavior is not authoritative for that API.",
+  "notes": "Reviewed overlay for SN64 using the official Chutes website, docs, source repositories, app catalog, and public pricing endpoint. The pricing endpoint is GET-backed; HEAD behavior is not authoritative for that API. This re-review pass fixed 14 surfaces having no probe config at all -- the registry-wide gap tracked in #5932 -- and filled in three surfaces that had generic auto-fill names and no notes. Diffed the full 165-path OpenAPI schema and added 9 new no-auth no-param surfaces (affine-available, rolling-updates, compute-history/reconciliation CSV exports, miner metagraph/metrics, payments list, TEE attestation measurements, audit log listing); excluded auth scaffolding and broken/gated routes (see gap_notes). On-chain identity re-confirmed unchanged.",
   "schema_version": 1,
   "slug": "sn-64",
   "social": {
@@ -305,11 +304,12 @@
       "authority": "community",
       "id": "sn-64-chutes-data-artifact",
       "kind": "data-artifact",
-      "name": "Chutes community data-artifact",
+      "name": "Chutes GPU count history",
+      "notes": "Public no-auth GET /chutes/gpu_count_history on api.chutes.ai, returning per-chute GPU allocation counts. Documented in the subnet's own OpenAPI spec.",
       "probe": {
         "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
+        "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "chutes",
@@ -327,11 +327,12 @@
       "authority": "community",
       "id": "sn-64-chutes-data-artifact-api-chutes-ai",
       "kind": "data-artifact",
-      "name": "Chutes community boosted data-artifact",
+      "name": "Chutes boosted models list",
+      "notes": "Public no-auth GET /chutes/boosted on api.chutes.ai, returning the list of chutes with an active incentive boost multiplier (chute_id, name, boost, manual_boost). Documented in the subnet's own OpenAPI spec.",
       "probe": {
         "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
+        "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "chutes",
@@ -349,11 +350,12 @@
       "authority": "community",
       "id": "sn-64-chutes-data-artifact-api-chutes-ai-2",
       "kind": "data-artifact",
-      "name": "Chutes utilization data-artifact",
+      "name": "Chutes per-chute utilization",
+      "notes": "Public no-auth GET /chutes/utilization on api.chutes.ai, returning current and rolling-window utilization per chute (chute_id, name, timestamp, utilization_current, utilization_5m). Documented in the subnet's own OpenAPI spec.",
       "probe": {
         "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
+        "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "chutes",
@@ -416,6 +418,12 @@
       "kind": "data-artifact",
       "name": "Chutes user growth history",
       "notes": "Public no-auth JSON time series of Chutes platform user growth (daily and cumulative user counts), served by the official Chutes API and defined in its OpenAPI spec.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -432,6 +440,12 @@
       "kind": "data-artifact",
       "name": "Chutes daily revenue summary",
       "notes": "Public no-auth JSON daily revenue summary for the Chutes platform (date, new subscriber count, subscription and pay-as-you-go revenue per day); GET /daily_revenue_summary in the OpenAPI spec. Distinct endpoint from the subnet's existing /chutes/* and /users/growth data-artifacts.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -448,6 +462,12 @@
       "kind": "data-artifact",
       "name": "Chutes per-chute invocation usage",
       "notes": "Public no-auth JSON of per-chute invocation usage on the Chutes platform (chute_id, date, usd_amount, invocation_count); GET /invocations/usage in the OpenAPI spec. Distinct endpoint from the subnet's existing /chutes/*, /users/growth, and /daily_revenue_summary data-artifacts.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -464,6 +484,12 @@
       "kind": "data-artifact",
       "name": "Chutes supported GPU catalog",
       "notes": "Public no-auth JSON catalog of the GPU models the Chutes platform supports, with per-model hardware specs (display name, memory, compute capability, tensor cores, ECC/SXM flags); GET /nodes/supported in the OpenAPI spec. Distinct endpoint from the subnet's existing /chutes/*, /users/growth, /daily_revenue_summary, and /invocations/usage data-artifacts.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -480,6 +506,12 @@
       "kind": "data-artifact",
       "name": "Chutes GPU node availability",
       "notes": "Public no-auth JSON of live GPU node availability on the Chutes platform — provisioned vs idle node counts per GPU model (3090, 4090, 5090, a100, h100, ...); GET /nodes/ in the OpenAPI spec. A live operational feed, distinct from the static /nodes/supported hardware catalog and the subnet's other data-artifacts.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -496,6 +528,12 @@
       "kind": "data-artifact",
       "name": "Chutes per-chute diffusion invocation stats",
       "notes": "Public no-auth JSON of per-chute diffusion (image-generation) invocation statistics on the Chutes platform (chute_id, name, invocation counts); GET /invocations/stats/diffusion in the OpenAPI spec. The diffusion-model counterpart to the subnet's registered /invocations/usage feed, distinct from the subnet's other data-artifacts.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -512,6 +550,12 @@
       "kind": "subnet-api",
       "name": "Chutes bounty list API",
       "notes": "Public no-auth GET returning active chute bounty listings (bounty_amount, time_remaining, chute_id). Documented in the subnet's own OpenAPI (api.chutes.ai/openapi.json, path /bounties/); same host as the existing pricing and models subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -531,6 +575,12 @@
       "kind": "subnet-api",
       "name": "Chutes LLM invocation stats API",
       "notes": "Public no-auth GET returning per-chute LLM invocation statistics (chute_id, name, date, total_requests). Documented in the subnet's own OpenAPI (api.chutes.ai/openapi.json, path /invocations/stats/llm); same host as the existing pricing and bounties surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -549,7 +599,13 @@
       "id": "sn-64-chutes-ping",
       "kind": "subnet-api",
       "name": "Chutes API ping",
-      "notes": "Public no-auth GET /ping on api.chutes.ai returning API liveness (observed plain-text response: ok). Documented as GET /ping in the subnet OpenAPI spec on the same host as the existing pricing, bounties, and LLM-stats subnet-api surfaces.",
+      "notes": "Public no-auth GET /ping on api.chutes.ai returning API liveness (observed plain-text response: ok). Documented as GET /ping in the subnet OpenAPI spec on the same host as the existing pricing, bounties, and LLM-stats subnet-api surfaces. Served as application/octet-stream, not JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -569,6 +625,12 @@
       "kind": "subnet-api",
       "name": "Chutes website health",
       "notes": "Public no-auth GET /api/health on chutes.ai returning application liveness JSON. Served on the official Chutes website host registered in this manifest.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -585,6 +647,12 @@
       "kind": "subnet-api",
       "name": "Chutes TAO fair market value API",
       "notes": "Public no-auth GET returning the platform TAO fair market value used for pricing calculations. Documented in the subnet's own OpenAPI (api.chutes.ai/openapi.json, path /fmv); same host as the existing pricing, bounties, and LLM-stats subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -604,6 +672,12 @@
       "kind": "subnet-api",
       "name": "Chutes TAO payment totals API",
       "notes": "Public no-auth GET returning aggregate TAO payment totals (today, this_month, total). Documented in the subnet's own OpenAPI (api.chutes.ai/openapi.json, path /payments/summary/tao); same host as the existing pricing, bounties, fmv, and LLM-stats subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -623,6 +697,12 @@
       "kind": "subnet-api",
       "name": "Chutes miner scores API",
       "notes": "Public no-auth GET /miner/scores on api.chutes.ai — Chutes-computed per-miner scoring breakdown (raw and normalized bounty/compute values) for SN64 Chutes. Declared as a no-auth route (security: none) in the official Chutes OpenAPI spec on the same api.chutes.ai gateway that hosts the subnet's registered surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -639,6 +719,12 @@
       "kind": "subnet-api",
       "name": "Chutes miner stats API",
       "notes": "Public no-auth GET /miner/stats on api.chutes.ai — Chutes-computed per-miner instance and compute statistics (rolling instance counts and utilization windows) for SN64 Chutes. Declared as a no-auth route (security: none) in the official Chutes OpenAPI spec on the same api.chutes.ai gateway that hosts the subnet's registered surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "chutes",
       "public_safe": true,
       "review": {
@@ -647,6 +733,168 @@
       },
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "url": "https://api.chutes.ai/miner/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-affine-available",
+      "kind": "data-artifact",
+      "name": "Chutes affine-available agents",
+      "notes": "Public no-auth GET /chutes/affine_available on api.chutes.ai, returning chutes with an active instance tagged for the affine agent-evaluation program. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/chutes/affine_available"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-rolling-updates",
+      "kind": "data-artifact",
+      "name": "Chutes rolling updates",
+      "notes": "Public no-auth GET /chutes/rolling_updates on api.chutes.ai, returning the list of chutes currently undergoing a rolling deployment update. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/chutes/rolling_updates"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-instances-compute-history-csv",
+      "kind": "data-artifact",
+      "name": "Chutes instance compute history (CSV)",
+      "notes": "Public no-auth GET /instances/compute_history_csv on api.chutes.ai, returning a CSV export of per-instance compute-time history. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/instances/compute_history_csv"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-instances-reconciliation-csv",
+      "kind": "data-artifact",
+      "name": "Chutes instance reconciliation history (CSV)",
+      "notes": "Public no-auth GET /instances/reconciliation_csv on api.chutes.ai, returning a CSV export of instance reconciliation events. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/instances/reconciliation_csv"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-miner-metagraph",
+      "kind": "data-artifact",
+      "name": "Chutes miner metagraph",
+      "notes": "Public no-auth GET /miner/metagraph on api.chutes.ai, returning per-neuron metagraph state (already-public on-chain hotkey/coldkey, node_id, incentive, ip). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-miner-metrics",
+      "kind": "subnet-api",
+      "name": "Chutes miner metrics",
+      "notes": "Public no-auth GET /miner/metrics/ on api.chutes.ai, returning aggregate miner-side metrics (invocation counts, compute time, utilization, per-second price, total usage). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/metrics/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-payments-list",
+      "kind": "data-artifact",
+      "name": "Chutes payments list",
+      "notes": "Public no-auth GET /payments on api.chutes.ai, returning a list of TAO payment transactions with taostats.io transaction/account links. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. Distinct from the already-tracked /payments/summary/tao aggregate totals.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/payments"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-tee-measurements",
+      "kind": "data-artifact",
+      "name": "Chutes TEE attestation measurements",
+      "notes": "Public no-auth GET /servers/tee/measurements on api.chutes.ai, returning trusted-execution-environment attestation measurements (RTMR registers, expected GPU models/counts) for Chutes compute nodes. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/servers/tee/measurements"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-audit-log",
+      "kind": "data-artifact",
+      "name": "Chutes audit log listing",
+      "notes": "Public no-auth GET /audit/ on api.chutes.ai, returning a listing of periodic audit-log export files with time-window metadata. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/audit/"
     }
   ],
   "website_url": "https://chutes.ai/"

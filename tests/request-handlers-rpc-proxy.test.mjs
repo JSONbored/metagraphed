@@ -256,10 +256,42 @@ describe("handleRpcUsage", () => {
 });
 
 describe("handleSurfaceVerify", () => {
-  const verifyReq = (id) =>
+  const verifyReq = (id, init = {}) =>
     req(`/api/v1/surfaces/${id}/verify`, {
       headers: { "cf-connecting-ip": "203.0.113.10" },
+      ...init,
     });
+
+  test("405 for non-GET/HEAD methods without probing", async () => {
+    let fetched = false;
+    let limited = false;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      fetched = true;
+      return new Response("{}", { status: 200 });
+    };
+    const env = createLocalArtifactEnv();
+    env.RPC_RATE_LIMITER = {
+      limit: async () => {
+        limited = true;
+        return { success: true };
+      },
+    };
+    try {
+      const res = await handleSurfaceVerify(
+        verifyReq(SURFACE_ID, { method: "POST" }),
+        env,
+        SURFACE_ID,
+      );
+      const body = await errorJson(res, 405);
+      assert.equal(body.error.code, "method_not_allowed");
+      assert.equal(res.headers.get("allow"), "GET, HEAD, OPTIONS");
+      assert.equal(fetched, false);
+      assert.equal(limited, false);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 
   test("404s for an unknown surface without probing", async () => {
     let fetched = false;
