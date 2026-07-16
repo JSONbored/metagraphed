@@ -2,16 +2,15 @@ import path from "node:path";
 import {
   apiDocsSubdomainOrigins,
   buildTimestamp,
-  isBrandImpersonationUrl,
-  isCredentialedUrl,
   isLikelyExampleLink,
+  isPlaceholderIdentityUrl,
   isUnsafeResolvedUrl,
-  isUnsafeUrl,
   listJsonFilesRecursive,
   loadNativeSnapshot,
   loadProviders,
   loadSubnets,
   nativeDisplayName,
+  normalizePublicUrl,
   OPENAPI_PROBE_PATHS,
   probeOpenApiSpec,
   readCommittedManifestGeneratedAt,
@@ -82,15 +81,15 @@ const existingGeneratedCandidates = await loadExistingGeneratedCandidates();
 // follow-up). CI builds from committed data only, so it never sees the live
 // collision; that's why the publish failed while every PR's CI stayed green.
 // Reserve every committed community candidate's locator (same key format as
-// addCandidate, with the LOCAL normalizePublicUrl) so the discovery never emits
-// a duplicate of one — the committed candidate stands.
+// addCandidate, via the shared normalizeCandidateUrl) so the discovery never
+// emits a duplicate of one — the committed candidate stands.
 const reservedCandidateLocators = new Set();
 for (const file of await listJsonFilesRecursive(
   path.join(repoRoot, "registry/candidates/community"),
 )) {
   const document = await readJson(file);
   for (const candidate of document.candidates || []) {
-    const normalizedUrl = normalizePublicUrl(candidate.url);
+    const normalizedUrl = normalizeCandidateUrl(candidate.url);
     if (!normalizedUrl) continue;
     reservedCandidateLocators.add(
       `${candidate.netuid}:${candidate.kind}:${normalizedUrl.toLowerCase()}`,
@@ -704,7 +703,7 @@ async function discoverFromProjectWebsites() {
     (candidate) => candidate.kind === "website",
   );
   await mapLimit(websiteCandidates, 8, async (candidate) => {
-    const root = normalizePublicUrl(candidate.url);
+    const root = normalizeCandidateUrl(candidate.url);
     if (!root) {
       return;
     }
@@ -901,7 +900,7 @@ function collectOpenApiBaseOrigins() {
     if (netuid == null || !provider || netuidsWithOpenapi.has(netuid)) {
       return;
     }
-    const normalized = normalizePublicUrl(rawUrl);
+    const normalized = normalizeCandidateUrl(rawUrl);
     if (!normalized) {
       return;
     }
@@ -1082,7 +1081,7 @@ function githubSurfaceKind(urlValue) {
 }
 
 function addCandidate(candidate) {
-  const normalizedUrl = normalizePublicUrl(candidate.url);
+  const normalizedUrl = normalizeCandidateUrl(candidate.url);
   if (!normalizedUrl) {
     return;
   }
@@ -1094,7 +1093,7 @@ function addCandidate(candidate) {
   if (reservedCandidateLocators.has(key)) {
     return;
   }
-  const sourceUrl = normalizePublicUrl(candidate.source_url);
+  const sourceUrl = normalizeCandidateUrl(candidate.source_url);
   if (!sourceUrl) {
     return;
   }
@@ -1162,80 +1161,22 @@ function extractUrls(value) {
     return explicitUrls.length > 0 ? explicitUrls : [trimmed];
   });
 
-  return [...new Set(values.map(normalizePublicUrl).filter(Boolean))];
+  return [...new Set(values.map(normalizeCandidateUrl).filter(Boolean))];
 }
 
-function normalizePublicUrl(value) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  let candidate = value
-    .trim()
-    .replace(/^[<`"']+|[>`"',.;:!]+$/g, "")
-    .split("](")[0]
-    .replace(/[\]`"',.;:!]+$/g, "");
-  if (!candidate || isPlaceholder(candidate)) {
-    return null;
-  }
-
-  if (
-    !/^https?:\/\//i.test(candidate) &&
-    /^[a-z0-9.-]+\.[a-z]{2,}(?:\/.*)?$/i.test(candidate)
-  ) {
-    candidate = `https://${candidate}`;
-  }
-
-  try {
-    const url = new URL(candidate);
-    if (
-      !["http:", "https:"].includes(url.protocol) ||
-      url.username ||
-      url.password ||
-      isCredentialedUrl(url.toString())
-    ) {
-      return null;
-    }
-    if (url.username || url.password) {
-      return null;
-    }
-    // SSRF pre-filter: literal private/loopback/link-local/metadata IPs +
-    // localhost. The authoritative, DNS-resolving check (isUnsafeResolvedUrl)
-    // still runs at probe + overlay-promotion time; this just keeps obviously
-    // internal targets out of the bundle entirely.
-    if (isUnsafeUrl(url.toString())) {
-      return null;
-    }
-    // Reject base_urls that impersonate metagraphed's own domain — they pass the
-    // SSRF guard (public attacker domain) but could trick an agent into trusting
-    // them. See ADR 0004.
-    if (isBrandImpersonationUrl(url.toString())) {
-      return null;
-    }
-    url.hash = "";
-    if (url.pathname !== "/") {
-      url.pathname = url.pathname.replace(/\/+$/, "");
-    }
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
-function isPlaceholder(value) {
-  const normalized = value.toLowerCase();
-  return [
-    "example.com",
-    "github.com/deprecated/deprecated",
-    "github.com/username/repo",
-    "github.com/yourusername/yourrepo",
-    "yourwebsite",
-    "your-org",
-    "deprecated.com",
-    "deprecated.png",
-    "localhost",
-    "127.0.0.1",
-  ].some((placeholder) => normalized.includes(placeholder));
+// Canonical URL normalization lives in scripts/lib.mjs (normalizePublicUrl) and
+// is shared with the contributor-facing path (validate-surface.mjs /
+// surface-add.mjs) so protocol/credential/SSRF/impersonation handling can never
+// diverge by call site (#5991). Discovery layers on one extra rejection: the
+// placeholder/template identity URLs (example.com, github.com/username/repo,
+// deprecated + "your*" README stubs) that clear those guards but must never
+// enter the candidate bundle. isPlaceholderIdentityUrl now carries the union of
+// both former placeholder lists, so this is a thin compose, not a reimpl.
+function normalizeCandidateUrl(value) {
+  const normalized = normalizePublicUrl(value);
+  return normalized && !isPlaceholderIdentityUrl(normalized)
+    ? normalized
+    : null;
 }
 
 function cleanName(value) {
@@ -1333,10 +1274,10 @@ function extractMarkdownLinks(markdown, baseUrl) {
   const markdownLinkPattern = /\[([^\]]{1,120})\]\((https?:\/\/[^)\s]+)\)/g;
   const bareUrlPattern = /https?:\/\/[^\s<>)"'`\]]+/g;
   for (const match of markdown.matchAll(markdownLinkPattern)) {
-    links.push({ label: match[1], url: normalizePublicUrl(match[2]) });
+    links.push({ label: match[1], url: normalizeCandidateUrl(match[2]) });
   }
   for (const match of markdown.matchAll(bareUrlPattern)) {
-    links.push({ label: "", url: normalizePublicUrl(match[0]) });
+    links.push({ label: "", url: normalizeCandidateUrl(match[0]) });
   }
   return dedupeLinks(
     links.filter((link) => link.url),
@@ -1368,14 +1309,14 @@ function normalizeLinkedUrl(value, baseUrl) {
     return null;
   }
   try {
-    return normalizePublicUrl(new URL(value, baseUrl).toString());
+    return normalizeCandidateUrl(new URL(value, baseUrl).toString());
   } catch {
     return null;
   }
 }
 
 function dedupeLinks(links, baseUrl) {
-  const seen = new Set([normalizePublicUrl(baseUrl)]);
+  const seen = new Set([normalizeCandidateUrl(baseUrl)]);
   const result = [];
   for (const link of links) {
     if (!link.url || seen.has(link.url) || isSocialUrl(link.url)) {

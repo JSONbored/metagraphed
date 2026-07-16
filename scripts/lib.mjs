@@ -1361,9 +1361,9 @@ export function normalizePublicUrl(value) {
 
   let candidate = value
     .trim()
-    .replace(/^<|>$/g, "")
+    .replace(/^[<`"']+|[>`"',.;:!]+$/g, "")
     .split("](")[0]
-    .replace(/\]+$/g, "");
+    .replace(/[\]`"',.;:!]+$/g, "");
   if (!candidate) {
     return null;
   }
@@ -1414,8 +1414,13 @@ export function normalizePublicHttpUrl(value) {
 
 // Placeholder/junk identity URLs some subnets carry on-chain (e.g. the
 // deprecated subnets' "https://deprecated.png" + "github.com/username/repo",
-// or "example.com" stubs). These must never surface as real links.
-const PLACEHOLDER_IDENTITY_URL = /deprecated|username\/repo|example\.com/i;
+// or "example.com" stubs), plus the README template stubs the discovery path
+// used to filter with its own local list (github.com/yourusername/yourrepo,
+// "yourwebsite", "your-org"). These must never surface as real links. The
+// `your*` tokens are word-anchored so a legitimate host that merely contains
+// the substring (e.g. myyour-organization.com) is not a false positive.
+const PLACEHOLDER_IDENTITY_URL =
+  /deprecated|username\/repo|example\.com|\byour-?org\b|\byourwebsite\b|\byourusername\b/i;
 
 export function isPlaceholderIdentityUrl(value) {
   return typeof value === "string" && PLACEHOLDER_IDENTITY_URL.test(value);

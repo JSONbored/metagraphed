@@ -15,6 +15,16 @@ describe("discover-candidates project-domain matching", () => {
     assert.doesNotMatch(source, /slice\(-2\)\.join\("\."\)/);
   });
 
+  test("discover-candidates uses the shared normalizePublicUrl, not a local copy (#5991)", async () => {
+    const source = await readFile("scripts/discover-candidates.mjs", "utf8");
+    // The canonical helper + placeholder guard are imported from lib.mjs...
+    assert.match(source, /normalizePublicUrl,/);
+    assert.match(source, /isPlaceholderIdentityUrl,/);
+    // ...and the divergent local reimplementations are gone.
+    assert.doesNotMatch(source, /function normalizePublicUrl\(/);
+    assert.doesNotMatch(source, /function isPlaceholder\(/);
+  });
+
   test("registrableHostDomain keeps distinct pages.dev tenants separate", () => {
     assert.equal(
       registrableHostDomain("project-a.pages.dev"),

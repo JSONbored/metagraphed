@@ -1657,6 +1657,21 @@ describe("script utility contracts", () => {
       normalizePublicUrl("<https://metagraph.sh/docs/#section>"),
       "https://metagraph.sh/docs",
     );
+    // #5991: the canonical helper now carries the discovery path's robust
+    // trimming (backticks, wrapping quotes, trailing sentence punctuation) so
+    // both call sites clean prose-extracted URLs identically.
+    assert.equal(
+      normalizePublicUrl("`https://metagraph.sh/docs`,"),
+      "https://metagraph.sh/docs",
+    );
+    assert.equal(
+      normalizePublicUrl("'https://metagraph.sh/docs/'."),
+      "https://metagraph.sh/docs",
+    );
+    assert.equal(
+      normalizePublicUrl("wss://metagraph.sh/stream"),
+      "wss://metagraph.sh/stream",
+    );
     assert.equal(normalizePublicUrl(""), null);
     assert.equal(normalizePublicUrl(null), null);
     assert.equal(normalizePublicUrl("notaurl"), null);

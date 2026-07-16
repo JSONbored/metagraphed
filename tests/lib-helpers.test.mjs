@@ -578,12 +578,27 @@ describe("isPlaceholderIdentityUrl", () => {
     );
     assert.equal(isPlaceholderIdentityUrl("https://example.com"), true);
   });
+  test("flags the README template stubs the discovery path folded in (#5991)", () => {
+    assert.equal(
+      isPlaceholderIdentityUrl("https://github.com/yourusername/yourrepo"),
+      true,
+    );
+    assert.equal(isPlaceholderIdentityUrl("https://yourwebsite.com"), true);
+    assert.equal(isPlaceholderIdentityUrl("https://your-org.io"), true);
+    assert.equal(isPlaceholderIdentityUrl("https://your-org.github.io"), true);
+  });
   test("passes real links and non-strings through as not-placeholder", () => {
     assert.equal(
       isPlaceholderIdentityUrl("https://github.com/opentensor/bt"),
       false,
     );
     assert.equal(isPlaceholderIdentityUrl("https://taofu.xyz"), false);
+    // Word-anchored `your*` tokens don't false-positive on a legitimate host
+    // that merely contains the substring (the loopover review nit on #5991).
+    assert.equal(
+      isPlaceholderIdentityUrl("https://myyour-organization.com"),
+      false,
+    );
     assert.equal(isPlaceholderIdentityUrl(null), false);
     assert.equal(isPlaceholderIdentityUrl(undefined), false);
   });
