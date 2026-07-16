@@ -3,7 +3,10 @@ import { ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { GraphiqlExplorer } from "@/components/metagraphed/graphiql-explorer";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { GRAPHQL_ENDPOINT_PATH } from "@/lib/metagraphed/graphql-docs";
+
+// GraphQL's one published, mainnet-only path -- content/docs/graphql.mdx
+// (the docs page this explorer links back to) states the same literal.
+const GRAPHQL_ENDPOINT_PATH = "/api/v1/graphql";
 
 export const Route = createFileRoute("/graphql/explorer")({
   head: () => ({
@@ -25,7 +28,8 @@ function GraphqlExplorerPage() {
   return (
     <AppShell>
       <Link
-        to="/graphql"
+        to="/docs/$"
+        params={{ _splat: "graphql" }}
         className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted transition-colors hover:text-ink-strong"
       >
         <ArrowLeft aria-hidden className="size-3.5" />
