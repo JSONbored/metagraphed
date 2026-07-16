@@ -1,26 +1,28 @@
 # Contributor pipeline gardening — reference (metagraphed)
 
-## Docs architecture is mid-migration (as of 2026-07-15) — don't generate old-pattern docs issues
+## Docs architecture migration — spike landed on loopover 2026-07-15, metagraphed port issue filed 2026-07-16
 
 metagraphed's website docs (currently hand-built TanStack Router route files, one full React
 component per page — see the shipped `Docs page: X` precedents like #3512/#3513/#3515) are migrating
 to a shared MDX pipeline: **`fumadocs-core`/`fumadocs-mdx` (headless, not `fumadocs-ui`'s component
 shell) for content/structure/search, rendered through existing ui-kit primitives, plus Scalar
-(`@scalar/api-reference`) for the API playground.** This is being proven on loopover first
-(JSONbored/loopover#6037, a bounded spike) — metagraphed's `apps/ui` shares the identical
-`@lovable.dev/vite-tanstack-config` Vite setup as loopover's, so the pattern should port directly
-once proven, as a shared package both apps import rather than a second from-scratch integration.
+(`@scalar/api-reference`) for the API playground.**
 
-**Until that spike lands and a metagraphed port issue exists:**
+**Status as of 2026-07-16:** the loopover spike (JSONbored/loopover#6037) landed 2026-07-15 and
+JSONbored/loopover#6271 (merged same day) already migrated every existing loopover-ui docs page onto
+the new pattern — proven, not just spiked. Loopover's own AMS-docs epic (#6012 + sub-issues
+#6022-#6032) was fully closed as a result. The metagraphed-side port is now tracked as **#6225**
+(`maintainer-only`, filed 2026-07-16) and #3504/3505/3506/3507/3508/3509/3510/3511/3514/3516 are all
+linked `addBlockedBy` #6225.
+
+**Until #6225 lands:**
 
 - Don't file new issues asking a contributor to hand-build a `docs.*.tsx` route. If a genuine docs
   gap is found during Pass 2, note it in the digest instead of filing it under the old pattern.
-- The open "Docs page: X" family (#3504/3505/3506/3507/3508/3509/3510/3511/3514/3516) was
-  deliberately paused this way on 2026-07-15 — `maintainer-only` + a comment, not because the
-  underlying content need went away. Don't "fix" this labeling in a future stale-sweep pass; check
-  JSONbored/loopover#6037's state first. Once the pattern lands here too, these need their
-  Requirements rewritten to target an `.mdx` content file instead of a hand-built route, then
-  `maintainer-only` removed.
+- Don't "fix" the `maintainer-only` labeling on the "Docs page: X" family in a future stale-sweep
+  pass — check #6225's state first. Once it lands, those issues need their Requirements rewritten to
+  target a `content/docs/*.mdx` file instead of a hand-built route, then `maintainer-only` removed —
+  see JSONbored/loopover#6012's family for the precedent of that exact follow-up rewrite.
 
 ## Product shape
 
@@ -32,13 +34,13 @@ skill only covers issue-pipeline hygiene, not PR review mechanics.
 
 ## Milestone taxonomy (re-check every run — this repo's hygiene and counts drift faster than gittensory's)
 
-| Milestone                                     | Open (as of 2026-07-15)                                                                  | Nature                                                                                                                                                                                                                                                                         |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Foundations & Infra` (#11)                   | ~27+ (growing — see below)                                                               | General backend/infra work, mixed maintainer/contributor. Also the default home for well-precedented REST/GraphQL/MCP parity issues (no dedicated milestone exists for that pattern yet).                                                                                      |
-| `Wave 4 — Docs & Dev Surface` (#10)           | ~21                                                                                      | Docs pages for shipped API surfaces — mostly currently `maintainer-only` but low-risk to unlock, see SKILL.md. Paused pending the fumadocs-mdx migration spike (loopover#6037) as of 2026-07-15 — don't unlock the "Docs page: X" family until that lands.                     |
-| `Partner Flywheel Hardening` (#13)            | ~4                                                                                       | Small, check individually                                                                                                                                                                                                                                                      |
-| `Wave 3 — Frontend (post-consolidation)` (#9) | 11 (checked 2026-07-15 — NOT drained, an earlier "0/480" snapshot of this doc was stale) | Verify its real open count fresh each run rather than trusting a cached number here                                                                                                                                                                                            |
-| Unmilestoned                                  | ~23 (checked 2026-07-15)                                                                 | Mostly legitimate: the Enrich-SNxx rolling-intake family + the bot-managed Dependency Dashboard, both correctly standalone. Verify what's actually unmilestoned fresh each run before assuming it's a hygiene gap — an earlier "~74, real gap" snapshot of this doc was stale. |
+| Milestone                                     | Open (as of 2026-07-15)                                                                  | Nature                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Foundations & Infra` (#11)                   | ~27+ (growing — see below)                                                               | General backend/infra work, mixed maintainer/contributor. Also the default home for well-precedented REST/GraphQL/MCP parity issues (no dedicated milestone exists for that pattern yet).                                                                                                 |
+| `Wave 4 — Docs & Dev Surface` (#10)           | ~21                                                                                      | Docs pages for shipped API surfaces — mostly currently `maintainer-only` but low-risk to unlock, see SKILL.md. Paused pending the fumadocs-mdx port issue #6225 (filed 2026-07-16, loopover's own spike #6037 already landed) — don't unlock the "Docs page: X" family until #6225 lands. |
+| `Partner Flywheel Hardening` (#13)            | ~4                                                                                       | Small, check individually                                                                                                                                                                                                                                                                 |
+| `Wave 3 — Frontend (post-consolidation)` (#9) | 11 (checked 2026-07-15 — NOT drained, an earlier "0/480" snapshot of this doc was stale) | Verify its real open count fresh each run rather than trusting a cached number here                                                                                                                                                                                                       |
+| Unmilestoned                                  | ~23 (checked 2026-07-15)                                                                 | Mostly legitimate: the Enrich-SNxx rolling-intake family + the bot-managed Dependency Dashboard, both correctly standalone. Verify what's actually unmilestoned fresh each run before assuming it's a hygiene gap — an earlier "~74, real gap" snapshot of this doc was stale.            |
 
 **Every gardening-generated issue gets a milestone — none ship unmilestoned** (reinforced by the
 maintainer, 2026-07-15). Default to the closest-fitting existing one from the table above. A new
@@ -131,7 +133,10 @@ mutation {
 }
 mutation {
   addBlockedBy(
-    input: { issueId: "<blocked node id>", blockedById: "<blocker node id>" }
+    input: {
+      issueId: "<blocked node id>"
+      blockingIssueId: "<blocker node id>"
+    }
   ) {
     issue {
       number
@@ -139,6 +144,10 @@ mutation {
   }
 }
 ```
+
+**Field name gotcha:** the mutation's second input field is `blockingIssueId`, not `blockedById` —
+`blockedById` fails with `argumentNotAccepted`. Confirmed live 2026-07-16 linking #3504-3511/3514/3516
+as blocked by #6225.
 
 Get a node ID: `gh api graphql -f query='query { repository(owner:"JSONbored", name:"metagraphed") { issue(number: N) { id } } }'`.
 
