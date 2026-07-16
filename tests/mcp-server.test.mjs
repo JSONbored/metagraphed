@@ -658,6 +658,59 @@ describe("MCP resources/subscribe + resources/unsubscribe (#4983 MCP half)", () 
     assert.equal(hub.calls.length, 0);
   });
 
+  test("resources/subscribe accepts metagraph://subnet/{netuid}/status (#6034)", async () => {
+    const hub = fakeMcpSessionHubBinding();
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/subscribe",
+        params: { uri: "metagraph://subnet/42/status" },
+      },
+      {
+        headers: { "mcp-session-id": A_SESSION_ID },
+        env: { MCP_SESSION_HUB: hub },
+      },
+    );
+    assert.deepEqual(res.body.result, {});
+    assert.deepEqual(JSON.parse(hub.calls[0].init.body), {
+      sessionId: A_SESSION_ID,
+      uri: "metagraph://subnet/42/status",
+    });
+  });
+
+  test("resources/unsubscribe accepts metagraph://subnet/{netuid}/status (#6034)", async () => {
+    const hub = fakeMcpSessionHubBinding();
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/unsubscribe",
+        params: { uri: "metagraph://subnet/42/status" },
+      },
+      {
+        headers: { "mcp-session-id": A_SESSION_ID },
+        env: { MCP_SESSION_HUB: hub },
+      },
+    );
+    assert.deepEqual(res.body.result, {});
+    assert.match(hub.calls[0].url, /\/unsubscribe$/);
+  });
+
+  test("resources/read on subnet status returns live health overlay (#6034)", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "resources/read",
+      params: { uri: "metagraph://subnet/1/status" },
+    });
+    assert.equal(res.status, 200);
+    const data = JSON.parse(res.body.result.contents[0].text);
+    assert.equal(data.netuid, 1);
+    assert.ok(data.summary);
+    assert.ok(Array.isArray(data.surfaces));
+  });
+
   test("resources/unsubscribe forwards to the session hub's /unsubscribe route and succeeds, even for a uri never subscribed to", async () => {
     const hub = fakeMcpSessionHubBinding();
     const res = await rpc(

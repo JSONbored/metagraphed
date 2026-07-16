@@ -222,7 +222,7 @@ test("handleUnsubscribe: works even when CHAIN_FIREHOSE_HUB isn't bound (local/C
   assert.equal(hub.subscribedUris.size, 0);
 });
 
-test("handleUnsubscribe: unsubscribing something never subscribed to is a harmless no-op (no notify, since the set was already empty)", async () => {
+test("handleUnsubscribe: unsubscribing something never subscribed to is a harmless no-op", async () => {
   const firehose = fakeChainFirehoseHubBinding();
   const hub = new McpSessionHub(stubState(), { CHAIN_FIREHOSE_HUB: firehose });
   const res = await hub.fetch(
@@ -232,9 +232,9 @@ test("handleUnsubscribe: unsubscribing something never subscribed to is a harmle
     }),
   );
   assert.equal(res.status, 200);
-  // subscribedUris was already empty -> "becomes empty" fires the notify
-  // exactly once (size === 0 both before and after is still `=== 0`).
-  assert.equal(firehose.calls.length, 1);
+  // Never had the chain URI → do not ping ChainFirehoseHub (would be a
+  // spurious mcp-unsubscribe for a session that never mcp-subscribed).
+  assert.equal(firehose.calls.length, 0);
 });
 
 // --- handleNotify / deliverNow ----------------------------------------------------
@@ -665,6 +665,147 @@ test("touch: sets a Durable Object alarm MCP_SESSION_IDLE_TTL_MS in the future",
   const alarmTime = state.storage.lastAlarmTime;
   assert.ok(alarmTime >= before + MCP_SESSION_IDLE_TTL_MS);
   assert.ok(alarmTime <= Date.now() + MCP_SESSION_IDLE_TTL_MS + 1000);
+});
+
+// --- #6034 subnet status subscription -------------------------------------------
+
+function fakeSubnetStatusHubBinding() {
+  const calls = [];
+  return {
+    calls,
+    idFromName: (name) => name,
+    get: () => ({
+      fetch: async (url, init) => {
+        calls.push({
+          url,
+          body: init?.body ? JSON.parse(init.body) : null,
+        });
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    }),
+  };
+}
+
+test("handleSubscribe: subnet status uri registers with SubnetStatusHub, not the firehose", async () => {
+  const firehose = fakeChainFirehoseHubBinding();
+  const statusHub = fakeSubnetStatusHubBinding();
+  const hub = new McpSessionHub(stubState(), {
+    CHAIN_FIREHOSE_HUB: firehose,
+    SUBNET_STATUS_HUB: statusHub,
+  });
+  const res = await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: "metagraph://subnet/42/status",
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.equal(hub.subscribedUris.has("metagraph://subnet/42/status"), true);
+  assert.equal(firehose.calls.length, 0);
+  assert.equal(statusHub.calls.length, 1);
+  assert.match(statusHub.calls[0].url, /\/mcp-subscribe$/);
+  assert.deepEqual(statusHub.calls[0].body, {
+    sessionId: "session-1",
+    netuid: 42,
+  });
+});
+
+test("handleUnsubscribe: subnet status uri unregisters that netuid from SubnetStatusHub", async () => {
+  const statusHub = fakeSubnetStatusHubBinding();
+  const hub = new McpSessionHub(stubState(), {
+    SUBNET_STATUS_HUB: statusHub,
+  });
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: "metagraph://subnet/7/status",
+    }),
+  );
+  statusHub.calls.length = 0;
+  const res = await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/unsubscribe", {
+      sessionId: "session-1",
+      uri: "metagraph://subnet/7/status",
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.equal(hub.subscribedUris.size, 0);
+  assert.equal(statusHub.calls.length, 1);
+  assert.match(statusHub.calls[0].url, /\/mcp-unsubscribe$/);
+  assert.deepEqual(statusHub.calls[0].body, {
+    sessionId: "session-1",
+    netuid: 7,
+  });
+});
+
+test("handleStream: opens for a session subscribed only to subnet status", async () => {
+  const hub = new McpSessionHub(stubState(), {});
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: "metagraph://subnet/3/status",
+    }),
+  );
+  const res = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/stream?sessionId=session-1", {
+      method: "GET",
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/event-stream/);
+  // Close promptly so the stream timeout doesn't linger in the test process.
+  await res.body.cancel();
+});
+
+test("handleNotify: delivers a subnet status update on an open stream", async () => {
+  const hub = new McpSessionHub(stubState(), {});
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: "metagraph://subnet/3/status",
+    }),
+  );
+  const streamRes = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/stream?sessionId=session-1", {
+      method: "GET",
+    }),
+  );
+  assert.equal(streamRes.status, 200);
+  const reader = streamRes.body.getReader();
+  const notifyRes = await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/notify", {
+      uri: "metagraph://subnet/3/status",
+    }),
+  );
+  assert.equal(notifyRes.status, 200);
+  const { value } = await reader.read();
+  const frame = new TextDecoder().decode(value);
+  assert.match(frame, /notifications\/resources\/updated/);
+  assert.match(frame, /metagraph:\/\/subnet\/3\/status/);
+  await reader.cancel();
+});
+
+test("handleTerminate: clears SubnetStatusHub membership for status subscribers", async () => {
+  const statusHub = fakeSubnetStatusHubBinding();
+  const hub = new McpSessionHub(stubState(), {
+    SUBNET_STATUS_HUB: statusHub,
+  });
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: "metagraph://subnet/5/status",
+    }),
+  );
+  statusHub.calls.length = 0;
+  const res = await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/terminate", {
+      sessionId: "session-1",
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.equal(statusHub.calls.length, 1);
+  assert.match(statusHub.calls[0].url, /\/mcp-unsubscribe-session$/);
+  assert.deepEqual(statusHub.calls[0].body, { sessionId: "session-1" });
 });
 
 test("MCP_SESSION_MAX_STREAM_DURATION_MS and MCP_SESSION_IDLE_TTL_MS are the documented magnitudes (minutes, not ms/hours by mistake)", () => {

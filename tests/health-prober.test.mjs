@@ -1868,6 +1868,85 @@ describe("summarizeGroup / rollupStatus via per-subnet rollup", () => {
     assert.equal(subnet.status, "degraded");
     assert.equal(subnet.degraded_count, 1);
   });
+
+  test("notifies SubnetStatusHub only when a subnet status fingerprint changes (#6034)", async () => {
+    const surfaces = [buildSurface("chg", 77)];
+    const kv = makeKv();
+    const notifyCalls = [];
+    const env = {
+      SUBNET_STATUS_HUB: {
+        idFromName: (name) => name,
+        get: () => ({
+          fetch: async (url, init) => {
+            notifyCalls.push({
+              url,
+              body: JSON.parse(init.body),
+            });
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          },
+        }),
+      },
+    };
+    // First run: cold prior → notify for the probed netuid.
+    await runHealthProber(
+      env,
+      {},
+      {
+        now: () => 10_000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => surfaces,
+        probeSurface: async () => ({
+          status: "ok",
+          classification: "live",
+          latency_ms: 12,
+        }),
+        probeOptions: {},
+      },
+    );
+    assert.equal(notifyCalls.length, 1);
+    assert.deepEqual(notifyCalls[0].body.netuids, [77]);
+
+    // Second run: identical status → no notify.
+    notifyCalls.length = 0;
+    await runHealthProber(
+      env,
+      {},
+      {
+        now: () => 20_000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => surfaces,
+        probeSurface: async () => ({
+          status: "ok",
+          classification: "live",
+          latency_ms: 12,
+        }),
+        probeOptions: {},
+      },
+    );
+    assert.equal(notifyCalls.length, 0);
+
+    // Third run: status flips → notify.
+    await runHealthProber(
+      env,
+      {},
+      {
+        now: () => 30_000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => surfaces,
+        probeSurface: async () => ({
+          status: "failed",
+          classification: "dead",
+          latency_ms: null,
+        }),
+        probeOptions: {},
+      },
+    );
+    assert.equal(notifyCalls.length, 1);
+    assert.deepEqual(notifyCalls[0].body.netuids, [77]);
+  });
 });
 
 describe("pruneHealthHistory edge paths", () => {

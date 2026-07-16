@@ -7,16 +7,17 @@
 // the JSON-RPC 2.0 envelope rather than pulling in `@modelcontextprotocol/sdk`
 // so the Worker bundle stays lean and the hot REST/RPC path is untouched.
 //
-// The ONE stateful exception (#4983 MCP half, ADR 0015): resources/subscribe
-// on `metagraph://chain/stream`. A subscribed session gets a Durable Object
-// (McpSessionHub, one per Mcp-Session-Id, minted at `initialize`) that holds
-// a bounded-duration GET-opened SSE stream and pushes
-// notifications/resources/updated when the realtime firehose (ChainFirehoseHub,
-// #4982) broadcasts a new chain event. Every OTHER method on this server is
-// unaffected -- stateless POST, no session required. See
-// workers/mcp-session-hub.mjs's own header comment for why this is a
-// separate DO from ChainFirehoseHub, and docs/realtime-firehose.md for the
-// full architecture.
+// The stateful exception (#4983 MCP half + #6034, ADR 0015): resources/subscribe
+// on `metagraph://chain/stream` and `metagraph://subnet/{netuid}/status`. A
+// subscribed session gets a Durable Object (McpSessionHub, one per
+// Mcp-Session-Id, minted at `initialize`) that holds a bounded-duration
+// GET-opened SSE stream and pushes notifications/resources/updated when the
+// realtime firehose (ChainFirehoseHub, #4982) broadcasts a new chain event, or
+// when the health prober (#6034) detects a per-subnet health/status/surface
+// change via SubnetStatusHub. Every OTHER method on this server is unaffected
+// -- stateless POST, no session required. See workers/mcp-session-hub.mjs's
+// own header comment for why this is a separate DO from ChainFirehoseHub, and
+// docs/realtime-firehose.md for the full architecture.
 //
 // Artifact/KV reads are injected (`deps.readArtifact`, `deps.readHealthKv`) so
 // this module is pure and unit-testable, and so it reuses the exact same
@@ -57,6 +58,12 @@ import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   isValidMcpSessionId,
 } from "../workers/mcp-session-hub.mjs";
+import {
+  buildSubnetStatusResourceUri,
+  isSubscribableMcpResourceUri,
+  listSubscribableMcpResourceClasses,
+  parseSubnetStatusResourceUri,
+} from "./subnet-status-subscribe.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.mjs";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
@@ -13553,9 +13560,10 @@ export function listToolDefinitions() {
 // the generated server-card so the two can never drift.
 export const MCP_CAPABILITIES = {
   tools: { listChanged: false },
-  // subscribe: true (#4983 MCP half) -- only metagraph://chain/stream is
-  // actually subscribable (SUBSCRIBABLE_RESOURCE_URIS below); every other
-  // resource is a static R2 artifact with no change signal to subscribe to.
+  // subscribe: true (#4983 MCP half + #6034) -- metagraph://chain/stream and
+  // metagraph://subnet/{netuid}/status are subscribable
+  // (isSubscribableMcpResourceUri); every other resource is a static R2
+  // artifact with no change signal to subscribe to.
   resources: { subscribe: true, listChanged: false },
   prompts: { listChanged: false },
 };
@@ -13569,6 +13577,18 @@ export const MCP_RESOURCE_TEMPLATES = [
     description:
       "Composed overview for one subnet by netuid: identity, completeness, " +
       `curated surfaces, health summary, and gaps. ${UNTRUSTED_DATA_NOTE}`,
+    mimeType: "application/json",
+  },
+  {
+    uriTemplate: "metagraph://subnet/{netuid}/status",
+    name: "subnet-status",
+    title: "Subnet live status",
+    description:
+      "Live operational health for one subnet (probe-derived status, " +
+      "per-surface checks). Subscribe via resources/subscribe to receive " +
+      "notifications/resources/updated when that subnet's health tier, " +
+      "uptime status, or registered operational surfaces change, then " +
+      `resources/read for the current payload. ${UNTRUSTED_DATA_NOTE}`,
     mimeType: "application/json",
   },
   {
@@ -13647,10 +13667,13 @@ const FIXED_RESOURCES = [
 
 // Resources a client may actually call resources/subscribe on -- deliberately
 // NOT "any URI resourceArtifactPath resolves": every resource other than the
-// live one above is a static R2 artifact with no change signal, so
-// subscribing to one would accept silently and then never fire. Checked in
-// the resources/subscribe dispatch case below.
-const SUBSCRIBABLE_RESOURCE_URIS = new Set([MCP_CHAIN_STREAM_RESOURCE_URI]);
+// live ones (chain stream + per-subnet status) is a static R2 artifact with
+// no change signal, so subscribing to one would accept silently and then
+// never fire. Checked in the resources/subscribe dispatch case below.
+// #6034: also metagraph://subnet/{netuid}/status (predicate, not a fixed set).
+function isSubscribableResourceUri(uri) {
+  return isSubscribableMcpResourceUri(uri);
+}
 
 const RESOURCE_PAGE_SIZE = 100;
 
@@ -13678,6 +13701,17 @@ async function listAllResources(ctx) {
         `subnet-${s.netuid}`,
         s.name ? `SN${s.netuid} — ${s.name}` : `Subnet ${s.netuid}`,
         UNTRUSTED_DATA_NOTE,
+        "application/json",
+      ),
+    );
+    out.push(
+      resourceEntry(
+        buildSubnetStatusResourceUri(s.netuid),
+        `subnet-${s.netuid}-status`,
+        s.name
+          ? `SN${s.netuid} status — ${s.name}`
+          : `Subnet ${s.netuid} status`,
+        "Live operational health; subscribable for status-change notifications.",
         "application/json",
       ),
     );
@@ -13782,10 +13816,39 @@ async function readLiveChainStreamResource(ctx) {
   return payload ?? { table: null, message: "no chain event observed yet" };
 }
 
+async function readSubnetStatusResource(ctx, netuid) {
+  const [live, reliability] = await Promise.all([
+    mcpLiveHealth(ctx),
+    loadSubnetReliability({ db: ctx.env?.METAGRAPH_HEALTH_DB, netuid }),
+  ]);
+  const overlaid = overlaySubnetHealth(null, live, netuid);
+  if (overlaid) {
+    return { ...overlaid, reliability };
+  }
+  return {
+    schema_version: 1,
+    netuid,
+    summary: { status: "unknown", surface_count: 0 },
+    operational_observed_at: null,
+    health_source: "unavailable",
+    reliability,
+    surfaces: [],
+  };
+}
+
 async function readResource(params, ctx) {
   const uri = params?.uri;
   if (uri === MCP_CHAIN_STREAM_RESOURCE_URI) {
     const data = await readLiveChainStreamResource(ctx);
+    return {
+      contents: [
+        { uri, mimeType: "application/json", text: JSON.stringify(data) },
+      ],
+    };
+  }
+  const statusNetuid = parseSubnetStatusResourceUri(uri);
+  if (statusNetuid != null) {
+    const data = await readSubnetStatusResource(ctx, statusNetuid);
     return {
       contents: [
         { uri, mimeType: "application/json", text: JSON.stringify(data) },
@@ -13809,20 +13872,21 @@ async function readResource(params, ctx) {
   };
 }
 
-// resources/subscribe and resources/unsubscribe (#4983 MCP half) -- both are
-// session-scoped (require ctx.sessionId, set by buildContext from the
-// Mcp-Session-Id header) and reused verbatim's-worth of validation:
-// SUBSCRIBABLE_RESOURCE_URIS is checked here rather than a second, looser
-// URI-shape check, mirroring the lesson from this session's graphql-ws fix
+// resources/subscribe and resources/unsubscribe (#4983 MCP half + #6034) --
+// both are session-scoped (require ctx.sessionId, set by buildContext from the
+// Mcp-Session-Id header). Subscribability is checked via
+// isSubscribableResourceUri rather than a second, looser URI-shape check,
+// mirroring the lesson from this session's graphql-ws fix
 // (validateChainEventsSubscribePayload) -- a hand-rolled second validation
 // path is exactly how a security guarantee quietly drifts from the first.
 async function subscribeResource(params, ctx) {
   const uri = params?.uri;
-  if (typeof uri !== "string" || !SUBSCRIBABLE_RESOURCE_URIS.has(uri)) {
+  if (typeof uri !== "string" || !isSubscribableResourceUri(uri)) {
     throw toolError(
       "invalid_params",
       `Resource is unknown or not subscribable: ${String(uri)}. Only ` +
-        `${[...SUBSCRIBABLE_RESOURCE_URIS].join(", ")} supports resources/subscribe.`,
+        `${listSubscribableMcpResourceClasses().join(", ")} support ` +
+        "resources/subscribe.",
     );
   }
   if (!ctx.sessionId) {

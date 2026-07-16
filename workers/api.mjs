@@ -264,6 +264,7 @@ import {
 } from "./chain-firehose-hub.mjs";
 import { McpSessionHub } from "./mcp-session-hub.mjs";
 import { AlerterHub } from "./alerter-hub.mjs";
+import { SubnetStatusHub } from "./subnet-status-hub.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -444,7 +445,7 @@ export default {
 // classes defined in chain-firehose-hub.mjs/mcp-session-hub.mjs is what
 // makes the "durable_objects"/"migrations" bindings in wrangler.jsonc
 // resolvable.
-export { ChainFirehoseHub, McpSessionHub, AlerterHub };
+export { ChainFirehoseHub, McpSessionHub, AlerterHub, SubnetStatusHub };
 
 // The staged-artifact loaders (request-handlers/staging.mjs, #1763) are fully
 // retired: loadStagedNeurons/Events/Blocks/Extrinsics went alongside their D1

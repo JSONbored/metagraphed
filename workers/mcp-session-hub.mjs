@@ -19,6 +19,12 @@
 // the broadcast() loop that pings this class's /notify route) -- this class
 // only owns session lifecycle and the one open SSE stream a session may have.
 //
+// #6034 extends the same session DO to also accept
+// `metagraph://subnet/{netuid}/status` subscriptions. Membership for those
+// URIs is registered with SubnetStatusHub (a separate singleton), mirroring
+// how the chain URI registers with ChainFirehoseHub — this class still only
+// owns the SSE stream + pending coalescing.
+//
 // SSE, not WebSocket: MCP's ratified transport (2025-06-18 spec) is
 // Streamable HTTP (POST + optional SSE-over-GET); there is no ratified
 // WebSocket transport (as of this writing an in-review SEP, not shipped in
@@ -45,6 +51,8 @@
 // get/put KV API, ReadableStream is a real Web Streams API in Node) --
 // unlike ChainFirehoseHub, nothing here needs WebSocketPair, so there is no
 // v8-ignored branch in this file.
+
+import { parseSubnetStatusResourceUri } from "../src/subnet-status-subscribe.mjs";
 
 export const MCP_CHAIN_STREAM_RESOURCE_URI = "metagraph://chain/stream";
 
@@ -172,7 +180,8 @@ export class McpSessionHub {
   async handleSubscribe(request) {
     const { sessionId, uri } = await request.json();
     this.sessionId = sessionId;
-    if (uri !== MCP_CHAIN_STREAM_RESOURCE_URI) {
+    const statusNetuid = parseSubnetStatusResourceUri(uri);
+    if (uri !== MCP_CHAIN_STREAM_RESOURCE_URI && statusNetuid == null) {
       return new Response(
         JSON.stringify({ error: "resource is not subscribable" }),
         { status: 400, headers: { "content-type": "application/json" } },
@@ -181,7 +190,7 @@ export class McpSessionHub {
     this.subscribedUris.add(uri);
     await this.persist();
     await this.touch();
-    if (this.env.CHAIN_FIREHOSE_HUB) {
+    if (uri === MCP_CHAIN_STREAM_RESOURCE_URI && this.env.CHAIN_FIREHOSE_HUB) {
       const stub = this.env.CHAIN_FIREHOSE_HUB.get(
         this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
       );
@@ -189,6 +198,16 @@ export class McpSessionHub {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sessionId }),
+      });
+    }
+    if (statusNetuid != null && this.env.SUBNET_STATUS_HUB) {
+      const stub = this.env.SUBNET_STATUS_HUB.get(
+        this.env.SUBNET_STATUS_HUB.idFromName("global"),
+      );
+      await stub.fetch("https://subnet-status-hub.internal/mcp-subscribe", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId, netuid: statusNetuid }),
       });
     }
     return new Response(JSON.stringify({ ok: true }), {
@@ -200,10 +219,17 @@ export class McpSessionHub {
   async handleUnsubscribe(request) {
     const { sessionId, uri } = await request.json();
     this.sessionId = sessionId;
+    const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
+    const statusNetuid = parseSubnetStatusResourceUri(uri);
     this.subscribedUris.delete(uri);
     this.pendingUris.delete(uri);
     await this.persist();
-    if (this.subscribedUris.size === 0 && this.env.CHAIN_FIREHOSE_HUB) {
+    if (
+      hadChain &&
+      uri === MCP_CHAIN_STREAM_RESOURCE_URI &&
+      !this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI) &&
+      this.env.CHAIN_FIREHOSE_HUB
+    ) {
       const stub = this.env.CHAIN_FIREHOSE_HUB.get(
         this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
       );
@@ -211,6 +237,16 @@ export class McpSessionHub {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sessionId }),
+      });
+    }
+    if (statusNetuid != null && this.env.SUBNET_STATUS_HUB) {
+      const stub = this.env.SUBNET_STATUS_HUB.get(
+        this.env.SUBNET_STATUS_HUB.idFromName("global"),
+      );
+      await stub.fetch("https://subnet-status-hub.internal/mcp-unsubscribe", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId, netuid: statusNetuid }),
       });
     }
     return new Response(JSON.stringify({ ok: true }), {
@@ -290,16 +326,29 @@ export class McpSessionHub {
         clearTimeout(this.streamCloseTimer);
         this.streamCloseTimer = null;
       }
-      if (
-        this.subscribedUris.size > 0 &&
-        effectiveSessionId &&
-        this.env.CHAIN_FIREHOSE_HUB
-      ) {
+      const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
+      const hadStatus = [...this.subscribedUris].some(
+        (u) => parseSubnetStatusResourceUri(u) != null,
+      );
+      if (hadChain && effectiveSessionId && this.env.CHAIN_FIREHOSE_HUB) {
         const stub = this.env.CHAIN_FIREHOSE_HUB.get(
           this.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
         );
         await stub.fetch(
           "https://chain-firehose-hub.internal/mcp-unsubscribe",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ sessionId: effectiveSessionId }),
+          },
+        );
+      }
+      if (hadStatus && effectiveSessionId && this.env.SUBNET_STATUS_HUB) {
+        const stub = this.env.SUBNET_STATUS_HUB.get(
+          this.env.SUBNET_STATUS_HUB.idFromName("global"),
+        );
+        await stub.fetch(
+          "https://subnet-status-hub.internal/mcp-unsubscribe-session",
           {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -322,7 +371,7 @@ export class McpSessionHub {
     if (
       !this.sessionId ||
       (sessionId && sessionId !== this.sessionId) ||
-      !this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI)
+      this.subscribedUris.size === 0
     ) {
       return new Response(JSON.stringify({ error: "session not found" }), {
         status: 404,
