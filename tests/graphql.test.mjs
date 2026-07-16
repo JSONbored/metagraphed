@@ -9325,6 +9325,133 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 });
 
+describe("graphql — chain_activity (#5879, Postgres-tier activity series + cold-store fallback)", () => {
+  function activityQuery(argsClause) {
+    return `{ chain_activity${argsClause} {
+      schema_version window observed_at day_count
+      days { day block_count extrinsic_count event_count successful_extrinsics success_rate unique_signers }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable empty series (7d)", async () => {
+    const { status, body } = await gql(activityQuery(""));
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_activity, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      day_count: 0,
+      days: [],
+    });
+  });
+
+  test("resolves the Postgres-tier per-day series", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-14T00:00:00.000Z",
+            day_count: 1,
+            days: [
+              {
+                day: "2026-07-14",
+                block_count: 7,
+                extrinsic_count: 4,
+                event_count: 12,
+                successful_extrinsics: 3,
+                success_rate: 0.75,
+                unique_signers: 2,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(activityQuery(`(window: "30d")`), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_activity;
+    assert.equal(d.window, "30d");
+    assert.equal(d.day_count, 1);
+    assert.equal(d.days[0].day, "2026-07-14");
+    assert.equal(d.days[0].block_count, 7);
+    assert.equal(d.days[0].success_rate, 0.75);
+    assert.equal(d.days[0].unique_signers, 2);
+  });
+
+  test("partial day rows degrade missing fields to their schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      // The day row carries only its required key; every other field is omitted
+      // so the per-item ?? default fallbacks must fire.
+      DATA_API: {
+        fetch: async () => Response.json({ days: [{ day: "2026-07-14" }] }),
+      },
+    };
+    const { status, body } = await gql(activityQuery(""), env);
+    assert.equal(status, 200);
+    const d = body.data.chain_activity;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.window, "7d");
+    assert.equal(d.observed_at, null);
+    assert.equal(d.day_count, 0);
+    const day = d.days[0];
+    assert.equal(day.block_count, 0);
+    assert.equal(day.extrinsic_count, 0);
+    assert.equal(day.event_count, 0);
+    assert.equal(day.successful_extrinsics, 0);
+    assert.equal(day.success_rate, null);
+    assert.equal(day.unique_signers, 0);
+  });
+
+  test("an empty Postgres-tier body (no days key) degrades to an empty series", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(activityQuery(""), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_activity, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      day_count: 0,
+      days: [],
+    });
+  });
+
+  test("the window arg is forwarded to the /chain/activity path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            day_count: 0,
+            days: [],
+          });
+        },
+      },
+    };
+    await gql(activityQuery(`(window: "30d")`), env);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/activity");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+  });
+
+  test("rejects an unsupported window with BAD_USER_INPUT", async () => {
+    const { body } = await gql(activityQuery(`(window: "99d")`));
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("chain_activity is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_activity, 5);
+  });
+});
+
 describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store fallback)", () => {
   function feesQuery(argsClause) {
     return `{ chain_fees${argsClause} {

@@ -252,7 +252,11 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "./chain-turnover.mjs";
 import { buildTurnover } from "./turnover.mjs";
-import { buildChainCalls, buildChainFees } from "./chain-analytics.mjs";
+import {
+  buildChainActivity,
+  buildChainCalls,
+  buildChainFees,
+} from "./chain-analytics.mjs";
 import { buildChainPerformance } from "./chain-performance.mjs";
 import { buildChainConcentration } from "./concentration.mjs";
 import {
@@ -435,6 +439,8 @@ export const SDL = `
     chain_registrations(window: String, limit: Int): ChainRegistrations!
     "Per-UTC-day network fee/tip series over a 7d/30d window (default 7d): each day's extrinsic count and total/avg/median fee + tip in TAO, plus the top fee-paying signers (limit default 25, max 100), optionally scoped to a single call_module. Computed live from the extrinsics tier; a cold store yields a schema-stable empty series, never a GraphQL error. Mirrors GET /api/v1/chain/fees."
     chain_fees(window: String, limit: Int, call_module: String): ChainFees!
+    "Per-UTC-day network activity series over a 7d/30d window (default 7d): each UTC day's block count, extrinsic count (with its successful-extrinsic count and success rate), on-chain event count, and distinct signer count, newest day first. Computed live from the extrinsics/blocks tiers; a cold store yields a schema-stable empty series, never a GraphQL error. Mirrors GET /api/v1/chain/activity."
+    chain_activity(window: String): ChainActivity!
     "Network-wide axon-removal (teardown) leaderboard over a 7d/30d window (default 7d): subnets ranked by AxonInfoRemoved events with each's distinct-remover count and removals-per-remover teardown intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The teardown counterpart of chain_serving's announcements -- where neurons are tearing endpoints down. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/axon-removals."
     chain_axon_removals(window: String, limit: Int): ChainAxonRemovals!
     "Network-wide weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators driving consensus network-wide, each with its total WeightsSet count, share of the network total, and first/last set times, ranked by activity. The setter-level drill-in behind chain_weights. Mirrors GET /api/v1/chain/weights/setters."
@@ -648,6 +654,26 @@ export const SDL = `
     total_extrinsics: Int!
     call_count: Int!
     calls: [ChainCall!]!
+  }
+
+  "One UTC day's network activity: block/extrinsic/event counts, the successful-extrinsic count and its success rate (null on a zero-extrinsic day), and the distinct signer count."
+  type ChainActivityDay {
+    day: String!
+    block_count: Int!
+    extrinsic_count: Int!
+    event_count: Int!
+    successful_extrinsics: Int!
+    success_rate: Float
+    unique_signers: Int!
+  }
+
+  "Per-UTC-day network activity series (blocks, extrinsics, events, signers) over the window, newest day first. Mirrors GET /api/v1/chain/activity's data envelope."
+  type ChainActivity {
+    schema_version: Int!
+    window: String!
+    observed_at: String
+    day_count: Int!
+    days: [ChainActivityDay!]!
   }
 
   "One UTC day's fee/tip aggregate: extrinsic count, total/avg/median fee and tip in TAO (avg/median are null on a zero-extrinsic day)."
@@ -2792,6 +2818,7 @@ export const FIELD_COMPLEXITY = {
   subnet_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_calls: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_fees: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_activity: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5628,6 +5655,48 @@ const rootValue = {
       },
       stability_distribution: data.stability_distribution ?? null,
       subnets: data.subnets || [],
+    };
+  },
+
+  async chain_activity({ window }, context) {
+    // Reuse the exact analyticsWindow parse/validate REST's handleChainActivity
+    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
+    // BAD_USER_INPUT error, not a silent empty result.
+    const windowUrl = new URL(context.request.url);
+    windowUrl.search = "";
+    if (window != null) windowUrl.searchParams.set("window", window);
+    const { label, error } = analyticsWindow(windowUrl);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("window", label);
+    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainActivity
+    // fallback handleChainActivity uses; the tier owns the per-day extrinsic/block
+    // rollup (no logic duplicated here), and a cold store yields a schema-stable
+    // empty series.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/activity", params),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      )) ?? buildChainActivity({ window: label });
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? label,
+      observed_at: data.observed_at ?? null,
+      day_count: data.day_count ?? 0,
+      days: (data.days ?? []).map((d) => ({
+        day: d.day,
+        block_count: d.block_count ?? 0,
+        extrinsic_count: d.extrinsic_count ?? 0,
+        event_count: d.event_count ?? 0,
+        successful_extrinsics: d.successful_extrinsics ?? 0,
+        success_rate: d.success_rate ?? null,
+        unique_signers: d.unique_signers ?? 0,
+      })),
     };
   },
 
