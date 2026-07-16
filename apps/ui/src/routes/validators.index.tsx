@@ -14,7 +14,7 @@ import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { ValidatorDominanceChart } from "@/components/metagraphed/charts/validator-dominance-chart";
-import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-table";
+import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { VALIDATOR_COLUMNS } from "@/components/metagraphed/validator-columns";

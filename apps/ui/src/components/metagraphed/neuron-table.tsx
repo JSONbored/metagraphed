@@ -7,51 +7,13 @@ import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
+import { taoCompact, scoreStr, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import {
   annualizedDelegatorApyPct,
   formatApyPct,
   formatTakePct,
 } from "@/lib/metagraphed/validator-apy";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
-
-/**
- * Format a TAO value compactly. Stake can run into the millions; emission and
- * incentive are sub-unit. Null/non-finite collapses to an em-dash.
- */
-export function taoCompact(v?: number | null): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
-  if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
-  if (Math.abs(v) >= 1) return v.toFixed(2);
-  if (v === 0) return "0";
-  return v.toFixed(4);
-}
-
-/** Format a 0..1 score (trust, consensus, incentive) to three decimals. */
-export function scoreStr(v?: number | null): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  return v.toFixed(3);
-}
-
-/**
- * Small pill marking a DB-toggled featured-validator pin (#5166) — a paid/
- * partner placement, not a quality or trust signal. Deliberately styled
- * distinct from the "Validator" permit pill below (that one IS a chain-derived
- * trust fact; this one is a disclosed sponsorship) so the two are never
- * visually confused. Label is persistent (not hover-gated) — the disclosure
- * has to be legible without any interaction. Shared with the global
- * validators leaderboard table (validator-columns.tsx).
- */
-export function SponsoredBadge() {
-  return (
-    <span
-      className="inline-flex items-center rounded border border-ink-muted/40 bg-surface px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-ink-muted"
-      title="Sponsored placement — this validator paid for visibility here. It is not ranked or endorsed; see the validator directory's own stake/trust/APY columns for objective standing."
-    >
-      Sponsored
-    </span>
-  );
-}
 
 type SortField =
   | "uid"

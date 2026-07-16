@@ -8,7 +8,8 @@ import {
   TreemapMini,
   type TreemapMiniDatum,
 } from "@jsonbored/ui-kit";
-import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
+import { NeuronTable } from "@/components/metagraphed/neuron-table";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { SponsoredValidatorCallout } from "@/components/metagraphed/sponsored-validator-callout";
 
 const TOP_N = 10;

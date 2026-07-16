@@ -21,7 +21,7 @@ import {
   ValidatorNominatorsTable,
   type ValidatorNominatorsSearch,
 } from "@/components/metagraphed/validator-nominators-table";
-import { taoCompact, scoreStr } from "@/components/metagraphed/neuron-table";
+import { taoCompact, scoreStr } from "@/components/metagraphed/neuron-format";
 import { validatorDetailQuery, validatorNominatorsQuery } from "@/lib/metagraphed/queries";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";

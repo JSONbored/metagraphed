@@ -8,7 +8,7 @@ import {
   SearchInput,
   SelectFilter,
 } from "@/components/metagraphed/table-controls";
-import { taoCompact } from "@/components/metagraphed/neuron-table";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { validatorNominatorsQuery } from "@/lib/metagraphed/queries";
 import type { ValidatorNominatorEntry } from "@/lib/metagraphed/types";

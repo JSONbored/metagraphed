@@ -12,7 +12,7 @@ import {
   Sparkline,
   CopyButton,
 } from "@jsonbored/ui-kit";
-import { taoCompact } from "@/components/metagraphed/neuron-table";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";

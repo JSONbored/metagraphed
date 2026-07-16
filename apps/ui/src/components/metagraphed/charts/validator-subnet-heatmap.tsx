@@ -4,7 +4,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import { taoCompact } from "@/components/metagraphed/neuron-table";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
 
 // #3495: validator (row) × subnet (column) participation matrix from the global

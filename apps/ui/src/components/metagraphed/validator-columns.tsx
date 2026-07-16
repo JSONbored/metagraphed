@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { CopyButton } from "@jsonbored/ui-kit";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
-import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-table";
+import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
 import { formatApyPct, formatTakePct } from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidator } from "@/lib/metagraphed/types";

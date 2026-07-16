@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { CopyButton } from "@jsonbored/ui-kit";
 
-import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-table";
+import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { resolveValidatorCard } from "@/lib/metagraphed/validator-card-fields";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 

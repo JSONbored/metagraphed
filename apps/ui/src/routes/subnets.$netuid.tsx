@@ -42,7 +42,7 @@ import {
   StatTile,
   RealtimeFreshness,
 } from "@jsonbored/ui-kit";
-import { taoCompact } from "@/components/metagraphed/neuron-table";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { SearchInput } from "@/components/metagraphed/table-controls";

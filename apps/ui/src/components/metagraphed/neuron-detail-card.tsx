@@ -4,7 +4,7 @@ import { Coins, Flame, Award, Server, X } from "lucide-react";
 import { subnetNeuronQuery } from "@/lib/metagraphed/queries";
 import { RealtimeFreshness, StatTile } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
-import { taoCompact } from "@/components/metagraphed/neuron-table";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
 

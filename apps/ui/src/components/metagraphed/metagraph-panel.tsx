@@ -3,7 +3,8 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Boxes, Layers, ShieldCheck } from "lucide-react";
 import { subnetMetagraphQuery } from "@/lib/metagraphed/queries";
 import { TableState, RealtimeFreshness, StatTile, BarMini } from "@jsonbored/ui-kit";
-import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
+import { NeuronTable } from "@/components/metagraphed/neuron-table";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 

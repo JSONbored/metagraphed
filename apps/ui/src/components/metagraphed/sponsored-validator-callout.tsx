@@ -2,7 +2,7 @@ import { Coins } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { CopyButton } from "@jsonbored/ui-kit";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-table";
+import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import {
   annualizedDelegatorApyPct,

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { subnetMoversQuery } from "@/lib/metagraphed/queries";
-import { taoCompact } from "@/components/metagraphed/neuron-table";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { SelectFilter } from "@/components/metagraphed/table-controls";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { SubnetMover } from "@/lib/metagraphed/types";

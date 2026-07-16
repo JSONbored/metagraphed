@@ -6,7 +6,7 @@ import { CopyButton } from "@jsonbored/ui-kit";
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { Skeleton } from "@/components/metagraphed/states";
-import { taoCompact } from "@/components/metagraphed/neuron-table";
+import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import { SponsoredValidatorCallout } from "@/components/metagraphed/sponsored-validator-callout";
 import { annualizedDelegatorApyPct, formatApyPct } from "@/lib/metagraphed/validator-apy";
