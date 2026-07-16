@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 297,
+  "surface_count": 381,
   "surfaces": [
     {
       "auth_required": false,
@@ -1486,7 +1486,7 @@
       "subnet_slug": "sn-16",
       "surface_id": "sn-16-taomarketcap-subnet-api",
       "surface_key": "srf-e6c715c17db67d32",
-      "url": "https://api.taomarketcap.com/public/v1/subnets/16"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/16/"
     },
     {
       "auth_required": false,
@@ -1792,7 +1792,7 @@
       "subnet_slug": "sn-20",
       "surface_id": "sn-20-taomarketcap-subnet-api",
       "surface_key": "srf-ebe7ad3af0b78382",
-      "url": "https://api.taomarketcap.com/public/v1/subnets/20"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/20/"
     },
     {
       "auth_required": false,
@@ -2026,7 +2026,7 @@
       "subnet_slug": "sn-24",
       "surface_id": "sn-24-taomarketcap-subnet-api",
       "surface_key": "srf-4262382b60db3bb7",
-      "url": "https://api.taomarketcap.com/public/v1/subnets/24"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/24/"
     },
     {
       "auth_required": false,
@@ -2152,7 +2152,7 @@
       "subnet_slug": "sn-27",
       "surface_id": "sn-27-taomarketcap-subnet-api",
       "surface_key": "srf-ee8eb6593986da9c",
-      "url": "https://api.taomarketcap.com/public/v1/subnets/27"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/27/"
     },
     {
       "auth_required": false,
@@ -2261,6 +2261,24 @@
       "surface_id": "sn-29-coldint-min-compute",
       "surface_key": "srf-4971d640d83f3a53",
       "url": "https://raw.githubusercontent.com/coldint/coldint_validator/a5860df87847173842772a2c234dad8a4ff87727/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 30,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Endure Network",
+      "subnet_slug": "sn-30",
+      "surface_id": "sn-30-taomarketcap-subnet-api",
+      "surface_key": "srf-cafef3d6bfd7c83c",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/30/"
     },
     {
       "auth_required": false,
@@ -2944,7 +2962,7 @@
       "subnet_slug": "sn-38",
       "surface_id": "sn-38-taomarketcap-subnet-snapshot",
       "surface_key": "srf-02addb2407e369c6",
-      "url": "https://api.taomarketcap.com/public/v1/subnets/38"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/38/"
     },
     {
       "auth_required": false,
@@ -3016,7 +3034,7 @@
       "subnet_slug": "ralph",
       "surface_id": "sn-40-taomarketcap-subnet-api",
       "surface_key": "srf-be94bfd7653fc801",
-      "url": "https://api.taomarketcap.com/public/v1/subnets/40"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/40/"
     },
     {
       "auth_required": false,
@@ -3428,9 +3446,63 @@
       "public_safe": true,
       "subnet_name": "Zipcode",
       "subnet_slug": "sn-46",
+      "surface_id": "sn-46-zipcode-data-artifact",
+      "surface_key": "srf-a8730d9720d490ba",
+      "url": "https://zipcode.ai/api/dashboard/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 46,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "subnet_name": "Zipcode",
+      "subnet_slug": "sn-46",
+      "surface_id": "sn-46-zipcode-emissions-api",
+      "surface_key": "srf-b8498e95ae8fac4d",
+      "url": "https://zipcode.ai/api/dashboard/stats/emissions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 46,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "subnet_name": "Zipcode",
+      "subnet_slug": "sn-46",
       "surface_id": "sn-46-zipcode-real-estate-validation-set",
       "surface_key": "srf-be800cb48c735c6f",
       "url": "https://zipcode.ai/api/dashboard/validation-set/real_estate/download"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 46,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "subnet_name": "Zipcode",
+      "subnet_slug": "sn-46",
+      "surface_id": "sn-46-zipcode-subnet-api",
+      "surface_key": "srf-fddab2ee751f9038",
+      "url": "https://zipcode.ai/api/dashboard/stats"
     },
     {
       "auth_required": false,
@@ -3449,24 +3521,6 @@
       "surface_id": "sn-47-evolai-subnet-api",
       "surface_key": "srf-ee8180c137f9a543",
       "url": "https://evolai-gate.hf.space/datasets"
-    },
-    {
-      "auth_required": false,
-      "authority": "official",
-      "kind": "data-artifact",
-      "netuid": 47,
-      "probe": {
-        "expect": "html",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "evolai",
-      "public_safe": true,
-      "subnet_name": "EvolAI",
-      "subnet_slug": "sn-47",
-      "surface_id": "sn-47-evolai-universal-qa-dataset",
-      "surface_key": "srf-aa5d5d31a0f78307",
-      "url": "https://huggingface.co/datasets/evolai/universal_qa"
     },
     {
       "auth_required": false,
@@ -3489,6 +3543,150 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 48,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "subnet_name": "Quantum Compute",
+      "subnet_slug": "sn-48",
+      "surface_id": "sn-48-quantum-compute-health-api",
+      "surface_key": "srf-e10c57f6c6431dfe",
+      "url": "https://www.qbittensorlabs.com/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 48,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "subnet_name": "Quantum Compute",
+      "subnet_slug": "sn-48",
+      "surface_id": "sn-48-quantum-compute-min-compute-spec",
+      "surface_key": "srf-86e9f9553e496af9",
+      "url": "https://raw.githubusercontent.com/qbittensor-labs/quantum-compute/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 49,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-active-tournament-api",
+      "surface_key": "srf-112876f48f7482f8",
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 49,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-active-tournament-id-api",
+      "surface_key": "srf-c1dc5ae75c101fad",
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/id"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 49,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-active-tournament-ids-api",
+      "surface_key": "srf-f029688bfb2c93a8",
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/ids"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 49,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-common-config",
+      "surface_key": "srf-9ee13c5f112fafda",
+      "url": "https://raw.githubusercontent.com/nepher-ai/nepher-subnet/29c508fddd5ab3bf19797e197cbd818e9f56c4c7/config/common_config.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 49,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-current-block-api",
+      "surface_key": "srf-357fe66b2a186f28",
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/current-block"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 49,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-evaluations-api",
+      "surface_key": "srf-0655ed129b708fd9",
+      "url": "https://tournament-api.nepher.ai/api/v1/evaluations"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "data-artifact",
       "netuid": 49,
       "probe": {
@@ -3503,6 +3701,132 @@
       "surface_id": "sn-49-nepher-robotics-data-artifact",
       "surface_key": "srf-af1fcbae9651114b",
       "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/list"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 49,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-tournament-health",
+      "surface_key": "srf-fd7526f6cfc62aa8",
+      "url": "https://tournament-api.nepher.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 49,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-tournament-pricing",
+      "surface_key": "srf-5801a831a714b1bd",
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/pricing?subnet_uid=49"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 49,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-tournament-readiness",
+      "surface_key": "srf-2c6cb34ec96bf931",
+      "url": "https://tournament-api.nepher.ai/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 49,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "surface_id": "sn-49-nepher-tournaments-list-api",
+      "surface_key": "srf-6eff1d332a45e34c",
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/list"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 50,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "synth",
+      "public_safe": true,
+      "subnet_name": "Synth",
+      "subnet_slug": "sn-50",
+      "surface_id": "sn-50-synth-meta-leaderboard",
+      "surface_key": "srf-ddcc19cc02ff7dcd",
+      "url": "https://api.synthdata.co/v2/meta-leaderboard/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 50,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "synth",
+      "public_safe": true,
+      "subnet_name": "Synth",
+      "subnet_slug": "sn-50",
+      "surface_id": "sn-50-synth-subnet-api",
+      "surface_key": "srf-e8d2092289781aaa",
+      "url": "https://api.synthdata.co/v2/leaderboard/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 50,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "synth",
+      "public_safe": true,
+      "subnet_name": "Synth",
+      "subnet_slug": "sn-50",
+      "surface_id": "sn-50-synth-validation-scores",
+      "surface_key": "srf-dc76516ca63a38b9",
+      "url": "https://api.synthdata.co/validation/scores/latest"
     },
     {
       "auth_required": false,
@@ -3524,6 +3848,60 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-executors-count",
+      "surface_key": "srf-54f5829eb4b49298",
+      "url": "https://lium.io/api/executors/count"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-executors-total-count",
+      "surface_key": "srf-51f09dfb7657b983",
+      "url": "https://lium.io/api/executors/total-count"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-health",
+      "surface_key": "srf-6e797b6572d2fb8d",
+      "url": "https://lium.io/api/version"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
       "netuid": 51,
@@ -3539,6 +3917,24 @@
       "surface_id": "sn-51-lium-io-machines-api",
       "surface_key": "srf-f604cb709cccadea",
       "url": "https://lium.io/api/machines"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-latest-set-weights",
+      "surface_key": "srf-0e4756309e705f0b",
+      "url": "https://lium.io/api/latest-set-weights"
     },
     {
       "auth_required": false,
@@ -3578,6 +3974,60 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-revenue-for-validators",
+      "surface_key": "srf-f6b53a98d211dfc2",
+      "url": "https://lium.io/api/billing/revenue-for-validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-shared-config",
+      "surface_key": "srf-954ff71349dd122b",
+      "url": "https://lium.io/api/v1/shared-config"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-watchtower-digest",
+      "surface_key": "srf-5a150cecf0d7b930",
+      "url": "https://lium.io/api/watchtower/digest"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "kind": "subnet-api",
       "netuid": 51,
@@ -3593,6 +4043,114 @@
       "surface_id": "sn-51-website-common-api",
       "surface_key": "srf-c27814da8fc343a3",
       "url": "https://lium.io/api"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 52,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex",
+      "public_safe": true,
+      "subnet_name": "Dojo",
+      "subnet_slug": "sn-52",
+      "surface_id": "sn-52-dojo-humanfeedback-dpo",
+      "surface_key": "srf-4c2c9206822e93d0",
+      "url": "https://huggingface.co/datasets/tensorplex-labs/Dojo-HumanFeedback-DPO"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 52,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex",
+      "public_safe": true,
+      "subnet_name": "Dojo",
+      "subnet_slug": "sn-52",
+      "surface_id": "sn-52-dojo-synthetic-sft-dataset",
+      "surface_key": "srf-bf9767e3270e896c",
+      "url": "https://huggingface.co/datasets/tensorplex-labs/Dojo-Synthetic-SFT"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 52,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Dojo",
+      "subnet_slug": "sn-52",
+      "surface_id": "sn-52-taomarketcap-subnet-api",
+      "surface_key": "srf-45df058bcec56f64",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/52/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 53,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "EfficientFrontier",
+      "subnet_slug": "efficientfrontier",
+      "surface_id": "sn-53-taomarketcap-subnet-api",
+      "surface_key": "srf-44ad536c2821814c",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/53/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 54,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "yanez-compliance",
+      "public_safe": true,
+      "subnet_name": "Yanez MIID",
+      "subnet_slug": "sn-54",
+      "surface_id": "sn-54-yanez-compliance-miners-list",
+      "surface_key": "srf-a3e0d79891a06c7a",
+      "url": "https://miners-stats.yanezcompliance.net/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 54,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "yanez-compliance",
+      "public_safe": true,
+      "subnet_name": "Yanez MIID",
+      "subnet_slug": "sn-54",
+      "surface_id": "sn-54-yanez-compliance-subnet-api",
+      "surface_key": "srf-9e1eee6b80d9a3a2",
+      "url": "https://miners-stats.yanezcompliance.net/miners_stats"
     },
     {
       "auth_required": false,
@@ -3633,6 +4191,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 55,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "niome",
+      "public_safe": true,
+      "subnet_name": "NIOME",
+      "subnet_slug": "sn-55",
+      "surface_id": "sn-55-niome-data-artifact",
+      "surface_key": "srf-2b86f2bb605f5e3b",
+      "url": "https://niome-api.genomes.io/api/miner_scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 55,
       "probe": {
@@ -3651,20 +4227,56 @@
     {
       "auth_required": false,
       "authority": "community",
-      "kind": "data-artifact",
+      "kind": "subnet-api",
       "netuid": 56,
       "probe": {
-        "expect": "any",
-        "method": "HEAD",
+        "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "gradients",
       "public_safe": true,
       "subnet_name": "Gradients",
       "subnet_slug": "gradients",
-      "surface_id": "sn-56-gradients-data-artifact",
-      "surface_key": "srf-0c4b158f2a6899cc",
-      "url": "https://api.gradients.io/v1/network/status"
+      "surface_id": "sn-56-gradients-auditing-tasks-api",
+      "surface_key": "srf-f41b717dba8beb46",
+      "url": "https://api.gradients.io/auditing/tasks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 56,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "surface_id": "sn-56-gradients-challenger-review-config",
+      "surface_key": "srf-5f6d1e11cc096c41",
+      "url": "https://raw.githubusercontent.com/gradients-ai/G.O.D/f0d3a1b790b0a34009ead27707916ae19e5e7201/validator/infrastructure/challenger_code_review_config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 56,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "surface_id": "sn-56-gradients-healthz",
+      "surface_key": "srf-13654e22802f671b",
+      "url": "https://api.gradients.io/healthz"
     },
     {
       "auth_required": false,
@@ -3740,6 +4352,60 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 56,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "surface_id": "sn-56-gradients-subnet-api",
+      "surface_key": "srf-bab14faea5421227",
+      "url": "https://api.gradients.io/v1/network/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 56,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "surface_id": "sn-56-gradients-tournament-fees-api",
+      "surface_key": "srf-4f287fcfb83ac7e0",
+      "url": "https://api.gradients.io/tournament/fees"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 56,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "surface_id": "sn-56-gradients-tournament-latest-details",
+      "surface_key": "srf-4f3b82b69cd8701d",
+      "url": "https://api.gradients.io/tournament/latest/details"
+    },
+    {
+      "auth_required": false,
       "authority": "provider-claimed",
       "kind": "subnet-api",
       "netuid": 56,
@@ -3791,24 +4457,6 @@
       "surface_id": "sn-57-sparket-subnet-api",
       "surface_key": "srf-8c2c15f893a1216d",
       "url": "https://sparket.ai/api/v1/health"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 58,
-      "probe": {
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "handshake58",
-      "public_safe": true,
-      "subnet_name": "Handshake58",
-      "subnet_slug": "sn-58",
-      "surface_id": "sn-58-handshake58-data-artifact",
-      "surface_key": "srf-96e25dfab86a4d8c",
-      "url": "https://handshake58.com/api/skills"
     },
     {
       "auth_required": false,
@@ -3870,7 +4518,7 @@
       "kind": "subnet-api",
       "netuid": 58,
       "probe": {
-        "expect": "any",
+        "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -3881,6 +4529,60 @@
       "surface_id": "sn-58-handshake58-subnet-api",
       "surface_key": "srf-a13272815c6137f4",
       "url": "https://handshake58.com/api/agent"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 59,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "subnet_name": "Babelbit",
+      "subnet_slug": "sn-59",
+      "surface_id": "sn-59-babelbit-debug-network",
+      "surface_key": "srf-49da2f3278c55626",
+      "url": "https://api.babelbit.ai/debug/network"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 59,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "subnet_name": "Babelbit",
+      "subnet_slug": "sn-59",
+      "surface_id": "sn-59-babelbit-health",
+      "surface_key": "srf-8c995cc50eb8245f",
+      "url": "https://api.babelbit.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 59,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "subnet_name": "Babelbit",
+      "subnet_slug": "sn-59",
+      "surface_id": "sn-59-babelbit-min-compute-spec",
+      "surface_key": "srf-d6951e62f55b3c42",
+      "url": "https://raw.githubusercontent.com/babelbit/babelbit_subnet/main/min_compute.yml"
     },
     {
       "auth_required": false,
@@ -3902,6 +4604,258 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-agents-evaluation-status",
+      "surface_key": "srf-8edf91150516a040",
+      "url": "https://bitsec.ai/api/agents/evaluation-status"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-agents-list",
+      "surface_key": "srf-fb3526adcae7f270",
+      "url": "https://bitsec.ai/api/agents/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-agents-top",
+      "surface_key": "srf-7541377802b0dda4",
+      "url": "https://bitsec.ai/api/agents/top/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-agents-top-with-burn",
+      "surface_key": "srf-6950e2e08793731f",
+      "url": "https://bitsec.ai/api/agents/top-with-burn/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-ai-known-solutions",
+      "surface_key": "srf-3bf56d57c7e08408",
+      "url": "https://bitsec.ai/api/projects/known-solutions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-ai-subnet-api",
+      "surface_key": "srf-51688ccbcec66db0",
+      "url": "https://bitsec.ai/api/analytics"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-analytics-validators",
+      "surface_key": "srf-c21fd4c70a05f0b0",
+      "url": "https://bitsec.ai/api/analytics/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-jobs-leaderboard",
+      "surface_key": "srf-2a62c0072d8ed3f1",
+      "url": "https://bitsec.ai/api/jobs/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-jobs-runs-active",
+      "surface_key": "srf-c2ac195e046c4214",
+      "url": "https://bitsec.ai/api/jobs/runs/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-jobs-stats",
+      "surface_key": "srf-57adba0385b16b16",
+      "url": "https://bitsec.ai/api/jobs/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-projects-list",
+      "surface_key": "srf-745f931338ba37c8",
+      "url": "https://bitsec.ai/api/projects/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-projects-sets",
+      "surface_key": "srf-400e15383b586810",
+      "url": "https://bitsec.ai/api/projects/sets"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 61,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "redteam",
+      "public_safe": true,
+      "subnet_name": "RedTeam",
+      "subnet_slug": "sn-61",
+      "surface_id": "sn-61-redteam-active-challenges",
+      "surface_key": "srf-c93ca2c563281070",
+      "url": "https://raw.githubusercontent.com/RedTeamSubnet/RedTeam/main/src/redteam_core/challenge_pool/active_challenges.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 61,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "redteam",
+      "public_safe": true,
+      "subnet_name": "RedTeam",
+      "subnet_slug": "sn-61",
+      "surface_id": "sn-61-redteam-health",
+      "surface_key": "srf-d86e24bcf39e4dc9",
+      "url": "https://dashboard.theredteam.io/healthz"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
       "netuid": 62,
@@ -3920,6 +4874,24 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-connected-validators",
+      "surface_key": "srf-80fac478b2dce37b",
+      "url": "https://agent-upload.ridges.ai/validator/connected-validators-info"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
       "netuid": 62,
@@ -3935,6 +4907,186 @@
       "surface_id": "sn-62-ridges-eval-pricing",
       "surface_key": "srf-f2cf331991fb635f",
       "url": "https://agent-upload.ridges.ai/upload/eval-pricing"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-evaluation-sets",
+      "surface_key": "srf-ab65e73e3e59ea67",
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-evaluation-sets-problems",
+      "surface_key": "srf-fa513abf809c8135",
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/all-latest-set-problems"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-latest-set-info",
+      "surface_key": "srf-9d5b08bc6be73196",
+      "url": "https://agent-upload.ridges.ai/scoring/latest-set-info"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-network-statistics",
+      "surface_key": "srf-2c0ed2f7b23c22d3",
+      "url": "https://agent-upload.ridges.ai/retrieval/network-statistics"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-perfectly-solved-over-time",
+      "surface_key": "srf-9893be786e4f8682",
+      "url": "https://agent-upload.ridges.ai/retrieval/perfectly-solved-over-time"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-problem-statistics",
+      "surface_key": "srf-f1a13a9bc01b7934",
+      "url": "https://agent-upload.ridges.ai/statistics/problem-statistics"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-subnet-api",
+      "surface_key": "srf-12890e5b380e95f1",
+      "url": "https://agent-upload.ridges.ai/retrieval/top-agents"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-top-scores-over-time",
+      "surface_key": "srf-c8c3b4228d9470d5",
+      "url": "https://agent-upload.ridges.ai/retrieval/top-scores-over-time"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 63,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "subnet_name": "Enigma",
+      "subnet_slug": "sn-63",
+      "surface_id": "sn-63-enigma-health",
+      "surface_key": "srf-4a6c8776ae04a4e0",
+      "url": "https://www.qbittensorlabs.com/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 63,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "subnet_name": "Enigma",
+      "subnet_slug": "sn-63",
+      "surface_id": "sn-63-enigma-min-compute-spec",
+      "surface_key": "srf-0911788119ec0b3a",
+      "url": "https://raw.githubusercontent.com/qbittensor-labs/enigma/main/min_compute.yml"
     },
     {
       "auth_required": false,
@@ -4137,6 +5289,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-taomarketcap-subnet-api",
+      "surface_key": "srf-437143ebaedd69a2",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/69/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "data-artifact",
       "netuid": 70,
       "probe": {
@@ -4259,6 +5429,42 @@
       "surface_id": "sn-72-natix-huggingface",
       "surface_key": "srf-f58da177e29ec502",
       "url": "https://huggingface.co/natix-network-org"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 72,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "StreetVision by NATIX",
+      "subnet_slug": "sn-72",
+      "surface_id": "sn-72-taomarketcap-subnet-api",
+      "surface_key": "srf-6ae95b304e50f763",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/72/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 73,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "MetaHash",
+      "subnet_slug": "metahash",
+      "surface_id": "sn-73-taomarketcap-subnet-api",
+      "surface_key": "srf-ada4264db08c1a4c",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/73/"
     },
     {
       "auth_required": false,
@@ -4406,6 +5612,24 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 76,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Byzantium",
+      "subnet_slug": "sn-76",
+      "surface_id": "sn-76-taomarketcap-subnet-api",
+      "surface_key": "srf-cd7da3aa341030a0",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/76/"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 79,
@@ -4421,6 +5645,24 @@
       "surface_id": "sn-79-mvtrx-paper",
       "surface_key": "srf-0c31e228973cafd3",
       "url": "https://simulate.trading/taos-im-paper"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 80,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "dogelayer",
+      "subnet_slug": "sn-80",
+      "surface_id": "sn-80-taomarketcap-subnet-api",
+      "surface_key": "srf-059c9aea1357e9a2",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/80/"
     },
     {
       "auth_required": false,
@@ -4443,6 +5685,42 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 83,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "CliqueAI",
+      "subnet_slug": "sn-83",
+      "surface_id": "sn-83-taomarketcap-subnet-api",
+      "surface_key": "srf-c1417e6d024cc754",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/83/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 84,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "ansuz",
+      "subnet_slug": "sn-84",
+      "surface_id": "sn-84-taomarketcap-subnet-api",
+      "surface_key": "srf-b9fe06ee8f3992f1",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/84/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "data-artifact",
       "netuid": 85,
       "probe": {
@@ -4457,6 +5735,24 @@
       "surface_id": "sn-85-vidaio-video-samples",
       "surface_key": "srf-6ca934641c307e44",
       "url": "https://raw.githubusercontent.com/vidaio-subnet/vidaio-subnet/b5d60ba7e2f6f9620075558f8d9098a3b2242109/services/video_scheduler/video_samples.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 86,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Subnet 86",
+      "subnet_slug": "sn-86",
+      "surface_id": "sn-86-taomarketcap-subnet-snapshot",
+      "surface_key": "srf-51634405ba134f10",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/86/"
     },
     {
       "auth_required": false,
@@ -4552,6 +5848,24 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 89,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "InfiniteHash",
+      "subnet_slug": "sn-89",
+      "surface_id": "sn-89-taomarketcap-subnet-api",
+      "surface_key": "srf-b57da14b45e377c3",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/89/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 91,
       "probe": {
         "expect": "json",
@@ -4565,6 +5879,24 @@
       "surface_id": "sn-91-bitstarter-updates-health-api",
       "surface_key": "srf-49a2520ec2761aa7",
       "url": "https://updates.bitstarter.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 92,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Tensorclaw",
+      "subnet_slug": "sn-92",
+      "surface_id": "sn-92-taomarketcap-subnet-api",
+      "surface_key": "srf-3cbad82322f35127",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/92/"
     },
     {
       "auth_required": false,
@@ -5020,6 +6352,24 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 101,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "eni",
+      "subnet_slug": "eni",
+      "surface_id": "sn-101-taomarketcap-subnet-api",
+      "surface_key": "srf-1255b2ceed33f3b1",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/101/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 102,
       "probe": {
         "expect": "json",
@@ -5069,6 +6419,24 @@
       "surface_id": "sn-102-connito-validator-whitelist",
       "surface_key": "srf-0f1afd19b8e9e50e",
       "url": "https://cycle-api.connito.ai/get_validator_whitelist"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 104,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "for sale (burn to uid1)",
+      "subnet_slug": "for-sale-uid1",
+      "surface_id": "sn-104-taomarketcap-subnet-snapshot",
+      "surface_key": "srf-784573d5ed376328",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/104/"
     },
     {
       "auth_required": false,
@@ -5162,6 +6530,24 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 107,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Minos",
+      "subnet_slug": "sn-107",
+      "surface_id": "sn-107-taomarketcap-subnet-api",
+      "surface_key": "srf-c126a7fd32fa3494",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/107/"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 109,
@@ -5177,6 +6563,24 @@
       "surface_id": "sn-109-academia-archives",
       "surface_key": "srf-0070df9e44e7d65b",
       "url": "https://github.com/fx-integral/academia-archives"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 109,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Academia",
+      "subnet_slug": "sn-109",
+      "surface_id": "sn-109-taomarketcap-subnet-api",
+      "surface_key": "srf-ce233a7d0edee916",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/109/"
     },
     {
       "auth_required": false,
@@ -5236,6 +6640,24 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 111,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "oneoneone",
+      "subnet_slug": "sn-111",
+      "surface_id": "sn-111-taomarketcap-subnet-api",
+      "surface_key": "srf-54b41b592d63fe8a",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/111/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 113,
       "probe": {
         "expect": "json",
@@ -5270,6 +6692,60 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 115,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "HashiChain",
+      "subnet_slug": "sn-115",
+      "surface_id": "sn-115-taomarketcap-subnet-api",
+      "surface_key": "srf-c8efa64adca1b6d1",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/115/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 116,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "TaoLend",
+      "subnet_slug": "taolend",
+      "surface_id": "sn-116-taomarketcap-subnet-api",
+      "surface_key": "srf-72e95cbc8e0379a8",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/116/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 118,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "surface_id": "sn-118-taomarketcap-subnet-api",
+      "surface_key": "srf-791d8c9b647cfab7",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/118/"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "kind": "data-artifact",
       "netuid": 118,
@@ -5285,6 +6761,24 @@
       "surface_id": "sn-118-website-link-heyditto-ai-data-artifact-3",
       "surface_key": "srf-eeeec504a19120d3",
       "url": "https://heyditto.ai/ditto-vs-frontier-open-models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 119,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Satori",
+      "subnet_slug": "satori",
+      "surface_id": "sn-119-taomarketcap-subnet-snapshot",
+      "surface_key": "srf-13159dcd90be7ac9",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/119/"
     },
     {
       "auth_required": false,
@@ -5357,6 +6851,24 @@
       "surface_id": "sn-121-sundae-bar-products-api",
       "surface_key": "srf-fea5a2891a302b8a",
       "url": "https://www.sundaebar.ai/api/products"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 128,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "ByteLeap",
+      "subnet_slug": "sn-128",
+      "surface_id": "sn-128-taomarketcap-subnet-api",
+      "surface_key": "srf-354766fe868cfcc5",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/128/"
     }
   ]
 }
