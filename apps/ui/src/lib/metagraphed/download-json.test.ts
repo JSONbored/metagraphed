@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import { downloadJsonFromUrl } from "./download-json";
 
-function stubDom(anchor: { href: string; download: string; click: () => void; remove: () => void }) {
+function stubDom(anchor: {
+  href: string;
+  download: string;
+  click: () => void;
+  remove: () => void;
+}) {
   const appendChild = vi.fn().mockReturnValue(anchor);
   vi.stubGlobal("document", {
     createElement: vi.fn().mockReturnValue(anchor),
@@ -42,18 +47,24 @@ describe("downloadJsonFromUrl", () => {
   it("throws (and still revokes nothing, since no object URL was created) on a non-ok response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503 }));
 
-    await expect(downloadJsonFromUrl("https://api.example/openapi.json", "openapi.json")).rejects.toThrow(
-      "Download failed: 503",
-    );
+    await expect(
+      downloadJsonFromUrl("https://api.example/openapi.json", "openapi.json"),
+    ).rejects.toThrow("Download failed: 503");
 
     vi.unstubAllGlobals();
   });
 
   it("revokes the object URL even if the anchor click throws", async () => {
     const blob = { type: "application/json" };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, blob: () => Promise.resolve(blob) }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, blob: () => Promise.resolve(blob) }),
+    );
     const revokeObjectURL = vi.fn();
-    vi.stubGlobal("URL", { createObjectURL: vi.fn().mockReturnValue("blob:mock-url"), revokeObjectURL });
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn().mockReturnValue("blob:mock-url"),
+      revokeObjectURL,
+    });
 
     const anchor = {
       href: "",
@@ -65,9 +76,9 @@ describe("downloadJsonFromUrl", () => {
     };
     stubDom(anchor);
 
-    await expect(downloadJsonFromUrl("https://api.example/openapi.json", "openapi.json")).rejects.toThrow(
-      "blocked",
-    );
+    await expect(
+      downloadJsonFromUrl("https://api.example/openapi.json", "openapi.json"),
+    ).rejects.toThrow("blocked");
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
 
     vi.unstubAllGlobals();
