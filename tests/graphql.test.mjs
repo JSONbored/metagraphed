@@ -5938,10 +5938,7 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
       '{ neuron_history(netuid: 3, uid: 7, window: "7d") { window } }',
       env,
     );
-    assert.equal(
-      capturedUrl.pathname,
-      "/api/v1/subnets/3/neurons/7/history",
-    );
+    assert.equal(capturedUrl.pathname, "/api/v1/subnets/3/neurons/7/history");
     assert.equal(capturedUrl.searchParams.get("window"), "7d");
   });
 
