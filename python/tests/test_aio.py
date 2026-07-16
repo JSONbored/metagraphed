@@ -105,6 +105,37 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(subnets[0].name, "Allways")
         self.assertEqual(subnets[0].raw["name"], "Allways")
 
+    async def test_subnets_completeness_score_absent_from_index(self):
+        # Mirrors the sync contract: index rows set integration_readiness and
+        # leave completeness_score unset (None).
+        client = self._client(
+            httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "subnets": [
+                            {
+                                "netuid": 7,
+                                "name": "Allways",
+                                "integration_readiness": 72,
+                            }
+                        ]
+                    },
+                    "meta": {
+                        "pagination": {
+                            "collection": "subnets",
+                            "next_cursor": None,
+                        }
+                    },
+                },
+            )
+        )
+        subnets = await client.subnets()
+        self.assertEqual(len(subnets), 1)
+        self.assertEqual(subnets[0].integration_readiness, 72)
+        self.assertIsNone(subnets[0].completeness_score)
+        self.assertNotIn("completeness_score", subnets[0].raw)
+
     async def test_paginate_follows_next_cursor_with_nested_collection(self):
         # Mirrors README async usage of paginate via fetch_all / typed helpers:
         # nested collection rows + cursor continuation.

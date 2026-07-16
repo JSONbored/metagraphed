@@ -525,6 +525,35 @@ class FetchAllAndModelsTest(unittest.TestCase):
         self.assertEqual(subnets[0].categories, ["inference"])
         self.assertEqual(subnets[0].raw["name"], "Allways")
 
+    def test_subnets_completeness_score_absent_from_index(self):
+        # SubnetIndexEntry carries integration_readiness for list/ranking, not
+        # completeness_score (that score lives on profiles / agent-catalog).
+        pages = [
+            {
+                "data": {
+                    "subnets": [
+                        {
+                            "netuid": 7,
+                            "name": "Allways",
+                            "integration_readiness": 72,
+                        }
+                    ]
+                },
+                "meta": {
+                    "pagination": {
+                        "collection": "subnets",
+                        "next_cursor": None,
+                    }
+                },
+            }
+        ]
+        with self._patch_pages(pages):
+            subnets = MetagraphedClient().subnets()
+        self.assertEqual(len(subnets), 1)
+        self.assertEqual(subnets[0].integration_readiness, 72)
+        self.assertIsNone(subnets[0].completeness_score)
+        self.assertNotIn("completeness_score", subnets[0].raw)
+
     def test_model_from_dict_ignores_unknown_and_keeps_raw(self):
         surface = Surface.from_dict(
             {"id": "x", "kind": "openapi", "unknown_field": 1}

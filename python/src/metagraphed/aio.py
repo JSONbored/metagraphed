@@ -287,6 +287,13 @@ class AsyncMetagraphedClient:
     # -- typed convenience methods (raw-dict path stays via fetch/fetch_all) --
 
     async def subnets(self, **query: Any) -> List[Subnet]:
+        """Every subnet as a typed :class:`~metagraphed.models.Subnet`.
+
+        Rows come from the compact ``/api/v1/subnets`` index, which populates
+        ``integration_readiness`` but not ``completeness_score`` (that score
+        lives on profiles / the agent catalog). Sort with
+        ``sort="integration_readiness"``, not ``completeness_score``.
+        """
         return Subnet.list_from(
             await self.fetch_all("/api/v1/subnets", query=query or None)
         )
