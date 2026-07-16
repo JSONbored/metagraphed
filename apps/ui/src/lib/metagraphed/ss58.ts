@@ -159,6 +159,33 @@ export function base58Encode(bytes: Uint8Array): string {
   return out;
 }
 
+/** base58-decode a string (Bitcoin/Substrate alphabet). `null` on any character outside the alphabet — mirrors {@link base58Encode}'s digit-array algorithm in reverse. */
+export function base58Decode(input: string): Uint8Array | null {
+  const bytes = [0];
+  for (const char of input) {
+    const value = BASE58_ALPHABET.indexOf(char);
+    if (value === -1) return null;
+    let carry = value;
+    for (let i = 0; i < bytes.length; i++) {
+      carry += bytes[i] * 58;
+      bytes[i] = carry & 0xff;
+      carry >>= 8;
+    }
+    while (carry > 0) {
+      bytes.push(carry & 0xff);
+      carry >>= 8;
+    }
+  }
+  let leadingZeros = 0;
+  for (const char of input) {
+    if (char === "1") leadingZeros++;
+    else break;
+  }
+  const out = new Uint8Array(leadingZeros + bytes.length);
+  for (let i = 0; i < bytes.length; i++) out[leadingZeros + bytes.length - 1 - i] = bytes[i];
+  return out;
+}
+
 // ── SS58 ─────────────────────────────────────────────────────────────────────
 const SS58_PREFIX = new TextEncoder().encode("SS58PRE");
 
@@ -183,4 +210,61 @@ export function encodeSs58(pubkey: Uint8Array, format = DEFAULT_SS58_FORMAT): st
   full.set(payload);
   full.set(checksum.slice(0, 2), payload.length);
   return base58Encode(full);
+}
+
+export interface DecodedSs58 {
+  /** True only for the fully-decoded, checksum-verified 32-byte-account shape. */
+  valid: boolean;
+  /** Network prefix byte, or -1 when `extendedFormat` is true (not decoded). */
+  format: number;
+  /** The 32-byte public key, present only when `valid` is true. */
+  pubkey: Uint8Array | null;
+  checksumValid: boolean;
+  /**
+   * SS58 prefixes 64-127 use a 2-byte bit-packed encoding this app doesn't
+   * implement — every chain a Bittensor user would realistically encounter
+   * (Polkadot 0, Kusama 2, generic Substrate/Bittensor 42) uses the simple
+   * single-byte form (0-63), so this just flags the shape rather than
+   * guessing at an unverified bit-unpacking.
+   */
+  extendedFormat: boolean;
+}
+
+/**
+ * Decode an SS58 address string back to its network prefix and public key,
+ * verifying the checksum. Only handles the single-byte-prefix, 32-byte
+ * account-id shape {@link encodeSs58} produces (what every real Bittensor
+ * hotkey/coldkey is) — returns `null` for malformed base58 or a length that
+ * doesn't match that shape, and `extendedFormat: true` (no pubkey) for a
+ * structurally-plausible but unsupported 2-byte-prefix address.
+ */
+export function decodeSs58(address: string): DecodedSs58 | null {
+  const bytes = base58Decode(address.trim());
+  if (!bytes || bytes.length < 3) return null;
+
+  const first = bytes[0];
+  if (first >= 128) return null;
+
+  if (first > 63) {
+    return { valid: false, format: -1, pubkey: null, checksumValid: false, extendedFormat: true };
+  }
+
+  if (bytes.length !== 35) return null;
+
+  const format = first;
+  const payload = bytes.slice(0, 33);
+  const checksum = bytes.slice(33, 35);
+  const input = new Uint8Array(SS58_PREFIX.length + payload.length);
+  input.set(SS58_PREFIX);
+  input.set(payload, SS58_PREFIX.length);
+  const expectedChecksum = blake2b(input, 64);
+  const checksumValid = checksum[0] === expectedChecksum[0] && checksum[1] === expectedChecksum[1];
+
+  return {
+    valid: checksumValid,
+    format,
+    pubkey: checksumValid ? payload.slice(1) : null,
+    checksumValid,
+    extendedFormat: false,
+  };
 }

@@ -31,6 +31,7 @@ import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
 import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.index'
 import { Route as AccountsIndexRouteImport } from './routes/accounts.index'
 import { Route as ValidatorsHotkeyRouteImport } from './routes/validators.$hotkey'
+import { Route as ToolsSs58RouteImport } from './routes/tools.ss58'
 import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 import { Route as GraphqlExplorerRouteImport } from './routes/graphql.explorer'
@@ -152,6 +153,11 @@ const ValidatorsHotkeyRoute = ValidatorsHotkeyRouteImport.update({
   path: '/validators/$hotkey',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsSs58Route = ToolsSs58RouteImport.update({
+  id: '/tools/ss58',
+  path: '/tools/ss58',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SubnetsNetuidRoute = SubnetsNetuidRouteImport.update({
   id: '/subnets/$netuid',
   path: '/subnets/$netuid',
@@ -225,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/tools/ss58': typeof ToolsSs58Route
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts/': typeof AccountsIndexRoute
   '/admin-changes/': typeof AdminChangesIndexRoute
@@ -259,6 +266,7 @@ export interface FileRoutesByTo {
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/tools/ss58': typeof ToolsSs58Route
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts': typeof AccountsIndexRoute
   '/admin-changes': typeof AdminChangesIndexRoute
@@ -294,6 +302,7 @@ export interface FileRoutesById {
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/tools/ss58': typeof ToolsSs58Route
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts/': typeof AccountsIndexRoute
   '/admin-changes/': typeof AdminChangesIndexRoute
@@ -330,6 +339,7 @@ export interface FileRouteTypes {
     | '/graphql/explorer'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/tools/ss58'
     | '/validators/$hotkey'
     | '/accounts/'
     | '/admin-changes/'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/graphql/explorer'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/tools/ss58'
     | '/validators/$hotkey'
     | '/accounts'
     | '/admin-changes'
@@ -398,6 +409,7 @@ export interface FileRouteTypes {
     | '/graphql/explorer'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/tools/ss58'
     | '/validators/$hotkey'
     | '/accounts/'
     | '/admin-changes/'
@@ -433,6 +445,7 @@ export interface RootRouteChildren {
   GraphqlExplorerRoute: typeof GraphqlExplorerRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   SubnetsNetuidRoute: typeof SubnetsNetuidRoute
+  ToolsSs58Route: typeof ToolsSs58Route
   ValidatorsHotkeyRoute: typeof ValidatorsHotkeyRoute
   AccountsIndexRoute: typeof AccountsIndexRoute
   AdminChangesIndexRoute: typeof AdminChangesIndexRoute
@@ -602,6 +615,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ValidatorsHotkeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/ss58': {
+      id: '/tools/ss58'
+      path: '/tools/ss58'
+      fullPath: '/tools/ss58'
+      preLoaderRoute: typeof ToolsSs58RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/subnets/$netuid': {
       id: '/subnets/$netuid'
       path: '/subnets/$netuid'
@@ -697,6 +717,7 @@ const rootRouteChildren: RootRouteChildren = {
   GraphqlExplorerRoute: GraphqlExplorerRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   SubnetsNetuidRoute: SubnetsNetuidRoute,
+  ToolsSs58Route: ToolsSs58Route,
   ValidatorsHotkeyRoute: ValidatorsHotkeyRoute,
   AccountsIndexRoute: AccountsIndexRoute,
   AdminChangesIndexRoute: AdminChangesIndexRoute,

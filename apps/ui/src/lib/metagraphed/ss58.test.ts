@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { blake2b, base58Encode, encodeSs58 } from "./ss58";
+import { blake2b, base58Encode, base58Decode, encodeSs58, decodeSs58 } from "./ss58";
 
 const hex = (h: string) =>
   Uint8Array.from(
@@ -51,5 +51,68 @@ describe("encodeSs58", () => {
   it("returns null for non-32-byte input", () => {
     expect(encodeSs58(new Uint8Array(31))).toBeNull();
     expect(encodeSs58(new Uint8Array(33))).toBeNull();
+  });
+});
+
+describe("base58Decode", () => {
+  it("inverts base58Encode, including leading-zero '1's", () => {
+    const bytes = hex("0x0000287fb4cd");
+    expect(base58Decode(base58Encode(bytes))).toEqual(bytes);
+  });
+  it("returns null for a character outside the alphabet", () => {
+    // '0', 'O', 'I', 'l' are excluded from the base58 alphabet.
+    expect(base58Decode("0OIl")).toBeNull();
+  });
+});
+
+describe("decodeSs58", () => {
+  const alicePubkey = hex("0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+
+  it("decodes a format-42 address back to its pubkey, checksum-verified", () => {
+    const decoded = decodeSs58("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
+    expect(decoded).toEqual({
+      valid: true,
+      format: 42,
+      pubkey: alicePubkey,
+      checksumValid: true,
+      extendedFormat: false,
+    });
+  });
+
+  it("decodes a different network format byte (0 = Polkadot)", () => {
+    const decoded = decodeSs58("15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5");
+    expect(decoded?.format).toBe(0);
+    expect(decoded?.pubkey).toEqual(alicePubkey);
+    expect(decoded?.checksumValid).toBe(true);
+  });
+
+  it("flags a corrupted checksum without throwing", () => {
+    // Flip the last character of an otherwise-valid address.
+    const valid = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+    const corrupted = valid.slice(0, -1) + (valid.endsWith("Y") ? "X" : "Y");
+    const decoded = decodeSs58(corrupted);
+    expect(decoded?.valid).toBe(false);
+    expect(decoded?.checksumValid).toBe(false);
+    expect(decoded?.pubkey).toBeNull();
+  });
+
+  it("returns null for malformed base58 input", () => {
+    expect(decodeSs58("not-valid-base58-0OIl")).toBeNull();
+  });
+
+  it("returns null for a well-formed but wrong-length base58 string", () => {
+    expect(decodeSs58(base58Encode(new Uint8Array(10)))).toBeNull();
+  });
+
+  it("round-trips encodeSs58 output for an arbitrary format byte", () => {
+    const encoded = encodeSs58(alicePubkey, 2); // Kusama
+    const decoded = decodeSs58(encoded!);
+    expect(decoded).toEqual({
+      valid: true,
+      format: 2,
+      pubkey: alicePubkey,
+      checksumValid: true,
+      extendedFormat: false,
+    });
   });
 });

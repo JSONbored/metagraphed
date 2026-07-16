@@ -21,6 +21,7 @@ import {
   Copy,
   ExternalLink,
   FileJson,
+  Fingerprint,
   Gauge,
   GitBranch,
   Hash,
@@ -195,6 +196,13 @@ const STATIC_ROUTES_TAIL: RouteEntry[] = [
     to: "/runtime",
     hint: "Spec-version upgrade history",
     icon: GitBranch,
+    scope: "route",
+  },
+  {
+    label: "SS58 inspector",
+    to: "/tools/ss58",
+    hint: "Decode & verify any SS58 address",
+    icon: Fingerprint,
     scope: "route",
   },
 ];
