@@ -5,6 +5,7 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Activity, Boxes, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { AccountCell } from "@/components/metagraphed/account-cell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -1126,14 +1127,10 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                   {transfers.top_senders.map((s) => (
                     <tr key={s.address} className="hover:bg-surface/40">
                       <td className="px-4 py-2 font-mono text-[11px]">
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: s.address }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                          title={s.address}
-                        >
-                          {shortHash(s.address) ?? s.address}
-                        </Link>
+                        <AccountCell
+                          ss58={s.address}
+                          fallback={shortHash(s.address) ?? s.address}
+                        />
                       </td>
                       <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                         {formatTao(s.volume_tao)}
@@ -1169,14 +1166,10 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                   {transfers.top_receivers.map((r) => (
                     <tr key={r.address} className="hover:bg-surface/40">
                       <td className="px-4 py-2 font-mono text-[11px]">
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: r.address }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                          title={r.address}
-                        >
-                          {shortHash(r.address) ?? r.address}
-                        </Link>
+                        <AccountCell
+                          ss58={r.address}
+                          fallback={shortHash(r.address) ?? r.address}
+                        />
                       </td>
                       <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                         {formatTao(r.volume_tao)}
@@ -1450,14 +1443,7 @@ function ExplorerDashboard() {
                     {signers.signers.slice(0, 12).map((s) => (
                       <tr key={s.signer} className="hover:bg-surface/40">
                         <td className="px-4 py-2 font-mono text-[11px]">
-                          <Link
-                            to="/accounts/$ss58"
-                            params={{ ss58: s.signer }}
-                            className="text-ink-strong hover:text-accent hover:underline"
-                            title={s.signer}
-                          >
-                            {shortHash(s.signer) ?? s.signer}
-                          </Link>
+                          <AccountCell ss58={s.signer} fallback={shortHash(s.signer) ?? s.signer} />
                         </td>
                         <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                           {formatNumber(s.tx_count)}
@@ -1565,14 +1551,7 @@ function ExplorerDashboard() {
                   {fees.top_fee_payers.map((p) => (
                     <tr key={p.signer} className="hover:bg-surface/40">
                       <td className="px-4 py-2 font-mono text-[11px]">
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: p.signer }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                          title={p.signer}
-                        >
-                          {shortHash(p.signer) ?? p.signer}
-                        </Link>
+                        <AccountCell ss58={p.signer} fallback={shortHash(p.signer) ?? p.signer} />
                       </td>
                       <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                         {formatTao(p.total_fee_tao)}
@@ -1722,14 +1701,10 @@ function ExplorerDashboard() {
                       <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
                         <td className="px-4 py-2 font-mono text-[11px]">
                           {setter.hotkey ? (
-                            <Link
-                              to="/accounts/$ss58"
-                              params={{ ss58: setter.hotkey }}
-                              className="text-ink-strong hover:text-accent hover:underline"
-                              title={setter.hotkey}
-                            >
-                              {shortHash(setter.hotkey) ?? setter.hotkey}
-                            </Link>
+                            <AccountCell
+                              ss58={setter.hotkey}
+                              fallback={shortHash(setter.hotkey) ?? setter.hotkey}
+                            />
                           ) : (
                             <span
                               className="text-ink-muted"
@@ -1835,24 +1810,10 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
                     {i + 1}
                   </td>
                   <td className="px-4 py-2 font-mono text-[11px]">
-                    <Link
-                      to="/accounts/$ss58"
-                      params={{ ss58: p.from }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                      title={p.from}
-                    >
-                      {shortHash(p.from) ?? p.from}
-                    </Link>
+                    <AccountCell ss58={p.from} fallback={shortHash(p.from) ?? p.from} />
                   </td>
                   <td className="px-4 py-2 font-mono text-[11px]">
-                    <Link
-                      to="/accounts/$ss58"
-                      params={{ ss58: p.to }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                      title={p.to}
-                    >
-                      {shortHash(p.to) ?? p.to}
-                    </Link>
+                    <AccountCell ss58={p.to} fallback={shortHash(p.to) ?? p.to} />
                   </td>
                   <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                     {formatTao(p.volume_tao)}
