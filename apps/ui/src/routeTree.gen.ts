@@ -40,6 +40,7 @@ import { Route as DocsSplatRouteImport } from './routes/docs.$'
 import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
 import { Route as ApiSearchRouteImport } from './routes/api.search'
 import { Route as AccountsSs58RouteImport } from './routes/accounts.$ss58'
+import { Route as DocsRawSplatRouteImport } from './routes/docs.raw.$'
 
 const SurfacesRoute = SurfacesRouteImport.update({
   id: '/surfaces',
@@ -196,6 +197,11 @@ const AccountsSs58Route = AccountsSs58RouteImport.update({
   path: '/accounts/$ss58',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsRawSplatRoute = DocsRawSplatRouteImport.update({
+  id: '/docs/raw/$',
+  path: '/docs/raw/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/subnets/': typeof SubnetsIndexRoute
   '/sudo/': typeof SudoIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
+  '/docs/raw/$': typeof DocsRawSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/subnets': typeof SubnetsIndexRoute
   '/sudo': typeof SudoIndexRoute
   '/validators': typeof ValidatorsIndexRoute
+  '/docs/raw/$': typeof DocsRawSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/subnets/': typeof SubnetsIndexRoute
   '/sudo/': typeof SudoIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
+  '/docs/raw/$': typeof DocsRawSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/subnets/'
     | '/sudo/'
     | '/validators/'
+    | '/docs/raw/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/subnets'
     | '/sudo'
     | '/validators'
+    | '/docs/raw/$'
   id:
     | '__root__'
     | '/'
@@ -397,6 +408,7 @@ export interface FileRouteTypes {
     | '/subnets/'
     | '/sudo/'
     | '/validators/'
+    | '/docs/raw/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -431,6 +443,7 @@ export interface RootRouteChildren {
   SubnetsIndexRoute: typeof SubnetsIndexRoute
   SudoIndexRoute: typeof SudoIndexRoute
   ValidatorsIndexRoute: typeof ValidatorsIndexRoute
+  DocsRawSplatRoute: typeof DocsRawSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -652,6 +665,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountsSs58RouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs/raw/$': {
+      id: '/docs/raw/$'
+      path: '/docs/raw/$'
+      fullPath: '/docs/raw/$'
+      preLoaderRoute: typeof DocsRawSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -687,6 +707,7 @@ const rootRouteChildren: RootRouteChildren = {
   SubnetsIndexRoute: SubnetsIndexRoute,
   SudoIndexRoute: SudoIndexRoute,
   ValidatorsIndexRoute: ValidatorsIndexRoute,
+  DocsRawSplatRoute: DocsRawSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

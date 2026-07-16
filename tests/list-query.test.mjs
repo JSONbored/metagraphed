@@ -353,6 +353,53 @@ describe("list-query case-insensitive enum/string filters (#2073)", () => {
   });
 });
 
+// #6238: the curation collection could sort=curation_level but not filter on it,
+// unlike the sibling gaps collection. It's now a real filter using the same
+// shared QUERY_ENUMS.curationLevel vocabulary.
+describe("list-query curation curation_level filter (#6238)", () => {
+  const data = {
+    curation: [
+      { netuid: 1, curation_level: "native" },
+      { netuid: 2, curation_level: "maintainer-reviewed" },
+    ],
+  };
+
+  test("?curation_level=native narrows the curation list to matching rows", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/curation?curation_level=native"),
+      "curation",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+      result.data.curation.map((r) => r.netuid),
+      [1],
+    );
+  });
+
+  test("the filter is case-insensitive, like every other enum filter (#2073)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/curation?curation_level=Maintainer-Reviewed"),
+      "curation",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+      result.data.curation.map((r) => r.netuid),
+      [2],
+    );
+  });
+
+  test("an invalid curation_level errors with parameter curation_level (400 invalid_query)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/curation?curation_level=bogus"),
+      "curation",
+    );
+    assert.equal(result.error.parameter, "curation_level");
+  });
+});
+
 describe("list-query numeric range filters", () => {
   const data = {
     subnets: [
@@ -695,6 +742,77 @@ describe("list-query unknown parameter validation (#2578)", () => {
         API_QUERY_COLLECTIONS[collection] = previous;
       }
     }
+  });
+});
+
+// #6239: documents advertised sort=kind, but search-index rows carry no `kind`
+// field at all (the field is `type`) — every request silently no-op'd instead
+// of erroring. Fixed by sorting/filtering on the real `type` field and adding
+// a `netuid` filter, matching every other collection's kind/netuid handling.
+describe("list-query documents type/netuid (#6239)", () => {
+  const data = {
+    documents: [
+      { id: "sn-1", type: "subnet", netuid: 1, title: "Root" },
+      { id: "sn-2", type: "subnet", netuid: 2, title: "Allways" },
+      { id: "surf-1", type: "surface", netuid: 2, title: "Allways docs" },
+      { id: "prov-1", type: "provider", title: "Some Provider" },
+    ],
+  };
+  const ids = (result) => result.data.documents.map((r) => r.id);
+
+  test("?sort=type actually reorders rows (was a silent no-op under sort=kind)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/search?sort=type"),
+      "documents",
+    );
+    assert.equal(result.error, undefined);
+    // provider < subnet < surface, alphabetically ascending.
+    assert.deepEqual(ids(result), ["prov-1", "sn-1", "sn-2", "surf-1"]);
+  });
+
+  test("?sort=kind is no longer accepted (400, not a silent no-op)", () => {
+    const sortError = validateListQueryParams(
+      query("/api/v1/search?sort=kind"),
+      "documents",
+    );
+    assert.equal(sortError.parameter, "sort");
+    assert.equal(sortError.message, "sort is not supported for documents.");
+  });
+
+  for (const type of ["subnet", "surface", "provider"]) {
+    test(`?type=${type} filters to only that document type`, () => {
+      const result = applyQueryFilters(
+        data,
+        query(`/api/v1/search?type=${type}`),
+        "documents",
+      );
+      assert.equal(result.error, undefined);
+      assert.equal(
+        result.data.documents.every((doc) => doc.type === type),
+        true,
+      );
+      assert.ok(result.data.documents.length > 0);
+    });
+  }
+
+  test("an invalid ?type= value is a query error", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/search?type=bogus"),
+      "documents",
+    );
+    assert.equal(result.error.parameter, "type");
+  });
+
+  test("?netuid=2 filters to documents carrying that netuid, excluding provider docs", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/search?netuid=2"),
+      "documents",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(ids(result), ["sn-2", "surf-1"]);
   });
 });
 
@@ -1236,5 +1354,124 @@ describe("list-query string filter excludes rows missing the field", () => {
       );
       assert.deepEqual(ids(result), [1]);
     });
+  });
+});
+
+// #6242: candidates and curated-surfaces were sortable by id (and candidates by
+// confidence) but could not filter on those fields.
+describe("candidates id/confidence filters (#6242)", () => {
+  const data = {
+    candidates: [
+      {
+        id: "sn-7-openapi",
+        netuid: 7,
+        kind: "openapi",
+        confidence: "high",
+        provider: "allways",
+        state: "verified",
+      },
+      {
+        id: "sn-7-website",
+        netuid: 7,
+        kind: "website",
+        confidence: "low",
+        provider: "allways",
+        state: "schema-valid",
+      },
+      {
+        id: "sn-8-openapi",
+        netuid: 8,
+        kind: "openapi",
+        confidence: "medium",
+        provider: "beta",
+        state: "verified",
+      },
+    ],
+  };
+  const ids = (result) => result.data.candidates.map((r) => r.id);
+
+  test("?id=<value> keeps rows whose id exactly matches (case-insensitive)", () => {
+    const lower = applyQueryFilters(
+      data,
+      query("/api/v1/candidates?id=sn-7-openapi"),
+      "candidates",
+    );
+    const upper = applyQueryFilters(
+      data,
+      query("/api/v1/candidates?id=SN-7-OPENAPI"),
+      "candidates",
+    );
+    assert.equal(lower.error, undefined);
+    assert.equal(upper.error, undefined);
+    assert.deepEqual(ids(lower), ["sn-7-openapi"]);
+    assert.deepEqual(ids(upper), ids(lower));
+  });
+
+  test("?confidence=<low|medium|high> filters to rows with that confidence", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/candidates?confidence=medium"),
+      "candidates",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(ids(result), ["sn-8-openapi"]);
+    assert.ok(
+      result.data.candidates.every((row) => row.confidence === "medium"),
+    );
+  });
+
+  test("an invalid confidence value returns invalid_query on that parameter", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/candidates?confidence=extreme"),
+      "candidates",
+    );
+    assert.equal(result.error.parameter, "confidence");
+  });
+});
+
+describe("curated-surfaces id filter (#6242)", () => {
+  const data = {
+    surfaces: [
+      {
+        id: "sn-7-openapi",
+        netuid: 7,
+        kind: "openapi",
+        provider: "allways",
+        name: "OpenAPI",
+      },
+      {
+        id: "sn-7-website",
+        netuid: 7,
+        kind: "website",
+        provider: "allways",
+        name: "Website",
+      },
+      {
+        id: "sn-8-openapi",
+        netuid: 8,
+        kind: "openapi",
+        provider: "beta",
+        name: "OpenAPI",
+      },
+    ],
+  };
+  const ids = (result) => result.data.surfaces.map((r) => r.id);
+
+  test("?id=<value> keeps rows whose id exactly matches (case-insensitive)", () => {
+    const lower = applyQueryFilters(
+      data,
+      query("/api/v1/surfaces?id=sn-7-website"),
+      "curated-surfaces",
+    );
+    const upper = applyQueryFilters(
+      data,
+      query("/api/v1/surfaces?id=SN-7-WEBSITE"),
+      "curated-surfaces",
+    );
+    assert.equal(lower.error, undefined);
+    assert.equal(upper.error, undefined);
+    assert.deepEqual(ids(lower), ["sn-7-website"]);
+    assert.deepEqual(ids(upper), ids(lower));
   });
 });

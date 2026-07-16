@@ -13,7 +13,7 @@ import {
   CopyButton,
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
-import { Skeleton, EmptyState } from "@/components/metagraphed/states";
+import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
@@ -259,7 +259,13 @@ export function YieldLoader({ netuid }: { netuid: number }) {
 
 function YieldDriftCard({ netuid }: { netuid: number }) {
   const [win, setWin] = useState<Win>("30d");
-  const { data: res, isLoading } = useQuery(subnetYieldHistoryQuery(netuid, win));
+  const {
+    data: res,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(subnetYieldHistoryQuery(netuid, win));
   const points = useMemo<YieldHistoryPoint[]>(() => res?.data?.points ?? [], [res?.data?.points]);
 
   const series = useMemo(() => {
@@ -313,6 +319,8 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
       </div>
       {isLoading ? (
         <Skeleton className="h-28 w-full" />
+      ) : isError ? (
+        <ErrorState error={error} onRetry={() => refetch()} context="yield drift" />
       ) : !hasData ? (
         <EmptyState
           title="No yield history"

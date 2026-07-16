@@ -12,6 +12,10 @@
  */
 @import "fumadocs-ui/css/preset.css";
 @import "fumadocs-ui/css/shadcn.css";
+/* Same --color-fd-* variable set as the two imports above -- the OpenAPI
+   reference pages (content/docs/api-reference/**) inherit the Bone & Ink
+   mapping already established here with no separate token work. */
+@import "fumadocs-openapi/css/preset.css";
 
 /*
  * shadcn.css's own `#nd-sidebar` block references --sidebar-* variables our

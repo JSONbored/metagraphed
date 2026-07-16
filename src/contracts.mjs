@@ -155,6 +155,10 @@ export const API_QUERY_COLLECTIONS = {
       kind: enumSchema(QUERY_ENUMS.surfaceKind),
       provider: filterTextSchema,
       state: enumSchema(QUERY_ENUMS.candidateState),
+      // Same exact-match id filter as pools / endpoint-pools; confidence enum
+      // matches profiles (#6242).
+      id: filterTextSchema,
+      confidence: enumSchema(["low", "medium", "high"]),
     },
     sort: ["confidence", "id", "kind", "name", "netuid", "provider", "state"],
   }),
@@ -166,6 +170,10 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
+      // #6238: curation_level is already a sort target here and a real filter on
+      // the sibling gaps collection; expose it as a filter too so callers can
+      // narrow, not just order, by it. Same shared enum gaps uses.
+      curation_level: enumSchema(QUERY_ENUMS.curationLevel),
     },
     sort: ["coverage_level", "curation_level", "name", "netuid"],
   }),
@@ -192,12 +200,20 @@ export const API_QUERY_COLLECTIONS = {
       netuid: integerSchema,
       kind: enumSchema(QUERY_ENUMS.surfaceKind),
       provider: filterTextSchema,
+      // Same exact-match id filter as pools / endpoint-pools (#6242).
+      id: filterTextSchema,
     },
     sort: ["id", "kind", "name", "netuid", "provider"],
   }),
   documents: queryCollection("documents", {
+    filters: {
+      // Document *type* (subnet/surface/provider), distinct from surface
+      // *kind* (openapi/website/sdk/...) — do not reuse QUERY_ENUMS.surfaceKind.
+      type: enumSchema(["subnet", "surface", "provider"]),
+      netuid: integerSchema,
+    },
     search: ["title", "subtitle", "slug", "tokens"],
-    sort: ["kind", "netuid", "slug", "title"],
+    sort: ["netuid", "slug", "title", "type"],
   }),
   economics: queryCollection("subnets", {
     filters: {
@@ -339,6 +355,7 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
+      missing_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
       review_state: filterTextSchema,
     },
     sort: [

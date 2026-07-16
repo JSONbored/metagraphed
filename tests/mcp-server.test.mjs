@@ -7252,6 +7252,7 @@ describe("list_subnets", () => {
           status: "active",
           integration_readiness: 15,
           surface_count: 17,
+          tempo: 100,
           categories: [],
         },
         {
@@ -7262,6 +7263,7 @@ describe("list_subnets", () => {
           status: "active",
           integration_readiness: 90,
           surface_count: 4,
+          tempo: 360,
           categories: ["inference"],
         },
         {
@@ -7272,6 +7274,7 @@ describe("list_subnets", () => {
           status: "deprecated",
           integration_readiness: 0,
           surface_count: 0,
+          tempo: 50,
           derived_categories: ["data"],
         },
       ],
@@ -7444,6 +7447,18 @@ describe("list_subnets", () => {
       await callTool("list_subnets", { min_netuid: 1, max_netuid: 7 }, { deps })
     ).body.result.structuredContent;
     assert.deepEqual(rangeNetuids(out), [7]); // 0 below, 8 above
+  });
+
+  test("min_/max_tempo bound the subnet tempo (REST range-filter parity)", async () => {
+    const atLeast200 = (
+      await callTool("list_subnets", { min_tempo: 200 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(atLeast200), [7]); // only 360 >= 200
+
+    const atMost99 = (
+      await callTool("list_subnets", { max_tempo: 99 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(atMost99), [8]); // only 50 <= 99
   });
 
   test("a row whose bounded field is absent or non-numeric is excluded", async () => {
@@ -14548,6 +14563,73 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.deepEqual(out.endpoints, []);
     assert.equal(out.total, 0);
     assert.equal(out.returned, 0);
+  });
+
+  // #6244: min_/max_latency_ms and min_/max_score mirror REST's rangeFilters
+  // on the endpoints collection (contracts.mjs). A row missing the bounded
+  // field must be excluded, not silently pass, once a bound is set.
+  function endpointsRangeDeps() {
+    return makeDeps({
+      "/metagraph/endpoints.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        endpoints: [
+          { netuid: 1, provider: "datura", latency_ms: 50, score: 0.9 },
+          { netuid: 2, provider: "chutes", latency_ms: 400, score: 0.4 },
+          { netuid: 3, provider: "nova", latency_ms: 900, score: 0.1 },
+          // No latency_ms/score at all — must be excluded once any bound
+          // on either field is set, matching rangeFilterRows semantics.
+          { netuid: 4, provider: "no-metrics" },
+        ],
+      },
+    });
+  }
+
+  test("list_endpoints min_latency_ms/max_latency_ms bound latency_ms inclusively", async () => {
+    const deps = endpointsRangeDeps();
+    const min = (
+      await callTool("list_endpoints", { min_latency_ms: 400 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(min.endpoints.map((e) => e.netuid).sort(), [2, 3]);
+
+    const max = (
+      await callTool("list_endpoints", { max_latency_ms: 400 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(max.endpoints.map((e) => e.netuid).sort(), [1, 2]);
+
+    const missing = (
+      await callTool("list_endpoints", { min_latency_ms: 0 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(
+      missing.endpoints.map((e) => e.netuid).sort(),
+      [1, 2, 3],
+      "the row with no latency_ms at all must be excluded once a bound is set",
+    );
+  });
+
+  test("list_endpoints min_score/max_score bound score inclusively", async () => {
+    const deps = endpointsRangeDeps();
+    const min = (await callTool("list_endpoints", { min_score: 0.5 }, { deps }))
+      .body.result.structuredContent;
+    assert.deepEqual(
+      min.endpoints.map((e) => e.netuid),
+      [1],
+    );
+
+    const max = (await callTool("list_endpoints", { max_score: 0.4 }, { deps }))
+      .body.result.structuredContent;
+    assert.deepEqual(max.endpoints.map((e) => e.netuid).sort(), [2, 3]);
+  });
+
+  test("list_endpoints composes range bounds with existing filters (AND)", async () => {
+    const deps = endpointsRangeDeps();
+    const res = await callTool(
+      "list_endpoints",
+      { provider: "chutes", min_score: 0.3, max_latency_ms: 500 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 1);
+    assert.equal(out.endpoints[0].netuid, 2);
   });
 
   test("list_evidence returns filtered claim rows", async () => {

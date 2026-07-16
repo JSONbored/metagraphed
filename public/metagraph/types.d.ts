@@ -12205,6 +12205,8 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+                id?: string;
+                confidence?: "low" | "medium" | "high";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -16323,6 +16325,7 @@ export interface operations {
             query?: {
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
+                curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -20651,6 +20654,7 @@ export interface operations {
             query?: {
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 review_state?: string;
                 fields?: string;
                 limit?: number;
@@ -21652,12 +21656,14 @@ export interface operations {
     search: {
         parameters: {
             query?: {
+                type?: "subnet" | "surface" | "provider";
+                netuid?: number;
                 q?: string;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
-                sort?: "kind" | "netuid" | "slug" | "title";
+                sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
             };
@@ -21775,12 +21781,14 @@ export interface operations {
     searchIndex: {
         parameters: {
             query?: {
+                type?: "subnet" | "surface" | "provider";
+                netuid?: number;
                 q?: string;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
-                sort?: "kind" | "netuid" | "slug" | "title";
+                sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
             };
@@ -22712,6 +22720,8 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+                id?: string;
+                confidence?: "low" | "medium" | "high";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -23818,6 +23828,7 @@ export interface operations {
         parameters: {
             query?: {
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 review_state?: string;
                 fields?: string;
                 limit?: number;
@@ -27337,6 +27348,7 @@ export interface operations {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
+                id?: string;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -28972,6 +28984,7 @@ export interface operations {
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
+                id?: string;
                 fields?: string;
                 limit?: number;
                 cursor?: number;

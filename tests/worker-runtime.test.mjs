@@ -1696,6 +1696,23 @@ describe("Worker runtime", () => {
             entry.missing_kinds.includes("source-repo"),
           ),
       ],
+      // #6240: review-gap-priorities advertised sort=missing_kinds but had no matching filter, unlike the
+      // enrichment-queue/enrichment-targets siblings that already narrow on the exact same array field.
+      [
+        "https://metagraph.sh/api/v1/review/gaps?missing_kinds=openapi",
+        (body) =>
+          body.data.priorities.length > 0 &&
+          body.data.priorities.every((entry) =>
+            entry.missing_kinds.includes("openapi"),
+          ),
+      ],
+      [
+        "https://metagraph.sh/api/v1/subnets/1/gaps?missing_kinds=sse",
+        (body) =>
+          body.data.priorities.every((entry) =>
+            entry.missing_kinds.includes("sse"),
+          ),
+      ],
       [
         "https://metagraph.sh/api/v1/review/enrichment-evidence?missing_kinds=openapi",
         (body) =>
@@ -1758,6 +1775,9 @@ describe("Worker runtime", () => {
       "https://metagraph.sh/api/v1/review/enrichment-evidence?missing_kinds=seed-node",
       "https://metagraph.sh/api/v1/review/enrichment-targets?target_type=unknown",
       "https://metagraph.sh/api/v1/subnets/7/health?status=alive",
+      // #6240: the new missing_kinds filter rejects an off-vocabulary kind through the same enum path
+      // its enrichment-queue/enrichment-targets siblings already use -- no new error shape.
+      "https://metagraph.sh/api/v1/review/gaps?missing_kinds=seed-node",
     ];
 
     for (const url of routes) {
