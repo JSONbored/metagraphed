@@ -1,0 +1,13 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/byteleapai/byteleap-Validator",
+  "id": "byteleap",
+  "kind": "subnet-team",
+  "name": "ByteLeap",
+  "public_notes": "Subnet 128 (ByteLeap) team profile — a distributed compute-resource network. Identity from the official byteleap-Validator repository and website; X handle scraped from the official website homepage.",
+  "schema_version": 1,
+  "social": {
+    "x": "https://x.com/byteleap_ai"
+  },
+  "website_url": "https://byteleap.ai/"
+}

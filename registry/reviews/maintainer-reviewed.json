@@ -1708,6 +1708,18 @@
         "https://github.com/astridintelligence/sn-127/blob/master/src/core/arena/api.ts"
       ],
       "notes": "Root->128 accuracy audit first review pass (#5903): promoted from community-seeded/unreviewed. Added website (astrid.global) and source-repo surfaces, fixed 3 missing probe blocks on pre-existing community-submitted surfaces. Confirmed via the official validator client source that the only other documented route (executions/presence) requires a participantIds query parameter -- not promotable."
+    },
+    {
+      "netuid": 128,
+      "slug": "sn-128",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/byteleapai/byteleap-Validator",
+        "https://byteleap.ai/"
+      ],
+      "notes": "Root->128 accuracy audit first review pass (#5903): promoted from community-seeded/unreviewed. Added website and source-repo surfaces, previously not tracked despite the top-level website_url/source_repo fields already existing. Reverse-engineered the official byteleap.ai frontend bundle to find its backend API host and confirmed via live-testing that it is entirely auth-gated (every path, including nonsense ones, returns an identical 406 error) -- not promotable. The already-tracked TaoMarketCap indexed feed remains the only public API surface. Created a new registry/providers/byteleap.json (previously missing)."
     }
   ]
 }
