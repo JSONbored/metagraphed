@@ -5697,6 +5697,307 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
   });
 });
 
+describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable card with neuron:null, never null", async () => {
+    const { status, body } = await gql(
+      `{ neuron(netuid: 5, uid: 12) {
+          schema_version netuid captured_at block_number
+          neuron { uid hotkey }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.neuron, {
+      schema_version: 1,
+      netuid: 5,
+      captured_at: null,
+      block_number: null,
+      neuron: null,
+    });
+  });
+
+  test("resolves the Postgres-tier neuron detail row", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          captured_at: "2026-07-01T00:00:00.000Z",
+          block_number: 8621331,
+          neuron: {
+            uid: 12,
+            hotkey: "5Hot",
+            coldkey: "5Cold",
+            active: true,
+            validator_permit: false,
+            rank: 0.1,
+            trust: 0.2,
+            validator_trust: 0,
+            consensus: 0.15,
+            incentive: 0.05,
+            dividends: 0,
+            emission_tao: 1.25,
+            stake_tao: 100.5,
+            registered_at_block: 8000000,
+            is_immunity_period: false,
+            axon: "1.2.3.4:8091",
+            take: 0.18,
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ neuron(netuid: 5, uid: 12) {
+          netuid captured_at block_number
+          neuron {
+            uid hotkey coldkey active validator_permit
+            rank trust stake_tao emission_tao axon take
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const n = body.data.neuron;
+    assert.equal(n.block_number, 8621331);
+    assert.deepEqual(n.neuron, {
+      uid: 12,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      active: true,
+      validator_permit: false,
+      rank: 0.1,
+      trust: 0.2,
+      stake_tao: 100.5,
+      emission_tao: 1.25,
+      axon: "1.2.3.4:8091",
+      take: 0.18,
+    });
+  });
+
+  test("hits /api/v1/subnets/{netuid}/neurons/{uid} on the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql("{ neuron(netuid: 3, uid: 7) { netuid neuron { uid } } }", env);
+    assert.equal(capturedUrl.pathname, "/api/v1/subnets/3/neurons/7");
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ neuron(netuid: 9, uid: 1) {
+          schema_version netuid captured_at block_number neuron { uid }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.neuron, {
+      schema_version: 1,
+      netuid: 9,
+      captured_at: null,
+      block_number: null,
+      neuron: null,
+    });
+  });
+
+  test("a negative netuid is a GraphQL error, not a null card", async () => {
+    const { body } = await gql(
+      "{ neuron(netuid: -1, uid: 0) { neuron { uid } } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.neuron ?? null, null);
+  });
+
+  test("a negative uid is a GraphQL error, not a null card", async () => {
+    const { body } = await gql(
+      "{ neuron(netuid: 5, uid: -1) { neuron { uid } } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/uid/i.test(body.errors[0].message));
+    assert.equal(body.data?.neuron ?? null, null);
+  });
+
+  test("neuron is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.neuron, 5);
+  });
+});
+
+describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag / no neuron_daily rows returns a schema-stable empty-points card, never null", async () => {
+    const { status, body } = await gql(
+      `{ neuron_history(netuid: 5, uid: 12) {
+          schema_version netuid uid window point_count points { snapshot_date }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.neuron_history, {
+      schema_version: 1,
+      netuid: 5,
+      uid: 12,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("resolves the Postgres-tier points for the requested window", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          uid: 12,
+          window: "90d",
+          point_count: 1,
+          points: [
+            {
+              snapshot_date: "2026-07-01",
+              captured_at: "2026-07-01T00:00:00.000Z",
+              block_number: 8621331,
+              uid: 12,
+              hotkey: "5Hot",
+              coldkey: "5Cold",
+              active: true,
+              validator_permit: true,
+              stake_tao: 200,
+              emission_tao: 3.5,
+              rank: 0.4,
+              trust: 0.5,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ neuron_history(netuid: 5, uid: 12, window: "90d") {
+          netuid uid window point_count
+          points {
+            snapshot_date captured_at block_number uid hotkey
+            stake_tao emission_tao rank trust
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.neuron_history;
+    assert.equal(r.netuid, 5);
+    assert.equal(r.uid, 12);
+    assert.equal(r.window, "90d");
+    assert.equal(r.point_count, 1);
+    assert.deepEqual(r.points, [
+      {
+        snapshot_date: "2026-07-01",
+        captured_at: "2026-07-01T00:00:00.000Z",
+        block_number: 8621331,
+        uid: 12,
+        hotkey: "5Hot",
+        stake_tao: 200,
+        emission_tao: 3.5,
+        rank: 0.4,
+        trust: 0.5,
+      },
+    ]);
+  });
+
+  test("window is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ neuron_history(netuid: 3, uid: 7, window: "7d") { window } }',
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/subnets/3/neurons/7/history");
+    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ neuron_history(netuid: 9, uid: 1, window: "30d") {
+          schema_version netuid uid window point_count points { snapshot_date }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.neuron_history, {
+      schema_version: 1,
+      netuid: 9,
+      uid: 1,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent series", async () => {
+    const { body } = await gql(
+      '{ neuron_history(netuid: 5, uid: 12, window: "5d") { point_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window/i.test(body.errors[0].message));
+    assert.equal(body.data?.neuron_history ?? null, null);
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty series", async () => {
+    const { body } = await gql(
+      "{ neuron_history(netuid: -1, uid: 0) { point_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.neuron_history ?? null, null);
+  });
+
+  test("a negative uid is a GraphQL error, not an empty series", async () => {
+    const { body } = await gql(
+      "{ neuron_history(netuid: 5, uid: -1) { point_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/uid/i.test(body.errors[0].message));
+    assert.equal(body.data?.neuron_history ?? null, null);
+  });
+
+  test("neuron_history is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.neuron_history, 5);
+  });
+});
+
 describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

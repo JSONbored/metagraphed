@@ -138,6 +138,7 @@ import {
   GLOBAL_VALIDATOR_LIMIT_MAX,
   GLOBAL_VALIDATOR_SORTS,
   buildGlobalValidators,
+  buildNeuronDetail,
   buildValidatorDetail,
   overlayFeaturedValidators,
 } from "./metagraph-neurons.mjs";
@@ -216,6 +217,7 @@ import {
   CHAIN_SIGNERS_LIMIT_MAX,
 } from "./chain-query-loaders.mjs";
 import {
+  buildNeuronHistory,
   parseHistoryWindow,
   unsupportedWindowMessage,
 } from "./neuron-history.mjs";
@@ -333,6 +335,10 @@ export const SDL = `
     subnet_concentration(netuid: Int!): SubnetConcentration!
     "Per-subnet per-day stake and emission concentration trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's stake/emission Gini, Nakamoto coefficient, and top-10% share, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration/history."
     subnet_concentration_history(netuid: Int!, window: String): SubnetConcentrationHistory!
+    "One neuron in a subnet by UID: hot/cold keys, stake, rank, trust, consensus, incentive, dividends, emission, validator permit, immunity, axon, and take. The nested neuron field is null when that UID is absent from the latest snapshot -- a schema-stable card, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}."
+    neuron(netuid: Int!, uid: Int!): Neuron!
+    "One neuron's per-day metagraph history in a subnet by UID from the neuron_daily rollup (window: 7d/30d/90d/1y/all, default 30d), newest first: stake, rank, trust, consensus, incentive, dividends, emission, validator permit, and axon per snapshot_date. A UID with no matching rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history."
+    neuron_history(netuid: Int!, uid: Int!, window: String): NeuronHistory!
     "Append-only on-chain SubnetIdentitiesV3 change timeline for one subnet (name, symbol, description, repo, website, discord, logo), newest first; page with limit/offset or follow next_cursor. A subnet with no matching events resolves to a schema-stable empty timeline (entry_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/identity-history."
     subnet_identity_history(netuid: Int!, limit: Int, offset: Int, cursor: String): SubnetIdentityHistory!
     "One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory."
@@ -2135,6 +2141,73 @@ export const SDL = `
     rewards_per_1000_tao: Float
   }
 
+  "One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}: neuron is null when that UID is absent from the latest snapshot."
+  type Neuron {
+    schema_version: Int!
+    netuid: Int!
+    captured_at: String
+    block_number: Int
+    "The UID's live metagraph row; null when absent from the latest snapshot."
+    neuron: NeuronState
+  }
+
+  "One UID's live metagraph state within a subnet (hot/cold keys, scores, stake/emission, axon, take)."
+  type NeuronState {
+    uid: Int
+    hotkey: String
+    coldkey: String
+    active: Boolean
+    validator_permit: Boolean
+    rank: Float
+    trust: Float
+    validator_trust: Float
+    consensus: Float
+    incentive: Float
+    dividends: Float
+    emission_tao: Float
+    stake_tao: Float
+    registered_at_block: Int
+    is_immunity_period: Boolean
+    "Axon endpoint as host:port, or null when not served."
+    axon: String
+    "Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture."
+    take: Float
+  }
+
+  "One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history."
+  type NeuronHistory {
+    schema_version: Int!
+    netuid: Int!
+    uid: Int!
+    window: String
+    point_count: Int!
+    points: [NeuronHistoryPoint!]!
+  }
+
+  "One day's metagraph state for a single UID (NeuronState fields plus snapshot_date/captured_at/block_number)."
+  type NeuronHistoryPoint {
+    snapshot_date: String!
+    captured_at: String
+    block_number: Int
+    uid: Int
+    hotkey: String
+    coldkey: String
+    active: Boolean
+    validator_permit: Boolean
+    rank: Float
+    trust: Float
+    validator_trust: Float
+    consensus: Float
+    incentive: Float
+    dividends: Float
+    emission_tao: Float
+    stake_tao: Float
+    registered_at_block: Int
+    is_immunity_period: Boolean
+    axon: String
+    take: Float
+  }
+
   type ValidatorSubnet {
     netuid: Int!
     uid: Int
@@ -2805,6 +2878,8 @@ export const FIELD_COMPLEXITY = {
   subnet_performance: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_concentration: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_concentration_history: RELATIONSHIP_FIELD_COMPLEXITY,
+  neuron: RELATIONSHIP_FIELD_COMPLEXITY,
+  neuron_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_trajectory: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3767,6 +3842,83 @@ const rootValue = {
       window: data.window ?? windowParam,
       point_count: data.point_count ?? 0,
       points: data.points ?? [],
+    };
+  },
+
+  async neuron({ netuid, uid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (!Number.isInteger(uid) || uid < 0) {
+      throw new GraphQLError("uid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronDetail(null)
+    // cold fallback contract handleNeuron / MCP get_neuron use: an absent UID
+    // is a schema-stable card with neuron:null, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/neurons/${uid}`,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildNeuronDetail(null, netuid);
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      captured_at: data.captured_at ?? null,
+      block_number: data.block_number ?? null,
+      neuron: data.neuron ?? null,
+    };
+  },
+
+  async neuron_history({ netuid, uid, window }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (!Number.isInteger(uid) || uid < 0) {
+      throw new GraphQLError("uid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same parseHistoryWindow REST's handleNeuronHistory uses, so accepted
+    // window labels (7d/30d/90d/1y/all, default 30d) match exactly.
+    const { label, error } = parseHistoryWindow(window);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("window", label);
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronHistory([])
+    // fallback contract handleNeuronHistory / MCP get_neuron_history use; a
+    // UID with no neuron_daily rows in the window is a schema-stable
+    // empty-points card, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/neurons/${uid}/history`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildNeuronHistory([], netuid, uid, { window: label });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      uid: data.uid ?? uid,
+      window: data.window ?? label,
+      point_count: data.point_count ?? 0,
+      points: data.points || [],
     };
   },
 
