@@ -1619,14 +1619,15 @@
       "netuid": 122,
       "slug": "sn-122",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:35:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.bitrecs.ai/",
         "https://bitrecs.gitbook.io/bitrecs-docs/",
-        "https://github.com/bitrecs/bitrecs-subnet"
+        "https://github.com/bitrecs/bitrecs-subnet",
+        "https://www.bitrecs.ai/llms.txt"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitrecs.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): live-verified all 5 surfaces (all HTTP 200), fixed 2 missing probe blocks (amazon-fashion-sample, llms-txt), and confirmed via the official llms.txt that a REST API/MCP server are still coming soon, not yet live."
     },
     {
       "netuid": 123,

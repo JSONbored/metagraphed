@@ -10,20 +10,20 @@
   "curation": {
     "gap_notes": [
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified unauthenticated public subnet API endpoint yet.",
+      "No verified unauthenticated public subnet API endpoint yet -- the official llms.txt states a REST API and MCP server for headless/agentic use are coming soon.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:35:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 5,
-    "verified_at": "2026-06-08T10:35:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/122",
   "docs_url": "https://bitrecs.gitbook.io/bitrecs-docs/",
   "name": "Bitrecs",
   "netuid": 122,
-  "notes": "Reviewed overlay for SN122 using the official Bitrecs website, docs, and source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet.",
+  "notes": "Reviewed overlay for SN122 using the official Bitrecs website, docs, and source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet. Root->128 accuracy audit re-review pass (#5903): live-verified all 5 surfaces (all HTTP 200), fixed 2 missing probe blocks (amazon-fashion-sample, llms-txt), and confirmed via the official llms.txt that a REST API/MCP server are still coming soon, not yet live.",
   "schema_version": 1,
   "slug": "sn-122",
   "social": {
@@ -96,6 +96,12 @@
       "kind": "data-artifact",
       "name": "Bitrecs Amazon fashion sample catalog",
       "notes": "Public no-auth JSON sample ecommerce product-review catalog (ASIN, rating, title, price metadata) published in the official SN122 Bitrecs source repository at tests/data/amazon/fashion/. Referenced by the repo README (sample data setup) and exercised by tests/test_json.py for local recommendation-engine validation.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitrecs",
       "public_safe": true,
       "review": {
@@ -114,7 +120,13 @@
       "id": "sn-122-bitrecs-llms-txt",
       "kind": "data-artifact",
       "name": "Bitrecs llms.txt docs index",
-      "notes": "Machine-readable llms.txt docs index published on the official Bitrecs website; self-identifies as Bittensor subnet 122 and links the homepage, Shopify app, and Taostats subnet page.",
+      "notes": "Machine-readable llms.txt docs index published on the official Bitrecs website; self-identifies as Bittensor subnet 122 and links the homepage, Shopify app, and Taostats subnet page. States a REST API and MCP server for headless/agentic use are \"coming soon\" -- confirms no live public subnet-api surface exists yet, consistent with the tracked gap_notes.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitrecs",
       "public_safe": true,
       "review": {
