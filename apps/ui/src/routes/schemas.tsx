@@ -195,7 +195,20 @@ function SchemasHero() {
       description="JSON Schema is canonical truth. Drift compares the current snapshot to the previous published version."
       caption={<>schemas / v1</>}
       actions={
-        <CopyableCode label="openapi" value={`${API_BASE}/api/v1/openapi.json`} truncate={false} />
+        <>
+          <CopyableCode
+            label="openapi"
+            value={`${API_BASE}/api/v1/openapi.json`}
+            truncate={false}
+          />
+          <Link
+            to="/docs/$"
+            params={{ _splat: "api-reference" }}
+            className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition-colors hover:bg-accent/15"
+          >
+            Browse reference
+          </Link>
+        </>
       }
       kpis={[
         { label: "Schemas", value: <AnimatedNumber value={schemas.length} /> },

@@ -1,0 +1,8 @@
+{
+  "title": "RPC",
+  "pages": [
+    "rpc-endpoints",
+    "rpc-pools",
+    "rpc-usage"
+  ]
+}

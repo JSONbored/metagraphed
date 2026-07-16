@@ -1,0 +1,10 @@
+{
+  "title": "Operations",
+  "pages": [
+    "build",
+    "changelog",
+    "freshness",
+    "source-health",
+    "source-snapshots"
+  ]
+}

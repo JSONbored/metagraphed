@@ -16,6 +16,7 @@ import {
   Bot,
   Braces,
   BookOpen,
+  Code2,
   Compass,
   Copy,
   ExternalLink,
@@ -89,6 +90,7 @@ const DOCS_ICON_OVERRIDES: Record<string, typeof Compass> = {
   "/docs/rpc": Zap,
   "/docs/feeds": Rss,
   "/docs/chain-events": History,
+  "/docs/api-reference": Code2,
 };
 
 // Non-docs routes, in display order. The docs subset used to be hand-listed

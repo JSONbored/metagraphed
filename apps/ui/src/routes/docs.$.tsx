@@ -3,15 +3,22 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useFumadocsLoader } from "fumadocs-core/source/client";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layouts/docs/page";
+import {
+  DocsBody,
+  DocsDescription,
+  DocsPage,
+  DocsTitle,
+  ViewOptionsPopover,
+} from "fumadocs-ui/layouts/docs/page";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import { TimeAgo } from "@jsonbored/ui-kit";
 import browserCollections from "collections/browser";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { CopyMarkdownButton } from "@/components/metagraphed/copy-markdown-button";
 import { getMDXComponents } from "@/components/metagraphed/mdx";
 import { baseOptions } from "@/lib/docs-layout-shared";
 import { docsSource } from "@/lib/docs-source";
+import { openapi } from "@/lib/openapi-source";
+import { OpenAPIPreloadProvider, type OpenAPIPreloaded } from "@/lib/openapi-preload-context";
 
 // RootProvider is scoped locally to this route rather than __root.tsx. The
 // app has no single shared provider tree -- __root.tsx's RootComponent only
@@ -54,42 +61,79 @@ export const Route = createFileRoute("/docs/$")({
   }),
 });
 
+// content/docs/api-reference/**/*.mdx pages (scripts/generate-openapi-docs.mjs)
+// carry an `_openapi.preload` frontmatter array of schema URLs -- this
+// resolves those into real bundled schema data server-side, since
+// fumadocs-openapi's <APIPage /> never fetches its `document` prop itself
+// (it requires a pre-resolved `preloaded`/`payload` prop). Other docs pages
+// have no `_openapi` field and this is a no-op for them.
+function isOpenAPIFrontmatter(value: unknown): value is { preload: string[] } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Array.isArray((value as { preload?: unknown }).preload)
+  );
+}
+
 const serverLoader = createServerFn({ method: "GET" })
   .validator((slugs: string[]) => slugs)
   .handler(async ({ data: slugs }) => {
     const page = docsSource.getPage(slugs);
     if (!page) throw notFound();
 
+    const openapiMeta = (page.data as { _openapi?: unknown })._openapi;
+    // Cast: openapi.preloadOpenAPIPage's real return type (Record<string,
+    // Document>) doesn't structurally match OpenAPIPreloaded's JsonValue
+    // constraint, needed only so this return value satisfies createServerFn's
+    // type-level serializability check -- see that type's own comment.
+    const preloaded = isOpenAPIFrontmatter(openapiMeta)
+      ? ((await openapi.preloadOpenAPIPage(page)).preloaded as OpenAPIPreloaded)
+      : undefined;
+
     return {
       path: page.path,
       pageTree: await docsSource.serializePageTree(docsSource.getPageTree()),
       title: page.data.title,
       description: page.data.description ?? "",
+      preloaded,
     };
   });
 
-const clientLoader = browserCollections.docs.createClientLoader({
-  component({ toc, frontmatter, default: MDX, _markdown, lastModified }, _props: undefined) {
+const clientLoader = browserCollections.docs.createClientLoader<{ markdownUrl: string }>({
+  component({ toc, frontmatter, default: MDX, lastModified }, { markdownUrl }) {
     return (
       <DocsPage toc={toc}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <DocsTitle>{frontmatter.title}</DocsTitle>
-            <DocsDescription>{frontmatter.description}</DocsDescription>
-          </div>
-          <CopyMarkdownButton markdown={_markdown} />
+        <DocsTitle>{frontmatter.title}</DocsTitle>
+        <DocsDescription>{frontmatter.description}</DocsDescription>
+        {/* Anchored to "Last updated," not the title -- floating this next
+            to a (potentially multi-line, especially on mobile) H1 read as
+            misplaced. Metadata + page actions belong in the same row. */}
+        <div className="flex items-center justify-between gap-4">
+          {/* lastModified comes from local `git log` at build/dev-compile
+              time (source.config.ts's docs.lastModified: true), not a live
+              GitHub API call -- this app deploys to a Cloudflare Worker with
+              no .git directory at runtime, so a runtime call would need its
+              own caching/token and could rate-limit. Baked in at compile
+              time instead, same as frontmatter/toc already are. */}
+          {lastModified ? (
+            <p className="text-[12px] text-ink-muted">
+              Last updated <TimeAgo at={lastModified.toISOString()} />
+            </p>
+          ) : (
+            <span />
+          )}
+          {/* Fumadocs' own page-actions component (fumadocs.dev/docs/integrations/llms#page-actions)
+              -- Copy Page / View as Markdown / Open in ChatGPT, Claude, Cursor,
+              Scira AI. markdownUrl points at docs.raw.$.ts, a real per-page
+              route -- a client-built data: URI doesn't work here: Chrome
+              silently blocks target="_blank" navigation to data: URLs, which
+              breaks the popover's "View as Markdown" link (a plain <a href>)
+              even though its "Copy" action (fetch-based) would've been fine
+              with one. The "Open in ChatGPT/Claude/..." items don't use
+              markdownUrl at all -- they send the *page's own* URL for that
+              service to fetch itself. */}
+          <ViewOptionsPopover markdownUrl={markdownUrl} />
         </div>
-        {/* lastModified comes from local `git log` at build/dev-compile time
-            (source.config.ts's docs.lastModified: true), not a live GitHub
-            API call -- this app deploys to a Cloudflare Worker with no .git
-            directory at runtime, so a runtime call would need its own
-            caching/token and could rate-limit. Baked in at compile time
-            instead, same as frontmatter/toc already are. */}
-        {lastModified ? (
-          <p className="text-[12px] text-ink-muted -mt-4">
-            Last updated <TimeAgo at={lastModified.toISOString()} />
-          </p>
-        ) : null}
         <DocsBody>
           {/* getMDXComponents, not the useMDXComponents alias -- this
               `component` callback is a plain object method (fumadocs'
@@ -107,6 +151,11 @@ const clientLoader = browserCollections.docs.createClientLoader({
 
 function Page() {
   const data = useFumadocsLoader(Route.useLoaderData());
+  // Same splat docsSource.getPage() already resolved this page from --
+  // docs.raw.$.ts re-resolves it the same way, so this always points at a
+  // real page.
+  const { _splat } = Route.useParams();
+  const markdownUrl = `/docs/raw/${_splat ?? ""}`;
 
   return (
     // theme.enabled: false -- the app already manages the .dark class itself
@@ -118,7 +167,9 @@ function Page() {
     <RootProvider theme={{ enabled: false }}>
       <AppShell fullBleedMain>
         <DocsLayout {...baseOptions()} tree={data.pageTree}>
-          <Suspense>{clientLoader.useContent(data.path)}</Suspense>
+          <OpenAPIPreloadProvider value={data.preloaded}>
+            <Suspense>{clientLoader.useContent(data.path, { markdownUrl })}</Suspense>
+          </OpenAPIPreloadProvider>
         </DocsLayout>
       </AppShell>
     </RootProvider>
