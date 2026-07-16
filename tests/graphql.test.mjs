@@ -3323,6 +3323,105 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
   });
 });
 
+describe("graphql — chain_identity_history (#5878, Postgres-tier + empty-feed fallback)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag / no D1 rows returns a schema-stable empty feed, never null", async () => {
+    const { status, body } = await gql(
+      `{ chain_identity_history {
+          schema_version count subnet_count changes { netuid subnet_name identity_hash }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_identity_history, {
+      schema_version: 1,
+      count: 0,
+      subnet_count: 0,
+      changes: [],
+    });
+  });
+
+  test("resolves the Postgres-tier network feed, mapping each cross-subnet change", async () => {
+    const env = {
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          count: 2,
+          subnet_count: 2,
+          changes: [
+            {
+              netuid: 7,
+              block_number: 4200,
+              observed_at: "2026-07-01T00:00:00.000Z",
+              subnet_name: "Example",
+              symbol: "EX",
+              description: "desc",
+              github_repo: "https://github.com/example/repo",
+              subnet_url: "https://example.com",
+              discord: "https://discord.gg/example",
+              logo_url: "https://example.com/logo.png",
+              identity_hash: "abc123",
+            },
+            {
+              netuid: 12,
+              block_number: 4180,
+              observed_at: "2026-06-30T00:00:00.000Z",
+              subnet_name: "Other",
+              symbol: "OT",
+              description: null,
+              github_repo: null,
+              subnet_url: null,
+              discord: null,
+              logo_url: null,
+              identity_hash: "def456",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ chain_identity_history(limit: 50) {
+          schema_version count subnet_count
+          changes { netuid block_number observed_at subnet_name symbol identity_hash }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.chain_identity_history;
+    assert.equal(r.count, 2);
+    assert.equal(r.subnet_count, 2);
+    assert.equal(r.changes.length, 2);
+    assert.equal(r.changes[0].netuid, 7);
+    assert.equal(r.changes[0].subnet_name, "Example");
+    assert.equal(r.changes[1].netuid, 12);
+    assert.equal(r.changes[1].identity_hash, "def456");
+  });
+
+  test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
+    const env = {
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({})),
+    };
+    const { status, body } = await gql(
+      `{ chain_identity_history {
+          schema_version count subnet_count changes { netuid }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.chain_identity_history, {
+      schema_version: 1,
+      count: 0,
+      subnet_count: 0,
+      changes: [],
+    });
+  });
+});
+
 describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderboard)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
