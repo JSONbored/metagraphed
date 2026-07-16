@@ -1,11 +1,25 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified SSE/event stream yet.",
+      "The API root (/) declares no security in the schema and returns HTTP 500 (\"Internal server error\") rather than a usable payload -- not promoted."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "name": "Affine",
   "netuid": 120,
+  "notes": "First maintainer review for SN120. Added website + source-repo surfaces, fixed 3 missing probe blocks. Diffed the 10-path OpenAPI schema for undiscovered public GET endpoints -- added 1 new surface (config); the API root (/) is declared no-auth but currently 500s.",
   "schema_version": 1,
   "slug": "sn-120",
   "source_repo": "https://github.com/AffineFoundation/affine-cortex",
@@ -18,6 +32,12 @@
       "kind": "openapi",
       "name": "Affine API OpenAPI schema",
       "notes": "Machine-readable OpenAPI 3.1 schema for the Affine SN120 API (title: Affine API). Served publicly at api.affine.io; documents rank, miner, score, config, and health routes.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "affine",
       "public_safe": true,
       "review": {
@@ -39,6 +59,12 @@
       "kind": "subnet-api",
       "name": "Affine API health",
       "notes": "Public no-auth GET /api/v1/health on api.affine.io returning liveness JSON (observed: {\"status\":\"ok\",\"service\":\"affine-api\"}). Documented as GET /api/v1/health in the subnet OpenAPI spec; api.affine.io/api/v1 is the default API_URL in the official affine-cortex API client.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "affine",
       "public_safe": true,
       "review": {
@@ -58,6 +84,12 @@
       "kind": "data-artifact",
       "name": "Affine current champion rank",
       "notes": "Public no-auth GET /api/v1/rank/current on api.affine.io returning the current champion window (model reference, revision, since-block) plus past champions with their emission share. Documented as GET /api/v1/rank/current in the subnet's own OpenAPI 3.1 schema (already-registered sn-120-affine-openapi surface); same api.affine.io host as the existing health surface. Observed live and populated at submission time.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "affine",
       "public_safe": true,
       "review": {
@@ -110,6 +142,64 @@
       },
       "source_urls": ["https://api.affine.io/api/v1/scores/weights/latest"],
       "url": "https://api.affine.io/api/v1/scores/weights/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-120-affine-website",
+      "kind": "website",
+      "name": "Affine website",
+      "notes": "Official SN120 Affine website -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "affine",
+      "public_safe": true,
+      "source_urls": ["https://github.com/AffineFoundation/affine-cortex"],
+      "url": "https://www.affine.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-120-affine-source-repo",
+      "kind": "source-repo",
+      "name": "Affine source repository",
+      "notes": "Official SN120 Affine source repository -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "affine",
+      "public_safe": true,
+      "source_urls": ["https://github.com/AffineFoundation/affine-cortex"],
+      "url": "https://github.com/AffineFoundation/affine-cortex"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-config",
+      "kind": "data-artifact",
+      "name": "Affine validator scoring config",
+      "notes": "Public no-auth GET /api/v1/config on api.affine.io returning the live scoring config (observed: validator_burn_percentage). Documented in the subnet's own OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.affine.io/openapi.json"],
+      "url": "https://api.affine.io/api/v1/config"
     }
   ],
   "website_url": "https://www.affine.io/"

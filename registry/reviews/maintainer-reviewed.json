@@ -1604,6 +1604,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/satori.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 120,
+      "slug": "sn-120",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.affine.io/",
+        "https://github.com/AffineFoundation/affine-cortex",
+        "https://api.affine.io/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN120. Added website + source-repo surfaces, fixed 3 missing probe blocks. Diffed the 10-path OpenAPI schema for undiscovered public GET endpoints -- added 1 new surface (config); the API root is declared no-auth but currently 500s."
+    },
+    {
       "netuid": 121,
       "slug": "sn-121",
       "decision": "maintainer-reviewed",
