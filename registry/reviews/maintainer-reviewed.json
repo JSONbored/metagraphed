@@ -958,6 +958,18 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ain.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 71,
+      "slug": "sn-71",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://leadpoet.com/",
+        "https://github.com/leadpoet/leadpoet"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN71. Added website + source-repo surfaces, fixed 1 missing probe block. Diffed the OpenAPI schema for undiscovered public GET endpoints -- full coverage already existed."
+    },
+    {
       "netuid": 72,
       "slug": "sn-72",
       "decision": "maintainer-reviewed",

@@ -1,12 +1,24 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "official-api",
+    "official-source-repo",
+    "official-website"
+  ],
   "contact": "hello@leadpoet.com",
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 7,
+    "gap_notes": [
+      "Diffed the leadpoet.com OpenAPI schema (5 paths) for undiscovered public GET endpoints -- all 4 GET routes (health, geo/countries, geo/states, geo/cities) were already tracked; the 5th path is a non-GET contact-form route, out of scope."
+    ]
   },
   "name": "Leadpoet",
   "netuid": 71,
+  "notes": "First maintainer review for SN71. Added website + source-repo surfaces, fixed 1 missing probe block. OpenAPI diff confirmed full coverage of the schema's public GET surface.",
   "schema_version": 1,
   "slug": "sn-71",
   "social": {
@@ -15,6 +27,42 @@
   "source_repo": "https://github.com/leadpoet/leadpoet",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-71-leadpoet-website",
+      "kind": "website",
+      "name": "Leadpoet website",
+      "notes": "Official Leadpoet SN71 public website -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "leadpoet",
+      "public_safe": true,
+      "source_urls": ["https://leadpoet.com/"],
+      "url": "https://leadpoet.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-71-leadpoet-source-repo",
+      "kind": "source-repo",
+      "name": "Leadpoet source repository",
+      "notes": "Official SN71 miner/validator source repository -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "leadpoet",
+      "public_safe": true,
+      "source_urls": ["https://github.com/leadpoet/leadpoet"],
+      "url": "https://github.com/leadpoet/leadpoet"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -75,6 +123,12 @@
       "kind": "data-artifact",
       "name": "Leadpoet country reference list",
       "notes": "Public no-auth GET /api/geo/countries on leadpoet.com returning the ISO country code/label reference list used by the platform's lead-fulfillment forms. Confirmed present at the exact path in the subnet's own OpenAPI schema (GET /api/geo/countries, tag \"reference\", summary \"List ISO countries (priority-ordered)\", response schema GeoOption[]) — the same schema already registered as the sn-71-leadpoet-openapi surface in this file; same leadpoet.com host as the existing health surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "leadpoet",
       "public_safe": true,
       "review": {
