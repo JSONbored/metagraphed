@@ -332,11 +332,12 @@ describe("MCP resources (#742)", () => {
       method: "resources/templates/list",
     });
     const tpls = res.body.result.resourceTemplates;
-    assert.equal(tpls.length, 3);
+    assert.equal(tpls.length, 4);
     assert.deepEqual(tpls.map((t) => t.uriTemplate).sort(), [
       "metagraph://provider/{slug}",
       "metagraph://schema/{surface_id}",
       "metagraph://subnet/{netuid}",
+      "metagraph://subnet/{netuid}/status",
     ]);
     for (const t of tpls) {
       assert.ok(t.name && t.title && t.description && t.mimeType);
@@ -370,6 +371,7 @@ describe("MCP resources (#742)", () => {
     const uris = res.body.result.resources.map((r) => r.uri);
     assert.ok(uris.includes("metagraph://registry/summary"));
     assert.ok(uris.includes("metagraph://subnet/7"));
+    assert.ok(uris.includes("metagraph://subnet/7/status"));
     assert.ok(uris.includes("metagraph://provider/datura"));
     assert.ok(uris.includes("metagraph://schema/7:subnet-api:allways"));
     assert.equal(res.body.result.nextCursor, undefined);
@@ -781,11 +783,18 @@ describe("MCP prompts (#742)", () => {
 
 describe("MCP resources/prompts — branch coverage", () => {
   test("resources/list paginates with a cursor over a large catalog", async () => {
-    const subnets = Array.from({ length: 130 }, (_, i) => ({
+    // Each subnet contributes two list entries (overview + status, #6034),
+    // plus FIXED_RESOURCES. Stub providers/schemas empty so the catalog size
+    // is deterministic: 5 fixed + 2*70 = 145 → page1 full, page2 final.
+    const subnets = Array.from({ length: 70 }, (_, i) => ({
       netuid: i,
       name: `SN${i}`,
     }));
-    const deps = makeDeps({ "/metagraph/subnets.json": { subnets } });
+    const deps = makeDeps({
+      "/metagraph/subnets.json": { subnets },
+      "/metagraph/providers.json": { providers: [] },
+      "/metagraph/schemas/index.json": { schemas: [] },
+    });
     const page1 = await rpc(
       { jsonrpc: "2.0", id: 1, method: "resources/list" },
       { deps },
