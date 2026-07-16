@@ -16,7 +16,9 @@ import {
   PrimaryLinksRail,
   CopyableCode,
   SectionAnchor,
+  ShareButton,
 } from "@jsonbored/ui-kit";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
@@ -148,6 +150,7 @@ function ProviderShell({ slug }: { slug: string }) {
             />
           ) : null
         }
+        actions={<ShareButton />}
       />
 
       <ProfileTabs
@@ -171,6 +174,10 @@ function ProviderShell({ slug }: { slug: string }) {
           {summary?.by_layer ? <BreakdownCard title="By layer" data={summary.by_layer} /> : null}
         </aside>
       </div>
+
+      <ApiSourceFooter
+        paths={[`/api/v1/providers/${slug}`, `/api/v1/providers/${slug}/endpoints`]}
+      />
     </>
   );
 }
