@@ -44,7 +44,6 @@ const BASE_LAYER_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 // its underlying duplicate is actually resolved in the registry file.
 const GRANDFATHERED_DUPLICATE_URLS = new Set([
   "8-ball.json|https://github.com/Barbariandev/8Ball_miner",
-  "allways.json|https://api.all-ways.io/miners/leaderboard",
   "bitmind.json|https://api.bitmind.ai/health",
   "gradients.json|https://api.gradients.io/v1/network/status",
 ]);
