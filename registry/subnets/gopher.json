@@ -18,15 +18,15 @@
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T20:15:00.000Z",
+    "reviewed_at": "2026-07-16T01:50:00.000Z",
     "source_count": 7,
-    "verified_at": "2026-06-08T20:15:00.000Z"
+    "verified_at": "2026-07-16T01:50:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/42",
   "docs_url": "https://developers.gopher-ai.com/docs/subnet/intro",
   "name": "Gopher",
   "netuid": 42,
-  "notes": "Reviewed overlay for SN42 using the live Gopher developer portal, subnet documentation, miner documentation, and source repository. Native chain identity currently reports a placeholder name, so this remains an explicit identity-drift entry rather than a silent rename.",
+  "notes": "Reviewed overlay for SN42 using the live Gopher developer portal, subnet documentation, miner documentation, and source repository. Native chain identity currently reports a placeholder name (re-confirmed live this pass, native_name_quality: placeholder), so this remains an explicit identity-drift entry rather than a silent rename. This pass fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. All 8 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-42",
   "source_repo": "https://github.com/gopher-lab/subnet-42",
@@ -151,6 +151,12 @@
       "kind": "data-artifact",
       "name": "Gopher web-scrape example dataset",
       "notes": "Public Gopher-Lab HuggingFace example of the SN42 web-scraper output (title/url/description/content columns of cleaned, structured page text; tagged Bittensor / Subnet / Masa), MIT-licensed and not gated. The subnet-42 repo (source) and developer portal declare the Bittensor subnet, and the Gopher-Lab HF org matches the operator's gopher-lab GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "gopher-ai",
       "public_safe": true,
       "review": {
@@ -170,6 +176,12 @@
       "kind": "data-artifact",
       "name": "Gopher X/Twitter trending-topics dataset",
       "notes": "Public Gopher-Lab HuggingFace dataset of X/Twitter trending-topics scraped by the SN42 Gopher data network, not gated. The subnet-42 repo (source) declares the Bittensor subnet and the Gopher-Lab HF org matches the operator's gopher-lab GitHub org. Distinct from the subnet's registered web-scrape example dataset.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "gopher-ai",
       "public_safe": true,
       "review": {
@@ -189,6 +201,12 @@
       "kind": "data-artifact",
       "name": "Gopher TikTok most-shared video transcription dataset",
       "notes": "Public no-auth Hugging Face dataset published by the official SN42 Gopher team org (Gopher-Lab): transcriptions of the most-shared TikTok videos, distributed as CSV. An example output of the subnet's social-media scraping and transcription pipeline, in the same Gopher-Lab dataset family as the Bittensor whitepaper webscrape and X/Twitter trending-topics datasets already registered for SN42.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "gopher-ai",
       "public_safe": true,
       "review": {
