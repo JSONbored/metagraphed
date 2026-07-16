@@ -683,12 +683,14 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   return new Response(response.body, { status: response.status, headers });
 }
 
-const RPC_MAX_ATTEMPTS = 3;
+// Exported so tests/docs-content-drift.test.mjs can assert content/docs/rpc.mdx
+// documents the real values instead of a second hand-copied literal.
+export const RPC_MAX_ATTEMPTS = 3;
 const RPC_ATTEMPT_TIMEOUT_MS = 6000;
 const RPC_CLASSIFY_BODY_LIMIT_BYTES = 64 * 1024;
 // /rpc/v1/{network} → the pool id served from rpc/pools.json. Adding a network
 // here (plus its pool + allowlisted origins) is all the proxy needs to serve it.
-const RPC_PROXY_POOLS = { finney: "finney-rpc", test: "test-rpc" };
+export const RPC_PROXY_POOLS = { finney: "finney-rpc", test: "test-rpc" };
 // Max blocks an endpoint may trail the freshest reported tip before the proxy
 // demotes it behind synced nodes. Bittensor block time is ~12s, so ~10 blocks
 // (~15 min) tolerates cross-provider probe-timing skew while still routing around
@@ -851,11 +853,12 @@ function streamRpcResponse(upstream, endpoint, attempts, status) {
 // Advisory rate-limit headers on RPC proxy responses. The Cloudflare rate-limit
 // binding (RPC_RATE_LIMITER) only returns {success}, so an exact remaining/reset
 // is unavailable — we surface the static policy (mirrors wrangler.jsonc:
-// 100 requests / 60s) plus Retry-After on a 429.
-const RPC_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
+// 100 requests / 60s) plus Retry-After on a 429. Exported (see
+// RPC_MAX_ATTEMPTS above) for the docs-content drift test.
+export const RPC_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 // Mirrors wrangler.jsonc's STATE_QUERY_RATE_LIMITER binding (#4344/9.2) --
 // a fifth of the general proxy's budget, its own separate bucket.
-const STATE_QUERY_RATE_LIMIT = { limit: 20, windowSeconds: 60 };
+export const STATE_QUERY_RATE_LIMIT = { limit: 20, windowSeconds: 60 };
 function setRpcRateLimitHeaders(headers) {
   headers.set("x-ratelimit-limit", String(RPC_RATE_LIMIT.limit));
   headers.set(

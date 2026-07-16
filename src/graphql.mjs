@@ -3105,8 +3105,10 @@ export function maxComplexityRule(max) {
 
 // --- Pagination ---
 
-const DEFAULT_PAGE_LIMIT = 20;
-const MAX_PAGE_LIMIT = 100;
+// Exported so tests/docs-content-drift.test.mjs can assert
+// content/docs/graphql.mdx documents the real values.
+export const DEFAULT_PAGE_LIMIT = 20;
+export const MAX_PAGE_LIMIT = 100;
 
 function paginate(items, limit, cursor, keyFn) {
   // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
