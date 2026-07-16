@@ -1273,6 +1273,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/tensorclaw.json (reviewed_at 2026-06-09T12:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 94,
+      "slug": "sn-94",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://bitsota.ai/",
+        "https://github.com/AlveusLabs/SN94-BitSota",
+        "https://autoresearch.bitsota.com/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN94. Added website + source-repo surfaces, fixed 4 missing probe blocks. Diffed the 37-path OpenAPI schema for undiscovered public GET endpoints -- added 3 new surfaces; 2 candidates turned out to be auth-gated despite the schema saying otherwise."
+    },
+    {
       "netuid": 95,
       "slug": "actual",
       "decision": "maintainer-reviewed",
