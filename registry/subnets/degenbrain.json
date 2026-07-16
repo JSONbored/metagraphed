@@ -15,14 +15,14 @@
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T13:45:00.000Z",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T13:45:00.000Z"
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
   "dashboard_url": "https://degenbrain.com/",
   "name": "DegenBrain",
   "netuid": 90,
-  "notes": "Reviewed overlay for SN90 using the live DegenBrain project website. Native chain identity currently remains ogham; the project website identifies Subnet 90 as DegenBrain/Brain.",
+  "notes": "Reviewed overlay for SN90 using the live DegenBrain project website. Native chain identity currently remains ogham; the project website identifies Subnet 90 as DegenBrain/Brain. Re-review pass (2026-07-15): fixed 5 missing probe blocks and renamed the OpenAPI surface (was the placeholder-ish \"ogham community openapi\"). Diffed the Brain-API OpenAPI schema for undiscovered public GET endpoints -- full coverage already existed. GitHub repo linked from the website still 404s.",
   "schema_version": 1,
   "slug": "sn-90",
   "status": "active",
@@ -68,7 +68,8 @@
       "authority": "community",
       "id": "sn-90-degenbrain-openapi",
       "kind": "openapi",
-      "name": "ogham community openapi",
+      "name": "DegenBrain Brain-API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.x schema (title \"Brain-API\") for the SN90 DegenBrain prediction-statement resolution API, served at api.subnet90.com. Documents the public markets/resolutions/test routes used by the existing subnet-api and data-artifact surfaces on this host.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -93,6 +94,13 @@
       "id": "sn-90-degenbrain-subnet-api",
       "kind": "subnet-api",
       "name": "DegenBrain pending-markets API",
+      "notes": "Public no-auth GET /api/markets/pending on api.subnet90.com returning the current pending prediction-market statements awaiting resolution. Documented in the subnet's own OpenAPI spec (Brain-API) on the same host as the other subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "degenbrain",
       "public_safe": true,
       "review": {
@@ -112,6 +120,12 @@
       "kind": "subnet-api",
       "name": "DegenBrain resolutions API",
       "notes": "Public, unauthenticated read endpoint of the SN90 DegenBrain Brain-API — past and ongoing prediction-statement resolutions. Documented (security: none) in the API's OpenAPI spec at /openapi.json. Distinct from the registered /api/markets/pending endpoint.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "degenbrain",
       "public_safe": true,
       "review": {
@@ -131,6 +145,12 @@
       "kind": "subnet-api",
       "name": "DegenBrain statement-test progress API",
       "notes": "Public no-auth GET returning statement/chunk processing progress for the DegenBrain eval pipeline. Documented in the subnet's own OpenAPI (api.subnet90.com/openapi.json, 'Brain-API'); same host as the existing subnet-api surfaces. Response is aggregate counts only (no account/key material).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "degenbrain",
       "public_safe": true,
       "review": {
@@ -150,6 +170,12 @@
       "kind": "subnet-api",
       "name": "DegenBrain API health",
       "notes": "Public no-auth GET / on api.subnet90.com returning Brain-API service info JSON (observed: service Brain-API, version 1.0.0, description for Bittensor Subnet 90). Documented in the subnet OpenAPI spec as \"Health check and service info\" on the same host as the existing markets and resolutions subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "degenbrain",
       "public_safe": true,
       "review": {
@@ -169,6 +195,12 @@
       "kind": "data-artifact",
       "name": "DegenBrain market miner breakdown",
       "notes": "Public no-auth GET /api/markets/{market_id}/breakdown on api.subnet90.com returning a JSON dataset of per-miner resolution breakdown for a prediction-market statement (statement text plus miner_breakdown entries with miner_id, resolution, confidence, summary, and sources). Documented as \"Get Market Breakdown\" in the subnet's registered OpenAPI spec; distinct from the existing /api/markets/pending and /api/resolutions subnet-api surfaces. Example market_id btc-100k-2024 is listed in the live pending-markets feed.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "degenbrain",
       "public_safe": true,
       "review": {

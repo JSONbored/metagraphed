@@ -1228,10 +1228,14 @@
       "netuid": 90,
       "slug": "sn-90",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T13:45:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
-      "source_urls": ["https://subnet90.com/", "https://degenbrain.com/"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/degenbrain.json (reviewed_at 2026-06-08T13:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "source_urls": [
+        "https://subnet90.com/",
+        "https://degenbrain.com/",
+        "https://api.subnet90.com/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 5 missing probe blocks and renamed the OpenAPI surface (was the placeholder-ish \"ogham community openapi\"). Diffed the Brain-API OpenAPI schema for undiscovered public GET endpoints -- full coverage already existed."
     },
     {
       "netuid": 91,
