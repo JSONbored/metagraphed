@@ -1216,13 +1216,13 @@
       "netuid": 89,
       "slug": "sn-89",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:25:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://github.com/backend-developers-ltd/InfiniteHash",
         "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/infinitehash.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): infinitehash.xyz has regressed from HTTP 402 (paywalled but live) to a lapsed/parked-looking domain (TLS SNI rejected, HTTP redirects to /lander). Documented in gap_notes; source repository and docs remain the maintained official surfaces."
     },
     {
       "netuid": 90,

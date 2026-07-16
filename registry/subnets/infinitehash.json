@@ -8,7 +8,7 @@
   "contact": "btc@infinitehash.xyz",
   "curation": {
     "gap_notes": [
-      "Project homepage currently returns HTTP 402.",
+      "Project homepage (infinitehash.xyz) has regressed further since last review: it no longer returns HTTP 402 -- the TLS handshake now fails entirely (\"unrecognized name\"), and plain HTTP redirects to /lander, characteristic of a lapsed/parked domain. Not promoted as a monitored surface.",
       "The subnet auction incentive mechanism is documented in the public source repository.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
@@ -16,15 +16,15 @@
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
     "source_count": 5,
-    "verified_at": "2026-06-08T09:25:00.000Z"
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/89",
   "docs_url": "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md",
   "name": "InfiniteHash",
   "netuid": 89,
-  "notes": "Reviewed overlay for SN89 using the official InfiniteHash source repository, repository documentation, and universal TaoMarketCap dashboard. The repository homepage points to infinitehash.xyz, but that deployment currently returns HTTP 402 and is not promoted as a monitored website/API surface.",
+  "notes": "Reviewed overlay for SN89 using the official InfiniteHash source repository, repository documentation, and universal TaoMarketCap dashboard. The repository homepage points to infinitehash.xyz. Re-review pass (2026-07-15): the site has regressed from HTTP 402 (paywalled but live) to what looks like a lapsed/parked domain (TLS SNI rejected, HTTP redirects to a generic /lander page). Still not promoted as a monitored website/API surface; source repository and docs remain the maintained official surfaces.",
   "schema_version": 1,
   "slug": "sn-89",
   "source_repo": "https://github.com/backend-developers-ltd/InfiniteHash",
