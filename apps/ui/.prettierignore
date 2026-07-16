@@ -11,15 +11,6 @@ routeTree.gen.ts
 # codegen, not authored code.
 .source
 
-# scripts/generate-openapi-docs.mjs output -- one MDX page per OpenAPI
-# operation (formatted by fumadocs-openapi itself, not prettier -- each
-# file's own header says as much) plus the per-tag meta.json files the
-# script writes alongside them. index.mdx in this same directory IS
-# hand-authored -- excluded from prettier only incidentally (it lives here
-# too); format it explicitly if it needs reformatting.
-content/docs/api-reference/**/*.mdx
-content/docs/api-reference/**/meta.json
-
 # release-please regenerates this CHANGELOG on every release in its own
 # format; it is machine-generated, not prettier-gated (same precedent as the
 # root CHANGELOG.md / packages/client/CHANGELOG.md entries).

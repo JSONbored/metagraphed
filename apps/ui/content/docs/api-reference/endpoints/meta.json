@@ -1,9 +1,0 @@
-{
-  "title": "Endpoints",
-  "pages": [
-    "endpoint-incidents",
-    "endpoint-pools",
-    "endpoints",
-    "subnet-endpoints"
-  ]
-}
