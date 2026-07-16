@@ -1,0 +1,9 @@
+{
+  "title": "Validators",
+  "pages": [
+    "globalValidators",
+    "validatorDetail",
+    "validatorHistory",
+    "validatorNominators"
+  ]
+}

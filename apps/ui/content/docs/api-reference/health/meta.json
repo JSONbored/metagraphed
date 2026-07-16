@@ -1,0 +1,14 @@
+{
+  "title": "Health",
+  "pages": [
+    "health",
+    "healthHistory",
+    "healthTrendsBulk",
+    "incidents",
+    "subnetHealth",
+    "subnetHealthIncidents",
+    "subnetHealthPercentiles",
+    "subnetHealthTrends",
+    "subnetUptime"
+  ]
+}

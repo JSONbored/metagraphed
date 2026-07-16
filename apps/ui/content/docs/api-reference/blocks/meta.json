@@ -1,0 +1,12 @@
+{
+  "title": "Blocks",
+  "pages": [
+    "blockChainEvents",
+    "blockDetail",
+    "blockEvents",
+    "blockExtrinsics",
+    "blocksFeed",
+    "blocksSummary",
+    "runtimeVersions"
+  ]
+}

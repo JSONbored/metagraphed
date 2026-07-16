@@ -1,0 +1,21 @@
+{
+  "title": "Registry",
+  "pages": [
+    "compare",
+    "coverage",
+    "coverageDepth",
+    "curation",
+    "fixtureDetail",
+    "fixtures",
+    "gaps",
+    "lineage",
+    "registryLeaderboards",
+    "registrySummary",
+    "reviewEnrichmentEvidence",
+    "reviewEnrichmentQueue",
+    "reviewEnrichmentTargets",
+    "reviewGaps",
+    "reviewProfileCompleteness",
+    "subnetGaps"
+  ]
+}

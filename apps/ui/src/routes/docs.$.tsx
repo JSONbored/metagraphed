@@ -12,6 +12,8 @@ import { CopyMarkdownButton } from "@/components/metagraphed/copy-markdown-butto
 import { getMDXComponents } from "@/components/metagraphed/mdx";
 import { baseOptions } from "@/lib/docs-layout-shared";
 import { docsSource } from "@/lib/docs-source";
+import { openapi } from "@/lib/openapi-source";
+import { OpenAPIPreloadProvider, type OpenAPIPreloaded } from "@/lib/openapi-preload-context";
 
 // RootProvider is scoped locally to this route rather than __root.tsx. The
 // app has no single shared provider tree -- __root.tsx's RootComponent only
@@ -54,17 +56,41 @@ export const Route = createFileRoute("/docs/$")({
   }),
 });
 
+// content/docs/api-reference/**/*.mdx pages (scripts/generate-openapi-docs.mjs)
+// carry an `_openapi.preload` frontmatter array of schema URLs -- this
+// resolves those into real bundled schema data server-side, since
+// fumadocs-openapi's <APIPage /> never fetches its `document` prop itself
+// (it requires a pre-resolved `preloaded`/`payload` prop). Other docs pages
+// have no `_openapi` field and this is a no-op for them.
+function isOpenAPIFrontmatter(value: unknown): value is { preload: string[] } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Array.isArray((value as { preload?: unknown }).preload)
+  );
+}
+
 const serverLoader = createServerFn({ method: "GET" })
   .validator((slugs: string[]) => slugs)
   .handler(async ({ data: slugs }) => {
     const page = docsSource.getPage(slugs);
     if (!page) throw notFound();
 
+    const openapiMeta = (page.data as { _openapi?: unknown })._openapi;
+    // Cast: openapi.preloadOpenAPIPage's real return type (Record<string,
+    // Document>) doesn't structurally match OpenAPIPreloaded's JsonValue
+    // constraint, needed only so this return value satisfies createServerFn's
+    // type-level serializability check -- see that type's own comment.
+    const preloaded = isOpenAPIFrontmatter(openapiMeta)
+      ? ((await openapi.preloadOpenAPIPage(page)).preloaded as OpenAPIPreloaded)
+      : undefined;
+
     return {
       path: page.path,
       pageTree: await docsSource.serializePageTree(docsSource.getPageTree()),
       title: page.data.title,
       description: page.data.description ?? "",
+      preloaded,
     };
   });
 
@@ -118,7 +144,9 @@ function Page() {
     <RootProvider theme={{ enabled: false }}>
       <AppShell fullBleedMain>
         <DocsLayout {...baseOptions()} tree={data.pageTree}>
-          <Suspense>{clientLoader.useContent(data.path)}</Suspense>
+          <OpenAPIPreloadProvider value={data.preloaded}>
+            <Suspense>{clientLoader.useContent(data.path)}</Suspense>
+          </OpenAPIPreloadProvider>
         </DocsLayout>
       </AppShell>
     </RootProvider>

@@ -1,0 +1,28 @@
+{
+  "title": "Accounts",
+  "pages": [
+    "accountAxonRemovals",
+    "accountBalance",
+    "accountCounterparties",
+    "accountDeregistrations",
+    "accountEvents",
+    "accountExtrinsics",
+    "accountHistory",
+    "accountIdentity",
+    "accountIdentityHistory",
+    "accountPortfolio",
+    "accountPositions",
+    "accountPrometheus",
+    "accountRegistrations",
+    "accountServing",
+    "accountStakeFlow",
+    "accountStakeMoves",
+    "accountSubnetPositionHistory",
+    "accountSubnets",
+    "accountSummary",
+    "accountTransfers",
+    "accountWeightSetters",
+    "accountsList",
+    "sudoKey"
+  ]
+}

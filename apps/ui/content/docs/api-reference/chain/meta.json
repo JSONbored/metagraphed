@@ -1,0 +1,29 @@
+{
+  "title": "Chain",
+  "pages": [
+    "chainActivity",
+    "chainAlphaVolume",
+    "chainAxonRemovals",
+    "chainCalls",
+    "chainConcentration",
+    "chainDeregistrations",
+    "chainEventsFeed",
+    "chainEventsStats",
+    "chainFees",
+    "chainIdentityHistory",
+    "chainPerformance",
+    "chainPrometheus",
+    "chainRegistrations",
+    "chainServing",
+    "chainSigners",
+    "chainStakeFlow",
+    "chainStakeMoves",
+    "chainStakeTransfers",
+    "chainTransferPairs",
+    "chainTransfers",
+    "chainTurnover",
+    "chainWeightSetters",
+    "chainWeights",
+    "chainYield"
+  ]
+}

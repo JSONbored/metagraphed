@@ -1,0 +1,9 @@
+{
+  "title": "Endpoints",
+  "pages": [
+    "endpointIncidents",
+    "endpointPools",
+    "endpoints",
+    "subnetEndpoints"
+  ]
+}
