@@ -5,6 +5,7 @@ import { useFumadocsLoader } from "fumadocs-core/source/client";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layouts/docs/page";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
+import { TimeAgo } from "@jsonbored/ui-kit";
 import browserCollections from "collections/browser";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyMarkdownButton } from "@/components/metagraphed/copy-markdown-button";
@@ -68,7 +69,7 @@ const serverLoader = createServerFn({ method: "GET" })
   });
 
 const clientLoader = browserCollections.docs.createClientLoader({
-  component({ toc, frontmatter, default: MDX, _markdown }, _props: undefined) {
+  component({ toc, frontmatter, default: MDX, _markdown, lastModified }, _props: undefined) {
     return (
       <DocsPage toc={toc}>
         <div className="flex items-start justify-between gap-4">
@@ -78,6 +79,17 @@ const clientLoader = browserCollections.docs.createClientLoader({
           </div>
           <CopyMarkdownButton markdown={_markdown} />
         </div>
+        {/* lastModified comes from local `git log` at build/dev-compile time
+            (source.config.ts's docs.lastModified: true), not a live GitHub
+            API call -- this app deploys to a Cloudflare Worker with no .git
+            directory at runtime, so a runtime call would need its own
+            caching/token and could rate-limit. Baked in at compile time
+            instead, same as frontmatter/toc already are. */}
+        {lastModified ? (
+          <p className="text-[12px] text-ink-muted -mt-4">
+            Last updated <TimeAgo at={lastModified.toISOString()} />
+          </p>
+        ) : null}
         <DocsBody>
           {/* getMDXComponents, not the useMDXComponents alias -- this
               `component` callback is a plain object method (fumadocs'

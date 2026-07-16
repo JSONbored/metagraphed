@@ -3,6 +3,16 @@ import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 
 export const docs = defineDocs({
   dir: "content/docs",
+  docs: {
+    // Computed from local `git log` at build/dev-compile time -- NOT a live
+    // GitHub API call. That distinction matters here: this app deploys to a
+    // Cloudflare Worker with no .git directory at runtime, and an
+    // unauthenticated runtime call to the GitHub REST API would rate-limit
+    // fast (60/hr, shared across every visitor hitting the edge). Baking
+    // this into the compiled page data at build time sidesteps both
+    // problems entirely.
+    lastModified: true,
+  },
 });
 
 // Adds a `_markdown` export (clean, JSX-stripped markdown of the compiled
