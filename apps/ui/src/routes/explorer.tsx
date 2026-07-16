@@ -19,6 +19,7 @@ import {
   Sparkline,
   BarMini,
   Donut,
+  CopyButton,
 } from "@jsonbored/ui-kit";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
@@ -1126,14 +1127,17 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                   {transfers.top_senders.map((s) => (
                     <tr key={s.address} className="hover:bg-surface/40">
                       <td className="px-4 py-2 font-mono text-[11px]">
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: s.address }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                          title={s.address}
-                        >
-                          {shortHash(s.address) ?? s.address}
-                        </Link>
+                        <div className="flex items-center gap-1.5">
+                          <Link
+                            to="/accounts/$ss58"
+                            params={{ ss58: s.address }}
+                            className="text-ink-strong hover:text-accent hover:underline"
+                            title={s.address}
+                          >
+                            {shortHash(s.address) ?? s.address}
+                          </Link>
+                          <CopyButton value={s.address} label="address" className="-my-3.5" />
+                        </div>
                       </td>
                       <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                         {formatTao(s.volume_tao)}
@@ -1169,14 +1173,17 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                   {transfers.top_receivers.map((r) => (
                     <tr key={r.address} className="hover:bg-surface/40">
                       <td className="px-4 py-2 font-mono text-[11px]">
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: r.address }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                          title={r.address}
-                        >
-                          {shortHash(r.address) ?? r.address}
-                        </Link>
+                        <div className="flex items-center gap-1.5">
+                          <Link
+                            to="/accounts/$ss58"
+                            params={{ ss58: r.address }}
+                            className="text-ink-strong hover:text-accent hover:underline"
+                            title={r.address}
+                          >
+                            {shortHash(r.address) ?? r.address}
+                          </Link>
+                          <CopyButton value={r.address} label="address" className="-my-3.5" />
+                        </div>
                       </td>
                       <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                         {formatTao(r.volume_tao)}
@@ -1450,14 +1457,17 @@ function ExplorerDashboard() {
                     {signers.signers.slice(0, 12).map((s) => (
                       <tr key={s.signer} className="hover:bg-surface/40">
                         <td className="px-4 py-2 font-mono text-[11px]">
-                          <Link
-                            to="/accounts/$ss58"
-                            params={{ ss58: s.signer }}
-                            className="text-ink-strong hover:text-accent hover:underline"
-                            title={s.signer}
-                          >
-                            {shortHash(s.signer) ?? s.signer}
-                          </Link>
+                          <div className="flex items-center gap-1.5">
+                            <Link
+                              to="/accounts/$ss58"
+                              params={{ ss58: s.signer }}
+                              className="text-ink-strong hover:text-accent hover:underline"
+                              title={s.signer}
+                            >
+                              {shortHash(s.signer) ?? s.signer}
+                            </Link>
+                            <CopyButton value={s.signer} label="signer" className="-my-3.5" />
+                          </div>
                         </td>
                         <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                           {formatNumber(s.tx_count)}
@@ -1565,14 +1575,17 @@ function ExplorerDashboard() {
                   {fees.top_fee_payers.map((p) => (
                     <tr key={p.signer} className="hover:bg-surface/40">
                       <td className="px-4 py-2 font-mono text-[11px]">
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: p.signer }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                          title={p.signer}
-                        >
-                          {shortHash(p.signer) ?? p.signer}
-                        </Link>
+                        <div className="flex items-center gap-1.5">
+                          <Link
+                            to="/accounts/$ss58"
+                            params={{ ss58: p.signer }}
+                            className="text-ink-strong hover:text-accent hover:underline"
+                            title={p.signer}
+                          >
+                            {shortHash(p.signer) ?? p.signer}
+                          </Link>
+                          <CopyButton value={p.signer} label="signer" className="-my-3.5" />
+                        </div>
                       </td>
                       <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                         {formatTao(p.total_fee_tao)}
@@ -1722,14 +1735,21 @@ function ExplorerDashboard() {
                       <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
                         <td className="px-4 py-2 font-mono text-[11px]">
                           {setter.hotkey ? (
-                            <Link
-                              to="/accounts/$ss58"
-                              params={{ ss58: setter.hotkey }}
-                              className="text-ink-strong hover:text-accent hover:underline"
-                              title={setter.hotkey}
-                            >
-                              {shortHash(setter.hotkey) ?? setter.hotkey}
-                            </Link>
+                            <div className="flex items-center gap-1.5">
+                              <Link
+                                to="/accounts/$ss58"
+                                params={{ ss58: setter.hotkey }}
+                                className="text-ink-strong hover:text-accent hover:underline"
+                                title={setter.hotkey}
+                              >
+                                {shortHash(setter.hotkey) ?? setter.hotkey}
+                              </Link>
+                              <CopyButton
+                                value={setter.hotkey}
+                                label="hotkey"
+                                className="-my-3.5"
+                              />
+                            </div>
                           ) : (
                             <span
                               className="text-ink-muted"
@@ -1835,24 +1855,30 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
                     {i + 1}
                   </td>
                   <td className="px-4 py-2 font-mono text-[11px]">
-                    <Link
-                      to="/accounts/$ss58"
-                      params={{ ss58: p.from }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                      title={p.from}
-                    >
-                      {shortHash(p.from) ?? p.from}
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: p.from }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                        title={p.from}
+                      >
+                        {shortHash(p.from) ?? p.from}
+                      </Link>
+                      <CopyButton value={p.from} label="address" className="-my-3.5" />
+                    </div>
                   </td>
                   <td className="px-4 py-2 font-mono text-[11px]">
-                    <Link
-                      to="/accounts/$ss58"
-                      params={{ ss58: p.to }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                      title={p.to}
-                    >
-                      {shortHash(p.to) ?? p.to}
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: p.to }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                        title={p.to}
+                      >
+                        {shortHash(p.to) ?? p.to}
+                      </Link>
+                      <CopyButton value={p.to} label="address" className="-my-3.5" />
+                    </div>
                   </td>
                   <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                     {formatTao(p.volume_tao)}
