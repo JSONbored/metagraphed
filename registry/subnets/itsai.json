@@ -8,19 +8,19 @@
   "contact": "support@its-ai.org",
   "curation": {
     "gap_notes": [
-      "No verified OpenAPI/Swagger schema yet.",
+      "No verified OpenAPI/Swagger schema yet (api.its-ai.org and docs.its-ai.org both 404 on /openapi.json and /docs).",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "reviewed_at": "2026-07-16T00:20:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T10:10:00.000Z"
+    "verified_at": "2026-07-16T00:20:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/32",
   "name": "ItsAI",
   "netuid": 32,
-  "notes": "Reviewed overlay for SN32 using the official ItsAI website and LLM-detection source repository.",
+  "notes": "Reviewed overlay for SN32 using the official ItsAI website and LLM-detection source repository. This pass fixed 5 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. All 8 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-32",
   "social": {
@@ -72,6 +72,12 @@
       "kind": "sdk",
       "name": "ItsAI Python SDK (PyPI)",
       "notes": "Published PyPI package `its-ai` (\"Typed Python SDK client for ITS-AI API\", author ITS AI <support@its-ai.org>), linked as the \"Python SDK\" from the official homepage.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "its-ai",
       "public_safe": true,
       "review": {
@@ -88,6 +94,12 @@
       "kind": "docs",
       "name": "ItsAI API documentation",
       "notes": "Official ItsAI documentation (page title \"AI content detection API\") on the team's docs.its-ai.org subdomain, linked from the homepage. Fills the file's noted missing-docs gap.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "its-ai",
       "public_safe": true,
       "review": {
@@ -104,6 +116,12 @@
       "kind": "source-repo",
       "name": "ItsAI API repository",
       "notes": "ItsAI API repository in the team's It-s-AI org; its README describes a FastAPI app that queries miners in \"Subnet32: It's AI\". Distinct from the registered llm-detection repo.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "its-ai",
       "public_safe": true,
       "review": {
@@ -142,6 +160,12 @@
       "kind": "data-artifact",
       "name": "ItsAI SN32 leaderboard (Hugging Face Space)",
       "notes": "Live SN32 miner leaderboard (UID/incentive/emission plus F1, false-positive, and average-precision scores from the Yuma validator) hosted as a public, no-auth Hugging Face Space. Explicitly named as the team's own leaderboard in docs/FAQ.md (\"Yes, we do have a leaderboard based on OTF scores\"); the app itself titles the page \"Subnet 32 Leaderboard\" and links back to github.com/It-s-AI/llm-detection. Fills the file's noted missing standalone-data-artifact gap.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "its-ai",
       "public_safe": true,
       "review": {
@@ -160,6 +184,12 @@
       "kind": "dashboard",
       "name": "ItsAI validator W&B dashboard",
       "notes": "Public Weights & Biases project for SN32 ItsAI (It's AI / LLM-detection) validator runs (entity itsai-dev, project subnet32; 119,000+ logged runs). Declared as the subnet's public W&B dashboard in the official It-s-AI/llm-detection repo — docs/FAQ.md (\"Yes, https://wandb.ai/itsai-dev/subnet32\") and detection/__init__.py (WANDB_ENTITY = 'itsai-dev', WANDB_PROJECT = 'subnet32', netuid default 32). Publicly readable, no auth; on a distinct host (wandb.ai) from the subnet's site and API.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "its-ai",
       "public_safe": true,
       "review": {
