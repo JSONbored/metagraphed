@@ -1190,7 +1190,7 @@
       "netuid": 88,
       "slug": "sn-88",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:50:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://investing88.ai/",
@@ -1198,7 +1198,7 @@
         "https://api.investing88.ai/assets",
         "https://github.com/mobiusfund/investing"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/investing.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): diffed Investing/core/api.py for undiscovered public GET endpoints -- added /pnl and /dist, the 2 remaining GET routes beyond the already-tracked /days and /ratio."
     },
     {
       "netuid": 89,
