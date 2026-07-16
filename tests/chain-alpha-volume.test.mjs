@@ -343,15 +343,25 @@ describe("GET /api/v1/chain/alpha-volume", () => {
   const req = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/chain/alpha-volume${q}`);
 
-  test("dispatches to the network alpha-volume leaderboard", async () => {
-    const res = await handleRequest(req(), alphaVolumeEnv(ROWS), {});
+  // #4909/#6013: account_events' D1 write path is retired and the table is
+  // dropped in production, so this handler no longer queries D1 at all --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+    let d1Called = false;
+    const env = alphaVolumeEnv(ROWS);
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
+    const res = await handleRequest(req(), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
     assert.equal(body.data.window, "24h");
-    assert.equal(body.data.subnet_count, 3);
-    assert.equal(body.data.subnets[0].netuid, 1);
+    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(body.data.subnets, []);
     assert.equal(typeof body.data.network, "object");
+    assert.equal(d1Called, false);
   });
 
   test("serves a HEAD probe through the GET cache key with no body", async () => {
@@ -409,7 +419,10 @@ describe("GET /api/v1/chain/alpha-volume", () => {
     assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+  // #4909/#6013: the D1 "fallback" is a schema-stable empty stub, not a real
+  // D1 read (account_events is retired) -- a Postgres failure degrades to the
+  // empty card, not to whatever a D1 mock might return.
+  test("flag=postgres falls back to the empty stub (not D1) when DATA_API fails", async () => {
     const env = {
       ...alphaVolumeEnv(ROWS),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
@@ -422,7 +435,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
     const res = await handleRequest(req(), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.data.subnet_count, 3);
+    assert.equal(body.data.subnet_count, 0);
   });
 
   test("rejects a ?window= param with 400 (fixed 24h window, no windowing on this route)", async () => {
@@ -440,7 +453,9 @@ describe("GET /api/v1/chain/alpha-volume", () => {
     assert.equal(res.status, 400);
   });
 
-  test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
+  // #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
+  // export is always header-only now (account_events is retired).
+  test("CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
     const res = await handleRequest(
       req("?format=csv"),
       alphaVolumeEnv(ROWS),
@@ -453,13 +468,11 @@ describe("GET /api/v1/chain/alpha-volume", () => {
       /attachment; filename="chain-alpha-volume\.csv"/,
     );
     const lines = (await res.text()).trim().split("\r\n");
+    assert.equal(lines.length, 1);
     assert.equal(
       lines[0],
       "netuid,buy_volume_alpha,sell_volume_alpha,total_volume_alpha,buy_volume_tao,sell_volume_tao,total_volume_tao,buy_count,sell_count,net_volume_alpha,sentiment_ratio,sentiment,vol_mcap_ratio",
     );
-    // Biggest total volume first: netuid 1 (130) leads, then 2 (100), then 3 (20).
-    assert.equal(lines.length, 4); // header + 3 subnet rows
-    assert.equal(lines[1], "1,100,30,130,100,30,130,5,2,70,0.5385,bullish,");
   });
 
   test("honors Accept: text/csv the same as ?format=csv", async () => {
@@ -559,12 +572,14 @@ describe("chain/alpha-volume edge cache", () => {
     const res = await call();
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.data.subnet_count, 3);
+    // #4909/#6013: account_events is retired, so even this "warm" D1 mock
+    // never reaches the response -- subnet_count stays 0.
+    assert.equal(body.data.subnet_count, 0);
     await Promise.all(waits); // let the deferred cache put settle
     assert.equal(store.size, 1); // the response was cached under one key
     // A second request is served from that cached entry (the mocked match() returns it).
     const cached = await call();
     assert.equal(cached.status, 200);
-    assert.equal((await cached.json()).data.subnet_count, 3);
+    assert.equal((await cached.json()).data.subnet_count, 0);
   });
 });

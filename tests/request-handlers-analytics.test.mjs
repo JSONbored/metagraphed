@@ -1682,6 +1682,10 @@ describe("chain analytics ?format=csv export", () => {
       path: "/api/v1/chain/signers",
       handler: handleChainSigners,
       header: "signer,tx_count,total_fee_tao,total_tip_tao,last_tx_block",
+      // #4909/#6013: extrinsics' D1 write path is retired, so chain-signers no
+      // longer queries D1 at all -- there is no "degraded D1" scenario to mark
+      // as fallback anymore (see the dedicated test below instead).
+      skipDegradedD1: true,
     },
     {
       name: "chain-fees",
@@ -1692,7 +1696,7 @@ describe("chain analytics ?format=csv export", () => {
     },
   ];
 
-  for (const { name, path, handler, header } of cases) {
+  for (const { name, path, handler, header, skipDegradedD1 } of cases) {
     test(`${name} ?window=7d&format=csv emits its columns as text/csv`, async () => {
       const { env } = dbWith({ rows: [] });
       const p = `${path}?window=7d&format=csv`;
@@ -1723,23 +1727,49 @@ describe("chain analytics ?format=csv export", () => {
       assert.equal(body.meta.parameter, "format");
     });
 
-    test(`${name} degraded D1 still emits header-only CSV, marked fallback (not edge-cached)`, async () => {
-      // A degraded D1 read yields fallback-marked rows; the CSV response must
-      // still be a valid header-only CSV (never a 500) AND be tagged as fallback
-      // so withEdgeCache never persists the degraded body.
-      originalCaches = globalThis.caches;
-      const cache = mockCaches();
-      cache.install();
-      const { env } = dbWith({ d1Error: new Error("d1 down") });
-      const p = `${path}?window=7d&format=csv`;
-      const res = await handler(req(p), env, url(p), ctx);
-      assert.equal(res.status, 200);
-      assert.match(res.headers.get("content-type") || "", /text\/csv/);
-      const text = await res.text();
-      assert.equal(text.split("\r\n")[0], header);
-      assert.deepEqual(cache.putKeys, []);
-    });
+    if (!skipDegradedD1) {
+      test(`${name} degraded D1 still emits header-only CSV, marked fallback (not edge-cached)`, async () => {
+        // A degraded D1 read yields fallback-marked rows; the CSV response must
+        // still be a valid header-only CSV (never a 500) AND be tagged as fallback
+        // so withEdgeCache never persists the degraded body.
+        originalCaches = globalThis.caches;
+        const cache = mockCaches();
+        cache.install();
+        const { env } = dbWith({ d1Error: new Error("d1 down") });
+        const p = `${path}?window=7d&format=csv`;
+        const res = await handler(req(p), env, url(p), ctx);
+        assert.equal(res.status, 200);
+        assert.match(res.headers.get("content-type") || "", /text\/csv/);
+        const text = await res.text();
+        assert.equal(text.split("\r\n")[0], header);
+        assert.deepEqual(cache.putKeys, []);
+      });
+    }
   }
+
+  // #4909/#6013: chain-signers skips D1 entirely (extrinsics is retired), so a
+  // "degraded D1" response never happens -- confirm the empty-stub CSV is a
+  // normal, cacheable 200 instead of the fallback-marked path the other three
+  // handlers exercise above.
+  test("chain-signers never touches D1 and is edge-cacheable even when METAGRAPH_HEALTH_DB would error", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const { env } = dbWith({ d1Error: new Error("d1 down") });
+    const p = "/api/v1/chain/signers?window=7d&format=csv";
+    const res = await handleChainSigners(req(p), env, url(p), ctx);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") || "", /text\/csv/);
+    const text = await res.text();
+    assert.equal(
+      text.split("\r\n")[0],
+      "signer,tx_count,total_fee_tao,total_tip_tao,last_tx_block",
+    );
+    await Promise.resolve();
+    assert.deepEqual(cache.putKeys, [
+      "https://edge-cache.metagraph.sh/analytics/2026-07-03.2/2026-06-18T00%3A00%3A00.000Z/chain-signers/api/v1/chain/signers?window=7d&format=csv",
+    ]);
+  });
 
   test("Accept: text/csv negotiates CSV without an explicit ?format", async () => {
     const { env } = dbWith({ rows: [] });

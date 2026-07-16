@@ -313,6 +313,14 @@ describe("loadChainStakeFlow", () => {
     assert.equal(data.subnet_count, 0);
     assert.deepEqual(data.subnets, []);
   });
+
+  test("ignores a malformed out-of-range timestamp instead of throwing", () => {
+    const data = buildChainStakeFlow([ev(4, "StakeAdded", 10, 1, 1e100)], {
+      window: "7d",
+    });
+    assert.equal(data.subnet_count, 1);
+    assert.equal(data.observed_at, null);
+  });
 });
 
 describe("GET /api/v1/chain/stake-flow", () => {
@@ -336,14 +344,24 @@ describe("GET /api/v1/chain/stake-flow", () => {
   const req = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/chain/stake-flow${q}`);
 
-  test("dispatches to the network capital-flow scorecard", async () => {
-    const res = await handleRequest(req("?window=7d"), stakeFlowEnv(ROWS), {});
+  // #4909/#6013: account_events' D1 write path is retired and the table is
+  // dropped in production, so this handler no longer queries D1 at all --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+    let d1Called = false;
+    const env = stakeFlowEnv(ROWS);
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
+    const res = await handleRequest(req("?window=7d"), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.subnet_count, 3);
-    assert.equal(body.data.subnets[0].netuid, 1);
+    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(body.data.subnets, []);
     assert.equal(typeof body.data.network, "object");
+    assert.equal(d1Called, false);
   });
 
   test("serves a HEAD probe through the GET cache key with no body", async () => {
@@ -356,18 +374,6 @@ describe("GET /api/v1/chain/stake-flow", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(await res.text(), ""); // HEAD carries no body
-  });
-
-  test("ignores malformed out-of-range timestamps instead of returning 500", async () => {
-    const res = await handleRequest(
-      req(),
-      stakeFlowEnv([ev(4, "StakeAdded", 10, 1, 1e100)]),
-      {},
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.subnet_count, 1);
-    assert.equal(body.data.observed_at, null);
   });
 
   test("serves a schema-stable empty card on a cold store", async () => {
@@ -415,7 +421,10 @@ describe("GET /api/v1/chain/stake-flow", () => {
     assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+  // #4909/#6013: the D1 "fallback" is a schema-stable empty stub, not a real
+  // D1 read (account_events is retired) -- a Postgres failure degrades to the
+  // empty card, not to whatever a D1 mock might return.
+  test("flag=postgres falls back to the empty stub (not D1) when DATA_API fails", async () => {
     const env = {
       ...stakeFlowEnv(ROWS),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
@@ -428,7 +437,7 @@ describe("GET /api/v1/chain/stake-flow", () => {
     const res = await handleRequest(req("?window=7d"), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.data.subnet_count, 3);
+    assert.equal(body.data.subnet_count, 0);
   });
 
   test("rejects an unsupported window with 400", async () => {
@@ -446,7 +455,9 @@ describe("GET /api/v1/chain/stake-flow", () => {
     assert.equal(res.status, 400);
   });
 
-  test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
+  // #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
+  // export is always header-only now (account_events is retired).
+  test("CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
       stakeFlowEnv(ROWS),
@@ -459,13 +470,11 @@ describe("GET /api/v1/chain/stake-flow", () => {
       /attachment; filename="chain-stake-flow\.csv"/,
     );
     const lines = (await res.text()).trim().split("\r\n");
+    assert.equal(lines.length, 1);
     assert.equal(
       lines[0],
       "netuid,total_staked_tao,total_unstaked_tao,net_flow_tao,gross_flow_tao,stake_events,unstake_events,direction",
     );
-    // Biggest net inflow first: netuid 1 (net +70) leads, then 3 (0), then 2 (-60).
-    assert.equal(lines.length, 4); // header + 3 subnet rows
-    assert.equal(lines[1], "1,100,30,70,130,5,2,inflow");
   });
 
   test("honors Accept: text/csv the same as ?format=csv", async () => {
@@ -567,12 +576,14 @@ describe("chain/stake-flow edge cache", () => {
     const res = await call();
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.data.subnet_count, 3);
+    // #4909/#6013: account_events is retired, so even this "warm" D1 mock
+    // never reaches the response -- subnet_count stays 0.
+    assert.equal(body.data.subnet_count, 0);
     await Promise.all(waits); // let the deferred cache put settle
     assert.equal(store.size, 1); // the response was cached under one key
     // A second request is served from that cached entry (the mocked match() returns it).
     const cached = await call();
     assert.equal(cached.status, 200);
-    assert.equal((await cached.json()).data.subnet_count, 3);
+    assert.equal((await cached.json()).data.subnet_count, 0);
   });
 });

@@ -355,14 +355,24 @@ describe("GET /api/v1/chain/weights", () => {
   const cold = { networkRow: [{ newest_observed: null }], subnetRows: [] };
   const warm = { networkRow: [NETWORK], subnetRows: SUBNETS };
 
-  test("dispatches to the network weight-setting scorecard", async () => {
-    const res = await handleRequest(req("?window=7d"), weightsEnv(warm), {});
+  // #4909/#6013: account_events' D1 write path is retired and the table is
+  // dropped in production, so this handler no longer queries D1 at all --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+    let d1Called = false;
+    const env = weightsEnv(warm);
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
+    const res = await handleRequest(req("?window=7d"), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.subnet_count, 3);
-    assert.equal(body.data.subnets[0].netuid, 1);
+    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(body.data.subnets, []);
     assert.equal(body.meta.artifact_path, "/metagraph/chain/weights.json");
+    assert.equal(d1Called, false);
   });
 
   test("serves a HEAD probe through the GET cache key with no body", async () => {
@@ -433,7 +443,10 @@ describe("GET /api/v1/chain/weights", () => {
     assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+  // #4909/#6013: the D1 "fallback" is a schema-stable empty stub, not a real
+  // D1 read (account_events is retired) -- a Postgres failure degrades to the
+  // empty card, not to whatever a D1 mock might return.
+  test("flag=postgres falls back to the empty stub (not D1) when DATA_API fails", async () => {
     const env = {
       ...weightsEnv(warm),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
@@ -446,7 +459,7 @@ describe("GET /api/v1/chain/weights", () => {
     const res = await handleRequest(req("?window=7d"), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.data.subnet_count, 3);
+    assert.equal(body.data.subnet_count, 0);
   });
 
   test("rejects an unsupported window with 400", async () => {
@@ -467,7 +480,9 @@ describe("GET /api/v1/chain/weights", () => {
   const WEIGHTS_CSV_HEADER =
     "netuid,distinct_setters,weight_sets,sets_per_setter";
 
-  test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
+  // #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
+  // export is always header-only now (account_events is retired).
+  test("CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
       weightsEnv(warm),
@@ -480,10 +495,8 @@ describe("GET /api/v1/chain/weights", () => {
       /attachment; filename="chain-weights\.csv"/,
     );
     const lines = (await res.text()).trim().split("\r\n");
+    assert.equal(lines.length, 1);
     assert.equal(lines[0], WEIGHTS_CSV_HEADER);
-    // Ranked by total weight_sets desc: netuid 1 (40), 2 (30), 5 (25).
-    assert.equal(lines.length, 4); // header + 3 subnet rows
-    assert.equal(lines[1], "1,4,40,10");
   });
 
   test("honors Accept: text/csv the same as ?format=csv", async () => {
@@ -575,11 +588,13 @@ describe("chain/weights edge cache", () => {
       );
     const res = await call();
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).data.subnet_count, 3);
+    // #4909/#6013: account_events is retired, so even this "warm" D1 mock
+    // never reaches the response -- subnet_count stays 0.
+    assert.equal((await res.json()).data.subnet_count, 0);
     await Promise.all(waits);
     assert.equal(store.size, 1);
     const cached = await call();
     assert.equal(cached.status, 200);
-    assert.equal((await cached.json()).data.subnet_count, 3);
+    assert.equal((await cached.json()).data.subnet_count, 0);
   });
 });

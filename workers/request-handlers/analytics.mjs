@@ -61,15 +61,13 @@ import {
   loadSubnetIncidents,
   loadSubnetPercentiles,
 } from "../../src/analytics-live.mjs";
-import {
-  CHAIN_SIGNERS_SORTS,
-  loadChainSigners,
-} from "../../src/chain-query-loaders.mjs";
+import { CHAIN_SIGNERS_SORTS } from "../../src/chain-query-loaders.mjs";
+import { buildChainSigners } from "../../src/chain-analytics.mjs";
 import {
   CHAIN_TRANSFER_PAIR_SORTS,
-  loadChainTransferPairs,
+  buildChainTransferPairs,
 } from "../../src/chain-transfer-pairs.mjs";
-import { loadChainTransfers } from "../../src/chain-transfers.mjs";
+import { buildChainTransfers } from "../../src/chain-transfers.mjs";
 import {
   loadChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
@@ -106,7 +104,7 @@ import {
   CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
 } from "../../src/chain-stake-transfers.mjs";
 import {
-  loadChainWeights,
+  buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
   CHAIN_WEIGHTS_LIMIT_MAX,
 } from "../../src/chain-weights.mjs";
@@ -116,12 +114,12 @@ import {
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
 } from "../../src/chain-weight-setters.mjs";
 import {
-  loadChainStakeFlow,
+  buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
 } from "../../src/chain-stake-flow.mjs";
 import {
-  loadChainAlphaVolume,
+  buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
 } from "../../src/chain-alpha-volume.mjs";
@@ -1115,7 +1113,7 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
 // count over the window. The observed_at index bounds the scan to the hot window;
 // the aggregation is amortized behind the edge cache (runs only on a new snapshot).
 export async function handleChainSigners(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, [
+  const { label, error } = analyticsWindow(url, [
     "limit",
     "call_module",
     "sort",
@@ -1126,14 +1124,14 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
   if (formatError) return analyticsQueryError(formatError);
   const sortError = validateEnumParam(url, "sort", CHAIN_SIGNERS_SORTS);
   if (sortError) return analyticsQueryError(sortError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  // limit/call_module no longer feed a live D1 read (see the retirement note
+  // below) but are still shape-validated so the REST contract stays stable.
+  const { error: limitError } = parseLimitParam(url, {
     defaultLimit: 50,
     maxLimit: 100,
   });
   if (limitError) return analyticsQueryError(limitError);
   const sort = url.searchParams.get("sort") || "tx_count";
-  // Optional pallet scope, backed by idx_extrinsics_module_block.
-  const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
   const csv = csvRequested(url, request);
@@ -1144,35 +1142,31 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
     "chain-signers",
     async (cacheRequest) => {
       const meta = await readHealthMetaKv(env);
-      let isFallback = false;
-      let data = await tryPostgresTier(
-        env,
-        cacheRequest,
-        "METAGRAPH_EXTRINSICS_SOURCE",
-      );
-      if (!data) {
-        const result = await loadChainSigners(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          observedAt: meta?.last_run_at || null,
-          limit,
-          callModule,
+      // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
+      // the table is dropped in production, so a D1 query here would always
+      // miss (#6013). Postgres → schema-stable empty stub, never a live D1 read.
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        )) ??
+        buildChainSigners({
+          window: label,
           sort,
+          observedAt: meta?.last_run_at || null,
+          rows: [],
         });
-        data = result.data;
-        isFallback = hasD1FallbackRows(result.rows);
-      }
       if (csv) {
-        const csvRes = await csvResponse(
+        return csvResponse(
           data.signers,
           "chain-signers",
           "short",
           cacheRequest,
           CHAIN_SIGNERS_CSV_COLUMNS,
         );
-        return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
       }
-      const response = await envelopeResponse(
+      return envelopeResponse(
         cacheRequest,
         {
           data,
@@ -1184,7 +1178,6 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return isFallback ? markD1FallbackResponse(response) : response;
     },
     `${canonicalAnalyticsCacheRoute(url, ["limit", "call_module", "sort"])}${csv ? "&format=csv" : ""}`,
   );
@@ -1195,11 +1188,13 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
 // volume (a concentration signal), from the account_events Transfer feed. The
 // network-level companion of /accounts/{ss58}/transfers + /counterparties.
 export async function handleChainTransfers(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  // limit no longer feeds a live D1 read (see the retirement note below) but
+  // is still shape-validated so the REST contract stays stable.
+  const { error: limitError } = parseLimitParam(url, {
     defaultLimit: 25,
     maxLimit: 100,
   });
@@ -1221,18 +1216,20 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
     "chain-transfers",
     async () => {
       const meta = await readHealthMetaKv(env);
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013). Postgres → schema-stable empty stub, never a
+      // live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
-        (await loadChainTransfers(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
+        buildChainTransfers({
+          window: label,
           observedAt: meta?.last_run_at || null,
-          limit,
-        }));
+        });
       if (csv) {
         return csvResponse(
           [
@@ -1276,17 +1273,15 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
 // /chain/transfers. Excludes malformed/self-transfer rows so every row represents
 // a real directed account corridor.
 export async function handleChainTransferPairs(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, [
-    "limit",
-    "sort",
-    "format",
-  ]);
+  const { label, error } = analyticsWindow(url, ["limit", "sort", "format"]);
   if (error) return analyticsQueryError(error);
   const sortError = validateEnumParam(url, "sort", CHAIN_TRANSFER_PAIR_SORTS);
   if (sortError) return analyticsQueryError(sortError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  // limit no longer feeds a live D1 read (see the retirement note below) but
+  // is still shape-validated so the REST contract stays stable.
+  const { error: limitError } = parseLimitParam(url, {
     defaultLimit: 25,
     maxLimit: 100,
   });
@@ -1305,19 +1300,21 @@ export async function handleChainTransferPairs(request, env, url, ctx = {}) {
     "chain-transfer-pairs",
     async () => {
       const meta = await readHealthMetaKv(env);
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013). Postgres → schema-stable empty stub, never a
+      // live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
-        (await loadChainTransferPairs(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          observedAt: meta?.last_run_at || null,
-          limit,
+        buildChainTransferPairs({
+          window: label,
           sort,
-        }));
+          observedAt: meta?.last_run_at || null,
+        });
       // CSV exports the row-shaped top corridors; the totals + top_pair_share
       // rollup stay JSON-only (mirrors chain-stake-flow / chain-weights).
       if (csv) {
@@ -1354,7 +1351,7 @@ export async function handleChainTransferPairs(request, env, url, ctx = {}) {
 // distribution. The network companion to /api/v1/subnets/{netuid}/stake-flow; edge-cached like
 // the sibling chain-transfers route (account_events-derived, analytics cron freshness).
 export async function handleChainStakeFlow(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -1377,17 +1374,16 @@ export async function handleChainStakeFlow(request, env, url, ctx = {}) {
     env,
     "chain-stake-flow",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013). Postgres → schema-stable empty stub, never a
+      // live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainStakeFlow(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }));
+        )) ?? buildChainStakeFlow([], { window: label, limit });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // net_flow_distribution stay JSON-only (mirrors chain-fees' top_fee_payers).
       if (csv) {
@@ -1464,12 +1460,16 @@ export async function handleChainAlphaVolume(request, env, url, ctx = {}) {
     env,
     "chain-alpha-volume",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013). Postgres → schema-stable empty stub, never a
+      // live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? (await loadChainAlphaVolume(d1Runner(env), { limit }));
+        )) ?? buildChainAlphaVolume([], { limit });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // volume_distribution stay JSON-only (mirrors chain-stake-flow).
       if (csv) {
@@ -1507,7 +1507,7 @@ export async function handleChainAlphaVolume(request, env, url, ctx = {}) {
 // the edge cache and repeatedly force the network-wide aggregations, cache keyed on the analytics
 // cron freshness. The leaderboard is fixed to most-active-first (total WeightsSet events).
 export async function handleChainWeights(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -1528,17 +1528,16 @@ export async function handleChainWeights(request, env, url, ctx = {}) {
     env,
     "chain-weights",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013). Postgres → schema-stable empty stub, never a
+      // live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainWeights(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }));
+        )) ?? buildChainWeights([], { window: label, limit });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-flow).
       if (csv) {
