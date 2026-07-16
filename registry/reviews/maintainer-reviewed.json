@@ -525,6 +525,19 @@
       "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full owner-api OpenAPI schema (121 paths): the admin/internal/operators/validators/serving/submissions-prefixed routes all live-tested as 401-gated despite the schema declaring no security scheme. Found and added 5 new genuine no-auth public endpoints: /metrics, /v1/weights, /api/v1/dashboard/submissions/queued, /v1/workflow-corpus, and /v1/workflow-composition/registry."
     },
     {
+      "netuid": 37,
+      "slug": "sn-37",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T01:10:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
+        "https://new-collector-api-production.up.railway.app/docs",
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no source-repo surface despite source_repo already being set). Added the missing source-repo surface; the registered website (aureliusaligned.ai) is currently unreachable (DNS resolves, connection times out on both ports 80/443) so no website surface is promoted. Diffed the full Aurelius Central API OpenAPI schema (58 paths): the work-token/admin, config, submissions, benchmark, novelty, classifier, stats, reports, and admin/api prefixes all live-tested as 401-gated despite the schema declaring no security scheme for several of them. Found and added one new genuine no-auth public endpoint, GET /work-token/deposit-address/verify."
+    },
+    {
       "netuid": 39,
       "slug": "sn-39",
       "decision": "maintainer-reviewed",
