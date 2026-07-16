@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { CopyButton } from "@jsonbored/ui-kit";
 
 import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
 import { resolveValidatorCard } from "@/lib/metagraphed/validator-card-fields";
@@ -37,18 +38,25 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
               >
                 {f.hotkeyShort}
               </Link>
+              <CopyButton value={v.hotkey} label="hotkey" className="-my-3.5" />
             </div>
-            <div className="font-mono text-[11px] text-ink-muted">
-              <span className="uppercase tracking-widest text-[10px]">coldkey </span>
+            {/* Mirrors the hotkey row above: a flex row so the copy button's 44px
+                touch target centers against the value. `-my-3.5` folds that height
+                back into the row so it does not add vertical spacing. */}
+            <div className="flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-ink-muted">
+              <span className="uppercase tracking-widest text-[10px]">coldkey</span>
               {v.coldkey ? (
-                <Link
-                  to="/accounts/$ss58"
-                  params={{ ss58: v.coldkey }}
-                  title={v.coldkey}
-                  className="hover:text-accent hover:underline"
-                >
-                  {f.coldkeyShort}
-                </Link>
+                <>
+                  <Link
+                    to="/accounts/$ss58"
+                    params={{ ss58: v.coldkey }}
+                    title={v.coldkey}
+                    className="truncate hover:text-accent hover:underline"
+                  >
+                    {f.coldkeyShort}
+                  </Link>
+                  <CopyButton value={v.coldkey} label="coldkey" className="-my-3.5" />
+                </>
               ) : (
                 "—"
               )}
