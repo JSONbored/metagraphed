@@ -6,7 +6,7 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Boxes, Coins, Gauge, Percent, Users, Zap } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -25,7 +25,7 @@ import { taoCompact, scoreStr } from "@/components/metagraphed/neuron-table";
 import { validatorDetailQuery, validatorNominatorsQuery } from "@/lib/metagraphed/queries";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { hasValidatorIdentity } from "@/lib/metagraphed/validator-identity";
 import {
   annualizedDelegatorApyPct,
@@ -241,6 +241,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
   const sourceRef = ss58PathSegment(hotkey);
   const detailRes = useSuspenseQuery(validatorDetailQuery(hotkey)).data;
   const detail = detailRes.data;
+  const generatedAt = detailRes.meta?.generated_at ?? null;
   const identity = detail.coldkey_identity;
   const hasIdentity = hasValidatorIdentity(identity);
   const displayName =
@@ -287,7 +288,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           </span>
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isOwner ? (
               <TakeManagementModal
                 hotkey={hotkey}
@@ -306,6 +307,13 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
               />
             ) : null}
             <ShareButton />
+            {isStaleFreshness(generatedAt) ? (
+              <StaleBanner
+                compact
+                generatedAt={generatedAt}
+                refreshQueryKeys={[validatorDetailQuery(hotkey).queryKey]}
+              />
+            ) : null}
           </div>
         }
         caption="explorer / v1"
