@@ -2298,6 +2298,9 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
       message: `"${direction}" is not a valid direction. Supported: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
     });
   }
+  // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
+  // the table is dropped in production, so a D1 query here would always miss
+  // (#6016/#6017). Postgres → schema-stable empty stub.
   const pgPayload = await tryPostgresTier(
     env,
     request,
@@ -2624,6 +2627,9 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
       message: `"${direction}" is not a valid direction. Supported: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
     });
   }
+  // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
+  // the table is dropped in production, so a D1 query here would always miss
+  // (#6016/#6017). Postgres → schema-stable empty stub.
   const { data, generatedAt } = (await tryPostgresTier(
     env,
     request,

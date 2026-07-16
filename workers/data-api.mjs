@@ -402,13 +402,12 @@ function windowCutoffDate(url, windows, defaultLabel) {
 }
 
 // The newest `last_observed` epoch-ms across a row set, as an ISO string (or
-// null for an empty/cold result) -- matches every account-level D1 loader's
-// own `{ data, generatedAt }` contract (loadValidatorNominators,
-// loadAccountWeightSetters, loadAccountStakeFlow, loadSubnetStakeFlow,
-// loadAccountStakeMoves, and the 5 account-footprint loaders all compute this
-// identically). entities.mjs destructures `generatedAt` straight off the
-// tryPostgresTier body, so this route MUST nest under `data` too, not return
-// buildX(...)'s object flat the way the subnet-level (single-object) routes do.
+// null for an empty/cold result) -- matches the `{ data, generatedAt }` contract
+// the surviving account-level D1 loaders (and the former loadAccountStakeFlow /
+// loadSubnetStakeFlow pair removed in #6016) all compute identically.
+// entities.mjs destructures `generatedAt` straight off the tryPostgresTier body,
+// so this route MUST nest under `data` too, not return buildX(...)'s object flat
+// the way the subnet-level (single-object) routes do.
 function latestObservedIso(rows, field = "last_observed") {
   let latest = null;
   for (const row of rows) {

@@ -99,7 +99,7 @@ function volMcapRatio(totalVolumeTao, marketCapTao) {
 }
 
 // Convert an epoch-ms timestamp to an ISO string, or null when not finite.
-// Mirrors stake-flow.mjs's coerceEpochMs/toIso pair.
+// Same getTime()-range guard the other account_events scorecards use.
 function coerceEpochMs(value) {
   if (value == null) return null;
   const n = Number(value);

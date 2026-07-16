@@ -1,16 +1,19 @@
 // Per-account stake flow: how one account's capital moved in (StakeAdded) vs out
 // (StakeRemoved) over a recent window, broken down per subnet and rolled up into a
-// staking-behavior scorecard. Pure shaping (buildAccountStakeFlow) + a thin D1 loader
-// (loadAccountStakeFlow); the Worker adds the REST envelope. Null-safe: a cold store
-// or an empty window yields schema-stable zeros (never throws), matching the sibling
-// account tiers (transfers, counterparties) and the per-subnet stake-flow route.
+// staking-behavior scorecard. Pure shaping (buildAccountStakeFlow); the Worker /
+// data-api Postgres tier supplies the rows and adds the REST envelope. Null-safe:
+// a cold store or an empty window yields schema-stable zeros (never throws),
+// matching the sibling account tiers (transfers, counterparties) and the
+// per-subnet stake-flow route.
+//
+// The D1 loader (loadAccountStakeFlow) was removed — account_events' D1 write path
+// is retired and the table is dropped in production (#4772 / #4909 / #6016), so
+// serving goes tryPostgresTier → schema-stable empty stub, never D1.
 //
 // This is the account-level companion of the per-subnet stake-flow route: that one
 // answers "how much capital moved through subnet N", this one answers "where did THIS
 // account move capital, and is it accumulating or exiting" — net + gross flow per
 // subnet, an HHI concentration of where its flow is focused, and a direction label.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // The two account_events kinds that move stake; both carry a positive amount_tao
 // (migrations/0009_account_events.sql), so net flow = staked - unstaked.
@@ -69,21 +72,6 @@ function normalizedNetuid(value) {
   if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
-}
-
-// Convert an epoch-ms timestamp to an ISO string, or null when not finite. The REST
-// meta.generated_at is string|null per the envelope contract.
-function coerceEpochMs(value) {
-  if (value == null) return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  const date = new Date(n);
-  return Number.isFinite(date.getTime()) ? n : null;
-}
-
-function toIso(value) {
-  const n = coerceEpochMs(value);
-  return n == null ? null : new Date(n).toISOString();
 }
 
 // Net vs gross share -> a coarse direction label. gross 0 (no flow at all) reads as
@@ -205,58 +193,5 @@ export function buildAccountStakeFlow(rows, address, { window } = {}) {
     concentration,
     dominant_netuid: dominantNetuid,
     subnets,
-  };
-}
-
-// One account's stake flow — sums StakeAdded/StakeRemoved amount_tao from account_events
-// over the window (observed_at >= now - windowDays, epoch ms), grouped per subnet and
-// kind, shaped with buildAccountStakeFlow. StakeAdded/StakeRemoved decode as
-// [coldkey, hotkey, ...] (scripts/fetch-events.py `_stake`), so the account whose capital
-// actually moved is the coldkey (the staking wallet); the row's hotkey is the target
-// validator. The (coldkey) prefix of idx_account_events_coldkey (migrations/0009) seeks
-// just this account's events — matching the sibling loadAccountStakeMoves, which keys the
-// same coldkey column — and event_kind/observed_at are residual filters on that bounded
-// seek. Returns { data, generatedAt } where generatedAt is the
-// newest event's observed_at as an ISO string (string|null per the envelope contract).
-// Cold/absent D1 -> zeroed totals + empty subnets + generatedAt null.
-export async function loadAccountStakeFlow(
-  d1,
-  address,
-  { windowLabel = DEFAULT_STAKE_FLOW_WINDOW, direction } = {},
-) {
-  const days =
-    STAKE_FLOW_WINDOWS[windowLabel] ??
-    STAKE_FLOW_WINDOWS[DEFAULT_STAKE_FLOW_WINDOW];
-  const cutoff = Date.now() - days * DAY_MS;
-  // direction narrows the flow to one side: in = StakeAdded only, out =
-  // StakeRemoved only, all (or omitted) = both kinds. Mirrors loadSubnetStakeFlow.
-  const kinds =
-    direction === "in"
-      ? [STAKE_ADDED_KIND]
-      : direction === "out"
-        ? [STAKE_REMOVED_KIND]
-        : [STAKE_ADDED_KIND, STAKE_REMOVED_KIND];
-  const placeholders = kinds.map(() => "?").join(", ");
-  const rows = await d1(
-    "SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao, " +
-      "COUNT(*) AS event_count, MAX(observed_at) AS last_observed " +
-      "FROM account_events INDEXED BY idx_account_events_coldkey " +
-      `WHERE coldkey = ? AND event_kind IN (${placeholders}) AND observed_at >= ? ` +
-      "GROUP BY netuid, event_kind",
-    [address, ...kinds, cutoff],
-  );
-  let latestObserved = null;
-  for (const row of Array.isArray(rows) ? rows : []) {
-    const observed = coerceEpochMs(row?.last_observed);
-    if (
-      observed != null &&
-      (latestObserved == null || observed > latestObserved)
-    ) {
-      latestObserved = observed;
-    }
-  }
-  return {
-    data: buildAccountStakeFlow(rows, address, { window: windowLabel }),
-    generatedAt: toIso(latestObserved),
   };
 }
