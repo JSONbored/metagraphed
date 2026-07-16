@@ -22,6 +22,19 @@ export const tableSearchSchema = z.object({
   // #9: agent-catalog capability filters (applied client-side over joined rows).
   serviceKind: fallback(z.string(), "").default(""),
   readiness: fallback(z.string(), "").default(""),
+  // #6270: root-subnet inclusion toggle for /subnets, applied client-side over
+  // the `subnet_type` the list response already returns. A boolean defaulting
+  // to true (the endpoints route's `callable` toggle shape) rather than the ""
+  // string filters above: it includes/excludes a slice of the set instead of
+  // selecting one value, and defaulting to true keeps the unfiltered list
+  // byte-identical to today's for anyone without the param.
+  //
+  // No companion `includeInactive`: GET /api/v1/subnets is documented as "List
+  // active Finney subnets" and only ever returns status=active rows (verified
+  // live — ?status=inactive returns 0). A client-side inactive filter could
+  // only narrow rows the server already sent, so it would be inert by
+  // construction; it belongs here only once that route serves non-active rows.
+  includeRoot: fallback(z.boolean(), true).default(true),
   // Layout state for list routes that support multiple views + row density.
   // Additive + optional with safe fallbacks so the toggles persist in the URL.
   view: fallback(z.enum(["table", "grid", "matrix"]), "table").default("table"),
