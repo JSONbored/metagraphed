@@ -7252,6 +7252,7 @@ describe("list_subnets", () => {
           status: "active",
           integration_readiness: 15,
           surface_count: 17,
+          tempo: 100,
           categories: [],
         },
         {
@@ -7262,6 +7263,7 @@ describe("list_subnets", () => {
           status: "active",
           integration_readiness: 90,
           surface_count: 4,
+          tempo: 360,
           categories: ["inference"],
         },
         {
@@ -7272,6 +7274,7 @@ describe("list_subnets", () => {
           status: "deprecated",
           integration_readiness: 0,
           surface_count: 0,
+          tempo: 50,
           derived_categories: ["data"],
         },
       ],
@@ -7444,6 +7447,18 @@ describe("list_subnets", () => {
       await callTool("list_subnets", { min_netuid: 1, max_netuid: 7 }, { deps })
     ).body.result.structuredContent;
     assert.deepEqual(rangeNetuids(out), [7]); // 0 below, 8 above
+  });
+
+  test("min_/max_tempo bound the subnet tempo (REST range-filter parity)", async () => {
+    const atLeast200 = (
+      await callTool("list_subnets", { min_tempo: 200 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(atLeast200), [7]); // only 360 >= 200
+
+    const atMost99 = (
+      await callTool("list_subnets", { max_tempo: 99 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(atMost99), [8]); // only 50 <= 99
   });
 
   test("a row whose bounded field is absent or non-numeric is excluded", async () => {
