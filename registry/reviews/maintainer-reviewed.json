@@ -1238,16 +1238,16 @@
       "netuid": 91,
       "slug": "sn-91",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:25:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
-        "https://bitstarter.ai/",
+        "https://www.bitstarter.ai/",
         "https://github.com/AlphaCoreBittensor/alphacore",
         "https://app.bitstarter.ai/",
         "https://app.bitstarter.ai/how-it-works/",
         "https://app.bitstarter.ai/submit-a-project/incubator/"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitstarter-1.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): updated the website surface to the canonical www.bitstarter.ai URL after bitstarter.ai started 307-redirecting."
     },
     {
       "netuid": 92,
