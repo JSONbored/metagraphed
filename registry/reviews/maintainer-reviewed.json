@@ -837,6 +837,19 @@
       "notes": "Elevated from the provenance review queue (#1235): a live subnet-api is hosted on this subnet's on-chain-asserted domain (babelbit.ai, Subtensor SubnetIdentitiesV3). Maintainer-confirmed. Reconciled 2026-07-16: the subnet overlay's own curation.level had drifted from this decision (still read community-seeded/unreviewed); brought into sync with website/source-repo surfaces added and a full OpenAPI diff performed."
     },
     {
+      "netuid": 60,
+      "slug": "sn-60",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T05:35:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://bitsec.ai/",
+        "https://github.com/Bitsec-AI/sandbox",
+        "https://bitsec.ai/api/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 30-path OpenAPI schema and added 10 new no-auth no-param surfaces spanning agents, analytics, jobs, and projects; excluded two schema-declared routes whose live behavior didn't match (500 and 422 respectively)."
+    },
+    {
       "netuid": 61,
       "slug": "sn-61",
       "decision": "maintainer-reviewed",

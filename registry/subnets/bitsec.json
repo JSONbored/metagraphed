@@ -1,15 +1,67 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "security"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified docs site yet.",
+      "No verified SSE/event stream yet.",
+      "The OpenAPI schema also declares GET /jobs/leaderboard_old (500 live) and GET /users/validators/me (422 live, likely auth-scoped despite no declared security) -- neither tracked."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T05:35:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-16T05:35:00.000Z"
   },
   "name": "Bitsec",
   "netuid": 60,
+  "notes": "First maintainer-reviewed pass for SN60 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 30-path OpenAPI schema and added 10 new no-auth no-param surfaces spanning agents, analytics, jobs, and projects; excluded /jobs/leaderboard_old (500 live) and /users/validators/me (422 live) since the schema's declared no-auth status doesn't match live behavior.",
   "schema_version": 1,
   "slug": "sn-60",
+  "source_repo": "https://github.com/Bitsec-AI/sandbox",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-website",
+      "kind": "website",
+      "name": "Bitsec.ai website",
+      "notes": "Official Bitsec.ai (SN60) website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Bitsec-AI/sandbox"],
+      "url": "https://bitsec.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-source-repo",
+      "kind": "source-repo",
+      "name": "Bitsec.ai source repository",
+      "notes": "Official Bitsec.ai (SN60) source repository, in the Bitsec-AI GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/"],
+      "url": "https://github.com/Bitsec-AI/sandbox"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -17,6 +69,12 @@
       "kind": "openapi",
       "name": "Bitsec.ai FastAPI",
       "notes": "Machine-readable OpenAPI 3.1 spec (FastAPI, 30 paths) for the SN60 Bitsec.ai public API, also rendered as live Swagger UI (/api/docs) and ReDoc (/api/redoc). Served on the official bitsec.ai domain referenced by the subnet's repo README.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitsec-ai",
       "public_safe": true,
       "review": {
@@ -38,6 +96,12 @@
       "kind": "subnet-api",
       "name": "Bitsec.ai subnet-api",
       "notes": "Public no-auth JSON endpoint of the SN60 Bitsec.ai API (live subnet analytics: rounds, emissions). Sibling endpoints include /api/agents/top/; the full contract is the openapi surface. Served on the official bitsec.ai domain.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitsec-ai",
       "public_safe": true,
       "review": {
@@ -57,6 +121,12 @@
       "kind": "data-artifact",
       "name": "Bitsec.ai known-solutions dataset",
       "notes": "Public no-auth JSON dataset of known-vulnerability benchmark projects (GET /projects/known-solutions) used to evaluate SN60 miner agents — each entry has real codebases (repo/commit/tarball) and vulnerability findings (severity, title, description). Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"Get Current Project Set Known Solutions\". Served on the official bitsec.ai domain.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitsec-ai",
       "public_safe": true,
       "review": {
@@ -68,6 +138,186 @@
         "https://github.com/Bitsec-AI/subnet"
       ],
       "url": "https://bitsec.ai/api/projects/known-solutions"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-agents-list",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agents list",
+      "notes": "Public no-auth GET /api/agents/ on bitsec.ai, returning the full registered miner agent list (agent_id, version, hotkey, project set, evaluation status). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-agents-evaluation-status",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agent evaluation status",
+      "notes": "Public no-auth GET /api/agents/evaluation-status on bitsec.ai, returning aggregate round-evaluation progress (total agents, agents pending evaluation, round-evaluated flag). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/evaluation-status"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-agents-top-with-burn",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai top agents with burn",
+      "notes": "Public no-auth GET /api/agents/top-with-burn/ on bitsec.ai, returning the top-ranked agents including burn-adjusted entries. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. Distinct from the top/ endpoint (excludes burn entries).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/top-with-burn/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-agents-top",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai top agents",
+      "notes": "Public no-auth GET /api/agents/top/ on bitsec.ai, returning the current top-ranked miner agents (agent_id, hotkey). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/top/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-analytics-validators",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai validator analytics",
+      "notes": "Public no-auth GET /api/analytics/validators on bitsec.ai, returning per-validator run statistics (pending agent counts, average completed/agent run seconds) for the active project set. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/analytics/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-jobs-leaderboard",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai jobs leaderboard",
+      "notes": "Public no-auth GET /api/jobs/leaderboard on bitsec.ai, returning per-agent scoring records (user, agent, score, completed validator count, hotkey). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-jobs-runs-active",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai active job runs",
+      "notes": "Public no-auth GET /api/jobs/runs/active on bitsec.ai, returning currently active/recent validator job runs (validator_id, status, miner_id, timestamps). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-jobs-stats",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai jobs stats",
+      "notes": "Public no-auth GET /api/jobs/stats on bitsec.ai, returning aggregate weekly stats (agents created, top score, real vulnerabilities found, daily prize pool). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-projects-list",
+      "kind": "data-artifact",
+      "name": "Bitsec.ai projects list",
+      "notes": "Public no-auth GET /api/projects/ on bitsec.ai, returning the full benchmark project catalog (slug, commit, platform, repo_url, visibility). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. Distinct from the known-solutions surface (findings for the current project set only).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/projects/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-60-bitsec-projects-sets",
+      "kind": "data-artifact",
+      "name": "Bitsec.ai project sets",
+      "notes": "Public no-auth GET /api/projects/sets on bitsec.ai, returning the historical list of project-set versions (id, name, active flag) used to evaluate SN60 miner agents over time. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/projects/sets"
     }
   ],
   "social": {
