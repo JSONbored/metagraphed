@@ -1,12 +1,28 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "networking",
+    "official-source-repo",
+    "official-website"
+  ],
   "contact": "contact@taoprivatenetwork.com",
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified docs site yet.",
+      "No verified SSE/event stream yet.",
+      "The OpenAPI schema also declares /vpn/countries and /vpn/stats with no auth required, but both consistently time out live (no response within 15-20s) -- not tracked.",
+      "/failover/countries, /failover/health, and /user/balance all require apiKeyAuth and were not promoted."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T06:15:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-16T06:15:00.000Z"
   },
   "name": "TAO Private Network",
   "netuid": 65,
+  "notes": "First maintainer-reviewed pass for SN65 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 13-path OpenAPI schema (base path /api/v1, declared via the schema's own servers block): added one new no-auth no-param surface, /api/v1/version. Two other no-auth routes (/vpn/countries, /vpn/stats) consistently time out live and were not promoted; three routes require apiKeyAuth.",
   "schema_version": 1,
   "slug": "sn-65",
   "social": {
@@ -17,11 +33,53 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-65-tpn-website",
+      "kind": "website",
+      "name": "TAO Private Network website",
+      "notes": "Official TAO Private Network (SN65) website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taofu-labs/tpn-subnet"],
+      "url": "https://tpn.taofu.xyz/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-65-tpn-source-repo",
+      "kind": "source-repo",
+      "name": "TAO Private Network source repository",
+      "notes": "Official TAO Private Network (SN65) source repository, in the taofu-labs GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "source_urls": ["https://tpn.taofu.xyz/"],
+      "url": "https://github.com/taofu-labs/tpn-subnet"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-65-taofu-labs-openapi",
       "kind": "openapi",
       "name": "TAO Private Network TPN API",
       "notes": "Machine-readable OpenAPI 3.0 spec (TPN API v1.1.0, 13 paths) for SN65 TAO Private Network. The api.taoprivatenetwork.com host matches the subnet's registered contact domain, and its no-auth endpoints are documented at /docs.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taofu-labs",
       "public_safe": true,
       "review": {
@@ -43,6 +101,12 @@
       "kind": "subnet-api",
       "name": "TAO Private Network subnet-api",
       "notes": "Public no-auth JSON endpoint (canonical health check → {\"message\":\"OK!\"}) of the SN65 TAO Private Network API; /api/v1/version is a sibling. The full contract is the openapi surface. Served on api.taoprivatenetwork.com, the subnet's registered contact domain.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taofu-labs",
       "public_safe": true,
       "review": {
@@ -62,6 +126,12 @@
       "kind": "data-artifact",
       "name": "TAO Private Network minimum compute requirements",
       "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official taofu-labs/tpn-subnet repository as min_compute.yml. Documents SN65 operator CPU/GPU/memory/storage/network floors.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taofu-labs",
       "public_safe": true,
       "review": {
@@ -73,6 +143,26 @@
         "https://github.com/taofu-labs/tpn-subnet"
       ],
       "url": "https://raw.githubusercontent.com/taofu-labs/tpn-subnet/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-65-tpn-version",
+      "kind": "subnet-api",
+      "name": "TAO Private Network API version",
+      "notes": "Public no-auth GET /api/v1/version on api.taoprivatenetwork.com, returning the API version identifier. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/version"
     }
   ],
   "website_url": "https://tpn.taofu.xyz/"

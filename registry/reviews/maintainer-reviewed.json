@@ -903,6 +903,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/chutes.json (reviewed_at 2026-06-08T07:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 65,
+      "slug": "sn-65",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T06:15:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://tpn.taofu.xyz/",
+        "https://github.com/taofu-labs/tpn-subnet",
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 13-path OpenAPI schema (base path /api/v1): added one new no-auth no-param surface, /api/v1/version. Two other no-auth routes (/vpn/countries, /vpn/stats) consistently time out live and were not promoted; three routes require apiKeyAuth."
+    },
+    {
       "netuid": 66,
       "slug": "sn-66",
       "decision": "maintainer-reviewed",
