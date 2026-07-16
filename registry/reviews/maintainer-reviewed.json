@@ -1378,13 +1378,14 @@
       "netuid": 102,
       "slug": "sn-102",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:50:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://connito.ai/",
-        "https://github.com/Connito-AI/Connito"
+        "https://github.com/Connito-AI/Connito",
+        "https://cycle-api.connito.ai/openapi.json"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/connitoai.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 3 missing probe blocks. Diffed the 7-path Phase Service OpenAPI schema -- added 1 new surface (root status/phase-config endpoint); excluded /get_cycle_config as currently Cloudflare-WAF-blocked (403) despite declaring no security in the schema."
     },
     {
       "netuid": 103,
