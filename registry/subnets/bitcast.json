@@ -1,11 +1,25 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "official-api",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "candidate-discovered",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 8,
+    "gap_notes": [
+      "Corrected the top-level website_url from the legacy stats.bitcast.network subdomain to the canonical www.bitcast.network marketing site; stats.bitcast.network remains tracked as a dashboard surface.",
+      "Added the main bitcast-network/bitcast source-repo surface, which was previously cited as a source_url by several surfaces but never itself tracked.",
+      "Diffed the bitcast-api.bitcast.network OpenAPI schema (165 paths) for undiscovered public GET endpoints -- added 3 new no-auth validator-facing routes (validator/briefs, validator/x-briefs, validator/pools); the rest require APIKeyHeader/HTTPBearer auth."
+    ]
   },
   "name": "Bitcast",
   "netuid": 93,
+  "notes": "First maintainer review for SN93. Fixed 10 missing probe blocks, added the main source-repo surface, corrected website_url to the canonical domain, and added 3 new surfaces from an OpenAPI diff.",
   "schema_version": 1,
   "slug": "sn-93",
   "source_repo": "https://github.com/bitcast-network/bitcast",
@@ -35,11 +49,35 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-93-bitcast-source-repo",
+      "kind": "source-repo",
+      "name": "Bitcast source repository",
+      "notes": "Official SN93 miner/validator source repository -- verified live 2026-07-15. Previously cited as a source_url by several surfaces in this file but never itself tracked.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "source_urls": ["https://github.com/bitcast-network/bitcast"],
+      "url": "https://github.com/bitcast-network/bitcast"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-93-bitcast-website",
       "kind": "website",
       "name": "Bitcast website",
       "notes": "Official Bitcast website (page title \"bitcast\"), linked from the bitcast-network/bitcast README. Distinct from the stats subdomain set as the legacy website_url.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "review": {
@@ -56,6 +94,12 @@
       "kind": "dashboard",
       "name": "Bitcast briefs / creator portal",
       "notes": "Public Bitcast briefs / creator portal (active campaigns). The README's \"active briefs\" link (dashboard.bitcast.network) 301-redirects to this canonical creator.bitcast.network host. Distinct from the stats dashboard.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "review": {
@@ -72,6 +116,12 @@
       "kind": "source-repo",
       "name": "Bitcast deploy repository",
       "notes": "Bitcast validator deployment repo; its GitHub description and README state \"bittensor subnet #93\" / \"netuid-93\". In the team's bitcast-network org, distinct from the top-level bitcast repo.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "review": {
@@ -88,6 +138,12 @@
       "kind": "source-repo",
       "name": "Bitcast X subnet-mechanism repository",
       "notes": "Bitcast \"X\" subnet-mechanism repo; README states \"Register a UID on subnet 93\" and \"Subnet ID: 93 (Bittensor mainnet)\". In the team's bitcast-network org.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "review": {
@@ -104,6 +160,12 @@
       "kind": "subnet-api",
       "name": "Bitcast active briefs API",
       "notes": "Public JSON feed of active SN93 content briefs (id_brief, brief_id, brief text, boost, format). Served from the creator portal host; curl-verified 200 application/json with no auth. Distinct from the HTML briefs dashboard at /briefs.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "review": {
@@ -123,6 +185,12 @@
       "kind": "subnet-api",
       "name": "Bitcast creator portal health",
       "notes": "Public no-auth GET /api/health on creator.bitcast.network returning portal liveness JSON (observed: {\"status\":\"ok\"}). Served on the same host as the existing briefs subnet-api surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "review": {
@@ -169,6 +237,12 @@
       "kind": "subnet-api",
       "name": "Bitcast API readiness health",
       "notes": "Public no-auth GET /health/ready on bitcast-api.bitcast.network returning API readiness JSON (status, app_name, version, database connectivity). Documented in the subnet OpenAPI spec on the same host as the existing openapi surface. Distinct from the creator-portal /api/health endpoint on creator.bitcast.network.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "review": {
@@ -188,6 +262,12 @@
       "kind": "subnet-api",
       "name": "Bitcast API database health",
       "notes": "Public no-auth GET /health/database on bitcast-api.bitcast.network returning database connectivity and pool status JSON. Documented in the subnet OpenAPI spec on the same host as the existing openapi and /health/ready surfaces. Distinct from the /health and /health/ready endpoints and the creator-portal /api/health endpoint on creator.bitcast.network.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "review": {
@@ -207,6 +287,12 @@
       "kind": "data-artifact",
       "name": "Bitcast minimum compute requirements",
       "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official bitcast-network/bitcast repository as min_compute.yml. Documents baseline CPU and RAM requirements for SN93 YouTube-token miners and validators.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "review": {
@@ -226,6 +312,12 @@
       "kind": "docs",
       "name": "Bitcast whitepaper",
       "notes": "Public no-auth whitepaper (PDF) for SN93 Bitcast, served at www.bitcast.network/whitepaper.pdf on the official Bitcast website (the same operator as the registered stats.bitcast.network / creator.bitcast.network surfaces). A machine-readable document describing the subnet's design — content-attention incentive mechanism, miner/validator roles, and scoring. Distinct in URL and kind from the API/dashboard surfaces already registered.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "review": {
@@ -259,7 +351,73 @@
       },
       "source_urls": ["https://bitcast-api.bitcast.network/health"],
       "url": "https://bitcast-api.bitcast.network/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-validator-briefs",
+      "kind": "subnet-api",
+      "name": "Bitcast validator briefs feed",
+      "notes": "Public no-auth GET /api/v2/validator/briefs on bitcast-api.bitcast.network returning the YouTube content-brief list (id, brief text, requirements) validators score miner submissions against. Documented in the subnet OpenAPI schema with no declared security -- distinct from the v1 creator-portal briefs API and internally auth-gated v2 briefs routes.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://bitcast-api.bitcast.network/openapi.json"],
+      "url": "https://bitcast-api.bitcast.network/api/v2/validator/briefs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-validator-x-briefs",
+      "kind": "subnet-api",
+      "name": "Bitcast validator X (Twitter) briefs feed",
+      "notes": "Public no-auth GET /api/v2/validator/x-briefs on bitcast-api.bitcast.network returning the Twitter/X content-brief list (pool, tag, inclusion rules) validators score against. Documented in the subnet OpenAPI schema with no declared security.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://bitcast-api.bitcast.network/openapi.json"],
+      "url": "https://bitcast-api.bitcast.network/api/v2/validator/x-briefs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-validator-pools",
+      "kind": "data-artifact",
+      "name": "Bitcast validator pool configuration",
+      "notes": "Public no-auth GET /api/v2/validator/pools on bitcast-api.bitcast.network returning the Twitter/X engagement-pool scoring configuration (keywords, seed accounts, interaction-weight thresholds) validators apply. Documented in the subnet OpenAPI schema with no declared security.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://bitcast-api.bitcast.network/openapi.json"],
+      "url": "https://bitcast-api.bitcast.network/api/v2/validator/pools"
     }
   ],
-  "website_url": "https://stats.bitcast.network/"
+  "website_url": "https://www.bitcast.network/"
 }

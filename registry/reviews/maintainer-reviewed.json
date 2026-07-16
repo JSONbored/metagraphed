@@ -1287,6 +1287,19 @@
       "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN94. Added website + source-repo surfaces, fixed 4 missing probe blocks. Diffed the 37-path OpenAPI schema for undiscovered public GET endpoints -- added 3 new surfaces; 2 candidates turned out to be auth-gated despite the schema saying otherwise."
     },
     {
+      "netuid": 93,
+      "slug": "sn-93",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.bitcast.network/",
+        "https://github.com/bitcast-network/bitcast",
+        "https://bitcast-api.bitcast.network/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN93. Fixed 10 missing probe blocks, added the main source-repo surface (previously cited but untracked), corrected website_url from the legacy stats subdomain to the canonical www.bitcast.network, and diffed the 165-path OpenAPI schema for undiscovered public GET endpoints -- added 3 new no-auth validator-facing routes."
+    },
+    {
       "netuid": 95,
       "slug": "actual",
       "decision": "maintainer-reviewed",
