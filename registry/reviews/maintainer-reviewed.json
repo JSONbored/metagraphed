@@ -1253,16 +1253,17 @@
       "netuid": 92,
       "slug": "sn-92",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-09T12:25:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://taomarketcap.com/subnets/92",
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
         "https://www.tensorclaw.ai/",
         "https://github.com/tensorclaw/tensorclaw",
-        "https://www.tensorclaw.ai/dashboard"
+        "https://www.tensorclaw.ai/dashboard",
+        "https://github.com/fx-integral/academia-archives/tree/main/repos/tensorclaw__tensorclaw"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/tensorclaw.json (reviewed_at 2026-06-09T12:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): the project looks fully abandoned -- website 521, GitHub org deleted (404), emission disabled, on-chain identity re-drifted to a new blank placeholder (\"wgmi\"). Added a surface for the third-party academia-archives mirror, now the only remaining copy of the source. Dead surfaces kept tracked, not removed."
     },
     {
       "netuid": 95,
