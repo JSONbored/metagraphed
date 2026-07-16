@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { accountPositionHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@jsonbored/ui-kit";
-import { Skeleton, EmptyState } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { AccountPositionHistoryPoint } from "@/lib/metagraphed/types";
@@ -30,7 +30,13 @@ function yieldStr(v?: number) {
  * this position has no history yet (e.g. a freshly-registered neuron). */
 export function AccountPositionHistoryChart({ ss58, netuid }: { ss58: string; netuid: number }) {
   const [win, setWin] = useState<Win>("90d");
-  const { data: res, isLoading } = useQuery(accountPositionHistoryQuery(ss58, netuid, win));
+  const {
+    data: res,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(accountPositionHistoryQuery(ss58, netuid, win));
   const points = useMemo<AccountPositionHistoryPoint[]>(
     () => res?.data?.points ?? [],
     [res?.data?.points],
@@ -79,6 +85,8 @@ export function AccountPositionHistoryChart({ ss58, netuid }: { ss58: string; ne
       <div className="flex items-center justify-end">{windowSelector}</div>
       {isLoading ? (
         <Skeleton className="h-32 w-full" />
+      ) : isError ? (
+        <ErrorState error={error} onRetry={() => refetch()} context="position history" />
       ) : !hasData ? (
         <EmptyState
           title="No history yet"

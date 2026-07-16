@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { validatorHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@jsonbored/ui-kit";
-import { Skeleton, EmptyState } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { ValidatorHistoryPoint } from "@/lib/metagraphed/types";
@@ -29,7 +29,13 @@ function rewardsStr(v?: number) {
  * the validator has no history yet (e.g. a freshly-registered hotkey). */
 export function ValidatorHistoryChart({ hotkey }: { hotkey: string }) {
   const [win, setWin] = useState<Win>("90d");
-  const { data: res, isLoading } = useQuery(validatorHistoryQuery(hotkey, win));
+  const {
+    data: res,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(validatorHistoryQuery(hotkey, win));
   const points = useMemo<ValidatorHistoryPoint[]>(
     () => res?.data?.points ?? [],
     [res?.data?.points],
@@ -77,6 +83,8 @@ export function ValidatorHistoryChart({ hotkey }: { hotkey: string }) {
       <div className="flex items-center justify-end">{windowSelector}</div>
       {isLoading ? (
         <Skeleton className="h-32 w-full" />
+      ) : isError ? (
+        <ErrorState error={error} onRetry={() => refetch()} context="validator history" />
       ) : !hasData ? (
         <EmptyState
           title="No history yet"
