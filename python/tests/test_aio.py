@@ -73,6 +73,20 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
         await client.fetch("/api/v1/subnets", query={"limit": 5, "cursor": None})
         self.assertEqual(client._client.calls[0][2], {"limit": 5})
 
+    async def test_fetch_drops_none_elements_in_list_query_values(self):
+        # None inside a list must be dropped — not left for httpx to stringify
+        # as "" — and must match the sync client's _query_pairs output.
+        from metagraphed.client import _query_pairs
+
+        query = {"kind": ["docs", None, "openapi"]}
+        client = self._client(httpx.Response(200, json={"data": []}))
+        await client.fetch("/api/v1/surfaces", query=query)
+        expected = dict(_query_pairs(query))
+        self.assertEqual(expected, {"kind": ["docs", "openapi"]})
+        self.assertEqual(client._client.calls[0][2], expected)
+        self.assertNotIn(None, client._client.calls[0][2]["kind"])
+        self.assertNotIn("", client._client.calls[0][2]["kind"])
+
     async def test_fetch_all_collects_nested_collection_following_cursor(self):
         # List endpoints nest rows under data[meta.pagination.collection].
         page1 = httpx.Response(

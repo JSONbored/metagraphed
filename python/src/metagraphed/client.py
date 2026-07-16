@@ -183,13 +183,16 @@ def _jsonrpc_result(parsed: Any, method: str) -> Any:
 def _query_pairs(query: Mapping[str, Any]) -> List[Tuple[str, Any]]:
     """Normalize a query mapping into ``urlencode``-ready ``(key, value)`` pairs.
 
-    Drops ``None`` values and coerces Python ``bool`` to the lowercase
-    ``"true"``/``"false"`` the API expects. ``str(True)`` would otherwise send
-    ``"True"``, which the API compares ``=== "true"`` and silently ignores — so a
-    boolean filter such as ``validator_permit=True`` would be dropped and return
-    unfiltered results (diverging from both the async/httpx client and the
-    TypeScript client). Booleans nested in a sequence value — expanded by
-    ``doseq=True`` — are coerced element-wise so list-valued filters normalize too.
+    Drops ``None`` values (including ``None`` elements inside list/tuple values)
+    and coerces Python ``bool`` to the lowercase ``"true"``/``"false"`` the API
+    expects. ``str(True)`` would otherwise send ``"True"``, which the API
+    compares ``=== "true"`` and silently ignores — so a boolean filter such as
+    ``validator_permit=True`` would be dropped and return unfiltered results
+    (diverging from both the async/httpx client and the TypeScript client).
+    Booleans nested in a sequence value — expanded by ``doseq=True`` — are
+    coerced element-wise so list-valued filters normalize too. Filtering
+    ``None`` out of sequences (not stringifying them as ``"None"`` or ``""``)
+    keeps the sync and async clients on the same wire form.
     """
 
     def coerce(value: Any) -> Any:
@@ -198,7 +201,7 @@ def _query_pairs(query: Mapping[str, Any]) -> List[Tuple[str, Any]]:
         if isinstance(value, bool):
             return "true" if value else "false"
         if isinstance(value, (list, tuple)):
-            return [coerce(item) for item in value]
+            return [coerce(item) for item in value if item is not None]
         return value
 
     return [
