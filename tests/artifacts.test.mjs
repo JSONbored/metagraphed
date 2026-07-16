@@ -27,8 +27,13 @@ import {
   r2StagingRoot,
   registrySurfaceKey,
   isSurfaceStale,
+  loadSubnets,
 } from "../scripts/lib.mjs";
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import {
+  CONTRACT_VERSION,
+  API_ROUTES,
+  PRIMARY_DOMAIN,
+} from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
 // The committed digests the forged-build tests snapshot + restore (so a forged
@@ -98,6 +103,63 @@ beforeAll(() => {
 afterAll(() => {
   restorePublicTree(publicTreeSnapshot);
 });
+
+// #6250: the llms.txt family (public/llms.txt, public/llms-full.txt,
+// public/.well-known/llms.txt) is .gitignored — never committed, regenerated on
+// every build — so the committed-artifact freshness gate can't see it and there
+// is no reviewable diff. Tests that run the real build are the only regression
+// net. This is the natural home: the build+snapshot/restore harness above is the
+// only place a generated-but-uncommitted artifact can be read safely.
+test("llms.txt family is generated with the expected structure", async () => {
+  const subnets = await loadSubnets();
+  let short, wellKnown, full;
+  try {
+    runNode("scripts/build-artifacts.mjs");
+    const read = (rel) => readFileSync(path.join(PUBLIC_TREE, rel), "utf8");
+    short = read("llms.txt");
+    wellKnown = read(".well-known/llms.txt");
+    full = read("llms-full.txt");
+  } finally {
+    // build-artifacts.mjs regenerates the whole public/ tree from current
+    // source (which drifts from the committed seed), so restore it before the
+    // next test — otherwise tree-reading tests like "registry validates" run
+    // against the regenerated tree and fail. (afterAll restores again; the
+    // sibling build-running tests below restore in their own finally too.)
+    restorePublicTree(publicTreeSnapshot);
+  }
+  const base = `https://${PRIMARY_DOMAIN}`;
+
+  // public/.well-known/llms.txt is a byte-identical copy of the short index.
+  assert.equal(wellKnown, short);
+
+  // The short index carries "## Machine entrypoints" with the OpenAPI,
+  // agent-catalog, and MCP-server links.
+  assert.match(short, /^## Machine entrypoints$/m);
+  assert.ok(short.includes(`${base}/metagraph/openapi.json`), "openapi link");
+  assert.ok(
+    short.includes(`${base}/api/v1/agent-catalog`),
+    "agent-catalog link",
+  );
+  assert.ok(short.includes(`${base}/mcp`), "MCP server link");
+
+  // llms-full.txt has one "## Subnets" bullet per subnet in the registry ...
+  assert.match(full, /^## Subnets$/m);
+  const subnetsSection = full
+    .split("## Subnets")[1]
+    .split("## All API routes")[0];
+  const subnetBullets = subnetsSection.match(/^- SN\d+ /gm) ?? [];
+  assert.equal(subnetBullets.length, subnets.length);
+
+  // ... and a "## All API routes" section listing every API_ROUTES entry.
+  assert.match(full, /^## All API routes$/m);
+  const routesSection = full.split("## All API routes")[1];
+  for (const entry of API_ROUTES) {
+    assert.ok(
+      routesSection.includes(`\`${entry.method} ${entry.path}\``),
+      `llms-full.txt missing API route: ${entry.method} ${entry.path}`,
+    );
+  }
+}, 30_000);
 
 test("registry validates", () => {
   runNode("scripts/validate.mjs");
