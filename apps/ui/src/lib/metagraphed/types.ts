@@ -135,6 +135,10 @@ export interface Subnet {
   name?: string;
   symbol?: string;
   type?: "root" | "application";
+  // Wire field the /api/v1/subnets list already returns (SubnetIndexEntry),
+  // typed here so the #6270 root filter reads it without casting through the
+  // index signature below.
+  subnet_type?: "root" | "application" | string;
   participants?: number;
   tempo?: number;
   registration_block?: number;
