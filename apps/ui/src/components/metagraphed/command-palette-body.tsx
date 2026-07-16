@@ -22,6 +22,7 @@ import {
   Gauge,
   GitBranch,
   Hash,
+  History,
   KeyRound,
   Layers,
   Network,
@@ -139,6 +140,13 @@ const ROUTE_INDEX: Array<{
     to: "/docs/feeds",
     hint: "RSS, Atom, JSON Feed subscriptions",
     icon: Rss,
+    scope: "route",
+  },
+  {
+    label: "Chain events reference",
+    to: "/docs/chain-events",
+    hint: "Deep-history all-events tier",
+    icon: History,
     scope: "route",
   },
   {

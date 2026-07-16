@@ -404,7 +404,7 @@ function SiteFooter() {
           <FooterLink to="/docs/rpc">RPC</FooterLink>
           <FooterLink to="/docs/feeds">Feeds</FooterLink>
           <FooterLink to="/gaps">Gaps</FooterLink>
-          <FooterLink to="/chain-events">Chain events reference</FooterLink>
+          <FooterLink to="/docs/chain-events">Chain events reference</FooterLink>
           <FooterLink to="/agents">For agents</FooterLink>
           <FooterLink to="/about">About</FooterLink>
         </FooterCol>

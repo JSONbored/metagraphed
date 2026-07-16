@@ -1,0 +1,122 @@
+---
+title: Chain events reference
+description: How GET /api/v1/chain-events, /chain-events/stats, and /blocks/{n}/chain-events serve the Postgres deep-history all-events tier — params, response shapes, curl examples, the two-store split, and the 503 data_tier_unavailable condition.
+---
+
+The Postgres deep-history all-events tier — every raw `pallet.method` event on the chain, served by a separate data Worker (ADR 0014). This page covers the three `/chain-events` routes, how they differ from the other two "events" surfaces, and the 503 you'll get when the data tier isn't deployed.
+
+## Three "events" surfaces — pick the right one
+
+Metagraphed exposes three unrelated things named "events." They don't share a store, a shape, or a purpose.
+
+| Route                                                                 | Store                                   | Real-time?                                                   | What it returns                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/v1/events`                                                  | R2 artifact + KV pointer                | SSE, poll-on-reconnect                                       | Not chain data. A thin change feed over the _registry's own publish snapshot_ (build pointer + changelog) — one `snapshot` SSE event per (re)connect, 5-minute suggested retry. Answers "did the site's content change," not "did the chain move."                       |
+| `GET /api/v1/subnets/{netuid}/events`                                 | Postgres — `account_events`             | Near-real-time (cache: short)                                | Curated, decoded events for one subnet: a fixed allowlist of "interesting" kinds (Transfer, NetworkAdded, StakeAdded/Removed, …), attributed to the account(s) involved. Originated as a D1 tier; now served from the same Postgres instance the deep-history tier uses. |
+| `GET /api/v1/chain-events` (+ `/stats`, + `/blocks/{n}/chain-events`) | Postgres (TimescaleDB) — `chain_events` | Near-real-time (cache: short), 503 if `DATA_API` isn't bound | The raw deep-history all-events tier documented on this page: every `pallet.method` event, no kind filtering, no account attribution. Postgres-only from day one — never had a D1 equivalent.                                                                            |
+
+## The two-store split
+
+Originally a D1 near-real-time hot cache vs. a Postgres deep-history sink. That split is narrower than it used to be — read on before assuming D1 is still load-bearing here.
+
+[ADR 0013](https://github.com/JSONbored/metagraphed/blob/main/docs/adr/0013-hybrid-deployment-topology.md) originally proposed D1 as a near-real-time explorer cache (blocks/extrinsics/account_events, pruned after a few days) with Postgres as the durable, unbounded sink feeding a genuinely new tier: `chain_events`, the raw all-events firehose. [ADR 0014](https://github.com/JSONbored/metagraphed/blob/main/docs/adr/0014-chain-data-infrastructure-and-postgres-cutover.md) (accepted 2026-07-10, supersedes 0013) is the current, directly-verified snapshot of what actually shipped.
+
+As of ADR 0014, D1's write paths for `blocks`, `extrinsics`, and `account_events` are retired and those tables are dropped in production. Every one of those tiers' serving flags (`METAGRAPH_BLOCKS_SOURCE`, `METAGRAPH_EXTRINSICS_SOURCE`, `METAGRAPH_ACCOUNT_EVENTS_SOURCE`) is flipped to `"postgres"` in production, read through the same `tryPostgresTier()` helper and the same `DATA_API` service binding this page's chain-events routes use.
+
+So today, the curated explorer views and the deep-history feed both live in Postgres, served by the same Worker. What's still genuinely different between them isn't the store — it's the _table_:
+
+- The curated explorer surfaces (`/blocks/{ref}/events`, `/accounts/{ss58}/events`, `/subnets/{netuid}/events`) read `account_events` — decoded and filtered down to a fixed allowlist of "interesting" kinds (Transfer, NetworkAdded, NeuronDeregistered, StakeAdded/Removed, and roughly thirty more), attributed to the account(s) involved.
+- The deep-history tier (`/chain-events*`) reads `chain_events` — literally every `pallet.method` event the indexer decodes, no kind filtering, no account attribution. It never had a D1 form; it's been Postgres-only (TimescaleDB) from day one.
+
+## Why the same block can show two different event counts
+
+Not a bug: two different tables, two different filters, populated by the same indexer.
+
+`GET /api/v1/blocks/{n}/chain-events` (raw, unfiltered `chain_events`) and `GET /api/v1/blocks/{ref}/events` (curated, filtered `account_events`) can legitimately report different counts for the identical block. The curated feed is always a subset of the raw one — routine system/consensus events (`System.ExtrinsicSuccess`, `TransactionPayment.TransactionFeePaid`, and similar per-extrinsic bookkeeping) show up in `chain-events` but were never in scope for the curated allowlist.
+
+Don't treat a mismatch between the two as a sync bug or evidence of ingestion drift — cross-checking them for parity is comparing two different, intentionally-scoped views of the same block, not two copies of the same data.
+
+## Deployment dependency: the DATA_API binding
+
+All three routes are a proxy, not a first-party handler in this Worker.
+
+The main API Worker's `handleChainEventsProxy` (`workers/api.mjs`) forwards all three routes as-is to a separate Cloudflare Worker (`workers/data-api.mjs`, the metagraphed-data-api service) over a Worker-to-Worker service binding named `DATA_API`. That split keeps the postgres.js driver and the Hyperdrive-backed Postgres tiers out of the main Worker's bundle, which is already near its size budget.
+
+There are two distinct failure modes, with two distinct error codes — don't conflate them when triaging:
+
+- `data_tier_unavailable` — either this Worker's own `DATA_API` binding isn't wired into this deployment (503, checked before any request even reaches the data Worker), or the data Worker responded but its body couldn't be parsed as JSON (502, an unreadable upstream response).
+- `data_query_failed` (status mirrors the upstream) — the data Worker _is_ reachable and returned readable JSON, but a non-2xx status: its own `HYPERDRIVE` binding is missing (its own 503) or the query errored. The proxy rewraps whatever status/message the data Worker returned.
+
+All three routes only accept `GET` (and `HEAD`, normalized to a `GET` internally). The proxy doesn't gate the method itself — a `POST` is forwarded straight through and comes back as the data Worker's own 405, wrapped as `data_query_failed` rather than a dedicated method-not-allowed code.
+
+Every request to any of the three routes is also capped by a shared, per-client-IP rate limiter (60 requests / 60s), checked before the tier-availability check above — exceeding it returns `429 data_rate_limited` with a `retry-after: 60` header.
+
+```json title="503 · data_tier_unavailable"
+{
+  "ok": false,
+  "schema_version": 1,
+  "data": null,
+  "error": {
+    "code": "data_tier_unavailable",
+    "message": "The all-events data tier is not bound to this deployment."
+  },
+  "meta": { "contract_version": "2026-07-10.1" }
+}
+```
+
+## GET /api/v1/chain-events
+
+The recent all-events feed, newest first. Optionally scoped to one pallet/method, one block, or one extrinsic within a block; keyset-paginated for stable seeking at the head of the chain.
+
+| Param       | Where | Type              | Default | Notes                                                                                                                                                                                                                         |
+| ----------- | ----- | ----------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `limit`     | query | integer           | `50`    | 1–200. Values outside range clamp rather than error.                                                                                                                                                                          |
+| `pallet`    | query | string            | —       | Optional. Must match `^[A-Za-z][A-Za-z0-9_]{0,63}$` (1–64 ASCII letters, digits, or underscores, starting with a letter) or the request 400s.                                                                                 |
+| `method`    | query | string            | —       | Optional, same pattern as `pallet`. Requires `pallet` unless `block` is also set (avoids an unindexed global scan) — 400s otherwise.                                                                                          |
+| `block`     | query | integer           | —       | Optional. Scopes the feed to one block number.                                                                                                                                                                                |
+| `extrinsic` | query | integer           | —       | Optional. Only honored when `block` is also set — otherwise it's silently ignored, not an error.                                                                                                                              |
+| `cursor`    | query | string            | —       | Opaque `observed_at.block_number.event_index` keyset token from a prior response's `next_cursor`. Takes precedence over `before` when both are sent.                                                                          |
+| `before`    | query | integer           | —       | Legacy `block_number`-only cursor, kept for existing callers. Prefer `cursor` — it can skip same-block events at a page boundary.                                                                                             |
+| `format`    | query | `"json" \| "csv"` | `json`  | `csv` (or an `Accept: text/csv` header) downloads the page's rows as text/csv — block_number, event_index, pallet, method, phase, extrinsic_index, observed_at. The nested `args` object has no flat CSV form and is omitted. |
+
+**Response** — `{ count, next_before, next_cursor, events: ChainEvent[] }`. `next_cursor` is `null` once a page comes back shorter than `limit` (no more rows). Each `ChainEvent` is `{ block_number, event_index, pallet, method, args, phase, extrinsic_index, observed_at }`; `args` is decoded server-side (account fields render as SS58, other 32/20-byte values as 0x-hex) rather than the raw SCALE dump; `observed_at` is epoch milliseconds.
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/chain-events?pallet=SubtensorModule&method=NeuronRegistered&limit=5'
+```
+
+## GET /api/v1/chain-events/stats
+
+The pallet.method event-count distribution over a recent block window — an aggregate ("what's been happening lately"), not a row-level feed. This is what the MCP `get_chain_activity` tool mirrors.
+
+| Param    | Where | Type    | Default | Notes                                                                  |
+| -------- | ----- | ------- | ------- | ---------------------------------------------------------------------- |
+| `blocks` | query | integer | `1000`  | 1–5000, the trailing-block window measured from the current chain tip. |
+
+**Response** — `{ window_blocks, groups, activity: [{ pallet, method, count }] }`. `activity` is ordered by `count` descending (ties broken by pallet/method for a stable order under Hyperdrive's pooled connections), capped at the top 100 groups.
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/chain-events/stats?blocks=500'
+```
+
+`?format=csv` has no effect here — this route has no top-level row array to export, so a CSV request falls through to the normal JSON envelope.
+
+## GET /api/v1/blocks/\{block_number\}/chain-events
+
+Every raw event in exactly one block, in natural order. The block-level companion to `/api/v1/chain-events?block=`.
+
+| Param          | Where | Type    | Default | Notes                                                                                                                                                                              |
+| -------------- | ----- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `block_number` | path  | integer | —       | Required, digits only (no `0x` block-hash form here, unlike `/blocks/{ref}`). An unknown or not-yet-backfilled block still returns 200 with an empty `events` array — never a 404. |
+
+**Response** — `{ block_number, count, events: ChainEvent[] }`, `events` ordered by `event_index` ascending.
+
+```bash
+curl -s https://api.metagraph.sh/api/v1/blocks/5000000/chain-events
+```
+
+## Also reachable via MCP
+
+Four MCP tools mirror these routes for AI agents: `list_chain_events` (`GET /api/v1/chain-events`), `get_extrinsic_chain_events` (the same route scoped by `block` + `extrinsic`), `get_chain_activity` (`GET /api/v1/chain-events/stats`), and `get_block_chain_events` (`GET /api/v1/blocks/{n}/chain-events`). The MCP tools call the `DATA_API` Worker directly and return its bare JSON body; the REST routes above wrap the identical data in the standard `{ ok, data, meta }` envelope. Both hit the same 503 when the data tier isn't bound.
+
+<ApiSourceFooter paths={["/api/v1/chain-events", "/api/v1/chain-events/stats"]} />
