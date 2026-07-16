@@ -9,6 +9,7 @@ import {
   type TreemapMiniDatum,
 } from "@jsonbored/ui-kit";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
+import { SponsoredValidatorCallout } from "@/components/metagraphed/sponsored-validator-callout";
 
 const TOP_N = 10;
 
@@ -29,6 +30,7 @@ export function ValidatorsTableLoader({
   const { data } = useSuspenseQuery(subnetValidatorsQuery(netuid));
   const meta = data.meta;
   const validators = data.data.validators;
+  const sponsored = validators.find((v) => v.featured && v.hotkey);
 
   const stakeBars = useMemo(() => {
     return [...validators]
@@ -67,6 +69,7 @@ export function ValidatorsTableLoader({
 
   return (
     <div className="space-y-4">
+      {sponsored ? <SponsoredValidatorCallout netuid={netuid} validator={sponsored} /> : null}
       {stakeBars.length > 0 ? (
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">

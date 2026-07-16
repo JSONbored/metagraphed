@@ -5616,6 +5616,7 @@ function normalizeMetagraphNeuron(raw: unknown): MetagraphNeuron | undefined {
     registered_at_block: coerceFiniteNumber(raw.registered_at_block),
     is_immunity_period: booleanValue(raw.is_immunity_period),
     axon: coerceString(raw.axon) ?? null,
+    take: coerceFiniteNumber(raw.take) ?? null,
     // Only /validators rows carry this (#5166); booleanValue already maps an
     // absent/non-boolean cell to undefined, so metagraph/neuron-detail rows
     // (which never send it) keep the field genuinely absent, not a false.
