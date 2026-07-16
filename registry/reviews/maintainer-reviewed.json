@@ -1314,6 +1314,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/verathos.json (reviewed_at 2026-06-08T07:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 97,
+      "slug": "sn-97",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://albedo.tech/",
+        "https://github.com/unarbos/albedo",
+        "https://chat.albedo.tech/api/config"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN97. Added the official source-repo surface (previously only cited), fixed 4 missing probe blocks. The gateway source declares a no-auth GET /v1/models route, but the live host serves the King Chat SPA's HTML shell at that path instead of JSON, so it was not promoted."
+    },
+    {
       "netuid": 98,
       "slug": "sn-98",
       "decision": "maintainer-reviewed",
