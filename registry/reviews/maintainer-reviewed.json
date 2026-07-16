@@ -1274,6 +1274,19 @@
       "notes": "Root->128 accuracy audit re-review pass (#5903): the project looks fully abandoned -- website 521, GitHub org deleted (404), emission disabled, on-chain identity re-drifted to a new blank placeholder (\"wgmi\"). Added a surface for the third-party academia-archives mirror, now the only remaining copy of the source. Dead surfaces kept tracked, not removed."
     },
     {
+      "netuid": 94,
+      "slug": "sn-94",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://bitsota.ai/",
+        "https://github.com/AlveusLabs/SN94-BitSota",
+        "https://autoresearch.bitsota.com/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN94. Added website + source-repo surfaces, fixed 4 missing probe blocks. Diffed the 37-path OpenAPI schema for undiscovered public GET endpoints -- added 3 new surfaces; 2 candidates turned out to be auth-gated despite the schema saying otherwise."
+    },
+    {
       "netuid": 95,
       "slug": "actual",
       "decision": "maintainer-reviewed",
