@@ -9,7 +9,8 @@ import path from "node:path";
 import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { repoRoot } from "../scripts/lib.mjs";
+import { repoRoot, loadSubnets } from "../scripts/lib.mjs";
+import { PRIMARY_DOMAIN } from "../src/contracts.mjs";
 import { MCP_REGISTRY_NAME, MCP_SERVER_INFO } from "../src/mcp-server.mjs";
 import { mcpServerCardResponse } from "../workers/request-handlers/discovery.mjs";
 
@@ -128,5 +129,72 @@ describe("Discovery artifacts", () => {
       field("Canonical"),
       "https://api.metagraph.sh/.well-known/security.txt",
     );
+  });
+
+  test("sitemap.xml is well-formed and namespaced", async () => {
+    const xml = await fs.readFile(path.join(publicDir, "sitemap.xml"), "utf8");
+    assert.match(xml, /^<\?xml version="1\.0" encoding="UTF-8"\?>/);
+    assert.match(
+      xml,
+      /<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/,
+    );
+    assert.match(xml, /<\/urlset>\s*$/);
+    // Every <loc> is an absolute https URL under the API's primary domain.
+    const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+    assert.ok(locs.length > 0, "sitemap must contain <url> entries");
+    for (const loc of locs) {
+      assert.ok(
+        loc.startsWith(`https://${PRIMARY_DOMAIN}/`),
+        `sitemap loc is off-domain: ${loc}`,
+      );
+      assert.doesNotThrow(() => new URL(loc), `sitemap loc not a URL: ${loc}`);
+    }
+  });
+
+  test("sitemap.xml lists the fixed machine-surface URLs", async () => {
+    const xml = await fs.readFile(path.join(publicDir, "sitemap.xml"), "utf8");
+    const base = `https://${PRIMARY_DOMAIN}`;
+    for (const surface of [
+      "llms.txt",
+      "llms-full.txt",
+      "agent.md",
+      "agent-workflows.md",
+      "auth.md",
+      "metagraph/openapi.json",
+    ]) {
+      assert.ok(
+        xml.includes(`<loc>${base}/${surface}</loc>`),
+        `sitemap missing machine surface: ${surface}`,
+      );
+    }
+  });
+
+  test("sitemap.xml has exactly one agent-catalog entry per registered subnet", async () => {
+    const xml = await fs.readFile(path.join(publicDir, "sitemap.xml"), "utf8");
+    const base = `https://${PRIMARY_DOMAIN}`;
+    const subnets = await loadSubnets();
+    // Per-subnet locs are agent-catalog/{netuid}; the bare /api/v1/agent-catalog
+    // index entry (no trailing netuid) is deliberately excluded here.
+    const perSubnet = [
+      ...xml.matchAll(/<loc>[^<]*\/api\/v1\/agent-catalog\/(\d+)<\/loc>/g),
+    ]
+      .map((m) => Number(m[1]))
+      .sort((a, b) => a - b);
+    const expected = subnets.map((s) => s.netuid).sort((a, b) => a - b);
+    // One entry per subnet, no duplicates, no orphaned/off-registry netuid.
+    assert.deepEqual(perSubnet, expected);
+    for (const netuid of expected) {
+      assert.ok(
+        xml.includes(`<loc>${base}/api/v1/agent-catalog/${netuid}</loc>`),
+        `sitemap missing agent-catalog entry for SN${netuid}`,
+      );
+    }
+  });
+
+  test("robots.txt Sitemap points at sitemap.xml under the primary domain", async () => {
+    const txt = await fs.readFile(path.join(publicDir, "robots.txt"), "utf8");
+    const sitemapLine = txt.match(/^Sitemap:\s*(.+)$/im)?.[1]?.trim();
+    // Catches robots.txt and sitemap.xml drifting out of sync with each other.
+    assert.equal(sitemapLine, `https://${PRIMARY_DOMAIN}/sitemap.xml`);
   });
 });
