@@ -1,10 +1,11 @@
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
-import { createOpenAPIPage } from "fumadocs-openapi/ui";
+import { createOpenAPIPageBase } from "fumadocs-openapi/ui/base";
 import type { OpenAPIPageProps_Preloaded } from "fumadocs-openapi/ui";
 import type { GeneratedPageProps } from "fumadocs-openapi";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { useOpenAPIPreload } from "@/lib/openapi-preload-context";
+import { openapiShikiFactory } from "@/lib/openapi-shiki";
 
 // The component fumadocs-openapi's generateFiles() output references as
 // `props.components.APIPage` (or its old v10 name, OpenAPIPage) -- every
@@ -13,7 +14,21 @@ import { useOpenAPIPreload } from "@/lib/openapi-preload-context";
 // generated files are meant to stay framework-agnostic. One shared instance
 // here (not per-page) keeps its internal caches/shiki highlighter warm
 // across operation pages.
-const RawAPIPage = createOpenAPIPage();
+//
+// createOpenAPIPageBase (fumadocs-openapi/ui/base), not the createOpenAPIPage
+// convenience wrapper (fumadocs-openapi/ui) -- that wrapper's own source
+// statically references fumadocs-core/highlight/shiki/full's
+// defaultShikiFactory as its fallback (`options.shiki ?? defaultShikiFactory`),
+// so Rollup keeps that binding -- and the unrestricted `import("shiki")`
+// inside it -- reachable and bundled regardless of which branch actually
+// runs at runtime, even when a shiki option is always supplied. base.js's
+// own comment confirms this is the intended escape hatch: "Create
+// <OpenAPIPage /> (a client component) without the full Shiki bundle."
+// Passing openapiShikiFactory here (see that file's own comment) is what
+// actually keeps shiki's ~180-language catalog out of the Nitro SSR bundle
+// Cloudflare Workers Builds OOM'd on -- confirmed via a local repro
+// constraining Node to the same ~2GB heap the build container failed at.
+const RawAPIPage = createOpenAPIPageBase({ shiki: openapiShikiFactory });
 
 // fumadocs-openapi's real component requires a `preloaded` (or `payload`)
 // prop with the actual bundled schema -- it never fetches `document` (a
