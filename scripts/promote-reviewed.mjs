@@ -5,6 +5,7 @@ import {
   readJson,
   repoRoot,
   buildSubnetOverlaysByNetuid,
+  promoteCurationLevel,
   stableStringify,
   writeJson,
 } from "./lib.mjs";
@@ -50,12 +51,16 @@ for (const decision of decisionsDocument.decisions || []) {
     review_state: decision.decision,
     reviewed_at: decision.reviewed_at,
   };
-  if (
-    decision.decision === "maintainer-reviewed" &&
-    nextOverlay.curation.level === "machine-verified"
-  ) {
-    nextOverlay.curation.level = "maintainer-reviewed";
-  }
+  // Materialize the decision onto curation.level via the shared contract:
+  // promote any lower pre-tier to maintainer-reviewed, leave a ceiling tier
+  // (adapter-backed / already maintainer-reviewed) untouched. Previously only a
+  // machine-verified starting level was promoted, so a decision recorded against
+  // any other pre-tier silently updated review_state/reviewed_at without ever
+  // bumping the level -- the SN59/SN107 drift class (#5992).
+  nextOverlay.curation.level = promoteCurationLevel(
+    nextOverlay.curation.level,
+    decision.decision,
+  );
 
   const changed =
     stableStringify(nextOverlay) !== stableStringify(entry.overlay);
