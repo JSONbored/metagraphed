@@ -162,4 +162,12 @@ describe("formatTao", () => {
     expect(formatTao(1_000_000)).toBe("1.00M τ"); // lower boundary of M-tier
     expect(formatTao(2_500_000)).toBe("2.50M τ");
   });
+
+  it("mirrors the magnitude tiers for negative amounts, preserving the sign", () => {
+    expect(formatTao(-0.5)).toBe("-0.5000 τ"); // negative dust
+    expect(formatTao(-256.5)).toBe("-256.50 τ"); // negative whole-unit
+    expect(formatTao(-12_345)).toBe("-12.3k τ"); // negative k-tier
+    expect(formatTao(-1_000_000)).toBe("-1.00M τ"); // negative M-tier boundary
+    expect(formatTao(-2_500_000)).toBe("-2.50M τ");
+  });
 });

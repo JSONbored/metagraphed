@@ -115,7 +115,10 @@ function sum(values: number[]): number {
 }
 
 function fmtTaoSigned(v: number): string {
-  return v < 0 ? `-${formatTao(-v)}` : `+${formatTao(v)}`;
+  // formatTao now tiers negative amounts itself (#6019) and carries the "-",
+  // so a negative value is formatted directly; only the explicit "+" for a
+  // non-negative value is prepended here.
+  return v < 0 ? formatTao(v) : `+${formatTao(v)}`;
 }
 
 function ExplorerPage() {

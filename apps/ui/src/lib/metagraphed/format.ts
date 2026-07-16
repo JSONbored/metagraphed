@@ -14,9 +14,13 @@ export function formatNumber(n: number | undefined | null, fallback = "—"): st
  */
 export function formatTao(v?: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
-  if (v >= 1) return `${v.toFixed(2)} τ`;
+  // Tier by magnitude so a signed amount (e.g. a negative net flow) gets the
+  // same M/k/2dp/4dp tiering as its positive counterpart; the sign is preserved
+  // by formatting the original `v`, never `Math.abs(v)`.
+  const magnitude = Math.abs(v);
+  if (magnitude >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
+  if (magnitude >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
+  if (magnitude >= 1) return `${v.toFixed(2)} τ`;
   return `${v.toFixed(4)} τ`;
 }
 
