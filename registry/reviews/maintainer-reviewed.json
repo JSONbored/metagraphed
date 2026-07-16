@@ -511,6 +511,20 @@
       "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website, source repository, and docs. Diffed the full Cartha Verifier OpenAPI schema (58 paths): most are 401/403-gated in practice despite the schema declaring no security scheme, and the remaining unauthenticated GETs are either already tracked or require query parameters with no stable canonical value. Added one new genuine no-auth public endpoint, GET /pools."
     },
     {
+      "netuid": 36,
+      "slug": "sn-36",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T01:05:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://eirel.ai/",
+        "https://github.com/RendixNetwork/eirel-ai",
+        "https://eirel.ai/docs",
+        "https://api.eirel.ai/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full owner-api OpenAPI schema (121 paths): the admin/internal/operators/validators/serving/submissions-prefixed routes all live-tested as 401-gated despite the schema declaring no security scheme. Found and added 5 new genuine no-auth public endpoints: /metrics, /v1/weights, /api/v1/dashboard/submissions/queued, /v1/workflow-corpus, and /v1/workflow-composition/registry."
+    },
+    {
       "netuid": 39,
       "slug": "sn-39",
       "decision": "maintainer-reviewed",

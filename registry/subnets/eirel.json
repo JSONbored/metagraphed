@@ -1,11 +1,23 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "llm-evaluation",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "candidate-discovered",
-    "review_state": "unreviewed"
+    "gap_notes": ["No verified SSE/event stream yet."],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T01:05:00.000Z",
+    "source_count": 18,
+    "verified_at": "2026-07-16T01:05:00.000Z"
   },
   "name": "Eirel",
   "netuid": 36,
+  "notes": "First maintainer-reviewed pass for SN36 (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 11 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full owner-api OpenAPI schema (121 paths): the /v1/admin/*, /v1/internal/*, /v1/operators/*, /v1/validators/*, /v1/serving/*, and /v1/submissions/* prefixes all live-tested as 401-gated despite the schema declaring no security scheme (a documentation gap on the operator's side, not a registry concern). Found and added 5 new genuine no-auth public endpoints: /metrics, /v1/weights, /api/v1/dashboard/submissions/queued, /v1/workflow-corpus, and /v1/workflow-composition/registry.",
   "schema_version": 1,
   "slug": "sn-36",
   "social": {
@@ -16,11 +28,53 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-36-eirel-website",
+      "kind": "website",
+      "name": "Eirel website",
+      "notes": "Official Eirel website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "source_urls": ["https://github.com/RendixNetwork/eirel-ai"],
+      "url": "https://eirel.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-36-eirel-source-repo",
+      "kind": "source-repo",
+      "name": "Eirel source repository",
+      "notes": "Official Eirel (SN36) source repository, in the RendixNetwork GitHub org.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "source_urls": ["https://eirel.ai/"],
+      "url": "https://github.com/RendixNetwork/eirel-ai"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-36-eirel-docs",
       "kind": "docs",
       "name": "Eirel documentation",
       "notes": "Official Eirel documentation (headed \"Eirel Documentation — Subnet 36 on Bittensor\"), linked as \"Docs\" from the homepage navigation and footer.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -37,6 +91,12 @@
       "kind": "dashboard",
       "name": "Eirel leaderboard",
       "notes": "Official Eirel leaderboard dashboard on the project's own subdomain, linked as \"Leaderboard\" from the homepage.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -53,6 +113,12 @@
       "kind": "docs",
       "name": "Eirel whitepaper",
       "notes": "Official Eirel whitepaper (application/pdf), linked as \"Whitepaper\" from the homepage and footer.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -69,6 +135,12 @@
       "kind": "openapi",
       "name": "Eirel owner-api OpenAPI spec",
       "notes": "Machine-readable OpenAPI 3.1 spec (owner-api, 121 paths) served on the project's own api.eirel.ai host; documents the public dashboard and metagraph read endpoints registered below.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -87,6 +159,12 @@
       "kind": "subnet-api",
       "name": "Eirel network overview",
       "notes": "Public dashboard summary (miner/validator/family counts, current run) that self-reports \"netuid\": 36 and \"network\": \"finney\"; GET /api/v1/dashboard/overview in the OpenAPI spec.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -103,6 +181,12 @@
       "kind": "subnet-api",
       "name": "Eirel evaluation runs",
       "notes": "Public feed of Eirel evaluation runs (id, sequence, status, schedule window); GET /api/v1/dashboard/runs in the OpenAPI spec.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -119,6 +203,12 @@
       "kind": "subnet-api",
       "name": "Eirel metagraph status",
       "notes": "Public metagraph status for netuid 36 on finney (validator/miner counts, timestamp); GET /v1/metagraph/status in the OpenAPI spec.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -135,6 +225,12 @@
       "kind": "data-artifact",
       "name": "Eirel workflow specs",
       "notes": "Public no-auth JSON catalog of Eirel's evaluation workflow specifications (workflow_spec_id, class, description, node graph); GET /v1/workflow-specs in the OpenAPI spec. Distinct endpoint from the registered /api/v1/dashboard/* and /v1/metagraph/status routes.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -151,6 +247,12 @@
       "kind": "data-artifact",
       "name": "Eirel evaluation environment windows",
       "notes": "Public no-auth JSON of Eirel's active evaluation environment windows per capability (capability, family_id, enabled, min_completeness, weight, evaluation_split, window membership version); GET /v1/env-windows in the OpenAPI spec. Distinct endpoint from the registered /api/v1/dashboard/*, /v1/metagraph/status, and /v1/workflow-specs routes.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -167,6 +269,12 @@
       "kind": "subnet-api",
       "name": "Eirel API healthz",
       "notes": "Public no-auth GET /healthz on api.eirel.ai returning Eirel owner-api liveness JSON (observed: {\"status\":\"ok\",\"mode\":\"managed-execution\",\"checks\":{\"database\":\"ok\",\"redis\":\"ok\"}}). Documented as GET /healthz in the subnet OpenAPI spec alongside the registered dashboard and metagraph subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -183,6 +291,12 @@
       "kind": "subnet-api",
       "name": "Eirel current run API",
       "notes": "Public no-auth GET /v1/runs/current on api.eirel.ai returning the active benchmark run status. Documented in the subnet OpenAPI on the same host as existing Eirel API surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eirel",
       "public_safe": true,
       "review": {
@@ -235,6 +349,96 @@
       },
       "source_urls": ["https://api.eirel.ai/v1/runs"],
       "url": "https://api.eirel.ai/v1/runs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-36-eirel-metrics",
+      "kind": "subnet-api",
+      "name": "Eirel Prometheus metrics",
+      "notes": "Public no-auth GET /metrics on api.eirel.ai returning JSON-formatted operational metrics. Documented as GET /metrics in the subnet's own OpenAPI schema. Distinct from the already-registered dashboard/metagraph/health endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/metrics"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-36-eirel-weights",
+      "kind": "subnet-api",
+      "name": "Eirel current weights",
+      "notes": "Public no-auth GET /v1/weights on api.eirel.ai returning the current run's miner weight assignments and per-family winners (run_id, hotkey-keyed weights, family_winners with official_family_score). Documented as GET /v1/weights in the subnet's own OpenAPI schema. Distinct from the already-registered runs and dashboard endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-36-eirel-submissions-queued",
+      "kind": "subnet-api",
+      "name": "Eirel queued submissions",
+      "notes": "Public no-auth GET /api/v1/dashboard/submissions/queued on api.eirel.ai returning the queue of miner agent submissions awaiting evaluation (submission_id, hotkey, family_id, agent_name/version, artifact hash, status). Documented as GET /api/v1/dashboard/submissions/queued in the subnet's own OpenAPI schema; the sibling /v1/submissions/current, /mine, and /pool routes on the same host require auth (401, live-tested) and are not tracked.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/api/v1/dashboard/submissions/queued"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-36-eirel-workflow-corpus",
+      "kind": "data-artifact",
+      "name": "Eirel workflow corpus",
+      "notes": "Public no-auth GET /v1/workflow-corpus on api.eirel.ai returning the evaluation workflow corpus manifest (corpus_version, workflow_spec_count, public_slice_count). Documented as GET /v1/workflow-corpus in the subnet's own OpenAPI schema; distinct from the already-registered workflow-specs endpoint. At review time the endpoint reported a not-yet-populated manifest (valid: false, workflow_spec_count: 0) -- tracked as the real, documented public interface regardless of its current data state.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/workflow-corpus"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-36-eirel-workflow-composition-registry",
+      "kind": "data-artifact",
+      "name": "Eirel workflow composition registry",
+      "notes": "Public no-auth GET /v1/workflow-composition/registry on api.eirel.ai returning the registry of composed evaluation workflow specs (per-family node maps and selection reasons). Documented as GET /v1/workflow-composition/registry in the subnet's own OpenAPI schema; the sibling /v1/internal/workflow-composition/registry route requires auth (401, live-tested) and is not tracked.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/workflow-composition/registry"
     }
   ],
   "website_url": "https://eirel.ai/"
