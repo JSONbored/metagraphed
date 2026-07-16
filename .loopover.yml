@@ -58,6 +58,12 @@ gate:
 settings:
   reviewEvasionProtection: close
 
+  # Config-as-code backfill (#6442): carries this repo's existing effective values forward now that
+  # these fields are moving off the dashboard's repository_settings row and onto config-as-code.
+  commentMode: all_prs
+  checkRunDetailLevel: standard
+  includeMaintainerAuthors: true
+
   # Linked-issue label propagation (#4000): a PR closing an issue inherits that issue's point-bearing
   # gittensor:* label, instead of the PR's own label being decided purely by commit-title regex. Mirrors
   # the block already live on JSONbored/gittensory (#3903). bug/feature trust a maintainer-authored linked
