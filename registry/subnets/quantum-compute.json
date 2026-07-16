@@ -15,14 +15,14 @@
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "reviewed_at": "2026-07-16T02:50:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T10:10:00.000Z"
+    "verified_at": "2026-07-16T02:50:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/48",
   "name": "Quantum Compute",
   "netuid": 48,
-  "notes": "Reviewed overlay for SN48 using the official qBittensor Labs website and Quantum Compute source repository.",
+  "notes": "Reviewed overlay for SN48 using the official qBittensor Labs website and Quantum Compute source repository. This pass fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Re-checked for an OpenAPI schema (qbittensorlabs.com and openquantum.com both without one) -- gap_notes remain accurate. All 5 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-48",
   "social": {
@@ -74,6 +74,12 @@
       "kind": "subnet-api",
       "name": "Quantum Compute health API",
       "notes": "Public no-auth GET /api/health on www.qbittensorlabs.com returning JSON liveness (observed: {\"status\":\"ok\"}). Served on the official qBittensor Labs website host alongside the existing website and source-repo surfaces for SN48.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "qbittensor-labs",
       "public_safe": true,
       "review": {
@@ -93,6 +99,12 @@
       "kind": "data-artifact",
       "name": "Quantum Compute minimum compute requirements",
       "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official qbittensor-labs/quantum-compute repository as min_compute.yml. Documents SN48 operator CPU/GPU/memory/storage/network floors.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "qbittensor-labs",
       "public_safe": true,
       "review": {
@@ -112,6 +124,12 @@
       "kind": "docs",
       "name": "Open Quantum documentation portal",
       "notes": "Public no-auth official documentation portal for Open Quantum, the platform through which SN48 Quantum Compute is accessed. The official SN48 repository (qbittensor-labs/quantum-compute, GitHub description 'SN 48 Quantum Compute') names 'Subnet 48' and directs users to OpenQuantum.com in its README, and the repo homepage www.qbittensorlabs.com/quantum links the same. Covers Getting Started, the Python SDK, Qiskit/PennyLane plugins, and the API reference for submitting quantum circuits to the subnet's backends.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "qbittensor-labs",
       "public_safe": true,
       "review": {
