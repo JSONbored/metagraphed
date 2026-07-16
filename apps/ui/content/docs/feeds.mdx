@@ -39,8 +39,28 @@ Every param composes. Use `?since=` for incremental polling and `?tag=` to turn 
 | `?until=` | `<ISO-8601>` | Only items at or before that instant. A bare calendar date is inclusive of the whole UTC day (end-of-day), symmetric with `since`. Malformed input is a 400.  |
 | `?limit=` | `1..50`      | Cap the number of returned items (default and hard cap 50). A larger value clamps; a non-integer or < 1 is a 400.                                             |
 
-```bash
+<Callout title="50 items is a hard cap">
+  `?limit=` clamps at 50 regardless of what you pass — there's no way to get more in one response.
+  Poll with `?since=` for anything beyond that instead of raising the limit.
+</Callout>
+
+Feeds aren't part of the typed `@jsonbored/metagraphed` / `metagraphed` SDKs — they're plain content-negotiated HTTP, so any HTTP client works:
+
+```bash tab="cURL"
 curl -s 'https://api.metagraph.sh/api/v1/feeds/registry.json?limit=10'
+```
+
+```js tab="JavaScript"
+const res = await fetch("https://api.metagraph.sh/api/v1/feeds/registry.json?limit=10");
+const feed = await res.json();
+```
+
+```python tab="Python"
+from urllib.request import urlopen
+import json
+
+with urlopen("https://api.metagraph.sh/api/v1/feeds/registry.json?limit=10") as res:
+    feed = json.load(res)
 ```
 
 Responses are cached for 600s and capped at 50 items. Browse the same data: [Gaps](/gaps). Machine index: [For agents](/agents).
