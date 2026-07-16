@@ -27,6 +27,7 @@ import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
 import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
+import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
 import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.index'
 import { Route as AccountsIndexRouteImport } from './routes/accounts.index'
@@ -132,6 +133,11 @@ const ExtrinsicsIndexRoute = ExtrinsicsIndexRouteImport.update({
   path: '/extrinsics/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EventsIndexRoute = EventsIndexRouteImport.update({
+  id: '/events/',
+  path: '/events/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlocksIndexRoute = BlocksIndexRouteImport.update({
   id: '/blocks/',
   path: '/blocks/',
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/accounts/': typeof AccountsIndexRoute
   '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
+  '/events/': typeof EventsIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/runtime/': typeof RuntimeIndexRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/accounts': typeof AccountsIndexRoute
   '/admin-changes': typeof AdminChangesIndexRoute
   '/blocks': typeof BlocksIndexRoute
+  '/events': typeof EventsIndexRoute
   '/extrinsics': typeof ExtrinsicsIndexRoute
   '/providers': typeof ProvidersIndexRoute
   '/runtime': typeof RuntimeIndexRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/accounts/': typeof AccountsIndexRoute
   '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
+  '/events/': typeof EventsIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/runtime/': typeof RuntimeIndexRoute
@@ -334,6 +343,7 @@ export interface FileRouteTypes {
     | '/accounts/'
     | '/admin-changes/'
     | '/blocks/'
+    | '/events/'
     | '/extrinsics/'
     | '/providers/'
     | '/runtime/'
@@ -368,6 +378,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/admin-changes'
     | '/blocks'
+    | '/events'
     | '/extrinsics'
     | '/providers'
     | '/runtime'
@@ -402,6 +413,7 @@ export interface FileRouteTypes {
     | '/accounts/'
     | '/admin-changes/'
     | '/blocks/'
+    | '/events/'
     | '/extrinsics/'
     | '/providers/'
     | '/runtime/'
@@ -437,6 +449,7 @@ export interface RootRouteChildren {
   AccountsIndexRoute: typeof AccountsIndexRoute
   AdminChangesIndexRoute: typeof AdminChangesIndexRoute
   BlocksIndexRoute: typeof BlocksIndexRoute
+  EventsIndexRoute: typeof EventsIndexRoute
   ExtrinsicsIndexRoute: typeof ExtrinsicsIndexRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
   RuntimeIndexRoute: typeof RuntimeIndexRoute
@@ -574,6 +587,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExtrinsicsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/events/': {
+      id: '/events/'
+      path: '/events'
+      fullPath: '/events/'
+      preLoaderRoute: typeof EventsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blocks/': {
       id: '/blocks/'
       path: '/blocks'
@@ -701,6 +721,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsIndexRoute: AccountsIndexRoute,
   AdminChangesIndexRoute: AdminChangesIndexRoute,
   BlocksIndexRoute: BlocksIndexRoute,
+  EventsIndexRoute: EventsIndexRoute,
   ExtrinsicsIndexRoute: ExtrinsicsIndexRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
   RuntimeIndexRoute: RuntimeIndexRoute,
