@@ -29,6 +29,7 @@ import {
   slugify,
   stableStringify,
   subnetSurfaceKey,
+  findUnmaterializedMaintainerReviews,
 } from "./lib.mjs";
 import {
   R2_STAGING_RELATIVE_ROOT,
@@ -1593,6 +1594,25 @@ for (const subnet of subnets) {
     );
   }
 }
+
+// Forward direction (#5992): the reverse gate above only enforces that a
+// maintainer-reviewed LEVEL has a backing decision — never that a recorded
+// decision actually PRODUCED the level. That let a decision sit in
+// maintainer-reviewed.json while the subnet's own overlay stayed at a lower
+// pre-tier (community-seeded etc.), invisibly, because promote-reviewed.mjs only
+// promoted a machine-verified starting level (the SN59/SN107 drift). Assert every
+// recorded maintainer-reviewed decision materialized onto a ceiling trust tier.
+const subnetsByNetuidForReview = new Map(subnets.map((s) => [s.netuid, s]));
+const unmaterializedReviews = findUnmaterializedMaintainerReviews(
+  reviewDecisionsDocument.decisions || [],
+  subnetsByNetuidForReview,
+);
+assert(
+  unmaterializedReviews.length === 0,
+  `maintainer-reviewed decision(s) recorded in registry/reviews/maintainer-reviewed.json but not materialized on the subnet overlay (run 'npm run promote-reviewed -- --write'): ${unmaterializedReviews
+    .map((v) => `${v.slug} (netuid ${v.netuid}, level "${v.level}")`)
+    .join(", ")}`,
+);
 
 // Identity guardrail (the "Nodexo" class): a curated overlay's name matching
 // the ON-CHAIN identity of a DIFFERENT netuid than the one it is keyed to is a

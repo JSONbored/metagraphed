@@ -2407,3 +2407,50 @@ export {
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
 } from "./lib/endpoint-artifacts.mjs";
+
+// The two terminal trust-tier "ceiling" levels. The CurationLevel enum documents
+// a "maintainer-reviewed / adapter-backed ceiling" (schemas/api-components), so a
+// maintainer-reviewed decision promotes any lower pre-tier to maintainer-reviewed
+// but must NOT downgrade an adapter-backed overlay (first-party adapter
+// provenance) nor re-touch one already at maintainer-reviewed. (#5992)
+export const CEILING_TRUST_LEVELS = new Set([
+  "maintainer-reviewed",
+  "adapter-backed",
+]);
+
+// The curation.level a maintainer-reviewed decision materializes for an overlay
+// currently at `currentLevel`: promote any non-ceiling pre-tier
+// (native / candidate-discovered / community-seeded / machine-verified) to
+// maintainer-reviewed, per docs/curation-playbook.md's "reached ONLY by adding a
+// decision" contract; leave a ceiling level (adapter-backed / already
+// maintainer-reviewed) unchanged. A non-maintainer-reviewed decision never moves
+// the level. (#5992 — the bug was that only a machine-verified starting level was
+// promoted, so decisions against other pre-tiers silently never materialized.)
+export function promoteCurationLevel(currentLevel, decisionKind) {
+  if (decisionKind !== "maintainer-reviewed") return currentLevel;
+  if (CEILING_TRUST_LEVELS.has(currentLevel)) return currentLevel;
+  return "maintainer-reviewed";
+}
+
+// Forward-direction drift check (#5992): every recorded maintainer-reviewed
+// decision must have actually materialized on its subnet overlay — i.e. the
+// overlay sits at a ceiling trust tier (maintainer-reviewed or adapter-backed).
+// Returns the decisions whose overlay level is still a lower pre-tier (the drift
+// class that left SN59/SN107 with a recorded decision but an unpromoted level).
+// A decision for a netuid with no overlay is skipped (a separate concern).
+export function findUnmaterializedMaintainerReviews(
+  decisions,
+  subnetsByNetuid,
+) {
+  const violations = [];
+  for (const decision of decisions || []) {
+    if (decision.decision !== "maintainer-reviewed") continue;
+    const subnet = subnetsByNetuid.get(decision.netuid);
+    if (!subnet) continue;
+    const level = subnet.curation?.level;
+    if (!CEILING_TRUST_LEVELS.has(level)) {
+      violations.push({ netuid: decision.netuid, slug: subnet.slug, level });
+    }
+  }
+  return violations;
+}
