@@ -15,6 +15,7 @@ import {
   ArrowRightLeft,
   Bot,
   Braces,
+  BookOpen,
   Compass,
   Copy,
   ExternalLink,
@@ -40,6 +41,7 @@ import { searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { getDocsNav } from "@/lib/docs-nav.functions";
 import {
   CommandDialog,
   CommandEmpty,
@@ -70,13 +72,31 @@ import {
   trackAction,
 } from "@/lib/metagraphed/palette-analytics";
 
-const ROUTE_INDEX: Array<{
+interface RouteEntry {
   label: string;
   to: string;
   hint?: string;
   icon: typeof Compass;
   scope: "route";
-}> = [
+}
+
+// Docs pages that want a bespoke icon instead of the generic BookOpen
+// fallback -- cosmetic only. Unlike the old hardcoded ROUTE_INDEX entries,
+// leaving a page out of this map never hides it from the palette (see
+// docsRoutes below), it just renders with the default icon.
+const DOCS_ICON_OVERRIDES: Record<string, typeof Compass> = {
+  "/docs/graphql": Braces,
+  "/docs/rpc": Zap,
+  "/docs/feeds": Rss,
+  "/docs/chain-events": History,
+};
+
+// Non-docs routes, in display order. The docs subset used to be hand-listed
+// here too, but that's exactly how /docs/chain-events silently went missing
+// from the palette for a while -- it's now sourced live via getDocsNav()
+// (see docsRoutes in CommandPaletteBody) and spliced in between "Schemas"
+// and "Gaps" below.
+const STATIC_ROUTES_HEAD: RouteEntry[] = [
   { label: "Home", to: "/", hint: "Registry overview", icon: Compass, scope: "route" },
   {
     label: "Subnets",
@@ -121,34 +141,9 @@ const ROUTE_INDEX: Array<{
     icon: FileJson,
     scope: "route",
   },
-  {
-    label: "GraphQL",
-    to: "/docs/graphql",
-    hint: "Schema, root queries, limits",
-    icon: Braces,
-    scope: "route",
-  },
-  {
-    label: "RPC",
-    to: "/docs/rpc",
-    hint: "Proxy, pools, endpoints, usage",
-    icon: Zap,
-    scope: "route",
-  },
-  {
-    label: "Feeds",
-    to: "/docs/feeds",
-    hint: "RSS, Atom, JSON Feed subscriptions",
-    icon: Rss,
-    scope: "route",
-  },
-  {
-    label: "Chain events reference",
-    to: "/docs/chain-events",
-    hint: "Deep-history all-events tier",
-    icon: History,
-    scope: "route",
-  },
+];
+
+const STATIC_ROUTES_TAIL: RouteEntry[] = [
   {
     label: "Gaps",
     to: "/gaps",
@@ -349,20 +344,48 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
     return map;
   }, [hits]);
 
+  // Docs pages -- fetched once per palette session (they're static content
+  // baked in at build time, so an Infinity staleTime is correct here, unlike
+  // the API-freshness-driven STALE_* constants used by the search queries
+  // above).
+  const { data: docsNav } = useQuery({
+    queryKey: ["docs-nav"],
+    queryFn: () => getDocsNav(),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+  const docsRoutes = useMemo<RouteEntry[]>(
+    () =>
+      (docsNav ?? []).map((page) => ({
+        label: page.title,
+        to: page.url,
+        hint: page.description || undefined,
+        icon: DOCS_ICON_OVERRIDES[page.url] ?? BookOpen,
+        scope: "route",
+      })),
+    [docsNav],
+  );
+
+  const allRoutes = useMemo<RouteEntry[]>(
+    () => [...STATIC_ROUTES_HEAD, ...docsRoutes, ...STATIC_ROUTES_TAIL],
+    [docsRoutes],
+  );
+
   const filteredRoutes = useMemo(() => {
     if (scope !== "all" && scope !== ("route" as SearchScope)) return [];
-    if (!debounced) return ROUTE_INDEX;
+    if (!debounced) return allRoutes;
     const n = debounced.toLowerCase();
-    return ROUTE_INDEX.filter(
-      (r) => r.label.toLowerCase().includes(n) || (r.hint ?? "").toLowerCase().includes(n),
-    ).sort((a, b) => {
-      const an = a.label.toLowerCase();
-      const bn = b.label.toLowerCase();
-      const ax = an === n ? 3 : an.startsWith(n) ? 2 : 1;
-      const bx = bn === n ? 3 : bn.startsWith(n) ? 2 : 1;
-      return bx - ax;
-    });
-  }, [debounced, scope]);
+    return allRoutes
+      .filter((r) => r.label.toLowerCase().includes(n) || (r.hint ?? "").toLowerCase().includes(n))
+      .sort((a, b) => {
+        const an = a.label.toLowerCase();
+        const bn = b.label.toLowerCase();
+        const ax = an === n ? 3 : an.startsWith(n) ? 2 : 1;
+        const bx = bn === n ? 3 : bn.startsWith(n) ? 2 : 1;
+        return bx - ax;
+      });
+  }, [debounced, scope, allRoutes]);
 
   const navigateTargets = useMemo(() => {
     if (!debounced) return [];
