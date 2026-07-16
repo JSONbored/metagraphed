@@ -1075,6 +1075,15 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/mvtrx.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 80,
+      "slug": "sn-80",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": ["https://github.com/dogelayer-ai/dogelayer"],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN80. Removed a duplicate types.json surface (byte-identical content tracked twice under different framing), added the source-repo surface, and added the F2Pool upstream mining-pool observer dashboard linked from the official README. No official website URL found."
+    },
+    {
       "netuid": 81,
       "slug": "sn-81",
       "decision": "maintainer-reviewed",
