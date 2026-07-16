@@ -8657,8 +8657,9 @@ export const MCP_TOOLS = [
       "with its kind, layer, provider, subnet (netuid), publication state, and " +
       "probe-derived status/latency/score. Use it to discover live endpoints " +
       "network-wide. Optionally filter by kind/layer/netuid/provider/" +
-      "publication_state/status/pool_eligible and page with limit/offset — the " +
-      "full catalog can be large. Mirrors GET /api/v1/endpoints.",
+      "publication_state/status/pool_eligible, bound by min_/max_latency_ms " +
+      "and min_/max_score, and page with limit/offset — the full catalog can " +
+      "be large. Mirrors GET /api/v1/endpoints.",
     inputSchema: {
       type: "object",
       properties: {
@@ -8692,6 +8693,22 @@ export const MCP_TOOLS = [
           type: "boolean",
           description: "Only endpoints eligible (or not) for RPC pooling.",
         },
+        min_latency_ms: {
+          type: "number",
+          description: "Only endpoints with probe-derived latency_ms >= this.",
+        },
+        max_latency_ms: {
+          type: "number",
+          description: "Only endpoints with probe-derived latency_ms <= this.",
+        },
+        min_score: {
+          type: "number",
+          description: "Only endpoints with probe-derived score >= this.",
+        },
+        max_score: {
+          type: "number",
+          description: "Only endpoints with probe-derived score <= this.",
+        },
         limit: {
           type: "integer",
           description: "Max endpoints to return. Omit for the full list.",
@@ -8717,6 +8734,17 @@ export const MCP_TOOLS = [
       );
       const status = optionalEnum(args, "status", QUERY_ENUMS.healthStatus);
       const poolEligible = optionalNullableBoolean(args, "pool_eligible");
+      // Inclusive numeric range bounds, the MCP mirror of REST's
+      // rangeFilters: ["latency_ms", "score"] on the endpoints collection
+      // (contracts.mjs) — same shape as LIST_SUBNETS_RANGE_BOUNDS.
+      const rangeBounds = [
+        { arg: "min_latency_ms", field: "latency_ms", op: "min" },
+        { arg: "max_latency_ms", field: "latency_ms", op: "max" },
+        { arg: "min_score", field: "score", op: "min" },
+        { arg: "max_score", field: "score", op: "max" },
+      ]
+        .filter(({ arg }) => Number.isFinite(args?.[arg]))
+        .map(({ field, op, arg }) => ({ field, op, limit: args[arg] }));
       const limit = optionalPositiveInt(args, "limit");
       const offset = optionalNonNegativeInt(args, "offset") ?? 0;
       let data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
@@ -8724,6 +8752,7 @@ export const MCP_TOOLS = [
       // artifact serving path): the build-time endpoints.json bakes stale
       // operational health, so replace it from the 15-minute cron snapshot
       // before filtering/pagination -- status/pool_eligible filters below
+      // (and the latency_ms/score bounds, which come from this same overlay)
       // must see live values, not the baked ones.
       if (
         Array.isArray(data?.endpoints) &&
@@ -8745,7 +8774,12 @@ export const MCP_TOOLS = [
           (publicationState === null ||
             e.publication_state === publicationState) &&
           (status === null || e.status === status) &&
-          (poolEligible === null || e.pool_eligible === poolEligible),
+          (poolEligible === null || e.pool_eligible === poolEligible) &&
+          rangeBounds.every(({ field, op, limit: bound }) => {
+            const value = e[field];
+            if (typeof value !== "number") return false;
+            return op === "min" ? value >= bound : value <= bound;
+          }),
       );
       const page =
         limit === null
