@@ -60,11 +60,6 @@ export function sortBy<T>(
   });
 }
 
-export function paginate<T>(rows: T[], page: number, pageSize: number): T[] {
-  const start = (page - 1) * pageSize;
-  return rows.slice(start, start + pageSize);
-}
-
 /**
  * Join a list of rows with a per-key health map, overlaying `health` and
  * back-filling `updated_at` from the probe's `last_checked` when the row lacks

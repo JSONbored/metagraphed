@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { joinEconomics, joinHealth, matchesQuery, sortBy, paginate } from "./url-state";
+import { joinEconomics, joinHealth, matchesQuery, sortBy } from "./url-state";
 
 describe("matchesQuery", () => {
   it("matches everything for an empty needle", () => {
@@ -157,19 +157,5 @@ describe("joinEconomics", () => {
     expect(out[0]).toMatchObject({ emission_share: 0.0125 });
     // No entry for netuid 2 → passes through unchanged, "—" in the cell.
     expect(out[1]).toBe(rows[1]);
-  });
-});
-
-describe("paginate", () => {
-  const rows = [1, 2, 3, 4, 5, 6, 7];
-
-  it("slices the requested page", () => {
-    expect(paginate(rows, 1, 3)).toEqual([1, 2, 3]);
-    expect(paginate(rows, 2, 3)).toEqual([4, 5, 6]);
-    expect(paginate(rows, 3, 3)).toEqual([7]);
-  });
-
-  it("returns an empty slice past the end", () => {
-    expect(paginate(rows, 4, 3)).toEqual([]);
   });
 });
