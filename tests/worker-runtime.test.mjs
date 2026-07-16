@@ -1715,6 +1715,23 @@ describe("Worker runtime", () => {
           ),
       ],
       [
+        "https://metagraph.sh/api/v1/review/gaps?missing_kinds=openapi",
+        (body) =>
+          body.data.priorities.length > 0 &&
+          body.data.priorities.every((entry) =>
+            entry.missing_kinds.includes("openapi"),
+          ),
+      ],
+      [
+        "https://metagraph.sh/api/v1/subnets/103/gaps?missing_kinds=openapi",
+        (body) =>
+          body.data.priorities.length > 0 &&
+          body.data.priorities.every(
+            (entry) =>
+              entry.netuid === 103 && entry.missing_kinds.includes("openapi"),
+          ),
+      ],
+      [
         "https://metagraph.sh/api/v1/subnets/7/health?status=ok",
         (body) =>
           body.data.surfaces.every(
@@ -1756,6 +1773,7 @@ describe("Worker runtime", () => {
       "https://metagraph.sh/api/v1/review/enrichment-queue?direct_submission_kinds=seed-node",
       "https://metagraph.sh/api/v1/review/enrichment-queue?identity_level=unknown",
       "https://metagraph.sh/api/v1/review/enrichment-evidence?missing_kinds=seed-node",
+      "https://metagraph.sh/api/v1/review/gaps?missing_kinds=seed-node",
       "https://metagraph.sh/api/v1/review/enrichment-targets?target_type=unknown",
       "https://metagraph.sh/api/v1/subnets/7/health?status=alive",
     ];
