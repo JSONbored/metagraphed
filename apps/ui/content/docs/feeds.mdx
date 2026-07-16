@@ -1,0 +1,46 @@
+---
+title: Feeds
+description: Subscribe to registry changes, incidents, and coverage gaps as RSS 2.0, Atom 1.0, or JSON Feed — computed at request time from artifacts already served. Read-only, no API key.
+---
+
+Four GET feeds, all content-negotiated. Point any reader, crawler, or agent at a URL below.
+
+```
+GET https://api.metagraph.sh/api/v1/feeds/registry
+```
+
+## Feeds
+
+| Path                             | Summary                                                                           | Item tags                                                                                                     |
+| -------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `/api/v1/feeds/registry`         | Registry changes from the 6h changelog deltas — subnets, artifacts, and coverage. | `registry` + one of `subnet`/`artifact`/`coverage` + the change verb (`added`/`removed`/`renamed`/`modified`) |
+| `/api/v1/feeds/incidents`        | Reconstructed incident history — one item per incident, opened and resolved.      | `incident`, `sn<netuid>`, and `ongoing` or `resolved`                                                         |
+| `/api/v1/feeds/gaps`             | Open coverage gaps — what each subnet is still missing, by queue lane.            | `gaps`, the queue lane, `sn<netuid>`, and each missing/direct-submission kind                                 |
+| `/api/v1/feeds/subnets/{netuid}` | Everything above, narrowed to a single subnet.                                    | the same tags as the feed each item came from                                                                 |
+
+## Formats
+
+Format precedence: an explicit `.rss` / `.atom` / `.json` suffix wins, then the `Accept` header, then JSON Feed as the default.
+
+| Suffix  | Example                       | Content-Type                           |
+| ------- | ----------------------------- | -------------------------------------- |
+| `.json` | `/api/v1/feeds/registry.json` | `application/feed+json; charset=utf-8` |
+| `.rss`  | `/api/v1/feeds/registry.rss`  | `application/rss+xml; charset=utf-8`   |
+| `.atom` | `/api/v1/feeds/registry.atom` | `application/atom+xml; charset=utf-8`  |
+
+## Filtering & paging
+
+Every param composes. Use `?since=` for incremental polling and `?tag=` to turn one feed URL into a focused subscription.
+
+| Param     | Value        | Notes                                                                                                                                                         |
+| --------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `?tag=`   | `<tag>`      | Narrow a feed to items carrying that tag, so one URL serves a focused subscription. An unknown tag yields an empty (but valid) feed.                          |
+| `?since=` | `<ISO-8601>` | Only items at or after that instant, for incremental polling. A bare calendar date resolves to the inclusive start of that UTC day. Malformed input is a 400. |
+| `?until=` | `<ISO-8601>` | Only items at or before that instant. A bare calendar date is inclusive of the whole UTC day (end-of-day), symmetric with `since`. Malformed input is a 400.  |
+| `?limit=` | `1..50`      | Cap the number of returned items (default and hard cap 50). A larger value clamps; a non-integer or < 1 is a 400.                                             |
+
+```bash
+curl -s 'https://api.metagraph.sh/api/v1/feeds/registry.json?limit=10'
+```
+
+Responses are cached for 600s and capped at 50 items. Browse the same data: [Gaps](/gaps). Machine index: [For agents](/agents).

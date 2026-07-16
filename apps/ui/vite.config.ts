@@ -6,6 +6,7 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig, type LovableViteTanstackOptions } from "@lovable.dev/vite-tanstack-config";
 import type { NitroPluginConfig } from "nitro/vite";
+import mdx from "fumadocs-mdx/vite";
 
 export default defineConfig({
   tanstackStart: {
@@ -13,6 +14,15 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // fumadocs-mdx's Vite plugin is added via the top-level `plugins` option
+  // (not nested inside `vite: { plugins: [...] }`) -- the preset appends
+  // `options.plugins` to its own internal plugin list before the `vite`
+  // passthrough is merged in, so this is the documented extension point for
+  // genuinely new plugins, as opposed to the ones already registered by the
+  // preset itself (see the header comment above). Pattern proven working
+  // (dev + a real Cloudflare production build) in JSONbored/loopover's
+  // identical @lovable.dev/vite-tanstack-config setup, PR #6271.
+  plugins: [...mdx()],
   // Force-enable the nitro deploy plugin. By default it only runs inside
   // Lovable's CI ("No Lovable context detected — skipping nitro deploy
   // plugin"), so every other builder — crucially Cloudflare Workers Builds —

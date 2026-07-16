@@ -136,7 +136,7 @@ const ROUTE_INDEX: Array<{
   },
   {
     label: "Feeds",
-    to: "/feeds",
+    to: "/docs/feeds",
     hint: "RSS, Atom, JSON Feed subscriptions",
     icon: Rss,
     scope: "route",

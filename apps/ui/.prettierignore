@@ -7,6 +7,10 @@ package-lock.json
 bun.lock
 routeTree.gen.ts
 
+# fumadocs-mdx's generated content collection output (source.config.ts) --
+# codegen, not authored code.
+.source
+
 # release-please regenerates this CHANGELOG on every release in its own
 # format; it is machine-generated, not prettier-gated (same precedent as the
 # root CHANGELOG.md / packages/client/CHANGELOG.md entries).
