@@ -1064,14 +1064,16 @@
       "netuid": 79,
       "slug": "sn-79",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:50:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://taos.im/",
         "https://simulate.trading/taos-im-paper",
-        "https://github.com/taos-im/sn-79"
+        "https://github.com/taos-im/sn-79",
+        "https://mvtrx.fi/",
+        "https://mvtrx.simulate.trading/"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/mvtrx.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): added mvtrx.fi (the MVTRX exchange product site, matching the file's contact domain) and mvtrx.simulate.trading (a public Simulation Terminal dashboard), both badge-linked from the official README but previously untracked."
     },
     {
       "netuid": 81,
