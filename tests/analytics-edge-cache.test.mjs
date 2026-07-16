@@ -6,6 +6,10 @@ import {
   markD1FallbackResponse,
   withEdgeCache,
 } from "../workers/request-handlers/analytics.mjs";
+import {
+  handleBlocksSummary,
+  handleSubnetStakeFlow,
+} from "../workers/request-handlers/entities.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 
@@ -922,6 +926,65 @@ describe("analytics edge cache", () => {
       cache.putKeys,
       [],
       "the per-response fallback marker must block cache.put",
+    );
+    assert.equal(cache.store.size, 0);
+  });
+
+  // #6012: handleSubnetStakeFlow / handleBlocksSummary used to pass the
+  // *Promise* from envelopeResponse into markD1FallbackResponse. withEdgeCache
+  // then saw the awaited Response (a different object) and cached the stub.
+  test("NO-CACHE-ON-ERROR: handleSubnetStakeFlow stub is marked and not edge-cached (#6012)", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+    const request = new Request(
+      "https://api.metagraph.sh/api/v1/subnets/7/stake-flow",
+    );
+    const routeUrl = new URL(request.url);
+
+    const res = await withEdgeCache(
+      request,
+      ctx,
+      env,
+      "subnet-stake-flow",
+      () => handleSubnetStakeFlow(request, env, 7, routeUrl),
+    );
+    await Promise.resolve();
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      cache.putKeys,
+      [],
+      "postgres-unavailable stake-flow stub must not be edge-cached",
+    );
+    assert.equal(cache.store.size, 0);
+  });
+
+  test("NO-CACHE-ON-ERROR: handleBlocksSummary stub is marked and not edge-cached (#6012)", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+    const request = new Request(
+      "https://api.metagraph.sh/api/v1/blocks/summary",
+    );
+    const routeUrl = new URL(request.url);
+
+    const res = await withEdgeCache(
+      request,
+      ctx,
+      env,
+      "blocks-summary",
+      () => handleBlocksSummary(request, env, routeUrl),
+    );
+    await Promise.resolve();
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      cache.putKeys,
+      [],
+      "postgres-unavailable blocks/summary stub must not be edge-cached",
     );
     assert.equal(cache.store.size, 0);
   });

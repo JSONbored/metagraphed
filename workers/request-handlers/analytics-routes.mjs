@@ -206,7 +206,7 @@ export async function handleTrajectory(request, env, netuid, url) {
     isFallback = hasD1FallbackRows(rows);
   }
   if (csvRequested(url, request)) {
-    const csvRes = csvResponse(
+    const csvRes = await csvResponse(
       data.points,
       `subnet-${netuid}-trajectory`,
       "short",
@@ -262,7 +262,7 @@ export async function handleEconomicsTrends(request, env, url) {
     isFallback = hasD1FallbackRows(loaded.rows);
   }
   if (csvRequested(url, request)) {
-    const csvRes = csvResponse(
+    const csvRes = await csvResponse(
       data.days,
       "economics-trends",
       "short",
@@ -359,7 +359,7 @@ export async function handleUptime(request, env, netuid, url) {
     isFallback = hasD1FallbackRows(rows);
   }
   if (csvRequested(url, request)) {
-    const csvRes = csvResponse(
+    const csvRes = await csvResponse(
       uptimeCsvRows(data.surfaces),
       `subnet-${netuid}-uptime`,
       "short",

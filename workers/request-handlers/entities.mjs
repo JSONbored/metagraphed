@@ -2310,7 +2310,7 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
   // account_events-derived, so the meta reports source "chain-events" (via
   // accountMeta), not the metagraph snapshot; generated_at is the newest event in
   // the window.
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -3741,7 +3741,7 @@ export async function handleBlocksSummary(request, env, url) {
   if (validationError) return analyticsQueryError(validationError);
   const pgData = await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE");
   const data = pgData ?? buildBlocksSummary([]);
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
