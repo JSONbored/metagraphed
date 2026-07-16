@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 237,
+  "surface_count": 297,
   "surfaces": [
     {
       "auth_required": false,
@@ -1994,6 +1994,42 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 24,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "surface_id": "sn-24-quasar-training-corpus",
+      "surface_key": "srf-25089541aa0cece3",
+      "url": "https://huggingface.co/datasets/silx-ai/Quasar-SN3"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 24,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "surface_id": "sn-24-taomarketcap-subnet-api",
+      "surface_key": "srf-4262382b60db3bb7",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/24"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "kind": "data-artifact",
       "netuid": 24,
@@ -2085,6 +2121,96 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 27,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nodexo",
+      "public_safe": true,
+      "subnet_name": "NI Compute",
+      "subnet_slug": "sn-27",
+      "surface_id": "sn-27-nodexo-data-artifact",
+      "surface_key": "srf-ea522b0af36302c6",
+      "url": "https://raw.githubusercontent.com/neuralinternet/SN27-opencompute/main/config.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 27,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "NI Compute",
+      "subnet_slug": "sn-27",
+      "surface_id": "sn-27-taomarketcap-subnet-api",
+      "surface_key": "srf-ee8eb6593986da9c",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/27"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 28,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "subnet_name": "gm",
+      "subnet_slug": "gm",
+      "surface_id": "sn-28-gm-envoy-config",
+      "surface_key": "srf-dbd6c94b497c64e5",
+      "url": "https://raw.githubusercontent.com/taostat/gm-miner/refs/heads/main/image/envoy.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 28,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "subnet_name": "gm",
+      "subnet_slug": "gm",
+      "surface_id": "sn-28-gm-health",
+      "surface_key": "srf-6c21702de3e16e33",
+      "url": "https://saygm.com/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 28,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "subnet_name": "gm",
+      "subnet_slug": "gm",
+      "surface_id": "sn-28-gm-subnet-api",
+      "surface_key": "srf-f7b80bdc1145be6d",
+      "url": "https://api.saygm.com/v1/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 29,
       "probe": {
@@ -2117,6 +2243,42 @@
       "surface_id": "sn-29-coldint-fineweb-dataset",
       "surface_key": "srf-f51c73d17f954447",
       "url": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 29,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "coldint",
+      "public_safe": true,
+      "subnet_name": "Coldint",
+      "subnet_slug": "sn-29",
+      "surface_id": "sn-29-coldint-min-compute",
+      "surface_key": "srf-4971d640d83f3a53",
+      "url": "https://raw.githubusercontent.com/coldint/coldint_validator/a5860df87847173842772a2c234dad8a4ff87727/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 32,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "its-ai",
+      "public_safe": true,
+      "subnet_name": "ItsAI",
+      "subnet_slug": "sn-32",
+      "surface_id": "sn-32-its-ai-data-artifact",
+      "surface_key": "srf-fee0506d737d45d0",
+      "url": "https://huggingface.co/spaces/sergak0/ai-detection-leaderboard"
     },
     {
       "auth_required": false,
@@ -2176,9 +2338,45 @@
       "auth_required": false,
       "authority": "community",
       "kind": "data-artifact",
+      "netuid": 33,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "subnet_name": "ReadyAI",
+      "subnet_slug": "sn-33",
+      "surface_id": "sn-33-readyai-organic-query-results",
+      "surface_key": "srf-e231f6acc8bcb7e0",
+      "url": "https://huggingface.co/datasets/ReadyAi/organic_query_results_dataset"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 33,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "subnet_name": "ReadyAI",
+      "subnet_slug": "sn-33",
+      "surface_id": "sn-33-readyai-subnet-api",
+      "surface_key": "srf-64549ab07f522cc6",
+      "url": "https://api.readyai.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
       "netuid": 34,
       "probe": {
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
@@ -2186,9 +2384,9 @@
       "public_safe": true,
       "subnet_name": "BitMind",
       "subnet_slug": "sn-34",
-      "surface_id": "sn-34-bitmind-data-artifact",
-      "surface_key": "srf-4bfccb16de73d4f2",
-      "url": "https://api.bitmind.ai/health"
+      "surface_id": "sn-34-bitmind-bm-real-dataset",
+      "surface_key": "srf-58100c22915f7535",
+      "url": "https://huggingface.co/datasets/bitmind/bm-real"
     },
     {
       "auth_required": false,
@@ -2207,6 +2405,24 @@
       "surface_id": "sn-34-bitmind-subnet-api",
       "surface_key": "srf-faea9f5c79d46a06",
       "url": "https://api.bitmind.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 34,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "subnet_name": "BitMind",
+      "subnet_slug": "sn-34",
+      "surface_id": "sn-34-gasstation-datasets",
+      "surface_key": "srf-9d7e24605089755c",
+      "url": "https://huggingface.co/gasstation"
     },
     {
       "auth_required": false,
@@ -2248,6 +2464,60 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 35,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "subnet_name": "OxMarkets",
+      "subnet_slug": "sn-35",
+      "surface_id": "sn-35-oxmarkets-health",
+      "surface_key": "srf-17d30638d3c3ce1c",
+      "url": "https://api.cartha.finance/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 35,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "subnet_name": "OxMarkets",
+      "subnet_slug": "sn-35",
+      "surface_id": "sn-35-oxmarkets-lp-stats",
+      "surface_key": "srf-00fd82900b918e04",
+      "url": "https://api.cartha.finance/v1/lp-stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 35,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "subnet_name": "OxMarkets",
+      "subnet_slug": "sn-35",
+      "surface_id": "sn-35-oxmarkets-pools",
+      "surface_key": "srf-5bf5017aa7d91ecb",
+      "url": "https://api.cartha.finance/pools"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 36,
       "probe": {
         "expect": "json",
@@ -2276,6 +2546,114 @@
       "public_safe": true,
       "subnet_name": "Eirel",
       "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-dashboard-overview",
+      "surface_key": "srf-432774f497633625",
+      "url": "https://api.eirel.ai/api/v1/dashboard/overview"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-dashboard-runs",
+      "surface_key": "srf-c7b97ce1c0f42c54",
+      "url": "https://api.eirel.ai/api/v1/dashboard/runs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-env-windows",
+      "surface_key": "srf-08ebe2e623e22446",
+      "url": "https://api.eirel.ai/v1/env-windows"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-healthz",
+      "surface_key": "srf-a18f20fa26430a69",
+      "url": "https://api.eirel.ai/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-metagraph-status",
+      "surface_key": "srf-8a1a19859cd4528c",
+      "url": "https://api.eirel.ai/v1/metagraph/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-metrics",
+      "surface_key": "srf-03ec04a149dade8b",
+      "url": "https://api.eirel.ai/metrics"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
       "surface_id": "sn-36-eirel-runs",
       "surface_key": "srf-c0b4dd4aad36485f",
       "url": "https://api.eirel.ai/v1/runs"
@@ -2283,20 +2661,542 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-runs-current-api",
+      "surface_key": "srf-9ebbbdb57543e02c",
+      "url": "https://api.eirel.ai/v1/runs/current"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-submissions-queued",
+      "surface_key": "srf-6b8a40c9b46ccc36",
+      "url": "https://api.eirel.ai/api/v1/dashboard/submissions/queued"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-weights",
+      "surface_key": "srf-cbdc8f9e3a91a9bd",
+      "url": "https://api.eirel.ai/v1/weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
       "kind": "data-artifact",
-      "netuid": 40,
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-workflow-composition-registry",
+      "surface_key": "srf-e8f6d4ea51a3d325",
+      "url": "https://api.eirel.ai/v1/workflow-composition/registry"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-workflow-corpus",
+      "surface_key": "srf-9dbc63f415efa798",
+      "url": "https://api.eirel.ai/v1/workflow-corpus"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-workflow-specs",
+      "surface_key": "srf-f2d077a28f21406c",
+      "url": "https://api.eirel.ai/v1/workflow-specs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 37,
       "probe": {
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
       },
-      "provider": "vectorchat",
+      "provider": "aurelius",
       "public_safe": true,
-      "subnet_name": "Chunking",
-      "subnet_slug": "chunking",
-      "surface_id": "sn-40-chunking-protocol",
-      "surface_key": "srf-62dd8475aa1ceec8",
-      "url": "https://raw.githubusercontent.com/salahawk/chunking_subnet/29ed38c60aac356717d3e1dfc3e7c3627158bff4/chunking/protocol.py"
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "surface_id": "sn-37-aurelius-data-artifact",
+      "surface_key": "srf-60c0466906f2a878",
+      "url": "https://raw.githubusercontent.com/Aurelius-Protocol/Aurelius-Protocol/main/data/seed_dataset.jsonl"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 37,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "surface_id": "sn-37-aurelius-deposit-address-verify",
+      "surface_key": "srf-e4c5e6694f464a0c",
+      "url": "https://new-collector-api-production.up.railway.app/work-token/deposit-address/verify"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 37,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "surface_id": "sn-37-aurelius-health-live",
+      "surface_key": "srf-c53e8cc155cc9715",
+      "url": "https://new-collector-api-production.up.railway.app/health/live"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 37,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "surface_id": "sn-37-aurelius-health-ready",
+      "surface_key": "srf-54353c90343756d9",
+      "url": "https://new-collector-api-production.up.railway.app/health/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 37,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "surface_id": "sn-37-aurelius-scenario-schema",
+      "surface_key": "srf-4cf739a32bd7a1be",
+      "url": "https://raw.githubusercontent.com/Aurelius-Protocol/Aurelius-Protocol/main/aurelius/common/schema_v1.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 37,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "surface_id": "sn-37-aurelius-subnet-api",
+      "surface_key": "srf-0f1c0873762d6c70",
+      "url": "https://new-collector-api-production.up.railway.app/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 37,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "surface_id": "sn-37-aurelius-work-token-designated-address",
+      "surface_key": "srf-3c70c259985bb889",
+      "url": "https://new-collector-api-production.up.railway.app/work-token/designated-address"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 38,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "subnet_name": "ChronoLLM",
+      "subnet_slug": "sn-38",
+      "surface_id": "sn-38-chronogpt-models",
+      "surface_key": "srf-c324adf5952e7dcd",
+      "url": "https://huggingface.co/collections/manelalab/chronogpt-67c878a02139875341ca9d3b"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 38,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "subnet_name": "ChronoLLM",
+      "subnet_slug": "sn-38",
+      "surface_id": "sn-38-chronoinstruct-sft-dataset",
+      "surface_key": "srf-0495f1a6121e90e1",
+      "url": "https://huggingface.co/datasets/manelalab/ChronoInstruct-SFT-v1"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 38,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "ChronoLLM",
+      "subnet_slug": "sn-38",
+      "surface_id": "sn-38-taomarketcap-subnet-snapshot",
+      "surface_key": "srf-02addb2407e369c6",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/38"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 39,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "subnet_name": "Basilica",
+      "subnet_slug": "sn-39",
+      "surface_id": "sn-39-basilica-docs-llms-full-txt",
+      "surface_key": "srf-9df3fdf20968afb3",
+      "url": "https://docs.basilica.ai/llms-full.txt"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 39,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "basilica",
+      "public_safe": true,
+      "subnet_name": "Basilica",
+      "subnet_slug": "sn-39",
+      "surface_id": "sn-39-basilica-subnet-api",
+      "surface_key": "srf-ad13fec1c0760161",
+      "url": "https://api.basilica.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 39,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "subnet_name": "Basilica",
+      "subnet_slug": "sn-39",
+      "surface_id": "sn-39-one-covenant-data-artifact",
+      "surface_key": "srf-c2c6098d9592ba96",
+      "url": "https://raw.githubusercontent.com/one-covenant/basilica/1a75c1cb7c62caabe929b280931f0e074e2757f2/crates/basilica-validator/tests/fixtures/lshw/a100_sxm5_30vcpu.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 40,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "Ralph",
+      "subnet_slug": "ralph",
+      "surface_id": "sn-40-taomarketcap-subnet-api",
+      "surface_key": "srf-be94bfd7653fc801",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/40"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 41,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "almanac",
+      "public_safe": true,
+      "subnet_name": "Almanac",
+      "subnet_slug": "sn-41",
+      "surface_id": "sn-41-almanac-markets-list",
+      "surface_key": "srf-87892f48a178c926",
+      "url": "https://api.almanac.market/api/markets"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 41,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "almanac",
+      "public_safe": true,
+      "subnet_name": "Almanac",
+      "subnet_slug": "sn-41",
+      "surface_id": "sn-41-almanac-subnet-api",
+      "surface_key": "srf-5dff2b202e23f3d6",
+      "url": "https://api.almanac.market/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 42,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
+      "public_safe": true,
+      "subnet_name": "Gopher",
+      "subnet_slug": "sn-42",
+      "surface_id": "sn-42-gopher-tiktok-transcription-dataset",
+      "surface_key": "srf-8bf9e667c3d3921a",
+      "url": "https://huggingface.co/datasets/Gopher-Lab/TikTok_Most_Shared_Video_Transcription_Example"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 42,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
+      "public_safe": true,
+      "subnet_name": "Gopher",
+      "subnet_slug": "sn-42",
+      "surface_id": "sn-42-gopher-webscrape-example",
+      "surface_key": "srf-24053d0f1175e653",
+      "url": "https://huggingface.co/datasets/Gopher-Lab/Bittensor_Whitepaper_Webscrape_Example"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 42,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gopher-ai",
+      "public_safe": true,
+      "subnet_name": "Gopher",
+      "subnet_slug": "sn-42",
+      "surface_id": "sn-42-gopher-x-trending-topics",
+      "surface_key": "srf-d7cc5b98807b994b",
+      "url": "https://huggingface.co/datasets/Gopher-Lab/X_Twitter_Trending_Topics_August2025"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 43,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "subnet_name": "Graphite",
+      "subnet_slug": "sn-43",
+      "surface_id": "sn-43-graphite-ai-coverage-stats",
+      "surface_key": "srf-d5ef6c1789c6deff",
+      "url": "https://api.graphite-ai.net/api/v1/stats/coverage"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 43,
+      "probe": {
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "subnet_name": "Graphite",
+      "subnet_slug": "sn-43",
+      "surface_id": "sn-43-graphite-ai-data-artifact",
+      "surface_key": "srf-b9b28f5ed66c7d6b",
+      "url": "https://huggingface.co/datasets/Graphite-AI/Graphite_Past_Problems"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 43,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "subnet_name": "Graphite",
+      "subnet_slug": "sn-43",
+      "surface_id": "sn-43-graphite-graph-data",
+      "surface_key": "srf-9b12ff1b74a45693",
+      "url": "https://api.graphite-ai.net/api/v1/graph/data"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 43,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "subnet_name": "Graphite",
+      "subnet_slug": "sn-43",
+      "surface_id": "sn-43-graphite-health",
+      "surface_key": "srf-b2f89da95c545f5d",
+      "url": "https://api.graphite-ai.net/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 43,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "subnet_name": "Graphite",
+      "subnet_slug": "sn-43",
+      "surface_id": "sn-43-graphite-min-compute",
+      "surface_key": "srf-6501388fc5a18335",
+      "url": "https://raw.githubusercontent.com/GraphiteAI/Graphite-Subnet/main/min_compute.yml"
     },
     {
       "auth_required": false,
@@ -2319,6 +3219,150 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 44,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "score",
+      "public_safe": true,
+      "subnet_name": "Score",
+      "subnet_slug": "sn-44",
+      "surface_id": "sn-44-score-min-compute-spec",
+      "surface_key": "srf-a83cf9f57603f67d",
+      "url": "https://raw.githubusercontent.com/score-technologies/score-vision/main/min_compute.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 44,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "score",
+      "public_safe": true,
+      "subnet_name": "Score",
+      "subnet_slug": "sn-44",
+      "surface_id": "sn-44-score-subnet-api",
+      "surface_key": "srf-716b291e5be1f7f1",
+      "url": "https://api.scorevision.io/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-articles-sources",
+      "surface_key": "srf-eab0ed909cf02c40",
+      "url": "https://api.alpharidge.ai/dashboard/articles/sources"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-assets",
+      "surface_key": "srf-70d422db2c84ea0a",
+      "url": "https://api.alpharidge.ai/dashboard/assets"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-miners",
+      "surface_key": "srf-9f742042649fdc01",
+      "url": "https://api.alpharidge.ai/dashboard/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-preview",
+      "surface_key": "srf-182da7c5e12f0790",
+      "url": "https://api.alpharidge.ai/dashboard/preview"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-sentiment",
+      "surface_key": "srf-8a770fe4595c52d0",
+      "url": "https://api.alpharidge.ai/dashboard/sentiment"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "data-artifact",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-validators",
+      "surface_key": "srf-6f35eddd07a838a0",
+      "url": "https://api.alpharidge.ai/dashboard/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 45,
       "probe": {
@@ -2328,11 +3372,47 @@
       },
       "provider": "talisman-ai",
       "public_safe": true,
-      "subnet_name": "Talisman AI",
+      "subnet_name": "AlphaRidge.ai",
       "subnet_slug": "sn-45",
       "surface_id": "sn-45-alpharidge-price-tao-usd",
       "surface_key": "srf-cf17396684e450d9",
       "url": "https://api.alpharidge.ai/price/tao-usd"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-talisman-dashboard-stats",
+      "surface_key": "srf-6857be983c8bdf5c",
+      "url": "https://api.alpharidge.ai/dashboard/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-talisman-health",
+      "surface_key": "srf-8bd015ccd5408407",
+      "url": "https://api.alpharidge.ai/health"
     },
     {
       "auth_required": false,
