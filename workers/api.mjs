@@ -6,6 +6,10 @@ import {
   compileRoutePattern,
 } from "../src/contracts.mjs";
 import {
+  isUsageTelemetryConfigured,
+  recordUsageEvent,
+} from "../src/usage-telemetry.mjs";
+import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
@@ -431,9 +435,154 @@ function canonicalCacheSearch(url, matched) {
   );
 }
 
+// Product-usage telemetry (#6032 / #366). The Worker entry is the single
+// cross-cutting chokepoint every REST and GraphQL request passes through while
+// an ExecutionContext is still live, so it is the one place a usage event can
+// be recorded exactly once per request. Every wrapper further down is partial:
+// withEdgeCache covers only the cached analytics GETs (and returns before
+// buildResponse on a hit, so it never sees a full request), the artifact edge
+// cache is artifact-routes-only, and handleGraphQLRequest is not handed ctx at
+// all. Instrumenting here also keeps this to one point per transport rather
+// than one per route handler.
+
+// GraphQL is one transport with one HTTP route — every operation shares this
+// label rather than fanning out into client-supplied operation names, which are
+// unbounded and would have to be read out of the request body.
+const GRAPHQL_USAGE_ROUTE = "graphql";
+
+/**
+ * Low-cardinality usage label for a request URL, or null when the request must
+ * not be recorded at this chokepoint.
+ *
+ * Route ids come from the shared API_ROUTES contract, so path parameters
+ * (netuid, ss58, block ref, ...) collapse into one stable label instead of one
+ * label per account. Non-default networks are namespaced onto the label, which
+ * is what gives #366 its route+network dimensions without widening the event
+ * allowlist (the day dimension is the event timestamp).
+ *
+ * @param {URL} url
+ * @returns {string | null}
+ */
+export function usageRouteLabel(url) {
+  const { network, url: resolved } = resolveNetworkPrefix(url);
+  const { pathname } = resolved;
+
+  // MCP tool dispatch is instrumented at its own chokepoint, keyed by tool
+  // name (companion issue) — recording it here too would double-count every
+  // tool call, including the ones it bridges into GraphQL internally.
+  if (pathname === "/mcp" || pathname.startsWith("/mcp/")) {
+    return null;
+  }
+
+  const route =
+    pathname === "/api/v1/graphql"
+      ? GRAPHQL_USAGE_ROUTE
+      : (matchRoute(pathname)?.id ??
+        // Static assets, badges, OG images and the RPC proxy are not API usage.
+        (pathname.startsWith("/api/v1/")
+          ? maskUsageRouteParams(pathname)
+          : null));
+
+  if (route === null) {
+    return null;
+  }
+
+  return network.isDefault ? route : `${network.id}:${route}`;
+}
+
+/**
+ * Fallback label for the handful of /api/v1 routes that predate the API_ROUTES
+ * contract (/ask, /webhooks/..., /internal/...). Path segments that look like
+ * identifiers are masked so an unlisted route can never emit unbounded labels.
+ *
+ * @param {string} pathname
+ * @returns {string}
+ */
+function maskUsageRouteParams(pathname) {
+  return pathname
+    .split("/")
+    .map((segment) => {
+      if (/^\d+$/.test(segment)) return ":n";
+      if (/^0x[0-9a-fA-F]{6,}$/.test(segment)) return ":hash";
+      if (/^[1-9A-HJ-NP-Za-km-z]{47,48}$/.test(segment)) return ":ss58";
+      return segment;
+    })
+    .join("/");
+}
+
+/**
+ * Run the request pipeline and record exactly one usage event for it. Returns
+ * the handler's response untouched, and never converts a telemetry failure into
+ * a request failure: an unconfigured deployment skips the work entirely, and a
+ * recorder that rejects, throws, or a waitUntil that throws is swallowed.
+ *
+ * @param {Request} request
+ * @param {object} env
+ * @param {object} ctx ExecutionContext (may be a bare object in tests).
+ * @param {() => Promise<Response>} handle
+ * @param {{recordUsageEvent?: typeof recordUsageEvent}} [deps]
+ * @returns {Promise<Response>}
+ */
+export async function withUsageTelemetry(request, env, ctx, handle, deps = {}) {
+  const record = deps.recordUsageEvent ?? recordUsageEvent;
+  if (!isUsageTelemetryConfigured(env)) {
+    return handle();
+  }
+
+  // A subscription upgrade (GraphQL subscriptions reuse the /api/v1/graphql
+  // path over a WebSocket) opens a long-lived socket rather than serving a
+  // request/response pair, so its latency would be meaningless. Recognized the
+  // same way handleRequest itself dispatches it.
+  if (request.headers.get("upgrade") === "websocket") {
+    return handle();
+  }
+
+  const route = usageRouteLabel(new URL(request.url));
+  if (route === null) {
+    return handle();
+  }
+
+  const startedAt = Date.now();
+  let ok = false;
+  try {
+    const response = await handle();
+    // 4xx is a route correctly rejecting a bad request, not a broken route;
+    // only 5xx (and a thrown handler, which leaves ok false) is a failure.
+    ok = response.status < 500;
+    return response;
+  } finally {
+    scheduleUsageEvent(env, ctx, record, {
+      route,
+      ok,
+      durationMs: Date.now() - startedAt,
+    });
+  }
+}
+
+/**
+ * Hand the event to the recorder without ever blocking or failing the response.
+ *
+ * @param {object} env
+ * @param {object} ctx
+ * @param {typeof recordUsageEvent} record
+ * @param {object} event
+ */
+function scheduleUsageEvent(env, ctx, record, event) {
+  try {
+    const pending = Promise.resolve(record(env, event)).catch(() => false);
+    if (typeof ctx?.waitUntil === "function") {
+      ctx.waitUntil(pending);
+    }
+  } catch {
+    // Telemetry must never surface into the request path.
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
-    return handleRequest(request, env, ctx);
+    return withUsageTelemetry(request, env, ctx, () =>
+      handleRequest(request, env, ctx),
+    );
   },
   async scheduled(controller, env, ctx) {
     return handleScheduled(controller, env, ctx);
