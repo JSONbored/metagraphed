@@ -401,7 +401,7 @@ function SiteFooter() {
           <FooterLink to="/status">Status</FooterLink>
           <FooterLink to="/schemas">Schemas</FooterLink>
           <FooterLink to="/graphql">GraphQL</FooterLink>
-          <FooterLink to="/rpc">RPC</FooterLink>
+          <FooterLink to="/docs/rpc">RPC</FooterLink>
           <FooterLink to="/docs/feeds">Feeds</FooterLink>
           <FooterLink to="/gaps">Gaps</FooterLink>
           <FooterLink to="/chain-events">Chain events reference</FooterLink>

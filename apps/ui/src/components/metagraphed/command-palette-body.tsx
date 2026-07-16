@@ -129,7 +129,7 @@ const ROUTE_INDEX: Array<{
   },
   {
     label: "RPC",
-    to: "/rpc",
+    to: "/docs/rpc",
     hint: "Proxy, pools, endpoints, usage",
     icon: Zap,
     scope: "route",

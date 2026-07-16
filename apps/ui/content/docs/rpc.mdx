@@ -1,0 +1,80 @@
+---
+title: RPC
+description: One read-only JSON-RPC URL for Bittensor — health-aware load balancing, failover, and abuse controls. Plus the pool roster, endpoint catalog, and proxy usage analytics. No API key.
+---
+
+## Proxy
+
+POST a single JSON-RPC object to `/rpc/v1/{network}`. Supported networks: `finney` (mainnet) and `test` (testnet). WebSocket upgrade is not available on this HTTP path — use `wss.metagraph.sh` or a public WSS endpoint.
+
+```
+POST https://api.metagraph.sh/rpc/v1/{network}
+```
+
+- `finney` → `https://api.metagraph.sh/rpc/v1/finney`
+- `test` → `https://api.metagraph.sh/rpc/v1/test`
+
+```bash tab="cURL"
+curl -s 'https://api.metagraph.sh/rpc/v1/finney' \
+  -X POST -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"chain_getHeader","params":[]}'
+```
+
+```ts tab="TypeScript"
+import { metagraphedRpc } from "@jsonbored/metagraphed";
+
+const header = await metagraphedRpc("finney", { method: "chain_getHeader" });
+```
+
+```python tab="Python"
+from metagraphed import metagraphed_rpc
+
+header = metagraphed_rpc("finney", "chain_getHeader")
+```
+
+## Catalog & analytics
+
+Static registry projections and live proxy telemetry. Live explorer UI for pools and traffic lives on [Endpoints](/endpoints).
+
+| Method | Path                    | Summary                               | Notes                                                                                                                            |
+| ------ | ----------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/rpc/v1/{network}`     | Read-only JSON-RPC reverse proxy      | Network segment is `finney` (mainnet) or `test` (testnet). Single JSON-RPC object only — no batches, no HTTP WebSocket upgrade.  |
+| GET    | `/api/v1/rpc/pools`     | Proxy pool roster + live eligibility  | Serves `rpc/pools.json` with probe-derived health overlaid from KV so dead upstreams show as ineligible.                         |
+| GET    | `/api/v1/rpc/endpoints` | Base-layer Subtensor RPC/WSS registry | Filterable catalog (kind, layer, status, provider, pool_eligible, latency). Pair with the live table on [Endpoints](/endpoints). |
+| GET    | `/api/v1/rpc/usage`     | Proxy usage analytics                 | Request volume, latency p50/p95, failover/error/cache rates, per-endpoint and per-network distribution. `?window=7d\|30d`.       |
+
+## Allowlisted methods
+
+Only safe read methods pass. Mutating and heavy prefixes are denied. State-query methods need param validation and a separate rate budget.
+
+<Callout title="Denied prefixes get rejected outright">
+  `author_`, `state_call`, `sudo_`, `payment_`, and `contracts_` calls never reach the upstream node
+  — the proxy rejects them before dispatch, not after.
+</Callout>
+
+**Safe methods**
+
+`chain_getBlock` · `chain_getBlockHash` · `chain_getFinalizedHead` · `chain_getHeader` · `rpc_methods` · `state_getRuntimeVersion` · `system_chain` · `system_health` · `system_name` · `system_properties` · `system_version`
+
+**State-query (extra rate budget)**
+
+`state_getStorage` · `state_getKeysPaged`
+
+**Denied prefixes**
+
+`author_`\* · `state_call`\* · `sudo_`\* · `payment_`\* · `contracts_`\*
+
+## Limits
+
+Hard caps on every proxied POST. Matching constants live in `workers/config.mjs` and `workers/request-handlers/rpc-proxy.mjs`.
+
+| Limit                     | Value     | Notes                                                                                                          |
+| ------------------------- | --------- | -------------------------------------------------------------------------------------------------------------- |
+| Rate limit                | 100 / 60s | Per-client IP on `POST /rpc/v1/*` (429 + retry-after). Shared binding policy with GraphQL.                     |
+| State-query rate          | 20 / 60s  | Additional budget for `state_getStorage` / `state_getKeysPaged` — does not starve ordinary chain/system reads. |
+| Max POST body             | 64 KiB    | HTTP request body size cap for the read-only proxy.                                                            |
+| Max state-query response  | 256 KiB   | Decoded upstream body cap for state-query methods after fetch.                                                 |
+| `state_getKeysPaged` page | 250       | Caller-supplied count is clamped server-side (not rejected).                                                   |
+| Failover attempts         | 3         | Per request across the health-ordered pool before surfacing upstream failure.                                  |
+
+<ApiSourceFooter paths={["/api/v1/rpc/pools", "/api/v1/rpc/endpoints", "/api/v1/rpc/usage"]} />
