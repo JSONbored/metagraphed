@@ -11,18 +11,19 @@
       "Website exists but currently rate-limits simple probes.",
       "No verified docs site yet.",
       "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "The API host (agent-upload.ridges.ai) intermittently rate-limits (429) even on already-tracked routes; treat isolated 429s as transient, not broken.",
+      "The OpenAPI schema also declares /debug/lock-info and /debug/query-info (internal DB debug internals, not subnet data) and /scoring/screener-info and /scoring/weights (both return a Cloudflare bot-check interstitial rather than JSON) -- none of the four were promoted."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "reviewed_at": "2026-07-16T05:50:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T09:25:00.000Z"
+    "verified_at": "2026-07-16T05:50:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/62",
   "name": "Ridges",
   "netuid": 62,
-  "notes": "Reviewed overlay for SN62 using the official Ridges source repository and public website identity. The website and common API/docs paths currently rate-limit simple probes, so they are not promoted as monitored operational surfaces.",
+  "notes": "Reviewed overlay for SN62 using the official Ridges source repository and public website identity. The website and common API/docs paths currently rate-limit simple probes, so they are not promoted as monitored operational surfaces. This pass fixed 2 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 40-path OpenAPI schema and added 8 new no-auth no-param surfaces spanning evaluation-sets, retrieval, scoring, statistics, and validator data; excluded internal debug endpoints and two routes that return a Cloudflare bot-check page instead of JSON. On-chain identity re-confirmed unchanged.",
   "schema_version": 1,
   "slug": "sn-62",
   "source_repo": "https://github.com/ridgesai/ridges",
@@ -53,6 +54,12 @@
       "kind": "subnet-api",
       "name": "Ridges API — top agents leaderboard (retrieval)",
       "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner_hotkey, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "ridges",
       "public_safe": true,
       "review": {
@@ -76,6 +83,12 @@
       "kind": "openapi",
       "name": "Ridges agent API OpenAPI spec",
       "notes": "OpenAPI 3.1 spec for the Ridges agent API. The host agent-upload.ridges.ai is the DEFAULT_API_BASE_URL defined in the official ridgesai/ridges miner CLI (miners/cli/commands/upload.py), establishing first-party ownership.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "ridges",
       "public_safe": true,
       "review": {
@@ -135,6 +148,150 @@
         "https://agent-upload.ridges.ai/retrieval/benchmark-agents"
       ],
       "url": "https://agent-upload.ridges.ai/retrieval/benchmark-agents"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-62-ridges-evaluation-sets",
+      "kind": "data-artifact",
+      "name": "Ridges evaluation sets",
+      "notes": "Public no-auth GET /evaluation-sets/ on agent-upload.ridges.ai, returning the historical list of evaluation-set versions (id, created_at, competition name/dates). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-62-ridges-evaluation-sets-problems",
+      "kind": "data-artifact",
+      "name": "Ridges latest evaluation set problems",
+      "notes": "Public no-auth GET /evaluation-sets/all-latest-set-problems on agent-upload.ridges.ai, returning the full SWE-bench-style problem list for the current evaluation set (problem name, benchmark family, execution spec). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/all-latest-set-problems"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-62-ridges-network-statistics",
+      "kind": "subnet-api",
+      "name": "Ridges network statistics",
+      "notes": "Public no-auth GET /retrieval/network-statistics on agent-upload.ridges.ai, returning aggregate 24h network stats (score improvement, agents created, top score). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/retrieval/network-statistics"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-62-ridges-perfectly-solved-over-time",
+      "kind": "subnet-api",
+      "name": "Ridges perfectly-solved-over-time",
+      "notes": "Public no-auth GET /retrieval/perfectly-solved-over-time on agent-upload.ridges.ai, returning an hourly time series of fully-solved problem counts, overall and per benchmark family. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. This host intermittently rate-limits (429); retry rather than treat as broken.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/retrieval/perfectly-solved-over-time"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-62-ridges-top-scores-over-time",
+      "kind": "subnet-api",
+      "name": "Ridges top-scores-over-time",
+      "notes": "Public no-auth GET /retrieval/top-scores-over-time on agent-upload.ridges.ai, returning an hourly time series of the top agent score. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/retrieval/top-scores-over-time"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-62-ridges-latest-set-info",
+      "kind": "subnet-api",
+      "name": "Ridges latest set info",
+      "notes": "Public no-auth GET /scoring/latest-set-info on agent-upload.ridges.ai, returning the current evaluation set's id and creation timestamp. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. This host intermittently rate-limits (429); retry rather than treat as broken.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/scoring/latest-set-info"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-62-ridges-problem-statistics",
+      "kind": "data-artifact",
+      "name": "Ridges problem statistics",
+      "notes": "Public no-auth GET /statistics/problem-statistics on agent-upload.ridges.ai, returning per-problem evaluation statistics (difficulty, total/finished/passed run counts) across the SWE-bench-style problem suite. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/statistics/problem-statistics"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-62-ridges-connected-validators",
+      "kind": "subnet-api",
+      "name": "Ridges connected validators info",
+      "notes": "Public no-auth GET /validator/connected-validators-info on agent-upload.ridges.ai, returning the list of currently connected validators. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/connected-validators-info"
     }
   ],
   "website_url": "https://www.ridges.ai/"
