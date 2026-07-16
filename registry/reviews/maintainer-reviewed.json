@@ -1567,15 +1567,15 @@
     },
     {
       "netuid": 117,
-      "slug": "sn-117",
+      "slug": "glyph",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:50:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
-        "https://github.com/shiftlayer-llc/brainplay-subnet",
-        "https://play.shiftlayer.ai/"
+        "https://glyph-research.org",
+        "https://github.com/glyph-research/glyph-subnet"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/brainplay.json (reviewed_at 2026-06-08T10:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit pass (#5903): resolved a prior identity-dispute flag. The on-chain SubnetIdentitiesV3 record now shows a complete Glyph Research identity that did not exist at the last review, and the glyph-subnet repository's README explicitly documents --netuid 117 for mainnet across every command example. Re-slugged from brainplay.json/sn-117 to glyph.json/glyph; the prior BrainPlay/shiftlayer-llc surfaces were removed as no longer associated with this netuid, not tracked as historical evidence of the same project."
     },
     {
       "netuid": 118,
