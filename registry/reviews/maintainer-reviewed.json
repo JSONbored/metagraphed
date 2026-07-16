@@ -921,6 +921,21 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ninja.json (reviewed_at 2026-06-08T07:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 67,
+      "slug": "sn-67",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://harnyx.ai/",
+        "https://github.com/harnyx/harnyx",
+        "https://harnyx.ai/healthz",
+        "https://dashboard.harnyx.ai/benchmark",
+        "https://github.com/harnyx/harnyx/blob/main/README.md"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN67. Added website + source-repo surfaces, fixed 3 missing probe blocks, and diffed the repo's generated API reference docs (docs/api/generated/) for undiscovered public GET endpoints -- all 4 documented GET routes require Bittensor-signed auth, nothing new to add. On-chain identity confirmed via metagraph.sh, no rename needed."
+    },
+    {
       "netuid": 69,
       "slug": "ain",
       "decision": "maintainer-reviewed",

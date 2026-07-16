@@ -4,15 +4,64 @@
   "name": "Harnyx",
   "slug": "sn-67",
   "status": "active",
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "official-api",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "docs/api/generated/{platform,validator,sandbox}.md (the repo's generated HTTP API reference) declare only 4 GET endpoints total (/v1/miner-config, /v1/weights, /validator/status; sandbox.md has none) and every one requires Bittensor-signed auth -- no undiscovered public GET endpoints exist in this surface as of 2026-07-15.",
+      "No standalone OpenAPI/Swagger JSON schema is published at harnyx.ai/openapi.json or harnyx.ai/api/openapi.json (both 404); the generated docs/api/ markdown is the only machine-adjacent reference."
+    ]
   },
   "social": {
     "x": "https://x.com/harnyx_ai"
   },
+  "notes": "First maintainer review for SN67. Website, source repository, healthz endpoint, dashboard, and data-artifact all verified live 2026-07-15; on-chain identity (metagraph.sh) confirms name/website/source_repo match the tracked values exactly, no rename needed. Diffed the repo's generated API reference docs (docs/api/generated/) for undiscovered public GET endpoints -- all 4 documented GET routes require Bittensor-signed auth, so nothing new to add.",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-67-harnyx-website",
+      "kind": "website",
+      "name": "Harnyx website",
+      "notes": "Official Harnyx SN67 public website -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "harnyx",
+      "public_safe": true,
+      "source_urls": ["https://harnyx.ai/"],
+      "url": "https://harnyx.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-67-harnyx-source-repo",
+      "kind": "source-repo",
+      "name": "Harnyx source repository",
+      "notes": "Official SN67 monorepo (miner/validator/commons packages, docs/api/ reference) -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "harnyx",
+      "public_safe": true,
+      "source_urls": ["https://github.com/harnyx/harnyx"],
+      "url": "https://github.com/harnyx/harnyx"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -20,6 +69,12 @@
       "kind": "subnet-api",
       "name": "Harnyx healthz API",
       "notes": "Public no-auth GET /healthz on harnyx.ai returning plain-text liveness (observed: ok). Served on the official Harnyx website host linked from the SN67 source repository; the repo documents API flows under docs/api/.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "harnyx",
       "public_safe": true,
       "review": {
@@ -36,6 +91,12 @@
       "kind": "data-artifact",
       "name": "Harnyx WebWalkerQA miner-task benchmark",
       "notes": "Public WebWalkerQA question-answer evaluation set (680 records: Question, answer, domain, source_website, golden_path, difficulty_level) from the SN67 Harnyx miner-task benchmark suite, used to score web-navigation research tasks. No-auth static JSON dataset, pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "harnyx",
       "public_safe": true,
       "review": {
@@ -54,6 +115,12 @@
       "kind": "dashboard",
       "name": "Harnyx live benchmark dashboard",
       "notes": "Public no-auth web dashboard for SN67 Harnyx at dashboard.harnyx.ai/benchmark (page title \"Harnyx Dashboard\") showing the live miner-task benchmark: champion miner, reward estimates, recent winning batches, and network health. Linked as the \"Live benchmark\" from the official harnyx/harnyx README. Distinct host from the harnyx.ai website/API.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "harnyx",
       "public_safe": true,
       "review": {
