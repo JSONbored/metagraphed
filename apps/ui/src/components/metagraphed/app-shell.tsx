@@ -74,7 +74,17 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  fullBleedMain = false,
+}: {
+  children: ReactNode;
+  // Fumadocs' DocsLayout manages its own full-height sidebar/content grid
+  // and expects to control its own padding -- the standard max-w-shell-max
+  // + px/py wrapper below would squeeze its sidebar into the content column
+  // instead of letting it span the full width under the header.
+  fullBleedMain?: boolean;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -291,7 +301,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           <main
             id="main-content"
             key={pathname}
-            className="flex-1 px-4 md:px-10 py-10 md:py-14 max-w-shell-max mx-auto w-full mg-route-enter"
+            className={classNames(
+              "flex-1 w-full mg-route-enter",
+              fullBleedMain ? "" : "px-4 md:px-10 py-10 md:py-14 max-w-shell-max mx-auto",
+            )}
           >
             {children}
           </main>

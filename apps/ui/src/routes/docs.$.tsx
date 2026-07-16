@@ -6,6 +6,7 @@ import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layouts/docs/page";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import browserCollections from "collections/browser";
+import { AppShell } from "@/components/metagraphed/app-shell";
 import { getMDXComponents } from "@/components/metagraphed/mdx";
 import { baseOptions } from "@/lib/docs-layout-shared";
 import { docsSource } from "@/lib/docs-source";
@@ -14,11 +15,12 @@ import { docsSource } from "@/lib/docs-source";
 // app has no single shared provider tree -- __root.tsx's RootComponent only
 // wraps QueryClientProvider/Outlet/Toaster, and every other provider
 // (TooltipProvider, ApiSourceProvider) is wrapped per-route inside AppShell,
-// which each route renders itself. This follows that same convention: docs
-// pages don't render AppShell at all (they get DocsLayout instead), and
+// which each route renders itself. This follows that same convention:
 // RootProvider only needs to be an ancestor of DocsLayout/DocsPage, not
 // literally at the application root -- React context doesn't care where in
-// the tree the provider sits.
+// the tree the provider sits. DocsLayout itself nests inside AppShell (same
+// as every other route) so docs pages keep the real site header/footer;
+// only the content area between them is Fumadocs' sidebar+TOC shell.
 export const Route = createFileRoute("/docs/$")({
   component: Page,
   // Deliberately does NOT call clientLoader.preload() here. TanStack
@@ -96,9 +98,11 @@ function Page() {
     // just be a second, independent theme manager that could drift out of
     // sync with the app's real state instead of following it.
     <RootProvider theme={{ enabled: false }}>
-      <DocsLayout {...baseOptions()} tree={data.pageTree}>
-        <Suspense>{clientLoader.useContent(data.path)}</Suspense>
-      </DocsLayout>
+      <AppShell fullBleedMain>
+        <DocsLayout {...baseOptions()} tree={data.pageTree}>
+          <Suspense>{clientLoader.useContent(data.path)}</Suspense>
+        </DocsLayout>
+      </AppShell>
     </RootProvider>
   );
 }
