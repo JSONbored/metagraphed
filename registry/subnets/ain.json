@@ -3,24 +3,22 @@
   "curation": {
     "gap_notes": [
       "No publicly verified team/operator profile yet.",
-      "No verified official website yet.",
-      "No verified live source repository yet.",
       "No verified official docs site yet beyond public directory/community pages.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet (heraldmedia.ai/openapi.json and /api/openapi.json both 404).",
+      "No verified safe first-party public subnet API endpoint yet (heraldmedia.ai/api and /api/health both 404); the tracked TaoMarketCap feed is third-party.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
     "source_count": 5,
-    "verified_at": "2026-06-08T15:00:00.000Z"
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
   "dashboard_url": null,
   "docs_url": null,
   "name": "ain",
   "netuid": 69,
-  "notes": "Reviewed overlay for SN69 ain. Public directories and analytics pages list the subnet, but no official team, website, source repository, API, OpenAPI schema, or docs site has been verified.",
+  "notes": "Reviewed overlay for SN69 ain (Herald). Website and source repository now verified live and tracked as surfaces (heraldmedia.ai, HeraldMedia/herald) -- both were previously flagged as unverified. Fixed 2 missing probe blocks (#5932). No first-party API, OpenAPI schema, or docs site beyond the README has been found.",
   "schema_version": 1,
   "slug": "ain",
   "source_repo": "https://github.com/HeraldMedia/herald",
@@ -28,11 +26,53 @@
   "surfaces": [
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-69-ain-website",
+      "kind": "website",
+      "name": "ain (Herald) website",
+      "notes": "Official Herald SN69 public website -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "source_urls": ["https://www.heraldmedia.ai/"],
+      "url": "https://www.heraldmedia.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-69-ain-source-repo",
+      "kind": "source-repo",
+      "name": "ain (Herald) source repository",
+      "notes": "Official SN69 miner/validator source repository -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "source_urls": ["https://github.com/HeraldMedia/herald"],
+      "url": "https://github.com/HeraldMedia/herald"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "id": "sn-69-herald-outlet-registry-seed",
       "kind": "data-artifact",
       "name": "Herald outlet registry seed data",
       "notes": "Public no-auth JSON seed outlet registry (version_id, outlet_id, tier, domains) for SN69 Herald verified media placement. Default load path in herald/validator/news/registry.py via _SEED_PATH and load_registry(); validators map article URLs to approved outlet tiers during oracle scoring. Pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "herald",
       "public_safe": true,
       "review": {
@@ -77,6 +117,12 @@
       "kind": "data-artifact",
       "name": "ain minimum compute requirements",
       "notes": "Public no-auth machine-readable min_compute.yml from the official SN69 ain (Herald) repository (HeraldMedia/herald), pinned to an immutable commit. Specifies the minimum CPU and RAM requirements for running SN69 miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "herald",
       "public_safe": true,
       "review": {
