@@ -710,6 +710,19 @@
       "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 48-path Swagger 2.0 schema: the 17 /insights/* routes declare no security in the schema but return HTTP 400 \"missing key in request header\" live -- an undocumented auth gate, left untracked. Added one new no-auth no-param surface, /v2/meta-leaderboard/latest. The on-chain-declared source_repo (mode-network/synth-subnet) now permanently redirects to synthdataco/synth-subnet -- same repo, org renamed; tracked URL updated accordingly."
     },
     {
+      "netuid": 51,
+      "slug": "sn-51",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T03:20:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://lium.io/",
+        "https://github.com/Datura-ai/lium-io",
+        "https://lium.io/api/openapi.json"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website and source repository. Diffed the full 149-path Lium Backend API OpenAPI schema: the large majority of routes require JwtAccessBearer auth or a path parameter with no stable canonical value. Added 6 new no-auth no-param surfaces with real subnet-relevant data (per-validator revenue, executor counts, latest set_weights call, shared config, watchtower digest); excluded generic SaaS scaffolding routes with no subnet-specific data."
+    },
+    {
       "netuid": 52,
       "slug": "sn-52",
       "decision": "maintainer-reviewed",
