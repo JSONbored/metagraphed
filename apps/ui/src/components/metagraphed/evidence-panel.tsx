@@ -3,7 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/metagraphed/client";
 import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { ExternalLink, HoverPreview, TimeAgo } from "@jsonbored/ui-kit";
-import { EmptyState, Skeleton } from "./states";
+import { EmptyState, ErrorState, Skeleton } from "./states";
 import { formatRelative } from "@/lib/metagraphed/format";
 import type { ApiMeta, EvidenceItem } from "@/lib/metagraphed/types";
 
@@ -83,10 +83,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
   if (query.isLoading) return <Skeleton className="h-24 w-full" />;
   if (query.error) {
     return (
-      <EmptyState
-        title="No evidence index available"
-        description="The evidence endpoint did not respond. Source links may appear on individual resources instead."
-      />
+      <ErrorState error={query.error} onRetry={() => query.refetch()} context="evidence index" />
     );
   }
   if (allRows.length === 0) return <EmptyState title="No evidence recorded" />;

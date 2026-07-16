@@ -27681,6 +27681,28 @@
           },
           {
             "in": "query",
+            "name": "id",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confidence",
+            "required": false,
+            "schema": {
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "fields",
             "required": false,
             "schema": {
@@ -33284,6 +33306,22 @@
                 "native-only",
                 "manifested",
                 "probed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "curation_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "native",
+                "candidate-discovered",
+                "community-seeded",
+                "machine-verified",
+                "maintainer-reviewed",
+                "adapter-backed"
               ],
               "type": "string"
             }
@@ -40604,6 +40642,30 @@
           },
           {
             "in": "query",
+            "name": "missing_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "review_state",
             "required": false,
             "schema": {
@@ -42145,6 +42207,28 @@
         "parameters": [
           {
             "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "subnet",
+                "surface",
+                "provider"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
             "name": "q",
             "required": false,
             "schema": {
@@ -42187,10 +42271,10 @@
             "required": false,
             "schema": {
               "enum": [
-                "kind",
                 "netuid",
                 "slug",
-                "title"
+                "title",
+                "type"
               ],
               "type": "string"
             }
@@ -42342,6 +42426,28 @@
         "parameters": [
           {
             "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "subnet",
+                "surface",
+                "provider"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
             "name": "q",
             "required": false,
             "schema": {
@@ -42384,10 +42490,10 @@
             "required": false,
             "schema": {
               "enum": [
-                "kind",
                 "netuid",
                 "slug",
-                "title"
+                "title",
+                "type"
               ],
               "type": "string"
             }
@@ -43854,6 +43960,28 @@
                 "verified",
                 "stale",
                 "rejected"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confidence",
+            "required": false,
+            "schema": {
+              "enum": [
+                "low",
+                "medium",
+                "high"
               ],
               "type": "string"
             }
@@ -45588,6 +45716,30 @@
                 "machine-verified",
                 "maintainer-reviewed",
                 "adapter-backed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "missing_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
               ],
               "type": "string"
             }
@@ -50286,6 +50438,15 @@
           },
           {
             "in": "query",
+            "name": "id",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "fields",
             "required": false,
             "schema": {
@@ -52587,6 +52748,15 @@
           {
             "in": "query",
             "name": "provider",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id",
             "required": false,
             "schema": {
               "maxLength": 100,

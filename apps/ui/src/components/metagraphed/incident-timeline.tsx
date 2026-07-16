@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertOctagon, AlertTriangle, Info } from "lucide-react";
 import { subnetHealthIncidentsQuery, flattenSurfaceIncidents } from "@/lib/metagraphed/queries";
-import { Skeleton, EmptyState } from "@/components/metagraphed/states";
+import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { TimeAgo, SectionAnchor } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import { incidentDurationLabel } from "@/lib/metagraphed/incident-duration";
@@ -18,7 +18,7 @@ function shortSurfaceId(id: string, netuid: number): string {
 }
 
 export function IncidentTimeline({ netuid }: { netuid: number }) {
-  const { data, isLoading } = useQuery(subnetHealthIncidentsQuery(netuid));
+  const { data, isLoading, isError, error, refetch } = useQuery(subnetHealthIncidentsQuery(netuid));
   const incidents = flattenSurfaceIncidents(data?.data ?? []);
 
   return (
@@ -30,6 +30,8 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
     >
       {isLoading ? (
         <Skeleton className="h-24 w-full" />
+      ) : isError ? (
+        <ErrorState error={error} onRetry={() => refetch()} context="incident history" />
       ) : incidents.length === 0 ? (
         <EmptyState
           title="No incidents recorded"

@@ -8,7 +8,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { AccountCell } from "@/components/metagraphed/account-cell";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import {
   TimeAgo,
   PageHero,
@@ -458,7 +458,7 @@ function BlocksTable() {
                   className="px-4 py-2.5 font-mono text-[11px] text-ink-muted"
                   title={b.author ?? undefined}
                 >
-                  <AccountCell
+                  <AccountAddress
                     ss58={b.author}
                     fallback={
                       b.author ? <CopyableCode value={b.author} className="max-w-full" /> : "—"

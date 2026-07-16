@@ -1,0 +1,115 @@
+name: Sync schema snapshots
+
+# public/metagraph/schemas/index.json is a committed network-capture cache:
+# one entry per `kind: openapi` surface, holding the live-fetched
+# OpenAPI/Swagger document, its hash, previous_hash, and a computed
+# drift_status. It's excluded from the "Verify committed derived artifacts
+# are fresh" CI gate in validate.yml on purpose -- that step's own comment
+# explains why: a new openapi surface legitimately adds a not-captured
+# placeholder, so a one-file community surface PR shouldn't have to re-run
+# live network fetches. That exclusion is correct, but it also means nothing
+# was actually keeping the committed copy fresh: `scripts/build.mjs`
+# unconditionally auto-reverts this file (see DEPLOY_OWNED_ARTIFACTS in
+# scripts/lib.mjs) after every local/CI build, and no other workflow ever
+# calls scripts/snapshot-openapi.mjs directly or commits the result back to
+# git. The committed copy was found 22 days stale during an audit, with
+# every entry carrying drift_status "new" (only emitted when there's no
+# previous_hash to compare against) -- proof it had never been refreshed
+# since first captured.
+#
+# This is the exact same failure mode already fixed once for the sibling
+# file excluded from the same CI gate, public/metagraph/operational-
+# surfaces.json (see sync-operational-surfaces.yml, whose diff-then-
+# conditional-PR structure this workflow mirrors): run the real
+# regeneration on a schedule, and open an auto-PR only when the result
+# actually differs from what's committed.
+#
+# Regenerating this file means calling scripts/snapshot-openapi.mjs
+# directly (via its `schemas:snapshot` npm alias) -- NOT `npm run build`,
+# which goes through scripts/build.mjs and would just auto-revert this
+# exact file back to what's already committed, silently no-op-ing every run.
+#
+# Daily, not hourly: unlike operational-surfaces.json (fed by the health-
+# prober's own live cron, hence its hourly cadence), this cache tracks
+# third-party subnet OpenAPI/Swagger documents, which change on the order of
+# days-to-weeks, not minutes. Daily is frequent enough to keep drift_status
+# meaningful without hammering two dozen third-party hosts every hour.
+on:
+  schedule:
+    - cron: "0 5 * * *" # daily, 05:00 UTC -- ahead of sync-client-version.yml (06:00) and sync-mcp-version.yml (07:00) so this repo's scheduled sync workflows keep running in a fixed, non-overlapping order
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-schema-snapshots
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Regenerate schemas/index.json if stale
+    runs-on: ubuntu-latest
+    timeout-minutes: 20 # live-fetches ~24 third-party OpenAPI/Swagger documents
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Calls scripts/snapshot-openapi.mjs --write directly -- NOT `npm run
+      # build`, which would auto-revert this exact file via build.mjs's
+      # DEPLOY_OWNED_ARTIFACTS handling and silently no-op this whole job.
+      - name: Snapshot OpenAPI schemas
+        run: npm run schemas:snapshot
+
+      - name: Check whether schemas/index.json changed
+        id: diff
+        run: |
+          if git diff --quiet -- public/metagraph/schemas/index.json; then
+            echo "schemas/index.json matches main; nothing to sync"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "schemas/index.json is stale relative to the live OpenAPI documents"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Summarize the schema-count delta
+        if: steps.diff.outputs.changed == 'true'
+        id: summary
+        run: |
+          before=$(git show HEAD:public/metagraph/schemas/index.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).summary.schema_count")
+          after=$(node -p "JSON.parse(require('fs').readFileSync('public/metagraph/schemas/index.json','utf8')).summary.schema_count")
+          echo "before=$before" >> "$GITHUB_OUTPUT"
+          echo "after=$after" >> "$GITHUB_OUTPUT"
+
+      - name: Open sync PR (no-op if unchanged)
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/sync-schema-snapshots
+          delete-branch: true
+          add-paths: |
+            public/metagraph/schemas/index.json
+          title: "chore(registry): sync schemas/index.json (${{ steps.summary.outputs.before }} -> ${{ steps.summary.outputs.after }} schemas)"
+          commit-message: "chore(registry): sync schemas/index.json (${{ steps.summary.outputs.before }} -> ${{ steps.summary.outputs.after }} schemas)"
+          body: |
+            Auto-regenerates the committed OpenAPI/Swagger schema-capture cache from the live `kind: openapi` surfaces' documents. Schema count: `${{ steps.summary.outputs.before }}` -> `${{ steps.summary.outputs.after }}`.
+
+            This file is excluded from the "Verify committed derived artifacts are fresh" CI gate by design (see `.github/workflows/validate.yml`) since a one-file community surface PR has no reason to re-run live network fetches. This workflow is what keeps it from silently drifting instead.
+          labels: |
+            automation

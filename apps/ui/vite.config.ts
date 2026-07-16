@@ -78,6 +78,39 @@ export default defineConfig({
           if (Array.isArray(prevExternal)) return prevExternal.includes(id);
           return false;
         };
+
+        // #6210/#6257: fumadocs-openapi and its @fumadocs/api-docs dependency
+        // each vendor their own copies of small CJS deps (@fastify/deepmerge,
+        // xml-js, fast-content-type-parse, ...) under their own dist/
+        // node_modules, built by rolldown with a shared per-package
+        // "_virtual/_rolldown/runtime.js" CJS-interop helper (__commonJSMin)
+        // that the vendored deps' wrapper functions call back into. Nitro's
+        // default manualChunks puts every node_modules package in its own
+        // chunk by name, splitting each vendored dep from the runtime helper
+        // it depends on. Under Node/`vite preview` this happened to still
+        // work; under workerd's strict ESM evaluation order it doesn't --
+        // whichever chunk evaluates second sees the other's export as
+        // undefined, throwing "__commonJSMin is not a function" and crashing
+        // worker init for every route (this actually shipped to production
+        // and took the whole site down -- see the #6257 incident writeup).
+        // Force this entire package tree into one physical chunk so no
+        // cross-chunk split between a vendored dep and its interop helper can
+        // happen; every other package keeps its default per-package chunk.
+        const outputConfig = rollupConfig.output;
+        const prevManualChunks =
+          outputConfig && !Array.isArray(outputConfig) ? outputConfig.manualChunks : undefined;
+        if (
+          outputConfig &&
+          !Array.isArray(outputConfig) &&
+          typeof prevManualChunks === "function"
+        ) {
+          outputConfig.manualChunks = (id: string, meta) => {
+            if (id.includes("/fumadocs-openapi/") || id.includes("/@fumadocs/api-docs/")) {
+              return "_libs/fumadocs-openapi-vendor";
+            }
+            return prevManualChunks(id, meta);
+          };
+        }
       },
     },
   } satisfies NitroPluginConfig as unknown as LovableViteTanstackOptions["nitro"],

@@ -16,7 +16,7 @@ type TopActiveAccountRowLinkProps = {
 /**
  * Single ranked account row — account short-hash link + copy button + tx count +
  * cohort share. The ss58 address is paired with a `CopyButton` (matching the
- * shared `AccountCell` idiom) so the full address can be copied without a
+ * shared `AccountAddress` idiom) so the full address can be copied without a
  * hover-only tooltip, which is unusable on touch/mobile (#5856). Replaces the
  * duplicated BarMini + pill list pair on `/accounts` (#5315).
  */

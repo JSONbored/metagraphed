@@ -7464,6 +7464,7 @@ export function normalizeProvider(raw: unknown, slug: string): Provider {
   const summary = (root.endpoint_summary as Record<string, unknown> | undefined) ?? undefined;
   const website = pickStr(inner.website_url, inner.homepage, inner.website);
   const docs = pickStr(inner.docs_url, inner.docs);
+  const repo = pickStr(inner.github_url, inner.repo, inner.repository);
   return {
     // Spread raw fields FIRST so the normalized/computed fields below win on
     // collision (mirrors normalizeProviderListItem). Spreading `...inner` last
@@ -7476,6 +7477,7 @@ export function normalizeProvider(raw: unknown, slug: string): Provider {
     homepage: website,
     website,
     docs,
+    repo,
     notes: pickStr(inner.notes),
     endpoint_summary: summary as ProviderEndpointSummary | undefined,
     // Normalize singular API field names (endpoint_count / surface_count) to

@@ -8,7 +8,7 @@ import {
   subnetPerformanceHistoryQuery,
 } from "@/lib/metagraphed/queries";
 import { StatTile, BarMini, Sparkline } from "@jsonbored/ui-kit";
-import { Skeleton, EmptyState } from "@/components/metagraphed/states";
+import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
 import type {
@@ -163,7 +163,13 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
 
 function DriftCard({ netuid }: { netuid: number }) {
   const [win, setWin] = useState<Win>("30d");
-  const { data: res, isLoading } = useQuery(subnetConcentrationHistoryQuery(netuid, win));
+  const {
+    data: res,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(subnetConcentrationHistoryQuery(netuid, win));
   const points = useMemo<ConcentrationHistoryPoint[]>(
     () => res?.data?.points ?? [],
     [res?.data?.points],
@@ -226,6 +232,8 @@ function DriftCard({ netuid }: { netuid: number }) {
       </div>
       {isLoading ? (
         <Skeleton className="h-28 w-full" />
+      ) : isError ? (
+        <ErrorState error={error} onRetry={() => refetch()} context="concentration drift" />
       ) : !hasData ? (
         <EmptyState
           title="No drift history"
@@ -384,7 +392,13 @@ function PerformanceLoader({ netuid }: { netuid: number }) {
 
 function RewardDriftCard({ netuid }: { netuid: number }) {
   const [win, setWin] = useState<Win>("30d");
-  const { data: res, isLoading } = useQuery(subnetPerformanceHistoryQuery(netuid, win));
+  const {
+    data: res,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(subnetPerformanceHistoryQuery(netuid, win));
   const points = useMemo<PerformanceHistoryPoint[]>(
     () => res?.data?.points ?? [],
     [res?.data?.points],
@@ -447,6 +461,8 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
       </div>
       {isLoading ? (
         <Skeleton className="h-28 w-full" />
+      ) : isError ? (
+        <ErrorState error={error} onRetry={() => refetch()} context="reward drift" />
       ) : !hasData ? (
         <EmptyState
           title="No reward-drift history"

@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
 import { Boxes, Clock, FileText, Link2, UserCog } from "lucide-react";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
@@ -377,18 +378,8 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                     >
                       {eventKindLabel(ev.event_kind)}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-[11px]">
-                      {ev.hotkey ? (
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: ev.hotkey }}
-                          className="text-ink-muted hover:text-ink hover:underline"
-                        >
-                          {shortHash(ev.hotkey) ?? ev.hotkey}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                      <AccountAddress ss58={ev.hotkey} copyButtonClassName="-my-3.5" fallback="—" />
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
                       {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
