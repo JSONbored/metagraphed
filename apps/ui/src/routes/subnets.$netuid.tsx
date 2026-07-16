@@ -25,6 +25,7 @@ import {
   RECOVERY,
 } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
@@ -340,6 +341,8 @@ function ProfileShell({ netuid }: { netuid: number }) {
           ) : null}
           {tab === "api" ? <ApiPanel netuid={netuid} /> : null}
         </div>
+
+        <ApiSourceFooter paths={[`/api/v1/subnets/${netuid}/profile`]} />
       </SubnetFilterProvider>
     </TimeRangeProvider>
   );

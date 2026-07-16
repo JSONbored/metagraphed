@@ -27,6 +27,7 @@ import {
   DotRow,
   NoDataSpark,
   Sparkline,
+  ShareButton,
 } from "@jsonbored/ui-kit";
 import {
   subnetEndpointsQuery,
@@ -346,7 +347,8 @@ export function SubnetMasthead({
             stale
           </span>
         ) : null}
-        <div className="ml-auto flex md:hidden items-center gap-1.5">
+        <ShareButton className="ml-auto" />
+        <div className="flex md:hidden items-center gap-1.5">
           <HealthPill state={probeHealth} />
           <CurationChip level={profile?.curation_level} />
         </div>
