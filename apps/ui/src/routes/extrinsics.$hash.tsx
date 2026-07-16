@@ -379,7 +379,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                       {eventKindLabel(ev.event_kind)}
                     </td>
                     <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                      <AccountAddress ss58={ev.hotkey} fallback="—" />
+                      <AccountAddress ss58={ev.hotkey} copyButtonClassName="-my-3.5" fallback="—" />
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
                       {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
