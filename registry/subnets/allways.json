@@ -2,8 +2,7 @@
   "categories": ["defi", "bitcoin", "subnet-api", "pilot"],
   "curation": {
     "gap_notes": [
-      "No verified dashboard surface yet (no dashboard link found on the website as of 2026-07-15).",
-      "Data-artifact surface exists (sn-7-allways-data-artifact) but is community-submitted, not yet maintainer-verified."
+      "No verified dashboard surface yet (no dashboard link found on the website as of 2026-07-15)."
     ],
     "level": "adapter-backed",
     "review_state": "maintainer-reviewed",
@@ -272,28 +271,6 @@
       "provider": "allways",
       "public_safe": true,
       "url": "https://api.all-ways.io/sse"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "id": "sn-7-allways-data-artifact",
-      "kind": "data-artifact",
-      "name": "Allways community data-artifact",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "allways",
-      "public_safe": true,
-      "review": {
-        "confidence": "medium",
-        "state": "community-submitted",
-        "submitted_by": "kiannidev"
-      },
-      "source_urls": ["https://api.all-ways.io/swagger-json"],
-      "url": "https://api.all-ways.io/miners/leaderboard"
     },
     {
       "auth_required": false,
