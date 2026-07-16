@@ -1,3 +1,5 @@
+import { relativeFromDiff } from "./format";
+
 /**
  * Centralized freshness formatter — used by StatWithSpark, NoDataSpark,
  * MethodologyCallout and OperationalPanel so every "last-updated" stamp
@@ -26,13 +28,19 @@ export function formatFreshnessAbsolute(updatedAt?: string | null): string | nul
   return t.toLocaleString();
 }
 
+/**
+ * Freshness "time ago" stamp. Delegates to the shared {@link relativeFromDiff}
+ * core (#6020) with the freshness-specific behaviour, decided here for its one
+ * caller ({@link formatFreshness}): a `generated_at`/`updated_at` a little ahead
+ * of the client clock is clock skew, not real future data, so a future diff is
+ * CLAMPED to "0s ago" ("just now") rather than surfaced as "in Xs" the way the
+ * general {@link formatRelative} does. Seconds floor at 0 and an hours label up
+ * to 47h preserve this stamp's long-standing output.
+ */
 export function relative(diffMs: number): string {
-  const sec = Math.max(0, Math.round(diffMs / 1000));
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.round(min / 60);
-  if (hr < 48) return `${hr}h ago`;
-  const day = Math.round(hr / 24);
-  return `${day}d ago`;
+  return relativeFromDiff(diffMs, {
+    clampFuture: true,
+    secondsFloor: 0,
+    hourCapHours: 48,
+  });
 }

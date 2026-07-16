@@ -4,6 +4,7 @@ import {
   humaniseSeconds,
   durationLabel,
   formatRelative,
+  relativeFromDiff,
   isStaleFreshness,
   formatTao,
 } from "./format";
@@ -113,6 +114,27 @@ describe("formatRelative", () => {
 
   it("labels future timestamps with 'in'", () => {
     expect(formatRelative(new Date(Date.now() + 5 * 60_000).toISOString())).toMatch(/^in \d+m$/);
+  });
+});
+
+describe("relativeFromDiff (#6020 shared time-ago core)", () => {
+  it("defaults reproduce formatRelative: 1s floor, 24h→days, future shown as 'in'", () => {
+    expect(relativeFromDiff(400)).toBe("1s ago"); // sub-second floored to 1s
+    expect(relativeFromDiff(30_000)).toBe("30s ago");
+    expect(relativeFromDiff(90 * 60_000)).toBe("2h ago");
+    expect(relativeFromDiff(25 * 3_600_000)).toBe("1d ago"); // 24h cap → days
+    expect(relativeFromDiff(-5 * 60_000)).toBe("in 5m"); // future surfaced
+  });
+
+  it("clampFuture collapses a future diff to the zero point (the freshness stamp's behaviour)", () => {
+    expect(relativeFromDiff(-5_000, { clampFuture: true, secondsFloor: 0 })).toBe("0s ago");
+    expect(relativeFromDiff(-3_600_000, { clampFuture: true, secondsFloor: 0 })).toBe("0s ago");
+  });
+
+  it("secondsFloor 0 allows a bare '0s'; hourCapHours 48 keeps hours to 47h", () => {
+    expect(relativeFromDiff(0, { secondsFloor: 0 })).toBe("0s ago");
+    expect(relativeFromDiff(47 * 3_600_000, { hourCapHours: 48 })).toBe("47h ago");
+    expect(relativeFromDiff(48 * 3_600_000, { hourCapHours: 48 })).toBe("2d ago");
   });
 });
 
