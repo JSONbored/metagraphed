@@ -27,11 +27,17 @@ from .client import (
     _interpolate,
     _jsonrpc_result,
     _next_cursor,
+    _url_origin,
 )
 from .models import AgentCatalogSubnet, Endpoint, Provider, Subnet, Surface
 
 if TYPE_CHECKING:  # pragma: no cover - type-checking only
     import httpx
+
+
+# Parity with ``client._CrossOriginSafeRedirectHandler``: only these survive an
+# origin change. Compared case-insensitively (httpx normalizes header names).
+_CROSS_ORIGIN_HEADER_ALLOWLIST = frozenset({"accept", "user-agent"})
 
 
 def _require_httpx() -> Any:
@@ -43,6 +49,32 @@ def _require_httpx() -> Any:
             "pip install 'metagraphed[async]'"
         ) from error
     return httpx
+
+
+def _cross_origin_safe_async_client(
+    httpx: Any, *, timeout: float, **client_kwargs: Any
+) -> "httpx.AsyncClient":
+    """``AsyncClient`` that follows redirects like the sync client — including
+    stripping non-allowlisted headers on a cross-origin hop.
+
+    httpx's built-in ``follow_redirects=True`` only drops ``Authorization``
+    (and rebuilds ``Cookie``) across origins, so custom headers like
+    ``X-Api-Key`` would still leak. Overriding ``_redirect_headers`` matches
+    ``_CrossOriginSafeRedirectHandler``'s allowlist safety property.
+    """
+
+    class _CrossOriginSafeAsyncClient(httpx.AsyncClient):
+        def _redirect_headers(self, request: Any, url: Any, method: str) -> Any:
+            headers = super()._redirect_headers(request, url, method)
+            if _url_origin(str(request.url)) != _url_origin(str(url)):
+                for key in list(headers):
+                    if key.lower() not in _CROSS_ORIGIN_HEADER_ALLOWLIST:
+                        del headers[key]
+            return headers
+
+    return _CrossOriginSafeAsyncClient(
+        timeout=timeout, follow_redirects=True, **client_kwargs
+    )
 
 
 def _retry_after_seconds(
@@ -96,7 +128,7 @@ class AsyncMetagraphedClient:
         self.retries = retries
         self.backoff = backoff
         self._httpx = httpx
-        self._client = httpx.AsyncClient(timeout=timeout)
+        self._client = _cross_origin_safe_async_client(httpx, timeout=timeout)
 
     async def __aenter__(self) -> "AsyncMetagraphedClient":
         return self

@@ -4,12 +4,66 @@
   "name": "Perturb",
   "slug": "sn-26",
   "status": "active",
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "adversarial-robustness",
+    "computer-vision",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "candidate-discovered",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T23:40:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-15T23:40:00.000Z"
   },
+  "dashboard_url": null,
+  "docs_url": "https://www.perturbai.io/whitepaper",
+  "notes": "First maintainer-reviewed pass for SN26 (previously unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Perturb is an adversarial-robustness network: miners find imperceptible perturbations that fool image classifiers (fixed EfficientNetV2-L on ImageNet-100), validators verify and score. Added the missing website and source-repo surfaces. Checked the website for additional surfaces beyond what was already tracked: /playground is a hands-on interactive demo (image upload), not a data feed or leaderboard -- not tracked. No OpenAPI schema or separate docs subdomain found.",
   "surfaces": [
+    {
+      "id": "sn-26-perturb-website",
+      "name": "Perturb website",
+      "kind": "website",
+      "url": "https://www.perturbai.io/",
+      "provider": "perturb",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/0xsigurd/Perturb"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Perturb website."
+    },
+    {
+      "id": "sn-26-perturb-source-repo",
+      "name": "Perturb source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/0xsigurd/Perturb",
+      "provider": "perturb",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.perturbai.io/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Perturb subnet source repository (validator and baseline miner implementation)."
+    },
     {
       "id": "sn-26-perturb-subnet-api",
       "name": "Perturb API health",
@@ -70,6 +124,12 @@
       "review": {
         "state": "community-submitted",
         "submitted_by": "ultrahighsuper"
+      },
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
       },
       "notes": "Public no-auth whitepaper for SN26 Perturb (adversarial-perturbation ImageNet subnet), served at www.perturbai.io/whitepaper and linked from the official perturbai.io homepage nav (the registered website_url, same operator as the api.perturbai.io surfaces). Covers the abstract, methodology, miner/validator roles, scoring, and emission model. Distinct in URL, host, and kind from the api.perturbai.io endpoints already registered."
     }

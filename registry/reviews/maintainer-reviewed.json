@@ -370,6 +370,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/mainframe.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 26,
+      "slug": "sn-26",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T23:40:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.perturbai.io/",
+        "https://github.com/0xsigurd/Perturb",
+        "https://www.perturbai.io/whitepaper"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website, source repository, and whitepaper; confirmed the existing community-submitted health and burn-rate API surfaces and whitepaper doc surface live. Checked the website for additional surfaces: /playground is an interactive image-upload demo, not a data feed or leaderboard, so it was not tracked. No OpenAPI schema or separate docs subdomain found."
+    },
+    {
       "netuid": 106,
       "slug": "nodexo",
       "decision": "maintainer-reviewed",

@@ -369,6 +369,58 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
             await client.fetch_all("/api/v1/subnets")
         self.assertTrue(getattr(client._client, "closed", False))
 
+    async def test_cross_origin_redirect_strips_custom_headers(self):
+        # Mirrors test_client.ClientTest.test_cross_origin_redirect_strips_custom_headers:
+        # follow a cross-origin redirect and keep only the allowlisted headers
+        # (Accept / User-Agent) — not Authorization / X-Api-Key / Cookie.
+        from metagraphed import aio as aio_mod
+
+        hops = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            hops.append(request)
+            if request.url.host == "api.example.test":
+                return httpx.Response(
+                    302,
+                    headers={
+                        "Location": "https://attacker.example.test/api/v1/subnets/7"
+                    },
+                )
+            return httpx.Response(200, json={"ok": True, "data": {"netuid": 7}})
+
+        client = AsyncMetagraphedClient(base_url="https://api.example.test")
+        await client.aclose()
+        client._client = aio_mod._cross_origin_safe_async_client(
+            httpx, timeout=30.0, transport=httpx.MockTransport(handler)
+        )
+        try:
+            self.assertTrue(client._client.follow_redirects)
+            out = await client.fetch(
+                "/api/v1/subnets/7",
+                headers={
+                    "Authorization": "Bearer SECRET",
+                    "X-Api-Key": "SECRET",
+                    "Cookie": "session=SECRET",
+                },
+            )
+            self.assertEqual(out["data"]["netuid"], 7)
+            self.assertEqual(len(hops), 2)
+
+            first, second = hops
+            self.assertEqual(first.url.host, "api.example.test")
+            self.assertEqual(first.headers["Authorization"], "Bearer SECRET")
+            self.assertEqual(first.headers["X-Api-Key"], "SECRET")
+            self.assertEqual(first.headers["Cookie"], "session=SECRET")
+
+            self.assertEqual(second.url.host, "attacker.example.test")
+            self.assertEqual(second.headers.get("Accept"), "application/json")
+            self.assertIsNotNone(second.headers.get("User-Agent"))
+            self.assertNotIn("authorization", second.headers)
+            self.assertNotIn("x-api-key", second.headers)
+            self.assertNotIn("cookie", second.headers)
+        finally:
+            await client.aclose()
+
 
 class AsyncImportGuardTest(unittest.TestCase):
     @unittest.skipIf(

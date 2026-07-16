@@ -387,6 +387,23 @@ class ClientTest(unittest.TestCase):
                 metagraphed_rpc("finney", "nope")
         self.assertIn("Method not found", str(ctx.exception))
 
+    def test_rpc_malformed_non_dict_body_raises(self):
+        def fake_urlopen(request, timeout=None):
+            return _FakeResponse(["not", "an", "object"])
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            with self.assertRaises(MetagraphedError) as ctx:
+                metagraphed_rpc("finney", "system_health")
+        self.assertIn("malformed", str(ctx.exception).lower())
+
+    def test_rpc_null_result_returns_none(self):
+        def fake_urlopen(request, timeout=None):
+            return _FakeResponse({"jsonrpc": "2.0", "id": 1, "result": None})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            result = metagraphed_rpc("finney", "system_health")
+        self.assertIsNone(result)
+
     def test_rpc_retries_transient_error_then_succeeds(self):
         calls = {"n": 0}
 
