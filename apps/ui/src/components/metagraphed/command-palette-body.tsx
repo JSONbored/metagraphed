@@ -122,7 +122,7 @@ const ROUTE_INDEX: Array<{
   },
   {
     label: "GraphQL",
-    to: "/graphql",
+    to: "/docs/graphql",
     hint: "Schema, root queries, limits",
     icon: Braces,
     scope: "route",

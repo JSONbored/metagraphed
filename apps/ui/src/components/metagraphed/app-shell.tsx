@@ -400,7 +400,7 @@ function SiteFooter() {
           <FooterLink to="/health">Health</FooterLink>
           <FooterLink to="/status">Status</FooterLink>
           <FooterLink to="/schemas">Schemas</FooterLink>
-          <FooterLink to="/graphql">GraphQL</FooterLink>
+          <FooterLink to="/docs/graphql">GraphQL</FooterLink>
           <FooterLink to="/docs/rpc">RPC</FooterLink>
           <FooterLink to="/docs/feeds">Feeds</FooterLink>
           <FooterLink to="/gaps">Gaps</FooterLink>

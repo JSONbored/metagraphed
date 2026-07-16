@@ -8,15 +8,20 @@ export function formatNumber(n: number | undefined | null, fallback = "—"): st
  * Format a TAO (τ) amount for compact display, tiering the precision by
  * magnitude so both dust and whole-subnet aggregates stay readable in a
  * single cell: ≥1e6 → "1.23M τ", ≥1e3 → "1.2k τ", ≥1 → "1.23 τ", and
- * sub-unit values keep 4 decimals ("0.5000 τ"). Nullish / non-finite input
- * renders the em-dash fallback. Shared by the per-subnet EconomicsPanel tiles
- * and the /subnets table Registration column so the two never drift.
+ * sub-unit values keep 4 decimals ("0.5000 τ"). Tiering is by magnitude
+ * (|v|), not v itself, so a negative amount gets the same tier a positive
+ * one of equal size would ("-2.00M τ", not "-2000000.0000 τ") -- the sign
+ * is preserved by dividing the signed value, not the magnitude. Nullish /
+ * non-finite input renders the em-dash fallback. Shared by the per-subnet
+ * EconomicsPanel tiles and the /subnets table Registration column so the
+ * two never drift.
  */
 export function formatTao(v?: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
-  if (v >= 1) return `${v.toFixed(2)} τ`;
+  const magnitude = Math.abs(v);
+  if (magnitude >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
+  if (magnitude >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
+  if (magnitude >= 1) return `${v.toFixed(2)} τ`;
   return `${v.toFixed(4)} τ`;
 }
 

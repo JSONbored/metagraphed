@@ -129,6 +129,68 @@ function withCoverageDepthArchive(overrides = {}) {
   return env;
 }
 
+// Fixed fixture for review/gap-priorities.json so this suite doesn't depend
+// on at least one subnet in the live registry still being at
+// curation_level "candidate-discovered" -- the accuracy-audit sweep across
+// registry/subnets/*.json can (and eventually will) promote every subnet to
+// maintainer-reviewed, which would otherwise make the real generated
+// artifact always return zero candidate-discovered rows.
+const REVIEW_GAP_PRIORITIES_ARTIFACT = {
+  schema_version: 1,
+  contract_version: "test-fixture",
+  generated_at: "1970-01-01T00:00:00.000Z",
+  priorities: [
+    {
+      netuid: 93,
+      slug: "sn-93",
+      name: "Fixture Candidate Subnet",
+      curation_level: "candidate-discovered",
+      review_state: "unreviewed",
+      priority_score: 88,
+      surface_count: 21,
+      candidate_count: 12,
+      verified_candidate_count: 6,
+      missing_kinds: ["sse"],
+      suggested_next_action:
+        "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+    },
+    {
+      netuid: 7,
+      slug: "allways",
+      name: "Fixture Reviewed Subnet",
+      curation_level: "maintainer-reviewed",
+      review_state: "maintainer-reviewed",
+      priority_score: 12,
+      surface_count: 5,
+      candidate_count: 0,
+      verified_candidate_count: 0,
+      missing_kinds: [],
+      suggested_next_action: "none",
+    },
+  ],
+};
+
+function withReviewGapPrioritiesArchive(overrides = {}) {
+  const env = createLocalArtifactEnv(overrides);
+  const originalGet = env.METAGRAPH_ARCHIVE.get;
+  env.METAGRAPH_ARCHIVE.get = async (key) => {
+    const normalized = String(key).replace(/^latest\//, "");
+    if (normalized === "review/gap-priorities.json") {
+      const text = JSON.stringify(REVIEW_GAP_PRIORITIES_ARTIFACT);
+      return {
+        async json() {
+          return JSON.parse(text);
+        },
+        async text() {
+          return text;
+        },
+      };
+    }
+    return originalGet(key);
+  };
+  return env;
+}
+
 // RPC-proxy env that serves the pool artifact through ASSETS + R2.
 function rpcEnv(overrides = {}) {
   return {
@@ -1347,7 +1409,7 @@ describe("review enrichment list CSV export", () => {
       req(
         "/api/v1/review/gaps?format=csv&fields=netuid,priority_score,curation_level&sort=priority_score&limit=5&curation_level=candidate-discovered",
       ),
-      createLocalArtifactEnv(),
+      withReviewGapPrioritiesArchive(),
       {},
     );
     const { header, rows } = await parseCsv(res);

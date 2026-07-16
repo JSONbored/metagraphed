@@ -184,4 +184,16 @@ describe("formatTao", () => {
     expect(formatTao(1_000_000)).toBe("1.00M τ"); // lower boundary of M-tier
     expect(formatTao(2_500_000)).toBe("2.50M τ");
   });
+
+  // #6019: tiering is by magnitude (|v|), not v itself, so a negative amount
+  // gets the same tier a positive one of equal size would.
+  it("tiers negative amounts by magnitude, preserving the sign", () => {
+    expect(formatTao(-0.48213)).toBe("-0.4821 τ"); // sub-unit
+    expect(formatTao(-256.5)).toBe("-256.50 τ"); // whole-unit, 2dp
+    expect(formatTao(-1_000)).toBe("-1.0k τ"); // lower boundary of k-tier
+    expect(formatTao(-12_345)).toBe("-12.3k τ");
+    expect(formatTao(-999_999)).toBe("-1000.0k τ"); // still < 1e6 → k-tier
+    expect(formatTao(-1_000_000)).toBe("-1.00M τ"); // lower boundary of M-tier
+    expect(formatTao(-2_500_000)).toBe("-2.50M τ");
+  });
 });

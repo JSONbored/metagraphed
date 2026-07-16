@@ -1303,16 +1303,16 @@
       "netuid": 95,
       "slug": "actual",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T18:08:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": ["https://actual.inc/", "https://models.actual.inc/"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/actual.json (reviewed_at 2026-06-08T18:08:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 1 missing probe block. Still no GitHub source repository reference found anywhere on the site."
     },
     {
       "netuid": 96,
       "slug": "sn-96",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T07:45:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://verathos.ai/",
@@ -1322,9 +1322,10 @@
         "https://api.verathos.ai/v1/models",
         "https://verathos.ai/chat",
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/96"
+        "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/96",
+        "https://api.verathos.ai/openapi.json"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/verathos.json (reviewed_at 2026-06-08T07:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 4 missing probe blocks. Diffed both OpenAPI schemas (protocol + validator proxy, 59 combined paths) for undiscovered public GET endpoints -- added 12 new no-param surfaces; excluded account-scoped and consistently-503 routes."
     },
     {
       "netuid": 98,
