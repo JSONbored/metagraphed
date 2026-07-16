@@ -2444,6 +2444,38 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_detail",
+    title: "Get one subnet's raw structural detail",
+    description:
+      "Fetch one subnet's raw per-subnet record by netuid: chain-native " +
+      "structure, live economics, candidate surfaces, endpoints, gaps, and " +
+      "verified surfaces -- the underlying record get_subnet's composed " +
+      "overview is assembled from. Use get_subnet for the curated dashboard " +
+      "view (profile + health + curation + gaps + counts); use this for the " +
+      "raw structural record itself, or get_subnet_economics for economics " +
+      "alone. Mirrors GET /api/v1/subnets/{netuid}.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const detail = await loadArtifactData(
+        ctx,
+        `/metagraph/subnets/${netuid}.json`,
+      );
+      // Same live-economics overlay /api/v1/subnets/{netuid} attaches (#1308):
+      // one call carries validator/miner counts, registration, stake, and
+      // alpha price alongside the structural record.
+      const { economics } = await loadSubnetEconomics(ctx, netuid);
+      return economics ? { ...detail, economics } : detail;
+    },
+  },
+  {
     ...GET_NETWORK_HEALTH_MCP_TOOL,
     async handler(_args, ctx) {
       return loadGlobalOperationalHealth(
@@ -10255,6 +10287,23 @@ const TOOL_OUTPUT_SCHEMAS = {
       gap_priorities: { type: "array" },
       operational_observed_at: NULLABLE_STRING,
       health_source: NULLABLE_STRING,
+    },
+  },
+  get_subnet_detail: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet"],
+    properties: {
+      schema_version: { type: "integer" },
+      generated_at: NULLABLE_STRING,
+      subnet: { type: "object" },
+      candidate_surfaces: { type: "array" },
+      candidates: { type: "array" },
+      endpoints: { type: "array" },
+      gaps: ANY,
+      surfaces: { type: "array" },
+      verified_surfaces: { type: "array" },
+      economics: { type: ["object", "null"] },
     },
   },
   get_subnet_health: {

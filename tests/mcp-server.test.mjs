@@ -1631,6 +1631,69 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.structuredContent.error.code, "not_found");
   });
 
+  test("get_subnet_detail merges the live economics row onto the raw structural record", async () => {
+    const localDeps = makeDeps({
+      "/metagraph/subnets/7.json": {
+        schema_version: 1,
+        subnet: { netuid: 7, slug: "allways", name: "Allways", tempo: 360 },
+        surfaces: [],
+        endpoints: [],
+        gaps: [],
+      },
+      "/metagraph/economics.json": {
+        schema_version: 1,
+        summary: { with_economics_count: 1 },
+        subnets: [{ netuid: 7, registration_cost_tao: 0.5, open_slots: 3 }],
+      },
+    });
+    const res = await callTool(
+      "get_subnet_detail",
+      { netuid: 7 },
+      { deps: localDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet.netuid, 7);
+    assert.equal(out.subnet.tempo, 360);
+    assert.equal(out.economics.open_slots, 3);
+  });
+
+  test("get_subnet_detail omits economics when no live row exists for the netuid", async () => {
+    const localDeps = makeDeps({
+      "/metagraph/subnets/7.json": {
+        schema_version: 1,
+        subnet: { netuid: 7, slug: "allways", name: "Allways" },
+      },
+      "/metagraph/economics.json": {
+        schema_version: 1,
+        summary: {},
+        subnets: [],
+      },
+    });
+    const res = await callTool(
+      "get_subnet_detail",
+      { netuid: 7 },
+      { deps: localDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet.netuid, 7);
+    assert.equal("economics" in out, false);
+  });
+
+  test("get_subnet_detail maps a missing artifact to a clean not_found", async () => {
+    const res = await callTool("get_subnet_detail", { netuid: 999 }, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
+  test("get_subnet_detail rejects a non-integer netuid", async () => {
+    const res = await callTool(
+      "get_subnet_detail",
+      { netuid: "seven" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("get_subnet_health is live-only — ignores the static artifact, reports unknown when the live store is cold", async () => {
     // `deps` carries a static /metagraph/health/subnets/7.json (summary.status
     // "ok"), but current health is live-only: the retired static artifact must
