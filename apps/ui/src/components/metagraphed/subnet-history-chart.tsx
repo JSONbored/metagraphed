@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { subnetHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@jsonbored/ui-kit";
-import { Skeleton, EmptyState } from "@/components/metagraphed/states";
+import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetHistoryPoint } from "@/lib/metagraphed/types";
@@ -20,7 +20,13 @@ const WINDOWS: Win[] = ["7d", "30d", "90d", "1y", "all"];
  */
 export function SubnetHistoryChart({ netuid }: { netuid: number }) {
   const [win, setWin] = useState<Win>("90d");
-  const { data: res, isLoading } = useQuery(subnetHistoryQuery(netuid, win));
+  const {
+    data: res,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(subnetHistoryQuery(netuid, win));
   const points = useMemo<SubnetHistoryPoint[]>(() => res?.data?.points ?? [], [res?.data?.points]);
 
   const series = useMemo(() => {
@@ -72,6 +78,8 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
       <div className="flex items-center justify-end">{windowSelector}</div>
       {isLoading ? (
         <Skeleton className="h-32 w-full" />
+      ) : isError ? (
+        <ErrorState error={error} context="subnet history" onRetry={() => refetch()} />
       ) : !hasData ? (
         <EmptyState
           title="No on-chain history"
