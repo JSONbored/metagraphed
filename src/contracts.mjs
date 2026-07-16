@@ -355,6 +355,7 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
+      missing_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
       review_state: filterTextSchema,
     },
     sort: [
