@@ -10,19 +10,20 @@
   "curation": {
     "gap_notes": [
       "No verified official docs URL yet.",
-      "No verified OpenAPI/Swagger schema yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet -- dashboard.forevermoney.ai/openapi.json, /api/openapi.json, and /docs all return the dashboard SPA's HTML shell (200 text/html), not a real schema.",
+      "sn-98-forevermoney-vaults-tvl-api (dashboard.forevermoney.ai/api/vaults/tvl) is currently returning a consistent HTTP 502 (Cloudflare bad gateway) as of 2026-07-16, while the dashboard host itself is otherwise live (200 on /). Kept tracked with its probe enabled since the base host is healthy and this looks like a backend-specific outage rather than a dead domain.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T10:10:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/98",
   "name": "ForeverMoney",
   "netuid": 98,
-  "notes": "Reviewed overlay for SN98 using the official ForeverMoney website and source repository.",
+  "notes": "Reviewed overlay for SN98 using the official ForeverMoney website and source repository. Root->128 accuracy audit re-review pass (#5903): the vault TVL API is currently 502ing (backend-specific outage, base dashboard host still live) -- documented in gap_notes, surface kept tracked.",
   "schema_version": 1,
   "slug": "sn-98",
   "social": {

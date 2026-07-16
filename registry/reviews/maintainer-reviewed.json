@@ -1318,13 +1318,13 @@
       "netuid": 98,
       "slug": "sn-98",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:10:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://forevermoney.ai/",
         "https://github.com/SN98-ForeverMoney/forever-money"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/forevermoney.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): all 5 surfaces re-verified. The vault TVL API (dashboard.forevermoney.ai/api/vaults/tvl) is currently 502ing while the base dashboard host stays live -- documented in gap_notes, kept tracked."
     },
     {
       "netuid": 100,
