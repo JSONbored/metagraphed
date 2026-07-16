@@ -1001,7 +1001,7 @@
       "netuid": 72,
       "slug": "sn-72",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T08:35:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.natix.network/",
@@ -1011,7 +1011,7 @@
         "https://www.natix.network/vx360-depin-dashcam",
         "https://huggingface.co/natix-network-org"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/streetvision-by-natix.json (reviewed_at 2026-06-08T08:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): discovered the roadwork dataset and its rows API, previously public, are now HF-auth-gated (401) as of 2026-07-15. Corrected auth_required to true and disabled their probes rather than removing the surfaces."
     },
     {
       "netuid": 73,

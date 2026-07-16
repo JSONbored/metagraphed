@@ -17,17 +17,18 @@
   "docs_url": "https://docs.natix.network/whitepaper",
   "source_repo": "https://github.com/natixnetwork/streetvision-subnet",
   "website_url": "https://www.natix.network/",
-  "notes": "Reviewed overlay for SN72 using the official NATIX StreetVision source repository, NATIX website, whitepaper, VX360 product page, and Hugging Face organization.",
+  "notes": "Reviewed overlay for SN72 using the official NATIX StreetVision source repository, NATIX website, whitepaper, VX360 product page, and Hugging Face organization. Re-review pass (2026-07-15): discovered the roadwork dataset and its rows API, previously public, are now HF-auth-gated (401) -- corrected auth_required and disabled their probes rather than removing the surfaces.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T08:35:00.000Z",
-    "verified_at": "2026-06-08T08:35:00.000Z",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
     "source_count": 8,
     "gap_notes": [
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet."
+      "No verified safe public first-party subnet API endpoint yet (the roadwork dataset rows API, which previously filled this gap, is now auth-gated -- see below); the tracked TaoMarketCap feed is third-party.",
+      "No verified SSE/event stream yet.",
+      "The natix-network-org/roadwork Hugging Face dataset and its rows API, previously public, now return HTTP 401 (auth required) as of 2026-07-15 -- corrected auth_required to true on both surfaces and disabled their probes rather than removing them, since they document a real official artifact that may become public again."
     ]
   },
   "surfaces": [
@@ -157,18 +158,24 @@
       "kind": "data-artifact",
       "url": "https://huggingface.co/datasets/natix-network-org/roadwork",
       "provider": "natix",
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "public_safe": true,
       "source_urls": [
         "https://github.com/natixnetwork/streetvision-subnet",
         "https://huggingface.co/natix-network-org"
       ],
+      "probe": {
+        "enabled": false,
+        "expect": "html",
+        "method": "HEAD"
+      },
+      "rate_limit_notes": "Now returns HTTP 401 (Hugging Face auth required) as of 2026-07-15; was public at last review (2026-06-08). Probing disabled since it will always fail while gated.",
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Public NATIX StreetVision HuggingFace image+text dataset (~8.5k road/roadwork scenes with structured scene/weather/lighting metadata) backing the SN72 roadwork image-classification task; not gated. The StreetVision README (source) declares the Bittensor subnet and links the natix-network-org HF org that owns it."
+      "notes": "NATIX StreetVision HuggingFace image+text dataset (~8.5k road/roadwork scenes with structured scene/weather/lighting metadata) backing the SN72 roadwork image-classification task. The StreetVision README (source) declares the Bittensor subnet and links the natix-network-org HF org that owns it. Now gated (HF auth required); tracked as a real official artifact pending it becoming public again."
     },
     {
       "id": "sn-72-natix-roadwork-rows-api",
@@ -176,18 +183,24 @@
       "kind": "data-artifact",
       "url": "https://datasets-server.huggingface.co/rows?dataset=natix-network-org/roadwork&config=default&split=train&offset=0&length=100",
       "provider": "natix",
-      "auth_required": false,
+      "auth_required": true,
       "authority": "community",
       "public_safe": true,
       "source_urls": [
         "https://github.com/natixnetwork/streetvision-subnet",
         "https://huggingface.co/datasets/natix-network-org/roadwork"
       ],
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "rate_limit_notes": "Now returns HTTP 401 (Hugging Face auth required) as of 2026-07-15, same gating as the parent roadwork dataset; was public at last review (2026-06-08). Probing disabled since it will always fail while gated.",
       "review": {
         "state": "community-submitted",
         "submitted_by": "galuis116"
       },
-      "notes": "Public no-auth Hugging Face Datasets Server rows API for the official StreetVision roadwork dataset — returns machine-readable JSON (schema + row records with image/id/width/height/scene metadata), a distinct callable endpoint from the existing HF dataset webpage surface above. Fills the file's gap note for a verified safe public subnet API endpoint."
+      "notes": "Hugging Face Datasets Server rows API for the official StreetVision roadwork dataset — machine-readable JSON (schema + row records with image/id/width/height/scene metadata), a distinct callable endpoint from the HF dataset webpage surface above. Previously filled the file's gap note for a verified safe public subnet API endpoint; now gated along with the parent dataset."
     },
     {
       "auth_required": false,
