@@ -18,6 +18,7 @@ import {
   rowTuple,
   sqlLiteral,
 } from "../scripts/backfill-subnet-snapshots-postgres.mjs";
+import { chunkRows as sharedChunkRows } from "../scripts/lib.mjs";
 
 const SAMPLE_ROW = {
   rowid: 1,
@@ -178,8 +179,18 @@ test("chunkRows splits into fixed-size chunks with a final remainder", () => {
   assert.deepEqual(chunkRows(rows, 3), [[0, 1, 2], [3, 4, 5], [6]]);
 });
 
-test("chunkRows returns an empty array for empty input", () => {
-  assert.deepEqual(chunkRows([], 100), []);
+test("chunkRows now delegates to the shared lib.mjs implementation", () => {
+  // The local reimplementation was removed in favor of the single canonical
+  // helper; confirm the export the script exposes IS lib.mjs's chunkRows.
+  assert.equal(chunkRows, sharedChunkRows);
+});
+
+test("chunkRows uses the shared 'always at least one chunk' semantics", () => {
+  // The shared helper returns [[]] (never a bare []) for empty input -- this
+  // is the one place the old local copy diverged, but it is unreachable here:
+  // main() throws on zero rows before buildBackfillSql/chunkRows can run, so
+  // every real (non-empty) input is chunked identically to before.
+  assert.deepEqual(chunkRows([], 100), [[]]);
 });
 
 test("insertStatement emits an upsert that overwrites every non-key column", () => {
