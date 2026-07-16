@@ -170,6 +170,13 @@ const STATIC_ROUTES_TAIL: RouteEntry[] = [
     scope: "route",
   },
   {
+    label: "Events",
+    to: "/events",
+    hint: "Chain event feed",
+    icon: Rss,
+    scope: "route",
+  },
+  {
     label: "Accounts",
     to: "/accounts",
     hint: "Hotkey & coldkey activity",
