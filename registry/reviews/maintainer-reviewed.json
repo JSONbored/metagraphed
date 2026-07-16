@@ -949,6 +949,19 @@
       "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN67. Added website + source-repo surfaces, fixed 3 missing probe blocks, and diffed the repo's generated API reference docs (docs/api/generated/) for undiscovered public GET endpoints -- all 4 documented GET routes require Bittensor-signed auth, nothing new to add. On-chain identity confirmed via metagraph.sh, no rename needed."
     },
     {
+      "netuid": 68,
+      "slug": "sn-68",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.metanova-labs.ai/",
+        "https://github.com/metanova-labs/nova",
+        "https://vali-score-share-api.metanova-labs.ai/openapi.json"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN68. Added website + source-repo surfaces, fixed 6 missing probe blocks. Diffed the Boltz score-share OpenAPI schema for undiscovered public GET endpoints -- the sole no-param candidate was already tracked, nothing new to add."
+    },
+    {
       "netuid": 69,
       "slug": "ain",
       "decision": "maintainer-reviewed",

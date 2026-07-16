@@ -1,18 +1,65 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 9,
+    "gap_notes": [
+      "Diffed the Boltz score-share OpenAPI schema (vali-score-share-api.metanova-labs.ai/openapi.json, 7 GET paths) for undiscovered public GET endpoints -- the only no-path-param GET route is /api/v1/molecules, already tracked as sn-68-nova-score-share-molecules. The remaining 6 GET routes (molecule-targets/{name}/{epoch}, nanobodies/{sequence_hash}/{epoch}, jobs/{job_id}, and their /validations variants) all require a path parameter with no stable canonical value, so none were promoted."
+    ]
   },
   "name": "NOVA",
   "netuid": 68,
   "schema_version": 1,
   "slug": "sn-68",
   "status": "active",
+  "notes": "First maintainer review for SN68. Added website + source-repo surfaces, fixed 6 missing probe blocks. Diffed the score-share OpenAPI schema for undiscovered public GET endpoints -- the sole no-param candidate was already tracked, nothing new to add.",
   "social": {
     "x": "https://x.com/metanova_labs"
   },
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-68-nova-website",
+      "kind": "website",
+      "name": "NOVA website",
+      "notes": "Official Metanova Labs SN68 public website -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nova",
+      "public_safe": true,
+      "source_urls": ["https://www.metanova-labs.ai/"],
+      "url": "https://www.metanova-labs.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-68-nova-source-repo",
+      "kind": "source-repo",
+      "name": "NOVA source repository",
+      "notes": "Official SN68 miner/validator source repository -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nova",
+      "public_safe": true,
+      "source_urls": ["https://github.com/metanova-labs/nova"],
+      "url": "https://github.com/metanova-labs/nova"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -20,6 +67,12 @@
       "kind": "data-artifact",
       "name": "NOVA Submission Archive (Hugging Face)",
       "notes": "Public Hugging Face dataset of previously submitted sequences and scores, described as \"our Submission Archive HuggingFace dataset\" in the official NOVA docs.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "nova",
       "public_safe": true,
       "review": {
@@ -38,6 +91,12 @@
       "kind": "data-artifact",
       "name": "NOVA SAVI-2020 molecule library",
       "notes": "Public Metanova (NOVA, SN68) HuggingFace SAVI-2020 dataset — ~1.5B computationally generated, synthetically-accessible organic compounds (SMILES, drug-likeness scores, single-step routes), the candidate-molecule library NOVA's drug-discovery miners screen against; not gated, chemistry columns only. The metanova-labs/nova README (source) declares the Bittensor subnet and the Metanova HF org owns the dataset.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "nova",
       "public_safe": true,
       "review": {
@@ -57,6 +116,12 @@
       "kind": "data-artifact",
       "name": "NOVA Mol-Rxn-DB combinatorial molecule database",
       "notes": "Public Metanova (NOVA, SN68) Hugging Face dataset — the combinatorial molecule/reaction database (molecules.sqlite) the subnet's drug-discovery validators screen candidate compounds against. The official metanova-labs/nova install script downloads it directly (install_deps.sh line 57), establishing first-party ownership.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "nova",
       "public_safe": true,
       "review": {
@@ -75,6 +140,12 @@
       "kind": "data-artifact",
       "name": "NOVA Proteins target dataset",
       "notes": "Public Metanova (NOVA, SN68) Hugging Face dataset of protein targets the subnet's drug-discovery challenges are posed against. The official metanova-labs/nova challenge code loads it directly (utils/challenge.py line 37: load_dataset(\"Metanova/Proteins\")), establishing first-party ownership. Distinct from the subnet's registered Submission-Archive, SAVI-2020, and Mol-Rxn-DB datasets.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "nova",
       "public_safe": true,
       "review": {
@@ -93,6 +164,12 @@
       "kind": "openapi",
       "name": "NOVA Boltz score sharing API OpenAPI schema",
       "notes": "Machine-readable OpenAPI 3.x schema for the NOVA SN68 validator score-sharing service (title: Boltz score sharing API). Served publicly at vali-score-share-api.metanova-labs.ai; documents molecule and nanobody score-share routes used by validators to average non-deterministic model results.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nova",
       "public_safe": true,
       "review": {
@@ -115,6 +192,12 @@
       "kind": "subnet-api",
       "name": "NOVA score-share molecules catalog API",
       "notes": "Public no-auth GET /api/v1/molecules on vali-score-share-api.metanova-labs.ai returning paginated molecule score-share records (items with name, epoch, target_averages). Documented as GET /api/v1/molecules in the subnet OpenAPI spec; same host as SCORE_SHARE_API_URL in the official nova validator docs and validator.py.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "nova",
       "public_safe": true,
       "review": {
