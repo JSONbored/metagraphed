@@ -4,13 +4,14 @@
     "gap_notes": [
       "No verified SSE/event stream yet.",
       "Bounty state is documented through public CLI flows, but no unauthenticated public API has been verified yet.",
-      "gittensory-api.aethereal.dev (backing the gittensory-contribution-interface and gittensory-mcp surfaces) currently fails DNS resolution entirely (as of 2026-07-15), while the sibling gittensory.aethereal.dev website resolves fine -- an observed outage/renamed host, not a registry gap; kept both surfaces tracked in case it comes back."
+      "Corrected 2026-07-15: gittensory-api.aethereal.dev (previously reported as fully DNS-unresolvable) was a dead host, not a renamed one -- the contribution-interface and MCP surfaces have migrated to api.loopover.ai. The old gittensory-api.aethereal.dev subdomain remains permanently unresolvable (no A/AAAA/CNAME record); gittensory.aethereal.dev (the old website) still resolves and serves the same rebranded content as the new loopover.ai domain.",
+      "The LoopOver API at api.loopover.ai now exposes a real 100-path OpenAPI schema (title \"LoopOver API\") -- diffed for undiscovered public GET endpoints; the vast majority require LoopOverBearer/LoopOverSessionCookie auth, only 2 additional no-param routes were genuinely public (mcp/compatibility, public/stats), both added."
     ],
     "level": "adapter-backed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 5,
-    "verified_at": "2026-07-15T00:00:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": null,
   "docs_url": "https://docs.gittensor.io/",
@@ -163,7 +164,7 @@
       "id": "gittensory-contribution-interface",
       "kind": "data-artifact",
       "name": "Gittensory contribution-interface descriptor",
-      "notes": "Machine-readable descriptor declaring Gittensory as the SN74 contribution interface: MCP endpoint, contribution-relevant tools, GitHub App, and onboarding steps.",
+      "notes": "Machine-readable descriptor declaring Gittensory (now branded LoopOver) as the SN74 contribution interface: MCP endpoint, contribution-relevant tools, GitHub App, and onboarding steps. Migrated from gittensory-api.aethereal.dev (dead, DNS unresolvable) to api.loopover.ai -- verified live 2026-07-15, payload confirms netuid 74 / name \"gittensor\" / provider \"LoopOver\".",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -171,8 +172,8 @@
       },
       "provider": "gittensory",
       "public_safe": true,
-      "source_urls": ["https://gittensory.aethereal.dev/"],
-      "url": "https://gittensory-api.aethereal.dev/v1/public/subnet-interface"
+      "source_urls": ["https://loopover.ai/"],
+      "url": "https://api.loopover.ai/v1/public/subnet-interface"
     },
     {
       "auth_required": true,
@@ -180,7 +181,7 @@
       "id": "gittensory-mcp",
       "kind": "subnet-api",
       "name": "Gittensory MCP (contribution interface)",
-      "notes": "Streamable-HTTP MCP server exposing deterministic, gittensor-native contribution signals (decision pack, check-before-start, preflight, notifications) to a contributor's own agent harness. POST-only JSON-RPC, so recurring read probes are intentionally disabled. Contributor tools are scoped to the authenticated GitHub login.",
+      "notes": "Streamable-HTTP MCP server exposing deterministic, gittensor-native contribution signals (decision pack, check-before-start, preflight, notifications) to a contributor's own agent harness. POST-only JSON-RPC, so recurring read probes are intentionally disabled. Contributor tools are scoped to the authenticated GitHub login. Migrated from gittensory-api.aethereal.dev to api.loopover.ai -- both GET and POST now correctly return 401 unauthorized (confirmed 2026-07-15), consistent with the prior auth-gated behavior.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -188,17 +189,16 @@
       },
       "provider": "gittensory",
       "public_safe": true,
-      "source_urls": [
-        "https://gittensory-api.aethereal.dev/v1/public/subnet-interface"
-      ],
-      "url": "https://gittensory-api.aethereal.dev/mcp"
+      "source_urls": ["https://api.loopover.ai/v1/public/subnet-interface"],
+      "url": "https://api.loopover.ai/mcp"
     },
     {
       "auth_required": false,
       "authority": "provider-claimed",
       "id": "gittensory-website",
       "kind": "website",
-      "name": "Gittensory",
+      "name": "Gittensory (LoopOver)",
+      "notes": "Migrated to loopover.ai, the product's current primary domain (og:site_name still \"Gittensory\"; CLI/GitHub App remain gittensory-branded). The old gittensory.aethereal.dev domain still resolves and serves the same rebranded content as of 2026-07-15, so it's kept as a secondary source_url.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -206,7 +206,52 @@
       },
       "provider": "gittensory",
       "public_safe": true,
-      "url": "https://gittensory.aethereal.dev/"
+      "source_urls": ["https://gittensory.aethereal.dev/"],
+      "url": "https://loopover.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "gittensory-mcp-compatibility",
+      "kind": "subnet-api",
+      "name": "Gittensory MCP compatibility status",
+      "notes": "Public no-auth GET /v1/mcp/compatibility on api.loopover.ai returning the @loopover/mcp package's minimum/latest supported version info (used by the CLI to self-check compatibility). Documented in the LoopOver API OpenAPI schema (100 paths) on the same host as the contribution-interface descriptor.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensory",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.loopover.ai/openapi.json"],
+      "url": "https://api.loopover.ai/v1/mcp/compatibility"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "gittensory-public-stats",
+      "kind": "data-artifact",
+      "name": "Gittensory public contribution stats",
+      "notes": "Public no-auth GET /v1/public/stats on api.loopover.ai returning aggregate PR-handling stats (totals: handled/merged/closed/reviewed/accuracyPct/minutesSaved, plus a weekly breakdown). Documented in the LoopOver API OpenAPI schema (100 paths) on the same host as the contribution-interface descriptor.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensory",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.loopover.ai/openapi.json"],
+      "url": "https://api.loopover.ai/v1/public/stats"
     },
     {
       "auth_required": false,
