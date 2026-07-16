@@ -10,18 +10,21 @@
   ],
   "contact": "oscar@theredteam.io",
   "curation": {
-    "gap_notes": ["No verified SSE/event stream yet."],
+    "gap_notes": [
+      "No verified SSE/event stream yet.",
+      "The Device Fingerprinter Gate OpenAPI schema documents additional routes (/, /api/v1/, /api/v1/health, /api/v1/ping, /api/v1/tasks/) but declares no servers block and the rest-dfp-proxy repository documents no single canonical public deployment host -- these were not promoted as tracked surfaces."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:50:00.000Z",
+    "reviewed_at": "2026-07-16T05:45:00.000Z",
     "source_count": 6,
-    "verified_at": "2026-06-08T09:50:00.000Z"
+    "verified_at": "2026-07-16T05:45:00.000Z"
   },
   "dashboard_url": "https://dashboard.theredteam.io/",
   "docs_url": "https://docs.theredteam.io/",
   "name": "RedTeam",
   "netuid": 61,
-  "notes": "Reviewed overlay for SN61 using the official RedTeam website, dashboard, documentation, and source repository.",
+  "notes": "Reviewed overlay for SN61 using the official RedTeam website, dashboard, documentation, and source repository. This re-review pass fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the Device Fingerprinter Gate OpenAPI schema; its additional routes have no documented canonical public host so none were promoted. On-chain identity re-confirmed unchanged.",
   "schema_version": 1,
   "slug": "sn-61",
   "source_repo": "https://github.com/RedTeamSubnet/RedTeam",
@@ -110,6 +113,12 @@
       "kind": "subnet-api",
       "name": "RedTeam dashboard health",
       "notes": "Public no-auth GET /healthz on dashboard.theredteam.io returning gateway liveness (observed plain-text response: ok). Served on the official RedTeam dashboard host registered in this manifest and linked from the RedTeam source repository README.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "redteam",
       "public_safe": true,
       "review": {
@@ -129,6 +138,12 @@
       "kind": "data-artifact",
       "name": "RedTeam active challenges registry",
       "notes": "Public no-auth YAML challenge-pool registry listing active SN61 RedTeam challenges (names, incentive weights, Docker images, controller targets, resource limits, and container run configuration) published in the official RedTeamSubnet/RedTeam repository at src/redteam_core/challenge_pool/active_challenges.yaml. Loaded at validator startup by active_challenges_manager.py via ACTIVE_CHALLENGES_FILE.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "redteam",
       "public_safe": true,
       "review": {
@@ -148,6 +163,12 @@
       "kind": "openapi",
       "name": "RedTeam Device Fingerprinter Gate OpenAPI spec",
       "notes": "Machine-readable OpenAPI 3.1 spec (title: Device Fingerprinter Gate) served from the official RedTeamSubnet/rest-dfp-proxy repository (homepage www.theredteam.io); documents the REST proxy that gates the dev_fingerprinter challenge defined in the subnet's RedTeamSubnet/RedTeam source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "redteam",
       "public_safe": true,
       "review": {

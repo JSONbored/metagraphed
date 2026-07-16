@@ -221,3 +221,6 @@ __pycache__/
 # Playwright local run output (apps/ui e2e)
 apps/ui/test-results/
 apps/ui/playwright-report/
+
+# fumadocs-mdx generated collection output (apps/ui/source.config.ts -> content/docs)
+apps/ui/.source/

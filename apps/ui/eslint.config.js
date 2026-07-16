@@ -6,7 +6,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  // .source is fumadocs-mdx's generated content collection output (see
+  // source.config.ts) -- codegen, not authored code, same treatment as dist.
+  { ignores: ["dist", ".output", ".vinxi", ".source"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
