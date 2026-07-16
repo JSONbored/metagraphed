@@ -1361,7 +1361,7 @@ await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
 // index for AI agents: per-subnet callable surfaces (subnet-api/openapi/sse/
 // data-artifact) joined with their machine-readable schema snapshot + health.
 // Global file is a compact index (dual/committed); per-subnet files carry the
-// full service detail (R2). Health here is the 6h-build snapshot; the MCP tool +
+// full service detail (R2). Health here is the build-time snapshot; the MCP tool +
 // serving layer can overlay the live 15-minute health.
 // AGENT_SERVICE_KINDS + agentSchemaBySurfaceId + agentEndpointBySurfaceId are
 // declared earlier (service-resolution indices, alongside integration readiness)
@@ -4465,14 +4465,14 @@ function buildFreshnessArtifact({
       id: "surface-health",
       lane: "health-probe",
       // Operational health is now served LIVE from the 15-minute cron prober
-      // (D1/KV), so this 6h-build probe is only the informational/full-surface
+      // (D1/KV), so this build-time full-surface probe is only the informational
       // fallback. It must NEVER block publish — that coupling was the cascade that
       // froze the whole site. Warn-only; operational freshness lives in KV
       // health:meta and is surfaced at /health → operational_health.last_run_at.
       notes:
         health.latest.source === "live-smoke-probe"
           ? "Full-surface health is probe-derived; operational surfaces are probed live every ~15 minutes."
-          : "Operational surfaces are probed live; the 6h full-surface probe is a fallback.",
+          : "Operational surfaces are probed live; the build-time full-surface probe is a fallback.",
       pathValue: "public/metagraph/health/latest.json",
       requiredForPublish: false,
       staleAfterHours: healthHours,
