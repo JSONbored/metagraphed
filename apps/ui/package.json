@@ -12,7 +12,7 @@
     "postinstall": "fumadocs-mdx",
     "build:client": "cd ../../packages/client && npm run build",
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
