@@ -139,6 +139,8 @@ function SubnetsPage() {
     !!search.readiness ||
     !!search.kind ||
     !!search.stale ||
+    !!search.root ||
+    !!search.status ||
     !!search.cursor;
   const onReset = () =>
     navigate({
@@ -361,6 +363,8 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     search.readiness ||
     search.kind ||
     search.stale ||
+    search.root ||
+    search.status ||
     search.sort
   );
 
@@ -391,6 +395,18 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         // doesn't emit a `freshness` field on these rows — `updated_at` is what's
         // actually populated (confirmed against the live response).
         if (search.stale && !isStaleFreshness(s.updated_at, 24 * 60 * 60_000)) return false;
+        // `type` (normalized from the API's `subnet_type`) is "root" | "application" —
+        // confirmed against live data (1 root subnet, 128 application, out of 129).
+        if (search.root === "only" && s.type !== "root") return false;
+        if (search.root === "exclude" && s.type === "root") return false;
+        // On-chain lifecycle, not probe health (never conflate the two — see
+        // useSubnetProbeHealth's "never by profile/chain lifecycle status" note).
+        // The list API's `status` field is uniformly "active" for every row (a
+        // no-op to filter on); `lifecycle` is the field that actually varies
+        // (confirmed live: active/deprecated/parked).
+        const lifecycle = s.lifecycle as string | undefined;
+        if (search.status === "active" && lifecycle !== "active") return false;
+        if (search.status === "inactive" && lifecycle === "active") return false;
         return true;
       }),
     [
@@ -402,6 +418,8 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
       search.readiness,
       search.kind,
       search.stale,
+      search.root,
+      search.status,
     ],
   );
   const rows = useMemo(
@@ -468,6 +486,24 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           { value: "warn", label: "warn" },
           { value: "down", label: "down" },
           { value: "unknown", label: "unknown" },
+        ]}
+      />
+      <SelectFilter
+        label="root"
+        value={search.root}
+        onChange={(v) => setSearch({ root: v })}
+        options={[
+          { value: "only", label: "root only" },
+          { value: "exclude", label: "exclude root" },
+        ]}
+      />
+      <SelectFilter
+        label="status"
+        value={search.status}
+        onChange={(v) => setSearch({ status: v })}
+        options={[
+          { value: "active", label: "active" },
+          { value: "inactive", label: "inactive" },
         ]}
       />
       <SelectFilter

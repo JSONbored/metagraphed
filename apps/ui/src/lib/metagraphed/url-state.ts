@@ -19,6 +19,12 @@ export const tableSearchSchema = z.object({
   stale: fallback(z.string(), "").default(""),
   provider: fallback(z.string(), "").default(""),
   netuid: fallback(z.string(), "").default(""),
+  // /subnets root/status filters (#6270) -- "" means unfiltered (matches every
+  // other filter field's convention). `root` reads the row's normalized `type`
+  // ("root" | "application"); `status` reads the row's on-chain `lifecycle`
+  // ("active" | "deprecated" | "parked") -- confirmed against live data.
+  root: fallback(z.string(), "").default(""),
+  status: fallback(z.string(), "").default(""),
   // #9: agent-catalog capability filters (applied client-side over joined rows).
   serviceKind: fallback(z.string(), "").default(""),
   readiness: fallback(z.string(), "").default(""),
