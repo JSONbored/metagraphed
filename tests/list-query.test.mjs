@@ -353,6 +353,53 @@ describe("list-query case-insensitive enum/string filters (#2073)", () => {
   });
 });
 
+// #6238: the curation collection could sort=curation_level but not filter on it,
+// unlike the sibling gaps collection. It's now a real filter using the same
+// shared QUERY_ENUMS.curationLevel vocabulary.
+describe("list-query curation curation_level filter (#6238)", () => {
+  const data = {
+    curation: [
+      { netuid: 1, curation_level: "native" },
+      { netuid: 2, curation_level: "maintainer-reviewed" },
+    ],
+  };
+
+  test("?curation_level=native narrows the curation list to matching rows", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/curation?curation_level=native"),
+      "curation",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+      result.data.curation.map((r) => r.netuid),
+      [1],
+    );
+  });
+
+  test("the filter is case-insensitive, like every other enum filter (#2073)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/curation?curation_level=Maintainer-Reviewed"),
+      "curation",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+      result.data.curation.map((r) => r.netuid),
+      [2],
+    );
+  });
+
+  test("an invalid curation_level errors with parameter curation_level (400 invalid_query)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/curation?curation_level=bogus"),
+      "curation",
+    );
+    assert.equal(result.error.parameter, "curation_level");
+  });
+});
+
 describe("list-query numeric range filters", () => {
   const data = {
     subnets: [
