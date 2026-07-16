@@ -8,13 +8,22 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { PageHero, BrandIcon, TimeAgo, StatTile, ShareButton } from "@jsonbored/ui-kit";
+import {
+  PageHero,
+  BrandIcon,
+  TimeAgo,
+  StatTile,
+  ShareButton,
+  DownloadCsvButton,
+  ActionBar,
+} from "@jsonbored/ui-kit";
 import {
   chainDeregistrationsQuery,
   chainWeightsQuery,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { buildUrl } from "@/lib/metagraphed/client";
 import type { Subnet } from "@/lib/metagraphed/types";
 
 const leaderboardsSearchSchema = z.object({
@@ -64,7 +73,21 @@ function LeaderboardsPage() {
         live
         title="Leaderboards"
         description="Network-wide chain activity boards — ranked by subnet from live chain-direct analytics."
-        actions={<ShareButton />}
+        actions={
+          <ActionBar>
+            <DownloadCsvButton
+              url={buildUrl("/api/v1/chain/weights", { window: win })}
+              label="Weight-setting CSV"
+              bare
+            />
+            <DownloadCsvButton
+              url={buildUrl("/api/v1/chain/deregistrations", { window: win })}
+              label="Deregistrations CSV"
+              bare
+            />
+            <ShareButton bare />
+          </ActionBar>
+        }
       />
       <div className="flex flex-wrap items-center justify-end gap-2">
         <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
