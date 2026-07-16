@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 239,
+  "surface_count": 237,
   "surfaces": [
     {
       "auth_required": false,
@@ -1991,42 +1991,6 @@
       "surface_id": "sn-24-quasar-launch-teacher",
       "surface_key": "srf-840a2605f8fb23c0",
       "url": "https://huggingface.co/Qwen/Qwen3.5-4B"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 24,
-      "probe": {
-        "expect": "html",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "silx-labs",
-      "public_safe": true,
-      "subnet_name": "Quasar",
-      "subnet_slug": "sn-24",
-      "surface_id": "sn-24-quasar-training-corpus",
-      "surface_key": "srf-25089541aa0cece3",
-      "url": "https://huggingface.co/datasets/silx-ai/Quasar-SN3"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 24,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "subnet_name": "Quasar",
-      "subnet_slug": "sn-24",
-      "surface_id": "sn-24-taomarketcap-subnet-api",
-      "surface_key": "srf-4262382b60db3bb7",
-      "url": "https://api.taomarketcap.com/public/v1/subnets/24"
     },
     {
       "auth_required": false,
