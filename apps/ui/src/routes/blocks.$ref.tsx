@@ -418,14 +418,17 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                       </td>
                       <td className="px-4 py-2.5 font-mono text-[11px] text-ink">
                         {event.hotkey ? (
-                          <Link
-                            to="/accounts/$ss58"
-                            params={{ ss58: event.hotkey }}
-                            className="hover:underline"
-                            title={event.hotkey}
-                          >
-                            {shortHash(event.hotkey, 10)}
-                          </Link>
+                          <div className="flex max-w-xs items-center gap-1.5">
+                            <Link
+                              to="/accounts/$ss58"
+                              params={{ ss58: event.hotkey }}
+                              className="truncate hover:underline"
+                              title={event.hotkey}
+                            >
+                              {shortHash(event.hotkey, 10)}
+                            </Link>
+                            <CopyButton value={event.hotkey} label="hotkey" />
+                          </div>
                         ) : (
                           "—"
                         )}
