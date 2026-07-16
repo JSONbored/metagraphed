@@ -45,7 +45,13 @@
       "id": "sn-107-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "Minos TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/107 on api.taomarketcap.com returning machine-readable JSON for SN107 Minos on-chain subnet state, economics, registration/burn parameters, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API and provides the standalone public JSON data for netuid 107 alongside the subnet's first-party /health endpoint.",
+      "notes": "Public no-auth GET /public/v1/subnets/107/ on api.taomarketcap.com returning machine-readable JSON for SN107 Minos on-chain subnet state, economics, registration/burn parameters, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API and provides the standalone public JSON data for netuid 107 alongside the subnet's first-party /health endpoint. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -56,7 +62,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://taomarketcap.com/subnets/107"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/107"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/107/"
     }
   ],
   "contact": "contact@theminos.ai"

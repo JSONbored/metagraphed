@@ -41,7 +41,13 @@
       "id": "sn-73-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "MetaHash TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/73 on api.taomarketcap.com returning machine-readable JSON for SN73 MetaHash on-chain subnet state, hyperparameters, economics, and dTAO market fields. MetaHash's previously discovered docs and source URLs do not resolve and no first-party public API endpoint is verified; this indexed on-chain feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/73/ on api.taomarketcap.com returning machine-readable JSON for SN73 MetaHash on-chain subnet state, hyperparameters, economics, and dTAO market fields. MetaHash's previously discovered docs and source URLs do not resolve and no first-party public API endpoint is verified; this indexed on-chain feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -52,7 +58,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/73/subnet.json"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/73"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/73/"
     },
     {
       "auth_required": false,

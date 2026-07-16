@@ -136,7 +136,7 @@
       "id": "sn-20-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "GroundLayer TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/20 on api.taomarketcap.com returning machine-readable JSON for SN20 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. GroundLayer's official website paths under www.groundlayer.xyz do not expose a verified first-party public API; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/20/ on api.taomarketcap.com returning machine-readable JSON for SN20 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. GroundLayer's official website paths under www.groundlayer.xyz do not expose a verified first-party public API; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -153,7 +153,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://www.groundlayer.xyz/"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/20"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/20/"
     }
   ],
   "website_url": "https://www.groundlayer.xyz/"

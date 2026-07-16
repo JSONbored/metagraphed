@@ -105,7 +105,7 @@
       "id": "sn-27-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "NI Compute TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/27 on api.taomarketcap.com returning machine-readable JSON for SN27 NI Compute on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. NI Compute has no separately registered first-party public subnet-state API; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/27/ on api.taomarketcap.com returning machine-readable JSON for SN27 NI Compute on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. NI Compute has no separately registered first-party public subnet-state API; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -119,7 +119,7 @@
         "submitted_by": "jaytbarimbao-collab"
       },
       "source_urls": ["https://api.taomarketcap.com/developer/documentation/"],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/27"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/27/"
     }
   ]
 }

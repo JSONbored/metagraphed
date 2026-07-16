@@ -144,7 +144,7 @@
       "id": "sn-40-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "Ralph TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/40 on api.taomarketcap.com returning machine-readable JSON for SN40 on-chain subnet state, hyperparameters, economics, and dTAO market fields. Ralph has no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/40/ on api.taomarketcap.com returning machine-readable JSON for SN40 on-chain subnet state, hyperparameters, economics, and dTAO market fields. Ralph has no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -161,7 +161,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/RalphLabsAI/ralph"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/40"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/40/"
     }
   ],
   "website_url": "https://www.ralphlabs.ai/"

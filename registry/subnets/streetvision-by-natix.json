@@ -214,7 +214,13 @@
       "id": "sn-72-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "StreetVision TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/72 on api.taomarketcap.com returning machine-readable JSON for SN72 StreetVision on-chain subnet state, hyperparameters, economics, and dTAO market fields. NATIX publishes websites, docs, and dataset artifacts but no verified first-party public subnet API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/72/ on api.taomarketcap.com returning machine-readable JSON for SN72 StreetVision on-chain subnet state, hyperparameters, economics, and dTAO market fields. NATIX publishes websites, docs, and dataset artifacts but no verified first-party public subnet API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -225,7 +231,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/natixnetwork/streetvision-subnet"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/72"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/72/"
     }
   ],
   "social": {

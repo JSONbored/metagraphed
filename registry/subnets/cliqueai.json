@@ -52,7 +52,13 @@
       "id": "sn-83-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "CliqueAI TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/83 on api.taomarketcap.com returning machine-readable JSON for SN83 CliqueAI on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/83/ on api.taomarketcap.com returning machine-readable JSON for SN83 CliqueAI on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -63,7 +69,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/toptensor/CliqueAI"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/83"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/83/"
     },
     {
       "auth_required": false,

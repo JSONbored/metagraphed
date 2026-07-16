@@ -131,7 +131,7 @@
       "id": "sn-16-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "BitAds TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/16 on api.taomarketcap.com returning machine-readable JSON for SN16 BitAds on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/16/ on api.taomarketcap.com returning machine-readable JSON for SN16 BitAds on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -148,7 +148,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/study-service/BitAds.ai"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/16"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/16/"
     }
   ],
   "website_url": null
