@@ -1481,13 +1481,13 @@
       "netuid": 111,
       "slug": "sn-111",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:35:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://oneoneone.io/",
         "https://github.com/oneoneone-io/subnet-111"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/oneoneone.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): the website is currently down with a Cloudflare origin-DNS error (1016) on every attempt, while the source repo stays active (pushed 2026-06-11, not archived) -- documented in gap_notes, probe disabled on the website surface only. Fixed 3 missing probe blocks on the data-artifact surfaces."
     },
     {
       "netuid": 113,

@@ -13,18 +13,19 @@
       "No verified official docs URL yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet."
+      "No verified SSE/event stream yet.",
+      "The official website (oneoneone.io) currently returns Cloudflare error 1016 (\"origin DNS error\") on every attempt as of 2026-07-16 -- Cloudflare cannot resolve the origin server behind the proxied domain. The source repository remains active (pushed 2026-06-11, not archived), so this looks like a website-hosting misconfiguration rather than full project abandonment. Probe disabled until it recovers; surface kept tracked."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:35:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T10:35:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/111",
   "name": "oneoneone",
   "netuid": 111,
-  "notes": "Reviewed overlay for SN111 using the official oneoneone website and source repository. No official docs/API/OpenAPI surface is verified yet.",
+  "notes": "Reviewed overlay for SN111 using the official oneoneone website and source repository. No official docs/API/OpenAPI surface is verified yet. Root->128 accuracy audit re-review pass (#5903): the website is currently down with a Cloudflare origin-DNS error while the source repo stays active -- documented in gap_notes. Fixed 3 missing probe blocks on the data-artifact surfaces.",
   "schema_version": 1,
   "slug": "sn-111",
   "source_repo": "https://github.com/oneoneone-io/subnet-111",
@@ -36,9 +37,9 @@
       "id": "sn-111-oneoneone-website",
       "kind": "website",
       "name": "oneoneone website",
-      "notes": "Official oneoneone website.",
+      "notes": "Official oneoneone website. Currently returning Cloudflare error 1016 (origin DNS error) on every attempt as of 2026-07-16, consistent across repeated checks -- probe disabled until it recovers. The GitHub source repository stays active (pushed 2026-06-11), so this looks like a hosting/DNS misconfiguration rather than abandonment.",
       "probe": {
-        "enabled": true,
+        "enabled": false,
         "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
@@ -76,6 +77,12 @@
       "kind": "data-artifact",
       "name": "oneoneone Node.js validator configuration",
       "notes": "Public no-auth JavaScript configuration for the SN111 oneoneone Node.js validator layer. Defines synapse timeouts, spot-check counts, supported job types (Google Maps reviews and X tweets), Apify actor IDs, Chutes/OpenRouter model lists, and place-type allowlists. Imported at runtime by node/validator.js via the package.json #config alias. Pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oneoneone",
       "public_safe": true,
       "review": {
@@ -96,6 +103,12 @@
       "kind": "data-artifact",
       "name": "oneoneone Python subnet configuration",
       "notes": "Public no-auth Python constants for the SN111 oneoneone Bittensor validator loop: MAX_MINER_COUNT, SYNAPSE_WAIT_TIME, VALIDATOR_MIN_STAKE, and VALIDATOR_API_TIMEOUT. Consumed by oneoneone/validator/forward.py when querying miners and pacing validation rounds. Pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oneoneone",
       "public_safe": true,
       "review": {
@@ -115,6 +128,12 @@
       "kind": "data-artifact",
       "name": "oneoneone GenericSynapse protocol definition",
       "notes": "Public no-auth Bittensor synapse protocol for SN111 oneoneone miner–validator communication. Defines the GenericSynapse request/response shape (type_id, metadata, timeout, responses) used by the validator forward pass to dispatch data-fetch tasks to miners. Pinned to an immutable commit.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "oneoneone",
       "public_safe": true,
       "review": {
