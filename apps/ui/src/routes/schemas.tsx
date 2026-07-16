@@ -15,6 +15,7 @@ import {
   MethodologyCallout,
 } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { DownloadOpenApiButton } from "@/components/metagraphed/download-openapi-button";
 import { Skeleton, StaleBanner, EmptyState } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { SchemaDriftMatrix } from "@/components/metagraphed/analytics/schema-drift-matrix";
@@ -24,7 +25,7 @@ import { SchemaSnapshotSummary } from "@/components/metagraphed/schema-snapshot-
 import { useCopy } from "@/hooks/use-copy";
 import { schemasQuery, contractsQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
-import { API_BASE } from "@/lib/metagraphed/config";
+import { API_BASE, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 
@@ -195,7 +196,14 @@ function SchemasHero() {
       description="JSON Schema is canonical truth. Drift compares the current snapshot to the previous published version."
       caption={<>schemas / v1</>}
       actions={
-        <CopyableCode label="openapi" value={`${API_BASE}/api/v1/openapi.json`} truncate={false} />
+        <>
+          <CopyableCode
+            label="openapi"
+            value={`${API_BASE}/api/v1/openapi.json`}
+            truncate={false}
+          />
+          <DownloadOpenApiButton url={`${DEFAULT_API_BASE}/metagraph/openapi.json`} />
+        </>
       }
       kpis={[
         { label: "Schemas", value: <AnimatedNumber value={schemas.length} /> },
