@@ -26,6 +26,7 @@ import {
   MiniRadial,
   DotRow,
   NoDataSpark,
+  ShareButton,
   Sparkline,
 } from "@jsonbored/ui-kit";
 import {
@@ -349,6 +350,7 @@ export function SubnetMasthead({
         <div className="ml-auto flex md:hidden items-center gap-1.5">
           <HealthPill state={probeHealth} />
           <CurationChip level={profile?.curation_level} />
+          <ShareButton bare className="-my-3.5" />
         </div>
       </div>
 
@@ -451,6 +453,7 @@ export function SubnetMasthead({
         <div className="hidden md:flex shrink-0 flex-col items-end gap-1.5">
           <HealthPill state={probeHealth} />
           <CurationChip level={profile?.curation_level} />
+          <ShareButton bare className="-my-3.5" />
         </div>
       </div>
 
