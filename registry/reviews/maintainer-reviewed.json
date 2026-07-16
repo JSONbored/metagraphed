@@ -1581,7 +1581,7 @@
       "netuid": 118,
       "slug": "sn-118",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T19:30:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://heyditto.ai/",
@@ -1592,7 +1592,7 @@
         "https://assistant.heyditto.ai/",
         "https://github.com/orgs/ditto-assistant/repositories"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ditto.json (reviewed_at 2026-06-08T19:30:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): all 13 surfaces re-verified live, fixed 2 missing probe blocks. Diffed the Admin API OpenAPI schema -- an honest schema (every route explicitly requires AdminKey), no new candidates."
     },
     {
       "netuid": 119,

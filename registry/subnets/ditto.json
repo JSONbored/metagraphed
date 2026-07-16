@@ -22,19 +22,20 @@
       "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
       "Canonical source repository verified: ditto-assistant/dittobench-starter-kit self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\" (not a fork, ditto-assistant org).",
       "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet."
+      "No verified SSE/event stream yet.",
+      "Diffed the 13-path Ditto Admin API OpenAPI schema for undiscovered public GET endpoints -- every path-level operation explicitly declares AdminKey security (an honest schema, unlike several others in this audit), so no candidates were promotable."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T19:30:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 8,
-    "verified_at": "2026-06-08T19:30:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": "https://assistant.heyditto.ai/",
   "docs_url": "https://heyditto.ai/docs/",
   "name": "Ditto",
   "netuid": 118,
-  "notes": "Reviewed overlay for SN118 Ditto using the public Ditto website, docs, assistant app, GitHub organization, and the official dittobench-starter-kit repository (whose description self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\"). No public API, OpenAPI, SSE, or read-only data endpoint is verified yet.",
+  "notes": "Reviewed overlay for SN118 Ditto using the public Ditto website, docs, assistant app, GitHub organization, and the official dittobench-starter-kit repository (whose description self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\"). No public API, OpenAPI, SSE, or read-only data endpoint is verified yet. Root->128 accuracy audit re-review pass (#5903): all 13 surfaces re-verified live, fixed 2 missing probe blocks; diffed the Admin API OpenAPI schema, no new candidates (every route explicitly requires AdminKey).",
   "schema_version": 1,
   "slug": "sn-118",
   "social": {
@@ -255,6 +256,12 @@
       "kind": "data-artifact",
       "name": "DittoBench LongMemEval memory cases",
       "notes": "Public no-auth JSON benchmark of LongMemEval memory-recall questions (question_id, question_type, query, answer, answer_pair_ids) bundled in the official SN118 DittoBench starter kit at fixtures/seed-user/memory_cases.json. Loaded at runtime by seed.rs (MEMORY_CASES_JSON) for local mem-eval and evaluate flows over the bundled seed user.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "ditto-assistant",
       "public_safe": true,
       "review": {
@@ -299,6 +306,12 @@
       "kind": "openapi",
       "name": "Ditto Admin API OpenAPI schema",
       "notes": "Public no-auth Swagger 2.0 schema (info.title \"Ditto Admin API\", 13 paths, basePath /api/admin/v1) served by the SN118 Ditto backend at api.heyditto.ai. The official Ditto developer docs (heyditto.ai/docs/building-apps-on-ditto) instruct developers to open the Swagger UI at /api/admin/v1/swagger/, which this doc.json backs. The schema document itself is public and unauthenticated (the API it describes uses an AdminKey). Fills the manifest gap: no machine-readable schema was recorded before.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "ditto-assistant",
       "public_safe": true,
       "review": {
