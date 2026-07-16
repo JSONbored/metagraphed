@@ -1325,10 +1325,11 @@ describe("subnets CSV export", () => {
   });
 
   test("Accept: text/csv is ignored for collection routes without CSV contracts", async () => {
-    // /api/v1/providers is a list route that intentionally has no CSV contract,
-    // so content negotiation must fall through to the JSON envelope.
+    // /api/v1/gaps is a list route that intentionally has no CSV contract, so
+    // content negotiation must fall through to the JSON envelope. (Providers had
+    // this role until #5665 gave it a real CSV contract.)
     const res = await handleRequest(
-      req("/api/v1/providers?limit=1", {
+      req("/api/v1/gaps?limit=1", {
         headers: { accept: "text/csv" },
       }),
       createLocalArtifactEnv(),
@@ -1339,7 +1340,7 @@ describe("subnets CSV export", () => {
 
     const body = await res.json();
     assert.equal(body.ok, true);
-    assert.equal(Array.isArray(body.data.providers), true);
+    assert.equal(Array.isArray(body.data.gaps), true);
   });
 
   test("empty projected CSV exports retain the requested header row", async () => {
@@ -1382,6 +1383,43 @@ describe("subnets CSV export", () => {
     assert.equal(body.error.code, "invalid_artifact");
     assert.equal(body.meta.artifact_path, "/metagraph/subnets.json");
     assert.equal(body.meta.collection, "subnets");
+  });
+});
+
+// --- Providers CSV export (#5665) --------------------------------------------
+// The named-download + contract assertions ride the shared CSV_ROUTES lists
+// above; these cover what's specific to this collection.
+describe("providers CSV export", () => {
+  test("?format=csv honours field projection", async () => {
+    const res = await handleRequest(
+      req("/api/v1/providers?format=csv&fields=id,name&limit=2"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    const lines = (await res.text()).split("\r\n").filter(Boolean);
+    assert.equal(lines[0], "id,name");
+    assert.equal(lines.length, 3);
+  });
+
+  test("the non-scalar provider fields (netuids array, social object) serialize into CSV cells", async () => {
+    const res = await handleRequest(
+      req("/api/v1/providers?format=csv&fields=id,netuids,social&limit=5"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    const text = await res.text();
+    const lines = text.split("\r\n").filter(Boolean);
+    assert.equal(lines[0], "id,netuids,social");
+    // Nothing leaks a raw "[object Object]" — the shared serializer joins arrays
+    // with ";" and JSON-encodes objects, so no `exclude` option is needed here.
+    assert.ok(
+      !text.includes("[object Object]"),
+      "non-scalar cells must be serialized, not stringified via toString()",
+    );
   });
 });
 
@@ -1487,6 +1525,7 @@ describe("registry list CSV export", () => {
 
   const CSV_ROUTES = [
     "economics",
+    "providers",
     "surfaces",
     "subnet-surfaces",
     "endpoints",
@@ -1512,7 +1551,7 @@ describe("registry list CSV export", () => {
   });
 
   test("list routes without a CSV contract stay JSON-only", () => {
-    for (const id of ["providers", "rpc-endpoints", "source-snapshots"]) {
+    for (const id of ["rpc-endpoints", "source-snapshots"]) {
       const entry = API_ROUTES.find((route) => route.id === id);
       assert.ok(entry, `route ${id} should exist`);
       assert.notEqual(entry.csv_response, true, `${id} must stay JSON-only`);
@@ -1523,6 +1562,7 @@ describe("registry list CSV export", () => {
   // a text/csv attachment named after the route id with a header row.
   for (const [path, filename] of [
     ["/api/v1/economics", "economics.csv"],
+    ["/api/v1/providers", "providers.csv"],
     ["/api/v1/surfaces", "surfaces.csv"],
     ["/api/v1/endpoints", "endpoints.csv"],
     ["/api/v1/candidates", "candidates.csv"],

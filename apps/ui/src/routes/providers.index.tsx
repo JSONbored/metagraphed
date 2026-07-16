@@ -22,6 +22,7 @@ import {
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { resolveProviderCard } from "@/lib/metagraphed/provider-card-fields";
 import { healthStatusSegments } from "@/lib/metagraphed/health-segments";
 import {
@@ -30,6 +31,7 @@ import {
   PageHero,
   ViewModeToggle,
   ShareButton,
+  DownloadCsvButton,
   TimeAgo,
   ActionBar,
   Donut,
@@ -78,6 +80,14 @@ function ProvidersPage() {
     search.q || search.kind || search.authority || (search.sort && search.sort !== "name"),
   );
   const onReset = () => navigate({ search: { view: search.view } as never, replace: true });
+  // This page fetches the full provider list once and filters/sorts client-side,
+  // so the CSV export hits the backend route directly (full provider snapshot, no
+  // client filters) — same shape as endpoints.tsx. Forwarding the page's own
+  // search state would also break: `authority=high` is a nav shortcut (official +
+  // provider-claimed) and the surfaces/endpoints/subnets/updated sort keys are
+  // client-only, none of which are valid /api/v1/providers query values — the
+  // route rejects them with 400 invalid_query.
+  const providersCsvUrl = buildUrl("/api/v1/providers");
   return (
     <AppShell>
       <PageHero
@@ -99,6 +109,7 @@ function ProvidersPage() {
             />
             <ActionBar>
               <ResetFiltersButton active={filtersActive} onReset={onReset} bare />
+              <DownloadCsvButton url={providersCsvUrl} bare />
               <ShareButton bare />
             </ActionBar>
           </>
