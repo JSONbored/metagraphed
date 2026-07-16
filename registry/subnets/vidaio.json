@@ -16,14 +16,14 @@
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T11:15:00.000Z",
+    "reviewed_at": "2026-07-16T05:45:00.000Z",
     "source_count": 4,
-    "verified_at": "2026-06-08T11:15:00.000Z"
+    "verified_at": "2026-07-16T05:45:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/85",
   "name": "Vidaio",
   "netuid": 85,
-  "notes": "Reviewed overlay for SN85 using the live Vidaio website and source repository. Generated common-path docs, dashboard, and OpenAPI-looking URLs currently redirect to sign-in or are not machine-readable, so they are intentionally not promoted.",
+  "notes": "Reviewed overlay for SN85 using the live Vidaio website and source repository. Generated common-path docs, dashboard, and OpenAPI-looking URLs currently redirect to sign-in or are not machine-readable, so they are intentionally not promoted. Accuracy re-review pass: /health and /ready had no probe config at all -- the registry-wide gap tracked in #5932 -- confirmed both live ({\"status\":\"ok\"}) and given probes matching sibling conventions. Diffed the full OpenAPI schema (9 paths): rate_limits, available_credits, compression, and upscaling all require APIKeyHeader auth and are correctly untracked; no new public surfaces found.",
   "schema_version": 1,
   "slug": "sn-85",
   "social": {
@@ -129,6 +129,12 @@
       "kind": "subnet-api",
       "name": "Vidaio API health",
       "notes": "Public no-auth GET /health returning {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing openapi surface (api.vidaio.io/openapi.json, path /health).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "vidaio",
       "public_safe": true,
       "review": {
@@ -148,6 +154,12 @@
       "kind": "subnet-api",
       "name": "Vidaio API readiness health",
       "notes": "Public no-auth GET /ready returning {\"status\":\"ok\"} when the API can reach its backing database. Documented in the machine-readable OpenAPI spec on the same host as the existing openapi and /health subnet-api surfaces (api.vidaio.io/openapi.json, path /ready). Distinct from the /health liveness endpoint.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "vidaio",
       "public_safe": true,
       "review": {
