@@ -1695,6 +1695,19 @@
         "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md"
       ],
       "notes": "Root->128 accuracy audit first review pass (#5903): promoted from community-seeded/unreviewed. Added website, source-repo, and whitepaper surfaces, fixed 3 missing probe blocks on pre-existing community-submitted surfaces, and added a new public no-param surface (benchmark/releases) explicitly documented alongside the already-tracked benchmark status endpoint."
+    },
+    {
+      "netuid": 127,
+      "slug": "sn-127",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/astridintelligence/sn-127",
+        "https://astrid.global/",
+        "https://github.com/astridintelligence/sn-127/blob/master/src/core/arena/api.ts"
+      ],
+      "notes": "Root->128 accuracy audit first review pass (#5903): promoted from community-seeded/unreviewed. Added website (astrid.global) and source-repo surfaces, fixed 3 missing probe blocks on pre-existing community-submitted surfaces. Confirmed via the official validator client source that the only other documented route (executions/presence) requires a participantIds query parameter -- not promotable."
     }
   ]
 }
