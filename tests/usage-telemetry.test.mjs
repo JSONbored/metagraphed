@@ -278,6 +278,25 @@ describe("recordUsageEvent — configured", () => {
     assert.equal(recorded, false);
   });
 
+  test("falls back to globalThis.fetch when deps omit fetch", async () => {
+    const calls = [];
+    const previous = globalThis.fetch;
+    globalThis.fetch = fakeFetch({
+      onFetch: (url, init) => calls.push({ url, init }),
+    });
+    try {
+      const recorded = await recordUsageEvent(
+        { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
+        { ok: true, durationMs: 4 },
+      );
+      assert.equal(recorded, true);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url, "https://us.i.posthog.com/i/v0/e/");
+    } finally {
+      globalThis.fetch = previous;
+    }
+  });
+
   test("honors an injected distinctId override", async () => {
     const calls = [];
     await recordUsageEvent(
