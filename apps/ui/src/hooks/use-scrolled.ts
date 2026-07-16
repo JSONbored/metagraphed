@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
 
+/** Pure threshold comparison for useScrolled; exported for unit tests. */
+export function isPastScrollThreshold(scrollY: number, threshold: number): boolean {
+  return scrollY > threshold;
+}
+
 /**
  * Returns `true` once the window (or a custom scroll root) has scrolled past
  * `threshold` pixels. Used to toggle scroll-shadows on sticky toolbars.
@@ -10,7 +15,7 @@ export function useScrolled(threshold = 4): boolean {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onScroll = () => {
-      setScrolled(window.scrollY > threshold);
+      setScrolled(isPastScrollThreshold(window.scrollY, threshold));
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
