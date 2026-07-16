@@ -13,14 +13,14 @@
     "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T08:35:00.000Z",
+    "reviewed_at": "2026-07-16T00:30:00.000Z",
     "source_count": 8,
-    "verified_at": "2026-06-08T08:35:00.000Z"
+    "verified_at": "2026-07-16T00:30:00.000Z"
   },
   "docs_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
   "name": "ReadyAI",
   "netuid": 33,
-  "notes": "Reviewed overlay for SN33 using the official ReadyAI website, Conversation Genome source repository, README, public Hugging Face dataset, and llms.txt data repository.",
+  "notes": "Reviewed overlay for SN33 using the official ReadyAI website, Conversation Genome source repository, README, public Hugging Face dataset, and llms.txt data repository. This pass fixed 2 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full OpenAPI schema (10 paths): all remaining paths are either HTTPBearer-authenticated, the already-tracked no-auth health/priorityqueue-request endpoints, or a parameterized PUT with no stable canonical value ({c_guid}), so none are promoted as additional surfaces (same reasoning as #5914/#5934). All 9 surfaces re-verified live.",
   "schema_version": 1,
   "slug": "sn-33",
   "source_repo": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
@@ -160,6 +160,12 @@
       "kind": "subnet-api",
       "name": "ReadyAI health API",
       "notes": "Public no-auth health endpoint documented by the ReadyAI OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "readyai",
       "public_safe": true,
       "review": {
@@ -176,6 +182,12 @@
       "kind": "data-artifact",
       "name": "ReadyAI organic query results dataset",
       "notes": "Public ReadyAI (SN33) HuggingFace text-classification corpus of organic query results (text plus classification labels and token counts); not gated. Published by the ReadyAi HF org whose podcast dataset the SN33 README already links, and the README declares the subnet (--netuid 33). Distinct from the already-registered podcast-conversations dataset.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "readyai",
       "public_safe": true,
       "review": {
