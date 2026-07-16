@@ -224,7 +224,7 @@ function AgentsBody() {
                 <span className="flex-1 truncate text-[14px] text-ink-strong">{r.title}</span>
                 <ExternalLink
                   href={r.url}
-                  className="hidden shrink-0 font-mono text-[11px] text-ink-muted hover:text-ink-strong sm:inline"
+                  className="hidden shrink-0 font-mono text-[11px] text-ink-muted hover:text-ink-strong sm:inline-flex"
                 >
                   {r.url.replace("https://api.metagraph.sh", "")}
                 </ExternalLink>
