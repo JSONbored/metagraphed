@@ -27,6 +27,7 @@ from .client import (
     _interpolate,
     _jsonrpc_result,
     _next_cursor,
+    _query_pairs,
 )
 from .models import AgentCatalogSubnet, Endpoint, Provider, Subnet, Surface
 
@@ -167,11 +168,10 @@ class AsyncMetagraphedClient:
         numeric ``Retry-After`` capped at 60 seconds.
         """
         url = self.base_url.rstrip("/") + _interpolate(path, path_params)
-        params = (
-            {key: value for key, value in query.items() if value is not None}
-            if query
-            else None
-        )
+        # Same `_query_pairs` normalization as the sync client: drop top-level
+        # None, drop None elements inside list values, and coerce bools to
+        # lowercase wire form so sync and async emit identical query strings.
+        params = dict(_query_pairs(query)) if query else None
         merged_headers = _default_headers(headers)
         return await self._send_json(
             lambda: self._client.get(url, params=params, headers=merged_headers),

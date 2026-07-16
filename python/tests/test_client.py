@@ -116,6 +116,32 @@ class ClientTest(unittest.TestCase):
         self.assertIn("flags=true", captured["url"])
         self.assertIn("flags=false", captured["url"])
 
+    def test_sequence_query_drops_none_elements(self):
+        # None inside a list must be dropped (documented "None values are
+        # dropped"), not urlencoded as the literal string "None".
+        captured = {}
+
+        def fake_urlopen(request, timeout=None):
+            captured["url"] = request.full_url
+            return _FakeResponse({"ok": True})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            metagraphed_fetch(
+                "/api/v1/surfaces",
+                query={"kind": ["docs", None, "openapi"], "cursor": None},
+            )
+
+        self.assertIn("kind=docs", captured["url"])
+        self.assertIn("kind=openapi", captured["url"])
+        self.assertNotIn("kind=None", captured["url"])
+        self.assertNotIn("kind=&", captured["url"] + "&")
+        self.assertNotIn("cursor=", captured["url"])
+        # Same normalized pairs the async client feeds httpx (#5983).
+        self.assertEqual(
+            client._query_pairs({"kind": ["docs", None, "openapi"], "cursor": None}),
+            [("kind", ["docs", "openapi"])],
+        )
+
     def test_base_url_override(self):
         captured = {}
 

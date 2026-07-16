@@ -1,5 +1,6 @@
 """Hermetic tests for the async client (httpx stubbed, no network)."""
 
+import urllib.parse
 import unittest
 
 try:
@@ -10,6 +11,7 @@ except ImportError:  # pragma: no cover - exercised only without the extra
     _HAS_HTTPX = False
 
 from metagraphed import AsyncMetagraphedClient, MetagraphedError, Subnet
+from metagraphed.client import _query_pairs
 
 
 class _FakeAsyncHttp:
@@ -65,6 +67,20 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
         client = self._client(httpx.Response(200, json={"data": []}))
         await client.fetch("/api/v1/subnets", query={"limit": 5, "cursor": None})
         self.assertEqual(client._client.calls[0][2], {"limit": 5})
+
+    async def test_sequence_query_drops_none_elements(self):
+        # Same contract as the sync client (#5983): None inside a list is dropped
+        # (not sent as "" the way raw httpx would), matching `_query_pairs`.
+        client = self._client(httpx.Response(200, json={"data": []}))
+        query = {"kind": ["docs", None, "openapi"], "cursor": None}
+        await client.fetch("/api/v1/surfaces", query=query)
+        self.assertEqual(client._client.calls[0][2], {"kind": ["docs", "openapi"]})
+        # Sync urlencode of the shared pairs must match that filtered list —
+        # never a literal "None" and never an empty kind= slot.
+        encoded = urllib.parse.urlencode(_query_pairs(query), doseq=True)
+        self.assertEqual(encoded, "kind=docs&kind=openapi")
+        self.assertNotIn("None", encoded)
+        self.assertNotIn("kind=&", encoded + "&")
 
     async def test_fetch_all_collects_nested_collection_following_cursor(self):
         # List endpoints nest rows under data[meta.pagination.collection].
