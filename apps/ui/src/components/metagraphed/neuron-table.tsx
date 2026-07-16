@@ -1,11 +1,17 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Download } from "lucide-react";
+import { Coins, Download } from "lucide-react";
 import { CopyButton } from "@jsonbored/ui-kit";
 import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { buildUrl } from "@/lib/metagraphed/client";
+import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
+import {
+  annualizedDelegatorApyPct,
+  formatApyPct,
+  formatTakePct,
+} from "@/lib/metagraphed/validator-apy";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 
 /**
@@ -28,17 +34,21 @@ export function scoreStr(v?: number | null): string {
 }
 
 /**
- * Small pill marking a DB-toggled featured validator (#5166) — same visual
- * language as the "Validator" permit pill below. Shared with the global
- * validators leaderboard table (routes/validators.index.tsx).
+ * Small pill marking a DB-toggled featured-validator pin (#5166) — a paid/
+ * partner placement, not a quality or trust signal. Deliberately styled
+ * distinct from the "Validator" permit pill below (that one IS a chain-derived
+ * trust fact; this one is a disclosed sponsorship) so the two are never
+ * visually confused. Label is persistent (not hover-gated) — the disclosure
+ * has to be legible without any interaction. Shared with the global
+ * validators leaderboard table (validator-columns.tsx).
  */
-export function FeaturedBadge() {
+export function SponsoredBadge() {
   return (
     <span
-      className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-accent-text"
-      title="Featured validator"
+      className="inline-flex items-center rounded border border-ink-muted/40 bg-surface px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-ink-muted"
+      title="Sponsored placement — this validator paid for visibility here. It is not ranked or endorsed; see the validator directory's own stake/trust/APY columns for objective standing."
     >
-      Featured
+      Sponsored
     </span>
   );
 }
@@ -51,12 +61,19 @@ type SortField =
   | "trust"
   | "consensus"
   | "dividends"
-  | "validator_trust";
+  | "validator_trust"
+  | "take";
 
 /** Which scoring columns each variant surfaces, in render order. */
 type NeuronTableVariant = "miner" | "validator";
 
-const NUMERIC_FIELDS = new Set<SortField>([
+// `featured` (the sponsored-placement pin, #5166) must NEVER be sortable —
+// sort/rank stays strictly objective (stake, trust, consensus, etc.) so a
+// paid placement can never distort the neutral comparison. `SortField` simply
+// has no `featured` member, so it can't be added here without a type error;
+// neuron-table.test.ts also asserts this set never contains "featured" at
+// runtime as a second line of defense if that type is ever loosened.
+export const NUMERIC_FIELDS = new Set<SortField>([
   "uid",
   "stake_tao",
   "emission_tao",
@@ -65,6 +82,7 @@ const NUMERIC_FIELDS = new Set<SortField>([
   "consensus",
   "dividends",
   "validator_trust",
+  "take",
 ]);
 
 /**
@@ -170,6 +188,10 @@ export function NeuronTable({
                 <>
                   {col("dividends", "Dividends")}
                   {col("validator_trust", "Val Trust")}
+                  {col("take", "Take")}
+                  <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest">
+                    Est. APY
+                  </th>
                 </>
               ) : (
                 <>
@@ -181,6 +203,11 @@ export function NeuronTable({
               <th className="px-3 py-2.5 text-center font-mono text-[10px] uppercase tracking-widest">
                 Permit
               </th>
+              {isValidator ? (
+                <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest">
+                  Delegate
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -209,7 +236,7 @@ export function NeuronTable({
                   </td>
                   <td className="px-3 py-2.5 font-mono text-[11px]">
                     <div className="flex items-center gap-1.5">
-                      {n.featured ? <FeaturedBadge /> : null}
+                      {n.featured ? <SponsoredBadge /> : null}
                       {n.hotkey ? (
                         <>
                           {isValidator ? (
@@ -252,6 +279,14 @@ export function NeuronTable({
                       <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-muted">
                         {scoreStr(validatorTrustValue(n))}
                       </td>
+                      <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-muted">
+                        {formatTakePct(n.take)}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-muted">
+                        {formatApyPct(
+                          annualizedDelegatorApyPct(n.emission_tao ?? 0, n.stake_tao ?? 0, n.take),
+                        )}
+                      </td>
                     </>
                   ) : (
                     <>
@@ -275,6 +310,26 @@ export function NeuronTable({
                       <span className="font-mono text-[10px] text-ink-subtle-text">—</span>
                     )}
                   </td>
+                  {isValidator ? (
+                    <td className="px-3 py-2.5 text-right">
+                      {n.hotkey ? (
+                        <StakeUnstakeModal
+                          hotkey={n.hotkey}
+                          netuid={netuid}
+                          trigger={(open) => (
+                            <button
+                              type="button"
+                              onClick={open}
+                              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+                            >
+                              <Coins className="size-3 text-ink-muted" aria-hidden />
+                              Delegate
+                            </button>
+                          )}
+                        />
+                      ) : null}
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}

@@ -2086,7 +2086,10 @@ export interface MetagraphNeuron {
   registered_at_block?: number;
   is_immunity_period?: boolean;
   axon?: string | null;
-  /** DB-toggled maintainer pin (#5166) — only set on /validators rows, absent elsewhere. */
+  /** Validator commission (0..1 fraction) — only set on /validators rows, absent elsewhere. */
+  take?: number | null;
+  /** DB-toggled maintainer pin (#5166) — a disclosed sponsored placement, not a
+   * trust signal. Only set on /validators rows, absent elsewhere. */
   featured?: boolean;
   [key: string]: unknown;
 }

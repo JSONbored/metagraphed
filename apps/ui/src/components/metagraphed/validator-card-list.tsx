@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { CopyButton } from "@jsonbored/ui-kit";
 
-import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
+import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-table";
 import { resolveValidatorCard } from "@/lib/metagraphed/validator-card-fields";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 
@@ -29,7 +29,7 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
             className="min-w-0 space-y-2 rounded-lg border border-border bg-card p-3"
           >
             <div className="flex min-w-0 items-center gap-1.5">
-              {v.featured ? <FeaturedBadge /> : null}
+              {v.featured ? <SponsoredBadge /> : null}
               <Link
                 to="/validators/$hotkey"
                 params={{ hotkey: v.hotkey }}

@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { CopyButton } from "@jsonbored/ui-kit";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
-import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
+import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-table";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
 import { formatApyPct, formatTakePct } from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
@@ -41,7 +41,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     tdClassName: TD_BASE,
     cell: (v) => (
       <div className="flex items-center gap-1.5">
-        {v.featured ? <FeaturedBadge /> : null}
+        {v.featured ? <SponsoredBadge /> : null}
         <ValidatorIdentityChip hotkey={v.hotkey} identity={v.coldkey_identity} size={20} />
       </div>
     ),

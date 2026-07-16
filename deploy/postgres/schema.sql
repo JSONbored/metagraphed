@@ -173,6 +173,20 @@ CREATE INDEX IF NOT EXISTS idx_neurons_hotkey        ON neurons (hotkey);
 -- reassignment cycles, so this small side table sidesteps the hazard entirely.
 -- Toggled by a direct SQL UPDATE/INSERT -- no code deploy needed to change
 -- which validator is featured.
+--
+-- Disclosure requirement (added when this pin became a real, sold sponsored-
+-- placement product rather than dormant infra): a hotkey in this table is a
+-- PAID placement, not an editorial/quality signal. The frontend must always
+-- render it as SponsoredBadge (apps/ui/src/components/metagraphed/
+-- neuron-table.tsx) with a persistent, non-hover-gated "Sponsored" label --
+-- and, on the subnet/validator listing surfaces, as its own separate
+-- SponsoredValidatorCallout card ABOVE the objectively stake-ranked list,
+-- never as an unmarked row inside it. NUMERIC_FIELDS in neuron-table.tsx
+-- structurally excludes `featured` from every sort option, so a placement
+-- here can never distort the neutral ranking those surfaces show. Toggling
+-- this table is a maintainer-only operational action (direct SQL, like this
+-- comment says above) -- treat it the same as any other paid/disclosed
+-- placement decision, not a data-quality judgment.
 CREATE TABLE IF NOT EXISTS featured_validators (
   hotkey      TEXT PRIMARY KEY,
   featured_at BIGINT NOT NULL
