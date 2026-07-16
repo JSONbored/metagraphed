@@ -1366,7 +1366,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // rejected there) like the RPC proxy. Artifact/KV readers are injected so
   // the MCP tools reuse the exact R2/ASSETS resolution.
   if (url.pathname === "/mcp") {
-    return handleMcpRequest(request, env, { readArtifact, readHealthKv });
+    // executionCtx is what lets tool-dispatch telemetry (#6031) drain its
+    // capture through waitUntil instead of stranding it on isolate exit.
+    return handleMcpRequest(request, env, {
+      readArtifact,
+      readHealthKv,
+      executionCtx: ctx,
+    });
   }
 
   // Grounded RAG answer endpoint (POST). Runs before the read-only method gate

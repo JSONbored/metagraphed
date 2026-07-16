@@ -35,6 +35,10 @@
 // exists to prevent for a human clicking through a browser. Revisit only via
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
+import {
+  isUsageTelemetryConfigured,
+  recordUsageEvent,
+} from "./usage-telemetry.mjs";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
@@ -14199,7 +14203,43 @@ function negotiateProtocol(requested) {
     : MCP_LATEST_PROTOCOL;
 }
 
+// Product-usage telemetry (#6031 / #366). callTool is the one point every
+// tools/call passes through, so wrapping it records exactly one event per
+// invocation instead of instrumenting ~150 handlers individually. It also
+// already funnels every outcome into an isError result rather than throwing,
+// which is what makes success/failure readable here without touching any
+// handler. Nothing but the tool name, that flag, and elapsed time is recorded —
+// never arguments or response content.
 async function callTool(params, ctx) {
+  const startedAt = Date.now();
+  const result = await dispatchTool(params, ctx);
+  scheduleToolUsageEvent(ctx, {
+    mcpTool: typeof params?.name === "string" ? params.name : undefined,
+    ok: result.isError !== true,
+    durationMs: Date.now() - startedAt,
+  });
+  return result;
+}
+
+/**
+ * Hand a tool-usage event to the recorder without ever blocking or failing the
+ * tool response.
+ *
+ * @param {object} ctx
+ * @param {object} event
+ */
+function scheduleToolUsageEvent(ctx, event) {
+  try {
+    if (!isUsageTelemetryConfigured(ctx?.env)) return;
+    const record = ctx?.recordUsageEvent ?? recordUsageEvent;
+    const pending = Promise.resolve(record(ctx.env, event)).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+async function dispatchTool(params, ctx) {
   const name = params?.name;
   const tool = typeof name === "string" ? TOOLS_BY_NAME.get(name) : undefined;
   if (!tool) {
@@ -14372,6 +14412,11 @@ function buildContext(request, env, deps) {
     clientIp: mcpClientKey(request),
     readArtifact: deps.readArtifact,
     readHealthKv: deps.readHealthKv,
+    // The Worker's ExecutionContext, when the caller has one to give: only the
+    // real fetch entry does, so it stays optional and every direct-call test
+    // keeps working. Used solely to drain usage telemetry (#6031).
+    executionCtx: deps.executionCtx,
+    recordUsageEvent: deps.recordUsageEvent,
   };
 }
 
