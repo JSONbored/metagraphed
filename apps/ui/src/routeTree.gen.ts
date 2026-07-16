@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UsageRouteImport } from './routes/usage'
 import { Route as SurfacesRouteImport } from './routes/surfaces'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -42,6 +43,11 @@ import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
 import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
 import { Route as AccountsSs58RouteImport } from './routes/accounts.$ss58'
 
+const UsageRoute = UsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SurfacesRoute = SurfacesRouteImport.update({
   id: '/surfaces',
   path: '/surfaces',
@@ -219,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
+  '/usage': typeof UsageRoute
   '/accounts/$ss58': typeof AccountsSs58Route
   '/blocks/$ref': typeof BlocksRefRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
@@ -253,6 +260,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
+  '/usage': typeof UsageRoute
   '/accounts/$ss58': typeof AccountsSs58Route
   '/blocks/$ref': typeof BlocksRefRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
@@ -288,6 +296,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
+  '/usage': typeof UsageRoute
   '/accounts/$ss58': typeof AccountsSs58Route
   '/blocks/$ref': typeof BlocksRefRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/status'
     | '/surfaces'
+    | '/usage'
     | '/accounts/$ss58'
     | '/blocks/$ref'
     | '/extrinsics/$hash'
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/status'
     | '/surfaces'
+    | '/usage'
     | '/accounts/$ss58'
     | '/blocks/$ref'
     | '/extrinsics/$hash'
@@ -392,6 +403,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/status'
     | '/surfaces'
+    | '/usage'
     | '/accounts/$ss58'
     | '/blocks/$ref'
     | '/extrinsics/$hash'
@@ -427,6 +439,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   StatusRoute: typeof StatusRoute
   SurfacesRoute: typeof SurfacesRoute
+  UsageRoute: typeof UsageRoute
   AccountsSs58Route: typeof AccountsSs58Route
   BlocksRefRoute: typeof BlocksRefRoute
   ExtrinsicsHashRoute: typeof ExtrinsicsHashRoute
@@ -448,6 +461,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/usage': {
+      id: '/usage'
+      path: '/usage'
+      fullPath: '/usage'
+      preLoaderRoute: typeof UsageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/surfaces': {
       id: '/surfaces'
       path: '/surfaces'
@@ -691,6 +711,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   StatusRoute: StatusRoute,
   SurfacesRoute: SurfacesRoute,
+  UsageRoute: UsageRoute,
   AccountsSs58Route: AccountsSs58Route,
   BlocksRefRoute: BlocksRefRoute,
   ExtrinsicsHashRoute: ExtrinsicsHashRoute,

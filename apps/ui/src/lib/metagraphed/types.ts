@@ -395,6 +395,49 @@ export interface RpcUsage {
   networks: RpcUsageNetwork[];
 }
 
+/** One REST route's call volume from /api/v1/usage (#6033). */
+export interface UsageRoute {
+  rank: number;
+  route: string;
+  calls: number;
+  ok_calls: number;
+  error_calls: number;
+  error_rate: number | null;
+}
+
+/** One MCP tool's call volume from /api/v1/usage (#6033). */
+export interface UsageTool {
+  rank: number;
+  tool: string;
+  calls: number;
+  ok_calls: number;
+  error_calls: number;
+  error_rate: number | null;
+}
+
+/**
+ * /api/v1/usage — product-usage analytics (#6033, consuming #366's route/day +
+ * per-MCP-tool event schema): REST-route and MCP-tool call counts with
+ * success/failure rates over a selectable window. The endpoint ships with the
+ * telemetry-writing side (#366); until then a maintainer sees the zeroed
+ * "no traffic yet" shape, never an error.
+ */
+export interface UsageAnalytics {
+  window?: string | null;
+  observed_at?: string | null;
+  source?: string;
+  summary: {
+    total_calls: number;
+    ok_calls: number;
+    error_calls: number;
+    error_rate: number | null;
+    route_calls: number;
+    mcp_calls: number;
+  };
+  routes: UsageRoute[];
+  tools: UsageTool[];
+}
+
 /** One machine-readable resource from /api/v1/agent-resources. */
 export interface AgentResource {
   id: string;

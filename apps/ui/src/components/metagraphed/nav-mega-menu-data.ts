@@ -151,6 +151,11 @@ export const MEGA_PANELS: MegaPanel[] = [
         label: "Ops overview",
         hint: "Matrix, mosaic, freshness",
       },
+      {
+        to: "/usage",
+        label: "Usage analytics",
+        hint: "Route + MCP-tool traffic",
+      },
       { to: "/health", search: { view: "matrix" }, label: "Subnet matrix" },
       { to: "/health", search: { view: "incidents" }, label: "Incidents" },
       { to: "/health", search: { view: "sources" }, label: "Source health" },
