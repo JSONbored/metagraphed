@@ -4,12 +4,63 @@
   "name": "Score",
   "slug": "sn-44",
   "status": "active",
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "computer-vision",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "candidate-discovered",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "The registered official website still links score-vision as its GitHub/Documentation reference, but on-chain SubnetIdentitiesV3 source_repo and description now point to a separate, actively-developed repository (turbovision, pushed same-day at review time) whose own README self-identifies wearescore.com as its website too. Both repositories are tracked pending clarification from the operator; not treated as a resolved rename.",
+      "No verified machine-readable OpenAPI/Swagger schema publicly reachable beyond the tracked API-key-gated schema.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "needs-review",
+    "reviewed_at": "2026-07-16T02:10:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-07-16T02:10:00.000Z"
   },
+  "notes": "First maintainer-reviewed pass for SN44 (previously candidate-discovered/unreviewed, categories empty, no website surface despite website_url already being set). Added the missing website surface and a second source-repo surface for turbovision (matching the top-level source_repo field and on-chain data, already set by a prior pass but never backed by a tracked surface). Corrected the existing score-vision surface's notes, which incorrectly characterized turbovision as \"legacy\" -- the opposite of what the evidence shows (turbovision is the actively-developed, on-chain-declared repo; score-vision has not been pushed to since December 2025). Left as needs-review since the operator's own website still points to score-vision, an unresolved discrepancy. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the score-vision-hosted OpenAPI schema (14 paths): all documented endpoints beyond the tracked /health require an API key (APIKeyHeader/APIKeyQuery) or are otherwise gated, so none are promoted as additional surfaces.",
   "surfaces": [
+    {
+      "id": "sn-44-score-website",
+      "name": "Score website",
+      "kind": "website",
+      "url": "https://www.wearescore.com/",
+      "provider": "score",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "source_urls": ["https://github.com/score-technologies/turbovision"],
+      "notes": "Official Score (SN44) website."
+    },
+    {
+      "id": "sn-44-score-turbovision-source-repo",
+      "name": "TurboVision source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/score-technologies/turbovision",
+      "provider": "score",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "source_urls": ["https://www.wearescore.com/"],
+      "notes": "Official SN44 source repository per on-chain SubnetIdentitiesV3 source_repo and description (\"Making every camera intelligent\", matching TurboVision's broader live-video/imagery scope) -- actively developed (pushed same-day at review time), vs. the score-vision repo below which has not been pushed to since December 2025. Its own README links wearescore.com as \"Score Website\", and its CLI is branded \"ScoreVision\", suggesting continuity from the earlier Score Vision product rather than an unrelated project."
+    },
     {
       "id": "sn-44-score-source-repo",
       "name": "Score Vision validator and miner code",
@@ -19,12 +70,18 @@
       "auth_required": false,
       "authority": "community",
       "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
       "source_urls": ["https://www.wearescore.com/"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "notes": "Current SN44 validator/miner base code, linked as both \"GitHub\" and \"Documentation\" from the official wearescore.com site. Distinct from the legacy turbovision repo."
+      "notes": "Still linked as both \"GitHub\" and \"Documentation\" from the official wearescore.com site, and the host for the subnet's tracked OpenAPI/health API surfaces. Not pushed to since December 2025 -- on-chain source_repo instead points to the separately-tracked, actively-developed turbovision repo. Kept tracked pending clarification rather than dropped, since the live website still references it."
     },
     {
       "auth_required": false,
@@ -33,6 +90,12 @@
       "kind": "openapi",
       "name": "Score Subnet API OpenAPI schema",
       "notes": "Machine-readable OpenAPI 3.1 schema for the Score SN44 backend (title: Score Subnet API). Served publicly at api.scorevision.io; documents challenge/task routes and the no-auth GET /health probe.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
       "provider": "score",
       "public_safe": true,
       "review": {
@@ -54,6 +117,12 @@
       "kind": "subnet-api",
       "name": "Score API health",
       "notes": "Public no-auth GET /health on api.scorevision.io returning backend liveness JSON (observed: {\"status\":\"healthy\"}). Documented as GET /health in the subnet OpenAPI spec; api.scorevision.io is the SCORE_VISION_API host configured in the score-vision validator source.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
       "provider": "score",
       "public_safe": true,
       "review": {
@@ -73,6 +142,12 @@
       "kind": "data-artifact",
       "name": "Score minimum compute requirements",
       "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official score-technologies/score-vision repository as min_compute.yaml. Documents SN44 Score Vision operator CPU, GPU/VRAM, memory, storage, network, and OS requirements aligned with miner/REQUIREMENTS.md.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
       "provider": "score",
       "public_safe": true,
       "review": {

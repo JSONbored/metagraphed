@@ -616,6 +616,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/graphite.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 44,
+      "slug": "sn-44",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T02:10:00.000Z",
+      "confidence": "medium",
+      "source_urls": [
+        "https://www.wearescore.com/",
+        "https://github.com/score-technologies/turbovision",
+        "https://github.com/score-technologies/score-vision"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty). Added the missing website surface and a source-repo surface for turbovision (the on-chain-declared, actively-developed repo). Left as needs-review: the live website still links score-vision (not pushed to since December 2025) as its GitHub/docs reference, an unresolved discrepancy with the on-chain source_repo pointing to turbovision -- both repos are tracked pending clarification."
+    },
+    {
       "netuid": 45,
       "slug": "sn-45",
       "decision": "maintainer-reviewed",
