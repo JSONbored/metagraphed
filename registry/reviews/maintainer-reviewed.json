@@ -1494,6 +1494,19 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/oneoneone.json (reviewed_at 2026-06-08T10:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 112,
+      "slug": "sn-112",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://minotaursubnet.com/",
+        "https://github.com/subnet112/minotaur_subnet",
+        "https://api.minotaursubnet.com/health"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN112. Added website + source-repo surfaces, fixed 3 missing probe blocks. Read the app-management API doc and added 2 new no-param surfaces (v1/chains, v1/apps/); the other documented reads are all path-parameterized."
+    },
+    {
       "netuid": 113,
       "slug": "sn-113",
       "decision": "maintainer-reviewed",
