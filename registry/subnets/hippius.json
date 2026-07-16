@@ -10,18 +10,22 @@
   ],
   "contact": "hello@hippius.com",
   "curation": {
-    "gap_notes": ["No verified SSE/event stream yet."],
+    "gap_notes": [
+      "No verified SSE/event stream yet.",
+      "The swagger.json schema declares no `security` on all 204 paths (a schema-authoring artifact, not real access), but spot-checking across billing/infrastructure/network/registry/storage-control/workspaces confirms most routes are actually auth-gated live (401) -- e.g. infrastructure/vm/images, network/topology, billing/stripe/subscription-plans, infrastructure/vm/applications. Only a handful of genuinely public general-info endpoints were promoted.",
+      "Schema paths are relative to an undeclared /api base path (servers field is empty/null) -- bare paths from the schema's path list 404; the working host prefix is api.hippius.com/api/<path>."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
     "source_count": 8,
-    "verified_at": "2026-06-08T09:25:00.000Z"
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/75",
   "docs_url": "https://docs.hippius.com/",
   "name": "Hippius",
   "netuid": 75,
-  "notes": "Reviewed overlay for SN75 using the official Hippius website, docs, blockchain API docs, validator repository, and storage miner repository. Common API/OpenAPI paths on hippius.com currently return 404 and are not promoted as API surfaces.",
+  "notes": "Reviewed overlay for SN75 using the official Hippius website, docs, blockchain API docs, validator repository, and storage miner repository. Common API/OpenAPI paths on hippius.com currently return 404 and are not promoted as API surfaces. Re-review pass (2026-07-15): fixed 3 missing probe blocks and diffed the api.hippius.com swagger.json (204 paths) for undiscovered public GET endpoints -- most of the schema is actually auth-gated live despite declaring no security; added 4 genuinely public general-info surfaces (TAO price, VM flavor catalog, registry plans, storage-control health).",
   "schema_version": 1,
   "slug": "sn-75",
   "social": {
@@ -151,6 +155,12 @@
       "kind": "subnet-api",
       "name": "Hippius model registry API",
       "notes": "Public no-auth endpoint returning the paginated Hippius model registry (project/repo/digest/format for ~1300 hosted models); documented in the official Hippius OpenAPI spec. Verified publicly readable with no Authorization header, though the spec declares a global bearer scheme.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -170,6 +180,12 @@
       "kind": "data-artifact",
       "name": "Hippius model formats metadata",
       "notes": "Public no-auth static metadata document listing supported model formats and quantizations for the Hippius model registry; documented in the official Hippius OpenAPI spec. Verified publicly readable with no Authorization header.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -189,6 +205,12 @@
       "kind": "subnet-api",
       "name": "Hippius registry health",
       "notes": "Public no-auth GET /api/registry/health/ returning Hippius registry reachability JSON (observed: {\"ok\":true,\"latency_ms\":133}). Documented in the subnet swagger.json as a lightweight Harbor reachability check on the same api.hippius.com host as the existing models subnet-api surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -200,6 +222,94 @@
         "https://hippius.com/"
       ],
       "url": "https://api.hippius.com/api/registry/health/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-75-hippius-tao-price",
+      "kind": "data-artifact",
+      "name": "Hippius TAO price feed",
+      "notes": "Public no-auth GET /api/billing/latest-tao-price/ on api.hippius.com returning the latest TAO market snapshot (price_usd, market_cap, volume_24h, percent_change_24h, circulating_supply). Documented in the subnet swagger.json OpenAPI spec (schema declares no security) on the same host as the existing models/registry surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/billing/latest-tao-price/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-75-hippius-vm-flavors",
+      "kind": "data-artifact",
+      "name": "Hippius VM flavor catalog",
+      "notes": "Public no-auth GET /api/infrastructure/vm/flavors/ on api.hippius.com returning the available compute VM SKUs (name, cpu_cores, memory_mb, data_disk_gb, credits_per_hour). Documented in the subnet swagger.json OpenAPI spec on the same host as the existing surfaces; other infrastructure/vm/* routes (images, applications) are auth-gated (401) despite the schema declaring no security.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/infrastructure/vm/flavors/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-75-hippius-registry-plans",
+      "kind": "data-artifact",
+      "name": "Hippius registry subscription plans",
+      "notes": "Public no-auth GET /api/registry/plans/ on api.hippius.com returning the container/model registry subscription plan catalog (name, price_credits, storage quotas, features). Documented in the subnet swagger.json OpenAPI spec on the same host as the existing registry surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/registry/plans/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-75-hippius-storage-control-health",
+      "kind": "subnet-api",
+      "name": "Hippius storage-control health",
+      "notes": "Public no-auth GET /api/storage-control/health/ on api.hippius.com returning storage-control liveness JSON (observed: {\"status\":\"ok\"}). Documented in the subnet swagger.json OpenAPI spec on the same host as the existing registry health surface, a distinct service.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/storage-control/health/"
     }
   ],
   "website_url": "https://hippius.com/"

@@ -1027,16 +1027,17 @@
       "netuid": 75,
       "slug": "sn-75",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:25:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://hippius.com/",
         "https://docs.hippius.com/",
         "https://docs.hippius.com/blockchain/api",
         "https://github.com/thenervelab/hippius-validator",
-        "https://github.com/thenervelab/hippius-storage-miner"
+        "https://github.com/thenervelab/hippius-storage-miner",
+        "https://api.hippius.com/swagger.json"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/hippius.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 3 missing probe blocks. Diffed the api.hippius.com swagger.json (204 paths, schema declares no security on all of them) for undiscovered public GET endpoints -- spot-checking confirmed most routes are actually auth-gated live; added 4 genuinely public general-info surfaces (TAO price, VM flavor catalog, registry plans, storage-control health)."
     },
     {
       "netuid": 76,
