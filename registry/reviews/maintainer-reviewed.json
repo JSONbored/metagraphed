@@ -1104,6 +1104,18 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/compelle.json (reviewed_at 2026-06-08T10:10:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 83,
+      "slug": "sn-83",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://cliqueai.toptensor.ai/",
+        "https://github.com/toptensor/CliqueAI"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN83. Added website + source-repo surfaces, fixed 2 missing probe blocks. cliqueai.toptensor.ai/openapi.json returns HTTP 200 but serves the SPA's HTML fallback, not a real schema -- no OpenAPI diff performed."
+    },
+    {
       "netuid": 84,
       "slug": "sn-84",
       "decision": "maintainer-reviewed",

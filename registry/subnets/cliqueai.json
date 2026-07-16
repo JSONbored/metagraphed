@@ -1,15 +1,64 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 6,
+    "gap_notes": [
+      "cliqueai.toptensor.ai/openapi.json returns HTTP 200 but serves the SPA's HTML fallback, not a real OpenAPI schema -- no machine-readable OpenAPI/Swagger schema verified yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet."
+    ]
   },
   "name": "CliqueAI",
   "netuid": 83,
+  "notes": "First maintainer review for SN83. Added website + source-repo surfaces, fixed 2 missing probe blocks. cliqueai.toptensor.ai/openapi.json returns HTML (SPA fallback), not a real schema.",
   "schema_version": 1,
   "slug": "sn-83",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-83-cliqueai-website",
+      "kind": "website",
+      "name": "CliqueAI website",
+      "notes": "Official CliqueAI SN83 public website -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "cliqueai",
+      "public_safe": true,
+      "source_urls": ["https://cliqueai.toptensor.ai/"],
+      "url": "https://cliqueai.toptensor.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-83-cliqueai-source-repo",
+      "kind": "source-repo",
+      "name": "CliqueAI source repository",
+      "notes": "Official SN83 miner/validator source repository -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "cliqueai",
+      "public_safe": true,
+      "source_urls": ["https://github.com/toptensor/CliqueAI"],
+      "url": "https://github.com/toptensor/CliqueAI"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -17,6 +66,12 @@
       "kind": "dashboard",
       "name": "CliqueAI validator W&B dashboard",
       "notes": "Public Weights & Biases project for SN83 CliqueAI validator runs (entity toptensor-ai, project CliqueAI). Explicitly documented as the subnet's \"W&B Dashboard\" in the official toptensor/CliqueAI repo (docs/wandb_logging.md), which also defines the structured per-run logging schema (WandbRunLogData) written to this project. Publicly readable (W&B access USER_READ, 66+ logged validator runs); the same GitHub org (toptensor) owns both the SN83 source repo and this W&B entity.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "cliqueai",
       "public_safe": true,
       "review": {
@@ -35,6 +90,12 @@
       "kind": "data-artifact",
       "name": "CliqueAI minimum compute requirements",
       "notes": "Public no-auth static YAML data file committed at the root of SN83 CliqueAI's official toptensor/CliqueAI repository — the subnet's minimum/recommended compute specification (per-role miner and validator CPU, GPU/VRAM, memory, storage, OS, and network bandwidth requirements) used by operators to provision hardware. Served read-only via raw.githubusercontent from the same official repo.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "cliqueai",
       "public_safe": true,
       "review": {
