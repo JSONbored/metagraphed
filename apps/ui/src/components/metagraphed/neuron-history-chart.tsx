@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { subnetNeuronHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@jsonbored/ui-kit";
-import { Skeleton, EmptyState } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetNeuronHistoryPoint } from "@/lib/metagraphed/types";
 
@@ -22,7 +22,13 @@ function scoreStr(v?: number) {
  */
 export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: number }) {
   const [win, setWin] = useState<Win>("90d");
-  const { data: res, isLoading } = useQuery(subnetNeuronHistoryQuery(netuid, uid, win));
+  const {
+    data: res,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(subnetNeuronHistoryQuery(netuid, uid, win));
   const points = useMemo<SubnetNeuronHistoryPoint[]>(
     () => res?.data?.points ?? [],
     [res?.data?.points],
@@ -79,6 +85,8 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
       </div>
       {isLoading ? (
         <Skeleton className="h-32 w-full" />
+      ) : isError ? (
+        <ErrorState error={error} onRetry={() => refetch()} context="per-UID history" />
       ) : !hasData ? (
         <EmptyState
           title="No per-UID history"
