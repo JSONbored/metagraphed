@@ -1428,10 +1428,14 @@
       "netuid": 107,
       "slug": "sn-107",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-20T00:00:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
-      "source_urls": ["https://api.theminos.ai/"],
-      "notes": "Elevated from the provenance review queue (#1235): a live subnet-api is hosted on this subnet's on-chain-asserted domain (theminos.ai, Subtensor SubnetIdentitiesV3). Maintainer-confirmed."
+      "source_urls": [
+        "https://theminos.ai/",
+        "https://github.com/minos-protocol/minos_subnet",
+        "https://api.theminos.ai/"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): this decision was recorded on 2026-06-20 but never materialized onto registry/subnets/minos.json (the overlay was still community-seeded/unreviewed) -- this pass corrects that. Added website + source-repo surfaces and the official Minos MCP server (streamable-HTTP JSON-RPC, protocol-negotiation-gated rather than probeable)."
     },
     {
       "netuid": 109,
