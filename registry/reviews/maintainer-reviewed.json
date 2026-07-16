@@ -1356,14 +1356,14 @@
       "netuid": 100,
       "slug": "sn-100",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T19:30:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.platform.network/",
         "https://www.platform.network/docs",
         "https://github.com/PlatformNetwork/platform"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/pla-form.json (reviewed_at 2026-06-08T19:30:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): all 7 surfaces re-verified live, fixed 1 missing probe block. Diffed the 27-path BASE Challenge Proxy OpenAPI schema -- no new candidates promoted (remaining routes are HTTPBearer-gated or path-parameterized; /v1/weights/latest is real but currently 404s pending a sealed weight vector)."
     },
     {
       "netuid": 101,

@@ -21,19 +21,20 @@
       "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
       "CortexLM/platform redirects to PlatformNetwork/platform and is excluded as duplicate source evidence.",
       "The PlatformNetwork GitHub organization page is not promoted as a source repository.",
-      "No verified SSE/event stream yet."
+      "No verified SSE/event stream yet.",
+      "Diffed the 27-path chain.joinbase.ai OpenAPI schema for undiscovered public GET endpoints -- everything not already tracked is either HTTPBearer-gated (/admin, /admin/challenges, /v1/admin/*, /v1/validators) or a path-parameterized detail route. /v1/weights/latest declares no security and is real (cited as evidence in the dashboard surface's notes) but currently 404s with \"no sealed weight vector available\" -- not promoted as its own surface until it stably returns data."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T19:30:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 7,
-    "verified_at": "2026-06-08T19:30:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/100",
   "docs_url": "https://www.platform.network/docs",
   "name": "Plaτform",
   "netuid": 100,
-  "notes": "Reviewed overlay for SN100 Plaτform using the official Platform Network website, docs, and source repository. Common API, health, OpenAPI, and Swagger probe paths currently return 404 and are not promoted as public operational API surfaces.",
+  "notes": "Reviewed overlay for SN100 Plaτform using the official Platform Network website, docs, and source repository. Common API, health, OpenAPI, and Swagger probe paths currently return 404 and are not promoted as public operational API surfaces. Root->128 accuracy audit re-review pass (#5903): fixed 1 missing probe block; diffed the 27-path BASE Challenge Proxy OpenAPI schema, no new candidates promoted.",
   "schema_version": 1,
   "slug": "sn-100",
   "social": {
@@ -109,6 +110,12 @@
       "kind": "openapi",
       "name": "Plaτform BASE Challenge Proxy OpenAPI",
       "notes": "OpenAPI 3.1 spec for the BASE challenge proxy public edge at chain.joinbase.ai. The official SN100 source repository (PlatformNetwork/platform README) documents this host as the live public API front door for the multi-challenge subnet platform.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "platform-network",
       "public_safe": true,
       "review": {
