@@ -31,7 +31,13 @@
       "id": "sn-101-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "eni TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/101 on api.taomarketcap.com returning machine-readable JSON for SN101 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Tag101 (eni) documents validator task flows in its official source repository but exposes no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/101/ on api.taomarketcap.com returning machine-readable JSON for SN101 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Tag101 (eni) documents validator task flows in its official source repository but exposes no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -42,7 +48,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/tag101-ai/tag101"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/101"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/101/"
     },
     {
       "auth_required": false,

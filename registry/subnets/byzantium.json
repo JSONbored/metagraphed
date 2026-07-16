@@ -107,7 +107,13 @@
       "id": "sn-76-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "Byzantium TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/76 on api.taomarketcap.com returning machine-readable JSON for SN76 Byzantium on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields — the indexed subnet-state snapshot feed, complementary to the subnet's first-party validator-weights endpoint. Documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/76/ on api.taomarketcap.com returning machine-readable JSON for SN76 Byzantium on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields — the indexed subnet-state snapshot feed, complementary to the subnet's first-party validator-weights endpoint. Documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -115,7 +121,7 @@
         "submitted_by": "jaytbarimbao-collab"
       },
       "source_urls": ["https://api.taomarketcap.com/developer/documentation/"],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/76"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/76/"
     }
   ],
   "website_url": "https://www.byzantiumai.net/"

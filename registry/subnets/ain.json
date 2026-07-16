@@ -51,7 +51,13 @@
       "id": "sn-69-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "ain TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/69 on api.taomarketcap.com returning machine-readable JSON for SN69 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Herald (ain) exposes outlet registry seed data and heraldmedia.ai but no verified no-auth first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/69/ on api.taomarketcap.com returning machine-readable JSON for SN69 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Herald (ain) exposes outlet registry seed data and heraldmedia.ai but no verified no-auth first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -62,7 +68,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/HeraldMedia/herald/blob/4de1577e82b74807d4081c3f61edffaee9ed718a/README.md"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/69"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/69/"
     },
     {
       "auth_required": false,

@@ -87,7 +87,13 @@
       "id": "sn-30-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "Endure Network TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/30 on api.taomarketcap.com returning machine-readable JSON for SN30 Endure Network on-chain subnet state, hyperparameters, economics, and dTAO market fields. Endure publishes a website and documentation but no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/30/ on api.taomarketcap.com returning machine-readable JSON for SN30 Endure Network on-chain subnet state, hyperparameters, economics, and dTAO market fields. Endure publishes a website and documentation but no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -98,7 +104,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/30/subnet.json"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/30"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/30/"
     },
     {
       "auth_required": false,

@@ -97,7 +97,13 @@
       "id": "sn-116-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "TaoLend TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/116 on api.taomarketcap.com returning machine-readable JSON for SN116 TaoLend on-chain subnet state, hyperparameters, economics, and dTAO market fields. TaoLend exposes no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/116/ on api.taomarketcap.com returning machine-readable JSON for SN116 TaoLend on-chain subnet state, hyperparameters, economics, and dTAO market fields. TaoLend exposes no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -108,7 +114,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/oxylok/116-taolend"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/116"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/116/"
     }
   ],
   "website_url": "https://taolend.io/"
