@@ -11,24 +11,22 @@
   "curation": {
     "gap_notes": [
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet."
+      "No verified SSE/event stream yet.",
+      "No official social account found (website and README link only Discord and TaoStats)."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T08:35:00.000Z",
+    "reviewed_at": "2026-07-16T00:15:00.000Z",
     "source_count": 9,
-    "verified_at": "2026-06-08T08:35:00.000Z"
+    "verified_at": "2026-07-16T00:15:00.000Z"
   },
   "dashboard_url": "https://taostats.io/subnets/netuid-29",
   "docs_url": "https://github.com/coldint/coldint_validator/blob/main/README.md",
   "name": "Coldint",
   "netuid": 29,
-  "notes": "Reviewed overlay for SN29 using the official Coldint website, validator repository, dynamic configuration repository, README documentation, and referenced training dataset.",
+  "notes": "Reviewed overlay for SN29 using the official Coldint website, validator repository, dynamic configuration repository, README documentation, and referenced training dataset. This pass fixed the min-compute data-artifact surface (added by a recent contributor PR) having no probe config at all -- the registry-wide gap tracked in #5932 -- and removed an incorrect social.x value (https://x.com/cacheon_ai, a copy-paste of SN14 Cacheon's own handle, unrelated to this subnet); no official Coldint social account was found on the website or in the README to replace it with. On-chain SubnetIdentitiesV3 native_name is a stylized \"hotfloat\" rather than \"Coldint\", but the on-chain website_url field matches coldint.io exactly, positively confirming the same operator -- not treated as a rename.",
   "schema_version": 1,
   "slug": "sn-29",
-  "social": {
-    "x": "https://x.com/cacheon_ai"
-  },
   "source_repo": "https://github.com/coldint/coldint_validator",
   "status": "active",
   "surfaces": [
@@ -186,6 +184,12 @@
       "notes": "Public no-auth machine-readable min_compute.yml from the official SN29 Coldint validator repository (coldint/coldint_validator), pinned to an immutable commit. Specifies the minimum and recommended CPU, GPU, memory, storage, and network requirements for running SN29 Coldint miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
       "provider": "coldint",
       "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
