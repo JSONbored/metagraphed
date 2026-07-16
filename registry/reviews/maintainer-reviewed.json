@@ -943,6 +943,18 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ain.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 70,
+      "slug": "sn-70",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.nexisgen.ai/",
+        "https://github.com/RendixNetwork/nexisgen"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN70. Added website + source-repo surfaces. api.nexisgen.ai (validator API host) was returning HTTP 502 on all tested routes during this pass -- documented as an observed outage in gap_notes; existing probes are already correctly configured to catch it."
+    },
+    {
       "netuid": 72,
       "slug": "sn-72",
       "decision": "maintainer-reviewed",

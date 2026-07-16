@@ -1,11 +1,23 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "official-api",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "api.nexisgen.ai returned HTTP 502 (Cloudflare bad-gateway, origin down) on all 3 tested routes (/healthz, /openapi.json, /v1/get_latest_total_score) during this review pass, 2026-07-15 -- an observed operational outage, not a registry gap. Existing probes on these surfaces are correctly configured and will surface the outage once run."
+    ]
   },
   "name": "NexisGen",
   "netuid": 70,
+  "notes": "First maintainer review for SN70. Added website + source-repo surfaces (both verified live). api.nexisgen.ai (the validator API host, backing all 3 existing subnet-api/openapi/data-artifact surfaces) was returning 502 during this pass -- a genuine observed outage, documented in gap_notes rather than removing the surfaces, since their probes are already correctly configured to catch this.",
   "schema_version": 1,
   "slug": "sn-70",
   "social": {
@@ -14,6 +26,42 @@
   "source_repo": "https://github.com/RendixNetwork/nexisgen",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-70-nexisgen-website",
+      "kind": "website",
+      "name": "NexisGen website",
+      "notes": "Official NexisGen SN70 public website (nexisgen.ai 307-redirects to www.nexisgen.ai) -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nexisgen",
+      "public_safe": true,
+      "source_urls": ["https://nexisgen.ai/", "https://www.nexisgen.ai/"],
+      "url": "https://www.nexisgen.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-70-nexisgen-source-repo",
+      "kind": "source-repo",
+      "name": "NexisGen source repository",
+      "notes": "Official SN70 validator/miner source repository -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nexisgen",
+      "public_safe": true,
+      "source_urls": ["https://github.com/RendixNetwork/nexisgen"],
+      "url": "https://github.com/RendixNetwork/nexisgen"
+    },
     {
       "auth_required": false,
       "authority": "community",
