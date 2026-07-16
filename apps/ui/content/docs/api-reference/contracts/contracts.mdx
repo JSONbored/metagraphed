@@ -1,6 +1,5 @@
 ---
 title: Contracts
-description: Fetch artifact contract metadata.
 full: true
 _openapi:
   preload:
@@ -23,7 +22,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/contracts","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/contracts","method":"get"}]} showDescription />
     </>
   );
 }

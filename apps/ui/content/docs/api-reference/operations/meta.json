@@ -4,7 +4,7 @@
     "build",
     "changelog",
     "freshness",
-    "sourceHealth",
-    "sourceSnapshots"
+    "source-health",
+    "source-snapshots"
   ]
 }

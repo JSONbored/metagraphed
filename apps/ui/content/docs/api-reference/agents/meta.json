@@ -1,7 +1,7 @@
 {
   "title": "Agents",
   "pages": [
-    "agentCatalog",
-    "agentCatalogSubnet"
+    "agent-catalog",
+    "agent-catalog-subnet"
   ]
 }

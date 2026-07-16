@@ -1,6 +1,5 @@
 ---
 title: Endpoints
-description: List generalized endpoint resources and monitored public surfaces.
 full: true
 _openapi:
   preload:
@@ -23,7 +22,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/endpoints","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/endpoints","method":"get"}]} showDescription />
     </>
   );
 }

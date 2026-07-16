@@ -1,6 +1,5 @@
 ---
 title: Subnets
-description: List active Finney subnets.
 full: true
 _openapi:
   preload:
@@ -23,7 +22,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/subnets","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/subnets","method":"get"}]} showDescription />
     </>
   );
 }

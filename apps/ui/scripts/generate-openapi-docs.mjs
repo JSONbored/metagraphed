@@ -92,6 +92,14 @@ function humanizeOperationId(id) {
     .join(" ");
 }
 
+/** "accountAxonRemovals" -> "account-axon-removals" (a URL slug/filename, not a title). */
+function kebabCase(id) {
+  return id
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/([A-Za-z])([0-9])/g, "$1-$2")
+    .toLowerCase();
+}
+
 /**
  * Mutates a parsed OpenAPI document in place: for every operation, swaps in
  * a short operationId-derived title and moves the original summary text to
@@ -177,6 +185,14 @@ async function main() {
     output: OUTPUT_DIR,
     per: "operation",
     meta: false,
+    // Renders `operation.description` (the full original summary text,
+    // post-split) as proper body Markdown inside <APIPage/> itself, not
+    // frontmatter `description` -- Fumadocs' own <DocsDescription/> is a
+    // `text-lg` one-line subtitle treatment, wrong for multi-sentence prose.
+    // See operation/index.js's `showDescription && operationDescription &&
+    // <Markdown md={operationDescription} />` -- confirmed in source, not
+    // assumed.
+    includeDescription: true,
   });
 
   const entries = await readdir(OUTPUT_DIR);
@@ -186,18 +202,26 @@ async function main() {
     if (!entry.endsWith(".mdx") || entry === "index.mdx") continue;
     const operationId = entry.slice(0, -".mdx".length);
     const tag = tagByOperationId.get(operationId) ?? "misc";
+    // kebab-case, not the raw camelCase operationId -- this app's site-wide
+    // breadcrumb (breadcrumb-nav.ts) renders each URL path segment verbatim,
+    // uppercased, with no word-splitting. "accountAxonRemovals" reads as an
+    // unbroken wall of caps; "account-axon-removals" reads as separate
+    // words even uppercased, matching the existing "/docs/chain-events"
+    // convention.
+    const slug = kebabCase(operationId);
+    const fileName = `${slug}.mdx`;
 
     const tagDir = path.join(OUTPUT_DIR, tag);
     await mkdir(tagDir, { recursive: true });
 
     const from = path.join(OUTPUT_DIR, entry);
-    const to = path.join(tagDir, entry);
+    const to = path.join(tagDir, fileName);
     await rm(to, { force: true });
     await writeFile(to, await readFile(from, "utf8"));
     await rm(from);
 
     if (!pagesByTag.has(tag)) pagesByTag.set(tag, []);
-    pagesByTag.get(tag).push(operationId);
+    pagesByTag.get(tag).push(slug);
   }
 
   for (const [tag, pages] of pagesByTag) {

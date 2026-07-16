@@ -3,19 +3,19 @@
   "pages": [
     "compare",
     "coverage",
-    "coverageDepth",
+    "coverage-depth",
     "curation",
-    "fixtureDetail",
+    "fixture-detail",
     "fixtures",
     "gaps",
     "lineage",
-    "registryLeaderboards",
-    "registrySummary",
-    "reviewEnrichmentEvidence",
-    "reviewEnrichmentQueue",
-    "reviewEnrichmentTargets",
-    "reviewGaps",
-    "reviewProfileCompleteness",
-    "subnetGaps"
+    "registry-leaderboards",
+    "registry-summary",
+    "review-enrichment-evidence",
+    "review-enrichment-queue",
+    "review-enrichment-targets",
+    "review-gaps",
+    "review-profile-completeness",
+    "subnet-gaps"
   ]
 }

@@ -1,6 +1,5 @@
 ---
 title: Adapter
-description: Fetch adapter-backed public metrics.
 full: true
 _openapi:
   preload:
@@ -23,7 +22,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/adapters/{slug}","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/adapters/{slug}","method":"get"}]} showDescription />
     </>
   );
 }

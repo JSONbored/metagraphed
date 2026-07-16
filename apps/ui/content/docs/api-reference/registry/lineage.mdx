@@ -1,7 +1,5 @@
 ---
 title: Lineage
-description: Fetch maintainer-approved cross-network subnet lineage (graduated
-  subnets + the deploying-soon testnet pipeline).
 full: true
 _openapi:
   preload:
@@ -25,7 +23,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/lineage","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/lineage","method":"get"}]} showDescription />
     </>
   );
 }

@@ -1,6 +1,5 @@
 ---
 title: Evidence
-description: Fetch public evidence ledger.
 full: true
 _openapi:
   preload:
@@ -23,7 +22,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/evidence","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/evidence","method":"get"}]} showDescription />
     </>
   );
 }

@@ -1,12 +1,5 @@
 ---
 title: Economics
-description: List per-subnet validator and economic metrics (counts, stake,
-  registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy,
-  emission share, and registration block height). Default order is emission
-  share descending. Filter by netuid/registration_allowed, search by name/slug,
-  and sort with `sort=<field>&order=asc|desc` — the two are separate parameters
-  (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT
-  a combined `field:desc` token.
 full: true
 _openapi:
   preload:
@@ -36,7 +29,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/economics","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/economics","method":"get"}]} showDescription />
     </>
   );
 }

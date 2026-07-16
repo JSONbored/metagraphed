@@ -1,6 +1,5 @@
 ---
 title: Profiles
-description: List public-safe subnet profiles and completeness scores.
 full: true
 _openapi:
   preload:
@@ -23,7 +22,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/profiles","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/profiles","method":"get"}]} showDescription />
     </>
   );
 }

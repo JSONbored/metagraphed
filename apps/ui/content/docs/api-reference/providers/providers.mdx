@@ -1,6 +1,5 @@
 ---
 title: Providers
-description: List providers and sources.
 full: true
 _openapi:
   preload:
@@ -23,7 +22,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/providers","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/providers","method":"get"}]} showDescription />
     </>
   );
 }

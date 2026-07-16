@@ -1,11 +1,5 @@
 ---
 title: Compare
-description: Compare several subnets side by side across the registry structure
-  (completeness + surface counts), the live economics tier, and the live
-  per-subnet health rollup — one call, requested order. `netuids` is a required
-  comma-separated list of 1-128 subnet ids; `dimensions` selects a subset of
-  structure,economics,health (default all). Composed live (no static file); for
-  choosing between subnets without N separate detail/economics/health fetches.
 full: true
 _openapi:
   preload:
@@ -34,7 +28,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/compare","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/compare","method":"get"}]} showDescription />
     </>
   );
 }

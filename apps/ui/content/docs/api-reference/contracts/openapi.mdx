@@ -1,6 +1,5 @@
 ---
 title: OpenAPI
-description: Fetch OpenAPI 3.1 contract.
 full: true
 _openapi:
   preload:
@@ -23,7 +22,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/openapi.json","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/openapi.json","method":"get"}]} showDescription />
     </>
   );
 }

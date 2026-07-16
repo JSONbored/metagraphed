@@ -3,12 +3,17 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useFumadocsLoader } from "fumadocs-core/source/client";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layouts/docs/page";
+import {
+  DocsBody,
+  DocsDescription,
+  DocsPage,
+  DocsTitle,
+  ViewOptionsPopover,
+} from "fumadocs-ui/layouts/docs/page";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import { TimeAgo } from "@jsonbored/ui-kit";
 import browserCollections from "collections/browser";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { CopyMarkdownButton } from "@/components/metagraphed/copy-markdown-button";
 import { getMDXComponents } from "@/components/metagraphed/mdx";
 import { baseOptions } from "@/lib/docs-layout-shared";
 import { docsSource } from "@/lib/docs-source";
@@ -94,8 +99,8 @@ const serverLoader = createServerFn({ method: "GET" })
     };
   });
 
-const clientLoader = browserCollections.docs.createClientLoader({
-  component({ toc, frontmatter, default: MDX, _markdown, lastModified }, _props: undefined) {
+const clientLoader = browserCollections.docs.createClientLoader<{ markdownUrl: string }>({
+  component({ toc, frontmatter, default: MDX, lastModified }, { markdownUrl }) {
     return (
       <DocsPage toc={toc}>
         <div className="flex items-start justify-between gap-4">
@@ -103,7 +108,17 @@ const clientLoader = browserCollections.docs.createClientLoader({
             <DocsTitle>{frontmatter.title}</DocsTitle>
             <DocsDescription>{frontmatter.description}</DocsDescription>
           </div>
-          <CopyMarkdownButton markdown={_markdown} />
+          {/* Fumadocs' own page-actions component (fumadocs.dev/docs/integrations/llms#page-actions)
+              -- Copy Page / View as Markdown / Open in ChatGPT, Claude, Cursor,
+              Scira AI. markdownUrl points at docs.raw.$.ts, a real per-page
+              route -- a client-built data: URI doesn't work here: Chrome
+              silently blocks target="_blank" navigation to data: URLs, which
+              breaks the popover's "View as Markdown" link (a plain <a href>)
+              even though its "Copy" action (fetch-based) would've been fine
+              with one. The "Open in ChatGPT/Claude/..." items don't use
+              markdownUrl at all -- they send the *page's own* URL for that
+              service to fetch itself. */}
+          <ViewOptionsPopover markdownUrl={markdownUrl} />
         </div>
         {/* lastModified comes from local `git log` at build/dev-compile time
             (source.config.ts's docs.lastModified: true), not a live GitHub
@@ -133,6 +148,11 @@ const clientLoader = browserCollections.docs.createClientLoader({
 
 function Page() {
   const data = useFumadocsLoader(Route.useLoaderData());
+  // Same splat docsSource.getPage() already resolved this page from --
+  // docs.raw.$.ts re-resolves it the same way, so this always points at a
+  // real page.
+  const { _splat } = Route.useParams();
+  const markdownUrl = `/docs/raw/${_splat ?? ""}`;
 
   return (
     // theme.enabled: false -- the app already manages the .dark class itself
@@ -145,7 +165,7 @@ function Page() {
       <AppShell fullBleedMain>
         <DocsLayout {...baseOptions()} tree={data.pageTree}>
           <OpenAPIPreloadProvider value={data.preloaded}>
-            <Suspense>{clientLoader.useContent(data.path)}</Suspense>
+            <Suspense>{clientLoader.useContent(data.path, { markdownUrl })}</Suspense>
           </OpenAPIPreloadProvider>
         </DocsLayout>
       </AppShell>

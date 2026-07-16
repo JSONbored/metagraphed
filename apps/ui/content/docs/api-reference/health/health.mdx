@@ -1,6 +1,5 @@
 ---
 title: Health
-description: Fetch global health summary.
 full: true
 _openapi:
   preload:
@@ -23,7 +22,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/health","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/health","method":"get"}]} showDescription />
     </>
   );
 }

@@ -2,13 +2,13 @@
   "title": "Health",
   "pages": [
     "health",
-    "healthHistory",
-    "healthTrendsBulk",
+    "health-history",
+    "health-trends-bulk",
     "incidents",
-    "subnetHealth",
-    "subnetHealthIncidents",
-    "subnetHealthPercentiles",
-    "subnetHealthTrends",
-    "subnetUptime"
+    "subnet-health",
+    "subnet-health-incidents",
+    "subnet-health-percentiles",
+    "subnet-health-trends",
+    "subnet-uptime"
   ]
 }

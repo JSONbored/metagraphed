@@ -1,6 +1,5 @@
 ---
 title: Curation
-description: Fetch curation states by subnet.
 full: true
 _openapi:
   preload:
@@ -23,7 +22,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="metagraph" operations={[{"path":"/api/v1/curation","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/curation","method":"get"}]} showDescription />
     </>
   );
 }
