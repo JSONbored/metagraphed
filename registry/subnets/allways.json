@@ -1,9 +1,14 @@
 {
-  "categories": ["defi", "bitcoin", "subnet-api", "pilot"],
+  "categories": [
+    "defi",
+    "bitcoin",
+    "subnet-api",
+    "pilot"
+  ],
   "curation": {
     "gap_notes": [
       "No verified dashboard surface yet (no dashboard link found on the website as of 2026-07-15).",
-      "Data-artifact surface exists (sn-7-allways-data-artifact) but is community-submitted, not yet maintainer-verified."
+      "Removed sn-7-allways-data-artifact: it duplicated allways-miners-leaderboard (same URL https://api.all-ways.io/miners/leaderboard); kept the correctly typed subnet-api surface."
     ],
     "level": "adapter-backed",
     "review_state": "maintainer-reviewed",
@@ -276,28 +281,6 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-7-allways-data-artifact",
-      "kind": "data-artifact",
-      "name": "Allways community data-artifact",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "allways",
-      "public_safe": true,
-      "review": {
-        "confidence": "medium",
-        "state": "community-submitted",
-        "submitted_by": "kiannidev"
-      },
-      "source_urls": ["https://api.all-ways.io/swagger-json"],
-      "url": "https://api.all-ways.io/miners/leaderboard"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
       "id": "sn-7-allways-subnet-api",
       "kind": "subnet-api",
       "name": "Allways swaps API",
@@ -314,7 +297,9 @@
         "state": "community-submitted",
         "submitted_by": "jsonbored"
       },
-      "source_urls": ["https://api.all-ways.io/swagger"],
+      "source_urls": [
+        "https://api.all-ways.io/swagger"
+      ],
       "url": "https://api.all-ways.io/swaps"
     },
     {
