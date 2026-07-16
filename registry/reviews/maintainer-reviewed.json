@@ -1165,7 +1165,7 @@
       "netuid": 87,
       "slug": "sn-87",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-07T00:00:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://luminar.network/",
@@ -1173,9 +1173,10 @@
         "https://demo.luminar.network/",
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx",
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/87",
-        "https://taomarketcap.com/subnets/87"
+        "https://taomarketcap.com/subnets/87",
+        "https://github.com/Luminar-Network/luminar-sn"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/luminar-network.json (reviewed_at 2026-06-07T00:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): gave the source-repo surface a proper name/notes (was the generic placeholder \"unknown community source-repo\") and added the missing top-level source_repo field."
     },
     {
       "netuid": 88,
