@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   copyErrorDescription,
   copySuccessTitle,
+  legacyClipboardCopy,
   shouldUseNavigatorClipboard,
   truncateCopyPreview,
 } from "./use-copy";
@@ -51,5 +52,33 @@ describe("shouldUseNavigatorClipboard", () => {
   it("falls back when navigator or clipboard is missing", () => {
     expect(shouldUseNavigatorClipboard(undefined)).toBe(false);
     expect(shouldUseNavigatorClipboard({} as Navigator)).toBe(false);
+  });
+});
+
+describe("legacyClipboardCopy", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubDocument(execResult: boolean) {
+    vi.stubGlobal("document", {
+      createElement: vi.fn(() => ({ value: "", style: {}, select: vi.fn() })),
+      body: { appendChild: vi.fn(), removeChild: vi.fn() },
+      execCommand: vi.fn(() => execResult),
+    });
+  }
+
+  it("returns false during SSR when document is absent", () => {
+    expect(legacyClipboardCopy("x")).toBe(false);
+  });
+
+  it("returns true when execCommand succeeds", () => {
+    stubDocument(true);
+    expect(legacyClipboardCopy("hello")).toBe(true);
+  });
+
+  it("returns false when execCommand is rejected, not a false success (#6026)", () => {
+    stubDocument(false);
+    expect(legacyClipboardCopy("hello")).toBe(false);
   });
 });

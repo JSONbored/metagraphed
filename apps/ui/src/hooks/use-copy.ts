@@ -27,6 +27,26 @@ export function shouldUseNavigatorClipboard(navigatorValue: Navigator | undefine
 }
 
 /**
+ * Legacy `execCommand("copy")` fallback for browsers without the async
+ * Clipboard API. Returns whether the copy actually succeeded: `execCommand`
+ * returns `false` (without throwing) when the copy is rejected -- no user
+ * activation, blocked by permissions policy, etc. -- so callers must honor the
+ * return value rather than assume success.
+ */
+export function legacyClipboardCopy(value: string): boolean {
+  if (typeof document === "undefined") return false;
+  const ta = document.createElement("textarea");
+  ta.value = value;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  const succeeded = document.execCommand("copy");
+  document.body.removeChild(ta);
+  return succeeded;
+}
+
+/**
  * Shared copy hook used by every "copy this URL/value" interaction.
  * Returns `copied` (truthy for ~1.4s after success) so callers can swap an
  * icon for a green check, plus a `copy(value)` action.
@@ -43,15 +63,12 @@ export function useCopy(opts: CopyOpts = {}) {
         if (shouldUseNavigatorClipboard(typeof navigator !== "undefined" ? navigator : undefined)) {
           await navigator.clipboard.writeText(value);
         } else if (typeof document !== "undefined") {
-          // Fallback for older browsers / SSR-safe access pattern.
-          const ta = document.createElement("textarea");
-          ta.value = value;
-          ta.style.position = "fixed";
-          ta.style.opacity = "0";
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
+          // Fallback for older browsers / SSR-safe access pattern. Honor the
+          // return value so a rejected copy is reported as a failure below,
+          // instead of falsely toasting success.
+          if (!legacyClipboardCopy(value)) {
+            throw new Error("The clipboard copy command was rejected.");
+          }
         }
         setCopied(true);
         if (toastOnSuccess) {
