@@ -1060,6 +1060,18 @@
       "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/byzantium.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
+      "netuid": 77,
+      "slug": "sn-77",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://sn77.xyz/",
+        "https://github.com/creativebuilds/sn77"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN77. Added website + source-repo surfaces, fixed 2 missing probe blocks. Diffed the subnet's own live-served API reference (validator/api-server-docs.json, 14 endpoints) for undiscovered public GET endpoints -- added 5 new no-param surfaces (allVotes, allHolders, allAddresses, allMiners, positions)."
+    },
+    {
       "netuid": 79,
       "slug": "sn-79",
       "decision": "maintainer-reviewed",

@@ -1,15 +1,64 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "defi",
+    "official-api",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-15T00:00:00.000Z",
+    "verified_at": "2026-07-15T00:00:00.000Z",
+    "source_count": 8,
+    "gap_notes": [
+      "Diffed validator/api-server-docs.json (the repo's live-served API reference, 14 endpoints) for undiscovered public GET endpoints -- added 5 new no-param surfaces (allVotes, allHolders, allAddresses, allMiners, positions). The 4 remaining path-parameterized GET routes (userVotes/:address, positions/:minerHotkey, voteCooldown/:address, voteHistory/:address) and 3 POST routes (updateVotes, claimAddress, ping) were excluded."
+    ]
   },
   "name": "Liquidity",
   "netuid": 77,
+  "notes": "First maintainer review for SN77. Added website + source-repo surfaces, fixed 2 missing probe blocks. Diffed the subnet's own API reference doc for undiscovered public GET endpoints.",
   "schema_version": 1,
   "slug": "sn-77",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-77-liquidity-website",
+      "kind": "website",
+      "name": "Liquidity website",
+      "notes": "Official SN77 Liquidity public website -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "liquidity",
+      "public_safe": true,
+      "source_urls": ["https://sn77.xyz/"],
+      "url": "https://sn77.xyz/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-77-liquidity-source-repo",
+      "kind": "source-repo",
+      "name": "Liquidity source repository",
+      "notes": "Official SN77 validator/miner source repository -- verified live 2026-07-15.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "liquidity",
+      "public_safe": true,
+      "source_urls": ["https://github.com/creativebuilds/sn77"],
+      "url": "https://github.com/creativebuilds/sn77"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -17,6 +66,12 @@
       "kind": "subnet-api",
       "name": "Liquidity API",
       "notes": "Public no-auth REST API for SN77 Liquidity (77.creativebuilds.io) exposing Uniswap V3 pool voting, positions, weights, miners, and holders; the /pools endpoint returns JSON with no authentication. Documented in the official creativebuilds/sn77 README.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "liquidity",
       "public_safe": true,
       "review": {
@@ -35,6 +90,12 @@
       "kind": "data-artifact",
       "name": "SN77 final miner weights",
       "notes": "Public no-auth GET /weights on 77.creativebuilds.io returning the subnet's final calculated per-miner weights as a JSON map of hotkey SS58 address to weight value (observed live: {success, weights:{<ss58>:<number>, ...250+ miners}, cached}). Documented as GET /weights in the official creativebuilds/sn77 README; same 77.creativebuilds.io host as the existing /pools surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "liquidity",
       "public_safe": true,
       "review": {
@@ -45,6 +106,126 @@
         "https://github.com/creativebuilds/sn77/blob/master/README.md"
       ],
       "url": "https://77.creativebuilds.io/weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-77-liquidity-all-votes",
+      "kind": "data-artifact",
+      "name": "SN77 all user votes",
+      "notes": "Public no-auth GET /allVotes on 77.creativebuilds.io returning all stored voter records (ss58Address, pool weights, total_weight, block_number, alphaBalance). Documented in validator/api-server-docs.json, the subnet's own live-served API reference, on the same host as the existing pools/weights surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "liquidity",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/creativebuilds/sn77/blob/master/validator/api-server-docs.json"
+      ],
+      "url": "https://77.creativebuilds.io/allVotes"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-77-liquidity-all-holders",
+      "kind": "data-artifact",
+      "name": "SN77 token holders",
+      "notes": "Public no-auth GET /allHolders on 77.creativebuilds.io returning all token holders read directly from the Bittensor chain (address, alphaBalanceRaw, taoBalanceRaw, subnetRank). Documented in validator/api-server-docs.json, the subnet's own live-served API reference.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "liquidity",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/creativebuilds/sn77/blob/master/validator/api-server-docs.json"
+      ],
+      "url": "https://77.creativebuilds.io/allHolders"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-77-liquidity-all-addresses",
+      "kind": "data-artifact",
+      "name": "SN77 linked addresses",
+      "notes": "Public no-auth GET /allAddresses on 77.creativebuilds.io returning the SS58-to-Ethereum address links for token holders. Documented in validator/api-server-docs.json, the subnet's own live-served API reference.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "liquidity",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/creativebuilds/sn77/blob/master/validator/api-server-docs.json"
+      ],
+      "url": "https://77.creativebuilds.io/allAddresses"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-77-liquidity-all-miners",
+      "kind": "data-artifact",
+      "name": "SN77 all miners",
+      "notes": "Public no-auth GET /allMiners on 77.creativebuilds.io returning all miners on the subnet with their linked Ethereum addresses (hotkeyAddress, ethereumAddress). Documented in validator/api-server-docs.json, the subnet's own live-served API reference.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "liquidity",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/creativebuilds/sn77/blob/master/validator/api-server-docs.json"
+      ],
+      "url": "https://77.creativebuilds.io/allMiners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-77-liquidity-positions",
+      "kind": "data-artifact",
+      "name": "SN77 all liquidity positions",
+      "notes": "Public no-auth GET /positions on 77.creativebuilds.io returning all active Uniswap v3 liquidity positions for all miners with a linked Ethereum address. Documented in validator/api-server-docs.json, the subnet's own live-served API reference; complements the existing pools surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "liquidity",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/creativebuilds/sn77/blob/master/validator/api-server-docs.json"
+      ],
+      "url": "https://77.creativebuilds.io/positions"
     }
   ],
   "source_repo": "https://github.com/creativebuilds/sn77",
