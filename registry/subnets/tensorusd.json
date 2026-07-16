@@ -10,20 +10,20 @@
   "contact": "admin@tensorusd.com",
   "curation": {
     "gap_notes": [
-      "No verified OpenAPI/Swagger schema yet.",
+      "No verified OpenAPI/Swagger schema yet -- api.tensorusd.com/openapi.json and /docs both 404.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:50:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 5,
-    "verified_at": "2026-06-08T09:50:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/113",
   "docs_url": "https://docs.tensorusd.com/components/subnet",
   "name": "TensorUSD",
   "netuid": 113,
-  "notes": "Reviewed overlay for SN113 using the official TensorUSD website, subnet docs, and source repository.",
+  "notes": "Reviewed overlay for SN113 using the official TensorUSD website, subnet docs, and source repository. Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks; added the agent-api.tensorusd.com backend health surface (TENSORUSD_SN_BACKEND_URL, the official Mechanism 1 prediction-agent backend, distinct from the already-tracked api.tensorusd.com host).",
   "schema_version": 1,
   "slug": "sn-113",
   "social": {
@@ -117,6 +117,12 @@
       "kind": "data-artifact",
       "name": "TensorUSD vault contract ABI",
       "notes": "Public no-auth JSON contract metadata (ink! ABI) for the SN113 TensorUSD vault pallet contract. Loaded by miners and validators via ContractMetadata.create_from_file in the official tensorusd/common/contract.py module; the README documents the matching mainnet Vault contract address.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tensorusd",
       "public_safe": true,
       "review": {
@@ -136,6 +142,12 @@
       "kind": "data-artifact",
       "name": "TensorUSD docs llms.txt index",
       "notes": "Public no-auth machine-readable llms.txt index of the official SN113 TensorUSD documentation, served at the docs.tensorusd.com domain the official TensorUSD/subnet README links (README confirms netuid 113). Provides an agent-consumable Markdown map of the TensorUSD docs (introduction, components, contracts) for LLM/agent ingestion; content begins '# TensorUSD'.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "tensorusd",
       "public_safe": true,
       "review": {
@@ -147,6 +159,30 @@
         "https://docs.tensorusd.com/"
       ],
       "url": "https://docs.tensorusd.com/llms.txt"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-113-tensorusd-agent-api-health",
+      "kind": "subnet-api",
+      "name": "TensorUSD agent-API health",
+      "notes": "Public no-auth GET /health on agent-api.tensorusd.com returning backend liveness JSON (observed: {\"success\":true,\"data\":{\"status\":\"ok\",\"env\":\"prod\"}}). This is the official TENSORUSD_SN_BACKEND_URL from the subnet's own .env documentation -- the Mechanism 1 prediction-agent backend used to fetch vault/liquidator information, distinct from the already-tracked api.tensorusd.com host and response shape.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": [
+        "https://github.com/TensorUSD/subnet/blob/main/README.md"
+      ],
+      "url": "https://agent-api.tensorusd.com/health"
     }
   ],
   "website_url": "https://tensorusd.com/"

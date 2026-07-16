@@ -1509,14 +1509,14 @@
       "netuid": 113,
       "slug": "sn-113",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T09:50:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://tensorusd.com/",
         "https://docs.tensorusd.com/components/subnet",
         "https://github.com/TensorUSD/subnet"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/tensorusd.json (reviewed_at 2026-06-08T09:50:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 2 missing probe blocks. Added agent-api.tensorusd.com/health as a new surface -- the official TENSORUSD_SN_BACKEND_URL for the Mechanism 1 prediction-agent backend, distinct from the already-tracked api.tensorusd.com host."
     },
     {
       "netuid": 114,
