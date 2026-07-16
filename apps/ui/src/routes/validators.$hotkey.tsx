@@ -353,6 +353,13 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
         />
         <StatTile
+          icon={Gauge}
+          eyebrow="Max validator trust"
+          value={scoreStr(detail.max_validator_trust)}
+          hint="best subnet"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
+        <StatTile
           icon={Percent}
           eyebrow="Take rate"
           value={formatTakePct(detail.take)}
