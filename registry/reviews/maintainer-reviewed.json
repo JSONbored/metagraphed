@@ -1682,6 +1682,19 @@
         "https://github.com/Barbariandev/8Ball_miner#readme"
       ],
       "notes": "Root->128 accuracy audit re-review pass (#5903): the official website and its markets API are currently returning a consistent nginx 502 (observed across 3 attempts) while the site's static deployment.json asset stays live; documented as a backend outage rather than a dead domain, all surfaces kept tracked. Fixed 2 missing probe blocks (markets API, deployment manifest)."
+    },
+    {
+      "netuid": 126,
+      "slug": "sn-126",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet",
+        "https://poker44.net/",
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md"
+      ],
+      "notes": "Root->128 accuracy audit first review pass (#5903): promoted from community-seeded/unreviewed. Added website, source-repo, and whitepaper surfaces, fixed 3 missing probe blocks on pre-existing community-submitted surfaces, and added a new public no-param surface (benchmark/releases) explicitly documented alongside the already-tracked benchmark status endpoint."
     }
   ]
 }
