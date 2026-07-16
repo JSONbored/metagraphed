@@ -383,6 +383,20 @@
       "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Verified the official website, source repository, and whitepaper; confirmed the existing community-submitted health and burn-rate API surfaces and whitepaper doc surface live. Checked the website for additional surfaces: /playground is an interactive image-upload demo, not a data feed or leaderboard, so it was not tracked. No OpenAPI schema or separate docs subdomain found."
     },
     {
+      "netuid": 27,
+      "slug": "sn-27",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-15T23:55:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://github.com/neuralinternet/SN27-opencompute",
+        "https://github.com/neuralinternet/SN27-opencompute/blob/main/config.yaml",
+        "https://wandb.ai/neuralinternet/opencompute",
+        "https://api.taomarketcap.com/public/v1/subnets/27"
+      ],
+      "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty). 3 of 4 surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. Investigated the on-chain SubnetIdentitiesV3 native_name 'Orion' (independently shown by Taostats) as a possible rebrand: unlike confirmed prior pivots, nothing here corroborates it -- the operator's own live repository, W&B project, and config data are unambiguously still the original GPU-compute marketplace, and the operator domain (neuralinternet.ai) is currently unreachable (Cloudflare 525/520) rather than repointed to new content. Not renaming on a single, uncorroborated on-chain field; documented in gap_notes for a future pass. Also confirmed the GitHub org itself was platform-renamed 'Nodexo', matching the provider field already used on this subnet's surfaces, but left the subnet name unchanged since an unrelated subnet already exists at netuid 106 under the 'nodexo' slug."
+    },
+    {
       "netuid": 106,
       "slug": "nodexo",
       "decision": "maintainer-reviewed",
