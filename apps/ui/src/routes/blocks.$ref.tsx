@@ -427,7 +427,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                             >
                               {shortHash(event.hotkey, 10)}
                             </Link>
-                            <CopyButton value={event.hotkey} label="hotkey" className="-my-3.5" />
+                            <CopyButton value={event.hotkey} label="hotkey" compact />
                           </div>
                         ) : (
                           "—"
@@ -499,7 +499,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                         <span className="truncate" title={formatChainEventArgs(event.args)}>
                           {formatChainEventArgs(event.args)}
                         </span>
-                        <CopyButton value={formatChainEventArgs(event.args)} label="args" />
+                        <CopyButton value={formatChainEventArgs(event.args)} label="args" compact />
                       </div>
                     </td>
                   </tr>

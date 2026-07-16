@@ -64,7 +64,7 @@ export function EndpointCardList({
                   <ExternalLink href={e.url} className="min-w-0 text-[11px]">
                     {e.url}
                   </ExternalLink>
-                  <CopyButton value={e.url} label="URL" />
+                  <CopyButton value={e.url} label="URL" compact />
                 </div>
               ) : (
                 "—"

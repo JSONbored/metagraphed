@@ -1376,7 +1376,8 @@ function CopyIconToggle({ copied, size = 3, className }) {
 function CopyButton({
   value,
   label,
-  className
+  className,
+  compact
 }) {
   const { copied, copy } = useCopy({ label });
   return /* @__PURE__ */ jsxRuntime.jsx(
@@ -1392,6 +1393,7 @@ function CopyButton({
         // convention list-shell.tsx documents); p-1 keeps the icon itself compact
         // and centered within that hit area.
         "shrink-0 inline-flex items-center justify-center rounded p-1 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong transition-colors",
+        compact && "-my-3.5",
         className
       ),
       children: /* @__PURE__ */ jsxRuntime.jsx(CopyIconToggle, { copied })

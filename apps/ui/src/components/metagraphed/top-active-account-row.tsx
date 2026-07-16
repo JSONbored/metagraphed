@@ -34,7 +34,7 @@ export function TopActiveAccountRowLink({ row }: TopActiveAccountRowLinkProps) {
         >
           {label}
         </Link>
-        <CopyButton value={row.ss58} label="account" />
+        <CopyButton value={row.ss58} label="account" compact />
       </span>
       <span className="shrink-0 tabular-nums text-ink-muted">
         {formatNumber(row.txCount)} tx

@@ -449,7 +449,7 @@ function BlocksTable() {
                     >
                       {shortHash(b.block_hash)}
                     </Link>
-                    {b.block_hash ? <CopyButton value={b.block_hash} label="block hash" /> : null}
+                    {b.block_hash ? <CopyButton value={b.block_hash} label="block hash" compact /> : null}
                   </span>
                 </td>
                 <td

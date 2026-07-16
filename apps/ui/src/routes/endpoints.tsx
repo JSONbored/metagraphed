@@ -1040,7 +1040,7 @@ function EndpointsTable() {
                               <ExternalLink href={e.url} className="truncate text-[11px]">
                                 {e.url}
                               </ExternalLink>
-                              <CopyButton value={e.url} label="URL" />
+                              <CopyButton value={e.url} label="URL" compact />
                             </div>
                           ) : (
                             "—"

@@ -220,7 +220,7 @@ export function NeuronTable({
                               {shortHash(n.hotkey) ?? n.hotkey}
                             </Link>
                           )}
-                          <CopyButton value={n.hotkey} label="hotkey" />
+                          <CopyButton value={n.hotkey} label="hotkey" compact />
                         </>
                       ) : (
                         "—"

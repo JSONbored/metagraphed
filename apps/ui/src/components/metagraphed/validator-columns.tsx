@@ -60,7 +60,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
         >
           {shortHash(v.hotkey) ?? v.hotkey}
         </Link>
-        <CopyButton value={v.hotkey} label="hotkey" className="-my-3.5" />
+        <CopyButton value={v.hotkey} label="hotkey" compact />
       </div>
     ),
   },
@@ -79,7 +79,7 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
           >
             {shortHash(v.coldkey) ?? v.coldkey}
           </Link>
-          <CopyButton value={v.coldkey} label="coldkey" className="-my-3.5" />
+          <CopyButton value={v.coldkey} label="coldkey" compact />
         </div>
       ) : (
         "—"

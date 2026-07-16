@@ -38,10 +38,10 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
               >
                 {f.hotkeyShort}
               </Link>
-              <CopyButton value={v.hotkey} label="hotkey" className="-my-3.5" />
+              <CopyButton value={v.hotkey} label="hotkey" compact />
             </div>
             {/* Mirrors the hotkey row above: a flex row so the copy button's 44px
-                touch target centers against the value. `-my-3.5` folds that height
+                touch target centers against the value. `compact` folds that height
                 back into the row so it does not add vertical spacing. */}
             <div className="flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-ink-muted">
               <span className="uppercase tracking-widest text-[10px]">coldkey</span>
@@ -55,7 +55,7 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
                   >
                     {f.coldkeyShort}
                   </Link>
-                  <CopyButton value={v.coldkey} label="coldkey" className="-my-3.5" />
+                  <CopyButton value={v.coldkey} label="coldkey" compact />
                 </>
               ) : (
                 "—"

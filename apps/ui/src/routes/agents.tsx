@@ -172,7 +172,7 @@ function AgentsBody() {
                     {sdk.lang} · {sdk.pkg}
                   </ExternalLink>
                 </div>
-                <CopyButton value={sdk.install} label={`${sdk.lang} install`} />
+                <CopyButton value={sdk.install} label={`${sdk.lang} install`} compact />
               </div>
             ))}
           </div>
@@ -227,7 +227,7 @@ function AgentsBody() {
                 >
                   {r.url.replace("https://api.metagraph.sh", "")}
                 </ExternalLink>
-                <CopyButton value={r.url} label={`${r.title} URL`} />
+                <CopyButton value={r.url} label={`${r.title} URL`} compact />
               </div>
             );
           })}
@@ -242,7 +242,7 @@ function AgentsBody() {
             <div key={q.label} className="rounded-lg border border-border bg-card">
               <div className="flex items-center justify-between border-b border-border px-4 py-2">
                 <span className="mg-label">{q.label}</span>
-                <CopyButton value={q.cmd} label={q.label} />
+                <CopyButton value={q.cmd} label={q.label} compact />
               </div>
               <pre className="overflow-x-auto px-4 py-3 font-mono text-[11px] leading-relaxed text-ink">
                 {q.cmd}

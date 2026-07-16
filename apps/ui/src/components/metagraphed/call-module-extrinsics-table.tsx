@@ -168,7 +168,7 @@ export function CallModuleExtrinsicsTable({
                       >
                         {shortHash(x.extrinsic_hash)}
                       </Link>
-                      <CopyButton value={x.extrinsic_hash} label="extrinsic hash" />
+                      <CopyButton value={x.extrinsic_hash} label="extrinsic hash" compact />
                     </span>
                   ) : (
                     "—"
@@ -230,7 +230,7 @@ function RowCard({ x }: { x: Extrinsic }) {
                   e.stopPropagation();
                 }}
               >
-                <CopyButton value={x.extrinsic_hash} label="extrinsic hash" />
+                <CopyButton value={x.extrinsic_hash} label="extrinsic hash" compact />
               </span>
             </>
           ) : (

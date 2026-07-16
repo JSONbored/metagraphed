@@ -1136,7 +1136,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                           >
                             {shortHash(s.address) ?? s.address}
                           </Link>
-                          <CopyButton value={s.address} label="address" className="-my-3.5" />
+                          <CopyButton value={s.address} label="address" compact />
                         </div>
                       </td>
                       <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
@@ -1182,7 +1182,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                           >
                             {shortHash(r.address) ?? r.address}
                           </Link>
-                          <CopyButton value={r.address} label="address" className="-my-3.5" />
+                          <CopyButton value={r.address} label="address" compact />
                         </div>
                       </td>
                       <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
@@ -1466,7 +1466,7 @@ function ExplorerDashboard() {
                             >
                               {shortHash(s.signer) ?? s.signer}
                             </Link>
-                            <CopyButton value={s.signer} label="signer" className="-my-3.5" />
+                            <CopyButton value={s.signer} label="signer" compact />
                           </div>
                         </td>
                         <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
@@ -1584,7 +1584,7 @@ function ExplorerDashboard() {
                           >
                             {shortHash(p.signer) ?? p.signer}
                           </Link>
-                          <CopyButton value={p.signer} label="signer" className="-my-3.5" />
+                          <CopyButton value={p.signer} label="signer" compact />
                         </div>
                       </td>
                       <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
@@ -1744,11 +1744,7 @@ function ExplorerDashboard() {
                               >
                                 {shortHash(setter.hotkey) ?? setter.hotkey}
                               </Link>
-                              <CopyButton
-                                value={setter.hotkey}
-                                label="hotkey"
-                                className="-my-3.5"
-                              />
+                              <CopyButton value={setter.hotkey} label="hotkey" compact />
                             </div>
                           ) : (
                             <span
@@ -1864,7 +1860,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
                       >
                         {shortHash(p.from) ?? p.from}
                       </Link>
-                      <CopyButton value={p.from} label="address" className="-my-3.5" />
+                      <CopyButton value={p.from} label="address" compact />
                     </div>
                   </td>
                   <td className="px-4 py-2 font-mono text-[11px]">
@@ -1877,7 +1873,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
                       >
                         {shortHash(p.to) ?? p.to}
                       </Link>
-                      <CopyButton value={p.to} label="address" className="-my-3.5" />
+                      <CopyButton value={p.to} label="address" compact />
                     </div>
                   </td>
                   <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">

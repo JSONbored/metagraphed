@@ -155,7 +155,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                       >
                         {shortHash(n.hotkey) ?? n.hotkey}
                       </Link>
-                      <CopyButton value={n.hotkey} label="hotkey" className="-my-3.5" />
+                      <CopyButton value={n.hotkey} label="hotkey" compact />
                     </>
                   ) : (
                     <span className="font-mono text-[12px] text-ink-muted">—</span>
@@ -212,7 +212,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                         >
                           {shortHash(n.hotkey) ?? n.hotkey}
                         </Link>
-                        <CopyButton value={n.hotkey} label="hotkey" className="-my-3.5" />
+                        <CopyButton value={n.hotkey} label="hotkey" compact />
                       </div>
                     ) : (
                       "—"

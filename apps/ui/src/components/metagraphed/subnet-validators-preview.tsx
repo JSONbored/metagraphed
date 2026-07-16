@@ -110,7 +110,7 @@ function ValidatorPreviewRow({
         >
           {shortHash(validator.hotkey, 6) ?? validator.hotkey}
         </Link>
-        <CopyButton value={validator.hotkey} label="hotkey" />
+        <CopyButton value={validator.hotkey} label="hotkey" compact />
       </div>
       <div className="flex flex-wrap items-center gap-3 font-mono text-[11px] text-ink-muted">
         <span>

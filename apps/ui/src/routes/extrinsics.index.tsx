@@ -349,7 +349,7 @@ function ExtrinsicsTable() {
                       >
                         {shortHash(x.extrinsic_hash)}
                       </Link>
-                      <CopyButton value={x.extrinsic_hash} label="extrinsic hash" />
+                      <CopyButton value={x.extrinsic_hash} label="extrinsic hash" compact />
                     </span>
                   ) : (
                     "—"
@@ -416,7 +416,7 @@ function HashCardOrLink({ x }: { x: Extrinsic }) {
                   e.stopPropagation();
                 }}
               >
-                <CopyButton value={x.extrinsic_hash} label="extrinsic hash" />
+                <CopyButton value={x.extrinsic_hash} label="extrinsic hash" compact />
               </span>
             </>
           ) : (
