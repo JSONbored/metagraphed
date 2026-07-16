@@ -1239,6 +1239,13 @@ function isValidStateQueryHex(value) {
   );
 }
 
+// Substrate block hashes are H256 -- exactly 32 bytes as 0x-prefixed hex.
+// Narrower than isValidStateQueryHex (variable-length storage keys): an
+// optional `at` param that isn't this shape must not reach upstream (#6014).
+function isValidBlockHashHex(value) {
+  return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
+}
+
 // Validates + (for state_getKeysPaged) clamps the caller-supplied params for
 // a state-query method (#4344/9.2). Returns {ok:true, params} -- `params` is
 // the SAME array reference when nothing needed clamping, a new one otherwise,
@@ -1249,11 +1256,20 @@ function isValidStateQueryHex(value) {
 function validateStateQueryParams(method, params) {
   const args = Array.isArray(params) ? params : [];
   if (method === "state_getStorage") {
+    // state_getStorage: [key, at?]
     if (!isValidStateQueryHex(args[0])) {
       return {
         ok: false,
         message:
           "state_getStorage requires params[0] to be a 0x-prefixed hex storage key.",
+      };
+    }
+    // at (params[1]), when present, is a block hash (H256).
+    if (args[1] !== undefined && !isValidBlockHashHex(args[1])) {
+      return {
+        ok: false,
+        message:
+          "state_getStorage requires params[1] (at), when present, to be a 0x-prefixed 32-byte block hash.",
       };
     }
     return { ok: true, params };
@@ -1272,6 +1288,14 @@ function validateStateQueryParams(method, params) {
       ok: false,
       message:
         "state_getKeysPaged requires params[2] (startKey), when present, to be a 0x-prefixed hex key.",
+    };
+  }
+  // at (params[3]), when present, is a block hash (H256).
+  if (args[3] !== undefined && !isValidBlockHashHex(args[3])) {
+    return {
+      ok: false,
+      message:
+        "state_getKeysPaged requires params[3] (at), when present, to be a 0x-prefixed 32-byte block hash.",
     };
   }
   const rawCount = args[1];
