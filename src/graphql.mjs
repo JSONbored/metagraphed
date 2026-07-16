@@ -24,6 +24,13 @@ import {
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
 } from "./chain-deregistrations.mjs";
 import {
+  loadChainRegistrations,
+  CHAIN_REGISTRATIONS_WINDOWS,
+  DEFAULT_CHAIN_REGISTRATIONS_WINDOW,
+  CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
+  CHAIN_REGISTRATIONS_LIMIT_MAX,
+} from "./chain-registrations.mjs";
+import {
   loadChainPrometheus,
   CHAIN_PROMETHEUS_WINDOWS,
   DEFAULT_CHAIN_PROMETHEUS_WINDOW,
@@ -424,6 +431,8 @@ export const SDL = `
     chain_prometheus(window: String, limit: Int): ChainPrometheus!
     "Network-wide neuron-deregistration leaderboard over a 7d/30d window (default 7d): subnets ranked by NeuronDeregistered events with each's distinct-hotkey count and deregistrations-per-hotkey churn intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide, exit-side counterpart of subnet_deregistrations -- where neurons are being pushed out. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/deregistrations."
     chain_deregistrations(window: String, limit: Int): ChainDeregistrations!
+    "Network-wide neuron-registration leaderboard over a 7d/30d window (default 7d): subnets ranked by NeuronRegistered events with each's distinct-hotkey count and registrations-per-registrant re-registration intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide, entry-side counterpart of subnet_registrations -- where neurons are joining. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/registrations."
+    chain_registrations(window: String, limit: Int): ChainRegistrations!
     "Per-UTC-day network fee/tip series over a 7d/30d window (default 7d): each day's extrinsic count and total/avg/median fee + tip in TAO, plus the top fee-paying signers (limit default 25, max 100), optionally scoped to a single call_module. Computed live from the extrinsics tier; a cold store yields a schema-stable empty series, never a GraphQL error. Mirrors GET /api/v1/chain/fees."
     chain_fees(window: String, limit: Int, call_module: String): ChainFees!
     "Network-wide axon-removal (teardown) leaderboard over a 7d/30d window (default 7d): subnets ranked by AxonInfoRemoved events with each's distinct-remover count and removals-per-remover teardown intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The teardown counterpart of chain_serving's announcements -- where neurons are tearing endpoints down. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/axon-removals."
@@ -837,6 +846,44 @@ export const SDL = `
     distinct_removers: Int!
     removals: Int!
     removals_per_remover: Float
+  }
+
+  type ChainRegistrations {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    subnet_count: Int!
+    network: ChainRegistrationsNetwork!
+    intensity_distribution: ChainRegistrationsIntensityDistribution
+    subnets: [ChainRegistrationsSubnet!]!
+  }
+
+  "Network-wide registration rollup: every subnet with NeuronRegistered events in the window, combined. distinct_registrants counts a hotkey once even when it registers on several subnets, so it is NOT the sum of the per-subnet counts."
+  type ChainRegistrationsNetwork {
+    distinct_registrants: Int!
+    registrations: Int!
+    "Null when distinct_registrants is 0 (no defined intensity without hotkeys)."
+    registrations_per_registrant: Float
+  }
+
+  "Spread of per-subnet registration intensity (NeuronRegistered events per hotkey) across EVERY subnet with registrations in the window -- network-wide even when limit truncates the leaderboard."
+  type ChainRegistrationsIntensityDistribution {
+    count: Int!
+    mean: Float!
+    min: Float!
+    p25: Float!
+    median: Float!
+    p75: Float!
+    p90: Float!
+    max: Float!
+  }
+
+  "One subnet's neuron-registration activity in the window, ranked by registrations."
+  type ChainRegistrationsSubnet {
+    netuid: Int!
+    distinct_registrants: Int!
+    registrations: Int!
+    registrations_per_registrant: Float
   }
 
   type ChainDeregistrations {
@@ -2749,6 +2796,7 @@ export const FIELD_COMPLEXITY = {
   chain_serving: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_signers: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5874,6 +5922,50 @@ const rootValue = {
         distinct_deregistered_hotkeys: 0,
         deregistrations: 0,
         deregistrations_per_hotkey: null,
+      },
+      intensity_distribution: data.intensity_distribution ?? null,
+      subnets: data.subnets || [],
+    };
+  },
+
+  async chain_registrations({ window, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_REGISTRATIONS_WINDOW;
+    if (!Object.hasOwn(CHAIN_REGISTRATIONS_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, CHAIN_REGISTRATIONS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
+      maxLimit: CHAIN_REGISTRATIONS_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainRegistrations
+    // fallback contract REST's handleChainRegistrations uses -- a cold store yields a
+    // schema-stable zeroed card, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/registrations", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      (await loadChainRegistrations(graphqlD1(context), {
+        windowLabel: requestedWindow,
+        windowDays: CHAIN_REGISTRATIONS_WINDOWS[requestedWindow],
+        limit: safeLimit,
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      observed_at: data.observed_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      network: data.network ?? {
+        distinct_registrants: 0,
+        registrations: 0,
+        registrations_per_registrant: null,
       },
       intensity_distribution: data.intensity_distribution ?? null,
       subnets: data.subnets || [],
