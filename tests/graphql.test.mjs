@@ -524,6 +524,81 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     }
   });
 
+  test("subnets filters by netuid", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, name: "A", slug: "a" },
+          { netuid: 2, name: "B", slug: "b" },
+          { netuid: 3, name: "C", slug: "c" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnets(netuid: 2) { items { netuid name } total } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnets.total, 1);
+    assert.deepEqual(body.data.subnets.items, [{ netuid: 2, name: "B" }]);
+  });
+
+  test("subnets filters by status (case-insensitive)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, name: "A", slug: "a", status: "active" },
+          { netuid: 2, name: "B", slug: "b", status: "inactive" },
+          { netuid: 3, name: "C", slug: "c", status: "active" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ subnets(status: "Active") { items { netuid } total } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnets.total, 2);
+    assert.deepEqual(
+      body.data.subnets.items.map((row) => row.netuid),
+      [1, 3],
+    );
+  });
+
+  test("subnets filters by domain via derived_categories", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          {
+            netuid: 1,
+            name: "A",
+            slug: "a",
+            categories: ["inference"],
+          },
+          {
+            netuid: 2,
+            name: "B",
+            slug: "b",
+            derived_categories: ["training"],
+          },
+          {
+            netuid: 3,
+            name: "C",
+            slug: "c",
+            categories: ["other"],
+          },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ subnets(domain: "training") { items { netuid } total } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnets.total, 1);
+    assert.deepEqual(body.data.subnets.items, [{ netuid: 2 }]);
+  });
+
   test("subnet resolves a single subnet by netuid", async () => {
     const env = fixtureEnv({
       "/metagraph/subnets/7.json": {

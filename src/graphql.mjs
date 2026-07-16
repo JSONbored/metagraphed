@@ -298,7 +298,7 @@ export const SDL = `
 
   type Query {
     "Paginated active-subnet index."
-    subnets(limit: Int, cursor: String): SubnetList!
+    subnets(netuid: Int, status: String, subnet_type: String, domain: String, coverage_level: String, curation_level: String, limit: Int, cursor: String): SubnetList!
     "One subnet with its health, surfaces, endpoints, and economics."
     subnet(netuid: Int!): Subnet
     "Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations."
@@ -3373,6 +3373,39 @@ async function loadProviderSubnets(context, netuids) {
 
 // --- Resolvers ---
 
+// Case-insensitive categorical filters for Query.subnets (#6251) — mirrors REST
+// /api/v1/subnets list-query semantics (workers/list-query.mjs filterRows +
+// contracts subnets.arrayFilters.domain). Unrecognized values simply match zero
+// rows; GraphQL does not 400 on bad filter tokens.
+function matchesSubnetListFilters(
+  row,
+  { status, subnet_type, domain, coverage_level, curation_level } = {},
+) {
+  for (const [key, raw] of [
+    ["status", status],
+    ["subnet_type", subnet_type],
+    ["coverage_level", coverage_level],
+    ["curation_level", curation_level],
+  ]) {
+    if (raw == null) continue;
+    const expected = String(raw).toLowerCase();
+    const value = row?.[key];
+    if (value == null) return false;
+    if (String(value).toLowerCase() !== expected) return false;
+  }
+  if (domain != null) {
+    const expected = String(domain).toLowerCase();
+    const tags = [
+      ...(Array.isArray(row?.categories) ? row.categories : []),
+      ...(Array.isArray(row?.derived_categories) ? row.derived_categories : []),
+    ];
+    if (!tags.map((tag) => String(tag).toLowerCase()).includes(expected)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Shared list shape: load → optional netuid filter → paginate → wrap. `map`
 // node-wraps rows; `resultKey` is the list field's name (economics uses
 // `subnets`, the rest use `items`).
@@ -3380,9 +3413,12 @@ async function listPage(
   context,
   path,
   key,
-  { limit, cursor, keyFn, netuid, map, resultKey = "items" },
+  { limit, cursor, keyFn, netuid, map, resultKey = "items", filterFn },
 ) {
-  const all = await loadRows(context, path, key, netuid);
+  let all = await loadRows(context, path, key, netuid);
+  if (filterFn) {
+    all = all.filter(filterFn);
+  }
   const { page, total, nextCursor } = paginate(all, limit, cursor, keyFn);
   return {
     [resultKey]: map ? page.map(map) : page,
@@ -3398,12 +3434,41 @@ async function listPage(
 const VALID_PROVIDER_ID = /^[A-Za-z0-9._:-]+$/;
 
 const rootValue = {
-  subnets({ limit, cursor }, context) {
+  subnets(
+    {
+      netuid,
+      status,
+      subnet_type,
+      domain,
+      coverage_level,
+      curation_level,
+      limit,
+      cursor,
+    },
+    context,
+  ) {
+    const hasCategoricalFilters =
+      status != null ||
+      subnet_type != null ||
+      domain != null ||
+      coverage_level != null ||
+      curation_level != null;
     return listPage(context, ARTIFACT.subnets, "subnets", {
       limit,
       cursor,
+      netuid,
       keyFn: (s) => s.netuid,
       map: subnetNode,
+      filterFn: hasCategoricalFilters
+        ? (row) =>
+            matchesSubnetListFilters(row, {
+              status,
+              subnet_type,
+              domain,
+              coverage_level,
+              curation_level,
+            })
+        : undefined,
     });
   },
 
