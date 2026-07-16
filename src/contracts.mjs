@@ -166,6 +166,10 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
+      // #6238: curation_level is already a sort target here and a real filter on
+      // the sibling gaps collection; expose it as a filter too so callers can
+      // narrow, not just order, by it. Same shared enum gaps uses.
+      curation_level: enumSchema(QUERY_ENUMS.curationLevel),
     },
     sort: ["coverage_level", "curation_level", "name", "netuid"],
   }),
