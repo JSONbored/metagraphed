@@ -15,15 +15,15 @@
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "reviewed_at": "2026-07-16T04:10:00.000Z",
     "source_count": 8,
-    "verified_at": "2026-06-08T09:25:00.000Z"
+    "verified_at": "2026-07-16T04:10:00.000Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/52",
   "docs_url": "https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism",
   "name": "Dojo",
   "netuid": 52,
-  "notes": "Reviewed overlay for SN52 using the official Tensorplex website, Dojo docs, source repository, UI repository, and worker API repository. The older dojo-synthetic-api repository candidate currently 404s and is intentionally not promoted.",
+  "notes": "Reviewed overlay for SN52 using the official Tensorplex website, Dojo docs, source repository, UI repository, and worker API repository. The older dojo-synthetic-api repository candidate currently 404s and is intentionally not promoted. This pass fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Re-confirmed the Worker API base (dojo.network/api/v1, the repo's own TASK_API_URL default) still 301-redirects every path to GitHub, so the committed Swagger spec (20 paths) remains the subnet's only live machine-readable API description -- no new endpoints could be added from the diff since there is no reachable host to probe. On-chain identity re-confirmed unchanged. TaoMarketCap now enforces a trailing slash on its subnet endpoint; tracked URL updated accordingly.",
   "schema_version": 1,
   "slug": "sn-52",
   "source_repo": "https://github.com/tensorplex-labs/dojo",
@@ -131,6 +131,12 @@
       "kind": "data-artifact",
       "name": "Dojo synthetic SFT dataset",
       "notes": "Public Tensorplex Dojo (SN52) HuggingFace dataset of 12.5k synthetic HTML/CSS/JS interface-generation Q&A pairs (id + messages columns), used to train the subnet's DOJO-INTERFACE-CODER model; not gated. The dojo repo README (source) declares the Bittensor subnet (--netuid 52) and the tensorplex-labs HF org owns the dataset.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "tensorplex",
       "public_safe": true,
       "review": {
@@ -150,6 +156,12 @@
       "kind": "data-artifact",
       "name": "Dojo Human Feedback DPO dataset",
       "notes": "Public Tensorplex Dojo (SN52) HuggingFace DPO dataset of human-feedback preference pairs collected through the subnet's Dojo human-feedback-loop platform; not gated. The dojo repo README (source) declares the Bittensor subnet (--netuid 52) and the tensorplex-labs HF org owns the dataset. Distinct from the subnet's registered Dojo-Synthetic-SFT dataset.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "provider": "tensorplex",
       "public_safe": true,
       "review": {
@@ -195,7 +207,13 @@
       "id": "sn-52-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "Dojo TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/52 on api.taomarketcap.com returning machine-readable JSON for SN52 Dojo on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/52/ on api.taomarketcap.com returning machine-readable JSON for SN52 Dojo on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -206,7 +224,7 @@
         "https://api.taomarketcap.com/developer/documentation/",
         "https://github.com/tensorplex-labs/dojo"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/52"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/52/"
     }
   ],
   "website_url": "https://www.tensorplex.ai/"
