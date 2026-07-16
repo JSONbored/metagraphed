@@ -21652,12 +21652,14 @@ export interface operations {
     search: {
         parameters: {
             query?: {
+                type?: "subnet" | "surface" | "provider";
+                netuid?: number;
                 q?: string;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
-                sort?: "kind" | "netuid" | "slug" | "title";
+                sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
             };
@@ -21775,12 +21777,14 @@ export interface operations {
     searchIndex: {
         parameters: {
             query?: {
+                type?: "subnet" | "surface" | "provider";
+                netuid?: number;
                 q?: string;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
-                sort?: "kind" | "netuid" | "slug" | "title";
+                sort?: "netuid" | "slug" | "title" | "type";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
             };

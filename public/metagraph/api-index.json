@@ -9013,8 +9013,29 @@
       "path": "/api/v1/search",
       "public": true,
       "query_collection": "documents",
-      "query_filter_names": [],
+      "query_filter_names": [
+        "type",
+        "netuid"
+      ],
       "query_parameters": [
+        {
+          "name": "type",
+          "schema": {
+            "enum": [
+              "subnet",
+              "surface",
+              "provider"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
         {
           "name": "q",
           "schema": {
@@ -9049,10 +9070,10 @@
           "name": "sort",
           "schema": {
             "enum": [
-              "kind",
               "netuid",
               "slug",
-              "title"
+              "title",
+              "type"
             ],
             "type": "string"
           }
@@ -9078,8 +9099,29 @@
       "path": "/api/v1/search-index",
       "public": true,
       "query_collection": "documents",
-      "query_filter_names": [],
+      "query_filter_names": [
+        "type",
+        "netuid"
+      ],
       "query_parameters": [
+        {
+          "name": "type",
+          "schema": {
+            "enum": [
+              "subnet",
+              "surface",
+              "provider"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
         {
           "name": "q",
           "schema": {
@@ -9114,10 +9156,10 @@
           "name": "sort",
           "schema": {
             "enum": [
-              "kind",
               "netuid",
               "slug",
-              "title"
+              "title",
+              "type"
             ],
             "type": "string"
           }

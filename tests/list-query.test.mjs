@@ -698,6 +698,77 @@ describe("list-query unknown parameter validation (#2578)", () => {
   });
 });
 
+// #6239: documents advertised sort=kind, but search-index rows carry no `kind`
+// field at all (the field is `type`) — every request silently no-op'd instead
+// of erroring. Fixed by sorting/filtering on the real `type` field and adding
+// a `netuid` filter, matching every other collection's kind/netuid handling.
+describe("list-query documents type/netuid (#6239)", () => {
+  const data = {
+    documents: [
+      { id: "sn-1", type: "subnet", netuid: 1, title: "Root" },
+      { id: "sn-2", type: "subnet", netuid: 2, title: "Allways" },
+      { id: "surf-1", type: "surface", netuid: 2, title: "Allways docs" },
+      { id: "prov-1", type: "provider", title: "Some Provider" },
+    ],
+  };
+  const ids = (result) => result.data.documents.map((r) => r.id);
+
+  test("?sort=type actually reorders rows (was a silent no-op under sort=kind)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/search?sort=type"),
+      "documents",
+    );
+    assert.equal(result.error, undefined);
+    // provider < subnet < surface, alphabetically ascending.
+    assert.deepEqual(ids(result), ["prov-1", "sn-1", "sn-2", "surf-1"]);
+  });
+
+  test("?sort=kind is no longer accepted (400, not a silent no-op)", () => {
+    const sortError = validateListQueryParams(
+      query("/api/v1/search?sort=kind"),
+      "documents",
+    );
+    assert.equal(sortError.parameter, "sort");
+    assert.equal(sortError.message, "sort is not supported for documents.");
+  });
+
+  for (const type of ["subnet", "surface", "provider"]) {
+    test(`?type=${type} filters to only that document type`, () => {
+      const result = applyQueryFilters(
+        data,
+        query(`/api/v1/search?type=${type}`),
+        "documents",
+      );
+      assert.equal(result.error, undefined);
+      assert.equal(
+        result.data.documents.every((doc) => doc.type === type),
+        true,
+      );
+      assert.ok(result.data.documents.length > 0);
+    });
+  }
+
+  test("an invalid ?type= value is a query error", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/search?type=bogus"),
+      "documents",
+    );
+    assert.equal(result.error.parameter, "type");
+  });
+
+  test("?netuid=2 filters to documents carrying that netuid, excluding provider docs", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/search?netuid=2"),
+      "documents",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(ids(result), ["sn-2", "surf-1"]);
+  });
+});
+
 // #2085: integration_readiness was sortable/filterable via MCP list_subnets but
 // not on the equivalent REST subnets collection. After wiring it into the
 // contract's sort + rangeFilters, the generic list-query engine reads row[key]

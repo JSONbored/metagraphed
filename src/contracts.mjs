@@ -196,8 +196,14 @@ export const API_QUERY_COLLECTIONS = {
     sort: ["id", "kind", "name", "netuid", "provider"],
   }),
   documents: queryCollection("documents", {
+    filters: {
+      // Document *type* (subnet/surface/provider), distinct from surface
+      // *kind* (openapi/website/sdk/...) — do not reuse QUERY_ENUMS.surfaceKind.
+      type: enumSchema(["subnet", "surface", "provider"]),
+      netuid: integerSchema,
+    },
     search: ["title", "subtitle", "slug", "tokens"],
-    sort: ["kind", "netuid", "slug", "title"],
+    sort: ["netuid", "slug", "title", "type"],
   }),
   economics: queryCollection("subnets", {
     filters: {
