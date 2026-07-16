@@ -13,18 +13,23 @@ import { docsSource } from "@/lib/docs-source";
 // the same in the Cloudflare Worker runtime as it does in dev. The other
 // getText() mode, "raw", does a real fs readFile of the source .mdx file
 // and would only work locally.
+//
+// Extracted from the GET handler so it's unit-testable without depending on
+// createFileRoute's internal shape -- see docs.raw.$.test.ts.
+export async function resolveRawMarkdown(splat: string | undefined): Promise<Response> {
+  const slugs = splat?.split("/") ?? [];
+  const page = docsSource.getPage(slugs);
+  if (!page) throw notFound();
+  const markdown = await page.data.getText("processed");
+  return new Response(markdown, {
+    headers: { "content-type": "text/markdown; charset=utf-8" },
+  });
+}
+
 export const Route = createFileRoute("/docs/raw/$")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
-        const slugs = params._splat?.split("/") ?? [];
-        const page = docsSource.getPage(slugs);
-        if (!page) throw notFound();
-        const markdown = await page.data.getText("processed");
-        return new Response(markdown, {
-          headers: { "content-type": "text/markdown; charset=utf-8" },
-        });
-      },
+      GET: async ({ params }) => resolveRawMarkdown(params._splat),
     },
   },
 });
