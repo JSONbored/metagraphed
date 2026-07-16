@@ -72,7 +72,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
     return (
       <DocsPage toc={toc}>
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <DocsTitle>{frontmatter.title}</DocsTitle>
             <DocsDescription>{frontmatter.description}</DocsDescription>
           </div>
