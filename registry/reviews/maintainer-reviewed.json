@@ -1447,6 +1447,18 @@
       "notes": "Elevated from the provenance review queue (#1235): a live subnet-api is hosted on this subnet's on-chain-asserted domain (theminos.ai, Subtensor SubnetIdentitiesV3). Maintainer-confirmed."
     },
     {
+      "netuid": 108,
+      "slug": "sn-108",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://www.talkhead.ai/",
+        "https://github.com/talkheadai/talkhead-subnet"
+      ],
+      "notes": "Root->128 accuracy audit pass (#5903): first maintainer review for SN108. Added website + source-repo surfaces and fixed 3 missing probe blocks. No OpenAPI/Swagger schema or additional API routes found."
+    },
+    {
       "netuid": 109,
       "slug": "sn-109",
       "decision": "maintainer-reviewed",
