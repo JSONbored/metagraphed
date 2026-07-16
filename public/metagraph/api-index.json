@@ -3391,6 +3391,7 @@
       "query_filter_names": [
         "netuid",
         "curation_level",
+        "missing_kinds",
         "review_state"
       ],
       "query_parameters": [
@@ -3411,6 +3412,28 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "missing_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
             ],
             "type": "string"
           }
@@ -3495,6 +3518,7 @@
       "query_collection": "review-gap-priorities",
       "query_filter_names": [
         "curation_level",
+        "missing_kinds",
         "review_state"
       ],
       "query_parameters": [
@@ -3508,6 +3532,28 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "missing_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
             ],
             "type": "string"
           }

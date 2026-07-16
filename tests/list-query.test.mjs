@@ -1238,3 +1238,52 @@ describe("list-query string filter excludes rows missing the field", () => {
     });
   });
 });
+
+// #6240: review-gap-priorities could sort by missing_kinds but could not filter
+// on it, unlike enrichment-queue / enrichment-targets.
+describe("review-gap-priorities missing_kinds filter (#6240)", () => {
+  const data = {
+    priorities: [
+      {
+        netuid: 1,
+        name: "Has OpenAPI gap",
+        missing_kinds: ["openapi", "sse"],
+      },
+      {
+        netuid: 2,
+        name: "Has website gap",
+        missing_kinds: ["website"],
+      },
+      {
+        netuid: 3,
+        name: "No gaps",
+        missing_kinds: [],
+      },
+    ],
+  };
+  const netuids = (result) => result.data.priorities.map((r) => r.netuid);
+
+  test("?missing_kinds=<kind> keeps rows whose missing_kinds array contains that kind", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/review/gaps?missing_kinds=openapi"),
+      "review-gap-priorities",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(netuids(result), [1]);
+    assert.ok(
+      result.data.priorities.every((row) =>
+        row.missing_kinds.includes("openapi"),
+      ),
+    );
+  });
+
+  test("an invalid missing_kinds value returns invalid_query on that parameter", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/review/gaps?missing_kinds=not-a-kind"),
+      "review-gap-priorities",
+    );
+    assert.equal(result.error.parameter, "missing_kinds");
+  });
+});

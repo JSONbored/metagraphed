@@ -339,6 +339,9 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
+      // Same array-membership filter as enrichment-queue / enrichment-targets
+      // (#6240) — missing_kinds was already a legal sort key on this collection.
+      missing_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
       review_state: filterTextSchema,
     },
     sort: [

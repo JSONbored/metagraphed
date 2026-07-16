@@ -20651,6 +20651,7 @@ export interface operations {
             query?: {
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 review_state?: string;
                 fields?: string;
                 limit?: number;
@@ -23818,6 +23819,7 @@ export interface operations {
         parameters: {
             query?: {
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 review_state?: string;
                 fields?: string;
                 limit?: number;

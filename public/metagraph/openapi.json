@@ -40604,6 +40604,30 @@
           },
           {
             "in": "query",
+            "name": "missing_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "review_state",
             "required": false,
             "schema": {
@@ -45588,6 +45612,30 @@
                 "machine-verified",
                 "maintainer-reviewed",
                 "adapter-backed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "missing_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
               ],
               "type": "string"
             }
