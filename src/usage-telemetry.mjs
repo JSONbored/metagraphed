@@ -1,15 +1,15 @@
 // Typed PostHog usage-event wrapper for the Worker backend (#6030 / #366).
 //
 // Single chokepoint for product-usage capture: callers pass an allowlisted
-// UsageEvent; this module owns the PostHog event name/properties and the
-// Workers-safe client lifecycle (flushAt:1, captureImmediate, shutdown).
-// Nothing outside this file should construct a raw PostHog event.
+// UsageEvent; this module owns the PostHog event name/properties and posts
+// directly to PostHog's public capture API via fetch. We deliberately do NOT
+// import `posthog-node` here — that SDK's workerd build adds ~35 KiB gzipped
+// and this Worker's bundle is already within a few KiB of Cloudflare's 1 MiB
+// script limit (see scripts/worker-bundle-budget.mjs).
 //
 // Safe no-op when POSTHOG_PROJECT_TOKEN is unset — self-hosters / local / CI
-// see zero behavior change. Never throws. Not wired into request or MCP
-// dispatch yet (#6031 / #6032 are the callers).
-
-import { PostHog } from "posthog-node";
+// see zero behavior change. Never throws. MCP tool-dispatch (#6031) is the
+// first caller; REST/GraphQL request-handler wiring is #6032.
 
 /** Env var holding the PostHog project API token (wrangler secret). */
 export const POSTHOG_PROJECT_TOKEN_ENV = "POSTHOG_PROJECT_TOKEN";
@@ -38,7 +38,7 @@ const MAX_LABEL_CHARS = 256;
 
 /**
  * @typedef {object} RecordUsageEventDeps
- * @property {typeof PostHog} [PostHog] Injectable client class (tests).
+ * @property {typeof fetch} [fetch] Injectable fetch (tests).
  * @property {string} [distinctId] Override distinct_id (tests).
  */
 
@@ -74,6 +74,8 @@ export function usageEventProperties(event) {
     ok: event.ok,
     // Coarse integer ms — drop sub-ms noise; clamp absurd values at 24h.
     duration_ms: Math.min(Math.round(event.durationMs), 86_400_000),
+    // Server-side anonymous product event — do not create/merge a person profile.
+    $process_person_profile: false,
   };
 
   const route = sanitizeLabel(event.route);
@@ -83,6 +85,26 @@ export function usageEventProperties(event) {
   if (mcpTool !== undefined) properties.mcp_tool = mcpTool;
 
   return properties;
+}
+
+/**
+ * @param {object | null | undefined} env
+ * @returns {string}
+ */
+export function resolvePostHogHost(env) {
+  return typeof env?.[POSTHOG_HOST_ENV] === "string" &&
+    env[POSTHOG_HOST_ENV].trim()
+    ? env[POSTHOG_HOST_ENV].trim()
+    : DEFAULT_POSTHOG_HOST;
+}
+
+/**
+ * Capture URL for a PostHog host (trailing slash normalized).
+ * @param {string} host
+ * @returns {string}
+ */
+export function postHogCaptureUrl(host) {
+  return `${String(host).replace(/\/+$/, "")}/i/v0/e/`;
 }
 
 /**
@@ -102,53 +124,35 @@ export async function recordUsageEvent(env, event, deps = {}) {
     const properties = usageEventProperties(event);
     if (!properties) return false;
 
-    const Client = postHogClientClass(deps);
     const token = String(env[POSTHOG_PROJECT_TOKEN_ENV]).trim();
     const host = resolvePostHogHost(env);
+    const doFetch = deps.fetch ?? globalThis.fetch;
+    if (typeof doFetch !== "function") return false;
 
-    const client = new Client(token, {
-      host,
-      // Workers isolates can freeze the moment the response returns — never
-      // batch; flush each capture immediately (PostHog Workers docs).
-      flushAt: 1,
-      flushInterval: 0,
+    const response = await doFetch(postHogCaptureUrl(host), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        api_key: token,
+        event: USAGE_EVENT_NAME,
+        distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+        properties,
+      }),
     });
 
+    // Consume/cancel the body so Cloudflare Workers don't warn about an
+    // unconsumed fetch response leaking across isolate requests.
     try {
-      await client.captureImmediate({
-        distinctId: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
-        event: USAGE_EVENT_NAME,
-        properties,
-      });
-    } finally {
-      // Always drain pending work so a capture isn't stranded on isolate exit.
-      await client.shutdown().catch(() => {});
+      await response.body?.cancel?.();
+    } catch {
+      // ignore
     }
-    return true;
+
+    return Boolean(response.ok);
   } catch {
     // Telemetry must never surface into the request/tool path.
     return false;
   }
-}
-
-/**
- * PostHog client class — injectable for tests, defaults to posthog-node.
- * @param {RecordUsageEventDeps} [deps]
- * @returns {typeof PostHog}
- */
-export function postHogClientClass(deps = {}) {
-  return deps.PostHog ?? PostHog;
-}
-
-/**
- * @param {object | null | undefined} env
- * @returns {string}
- */
-export function resolvePostHogHost(env) {
-  return typeof env?.[POSTHOG_HOST_ENV] === "string" &&
-    env[POSTHOG_HOST_ENV].trim()
-    ? env[POSTHOG_HOST_ENV].trim()
-    : DEFAULT_POSTHOG_HOST;
 }
 
 /**

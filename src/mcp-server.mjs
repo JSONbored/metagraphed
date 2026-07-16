@@ -609,6 +609,7 @@ import {
   NOMINATOR_LIMIT_MAX,
 } from "./validator-nominators.mjs";
 import { buildValidatorHistory } from "./validator-history.mjs";
+import { recordUsageEvent } from "./usage-telemetry.mjs";
 
 // Protocol versions we understand, newest first. We echo the client's requested
 // version when it is one of these, otherwise we answer with our latest. We meet
@@ -14200,6 +14201,22 @@ function negotiateProtocol(requested) {
 }
 
 async function callTool(params, ctx) {
+  // #6031: every tools/call funnels through here — one usage event per
+  // invocation (tool name + ok + coarse latency only). Telemetry is scheduled
+  // after the result is built so it never changes the response shape or
+  // blocks the tool path when PostHog is slow/unavailable.
+  const startedMs = Date.now();
+  const name = params?.name;
+  const result = await invokeTool(params, ctx);
+  scheduleMcpToolUsageEvent(ctx, {
+    mcpTool: typeof name === "string" ? name : undefined,
+    ok: result.isError !== true,
+    durationMs: Math.max(0, Date.now() - startedMs),
+  });
+  return result;
+}
+
+async function invokeTool(params, ctx) {
   const name = params?.name;
   const tool = typeof name === "string" ? TOOLS_BY_NAME.get(name) : undefined;
   if (!tool) {
@@ -14249,6 +14266,28 @@ async function callTool(params, ctx) {
       isError: true,
     };
   }
+}
+
+// Best-effort MCP tool usage capture (#6031). Prefer ctx.waitUntil so the
+// Workers isolate doesn't freeze before the PostHog capture fetch completes;
+// fall back to a fire-and-forget promise in tests / local without an
+// executionCtx. The recorder itself never throws; this wrapper also guards
+// against a test-injected recorder that does.
+function scheduleMcpToolUsageEvent(ctx, event) {
+  const record = ctx?.recordUsageEvent ?? recordUsageEvent;
+  let pending;
+  try {
+    pending = Promise.resolve(
+      record(ctx?.env, event, ctx?.usageTelemetryDeps),
+    ).catch(() => {});
+  } catch {
+    return;
+  }
+  if (typeof ctx?.waitUntil === "function") {
+    ctx.waitUntil(pending);
+    return;
+  }
+  void pending;
 }
 
 // Dispatch a single JSON-RPC message. Returns the response object for requests,
@@ -14372,6 +14411,13 @@ function buildContext(request, env, deps) {
     clientIp: mcpClientKey(request),
     readArtifact: deps.readArtifact,
     readHealthKv: deps.readHealthKv,
+    // Optional Workers executionCtx.waitUntil — used by MCP usage telemetry
+    // (#6031) so captureImmediate can finish after the JSON-RPC response.
+    waitUntil:
+      typeof deps.waitUntil === "function" ? deps.waitUntil : undefined,
+    // Test seams for #6031 (production leaves these undefined → real recorder).
+    recordUsageEvent: deps.recordUsageEvent,
+    usageTelemetryDeps: deps.usageTelemetryDeps,
   };
 }
 

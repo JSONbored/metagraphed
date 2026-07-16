@@ -1,39 +1,34 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { PostHog } from "posthog-node";
 import {
   POSTHOG_HOST_ENV,
   POSTHOG_PROJECT_TOKEN_ENV,
   USAGE_EVENT_DISTINCT_ID,
   USAGE_EVENT_NAME,
   isUsageTelemetryConfigured,
-  postHogClientClass,
+  postHogCaptureUrl,
   recordUsageEvent,
   resolvePostHogHost,
   usageEventProperties,
 } from "../src/usage-telemetry.mjs";
 
-function fakePostHog({
-  onConstruct,
-  onCapture,
-  onShutdown,
-  captureThrows = false,
-  shutdownThrows = false,
+function fakeFetch({
+  onFetch,
+  ok = true,
+  throws = false,
+  bodyCancelThrows = false,
 } = {}) {
-  return class FakePostHog {
-    constructor(token, options) {
-      onConstruct?.(token, options);
-      this.token = token;
-      this.options = options;
-    }
-    async captureImmediate(payload) {
-      if (captureThrows) throw new Error("capture failed");
-      onCapture?.(payload);
-    }
-    async shutdown() {
-      if (shutdownThrows) throw new Error("shutdown failed");
-      onShutdown?.();
-    }
+  return async (url, init) => {
+    if (throws) throw new Error("network down");
+    onFetch?.(url, init);
+    return {
+      ok,
+      body: {
+        cancel: async () => {
+          if (bodyCancelThrows) throw new Error("cancel failed");
+        },
+      },
+    };
   };
 }
 
@@ -78,7 +73,7 @@ describe("usageEventProperties", () => {
     assert.equal(usageEventProperties({ ok: "yes", durationMs: 10 }), null);
   });
 
-  test("allowlists only route / mcp_tool / ok / duration_ms", () => {
+  test("allowlists only route / mcp_tool / ok / duration_ms (+ anonymous flag)", () => {
     assert.deepEqual(
       usageEventProperties({
         route: " /api/v1/subnets ",
@@ -93,6 +88,7 @@ describe("usageEventProperties", () => {
         mcp_tool: "get_subnet",
         ok: true,
         duration_ms: 13,
+        $process_person_profile: false,
       },
     );
   });
@@ -110,6 +106,7 @@ describe("usageEventProperties", () => {
         mcp_tool: "x".repeat(256),
         ok: false,
         duration_ms: 0,
+        $process_person_profile: false,
       },
     );
   });
@@ -122,17 +119,7 @@ describe("usageEventProperties", () => {
   });
 });
 
-describe("postHogClientClass / resolvePostHogHost", () => {
-  test("defaults to posthog-node's PostHog export", () => {
-    assert.equal(postHogClientClass(), PostHog);
-    assert.equal(postHogClientClass({}), PostHog);
-  });
-
-  test("honors an injected PostHog class", () => {
-    class Injected {}
-    assert.equal(postHogClientClass({ PostHog: Injected }), Injected);
-  });
-
+describe("resolvePostHogHost / postHogCaptureUrl", () => {
   test("resolvePostHogHost trims a custom host or falls back to US cloud", () => {
     assert.equal(resolvePostHogHost(undefined), "https://us.i.posthog.com");
     assert.equal(
@@ -144,24 +131,35 @@ describe("postHogClientClass / resolvePostHogHost", () => {
       "https://us.i.posthog.com",
     );
   });
+
+  test("postHogCaptureUrl normalizes trailing slashes", () => {
+    assert.equal(
+      postHogCaptureUrl("https://us.i.posthog.com"),
+      "https://us.i.posthog.com/i/v0/e/",
+    );
+    assert.equal(
+      postHogCaptureUrl("https://us.i.posthog.com/"),
+      "https://us.i.posthog.com/i/v0/e/",
+    );
+  });
 });
 
 describe("recordUsageEvent — unconfigured (safe no-op)", () => {
-  test("returns false and never constructs a PostHog client", async () => {
-    let constructed = 0;
+  test("returns false and never calls fetch", async () => {
+    let calls = 0;
     const recorded = await recordUsageEvent(
       {},
       { route: "/api/v1/health", ok: true, durationMs: 5 },
       {
-        PostHog: fakePostHog({
-          onConstruct: () => {
-            constructed += 1;
+        fetch: fakeFetch({
+          onFetch: () => {
+            calls += 1;
           },
         }),
       },
     );
     assert.equal(recorded, false);
-    assert.equal(constructed, 0);
+    assert.equal(calls, 0);
   });
 
   test("never throws when env is null", async () => {
@@ -172,10 +170,8 @@ describe("recordUsageEvent — unconfigured (safe no-op)", () => {
 });
 
 describe("recordUsageEvent — configured", () => {
-  test("captures an allowlisted usage_event via captureImmediate + shutdown", async () => {
-    const constructs = [];
-    const captures = [];
-    let shutdowns = 0;
+  test("POSTs an allowlisted usage_event to the PostHog capture endpoint", async () => {
+    const calls = [];
     const env = {
       [POSTHOG_PROJECT_TOKEN_ENV]: " phc_token ",
       [POSTHOG_HOST_ENV]: "https://eu.i.posthog.com",
@@ -190,125 +186,110 @@ describe("recordUsageEvent — configured", () => {
         durationMs: 42,
       },
       {
-        PostHog: fakePostHog({
-          onConstruct: (token, options) => constructs.push({ token, options }),
-          onCapture: (payload) => captures.push(payload),
-          onShutdown: () => {
-            shutdowns += 1;
-          },
+        fetch: fakeFetch({
+          onFetch: (url, init) => calls.push({ url, init }),
         }),
       },
     );
 
     assert.equal(recorded, true);
-    assert.equal(constructs.length, 1);
-    assert.equal(constructs[0].token, "phc_token");
-    assert.equal(constructs[0].options.host, "https://eu.i.posthog.com");
-    assert.equal(constructs[0].options.flushAt, 1);
-    assert.equal(constructs[0].options.flushInterval, 0);
-    assert.deepEqual(captures, [
-      {
-        distinctId: USAGE_EVENT_DISTINCT_ID,
-        event: USAGE_EVENT_NAME,
-        properties: {
-          route: "/api/v1/subnets/1",
-          mcp_tool: "get_subnet",
-          ok: true,
-          duration_ms: 42,
-        },
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "https://eu.i.posthog.com/i/v0/e/");
+    assert.equal(calls[0].init.method, "POST");
+    assert.equal(calls[0].init.headers["content-type"], "application/json");
+    assert.deepEqual(JSON.parse(calls[0].init.body), {
+      api_key: "phc_token",
+      event: USAGE_EVENT_NAME,
+      distinct_id: USAGE_EVENT_DISTINCT_ID,
+      properties: {
+        route: "/api/v1/subnets/1",
+        mcp_tool: "get_subnet",
+        ok: true,
+        duration_ms: 42,
+        $process_person_profile: false,
       },
-    ]);
-    assert.equal(shutdowns, 1);
+    });
   });
 
   test("defaults host to PostHog US cloud when POSTHOG_HOST is unset", async () => {
-    const constructs = [];
+    const calls = [];
     await recordUsageEvent(
       { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
       { ok: false, durationMs: 1 },
       {
-        PostHog: fakePostHog({
-          onConstruct: (_token, options) => constructs.push(options),
+        fetch: fakeFetch({
+          onFetch: (url) => calls.push(url),
         }),
       },
     );
-    assert.equal(constructs[0].host, "https://us.i.posthog.com");
+    assert.equal(calls[0], "https://us.i.posthog.com/i/v0/e/");
   });
 
-  test("returns false for an invalid event without capturing", async () => {
-    let captures = 0;
+  test("returns false for an invalid event without fetching", async () => {
+    let calls = 0;
     const recorded = await recordUsageEvent(
       { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
       { ok: true, durationMs: -5 },
       {
-        PostHog: fakePostHog({
-          onCapture: () => {
-            captures += 1;
+        fetch: fakeFetch({
+          onFetch: () => {
+            calls += 1;
           },
         }),
       },
     );
     assert.equal(recorded, false);
-    assert.equal(captures, 0);
+    assert.equal(calls, 0);
   });
 
-  test("swallows capture errors and still attempts shutdown", async () => {
-    let shutdowns = 0;
+  test("returns false when fetch throws", async () => {
     const recorded = await recordUsageEvent(
       { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
       { ok: true, durationMs: 3 },
-      {
-        PostHog: fakePostHog({
-          captureThrows: true,
-          onShutdown: () => {
-            shutdowns += 1;
-          },
-        }),
-      },
+      { fetch: fakeFetch({ throws: true }) },
     );
     assert.equal(recorded, false);
-    assert.equal(shutdowns, 1);
   });
 
-  test("swallows shutdown errors after a successful capture", async () => {
+  test("returns false when PostHog responds non-OK", async () => {
+    const recorded = await recordUsageEvent(
+      { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
+      { ok: true, durationMs: 3 },
+      { fetch: fakeFetch({ ok: false }) },
+    );
+    assert.equal(recorded, false);
+  });
+
+  test("swallows body.cancel errors after a successful capture", async () => {
     const recorded = await recordUsageEvent(
       { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
       { mcpTool: "list_tools", ok: true, durationMs: 9 },
-      {
-        PostHog: fakePostHog({ shutdownThrows: true }),
-      },
+      { fetch: fakeFetch({ bodyCancelThrows: true }) },
     );
     assert.equal(recorded, true);
   });
 
-  test("never throws when the PostHog constructor itself throws", async () => {
-    class Boom {
-      constructor() {
-        throw new Error("construct failed");
-      }
-    }
-    await assert.doesNotReject(async () => {
-      const recorded = await recordUsageEvent(
-        { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
-        { ok: true, durationMs: 1 },
-        { PostHog: Boom },
-      );
-      assert.equal(recorded, false);
-    });
+  test("returns false when fetch is unavailable", async () => {
+    const recorded = await recordUsageEvent(
+      { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
+      { ok: true, durationMs: 1 },
+      { fetch: null },
+    );
+    assert.equal(recorded, false);
   });
 
   test("honors an injected distinctId override", async () => {
-    const captures = [];
+    const calls = [];
     await recordUsageEvent(
       { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
       { ok: true, durationMs: 2 },
       {
         distinctId: "test-distinct",
-        PostHog: fakePostHog({
-          onCapture: (payload) => captures.push(payload),
+        fetch: fakeFetch({
+          onFetch: (_url, init) => calls.push(JSON.parse(init.body)),
         }),
       },
     );
-    assert.equal(captures[0].distinctId, "test-distinct");
+    assert.equal(calls[0].distinct_id, "test-distinct");
   });
 });

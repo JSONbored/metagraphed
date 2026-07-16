@@ -1217,7 +1217,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // rejected there) like the RPC proxy. Artifact/KV readers are injected so
   // the MCP tools reuse the exact R2/ASSETS resolution.
   if (url.pathname === "/mcp") {
-    return handleMcpRequest(request, env, { readArtifact, readHealthKv });
+    return handleMcpRequest(request, env, {
+      readArtifact,
+      readHealthKv,
+      // Thread waitUntil so MCP tool-usage telemetry (#6031) can finish its
+      // PostHog capture fetch after the JSON-RPC response returns.
+      waitUntil:
+        typeof ctx?.waitUntil === "function"
+          ? (promise) => ctx.waitUntil(promise)
+          : undefined,
+    });
   }
 
   // Grounded RAG answer endpoint (POST). Runs before the read-only method gate
