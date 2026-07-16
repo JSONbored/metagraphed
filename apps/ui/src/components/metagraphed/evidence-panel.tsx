@@ -83,11 +83,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
   if (query.isLoading) return <Skeleton className="h-24 w-full" />;
   if (query.error) {
     return (
-      <ErrorState
-        error={query.error}
-        onRetry={() => query.refetch()}
-        context="evidence index"
-      />
+      <ErrorState error={query.error} onRetry={() => query.refetch()} context="evidence index" />
     );
   }
   if (allRows.length === 0) return <EmptyState title="No evidence recorded" />;

@@ -18,9 +18,7 @@ function shortSurfaceId(id: string, netuid: number): string {
 }
 
 export function IncidentTimeline({ netuid }: { netuid: number }) {
-  const { data, isLoading, isError, error, refetch } = useQuery(
-    subnetHealthIncidentsQuery(netuid),
-  );
+  const { data, isLoading, isError, error, refetch } = useQuery(subnetHealthIncidentsQuery(netuid));
   const incidents = flattenSurfaceIncidents(data?.data ?? []);
 
   return (
