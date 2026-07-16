@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 507,
+  "surface_count": 558,
   "surfaces": [
     {
       "auth_required": false,
@@ -8709,6 +8709,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 105,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "subnet_name": "Beam",
+      "subnet_slug": "sn-105",
+      "surface_id": "sn-105-beam-orchestrator-relays",
+      "surface_key": "srf-db77ce0f178abe9a",
+      "url": "https://beamcore.b1m.ai/status/orchestrator-relays"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 105,
       "probe": {
@@ -8723,6 +8741,24 @@
       "surface_id": "sn-105-beam-routing-orchestrators",
       "surface_key": "srf-dc7e0b51c0d1384d",
       "url": "https://beamcore.b1m.ai/routing/orchestrators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 105,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "subnet_name": "Beam",
+      "subnet_slug": "sn-105",
+      "surface_id": "sn-105-beam-validators-orchestrators",
+      "surface_key": "srf-315fedda2b36326c",
+      "url": "https://beamcore.b1m.ai/validators/orchestrators"
     },
     {
       "auth_required": false,
@@ -8759,6 +8795,42 @@
       "surface_id": "sn-106-nodexo-bundled-subnet-config",
       "surface_key": "srf-a1a8fc559b9b9302",
       "url": "https://raw.githubusercontent.com/nodexo-ai/nodexo/a461e3f96d3c4714d4e0311669a665086bb46f3e/common/bundled_subnet_config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 106,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nodexo",
+      "public_safe": true,
+      "subnet_name": "Nodexo",
+      "subnet_slug": "nodexo",
+      "surface_id": "sn-106-nodexo-health",
+      "surface_key": "srf-22b5e575a4fc3807",
+      "url": "https://nodexo.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 106,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nodexo",
+      "public_safe": true,
+      "subnet_name": "Nodexo",
+      "subnet_slug": "nodexo",
+      "surface_id": "sn-106-nodexo-subnet-api",
+      "surface_key": "srf-5a685d316ce4037c",
+      "url": "https://nodexo.ai/api/inventory"
     },
     {
       "auth_required": false,
@@ -8816,6 +8888,42 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 108,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talkhead",
+      "public_safe": true,
+      "subnet_name": "TalkHead",
+      "subnet_slug": "sn-108",
+      "surface_id": "sn-108-talkhead-health",
+      "surface_key": "srf-ed598cc91078d165",
+      "url": "https://api.talkhead.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 108,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talkhead",
+      "public_safe": true,
+      "subnet_name": "TalkHead",
+      "subnet_slug": "sn-108",
+      "surface_id": "sn-108-talkhead-min-compute-spec",
+      "surface_key": "srf-97fb00078fa222a9",
+      "url": "https://raw.githubusercontent.com/talkheadai/talkhead-executor/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 109,
@@ -8852,6 +8960,60 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 110,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "subnet_name": "Green Compute",
+      "subnet_slug": "sn-110",
+      "surface_id": "sn-110-green-compute-billing-bonus-rates-api",
+      "surface_key": "srf-565898eaf1bda6c1",
+      "url": "https://api.green-compute.com/platform/billing/bonus-rates"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 110,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "subnet_name": "Green Compute",
+      "subnet_slug": "sn-110",
+      "surface_id": "sn-110-green-compute-healthz",
+      "surface_key": "srf-3ff0daa0701f4852",
+      "url": "https://api.green-compute.com/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 110,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "subnet_name": "Green Compute",
+      "subnet_slug": "sn-110",
+      "surface_id": "sn-110-green-compute-metrics",
+      "surface_key": "srf-d5b8a71eec007d8b",
+      "url": "https://api.green-compute.com/_metrics"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 110,
@@ -8867,6 +9029,24 @@
       "surface_id": "sn-110-green-compute-models",
       "surface_key": "srf-8fa47d05ebfe89b1",
       "url": "https://www.green-compute.com/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 110,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "subnet_name": "Green Compute",
+      "subnet_slug": "sn-110",
+      "surface_id": "sn-110-green-compute-readyz",
+      "surface_key": "srf-c418ab24298ccf75",
+      "url": "https://api.green-compute.com/readyz"
     },
     {
       "auth_required": false,
@@ -8907,6 +9087,60 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 111,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oneoneone",
+      "public_safe": true,
+      "subnet_name": "oneoneone",
+      "subnet_slug": "sn-111",
+      "surface_id": "sn-111-oneoneone-generic-synapse-protocol",
+      "surface_key": "srf-06ef7d05672da51e",
+      "url": "https://raw.githubusercontent.com/oneoneone-io/subnet-111/2e9b759039fc40d7ee1a50ff7362bae29eba5a2f/oneoneone/protocol.py"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 111,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oneoneone",
+      "public_safe": true,
+      "subnet_name": "oneoneone",
+      "subnet_slug": "sn-111",
+      "surface_id": "sn-111-oneoneone-node-validator-config",
+      "surface_key": "srf-705fc2906f670296",
+      "url": "https://raw.githubusercontent.com/oneoneone-io/subnet-111/2e9b759039fc40d7ee1a50ff7362bae29eba5a2f/node/config.js"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 111,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oneoneone",
+      "public_safe": true,
+      "subnet_name": "oneoneone",
+      "subnet_slug": "sn-111",
+      "surface_id": "sn-111-oneoneone-python-subnet-config",
+      "surface_key": "srf-e38e8965878b6b3d",
+      "url": "https://raw.githubusercontent.com/oneoneone-io/subnet-111/2e9b759039fc40d7ee1a50ff7362bae29eba5a2f/oneoneone/config.py"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 111,
       "probe": {
@@ -8926,6 +9160,114 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 112,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "subnet_name": "minotaur",
+      "subnet_slug": "sn-112",
+      "surface_id": "sn-112-minotaur-apps-list",
+      "surface_key": "srf-31952f374d250b2b",
+      "url": "https://api.minotaursubnet.com/v1/apps/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 112,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "subnet_name": "minotaur",
+      "subnet_slug": "sn-112",
+      "surface_id": "sn-112-minotaur-chains",
+      "surface_key": "srf-7a4c2dedcace14fb",
+      "url": "https://api.minotaursubnet.com/v1/chains"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 112,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "subnet_name": "minotaur",
+      "subnet_slug": "sn-112",
+      "surface_id": "sn-112-minotaur-health",
+      "surface_key": "srf-d964a97cfeb513c2",
+      "url": "https://api.minotaursubnet.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 112,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "subnet_name": "minotaur",
+      "subnet_slug": "sn-112",
+      "surface_id": "sn-112-minotaur-network-reference",
+      "surface_key": "srf-0dd395ca2c80f70a",
+      "url": "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/operator/network-reference.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 113,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "subnet_name": "TensorUSD",
+      "subnet_slug": "sn-113",
+      "surface_id": "sn-113-tensorusd-agent-api-health",
+      "surface_key": "srf-e68a18650b90e407",
+      "url": "https://agent-api.tensorusd.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 113,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "subnet_name": "TensorUSD",
+      "subnet_slug": "sn-113",
+      "surface_id": "sn-113-tensorusd-llms-txt",
+      "surface_key": "srf-9a1e2a4909f003e4",
+      "url": "https://docs.tensorusd.com/llms.txt"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 113,
       "probe": {
         "expect": "json",
@@ -8939,6 +9281,42 @@
       "surface_id": "sn-113-tensorusd-subnet-api",
       "surface_key": "srf-af3de99ed4db3abf",
       "url": "https://api.tensorusd.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 113,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "subnet_name": "TensorUSD",
+      "subnet_slug": "sn-113",
+      "surface_id": "sn-113-tensorusd-vault-abi",
+      "surface_key": "srf-69ae5bf2b7317204",
+      "url": "https://raw.githubusercontent.com/TensorUSD/subnet/main/tensorusd/common/abis/tusdt_vault.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 114,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "subnet_name": "SOMA",
+      "subnet_slug": "sn-114",
+      "surface_id": "sn-114-soma-health",
+      "surface_key": "srf-dd3315221eb03364",
+      "url": "https://thesoma.ai/api/health"
     },
     {
       "auth_required": false,
@@ -8961,6 +9339,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 115,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hashichain",
+      "public_safe": true,
+      "subnet_name": "HashiChain",
+      "subnet_slug": "sn-115",
+      "surface_id": "sn-115-hashichain-intro-logo",
+      "surface_key": "srf-3f037089439f761b",
+      "url": "https://raw.githubusercontent.com/hashi115/hashichain/e4a0280c0d29cc858795b84a7cac932baae43088/assets/intro.png"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 115,
       "probe": {
@@ -8979,6 +9375,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 116,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taolend",
+      "public_safe": true,
+      "subnet_name": "TaoLend",
+      "subnet_slug": "taolend",
+      "surface_id": "sn-116-taolend-contract-constants",
+      "surface_key": "srf-ff1b90b68c54f22a",
+      "url": "https://raw.githubusercontent.com/oxylok/116-taolend/main/const.ts"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 116,
       "probe": {
@@ -8993,6 +9407,24 @@
       "surface_id": "sn-116-taomarketcap-subnet-api",
       "surface_key": "srf-72e95cbc8e0379a8",
       "url": "https://api.taomarketcap.com/public/v1/subnets/116/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 118,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "surface_id": "sn-118-ditto-memory-cases",
+      "surface_key": "srf-55916a243dae3808",
+      "url": "https://raw.githubusercontent.com/ditto-assistant/dittobench-starter-kit/main/fixtures/seed-user/memory_cases.json"
     },
     {
       "auth_required": false,
@@ -9051,6 +9483,60 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 120,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "affine",
+      "public_safe": true,
+      "subnet_name": "Affine",
+      "subnet_slug": "sn-120",
+      "surface_id": "sn-120-affine-config",
+      "surface_key": "srf-beede9ae6dbeb1fc",
+      "url": "https://api.affine.io/api/v1/config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 120,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "affine",
+      "public_safe": true,
+      "subnet_name": "Affine",
+      "subnet_slug": "sn-120",
+      "surface_id": "sn-120-affine-data-artifact",
+      "surface_key": "srf-7afbe8d6d483462d",
+      "url": "https://api.affine.io/api/v1/rank/current"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 120,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "affine",
+      "public_safe": true,
+      "subnet_name": "Affine",
+      "subnet_slug": "sn-120",
+      "surface_id": "sn-120-affine-health",
+      "surface_key": "srf-a85a5fd4273ea028",
+      "url": "https://api.affine.io/api/v1/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 120,
       "probe": {
@@ -9083,6 +9569,24 @@
       "surface_id": "sn-120-affine-scores-weights-latest",
       "surface_key": "srf-fa2d0232ee94fe85",
       "url": "https://api.affine.io/api/v1/scores/weights/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 121,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "subnet_name": "sundae_bar",
+      "subnet_slug": "sn-121",
+      "surface_id": "sn-121-sundae-bar-categories-api",
+      "surface_key": "srf-76be8d77b82b80cb",
+      "url": "https://www.sundaebar.ai/api/categories"
     },
     {
       "auth_required": false,
@@ -9119,6 +9623,420 @@
       "surface_id": "sn-121-sundae-bar-products-api",
       "surface_key": "srf-fea5a2891a302b8a",
       "url": "https://www.sundaebar.ai/api/products"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 121,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "subnet_name": "sundae_bar",
+      "subnet_slug": "sn-121",
+      "surface_id": "sn-121-sundae-bar-sbc9-eval-dataset",
+      "surface_key": "srf-ad30493e8cca8048",
+      "url": "https://raw.githubusercontent.com/sundae-bar/sb-validator/main/python/dataset_sbc9.jsonl"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 121,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "subnet_name": "sundae_bar",
+      "subnet_slug": "sn-121",
+      "surface_id": "sn-121-sundae-bar-skill-categories-api",
+      "surface_key": "srf-fbb81dd8eab25edc",
+      "url": "https://www.sundaebar.ai/api/skill-categories"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 121,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "subnet_name": "sundae_bar",
+      "subnet_slug": "sn-121",
+      "surface_id": "sn-121-sundae-bar-skill-creators-api",
+      "surface_key": "srf-e538967810b9a26e",
+      "url": "https://www.sundaebar.ai/api/skill-creators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 121,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "subnet_name": "sundae_bar",
+      "subnet_slug": "sn-121",
+      "surface_id": "sn-121-sundae-bar-subnet-api",
+      "surface_key": "srf-9785a79a4b156bc7",
+      "url": "https://api.sundaebar.ai/api/v2/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 122,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitrecs",
+      "public_safe": true,
+      "subnet_name": "Bitrecs",
+      "subnet_slug": "sn-122",
+      "surface_id": "sn-122-bitrecs-amazon-fashion-sample",
+      "surface_key": "srf-922b05135dffcaed",
+      "url": "https://raw.githubusercontent.com/bitrecs/bitrecs-subnet/main/tests/data/amazon/fashion/amazon_fashion_sample_1000.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 122,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitrecs",
+      "public_safe": true,
+      "subnet_name": "Bitrecs",
+      "subnet_slug": "sn-122",
+      "surface_id": "sn-122-bitrecs-llms-txt",
+      "surface_key": "srf-5509a9f4b1e232a2",
+      "url": "https://www.bitrecs.ai/llms.txt"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 123,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
+      "surface_id": "sn-123-mantis-dashboard-history-incentive",
+      "surface_key": "srf-e2cfed98e0b1e359",
+      "url": "https://mantis123.com/dashboard/api/history/incentive"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 123,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
+      "surface_id": "sn-123-mantis-dashboard-snap-meta",
+      "surface_key": "srf-d09de2bf6915dc20",
+      "url": "https://mantis123.com/dashboard/api/snap/meta"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 123,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
+      "surface_id": "sn-123-mantis-datalog-archive",
+      "surface_key": "srf-976c2c36ecbad82c",
+      "url": "https://pub-879ad825983e43529792665f4f510cd6.r2.dev/datalog.db"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 123,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
+      "surface_id": "sn-123-mantis-price-feed",
+      "surface_key": "srf-aae57ecdc2b1415e",
+      "url": "https://pub-ba8c1b8edb8046edaccecbd26b5ca7f8.r2.dev/latest_prices.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 123,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
+      "surface_id": "sn-123-taomarketcap-candle-chart",
+      "surface_key": "srf-15903ac637d4e1f3",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/123/candle-chart/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 124,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "swarm",
+      "public_safe": true,
+      "subnet_name": "Swarm",
+      "subnet_slug": "sn-124",
+      "surface_id": "sn-124-swarm-data-artifact",
+      "surface_key": "srf-c36a5e2fbde611ca",
+      "url": "https://api.swarm124.com/kings/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 124,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "swarm",
+      "public_safe": true,
+      "subnet_name": "Swarm",
+      "subnet_slug": "sn-124",
+      "surface_id": "sn-124-swarm-health",
+      "surface_key": "srf-59367abc4887b6b6",
+      "url": "https://api.swarm124.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 124,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "swarm",
+      "public_safe": true,
+      "subnet_name": "Swarm",
+      "subnet_slug": "sn-124",
+      "surface_id": "sn-124-swarm-kings-diagnostics",
+      "surface_key": "srf-d0ba6a224780fc22",
+      "url": "https://api.swarm124.com/kings/diagnostics"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 124,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "swarm",
+      "public_safe": true,
+      "subnet_name": "Swarm",
+      "subnet_slug": "sn-124",
+      "surface_id": "sn-124-swarm-leaderboard-api",
+      "surface_key": "srf-f5f38fa7d46da8b3",
+      "url": "https://api.swarm124.com/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 124,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "swarm",
+      "public_safe": true,
+      "subnet_name": "Swarm",
+      "subnet_slug": "sn-124",
+      "surface_id": "sn-124-swarm-min-compute",
+      "surface_key": "srf-218f15e609d04349",
+      "url": "https://raw.githubusercontent.com/swarm-subnet/swarm/d4bef9321e427b62d09cca88502f5b1b6c9abe74/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 125,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eightball",
+      "public_safe": true,
+      "subnet_name": "8 Ball",
+      "subnet_slug": "eightball",
+      "surface_id": "sn-125-eightball-data-artifact",
+      "surface_key": "srf-59d7f70e53961127",
+      "url": "https://8ball125.com/deployment.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 125,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eightball",
+      "public_safe": true,
+      "subnet_name": "8 Ball",
+      "subnet_slug": "eightball",
+      "surface_id": "sn-125-eightball-subnet-api",
+      "surface_key": "srf-49d29a8773d83bfd",
+      "url": "https://8ball125.com/api/markets"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 126,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "subnet_name": "Poker44",
+      "subnet_slug": "sn-126",
+      "surface_id": "sn-126-poker44-benchmark-releases",
+      "surface_key": "srf-aff36a32a5037f81",
+      "url": "https://api.poker44.net/api/v1/benchmark/releases"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 126,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "subnet_name": "Poker44",
+      "subnet_slug": "sn-126",
+      "surface_id": "sn-126-poker44-data-artifact",
+      "surface_key": "srf-fa3692f3f5c59bdf",
+      "url": "https://api.poker44.net/api/v1/benchmark"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 126,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "subnet_name": "Poker44",
+      "subnet_slug": "sn-126",
+      "surface_id": "sn-126-poker44-health",
+      "surface_key": "srf-f61cf4e3e6d62677",
+      "url": "https://api.poker44.net/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 127,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "astrid",
+      "public_safe": true,
+      "subnet_name": "Astrid",
+      "subnet_slug": "sn-127",
+      "surface_id": "sn-127-astrid-data-artifact",
+      "surface_key": "srf-ef74619837aeb244",
+      "url": "https://arena-api.astrid.global/public/competitions/190482a8-70b8-463d-b6c5-d1808bc7db9f/wallet-activity"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 127,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "astrid",
+      "public_safe": true,
+      "subnet_name": "Astrid",
+      "subnet_slug": "sn-127",
+      "surface_id": "sn-127-astrid-subnet-api",
+      "surface_key": "srf-19cc25703828020a",
+      "url": "https://arena-api.astrid.global/public/arena/completed-competitions"
     },
     {
       "auth_required": false,
