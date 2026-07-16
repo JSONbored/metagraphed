@@ -169,11 +169,15 @@ def _request_json(
 
 def _jsonrpc_result(parsed: Any, method: str) -> Any:
     """Unwrap a JSON-RPC envelope: return its ``result``, or raise its ``error``."""
-    rpc_error = parsed.get("error") if isinstance(parsed, dict) else None
+    if not isinstance(parsed, dict):
+        raise MetagraphedError(
+            f"RPC {method} returned a malformed response (expected a JSON object)"
+        )
+    rpc_error = parsed.get("error")
     if rpc_error:
         message = rpc_error.get("message") if isinstance(rpc_error, dict) else None
         raise MetagraphedError(f"RPC {method} error: {message or rpc_error}")
-    return parsed.get("result") if isinstance(parsed, dict) else None
+    return parsed.get("result")
 
 
 def _query_pairs(query: Mapping[str, Any]) -> List[Tuple[str, Any]]:
