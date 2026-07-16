@@ -17,15 +17,15 @@
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 5,
-    "verified_at": "2026-06-08T15:00:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "dashboard_url": null,
   "docs_url": null,
   "name": "for sale (burn to uid1)",
   "netuid": 104,
-  "notes": "Reviewed overlay for SN104. The current chain identity is a sale/placeholder-style name and no official project website, source repository, API, OpenAPI schema, or docs site has been verified.",
+  "notes": "Reviewed overlay for SN104. The current chain identity is a sale/placeholder-style name and no official project website, source repository, API, OpenAPI schema, or docs site has been verified. Root->128 accuracy audit re-review pass (#5903): still genuinely parked (subnet_emission_enabled false, sale-placeholder identity unchanged); fixed the candle-chart URL to the canonical trailing-slash form.",
   "schema_version": 1,
   "slug": "for-sale-uid1",
   "source_repo": null,
@@ -62,7 +62,7 @@
       "id": "sn-104-taomarketcap-data-artifact",
       "kind": "data-artifact",
       "name": "SN104 TaoMarketCap OHLCV candle-chart dataset",
-      "notes": "Public no-auth GET /public/v1/subnets/104/candle-chart on api.taomarketcap.com returning a machine-readable JSON time-series of hourly OHLCV candles for SN104's alpha token: each record carries period_name, timestamp, block_number, open/high/low/close, volume, start_volume, and tao_price_usd/eur, every record scoped to subnet_id 104. A standalone historical price/volume dataset, distinct from the point-in-time /subnets/104 snapshot already registered. SN104 exposes no verified first-party API; this indexed feed is the concrete public JSON data endpoint for netuid 104, documented in the TaoMarketCap developer API.",
+      "notes": "Public no-auth GET /public/v1/subnets/104/candle-chart/ on api.taomarketcap.com returning a machine-readable JSON time-series of hourly OHLCV candles for SN104's alpha token: each record carries period_name, timestamp, block_number, open/high/low/close, volume, start_volume, and tao_price_usd/eur, every record scoped to subnet_id 104. A standalone historical price/volume dataset, distinct from the point-in-time /subnets/104 snapshot already registered. SN104 exposes no verified first-party API; this indexed feed is the concrete public JSON data endpoint for netuid 104, documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash on this path (the non-slash form 301s); tracked URL updated to the canonical non-redirecting form.",
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -73,7 +73,7 @@
         "https://api.taomarketcap.com/developer/documentation",
         "https://taomarketcap.com/subnets/104"
       ],
-      "url": "https://api.taomarketcap.com/public/v1/subnets/104/candle-chart"
+      "url": "https://api.taomarketcap.com/public/v1/subnets/104/candle-chart/"
     }
   ],
   "website_url": null
