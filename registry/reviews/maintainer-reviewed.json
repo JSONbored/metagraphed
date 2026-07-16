@@ -1547,10 +1547,10 @@
       "netuid": 116,
       "slug": "taolend",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T14:15:00.000Z",
+      "reviewed_at": "2026-07-16T00:00:00.000Z",
       "confidence": "high",
       "source_urls": ["https://taolend.io/"],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/taolend.json (reviewed_at 2026-06-08T14:15:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): fixed 1 missing probe block. On-chain identity has drifted again (now \"Memo\", previously \"hard_sign\") while the website/repo/community consistently identify SN116 as TaoLend -- the subnetName field looks unreliable for this subnet. Noted subnet_emission_enabled is currently false. Website still 500s (unchanged)."
     },
     {
       "netuid": 117,
