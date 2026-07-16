@@ -25,6 +25,21 @@
 //   route) serves the same spec unwrapped -- verified via a direct fetch
 //   (top-level keys: openapi/info/paths/…, not ok/data/meta) -- and is what
 //   this script and every generated page's `document` prop use instead.
+// - The spec's `summary` field holds full explanatory paragraphs (up to
+//   ~1100 chars; 115 of 159 operations exceed 80 chars) with `description`
+//   left empty on every operation -- fumadocs-openapi uses `summary` as the
+//   page title verbatim (no truncation), and that title is what this app's
+//   docs.$.tsx renders as the sidebar label, breadcrumb, H1, and browser
+//   tab. splitOperationSummaries() below fixes this at the source: derives
+//   a short title from the operationId, and moves the original paragraph to
+//   `description` (rendered by <DocsDescription>, right under the H1 --
+//   same layout the 4 hand-written docs pages already use). Applied twice,
+//   independently, once here (bakes the fix into the generated frontmatter)
+//   and once in src/lib/openapi-source.ts (fumadocs-openapi's own <APIPage/>
+//   internals independently re-derive a title from `operation.summary` at
+//   render time too -- see operation/index.js's `operation.summary ||
+//   pathItem.summary || idToTitle(...)` -- so the runtime-fetched copy of
+//   the spec needs the same fix, not just the one baked into frontmatter).
 import { readFile, readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { generateFiles } from "fumadocs-openapi";
@@ -32,10 +47,59 @@ import { createOpenAPI } from "fumadocs-openapi/server";
 
 const OUTPUT_DIR = process.env.OPENAPI_DOCS_OUTPUT ?? "./content/docs/api-reference";
 // Read locally (fast, no network dependency for a rarely-changing generator
-// script) but generate against the same unwrapped live URL the browser will
-// fetch at request time.
+// script). src/lib/openapi-source.ts's runtime instance fetches the same
+// spec from its live, unwrapped URL (https://api.metagraph.sh/metagraph/openapi.json)
+// instead -- see that file for why.
 const LOCAL_SPEC_PATH = "../../public/metagraph/openapi.json";
-const LIVE_SPEC_URL = "https://api.metagraph.sh/metagraph/openapi.json";
+
+// Acronyms/initialisms that Title-Case-per-camelCase-word gets wrong
+// (e.g. "rpcEndpoints" -> "Rpc Endpoints" instead of "RPC Endpoints").
+// Matched case-insensitively per word; anything not listed here just stays
+// Title Case, which is a fine default for ordinary words.
+const WORD_OVERRIDES = {
+  api: "API",
+  rpc: "RPC",
+  id: "ID",
+  ss58: "SS58",
+  d1: "D1",
+  hhi: "HHI",
+  ai: "AI",
+  url: "URL",
+  json: "JSON",
+  tao: "TAO",
+  ohlc: "OHLC",
+  dx: "DX",
+};
+
+/** "accountAxonRemovals" -> "Account Axon Removals"; "rpcEndpoints" -> "RPC Endpoints". */
+function humanizeOperationId(id) {
+  return id
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Za-z])([0-9])/g, "$1 $2")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => WORD_OVERRIDES[w.toLowerCase()] ?? w[0].toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/**
+ * Mutates a parsed OpenAPI document in place: for every operation whose
+ * `summary` reads like a paragraph rather than a title, swaps in a short
+ * operationId-derived title and moves the original text to `description`
+ * (only if `description` isn't already set -- never overwrites real data).
+ */
+function splitOperationSummaries(spec) {
+  for (const methods of Object.values(spec.paths ?? {})) {
+    for (const op of Object.values(methods)) {
+      if (!op || typeof op !== "object" || !op.operationId) continue;
+      const summary = op.summary ?? "";
+      if (summary.length <= 80) continue;
+      if (!op.description) op.description = summary;
+      op.summary = humanizeOperationId(op.operationId);
+    }
+  }
+  return spec;
+}
 
 // Most operations carry a second, catch-all "analytics" tag alongside their
 // real domain tag (e.g. accountsList: ["accounts", "analytics"]) -- grouping
@@ -75,6 +139,7 @@ async function main() {
       }
     }
   }
+  splitOperationSummaries(spec);
 
   // index.mdx is hand-authored (a landing page, not generated), but lives
   // inside OUTPUT_DIR alongside the generated tree -- preserve it across
@@ -87,7 +152,11 @@ async function main() {
   await mkdir(OUTPUT_DIR, { recursive: true });
   if (indexContent !== null) await writeFile(indexPath, indexContent);
 
-  const openapi = createOpenAPI({ input: [LIVE_SPEC_URL] });
+  // "metagraph" (not the raw URL) is the schema key from here on -- must
+  // match src/lib/openapi-source.ts's runtime instance exactly, since
+  // openapi.preloadOpenAPIPage(page) resolves a page's `document` prop
+  // (baked into each generated file below) by looking up this same key.
+  const openapi = createOpenAPI({ input: { metagraph: () => spec } });
   await generateFiles({
     input: openapi,
     output: OUTPUT_DIR,

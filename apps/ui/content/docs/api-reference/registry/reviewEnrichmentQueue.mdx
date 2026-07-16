@@ -3,7 +3,7 @@ title: Fetch the prioritized all-subnet enrichment queue.
 full: true
 _openapi:
   preload:
-    - https://api.metagraph.sh/metagraph/openapi.json
+    - metagraph
   method: GET
   webhook: false
   toc: []
@@ -21,7 +21,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="https://api.metagraph.sh/metagraph/openapi.json" operations={[{"path":"/api/v1/review/enrichment-queue","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/review/enrichment-queue","method":"get"}]} />
     </>
   );
 }

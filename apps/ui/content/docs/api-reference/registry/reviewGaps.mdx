@@ -3,7 +3,7 @@ title: Fetch contributor-targeted subnet gap priorities.
 full: true
 _openapi:
   preload:
-    - https://api.metagraph.sh/metagraph/openapi.json
+    - metagraph
   method: GET
   webhook: false
   toc: []
@@ -21,7 +21,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="https://api.metagraph.sh/metagraph/openapi.json" operations={[{"path":"/api/v1/review/gaps","method":"get"}]} />
+      <Comp document="metagraph" operations={[{"path":"/api/v1/review/gaps","method":"get"}]} />
     </>
   );
 }
