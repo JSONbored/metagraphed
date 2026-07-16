@@ -218,6 +218,21 @@ async function verifyMeta(env) {
 // outbound probes. An agent (or the verify_integration MCP tool) calls this to
 // confirm "callable right now" before wiring.
 export async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
+  // No request body — path param only — so this is a GET/HEAD action endpoint
+  // (same method set as handleBadgeSvgRequest). Reject anything else before the
+  // rate limiter or outbound probe can run (#6015).
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return errorResponse(
+      "method_not_allowed",
+      "Surface verify only accepts GET and HEAD.",
+      405,
+      {},
+      {
+        allow: "GET, HEAD, OPTIONS",
+      },
+    );
+  }
+
   if (env.RPC_RATE_LIMITER?.limit) {
     const clientKey = `verify:${resolveClientIp(request)}`;
     const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
