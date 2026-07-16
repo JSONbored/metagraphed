@@ -538,6 +538,19 @@
       "notes": "First maintainer review for this subnet (previously candidate-discovered/unreviewed, categories empty, no source-repo surface despite source_repo already being set). Added the missing source-repo surface; the registered website (aureliusaligned.ai) is currently unreachable (DNS resolves, connection times out on both ports 80/443) so no website surface is promoted. Diffed the full Aurelius Central API OpenAPI schema (58 paths): the work-token/admin, config, submissions, benchmark, novelty, classifier, stats, reports, and admin/api prefixes all live-tested as 401-gated despite the schema declaring no security scheme for several of them. Found and added one new genuine no-auth public endpoint, GET /work-token/deposit-address/verify."
     },
     {
+      "netuid": 38,
+      "slug": "sn-38",
+      "decision": "maintainer-reviewed",
+      "reviewed_at": "2026-07-16T01:20:00.000Z",
+      "confidence": "high",
+      "source_urls": [
+        "https://chronollm.com/",
+        "https://github.com/chronollm/sn38",
+        "https://github.com/chronollm/sn38/blob/main/README.md"
+      ],
+      "notes": "First maintainer review for this subnet (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces; the registered website_url (chronollm.crunchdao.com) permanently redirects (301) to the operator's new canonical domain chronollm.com, tracked there instead. Added the validator docs and ChronoGPT arXiv paper from the README's \"Getting started\" table. Confirmed via the README that the evaluation backend is intentionally private (TEE-protected), so no public API surface is expected."
+    },
+    {
       "netuid": 39,
       "slug": "sn-39",
       "decision": "maintainer-reviewed",

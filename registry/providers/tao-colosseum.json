@@ -1,10 +1,10 @@
 {
   "authority": "official",
-  "github_url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
+  "github_url": "https://github.com/chronollm/sn38",
   "id": "tao-colosseum",
   "kind": "subnet-team",
-  "name": "TAO Colosseum",
-  "notes": "Provider entry for TAO Colosseum SN38. The source repository is live, while the previously discovered website currently redirects to a parked-domain sale page and is not promoted.",
+  "name": "ChronoLLM",
+  "notes": "Provider entry for SN38, on-chain re-registered from \"TAO Colosseum\" to \"ChronoLLM\" (native_name and description confirmed on-chain; the internal id \"tao-colosseum\" is kept stable as the existing key referenced by this subnet's surfaces). The current source repository is chronollm/sn38; the website is chronollm.com (the operator's chronollm.crunchdao.com domain now permanently redirects there).",
   "schema_version": 1,
-  "website_url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
+  "website_url": "https://chronollm.com/"
 }

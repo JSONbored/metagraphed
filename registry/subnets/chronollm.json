@@ -1,15 +1,103 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "language-models",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "The evaluation backend is explicitly private (TEE-protected per the official README) by design, so no public subnet-api/OpenAPI/SSE surface is expected or promoted.",
+      "The registered website_url (chronollm.crunchdao.com) permanently redirects (301) to the operator's own dedicated domain chronollm.com; tracked at the new canonical URL."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T01:20:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-07-16T01:20:00.000Z"
   },
+  "docs_url": "https://github.com/chronollm/sn38/blob/main/docs/miner.md",
   "name": "ChronoLLM",
   "netuid": 38,
+  "notes": "First maintainer-reviewed pass for SN38 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces (website tracked at chronollm.com, the operator's new canonical domain -- chronollm.crunchdao.com now permanently redirects there). Fixed all 4 pre-existing surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Added 2 new official surfaces found in the README's \"Getting started\" table: the validator docs page (sibling to the already-tracked miner docs) and the ChronoGPT arXiv paper. Confirmed via the README that the evaluation backend is intentionally private (TEE-protected), so no public API surface is expected.",
   "schema_version": 1,
   "slug": "sn-38",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-38-chronollm-website",
+      "kind": "website",
+      "name": "ChronoLLM website",
+      "notes": "Official ChronoLLM website, at the operator's current canonical domain (chronollm.crunchdao.com permanently redirects here).",
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "source_urls": ["https://github.com/chronollm/sn38"],
+      "url": "https://chronollm.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-38-chronollm-source-repo",
+      "kind": "source-repo",
+      "name": "ChronoLLM source repository",
+      "notes": "Official ChronoLLM (SN38) source repository.",
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "source_urls": ["https://chronollm.com/"],
+      "url": "https://github.com/chronollm/sn38"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-38-chronollm-validator-docs",
+      "kind": "docs",
+      "name": "ChronoLLM validator docs",
+      "notes": "Public validator guide linked from the official ChronoLLM README's \"Getting started\" table, alongside the already-tracked miner docs.",
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "source_urls": ["https://github.com/chronollm/sn38/blob/main/README.md"],
+      "url": "https://github.com/chronollm/sn38/blob/main/docs/validator.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-38-chronollm-arxiv-paper",
+      "kind": "docs",
+      "name": "ChronoGPT arXiv paper",
+      "notes": "ChronoGPT architecture paper (arXiv:2510.11677), linked as \"ChronoGPT paper\" from the official ChronoLLM README's \"Getting started\" table.",
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "source_urls": ["https://github.com/chronollm/sn38/blob/main/README.md"],
+      "url": "https://arxiv.org/abs/2510.11677"
+    },
     {
       "auth_required": false,
       "authority": "community",
@@ -17,6 +105,12 @@
       "kind": "docs",
       "name": "ChronoLLM miner docs",
       "notes": "Public miner guide linked from the official ChronoLLM README.",
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -33,6 +127,12 @@
       "kind": "data-artifact",
       "name": "ChronoGPT models (HuggingFace)",
       "notes": "Official ChronoGPT collection on HuggingFace (per-year chrono-gpt-v1 models), listed as \"ChronoGPT models\" in the official ChronoLLM README.",
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -49,6 +149,12 @@
       "kind": "data-artifact",
       "name": "ChronoInstruct SFT dataset",
       "notes": "Public ManelaLab (WashU) HuggingFace ChronoInstruct-SFT dataset — 647,944 chronologically-consistent instruction-response pairs (conversation/label/source columns; label marks pre-2000 vs post-1999) built to remove lookahead bias, the SFT corpus for the ChronoGPT architecture the ChronoLLM (SN38) subnet mandates; ODC-BY-1.0, not gated. The chronollm/sn38 repo README (source) declares Subnet 38 and links the manelalab HF org (already the subnet's registered ChronoGPT model-collection org).",
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
       "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
@@ -68,6 +174,12 @@
       "kind": "data-artifact",
       "name": "SN38 on-chain subnet snapshot",
       "notes": "Public no-auth GET /public/v1/subnets/38 on api.taomarketcap.com returning a machine-readable JSON snapshot of SN38 ChronoLLM on-chain subnet state (owner, emission, registration/burn parameters, and dTAO market fields) for netuid 38. This is the indexed public JSON feed for netuid 38 documented in the TaoMarketCap developer API.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
       "provider": "taomarketcap",
       "public_safe": true,
       "review": {
@@ -83,7 +195,7 @@
   ],
   "source_repo": "https://github.com/chronollm/sn38",
   "contact": "crew@crunchdao.com",
-  "website_url": "https://chronollm.crunchdao.com/",
+  "website_url": "https://chronollm.com/",
   "social": {
     "x": "https://x.com/chronollm"
   }
