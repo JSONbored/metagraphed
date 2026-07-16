@@ -8,6 +8,7 @@ import {
   stableStringify,
   writeJson,
 } from "./lib.mjs";
+import { curationForDecision } from "./lib/maintainer-reviewed.mjs";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
@@ -45,17 +46,7 @@ for (const decision of decisionsDocument.decisions || []) {
   }
 
   const nextOverlay = structuredClone(entry.overlay);
-  nextOverlay.curation = {
-    ...(nextOverlay.curation || {}),
-    review_state: decision.decision,
-    reviewed_at: decision.reviewed_at,
-  };
-  if (
-    decision.decision === "maintainer-reviewed" &&
-    nextOverlay.curation.level === "machine-verified"
-  ) {
-    nextOverlay.curation.level = "maintainer-reviewed";
-  }
+  nextOverlay.curation = curationForDecision(nextOverlay.curation, decision);
 
   const changed =
     stableStringify(nextOverlay) !== stableStringify(entry.overlay);

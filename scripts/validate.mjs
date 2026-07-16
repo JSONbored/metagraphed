@@ -34,6 +34,7 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.mjs";
+import { maintainerReviewedDrift } from "./lib/maintainer-reviewed.mjs";
 
 const providerKinds = new Set([
   "subnet-team",
@@ -1592,6 +1593,21 @@ for (const subnet of subnets) {
       `${subnet.slug}: curation.level "maintainer-reviewed" (netuid ${subnet.netuid}) has no backing decision in registry/reviews/maintainer-reviewed.json — add a decision there instead of hand-editing the overlay level`,
     );
   }
+}
+
+// The inverse gate: a recorded maintainer-reviewed decision must actually have
+// taken effect on the overlay (its level must be at a top-trust tier). Before
+// this check, promote-reviewed.mjs only promoted from machine-verified, so a
+// decision against a community-seeded/candidate-discovered/native overlay
+// silently never materialized — invisible drift (live-confirmed SN59, SN107).
+for (const drifted of maintainerReviewedDrift(
+  subnets,
+  reviewDecisionsDocument.decisions,
+)) {
+  assert(
+    false,
+    `${drifted.slug}: has a maintainer-reviewed decision in registry/reviews/maintainer-reviewed.json (netuid ${drifted.netuid}) but curation.level is "${drifted.level}" — run \`npm run review:promote\` so the recorded decision actually promotes the overlay`,
+  );
 }
 
 // Identity guardrail (the "Nodexo" class): a curated overlay's name matching
