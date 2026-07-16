@@ -130,7 +130,9 @@ function ProviderShell({ slug }: { slug: string }) {
         title={p?.name ?? slug}
         subtitle={shouldShowProviderSlugSubtitle(p?.name, slug) ? <>· {slug}</> : null}
         description={p?.notes}
-        links={<PrimaryLinksRail website={p?.website ?? p?.homepage} docs={p?.docs} />}
+        links={
+          <PrimaryLinksRail website={p?.website ?? p?.homepage} docs={p?.docs} repo={p?.repo} />
+        }
         stats={[
           { label: "Endpoints", value: formatNumber(summary?.endpoint_count) },
           { label: "Monitored", value: formatNumber(summary?.monitored_count) },
