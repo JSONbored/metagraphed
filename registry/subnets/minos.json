@@ -1,11 +1,25 @@
 {
-  "categories": [],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
   "curation": {
-    "level": "community-seeded",
-    "review_state": "unreviewed"
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet -- api.theminos.ai/openapi.json and /docs both 404.",
+      "The /v2/* Minos Platform task endpoints (round-status, submit-config, get-scoring-rounds, etc.) are all POST-only and require hotkey auth; not promoted as their own surfaces."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "name": "Minos",
   "netuid": 107,
+  "notes": "First maintainer review for SN107 (a maintainer-reviewed decision was already recorded in registry/reviews/maintainer-reviewed.json on 2026-06-20 but never materialized onto this overlay -- this pass corrects that and adds the missing surfaces). Added website + source-repo surfaces and the official Minos MCP server (streamable-HTTP JSON-RPC, protocol-negotiation-gated rather than probeable).",
   "schema_version": 1,
   "slug": "sn-107",
   "social": {
@@ -63,6 +77,61 @@
         "https://taomarketcap.com/subnets/107"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/107/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-107-minos-website",
+      "kind": "website",
+      "name": "Minos website",
+      "notes": "Official SN107 Minos website -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "source_urls": ["https://github.com/minos-protocol/minos_subnet"],
+      "url": "https://theminos.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-107-minos-source-repo",
+      "kind": "source-repo",
+      "name": "Minos source repository",
+      "notes": "Official SN107 Minos source repository -- verified live 2026-07-16.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "source_urls": ["https://github.com/minos-protocol/minos_subnet"],
+      "url": "https://github.com/minos-protocol/minos_subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-107-minos-mcp",
+      "kind": "subnet-api",
+      "name": "Minos MCP (live subnet data)",
+      "notes": "Streamable-HTTP MCP server described in the official README as providing \"current round/leaderboard/miner-history data\" for the `@minos` graph and Minos MCP tooling. JSON-RPC 2.0 over SSE; a plain GET returns a protocol-negotiation error (\"Client must accept text/event-stream\") rather than 401/403, so recurring simple probes are intentionally disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "JSON-RPC"
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://mcp.theminos.ai/"
     }
   ],
   "contact": "contact@theminos.ai"
