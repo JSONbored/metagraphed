@@ -8,20 +8,20 @@
   ],
   "curation": {
     "gap_notes": [
-      "Official website and miner/source repository are verified live.",
+      "The official website and its markets API currently return a consistent nginx 502 Bad Gateway from the origin; the site's static deployment.json asset is unaffected. The miner/source repository stays live and unarchived.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "reviewed_at": "2026-07-16T00:00:00.000Z",
     "source_count": 7,
-    "verified_at": "2026-06-08T15:00:00.000Z"
+    "verified_at": "2026-07-16T00:00:00.000Z"
   },
   "docs_url": "https://github.com/Barbariandev/8Ball_miner#readme",
   "name": "8 Ball",
   "netuid": 125,
-  "notes": "Reviewed overlay for SN125 8 Ball. The public website is live and the public miner/source repository documents Ethereum wallet binding, reward mechanics, Polygon contracts, and miner setup for netuid 125.",
+  "notes": "Reviewed overlay for SN125 8 Ball. The public miner/source repository documents Ethereum wallet binding, reward mechanics, Polygon contracts, and miner setup for netuid 125. Root->128 accuracy audit re-review pass (#5903): the official website and its markets API are currently returning a consistent nginx 502 (observed across 3 attempts, ~2s apart) while the site's static deployment.json asset stays live -- documented as a backend outage rather than a dead domain, all surfaces kept tracked. Fixed 2 missing probe blocks (markets API, deployment manifest).",
   "schema_version": 1,
   "slug": "eightball",
   "source_repo": "https://github.com/Barbariandev/8Ball_miner",
@@ -33,7 +33,7 @@
       "id": "sn-125-eightball-website",
       "kind": "website",
       "name": "8 Ball website",
-      "notes": "Official 8 Ball website linked from the public SN125 miner repository.",
+      "notes": "Official 8 Ball website linked from the public SN125 miner repository. Currently returning a consistent nginx 502 Bad Gateway from the origin (observed across 3 attempts); the site's static deployment.json asset is unaffected and still serves 200, so this looks like a backend outage rather than a dead domain. Kept tracked and probed so status recovers automatically.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -93,7 +93,13 @@
       "id": "sn-125-eightball-subnet-api",
       "kind": "subnet-api",
       "name": "8 Ball markets API",
-      "notes": "Public no-auth REST API for SN125 prediction markets (markets, market by id, fee, price-history); documented on the official 8ball125.com site. Rate limited per IP.",
+      "notes": "Public no-auth REST API for SN125 prediction markets (markets, market by id, fee, price-history); documented on the official 8ball125.com site. Rate limited per IP. Currently returning the same nginx 502 as the website (same origin) -- kept tracked as a previously-working, documented route rather than a dead one.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eightball",
       "public_safe": true,
       "review": {
@@ -112,7 +118,13 @@
       "id": "sn-125-eightball-data-artifact",
       "kind": "data-artifact",
       "name": "8 Ball deployment manifest",
-      "notes": "Static JSON manifest of the SN125 on-chain deployment (Polygon chain 137: USDC/CTF and prediction-market contract addresses); referenced by the public 8ball125.com API docs.",
+      "notes": "Static JSON manifest of the SN125 on-chain deployment (Polygon chain 137: USDC/CTF and prediction-market contract addresses); referenced by the public 8ball125.com API docs. Confirmed still live (200) even while the main site/API origin currently 502s, since it's served as a static asset.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "eightball",
       "public_safe": true,
       "review": {
