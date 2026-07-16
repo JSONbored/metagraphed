@@ -1131,14 +1131,14 @@
       "netuid": 84,
       "slug": "sn-84",
       "decision": "maintainer-reviewed",
-      "reviewed_at": "2026-06-08T10:45:00.000Z",
+      "reviewed_at": "2026-07-15T00:00:00.000Z",
       "confidence": "high",
       "source_urls": [
         "https://www.chipforge.io/",
         "https://docs.chipforge.io/",
         "https://github.com/TatsuProject/ChipForge_SN84"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ansuz.json (reviewed_at 2026-06-08T10:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Root->128 accuracy audit re-review pass (#5903): confirmed the openapi.json the docs' own llms.txt links to returns an empty 200 response, and the API-reference stub pages don't state a base host to test the documented endpoints against. All existing surfaces re-verified live."
     },
     {
       "netuid": 85,
