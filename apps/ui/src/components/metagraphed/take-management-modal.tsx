@@ -15,6 +15,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@jsonbored/ui-kit";
 import { WalletConnectPanel } from "@/components/metagraphed/wallet-connect";
 import { SearchInput } from "@/components/metagraphed/table-controls";
@@ -86,33 +87,36 @@ export function TakeManagementModal({
   };
 
   return (
-    <>
-      {trigger(() => setOpen(true))}
-      <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle className="font-display text-lg">
-              Manage take · {validatorName ?? shortHash(hotkey, 6)}
-            </SheetTitle>
-            <SheetDescription>
-              {!flow.canClose
-                ? "This can't be closed while a signature is in flight."
-                : "Validator commission, network-wide"}
-            </SheetDescription>
-          </SheetHeader>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      {/* #6419: the trigger was a plain sibling of <Sheet>, not its trigger, so
+          Radix had no trigger node to restore focus to on close -- closing the
+          modal dropped focus to <body>. Wrapping the caller's render-prop element
+          in <SheetTrigger asChild> inside <Sheet> is the same fix #6527 proved
+          in-browser for SubnetCompareDrawer: Radix tracks it and returns focus. */}
+      <SheetTrigger asChild>{trigger(() => setOpen(true))}</SheetTrigger>
+      <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle className="font-display text-lg">
+            Manage take · {validatorName ?? shortHash(hotkey, 6)}
+          </SheetTitle>
+          <SheetDescription>
+            {!flow.canClose
+              ? "This can't be closed while a signature is in flight."
+              : "Validator commission, network-wide"}
+          </SheetDescription>
+        </SheetHeader>
 
-          <div className="mt-4 flex-1">
-            <TakeFlowBody
-              hotkey={hotkey}
-              flow={flow}
-              submitting={submitting}
-              onConfirm={handleConfirm}
-              onClose={() => handleOpenChange(false)}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
+        <div className="mt-4 flex-1">
+          <TakeFlowBody
+            hotkey={hotkey}
+            flow={flow}
+            submitting={submitting}
+            onConfirm={handleConfirm}
+            onClose={() => handleOpenChange(false)}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
