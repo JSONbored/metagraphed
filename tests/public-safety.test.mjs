@@ -584,7 +584,7 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
   const TEST_DEPLOY_FIXTURE = path.join(
     repoRoot,
     "deploy",
-    "__public_safety_test__.md",
+    "__public_safety_test__fixture__.md",
   );
   const TEST_INDEXER_RS_FIXTURE = path.join(
     repoRoot,
@@ -616,7 +616,7 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
     const output = runScanOutput();
     for (const path_ of [
       "scripts/__public_safety_test__.mjs",
-      "deploy/__public_safety_test__.md",
+      "deploy/__public_safety_test__fixture__.md",
       "apps/indexer-rs/__public_safety_test__.rs",
     ]) {
       assert.ok(
@@ -638,7 +638,7 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
     for (const [index] of lines.entries()) {
       assert.ok(
         output.includes(
-          `deploy/__public_safety_test__.md:${index + 1}: internal box or container identifier`,
+          `deploy/__public_safety_test__fixture__.md:${index + 1}: internal box or container identifier`,
         ),
         `line ${index + 1} should be flagged; got:\n${output}`,
       );
@@ -670,23 +670,23 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
     const output = runScanOutput();
     assert.ok(
       output.includes(
-        "deploy/__public_safety_test__.md:1: private or loopback URL",
+        "deploy/__public_safety_test__fixture__.md:1: private or loopback URL",
       ),
       `CGNAT line 1 should be flagged; got:\n${output}`,
     );
     assert.ok(
       output.includes(
-        "deploy/__public_safety_test__.md:2: private or loopback URL",
+        "deploy/__public_safety_test__fixture__.md:2: private or loopback URL",
       ),
       `CGNAT line 2 should be flagged; got:\n${output}`,
     );
     assert.equal(
-      output.includes("deploy/__public_safety_test__.md:3:"),
+      output.includes("deploy/__public_safety_test__fixture__.md:3:"),
       false,
       `100.63.x is outside the CGNAT range and must not be flagged; got:\n${output}`,
     );
     assert.equal(
-      output.includes("deploy/__public_safety_test__.md:4:"),
+      output.includes("deploy/__public_safety_test__fixture__.md:4:"),
       false,
       `100.128.x is outside the CGNAT range and must not be flagged; got:\n${output}`,
     );
@@ -702,7 +702,7 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
     for (const [index] of lines.entries()) {
       assert.ok(
         output.includes(
-          `deploy/__public_safety_test__.md:${index + 1}: Tailscale device identity`,
+          `deploy/__public_safety_test__fixture__.md:${index + 1}: Tailscale device identity`,
         ),
         `line ${index + 1} should be flagged; got:\n${output}`,
       );
@@ -710,7 +710,7 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
   });
 
   test("does NOT broadly exempt loopback outside the two known-safe files/literals", async () => {
-    // deploy/__public_safety_test__.md is not scripts/worker-test.mjs or a
+    // deploy/__public_safety_test__fixture__.md is not scripts/worker-test.mjs or a
     // deploy/wss-lb/test/*.test.mjs file (the two known, verified-safe test
     // fixtures that get a file-level exemption below), so an ordinary loopback
     // URL with an arbitrary port/path here must still be flagged -- proving
@@ -727,7 +727,7 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
     for (const [index] of lines.entries()) {
       assert.ok(
         output.includes(
-          `deploy/__public_safety_test__.md:${index + 1}: private or loopback URL`,
+          `deploy/__public_safety_test__fixture__.md:${index + 1}: private or loopback URL`,
         ),
         `line ${index + 1} should still be flagged; got:\n${output}`,
       );
@@ -766,7 +766,9 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
       `a file under a node_modules-named directory must not be walked at all; got:\n${output}`,
     );
     assert.ok(
-      output.includes("deploy/__public_safety_test__.md:1: aws access key id"),
+      output.includes(
+        "deploy/__public_safety_test__fixture__.md:1: aws access key id",
+      ),
       `the sibling file outside node_modules must still be scanned; got:\n${output}`,
     );
   });
