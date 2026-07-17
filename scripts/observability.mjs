@@ -77,11 +77,19 @@ export function initSentry(component) {
     // Error tracking only -- these are short-lived batch scripts run on a
     // 3min/daily/weekly cron, not request-serving services.
     tracesSampleRate: 0,
+    // Also filters out the default ProcessSession integration -- it calls
+    // startSession() itself during Sentry.init(), which our own
+    // Sentry.startSession() call below would otherwise immediately end
+    // (reporting a spurious extra "exited" session on every single run) and
+    // replace, rather than there being exactly one session per run as
+    // intended. Confirmed empirically: without this, every run sent two
+    // session envelopes instead of one.
     integrations: (integrations) =>
       integrations.filter(
         (integration) =>
           integration.name !== "OnUncaughtException" &&
-          integration.name !== "OnUnhandledRejection",
+          integration.name !== "OnUnhandledRejection" &&
+          integration.name !== "ProcessSession",
       ),
   });
   Sentry.setTag("component", component);

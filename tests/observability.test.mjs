@@ -104,7 +104,7 @@ test("initSentry: calls Sentry.init with dsn/environment/release, tags the compo
   vi.unstubAllEnvs();
 });
 
-test("initSentry: filters Sentry's own OnUncaughtException/OnUnhandledRejection out of the default integrations", () => {
+test("initSentry: filters Sentry's own OnUncaughtException/OnUnhandledRejection/ProcessSession out of the default integrations", () => {
   sentryInit.mockClear();
   vi.stubEnv("SENTRY_DSN", "https://abc@o0.ingest.sentry.io/0");
   initSentry("some-script");
@@ -113,6 +113,13 @@ test("initSentry: filters Sentry's own OnUncaughtException/OnUnhandledRejection 
   const filtered = integrations([
     { name: "OnUncaughtException" },
     { name: "OnUnhandledRejection" },
+    // The default ProcessSession integration auto-starts its own session
+    // during Sentry.init() -- left unfiltered, our own startSession() call
+    // below would immediately end that one (a spurious extra "exited"
+    // session on every run) and replace it, instead of there being exactly
+    // one session per run. Confirmed empirically against a real local
+    // Sentry-envelope-receiving HTTP server.
+    { name: "ProcessSession" },
     { name: "Http" },
   ]);
   assert.deepEqual(
