@@ -1753,7 +1753,14 @@ function optionalDayArg(args, key) {
   const value = optionalString(args, key);
   if (value === null) return null;
   if (!DAY_PATTERN.test(value)) {
-    throw toolError("invalid_params", "from/to must be YYYY-MM-DD dates.");
+    // Name the offending argument, like every sibling validator here (#6355):
+    // get_account_history validates both `from` and `to` through this helper,
+    // so a hardcoded "from/to" message left the caller guessing which one it
+    // rejected.
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be a YYYY-MM-DD date.`,
+    );
   }
   return value;
 }

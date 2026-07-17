@@ -12405,6 +12405,32 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.match(res.body.result.content[0].text, /YYYY-MM-DD/i);
   });
 
+  // #6355: optionalDayArg took a `key` but threw a hardcoded "from/to must be
+  // YYYY-MM-DD dates.", so mistyping `from` and mistyping `to` produced
+  // identical text. Every sibling validator in this file names its argument.
+  test("a malformed from names `from` -- not the other bound", async () => {
+    const res = await callTool("get_account_history", {
+      ss58: SS58,
+      from: "June",
+    });
+    assert.equal(res.body.result.isError, true);
+    const text = res.body.result.content[0].text;
+    assert.match(text, /`from`/);
+    assert.doesNotMatch(text, /`to`/);
+  });
+
+  test("a malformed to names `to`, even when from is valid", async () => {
+    const res = await callTool("get_account_history", {
+      ss58: SS58,
+      from: "2026-07-01",
+      to: "07/16/2026",
+    });
+    assert.equal(res.body.result.isError, true);
+    const text = res.body.result.content[0].text;
+    assert.match(text, /`to`/);
+    assert.doesNotMatch(text, /`from`/);
+  });
+
   test("get_account_history rejects a non-integer netuid filter", async () => {
     const res = await callTool("get_account_history", {
       ss58: SS58,

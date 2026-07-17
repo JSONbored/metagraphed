@@ -5719,7 +5719,9 @@ const rootValue = {
     // straight through: the Postgres tier re-parses and rejects it, but the D1
     // fallback binds it into `day >= ?` / `day <= ?` against a TEXT column,
     // which silently yields a wrong (typically empty) series instead of an
-    // error. The message is REST's and MCP's verbatim, so all three agree.
+    // error. The message is REST's parseDateRange verbatim, so the two HTTP
+    // surfaces agree. (MCP's optionalDayArg names the offending argument
+    // instead -- its own file's validator convention, see #6355.)
     if (
       (from != null && !DAY_PATTERN.test(from)) ||
       (to != null && !DAY_PATTERN.test(to))
