@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { API_BASE } from "@/lib/metagraphed/config";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo, ListShell, LoadMore } from "@jsonbored/ui-kit";
 import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
@@ -92,6 +93,18 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
         filtersActive
           ? "No chain events match these filters."
           : "No chain events indexed yet — the all-events backfill fills this feed."
+      }
+      // #6340: a genuinely-empty feed offers the same "open the API" action every
+      // other empty list page does; the filtered-empty case keeps no action,
+      // matching the filter-empty convention elsewhere.
+      action={
+        filtersActive
+          ? undefined
+          : {
+              label: "Open /api/v1/chain-events",
+              href: `${API_BASE}/api/v1/chain-events`,
+              external: true,
+            }
       }
     />
   );

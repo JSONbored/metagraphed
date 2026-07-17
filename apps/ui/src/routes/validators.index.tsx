@@ -7,6 +7,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { PageHero, ShareButton, DownloadCsvButton, ActionBar } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
+import { API_BASE } from "@/lib/metagraphed/config";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
@@ -207,6 +208,11 @@ function ValidatorsTable({
         <EmptyState
           title="No validators indexed yet"
           description="The global validator directory is empty for this window."
+          action={{
+            label: "Open /api/v1/validators",
+            href: `${API_BASE}/api/v1/validators`,
+            external: true,
+          }}
         />
       )}
 
