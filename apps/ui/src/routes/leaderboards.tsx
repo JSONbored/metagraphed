@@ -86,6 +86,11 @@ function LeaderboardsPage() {
               label="Deregistrations CSV"
               bare
             />
+            {/* #6577: EmissionsLeaderboard mirrors the weight-setting/dereg board
+                structure but its /api/v1/economics source had no export button.
+                Unlike the two above it is not window-scoped (the endpoint 400s on
+                a window param), so no window is passed. */}
+            <DownloadCsvButton url={buildUrl("/api/v1/economics")} label="Emissions CSV" bare />
             <ShareButton bare />
           </ActionBar>
         }
