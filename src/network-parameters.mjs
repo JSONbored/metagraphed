@@ -124,7 +124,10 @@ export async function loadNetworkParameters(env) {
   const queriedAt = new Date().toISOString();
   const [taoWeightBits, stakeThresholdRao, pendingChildKeyCooldownBits] =
     await Promise.all([
-      fetchStorageU64(TAO_WEIGHT_STORAGE_KEY, NETWORK_PARAMETERS_RPC_TIMEOUT_MS),
+      fetchStorageU64(
+        TAO_WEIGHT_STORAGE_KEY,
+        NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+      ),
       fetchStorageU64(
         STAKE_THRESHOLD_STORAGE_KEY,
         NETWORK_PARAMETERS_RPC_TIMEOUT_MS,

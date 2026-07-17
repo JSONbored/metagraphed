@@ -81,7 +81,10 @@ describe("loadNetworkParameters", () => {
     await withFetchStub(
       async (_url, init) => {
         seenKeys.add(JSON.parse(init.body).params[0]);
-        return { ok: true, json: async () => ({ result: "0x0000000000000000" }) };
+        return {
+          ok: true,
+          json: async () => ({ result: "0x0000000000000000" }),
+        };
       },
       async () => {
         await loadNetworkParameters({});
@@ -231,11 +234,17 @@ describe("loadNetworkParameters", () => {
       async (_url, init) => {
         const key = JSON.parse(init.body).params[0];
         if (key === STAKE_THRESHOLD_KEY) return { ok: false };
-        return { ok: true, json: async () => ({ result: "0x0000000000000000" }) };
+        return {
+          ok: true,
+          json: async () => ({ result: "0x0000000000000000" }),
+        };
       },
       async () => {
         await loadNetworkParameters(env);
-        assert.equal(putOptions.expirationTtl, NETWORK_PARAMETERS_NEGATIVE_KV_TTL);
+        assert.equal(
+          putOptions.expirationTtl,
+          NETWORK_PARAMETERS_NEGATIVE_KV_TTL,
+        );
       },
     );
   });
@@ -245,7 +254,10 @@ describe("loadNetworkParameters", () => {
     await withFetchStub(
       async (_url, init) => {
         seenSignals.push(init?.signal);
-        return { ok: true, json: async () => ({ result: "0x0000000000000000" }) };
+        return {
+          ok: true,
+          json: async () => ({ result: "0x0000000000000000" }),
+        };
       },
       async () => {
         await loadNetworkParameters({});
@@ -308,7 +320,11 @@ describe("loadNetworkParameters", () => {
 describe("GET /api/v1/network/parameters via the Worker", () => {
   test("returns all three decoded fields for a successful RPC read", async () => {
     await withFetchStub(goldenFetchStub(), async () => {
-      const res = await handleRequest(req("/api/v1/network/parameters"), {}, {});
+      const res = await handleRequest(
+        req("/api/v1/network/parameters"),
+        {},
+        {},
+      );
       assert.equal(res.status, 200);
       const body = await res.json();
       assert.equal(body.ok, true);
