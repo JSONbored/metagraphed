@@ -43,6 +43,13 @@ install_deps() {
     git diff --stat -- . ':(exclude)node_modules' >&2
     exit 1
   fi
+  # Reports the ACTUAL commit whichever script runs next came from --
+  # computed here (install_deps is called from every path that goes on to
+  # run a script) rather than injected by metagraphed-infra's Ansible, since
+  # that repo holds no copy of this code to derive a meaningful SHA from at
+  # all. An explicit override still wins if one is somehow already set.
+  : "${SENTRY_RELEASE:=$(git -C "$REPO_DIR" rev-parse HEAD)}"
+  export SENTRY_RELEASE
 }
 
 if [ "$STEP" = "registry-sync-fast" ]; then

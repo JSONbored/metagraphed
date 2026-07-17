@@ -26,6 +26,9 @@ import {
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
 import { shouldPublishEconomics } from "./economics-floor.mjs";
+import { initSentry } from "./observability.mjs";
+
+initSentry("refresh-economics");
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");

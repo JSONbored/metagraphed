@@ -34,6 +34,9 @@ import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { sha256Hex, stableStringify } from "./lib.mjs";
+import { initSentry } from "./observability.mjs";
+
+initSentry("export-parquet");
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");

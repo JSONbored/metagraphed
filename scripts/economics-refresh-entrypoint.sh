@@ -84,6 +84,16 @@ else
   cd "$REPO_DIR"
 fi
 
+# Reports the ACTUAL commit whichever step runs next came from. Placed here
+# (after all three branches above, not inside install_deps) because the
+# economics step's own branch deliberately skips install_deps -- it reuses
+# the SAME volume the snapshot container's install_deps just populated, a
+# separate `docker run` invocation with its own fresh environment, so
+# SENTRY_RELEASE would otherwise be unset for that step specifically. An
+# explicit override still wins if one is somehow already set.
+: "${SENTRY_RELEASE:=$(git -C "$REPO_DIR" rev-parse HEAD)}"
+export SENTRY_RELEASE
+
 case "$STEP" in
   snapshot)
     : "${SUBTENSOR_RPC_URL:?SUBTENSOR_RPC_URL env var required for the snapshot step}"

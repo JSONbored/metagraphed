@@ -41,6 +41,9 @@ import {
 } from "./lib.mjs";
 import { generateBaselineOverlaySet } from "./generated-overlays.mjs";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
+import { initSentry } from "./observability.mjs";
+
+initSentry("backfill-registry-postgres");
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");

@@ -29,6 +29,9 @@
 import postgres from "postgres";
 import { readFile } from "node:fs/promises";
 import { stableStringify } from "./lib.mjs";
+import { initSentry } from "./observability.mjs";
+
+initSentry("reconcile-neurons");
 
 // Below this absolute TAO delta, a mismatch is never flagged regardless of
 // relative size -- avoids false positives on near-zero stakes where a tiny
