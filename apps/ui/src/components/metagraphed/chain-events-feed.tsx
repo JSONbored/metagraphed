@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { SearchInput } from "@/components/metagraphed/table-controls";
+import { ResetFiltersButton, SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo, ListShell, LoadMore } from "@jsonbored/ui-kit";
 import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -83,6 +83,15 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
         onChange={(v) => onFilter({ method: v })}
         placeholder={pallet.trim() ? "Filter by method" : "Method (requires pallet)"}
         className="min-w-[140px] flex-none font-mono text-[11px]"
+      />
+      {/* #6387: a filtered /events?pallet=X or /explorer?pallet=X link is
+          URL-persisted and otherwise stuck until manually cleared, unlike every
+          other filterable feed (blocks/extrinsics/providers/surfaces/subnets),
+          which all render a ResetFiltersButton. Clearing pallet+method via the
+          existing onFilter also resets the cursor at both call sites. */}
+      <ResetFiltersButton
+        active={filtersActive}
+        onReset={() => onFilter({ pallet: "", method: "" })}
       />
     </>
   );
