@@ -1353,6 +1353,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Validator comparison — take rate, estimated APY, nominator count, on-chain (coldkey) identity, and the cross-subnet stake/emission/trust aggregates for the requested hotkeys placed side by side in requested order, each optionally carrying its membership in one subnet (subnet_context) — computed live from the same per-validator detail /api/v1/validators/{hotkey} serves, at /api/v1/compare/validators (no static file).",
+      "id": "compare-validators",
+      "path": "/metagraph/compare/validators.json",
+      "schema_ref": "#/components/schemas/CompareValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
       "id": "rpc-usage",
       "path": "/metagraph/rpc/usage.json",

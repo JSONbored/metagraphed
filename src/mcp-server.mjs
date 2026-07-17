@@ -345,6 +345,7 @@ import {
   parseUptimeWindow,
   composeCompareData,
   profilesProjectionFromRows,
+  COMPARE_VALIDATORS_MAX,
 } from "./analytics-live.mjs";
 import {
   loadChainRegistrations,
@@ -1801,11 +1802,11 @@ function requireHotkey(args) {
 
 // Upper bound on compare_validators' hotkey list: each hotkey is one detail
 // load, so the fan-out is capped to keep a single compare call bounded (a
-// side-by-side view of more than this many validators isn't a comparison
-// anyone reads anyway). Mirrors parseCompareNetuidList's own cap-and-dedupe
-// shape, but validates SS58 hotkeys instead of netuids.
-const COMPARE_VALIDATORS_MAX = 16;
-
+// side-by-side view of more than COMPARE_VALIDATORS_MAX validators isn't a
+// comparison anyone reads anyway; the cap itself lives in analytics-live.mjs,
+// shared with the compare/validators REST route). Mirrors
+// parseCompareNetuidList's own cap-and-dedupe shape, but validates SS58
+// hotkeys instead of netuids.
 function parseHotkeyList(hotkeys) {
   if (!Array.isArray(hotkeys) || hotkeys.length === 0) return null;
   const result = [];

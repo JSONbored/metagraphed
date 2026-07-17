@@ -507,3 +507,171 @@ describe("GET /api/v1/compare", () => {
     assert.deepEqual(queries[0].params, [7, 1]);
   });
 });
+
+// GET /api/v1/compare/validators (#6325): the validator equivalent of
+// /api/v1/compare and the REST mirror of the compare_validators MCP tool.
+// There is no neurons tier locally (its D1 write path is retired, #4772), so
+// every hotkey resolves to buildValidatorDetail's zeroed aggregate -- the
+// projection/dedupe/order/error branches are what these exercise; the
+// row-shaping itself is covered against composeValidatorComparison directly.
+describe("GET /api/v1/compare/validators", () => {
+  const env = createLocalArtifactEnv();
+  const HOTKEY_A = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const HOTKEY_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+  const get = async (path, overrideEnv = env) => {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      overrideEnv,
+      {},
+    );
+    return { status: res.status, body: await res.json(), res };
+  };
+
+  test("returns one entry per requested hotkey, in requested order", async () => {
+    const { status, body } = await get(
+      `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B}`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.ok, true);
+    assert.equal(body.data.schema_version, 1);
+    assert.equal(body.data.validator_count, 2);
+    assert.deepEqual(
+      body.data.validators.map((v) => v.hotkey),
+      [HOTKEY_A, HOTKEY_B],
+    );
+    // No netuid requested -> no subnet context anywhere.
+    assert.equal(body.data.netuid, null);
+    assert.equal(body.data.validators[0].subnet_context, null);
+    // Cold base: the decision fields resolve to their null aggregates rather
+    // than being fabricated as 0.
+    assert.equal(body.data.validators[0].take, null);
+    assert.equal(body.data.validators[0].apy_estimate, null);
+    assert.equal(body.data.validators[0].coldkey_identity, null);
+  });
+
+  test("echoes the requested netuid as the subnet context", async () => {
+    const { status, body } = await get(
+      `/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=7`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.netuid, 7);
+    // Cold base holds no permit on 7, so the membership row is null, not absent.
+    assert.equal(body.data.validators[0].subnet_context, null);
+  });
+
+  test("duplicate hotkeys are de-duplicated, preserving first position", async () => {
+    const { body } = await get(
+      `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_A},${HOTKEY_B}`,
+    );
+    assert.equal(body.data.validator_count, 2);
+    assert.deepEqual(
+      body.data.validators.map((v) => v.hotkey),
+      [HOTKEY_A, HOTKEY_B],
+    );
+  });
+
+  test("rejects malformed, missing, and unsupported query params", async () => {
+    const cases = [
+      ["/api/v1/compare/validators", "hotkeys"],
+      ["/api/v1/compare/validators?hotkeys=", "hotkeys"],
+      ["/api/v1/compare/validators?hotkeys=nope", "hotkeys"],
+      [`/api/v1/compare/validators?hotkeys=${HOTKEY_A},nope`, "hotkeys"],
+      [`/api/v1/compare/validators?netuid=7`, "hotkeys"],
+      [`/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=-1`, "netuid"],
+      [`/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=abc`, "netuid"],
+      [`/api/v1/compare/validators?hotkeys=${HOTKEY_A}&x=1`, "x"],
+      [
+        `/api/v1/compare/validators?hotkeys=${HOTKEY_A}&hotkeys=${HOTKEY_B}`,
+        "hotkeys",
+      ],
+    ];
+    for (const [path, parameter] of cases) {
+      const { status, body } = await get(path);
+      assert.equal(status, 400, path);
+      assert.equal(body.error.code, "invalid_query", path);
+      assert.equal(body.meta.parameter, parameter, path);
+    }
+  });
+
+  test("rejects more than 16 hotkeys", async () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const many = Array.from(
+      { length: 17 },
+      (_, i) => HOTKEY_A.slice(0, -1) + chars[i],
+    ).join(",");
+    const { status, body } = await get(
+      `/api/v1/compare/validators?hotkeys=${many}`,
+    );
+    assert.equal(status, 400);
+    assert.equal(body.meta.parameter, "hotkeys");
+  });
+
+  test("reads each hotkey from the neurons tier and reports the stalest capture", async () => {
+    const fetched = [];
+    const tierEnv = {
+      ...createLocalArtifactEnv(),
+      // The tier is flag-gated ("postgres") and proxied through DATA_API, which
+      // returns the detail body itself -- the same contract handleValidatorDetail
+      // reads (workers/postgres-tier.mjs).
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (request) => {
+          const { pathname } = new URL(request.url);
+          fetched.push(pathname);
+          const hotkey = decodeURIComponent(pathname.split("/").pop());
+          return new Response(
+            JSON.stringify({
+              schema_version: 1,
+              hotkey,
+              take: hotkey === HOTKEY_A ? 0.18 : 0.09,
+              captured_at:
+                hotkey === HOTKEY_A
+                  ? "2026-07-02T00:00:00.000Z"
+                  : "2026-07-01T00:00:00.000Z",
+              subnets: [{ netuid: 7, uid: 3, validator_trust: 0.5 }],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        },
+      },
+    };
+    const { status, body } = await get(
+      `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B}&netuid=7`,
+      tierEnv,
+    );
+    assert.equal(status, 200);
+    // One detail load per hotkey, at the same per-hotkey path the MCP tool and
+    // GET /api/v1/validators/{hotkey} use -- no new data source.
+    assert.deepEqual(fetched, [
+      `/api/v1/validators/${HOTKEY_A}`,
+      `/api/v1/validators/${HOTKEY_B}`,
+    ]);
+    assert.equal(body.data.validators[0].take, 0.18);
+    assert.equal(body.data.validators[1].take, 0.09);
+    // The requested netuid's membership row is attached from each detail.
+    assert.equal(body.data.validators[0].subnet_context.uid, 3);
+    // A comparison is only as fresh as its stalest input.
+    assert.equal(body.meta.generated_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(body.meta.source, "metagraph-snapshot");
+    assert.equal(body.meta.artifact_path, "/metagraph/compare/validators.json");
+  });
+
+  test("response validates against the CompareValidatorsArtifact contract", async () => {
+    const generatedAt = "2026-06-24T12:00:00.000Z";
+    const openapi = buildOpenApiArtifact(
+      generatedAt,
+      await loadOpenApiComponentSchemas(generatedAt),
+    );
+    const ajv = new Ajv2020({ strict: false, allErrors: true });
+    addFormats(ajv);
+    const validate = ajv.compile({
+      $id: "https://metagraph.sh/test/compare-validators-artifact.json",
+      components: openapi.components,
+      $ref: "#/components/schemas/CompareValidatorsArtifact",
+    });
+    const { body } = await get(
+      `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B}&netuid=7`,
+    );
+    assert.equal(validate(body.data), true, JSON.stringify(validate.errors));
+  });
+});

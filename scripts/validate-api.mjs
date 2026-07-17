@@ -1202,6 +1202,23 @@ const checks = [
     },
   ],
   [
+    // Two hotkeys, so the dedupe/order guarantee is exercised rather than just
+    // the single-entry path. No neurons tier locally, so each resolves to
+    // buildValidatorDetail's zeroed aggregate -- the shape is what's asserted.
+    "/api/v1/compare/validators?hotkeys=5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5,5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+    (body) => {
+      assert.equal(Array.isArray(body.data.validators), true);
+      assert.equal(body.data.validators.length, 2);
+      assert.equal(body.data.validator_count, 2);
+      assert.equal(
+        body.data.validators[0].hotkey,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal(body.data.netuid, null);
+      assert.equal(body.data.validators[0].subnet_context, null);
+    },
+  ],
+  [
     "/api/v1/rpc/usage",
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");

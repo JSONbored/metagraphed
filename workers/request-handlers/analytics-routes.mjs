@@ -34,11 +34,18 @@ import {
   parseHistoryWindow,
   unsupportedWindowMessage,
 } from "../../src/neuron-history.mjs";
+import {
+  buildValidatorDetail,
+  composeValidatorComparison,
+} from "../../src/metagraph-neurons.mjs";
 import { loadEconomicsTrends } from "../../src/economics-trends.mjs";
 import {
   COMPARE_DIMENSIONS,
+  COMPARE_VALIDATORS_MAX,
+  compareValidatorsGeneratedAt,
   growthRowsFromSamples,
   parseCompareDimensions,
+  parseCompareHotkeys,
   parseCompareNetuids,
 } from "../../src/analytics-live.mjs";
 import {
@@ -844,4 +851,69 @@ export async function handleCompare(request, env, url) {
     "standard",
   );
   return healthIsFallback ? markD1FallbackResponse(response) : response;
+}
+
+// GET /api/v1/compare/validators?hotkeys=<ss58,...>&netuid=: place several
+// validators side by side for a stake/delegate decision -- the validator
+// equivalent of GET /api/v1/compare, and the REST mirror of the compare_validators
+// MCP tool (#6325). Composed live from one validator-detail load per hotkey via
+// composeValidatorComparison, the same composition the MCP tool calls, so both
+// surfaces project identical fields for identical inputs. Strictly read-only
+// decision support: no transaction, no signable artifact, no wallet or key.
+export async function handleCompareValidators(request, env, url) {
+  const validationError = validateQueryParams(url, ["hotkeys", "netuid"]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const hotkeys = parseCompareHotkeys(url.searchParams.get("hotkeys"));
+  if (!hotkeys) {
+    return errorResponse(
+      "invalid_query",
+      `hotkeys is required: a comma-separated list of 1-${COMPARE_VALIDATORS_MAX} distinct valid SS58 validator addresses.`,
+      400,
+      { parameter: "hotkeys" },
+    );
+  }
+
+  const netuidParam = parseNonNegativeIntParam(
+    url.searchParams.get("netuid"),
+    "netuid",
+  );
+  if (netuidParam.error) return analyticsQueryError(netuidParam.error);
+  const netuid = netuidParam.value;
+
+  // One detail load per hotkey, each via the exact neurons-tier path
+  // handleValidatorDetail and compare_validators both use -- no new data
+  // source, just the same per-validator aggregate fetched for each compared
+  // hotkey. Sequential (not parallel) to keep the fan-out's request pattern
+  // identical to N GET /api/v1/validators/{hotkey} calls, matching the MCP
+  // tool's own comment.
+  const details = [];
+  for (const hotkey of hotkeys) {
+    const tierUrl = new URL(request.url);
+    tierUrl.pathname = `/api/v1/validators/${encodeURIComponent(hotkey)}`;
+    tierUrl.search = "";
+    details.push(
+      (await tryPostgresTier(
+        env,
+        new Request(tierUrl),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildValidatorDetail([], hotkey),
+    );
+  }
+
+  const data = composeValidatorComparison(details, { netuid });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: {
+        artifact_path: "/metagraph/compare/validators.json",
+        cache: "short",
+        contract_version: contractVersion(env),
+        generated_at: compareValidatorsGeneratedAt(details),
+        source: "metagraph-snapshot",
+      },
+    },
+    "short",
+  );
 }

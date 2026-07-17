@@ -27,6 +27,7 @@ import {
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_UPTIME_ROWS,
+  SS58_ADDRESS_PATTERN,
   UPTIME_WINDOWS,
 } from "../workers/config.mjs";
 import {
@@ -39,6 +40,11 @@ import { composeCompareData } from "../workers/request-handlers/analytics-routes
 export { composeCompareData };
 export const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
 const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
+
+// A side-by-side view of more than this many validators isn't a comparison
+// anyone reads anyway. Shared with compare_validators (src/mcp-server.mjs) so
+// the REST route and the MCP tool cannot drift to different caps.
+export const COMPARE_VALIDATORS_MAX = 16;
 
 export function profilesProjectionFromRows(profiles) {
   const subnetMeta = new Map();
@@ -117,6 +123,40 @@ export function parseCompareNetuids(netuidsRaw) {
     requestedNetuids.push(netuid);
   }
   return requestedNetuids;
+}
+
+// The `hotkeys=` CSV form compare/validators accepts, to parseHotkeyList's
+// (src/mcp-server.mjs) array form what parseCompareNetuids is to
+// parseCompareNetuidList: same cap-and-dedupe rules, raw-string input. Not
+// trimmed -- a padded entry fails SS58_ADDRESS_PATTERN and is rejected rather
+// than silently accepted, exactly as the MCP tool rejects it.
+export function parseCompareHotkeys(hotkeysRaw) {
+  if (!hotkeysRaw) return null;
+  const hotkeys = [];
+  const seen = new Set();
+  for (const part of String(hotkeysRaw).split(",")) {
+    if (!SS58_ADDRESS_PATTERN.test(part)) return null;
+    if (seen.has(part)) continue;
+    seen.add(part);
+    hotkeys.push(part);
+  }
+  if (hotkeys.length > COMPARE_VALIDATORS_MAX) return null;
+  return hotkeys;
+}
+
+// A comparison is only as fresh as its stalest input: compare/validators reads
+// one independent snapshot per hotkey, so its envelope reports the oldest
+// captured_at across the fan-out rather than letting any single validator's
+// timestamp speak for the whole set. All-null (cold store) stays null -- never
+// fabricated as "now".
+export function compareValidatorsGeneratedAt(details) {
+  let oldest = null;
+  for (const detail of details ?? []) {
+    const capturedAt = detail?.captured_at ?? null;
+    if (capturedAt == null) continue;
+    if (oldest == null || capturedAt < oldest) oldest = capturedAt;
+  }
+  return oldest;
 }
 
 export function parseCompareNetuidList(netuids) {

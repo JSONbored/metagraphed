@@ -1547,6 +1547,12 @@ export const PUBLIC_ARTIFACTS = [
     "CompareArtifact",
   ),
   artifact(
+    "compare-validators",
+    "/metagraph/compare/validators.json",
+    "Validator comparison — take rate, estimated APY, nominator count, on-chain (coldkey) identity, and the cross-subnet stake/emission/trust aggregates for the requested hotkeys placed side by side in requested order, each optionally carrying its membership in one subnet (subnet_context) — computed live from the same per-validator detail /api/v1/validators/{hotkey} serves, at /api/v1/compare/validators (no static file).",
+    "CompareValidatorsArtifact",
+  ),
+  artifact(
     "rpc-usage",
     "/metagraph/rpc/usage.json",
     "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
@@ -3717,6 +3723,28 @@ export const API_ROUTES = [
         },
       },
       { name: "dimensions", schema: { type: "string" } },
+    ],
+    [],
+  ),
+  route(
+    "compare-validators",
+    "GET",
+    "/api/v1/compare/validators",
+    "/metagraph/compare/validators.json",
+    "Compare several validators side by side for a stake/delegate decision — for each hotkey its take rate, estimated APY, nominator count, and on-chain (coldkey) identity, plus the cross-subnet stake/emission/trust aggregates that give those numbers context. `hotkeys` is a required comma-separated list of 1-16 distinct SS58 validator addresses, in display order; the optional `netuid` adds each validator's membership in that one subnet (`subnet_context`, null where it holds no validator permit there). Composed live (no static file) from the same per-validator detail GET /api/v1/validators/{hotkey} returns — the validator equivalent of /api/v1/compare, and the REST mirror of the compare_validators MCP tool. Strictly read-only decision support: builds no transaction, produces no signable artifact, and never touches a wallet or key.",
+    "short",
+    ["validators", "analytics"],
+    [
+      {
+        name: "hotkeys",
+        schema: {
+          type: "string",
+          maxLength: 783,
+          pattern:
+            "^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$",
+        },
+      },
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
     ],
     [],
   ),

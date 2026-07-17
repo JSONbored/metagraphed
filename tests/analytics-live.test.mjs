@@ -19,9 +19,12 @@ import {
   parseAnalyticsWindow,
   parseCompareDimensionList,
   parseCompareDimensions,
+  parseCompareHotkeys,
   parseCompareNetuidList,
   parseCompareNetuids,
   parseUptimeWindow,
+  compareValidatorsGeneratedAt,
+  COMPARE_VALIDATORS_MAX,
   profilesProjectionFromRows,
 } from "../src/analytics-live.mjs";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
@@ -29,6 +32,9 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 
 const NETUID = 7;
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
+// Public SS58 test addresses, reused from this suite's existing fixtures.
+const HOTKEY_A = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const HOTKEY_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
 function d1(rowsBySql = {}) {
   return async (sql, _params) => {
@@ -43,6 +49,98 @@ describe("analytics-live compare helpers", () => {
   test("parseCompareNetuids deduplicates while preserving order", () => {
     assert.deepEqual(parseCompareNetuids("1,7,1,64"), [1, 7, 64]);
     assert.equal(parseCompareNetuids("not-valid"), null);
+  });
+
+  // parseCompareHotkeys is the `hotkeys=` CSV form GET /api/v1/compare/validators
+  // accepts (#6325) -- parseHotkeyList's (src/mcp-server.mjs) array-form rules,
+  // applied to a raw string, so REST and MCP accept exactly the same set.
+  test("parseCompareHotkeys deduplicates while preserving order", () => {
+    assert.deepEqual(
+      parseCompareHotkeys(`${HOTKEY_A},${HOTKEY_B},${HOTKEY_A}`),
+      [HOTKEY_A, HOTKEY_B],
+    );
+    assert.deepEqual(parseCompareHotkeys(HOTKEY_A), [HOTKEY_A]);
+  });
+
+  test("parseCompareHotkeys rejects missing, empty, and malformed lists", () => {
+    assert.equal(parseCompareHotkeys(null), null);
+    assert.equal(parseCompareHotkeys(undefined), null);
+    assert.equal(parseCompareHotkeys(""), null);
+    // A trailing/empty token is an empty string -- never a valid SS58.
+    assert.equal(parseCompareHotkeys(`${HOTKEY_A},`), null);
+    assert.equal(parseCompareHotkeys("not-an-ss58"), null);
+    assert.equal(parseCompareHotkeys(`${HOTKEY_A},not-an-ss58`), null);
+    // Not trimmed: a padded entry fails the SS58 pattern rather than being
+    // silently accepted, exactly as the MCP tool rejects it.
+    assert.equal(parseCompareHotkeys(`${HOTKEY_A}, ${HOTKEY_B}`), null);
+  });
+
+  test("parseCompareHotkeys caps the fan-out at COMPARE_VALIDATORS_MAX", () => {
+    // Distinct valid SS58s, varied in the final char only.
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const many = (n) =>
+      Array.from({ length: n }, (_, i) => HOTKEY_A.slice(0, -1) + chars[i]);
+    assert.equal(
+      parseCompareHotkeys(many(COMPARE_VALIDATORS_MAX).join(",")).length,
+      COMPARE_VALIDATORS_MAX,
+    );
+    assert.equal(
+      parseCompareHotkeys(many(COMPARE_VALIDATORS_MAX + 1).join(",")),
+      null,
+    );
+    // The cap applies AFTER dedupe, so a repeat-padded list still passes.
+    const repeated = [
+      ...many(COMPARE_VALIDATORS_MAX),
+      HOTKEY_A.slice(0, -1) + chars[0],
+    ];
+    assert.equal(
+      parseCompareHotkeys(repeated.join(",")).length,
+      COMPARE_VALIDATORS_MAX,
+    );
+  });
+
+  // A comparison is only as fresh as its stalest input (#6325).
+  test("compareValidatorsGeneratedAt reports the oldest captured_at", () => {
+    assert.equal(
+      compareValidatorsGeneratedAt([
+        { captured_at: "2026-07-02T00:00:00.000Z" },
+        { captured_at: "2026-07-01T00:00:00.000Z" },
+        { captured_at: "2026-07-03T00:00:00.000Z" },
+      ]),
+      "2026-07-01T00:00:00.000Z",
+    );
+    // First-wins and last-wins both exercised (oldest leading, then trailing).
+    assert.equal(
+      compareValidatorsGeneratedAt([
+        { captured_at: "2026-07-01T00:00:00.000Z" },
+        { captured_at: "2026-07-02T00:00:00.000Z" },
+      ]),
+      "2026-07-01T00:00:00.000Z",
+    );
+  });
+
+  test("compareValidatorsGeneratedAt stays null rather than fabricating a stamp", () => {
+    assert.equal(compareValidatorsGeneratedAt([]), null);
+    assert.equal(compareValidatorsGeneratedAt(null), null);
+    assert.equal(compareValidatorsGeneratedAt(undefined), null);
+    // Cold store: every detail is a zeroed aggregate with no capture.
+    assert.equal(
+      compareValidatorsGeneratedAt([
+        { captured_at: null },
+        { captured_at: null },
+      ]),
+      null,
+    );
+    // A null/absent entry is skipped, not treated as oldest.
+    assert.equal(
+      compareValidatorsGeneratedAt([
+        null,
+        undefined,
+        {},
+        { captured_at: "2026-07-05T00:00:00.000Z" },
+      ]),
+      "2026-07-05T00:00:00.000Z",
+    );
   });
 
   test("parseCompareNetuidList validates MCP array input", () => {

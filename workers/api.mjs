@@ -182,6 +182,7 @@ import {
   canonicalUptimeCachePath,
   configureAnalyticsRoutes,
   handleCompare,
+  handleCompareValidators,
   handleEconomicsTrends,
   handleLeaderboards,
   handleTrajectory,
@@ -1646,6 +1647,22 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
   }
 
+  // Validator compare (#6325): the validator equivalent of /api/v1/compare and
+  // the REST mirror of the compare_validators MCP tool. Exact path, dispatched
+  // before subnet/validator routing so it stays unambiguous.
+  //
+  // Deliberately NOT withEdgeCache'd, unlike its /api/v1/compare sibling: that
+  // route's payload carries the live health rollup, so the health cron's
+  // last_run_at (withEdgeCache's default stamp) is exactly what invalidates it.
+  // This route's payload is the neurons/metagraph snapshot instead, whose own
+  // cache stamps were retired with the D1 neurons tables (#4772, #5358) -- so
+  // the health stamp would bust on an unrelated event while serving stale
+  // validator data between runs. Matches handleValidatorDetail, the per-hotkey
+  // route this fans out to, which is likewise uncached.
+  if (url.pathname === "/api/v1/compare/validators") {
+    return handleCompareValidators(request, env, url);
+  }
+
   // Global validator/operator leaderboard from the current neurons snapshot. Exact path,
   // dispatched before subnet routing so the top-level collection stays unambiguous.
   // Busts on the shared health-cron last_run_at stamp like every other Postgres-tier
@@ -2820,6 +2837,7 @@ function isMainnetOnlyApiPath(pathname) {
     VALIDATOR_HISTORY_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
+    pathname === "/api/v1/compare/validators" ||
     pathname === "/api/v1/subnets/movers" ||
     pathname === "/api/v1/health" ||
     pathname === "/api/v1/incidents" ||

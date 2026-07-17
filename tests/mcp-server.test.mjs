@@ -14,6 +14,7 @@ import * as profilesMcp from "../src/profiles-mcp.mjs";
 import * as healthHistoryMcp from "../src/health-history-mcp.mjs";
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.mjs";
 import { createLocalArtifactEnv, latestArtifactDate } from "../scripts/lib.mjs";
+import { COMPARE_VALIDATORS_MAX } from "../src/analytics-live.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.mjs";
@@ -15662,6 +15663,64 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
       out.validators.map((v) => v.hotkey),
       [HOTKEY, HOTKEY2],
     );
+  });
+
+  // #6325: GET /api/v1/compare/validators is the REST mirror of this tool. Both
+  // compose via composeValidatorComparison, so identical hotkeys+netuid inputs
+  // must project byte-identical payloads -- this drives BOTH surfaces over the
+  // same env and deep-compares, so the two can never silently diverge (a field
+  // added to VALIDATOR_COMPARISON_FIELDS lands on both, or this fails).
+  test("compare_validators and GET /api/v1/compare/validators agree for identical inputs", async () => {
+    const env = createLocalArtifactEnv();
+    for (const netuid of [null, 7]) {
+      const mcp = await callTool(
+        "compare_validators",
+        netuid == null
+          ? { hotkeys: [HOTKEY, HOTKEY2] }
+          : { hotkeys: [HOTKEY, HOTKEY2], netuid },
+        { env },
+      );
+      const restRes = await handleRequest(
+        new Request(
+          `https://api.metagraph.sh/api/v1/compare/validators?hotkeys=${HOTKEY},${HOTKEY2}` +
+            (netuid == null ? "" : `&netuid=${netuid}`),
+        ),
+        env,
+        {},
+      );
+      const rest = await restRes.json();
+      assert.equal(restRes.status, 200, `netuid=${netuid}`);
+      assert.deepEqual(
+        rest.data,
+        mcp.body.result.structuredContent,
+        `REST/MCP parity for netuid=${netuid}`,
+      );
+    }
+  });
+
+  // The REST mirror inherits the tool's cap and dedupe rules, because both read
+  // the same COMPARE_VALIDATORS_MAX and reject the same malformed lists.
+  test("compare_validators' hotkey cap is shared with the REST mirror", async () => {
+    const env = createLocalArtifactEnv();
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const over = Array.from(
+      { length: COMPARE_VALIDATORS_MAX + 1 },
+      (_, i) => HOTKEY.slice(0, -1) + chars[i],
+    );
+    const mcp = await callTool(
+      "compare_validators",
+      { hotkeys: over },
+      { env },
+    );
+    assert.match(mcp.body.result.content[0].text, /invalid_params/);
+    const restRes = await handleRequest(
+      new Request(
+        `https://api.metagraph.sh/api/v1/compare/validators?hotkeys=${over.join(",")}`,
+      ),
+      env,
+      {},
+    );
+    assert.equal(restRes.status, 400);
   });
 
   test("compare_validators output carries no transaction/signing fields", async () => {

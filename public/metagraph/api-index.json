@@ -1052,6 +1052,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "compare-validators",
+      "path": "/metagraph/compare/validators.json",
+      "schema_ref": "#/components/schemas/CompareValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "rpc-usage",
       "path": "/metagraph/rpc/usage.json",
       "schema_ref": "#/components/schemas/RpcUsageArtifact",
@@ -8382,6 +8389,34 @@
           "name": "dimensions",
           "schema": {
             "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/compare/validators.json",
+      "cache": "short",
+      "description": "Compare several validators side by side for a stake/delegate decision — for each hotkey its take rate, estimated APY, nominator count, and on-chain (coldkey) identity, plus the cross-subnet stake/emission/trust aggregates that give those numbers context. `hotkeys` is a required comma-separated list of 1-16 distinct SS58 validator addresses, in display order; the optional `netuid` adds each validator's membership in that one subnet (`subnet_context`, null where it holds no validator permit there). Composed live (no static file) from the same per-validator detail GET /api/v1/validators/{hotkey} returns — the validator equivalent of /api/v1/compare, and the REST mirror of the compare_validators MCP tool. Strictly read-only decision support: builds no transaction, produces no signable artifact, and never touches a wallet or key.",
+      "id": "compare-validators",
+      "method": "GET",
+      "path": "/api/v1/compare/validators",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "hotkeys",
+          "schema": {
+            "maxLength": 783,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
           }
         }
       ]

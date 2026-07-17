@@ -128,6 +128,9 @@ const COMPUTED_ARTIFACTS = new Set([
   "economics-trends",
   "registry-leaderboards",
   "compare",
+  // Validator comparison (#6325): composed live per request from the neurons
+  // tier at /api/v1/compare/validators, same as its /api/v1/compare sibling.
+  "compare-validators",
   "rpc-usage",
   "global-incidents",
   // Live-only operational health (served from KV/D1, no static file on disk).
