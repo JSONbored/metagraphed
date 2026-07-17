@@ -6,6 +6,9 @@
 // function's own /* v8 ignore */ comment. Every decision it makes is tested
 // directly here instead.
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test, vi } from "vitest";
 
 // Hoisted spies -- mocked the same way apps/ui/src/lib/error-reporting.test.ts
@@ -44,10 +47,12 @@ import {
   forwardChainFirehoseNotification,
   forwardWithRetry,
   initSentry,
+  isHeartbeatFresh,
   mapBounded,
   parseRelayConfig,
   parseRetryAfterMs,
   reportRateLimitPause,
+  touchHeartbeat,
 } from "../scripts/chain-firehose-relay.mjs";
 
 // --- mapBounded ---------------------------------------------------------------
@@ -717,4 +722,59 @@ test("initSentry: SENTRY_ENVIRONMENT defaults to 'production' when unset", () =>
   initSentry();
   assert.equal(sentryInit.mock.calls[0][0].environment, "production");
   vi.unstubAllEnvs();
+});
+
+// --- touchHeartbeat / isHeartbeatFresh -----------------------------------------
+// Real filesystem, not mocked -- matches tests/backup-postgres.test.mjs's own
+// mkdtempSync convention. Both functions default to the real HEARTBEAT_FILE
+// path, but take an explicit `path` override precisely so tests never touch
+// /tmp/chain-firehose-relay-heartbeat itself.
+
+function withHeartbeatDir(fn) {
+  const dir = mkdtempSync(path.join(tmpdir(), "metagraphed-heartbeat-test-"));
+  try {
+    return fn(path.join(dir, "heartbeat"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("touchHeartbeat: writes the file; isHeartbeatFresh then reports fresh", () => {
+  withHeartbeatDir((heartbeatPath) => {
+    touchHeartbeat(heartbeatPath);
+    assert.equal(isHeartbeatFresh(heartbeatPath), true);
+  });
+});
+
+test("isHeartbeatFresh: false when the file doesn't exist yet (e.g. still starting up)", () => {
+  withHeartbeatDir((heartbeatPath) => {
+    assert.equal(isHeartbeatFresh(heartbeatPath), false);
+  });
+});
+
+test("isHeartbeatFresh: false once now - mtime exceeds maxAgeMs", () => {
+  withHeartbeatDir((heartbeatPath) => {
+    touchHeartbeat(heartbeatPath);
+    const farFuture = Date.now() + 1_000_000;
+    assert.equal(isHeartbeatFresh(heartbeatPath, farFuture, 10_000), false);
+  });
+});
+
+test("isHeartbeatFresh: true when now - mtime is under maxAgeMs", () => {
+  withHeartbeatDir((heartbeatPath) => {
+    touchHeartbeat(heartbeatPath);
+    const soonAfter = Date.now() + 5_000;
+    assert.equal(isHeartbeatFresh(heartbeatPath, soonAfter, 10_000), true);
+  });
+});
+
+test("touchHeartbeat: a write failure (unwritable path) is swallowed, never throws", () => {
+  // Passing a DIRECTORY (not a file path) makes writeFileSync throw EISDIR --
+  // touchHeartbeat must catch it, not crash the relay's actual job.
+  const dir = mkdtempSync(path.join(tmpdir(), "metagraphed-heartbeat-test-"));
+  try {
+    assert.doesNotThrow(() => touchHeartbeat(dir));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

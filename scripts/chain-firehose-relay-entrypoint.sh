@@ -6,9 +6,9 @@
 # so there's no persistent /repo volume or incremental-refresh branch here:
 # every container start (rare -- a crash-restart, or a deliberate `docker
 # compose up` after the Ansible role rebuilds the image) does one fresh,
-# shallow clone into a container-lifetime temp directory, then execs the
-# relay to run forever. This also means restarting the container (not just
-# rebuilding the image) is enough to pick up whatever is newest on main.
+# shallow clone, then execs the relay to run forever. This also means
+# restarting the container (not just rebuilding the image) is enough to pick
+# up whatever is newest on main.
 set -euo pipefail
 
 GIT_REPO_URL="https://github.com/JSONbored/metagraphed.git"
@@ -18,7 +18,17 @@ GIT_REPO_URL="https://github.com/JSONbored/metagraphed.git"
 # Loopover ORB before anything lands.
 GIT_REF="main"
 
-REPO_DIR="$(mktemp -d /tmp/metagraphed-clone.XXXXXX)"
+# A FIXED path, not mktemp's random suffix -- unlike the other clone-at-
+# runtime entrypoints, the Docker HEALTHCHECK directive (see the Dockerfile)
+# execs `node <path>/scripts/chain-firehose-relay.mjs --healthcheck`
+# directly, baked into the image at build time, so the clone location must
+# be a fixed, known path. Safe to hardcode here specifically because this
+# entrypoint never reuses an existing checkout across container restarts
+# (no persistent volume, see above) -- there is no "was this the leftover of
+# an interrupted clone" ambiguity the other entrypoints' mktemp-then-copy
+# pattern guards against, since the container filesystem itself is fresh
+# every single time this path is written to.
+REPO_DIR=/tmp/repo
 echo "entrypoint: cloning ${GIT_REPO_URL}@${GIT_REF} into ${REPO_DIR}"
 git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO_URL" "$REPO_DIR"
 cd "$REPO_DIR"

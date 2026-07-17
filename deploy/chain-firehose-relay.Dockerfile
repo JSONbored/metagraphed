@@ -35,3 +35,19 @@ USER relay
 # SENTRY_DSN, SENTRY_RELEASE (auto-derived from the freshly-cloned HEAD if
 # unset).
 ENTRYPOINT ["./entrypoint.sh"]
+
+# metagraphed-infra#63: this relay previously had zero monitoring coverage --
+# a dead poll loop could go unnoticed indefinitely since Docker's own
+# "Running" state only means the process hasn't exited, not that it's doing
+# anything useful. --healthcheck reads HEARTBEAT_FILE's mtime (see the
+# script's own comment on that constant) -- unhealthy once no poll iteration
+# has completed in HEARTBEAT_STALE_MS. start-period covers the real startup
+# path (the entrypoint's clone + npm ci, both quick, but generous margin
+# costs nothing here). /tmp/repo is a FIXED path the entrypoint always clones
+# into (see its own comment for why that's safe here) -- this HEALTHCHECK
+# CMD is baked into the image at build time and has no other way to find the
+# script. metagraphed-infra's docker-container-health-poll.sh (that role)
+# turns `docker inspect`'s resulting health status into a Prometheus-visible
+# metric -- Docker's HEALTHCHECK alone has no alerting of its own.
+HEALTHCHECK --interval=60s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["node", "/tmp/repo/scripts/chain-firehose-relay.mjs", "--healthcheck"]

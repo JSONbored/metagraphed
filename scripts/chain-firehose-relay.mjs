@@ -27,12 +27,15 @@
 //
 // Deployed the same way the retired streamer was: an Ansible role in
 // JSONbored/metagraphed-infra (roles/chain-firehose-relay/) builds
-// deploy/chain-firehose-relay.Dockerfile directly on the indexer box,
-// COPYing this script in. See that Dockerfile's own header comment.
+// deploy/chain-firehose-relay.Dockerfile directly on the indexer box. That
+// image clones this repo fresh at container start (metagraphed#6451) rather
+// than baking this script in at build time -- see that Dockerfile's own
+// header comment.
 //
 // Run: DATABASE_URL=... CHAIN_FIREHOSE_INGEST_URL=... \
 //      CHAIN_FIREHOSE_SYNC_SECRET=... node scripts/chain-firehose-relay.mjs
 
+import { writeFileSync, statSync } from "node:fs";
 import postgres from "postgres";
 import * as Sentry from "@sentry/node";
 
@@ -118,6 +121,62 @@ export function reportRateLimitPause(pauseMs) {
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 export const DEFAULT_CHAIN_FIREHOSE_INGEST_URL =
   "https://api.metagraph.sh/api/v1/internal/chain-firehose-ingest";
+
+// This relay previously had zero monitoring coverage -- no metrics
+// endpoint, nothing in Prometheus/Alertmanager references it, so a
+// silently-dead poll loop (a crash-loop, an unnoticed DATABASE_URL change,
+// etc.) could go unnoticed indefinitely. HEARTBEAT_FILE is touched on every
+// poll loop iteration (regardless of whether it claimed any rows, and
+// regardless of forward success/failure -- this tracks "is the poll loop
+// still alive," a separate question from "are forwards succeeding," which
+// the drop-window Sentry reporting above already covers). The Docker
+// HEALTHCHECK in deploy/chain-firehose-relay.Dockerfile reads this file's
+// mtime via the --healthcheck CLI flag below; metagraphed-infra's
+// docker-container-health-poll.sh then turns the container's own Docker
+// health status into a node_exporter textfile metric a real Prometheus
+// alert rule can fire on. Deliberately inside the CONTAINER's own
+// filesystem (not a bind-mounted host path): avoids any cross-boundary
+// write-permission plumbing between this container's non-root uid and
+// node_exporter's host-side textfile collector directory.
+//
+// Ported from metagraphed-infra's own copy of this script
+// (metagraphed-infra#63), which had drifted this feature in independently
+// -- landed there directly instead of here first -- and would otherwise
+// have been silently lost once metagraphed-infra stopped tracking its own
+// copy of this file (metagraphed#6451). Adapted for the outbox-poll loop
+// this script now runs (touched once per poll iteration) instead of the
+// retired LISTEN subscription (originally touched once per NOTIFY).
+export const HEARTBEAT_FILE = "/tmp/chain-firehose-relay-heartbeat";
+// Generous over CHAIN_FIREHOSE_POLL_INTERVAL_MS (250ms) and even a full
+// rate-limit pause (capped at CHAIN_FIREHOSE_MAX_RATE_LIMIT_PAUSE_MS, 5min)
+// -- tolerates a complete rate-limit recovery cycle plus margin before
+// flagging unhealthy, so this never false-alarms on the exact recovery
+// behavior the poll loop is supposed to do.
+export const HEARTBEAT_STALE_MS = 10 * 60 * 1000;
+
+export function touchHeartbeat(path = HEARTBEAT_FILE) {
+  // Best-effort -- a heartbeat-write failure must never crash the relay's
+  // actual job (forwarding payloads). Falls back to letting the
+  // HEALTHCHECK go unhealthy (visible) rather than silently swallowing a
+  // real filesystem problem some other way.
+  try {
+    writeFileSync(path, String(Date.now()));
+  } catch (error) {
+    console.error("[chain-firehose-relay] failed to write heartbeat:", error);
+  }
+}
+
+export function isHeartbeatFresh(
+  path = HEARTBEAT_FILE,
+  now = Date.now(),
+  maxAgeMs = HEARTBEAT_STALE_MS,
+) {
+  try {
+    return now - statSync(path).mtimeMs < maxAgeMs;
+  } catch {
+    return false; // no heartbeat file yet (e.g. still starting up) -- not fresh
+  }
+}
 
 // How many outbox rows to claim per poll -- bounds one iteration's worth of
 // sequential forwarding work, the same role CHAIN_FIREHOSE_QUEUE_MAX_SIZE
@@ -486,11 +545,13 @@ async function main() {
   }
 
   let lastCleanupAt = Date.now();
+  touchHeartbeat(); // write once at startup so HEALTHCHECK's --start-period grace doesn't immediately expire on a quiet first poll
   console.log(
     `[chain-firehose-relay] polling chain_firehose_outbox every ${CHAIN_FIREHOSE_POLL_INTERVAL_MS}ms, forwarding to ${config.ingestUrl}`,
   );
   while (!shuttingDown) {
     const { claimed, rateLimitedForMs } = await pollOnce();
+    touchHeartbeat(); // tracks poll-loop liveness, independent of claim/forward outcome -- see HEARTBEAT_FILE's own comment
     if (Date.now() - lastCleanupAt >= CHAIN_FIREHOSE_CLEANUP_INTERVAL_MS) {
       await cleanupOnce();
       lastCleanupAt = Date.now();
@@ -520,16 +581,25 @@ async function main() {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(async (error) => {
-    console.error("[chain-firehose-relay] fatal:", error);
-    // Explicitly caught here, so @sentry/node's default
-    // OnUnhandledRejection integration never sees this -- Node does not
-    // consider a promise "unhandled" once something calls .catch() on it.
-    // flush() before process.exit(1) is required: process.exit() is
-    // synchronous and does not wait for Sentry's background network send.
-    Sentry.captureException(error);
-    await Sentry.flush(2000);
-    process.exit(1);
-  });
+  if (process.argv.includes("--healthcheck")) {
+    // Docker HEALTHCHECK entry point (see
+    // deploy/chain-firehose-relay.Dockerfile) -- reuses this same
+    // image/script rather than a separate file. isHeartbeatFresh's pure
+    // logic is unit-tested directly; this just wires it to a process exit
+    // code, which is all HEALTHCHECK actually reads.
+    process.exit(isHeartbeatFresh() ? 0 : 1);
+  } else {
+    main().catch(async (error) => {
+      console.error("[chain-firehose-relay] fatal:", error);
+      // Explicitly caught here, so @sentry/node's default
+      // OnUnhandledRejection integration never sees this -- Node does not
+      // consider a promise "unhandled" once something calls .catch() on it.
+      // flush() before process.exit(1) is required: process.exit() is
+      // synchronous and does not wait for Sentry's background network send.
+      Sentry.captureException(error);
+      await Sentry.flush(2000);
+      process.exit(1);
+    });
+  }
 }
 /* v8 ignore stop */
