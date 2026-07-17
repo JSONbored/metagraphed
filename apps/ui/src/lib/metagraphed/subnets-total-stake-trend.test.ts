@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 import { totalStakeTrendFromDays } from "./subnets-total-stake-trend";
 import type { EconomicsTrendsDay } from "./types";
 
-function day(
-  snapshot_date: string,
-  total_stake_tao: number | null,
-): EconomicsTrendsDay {
+function day(snapshot_date: string, total_stake_tao: number | null): EconomicsTrendsDay {
   return {
     snapshot_date,
     subnet_count: 1,
@@ -27,11 +24,7 @@ describe("totalStakeTrendFromDays", () => {
     ]);
     expect(series.latestTao).toBe(200);
     expect(series.values).toEqual([100, 150, 200]);
-    expect(series.points.map((p) => p.t)).toEqual([
-      "2026-07-14",
-      "2026-07-15",
-      "2026-07-16",
-    ]);
+    expect(series.points.map((p) => p.t)).toEqual(["2026-07-14", "2026-07-15", "2026-07-16"]);
   });
 
   it("returns a null latest and empty sparkline series for an empty window", () => {
