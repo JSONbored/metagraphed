@@ -62,6 +62,7 @@ import {
 } from "@/lib/metagraphed/endpoint-pool";
 
 import type { Endpoint, RpcPool, RpcEndpoint, Provider, Subnet } from "@/lib/metagraphed/types";
+import { endpointsFiltersActive } from "@/lib/metagraphed/endpoints-filters";
 
 const endpointsSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -760,14 +761,16 @@ function EndpointsTable() {
   const safePage = Math.min(search.page, totalPages);
   const pageRows = sorted.slice((safePage - 1) * search.pageSize, safePage * search.pageSize);
 
-  const hasFilters =
-    search.q ||
-    search.category !== "all" ||
-    search.provider ||
-    search.health ||
-    search.netuid ||
-    search.region ||
-    search.eligibility;
+  const hasFilters = endpointsFiltersActive({
+    q: search.q,
+    category: search.category,
+    provider: search.provider,
+    health: search.health,
+    netuid: search.netuid,
+    region: search.region,
+    eligibility: search.eligibility,
+    callable: search.callable,
+  });
 
   // The table filters client-side over the full fetched list; the CSV export
   // hits the backend route directly (full endpoint snapshot, no client filters).
