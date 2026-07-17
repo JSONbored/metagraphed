@@ -15969,6 +15969,27 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
       globalThis.fetch = orig;
     }
   });
+
+  test("get_subnet_burn proceeds to the live RPC when the rate limiter allows the request", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ result: "0x20a1070000000000" }), // 500000 rao
+    });
+    const env = {
+      RPC_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+    };
+    try {
+      const res = await callTool("get_subnet_burn", { netuid: 1 }, { env });
+      assert.equal(res.body.result.structuredContent.burn_tao, 0.0005);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
 });
 
 describe("MCP account identity/position-history tools (#5225 parity)", () => {
