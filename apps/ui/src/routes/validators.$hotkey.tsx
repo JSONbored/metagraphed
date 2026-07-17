@@ -307,7 +307,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
               Cross-subnet performance, nominators, and staking history for one Bittensor validator
               hotkey.
             </span>
-            <span className="inline-flex max-w-full min-w-0 rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
+            <span className="inline-flex max-w-full min-w-0 rounded-2xl border border-border/80 bg-card/80 px-3 py-2 mg-card-glow">
               <CopyableCode value={hotkey} truncate={false} className="max-w-full" />
             </span>
           </span>
@@ -380,49 +380,49 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           hint={`Root ${taoCompact(detail.root_stake_tao)} · Alpha ${taoCompact(detail.alpha_stake_tao)}`}
           truncate={false}
           tone="accent"
-          className="rounded-2xl border-accent/25 bg-card/95 p-5 shadow-[0_24px_80px_-52px_rgba(45,212,191,0.45)]"
+          className="rounded-2xl border-accent/25 bg-card/95 p-5 mg-card-glow-accent"
         />
         <StatTile
           icon={Zap}
           eyebrow="Total emission"
           value={taoCompact(detail.total_emission_tao)}
           hint="across all subnets"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
         />
         <StatTile
           icon={Boxes}
           eyebrow="Active subnets"
           value={formatNumber(detail.subnet_count)}
           hint="validator memberships"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
         />
         <StatTile
           icon={Gauge}
           eyebrow="Avg validator trust"
           value={scoreStr(detail.avg_validator_trust)}
           hint="mean across subnets"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
         />
         <StatTile
           icon={Gauge}
           eyebrow="Max validator trust"
           value={scoreStr(detail.max_validator_trust)}
           hint="best subnet"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
         />
         <StatTile
           icon={Percent}
           eyebrow="Take rate"
           value={formatTakePct(detail.take)}
           hint="commission kept from delegators"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
         />
         <StatTile
           icon={Users}
           eyebrow="Nominators"
           value={detail.nominator_count != null ? formatNumber(detail.nominator_count) : "—"}
           hint="distinct coldkeys delegated"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
         />
         <StatTile
           icon={Zap}
@@ -430,7 +430,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           value={formatApyPct(snapshotApy)}
           hint="latest snapshot · net of take"
           truncate={false}
-          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
         />
       </div>
 

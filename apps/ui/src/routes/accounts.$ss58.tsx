@@ -231,7 +231,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
               Cross-subnet registrations, first-party chain events, and daily activity rollups for
               one Bittensor account.
             </p>
-            <div className="max-w-full sm:max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
+            <div className="max-w-full sm:max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 mg-card-glow">
               <CopyableCode value={ss58} truncate={false} className="max-w-full" />
             </div>
           </div>
@@ -285,28 +285,28 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                 : "live RPC"
           }
           tone={balanceResult.isError ? "down" : "accent"}
-          className="rounded-2xl bg-card/95 p-5 shadow-[0_24px_80px_-52px_rgba(45,212,191,0.45)]"
+          className="rounded-2xl bg-card/95 p-5 mg-card-glow-accent"
         />
         <StatTile
           icon={Activity}
           eyebrow="Events"
           value={formatNumber(account.event_count)}
           hint="indexed first-party"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
         />
         <StatTile
           icon={Boxes}
           eyebrow="Subnets"
           value={formatNumber(account.subnet_count)}
           hint="active footprint"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
         />
         <StatTile
           icon={Clock}
           eyebrow="Last seen"
           value={<TimeAgo at={account.last_seen_at ?? undefined} />}
           hint="near-realtime · chain-direct index"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
         />
       </div>
 
@@ -359,7 +359,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             {account.event_kinds.map((entry) => (
               <div
                 key={entry.kind}
-                className="rounded-2xl border border-border/80 bg-card/95 px-4 py-3 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]"
+                className="rounded-2xl border border-border/80 bg-card/95 px-4 py-3 mg-card-glow"
               >
                 <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
                   event kind
@@ -779,8 +779,7 @@ function fmtAlphaPrice(v: number | null | undefined): string {
   return `${v < 1 ? v.toFixed(4) : v.toFixed(3)} τ`;
 }
 
-const KPI_TILE =
-  "rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]";
+const KPI_TILE = "rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow";
 
 // Compact TAO formatter for the portfolio KPI tiles — a long raw value like
 // "338,030.153 τ" wraps + overflows a narrow StatTile, so summarise it (338.0k τ).
@@ -1203,7 +1202,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
       </div>
 
       {bars.length > 0 ? (
-        <div className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-5 py-4 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]">
+        <div className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-5 py-4 mg-card-glow">
           <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             gross flow by subnet (τ)
           </div>
@@ -1469,7 +1468,7 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
       tone="accent"
       info="GET /api/v1/accounts/{ss58}/identity — the coldkey's own on-chain identity, distinct from subnet identity and the validator directory's coldkey-identity join."
     >
-      <div className="rounded-2xl border border-border/80 bg-card/95 p-5 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]">
+      <div className="rounded-2xl border border-border/80 bg-card/95 p-5 mg-card-glow">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="font-display text-lg font-semibold text-ink-strong">
             {identity.name ?? "Unnamed identity"}
@@ -2025,7 +2024,7 @@ function AccountFootprintSection({
       right={<SectionBadge>{formatNumber(rows.length)} subnets</SectionBadge>}
     >
       {staked.length > 0 ? (
-        <div className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-5 py-4 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]">
+        <div className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-5 py-4 mg-card-glow">
           <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             stake by subnet (τ)
           </div>
@@ -2382,7 +2381,7 @@ function DataPanel({ children, className }: { children: ReactNode; className?: s
   return (
     <div
       className={classNames(
-        "overflow-x-auto rounded-[1.5rem] border border-border/80 bg-card/95 shadow-[0_28px_90px_-60px_rgba(15,23,42,0.45)]",
+        "overflow-x-auto rounded-[1.5rem] border border-border/80 bg-card/95 mg-card-glow",
         className,
       )}
     >
@@ -2401,7 +2400,7 @@ function AccountHeroAside({
   firstSeenAt: string | null;
 }) {
   return (
-    <div className="w-[20rem] rounded-[1.75rem] border border-border/80 bg-card/95 p-5 shadow-[0_32px_100px_-72px_rgba(15,23,42,0.65)]">
+    <div className="w-[20rem] rounded-[1.75rem] border border-border/80 bg-card/95 p-5 mg-card-glow">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">

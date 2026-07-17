@@ -902,6 +902,21 @@ html[data-density="compact"] .bg-card > table td {
   background-color: color-mix(in oklab, var(--accent) 8%, var(--surface));
 }
 
+/* Soft card elevation for detail-page panels. Derives the tint from
+   --ink-strong (near-white in .dark) via the same color-mix idiom as
+   .mg-metric-tile, so the glow adapts across themes instead of a fixed
+   slate-900 rgba that vanishes on a dark background (#6398). */
+.mg-card-glow {
+  box-shadow: 0 24px 80px -58px
+    color-mix(in oklab, var(--ink-strong) 45%, transparent);
+}
+
+/* Accent-tinted variant for the primary/summary card on the same pages. */
+.mg-card-glow-accent {
+  box-shadow: 0 24px 80px -52px
+    color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
 .mg-skel-crossfade > * {
   transition: opacity 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
