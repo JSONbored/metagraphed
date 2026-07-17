@@ -41,19 +41,23 @@
     },
     "docs_url": {
       "type": ["string", "null"],
-      "format": "uri"
+      "format": "uri",
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
     },
     "source_repo": {
       "type": ["string", "null"],
-      "format": "uri"
+      "format": "uri",
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
     },
     "dashboard_url": {
       "type": ["string", "null"],
-      "format": "uri"
+      "format": "uri",
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
     },
     "website_url": {
       "type": ["string", "null"],
-      "format": "uri"
+      "format": "uri",
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
     },
     "notes": {
       "type": "string"
@@ -178,7 +182,8 @@
         },
         "url": {
           "type": "string",
-          "format": "uri"
+          "format": "uri",
+          "pattern": "^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://"
         },
         "provider": {
           "type": "string",
@@ -200,7 +205,8 @@
         },
         "schema_url": {
           "type": "string",
-          "format": "uri"
+          "format": "uri",
+          "pattern": "^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://"
         },
         "schema_status": {
           "enum": ["machine-readable", "ui-only", "not-captured"]
