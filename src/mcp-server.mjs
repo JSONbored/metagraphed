@@ -41,6 +41,7 @@ import {
 } from "./usage-telemetry.mjs";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import { DAY_PATTERN } from "../workers/request-params.mjs";
+import { applyQueryFilters } from "../workers/list-query.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import {
@@ -1829,36 +1830,78 @@ function semanticTypeSchema() {
   };
 }
 
-// Shared pagination for every list/search tool: slice one page and return the
-// envelope (total before slicing, resolved offset/limit, and a next_offset
-// cursor that is null at the end). One implementation keeps the tools in sync.
-function paginate(items, args, fallbackLimit, maxLimit) {
-  const total = items.length;
-  const offset = Number.isFinite(args?.offset)
-    ? Math.max(0, Math.floor(args.offset))
+// Resolve a lenient `cursor` arg into a non-negative offset. Mirrors the old
+// bespoke `offset` handling (floor + clamp to 0, no throw): tools/call does not
+// enforce the inputSchema `minimum`, so a bad cursor degrades to the first page
+// instead of erroring.
+function resolveCursor(args) {
+  return Number.isFinite(args?.cursor)
+    ? Math.max(0, Math.floor(args.cursor))
     : 0;
-  const limit = clampLimit(args?.limit, fallbackLimit, maxLimit);
-  const page = items.slice(offset, offset + limit);
-  const nextOffset = offset + page.length < total ? offset + page.length : null;
-  return { page, total, offset, limit, returned: page.length, nextOffset };
 }
 
-// Shape a keyword-search response: the label (query/capability), the shared
-// pagination envelope, and the mapped page. Both search tools page 1-50/10.
+// Cursor-window an already-filtered/ranked row set through the shared list-query
+// machinery (workers/list-query.mjs) so every MCP list/search tool hands back the
+// same `cursor` / `next_cursor` continuation contract its REST sibling does,
+// replacing the bespoke `offset` / `next_offset` scheme these tools carried. The
+// rows arrive pre-ordered by the caller and are passed under the collection's
+// data_key with only `limit`/`cursor` set, so applyQueryFilters just windows them
+// (no re-filter, no re-sort). A null `limit` means "return the whole list unless
+// the caller pages" (list_candidates / list_endpoints); paginateRows treats a
+// present cursor as paging on its own. The caller pre-resolves both bounds (limit
+// clamped, cursor a non-negative integer), so validateListQuery inside
+// applyQueryFilters cannot fail here and always returns a pagination envelope.
+function cursorWindow(rows, { collection, dataKey, limit, cursor }) {
+  const url = new URL("https://mcp.internal/list");
+  if (limit != null) {
+    url.searchParams.set("limit", String(limit));
+  }
+  if (cursor > 0) {
+    url.searchParams.set("cursor", String(cursor));
+  }
+  const { data, meta } = applyQueryFilters(
+    { [dataKey]: rows },
+    url,
+    collection,
+    [],
+  );
+  const {
+    total,
+    returned,
+    limit: pageLimit,
+    cursor: pageCursor,
+  } = meta.pagination;
+  return {
+    page: data[dataKey],
+    total,
+    returned,
+    limit: pageLimit,
+    cursor: pageCursor,
+    next_cursor: meta.pagination.next_cursor,
+  };
+}
+
+// Shape a keyword-search response: the label (query/capability), the cursor
+// pagination envelope, and the mapped page. Both search tools page 1-50/10 over
+// the ranked match set (windowed via applyQueryFilters, so `cursor`/`next_cursor`
+// match the REST list contract).
 function searchResponse(label, matched, args, mapResult) {
-  const { page, total, offset, limit, returned, nextOffset } = paginate(
+  const { page, total, returned, limit, cursor, next_cursor } = cursorWindow(
     matched,
-    args,
-    10,
-    50,
+    {
+      collection: "subnets",
+      dataKey: "subnets",
+      limit: clampLimit(args?.limit, 10, 50),
+      cursor: resolveCursor(args),
+    },
   );
   return {
     ...label,
     total,
     count: returned,
-    offset,
+    cursor,
     limit,
-    next_offset: nextOffset,
+    next_cursor,
     results: page.map(mapResult),
   };
 }
@@ -2125,9 +2168,9 @@ export const MCP_TOOLS = [
       "Full-text search across Bittensor subnets by name, slug, capability, " +
       "or keyword. Returns ranked matches with netuid, slug, title, and a one-" +
       "line description. Use this to discover subnets before fetching detail. " +
-      "Paginated like list_subnets: pass `offset` to page past the first " +
-      "results; the response carries `total` and a `next_offset` cursor (null " +
-      "at the end) so the whole ranked match set is reachable.",
+      "Paginated like list_subnets: pass `cursor` to page past the first " +
+      "results; the response carries `total` and a `next_cursor` (null at the " +
+      "end) so the whole ranked match set is reachable.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2135,10 +2178,10 @@ export const MCP_TOOLS = [
           type: "string",
           description: "Search terms, e.g. 'image generation' or 'scraping'.",
         },
-        offset: {
+        cursor: {
           type: "integer",
           description:
-            "Pagination offset into the ranked match set. Default 0.",
+            "Pagination cursor from a prior response's next_cursor. Default 0.",
           minimum: 0,
         },
         limit: {
@@ -2182,9 +2225,10 @@ export const MCP_TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        offset: {
+        cursor: {
           type: "integer",
-          description: "Pagination offset into the (filtered) list. Default 0.",
+          description:
+            "Pagination cursor from a prior response's next_cursor. Default 0.",
           minimum: 0,
         },
         limit: {
@@ -2366,12 +2410,13 @@ export const MCP_TOOLS = [
       const sort = optionalEnum(args, "sort", LIST_SUBNETS_SORT_FIELDS);
       const order = optionalEnum(args, "order", LIST_SUBNETS_ORDERS) || "asc";
       const ordered = sort ? sortSubnets(filtered, sort, order) : filtered;
-      const { page, total, offset, limit, returned, nextOffset } = paginate(
-        ordered,
-        args,
-        50,
-        100,
-      );
+      const { page, total, returned, limit, cursor, next_cursor } =
+        cursorWindow(ordered, {
+          collection: "subnets",
+          dataKey: "subnets",
+          limit: clampLimit(args?.limit, 50, 100),
+          cursor: resolveCursor(args),
+        });
       const subnets = page.map((subnet) => ({
         netuid: subnet.netuid,
         slug: subnet.slug ?? null,
@@ -2390,13 +2435,13 @@ export const MCP_TOOLS = [
       return {
         total,
         returned,
-        offset,
+        cursor,
         limit,
         // Echo the applied ordering (null when paging in source order) so an
         // agent can confirm what it got, mirroring the REST list meta.
         sort: sort ?? null,
         order: sort ? order : null,
-        next_offset: nextOffset,
+        next_cursor,
         subnets,
       };
     },
@@ -2409,9 +2454,9 @@ export const MCP_TOOLS = [
       "schemas, SSE streams) matching a capability or category. Returns only " +
       "subnets an agent can actually call, ranked by callable-service count. " +
       "Pair with list_subnet_apis to get concrete endpoints. Paginated like " +
-      "list_subnets: pass `offset` to page past the first results; the response " +
-      "carries `total` and a `next_offset` cursor (null at the end) so the " +
-      "whole ranked match set is reachable.",
+      "list_subnets: pass `cursor` to page past the first results; the response " +
+      "carries `total` and a `next_cursor` (null at the end) so the whole " +
+      "ranked match set is reachable.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2420,10 +2465,10 @@ export const MCP_TOOLS = [
           description:
             "Capability/category to match, e.g. 'inference', 'data', 'bitcoin'.",
         },
-        offset: {
+        cursor: {
           type: "integer",
           description:
-            "Pagination offset into the ranked match set. Default 0.",
+            "Pagination cursor from a prior response's next_cursor. Default 0.",
           minimum: 0,
         },
         limit: {
@@ -8580,7 +8625,7 @@ export const MCP_TOOLS = [
       "with its subnet (netuid), kind, provider, and review state. Use it to " +
       "see what enrichment is still pending, versus the promoted catalog in " +
       "list_surfaces. Optionally filter by netuid/kind/provider/state and page " +
-      "with limit/offset — the full catalog can be large. Mirrors " +
+      "with limit/cursor — the full catalog can be large. Mirrors " +
       "GET /api/v1/candidates.",
     inputSchema: {
       type: "object",
@@ -8605,9 +8650,10 @@ export const MCP_TOOLS = [
           description: "Max candidates to return. Omit for the full list.",
           minimum: 1,
         },
-        offset: {
+        cursor: {
           type: "integer",
-          description: "Pagination offset into the (filtered) list. Default 0.",
+          description:
+            "Pagination cursor from a prior response's next_cursor. Default 0.",
           minimum: 0,
         },
       },
@@ -8619,7 +8665,7 @@ export const MCP_TOOLS = [
       const provider = optionalString(args, "provider");
       const state = optionalEnum(args, "state", QUERY_ENUMS.candidateState);
       const limit = optionalPositiveInt(args, "limit");
-      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const cursor = optionalNonNegativeInt(args, "cursor") ?? 0;
       const data = await loadArtifactData(ctx, "/metagraph/candidates.json");
       const all = Array.isArray(data.candidates) ? data.candidates : [];
       const filtered = all.filter(
@@ -8629,16 +8675,20 @@ export const MCP_TOOLS = [
           (provider === null || c.provider === provider) &&
           (state === null || c.state === state),
       );
-      const page =
-        limit === null
-          ? filtered.slice(offset)
-          : filtered.slice(offset, offset + limit);
+      const window = cursorWindow(filtered, {
+        collection: "candidates",
+        dataKey: "candidates",
+        limit,
+        cursor,
+      });
       return {
         ...data,
-        candidates: page,
-        total: filtered.length,
-        returned: page.length,
-        offset,
+        candidates: window.page,
+        total: window.total,
+        returned: window.returned,
+        cursor: window.cursor,
+        limit: window.limit,
+        next_cursor: window.next_cursor,
       };
     },
   },
@@ -8652,7 +8702,7 @@ export const MCP_TOOLS = [
       "probe-derived status/latency/score. Use it to discover live endpoints " +
       "network-wide. Optionally filter by kind/layer/netuid/provider/" +
       "publication_state/status/pool_eligible, bound by min_/max_latency_ms " +
-      "and min_/max_score, and page with limit/offset — the full catalog can " +
+      "and min_/max_score, and page with limit/cursor — the full catalog can " +
       "be large. Mirrors GET /api/v1/endpoints.",
     inputSchema: {
       type: "object",
@@ -8708,9 +8758,10 @@ export const MCP_TOOLS = [
           description: "Max endpoints to return. Omit for the full list.",
           minimum: 1,
         },
-        offset: {
+        cursor: {
           type: "integer",
-          description: "Pagination offset into the (filtered) list. Default 0.",
+          description:
+            "Pagination cursor from a prior response's next_cursor. Default 0.",
           minimum: 0,
         },
       },
@@ -8740,7 +8791,7 @@ export const MCP_TOOLS = [
         .filter(({ arg }) => Number.isFinite(args?.[arg]))
         .map(({ field, op, arg }) => ({ field, op, limit: args[arg] }));
       const limit = optionalPositiveInt(args, "limit");
-      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const cursor = optionalNonNegativeInt(args, "cursor") ?? 0;
       let data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
       // Live per-endpoint health overlay (mirrors workers/api.mjs's raw-
       // artifact serving path): the build-time endpoints.json bakes stale
@@ -8775,16 +8826,20 @@ export const MCP_TOOLS = [
             return op === "min" ? value >= bound : value <= bound;
           }),
       );
-      const page =
-        limit === null
-          ? filtered.slice(offset)
-          : filtered.slice(offset, offset + limit);
+      const window = cursorWindow(filtered, {
+        collection: "endpoints",
+        dataKey: "endpoints",
+        limit,
+        cursor,
+      });
       return {
         ...data,
-        endpoints: page,
-        total: filtered.length,
-        returned: page.length,
-        offset,
+        endpoints: window.page,
+        total: window.total,
+        returned: window.returned,
+        cursor: window.cursor,
+        limit: window.limit,
+        next_cursor: window.next_cursor,
       };
     },
   },
@@ -10276,18 +10331,18 @@ const TOOL_OUTPUT_SCHEMAS = {
       "query",
       "total",
       "count",
-      "offset",
+      "cursor",
       "limit",
-      "next_offset",
+      "next_cursor",
       "results",
     ],
     properties: {
       query: { type: "string" },
       total: { type: "integer" },
       count: { type: "integer" },
-      offset: { type: "integer" },
+      cursor: { type: "integer" },
       limit: { type: "integer" },
-      next_offset: { type: ["integer", "null"] },
+      next_cursor: { type: ["integer", "null"] },
       results: objectItems({
         netuid: { type: "integer" },
         slug: { type: "string" },
@@ -10303,20 +10358,20 @@ const TOOL_OUTPUT_SCHEMAS = {
     required: [
       "total",
       "returned",
-      "offset",
+      "cursor",
       "limit",
-      "next_offset",
+      "next_cursor",
       "subnets",
     ],
     properties: {
       total: { type: "integer" },
       returned: { type: "integer" },
-      offset: { type: "integer" },
+      cursor: { type: "integer" },
       limit: { type: "integer" },
       // Applied ordering, echoed back; null when paging in registry source order.
       sort: NULLABLE_STRING,
       order: NULLABLE_STRING,
-      next_offset: { type: ["integer", "null"] },
+      next_cursor: { type: ["integer", "null"] },
       subnets: objectItems({
         netuid: { type: "integer" },
         slug: NULLABLE_STRING,
@@ -10335,18 +10390,18 @@ const TOOL_OUTPUT_SCHEMAS = {
       "capability",
       "total",
       "count",
-      "offset",
+      "cursor",
       "limit",
-      "next_offset",
+      "next_cursor",
       "results",
     ],
     properties: {
       capability: { type: "string" },
       total: { type: "integer" },
       count: { type: "integer" },
-      offset: { type: "integer" },
+      cursor: { type: "integer" },
       limit: { type: "integer" },
-      next_offset: { type: ["integer", "null"] },
+      next_cursor: { type: ["integer", "null"] },
       results: objectItems({
         netuid: { type: "integer" },
         slug: { type: "string" },
@@ -13387,6 +13442,11 @@ const TOOL_OUTPUT_SCHEMAS = {
     required: [],
     properties: {
       candidates: { type: "array", items: { type: "object" } },
+      total: { type: "integer" },
+      returned: { type: "integer" },
+      cursor: { type: "integer" },
+      limit: { type: "integer" },
+      next_cursor: { type: ["integer", "null"] },
       generated_at: NULLABLE_STRING,
       schema_version: { type: ["string", "integer", "null"] },
     },
@@ -13397,6 +13457,11 @@ const TOOL_OUTPUT_SCHEMAS = {
     required: [],
     properties: {
       endpoints: { type: "array", items: { type: "object" } },
+      total: { type: "integer" },
+      returned: { type: "integer" },
+      cursor: { type: "integer" },
+      limit: { type: "integer" },
+      next_cursor: { type: ["integer", "null"] },
       generated_at: NULLABLE_STRING,
       schema_version: { type: ["string", "integer", "null"] },
     },

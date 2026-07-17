@@ -1589,12 +1589,12 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(out.results[0].netuid, 7);
     assert.ok(out.results[0].url.includes("/api/v1/subnets/7/overview"));
     assert.ok(out.results.every((r) => r.netuid !== null));
-    // Pagination envelope mirrors list_subnets: total/offset/limit/next_offset.
+    // Pagination envelope mirrors list_subnets: total/cursor/limit/next_cursor.
     assert.equal(out.total, 1);
     assert.equal(out.count, 1);
-    assert.equal(out.offset, 0);
+    assert.equal(out.cursor, 0);
     assert.equal(out.limit, 5);
-    assert.equal(out.next_offset, null);
+    assert.equal(out.next_cursor, null);
   });
 
   test("search_subnets clamps the limit and reports zero matches", async () => {
@@ -1606,7 +1606,7 @@ describe("MCP tools (injected deps)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.count, 0);
     assert.equal(out.total, 0);
-    assert.equal(out.next_offset, null);
+    assert.equal(out.next_cursor, null);
     // An out-of-range limit clamps to the 50 max, not the raw 999.
     assert.equal(out.limit, 50);
   });
@@ -1665,11 +1665,11 @@ describe("MCP tools (injected deps)", () => {
       "number",
       "find_subnets_by_capability results must carry integration_readiness",
     );
-    // Pagination envelope mirrors list_subnets: total/offset/limit/next_offset.
+    // Pagination envelope mirrors list_subnets: total/cursor/limit/next_cursor.
     assert.equal(out.total, 1);
-    assert.equal(out.offset, 0);
+    assert.equal(out.cursor, 0);
     assert.equal(out.limit, 10);
-    assert.equal(out.next_offset, null);
+    assert.equal(out.next_cursor, null);
   });
 
   test("find_subnets_by_capability with no match returns empty", async () => {
@@ -1682,7 +1682,7 @@ describe("MCP tools (injected deps)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.count, 0);
     assert.equal(out.total, 0);
-    assert.equal(out.next_offset, null);
+    assert.equal(out.next_cursor, null);
   });
 
   test("get_subnet returns the overview artifact", async () => {
@@ -7179,26 +7179,28 @@ describe("list_subnets", () => {
     },
   });
 
-  test("paginates the full registry and reports next_offset", async () => {
+  test("paginates the full registry and reports next_cursor", async () => {
     const res = await callTool("list_subnets", { limit: 2 }, { deps });
     const out = res.body.result.structuredContent;
     assert.equal(out.total, 3);
     assert.equal(out.returned, 2);
-    assert.equal(out.next_offset, 2);
+    assert.equal(out.cursor, 0);
+    assert.equal(out.next_cursor, 2);
     assert.equal(out.subnets[0].netuid, 0);
     assert.equal(out.subnets[0].title, "root");
     assert.equal(out.subnets[0].integration_readiness, 15);
   });
 
-  test("offset reads the tail and clears next_offset", async () => {
+  test("cursor reads the tail and clears next_cursor", async () => {
     const res = await callTool(
       "list_subnets",
-      { offset: 2, limit: 2 },
+      { cursor: 2, limit: 2 },
       { deps },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.returned, 1);
-    assert.equal(out.next_offset, null);
+    assert.equal(out.cursor, 2);
+    assert.equal(out.next_cursor, null);
     assert.equal(out.subnets[0].netuid, 8);
   });
 
@@ -7566,7 +7568,7 @@ describe("list_subnets", () => {
 
 // The keyword search tools share the list_subnets pagination contract: page
 // through a match set larger than one page and confirm every ranked item is
-// reachable and next_offset clears at the end.
+// reachable and next_cursor clears at the end.
 describe("search tools pagination", () => {
   const MATCH_COUNT = 60; // > the 50-per-page cap, so paging is mandatory
   const searchDocs = Array.from({ length: MATCH_COUNT }, (_, i) => ({
@@ -7592,21 +7594,21 @@ describe("search tools pagination", () => {
     "/metagraph/agent-catalog.json": { subnets: catalogSubnets },
   });
 
-  // Walk every page by following next_offset; returns the concatenated results
-  // and the (offset, next_offset) cursor sequence seen.
+  // Walk every page by following next_cursor; returns the concatenated results
+  // and the (cursor, next_cursor) sequence seen.
   async function walkAll(tool, baseArgs, limit) {
     const all = [];
     const cursors = [];
-    let offset = 0;
+    let cursor = 0;
     let total = null;
     // Guard well above the real page count so a cursor bug fails fast instead
     // of looping forever.
     for (let guard = 0; guard < 100; guard += 1) {
       const out = (
-        await callTool(tool, { ...baseArgs, offset, limit }, { deps })
+        await callTool(tool, { ...baseArgs, cursor, limit }, { deps })
       ).body.result.structuredContent;
       total = out.total;
-      assert.equal(out.offset, offset, `${tool}: echoes the requested offset`);
+      assert.equal(out.cursor, cursor, `${tool}: echoes the requested cursor`);
       assert.equal(out.limit, limit, `${tool}: echoes the requested limit`);
       assert.equal(
         out.count,
@@ -7614,14 +7616,14 @@ describe("search tools pagination", () => {
         `${tool}: count equals the page length`,
       );
       all.push(...out.results);
-      cursors.push({ offset: out.offset, next_offset: out.next_offset });
-      if (out.next_offset === null) break;
+      cursors.push({ cursor: out.cursor, next_cursor: out.next_cursor });
+      if (out.next_cursor === null) break;
       assert.equal(
-        out.next_offset,
-        offset + out.results.length,
-        `${tool}: next_offset is the cursor for the following page`,
+        out.next_cursor,
+        cursor + out.results.length,
+        `${tool}: next_cursor is the cursor for the following page`,
       );
-      offset = out.next_offset;
+      cursor = out.next_cursor;
     }
     return { all, cursors, total };
   }
@@ -7630,33 +7632,33 @@ describe("search tools pagination", () => {
     { tool: "search_subnets", args: { query: "pageable" } },
     { tool: "find_subnets_by_capability", args: { capability: "pageable" } },
   ]) {
-    test(`${tool} pages the whole match set; next_offset clears at the end`, async () => {
+    test(`${tool} pages the whole match set; next_cursor clears at the end`, async () => {
       const { all, cursors, total } = await walkAll(tool, args, 50);
       // total is the full match count, independent of the per-page cap.
       assert.equal(total, MATCH_COUNT);
       // Two pages (60 matches, 50 cap) prove items past page one are reachable.
       assert.deepEqual(cursors, [
-        { offset: 0, next_offset: 50 },
-        { offset: 50, next_offset: null },
+        { cursor: 0, next_cursor: 50 },
+        { cursor: 50, next_cursor: null },
       ]);
       // Every match reached exactly once: no drops, no duplicates across pages.
       assert.equal(all.length, MATCH_COUNT);
       assert.equal(new Set(all.map((r) => r.netuid)).size, MATCH_COUNT);
     });
 
-    test(`${tool} offset past the end returns an empty terminal page`, async () => {
+    test(`${tool} cursor past the end returns an empty terminal page`, async () => {
       const out = (
         await callTool(
           tool,
-          { ...args, offset: MATCH_COUNT, limit: 10 },
+          { ...args, cursor: MATCH_COUNT, limit: 10 },
           { deps },
         )
       ).body.result.structuredContent;
       assert.equal(out.total, MATCH_COUNT);
-      assert.equal(out.offset, MATCH_COUNT);
+      assert.equal(out.cursor, MATCH_COUNT);
       assert.equal(out.count, 0);
       assert.equal(out.results.length, 0);
-      assert.equal(out.next_offset, null);
+      assert.equal(out.next_cursor, null);
     });
   }
 });
@@ -14061,17 +14063,18 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.candidates[0].kind, "openapi");
   });
 
-  test("list_candidates paginates the filtered list with limit/offset", async () => {
+  test("list_candidates paginates the filtered list with limit/cursor", async () => {
     const deps = candidatesDeps();
     const res = await callTool(
       "list_candidates",
-      { limit: 1, offset: 1 },
+      { limit: 1, cursor: 1 },
       { deps },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.total, 3);
     assert.equal(out.returned, 1);
-    assert.equal(out.offset, 1);
+    assert.equal(out.cursor, 1);
+    assert.equal(out.next_cursor, 2);
     assert.equal(out.candidates[0].provider, "chutes");
   });
 
@@ -14224,17 +14227,18 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.endpoints[0].provider, "datura");
   });
 
-  test("list_endpoints paginates the filtered list with limit/offset", async () => {
+  test("list_endpoints paginates the filtered list with limit/cursor", async () => {
     const deps = endpointsDeps();
     const res = await callTool(
       "list_endpoints",
-      { limit: 1, offset: 1 },
+      { limit: 1, cursor: 1 },
       { deps },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.total, 3);
     assert.equal(out.returned, 1);
-    assert.equal(out.offset, 1);
+    assert.equal(out.cursor, 1);
+    assert.equal(out.next_cursor, 2);
     assert.equal(out.endpoints[0].provider, "chutes");
   });
 
