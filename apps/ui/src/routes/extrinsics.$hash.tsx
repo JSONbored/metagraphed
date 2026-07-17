@@ -15,6 +15,7 @@ import {
   ActionBar,
   SectionAnchor,
   StatTile,
+  TableState,
 } from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
@@ -313,6 +314,18 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         >
           {relatedQuery.isLoading ? (
             <Skeleton className="h-16 w-full" />
+          ) : relatedQuery.isError ? (
+            // #6426: a failed fetch left data undefined, so relatedCalls became
+            // [] and rendered as "no related calls" -- indistinguishable from a
+            // real empty result. Mirrors the isError + TableState treatment every
+            // secondary query on accounts.$ss58.tsx already uses.
+            <TableState
+              variant="error"
+              title="Couldn't load related Multisig calls"
+              description="Other extrinsics may reference this call_hash — this list failed to load, so it isn't necessarily empty."
+              error={relatedQuery.error}
+              onRetry={() => void relatedQuery.refetch()}
+            />
           ) : relatedCalls.length > 0 ? (
             <ul className="flex flex-col gap-2">
               {relatedCalls.map((e) => (
