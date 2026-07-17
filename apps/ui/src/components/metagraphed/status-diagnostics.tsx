@@ -8,7 +8,12 @@ import {
 } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { HealthPill, TimeAgo, TableState, BarMini, type BarMiniDatum } from "@jsonbored/ui-kit";
-import { SortHeader, ariaSort, SelectFilter } from "@/components/metagraphed/table-controls";
+import {
+  SortHeader,
+  ariaSort,
+  SelectFilter,
+  ResetFiltersButton,
+} from "@/components/metagraphed/table-controls";
 import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import type { HealthHistorySurface, SourceHealthProvider } from "@/lib/metagraphed/types";
@@ -186,6 +191,14 @@ function HealthHistoryBody({ date }: { date: string }) {
             { value: "down", label: "failed" },
             { value: "unknown", label: "unknown" },
           ]}
+        />
+        {/* Scoped to the two keys this row owns. `date` has its own control in
+            the header above, and sort/order/window are set from other parts of
+            /status -- clearing them from here would drop state the reader never
+            touched from this row. */}
+        <ResetFiltersButton
+          active={Boolean(kind || status)}
+          onReset={() => navigate({ search: (prev) => ({ ...prev, kind: "", status: "" }) })}
         />
         <span className="ml-auto font-mono text-[10px] text-ink-muted">
           {rows.length} of {res.data.surfaces.length} surfaces
