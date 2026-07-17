@@ -18807,6 +18807,14 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "7d" | "30d";
+                netuid?: number;
+                fields?: string;
+                limit?: number;
+                cursor?: number;
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                sort?: "downtime_ms" | "incident_count" | "netuid" | "surface_id";
+                /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
+                order?: "asc" | "desc";
             };
             header?: never;
             path?: never;

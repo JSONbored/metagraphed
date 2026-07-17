@@ -78,7 +78,7 @@ function effectiveFilterNames(config, queryFilterNames = []) {
 // query and pins the resolved cursor + limit, so a client can walk pages without
 // rebuilding the request. Null when no relation applies (unpaged, single page,
 // or empty) so the caller omits the header.
-function listQueryParamNames(queryCollection, queryFilterNames = []) {
+export function listQueryParamNames(queryCollection, queryFilterNames = []) {
   const config = API_QUERY_COLLECTIONS[queryCollection];
   if (!config) return [];
   return listQueryParamNamesForConfig(config, queryFilterNames);

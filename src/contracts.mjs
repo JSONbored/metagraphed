@@ -294,6 +294,16 @@ export const API_QUERY_COLLECTIONS = {
       "status",
     ],
   }),
+  // Global cross-subnet downtime ledger served by GET /api/v1/incidents (#6571):
+  // the per-surface `surfaces` rollup formatGlobalIncidents produces, paginated
+  // on top of the route's own `window` scope so callers can page/sort/filter a
+  // 30-day list the same way the sibling endpoint-incidents route already does.
+  incidents: queryCollection("surfaces", {
+    filters: {
+      netuid: integerSchema,
+    },
+    sort: ["downtime_ms", "incident_count", "netuid", "surface_id"],
+  }),
   gaps: queryCollection("gaps", {
     filters: {
       netuid: integerSchema,
@@ -3904,7 +3914,9 @@ export const API_ROUTES = [
     "Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from D1). Pair with /api/v1/health for the overall status summary.",
     "short",
     ["health", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    listQueryWith("incidents", [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+    ]),
   ),
   route(
     "schemas",
@@ -4436,6 +4448,15 @@ function listQuery(collection, options = {}) {
       },
     ],
   };
+}
+
+// A list-query spec (pagination/sort/filter) fronted by a set of route-specific
+// query parameters the collection itself doesn't own — e.g. the incidents route's
+// `window` scope (#6571). The extra parameters lead, then the standard list-query
+// params, so `window` still reads first in the OpenAPI parameter list.
+function listQueryWith(collection, extraParameters) {
+  const spec = listQuery(collection);
+  return { ...spec, parameters: [...extraParameters, ...spec.parameters] };
 }
 
 function csvListQuery(collection, options = {}) {

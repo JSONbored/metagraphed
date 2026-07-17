@@ -43,6 +43,11 @@ import {
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
 import { formatGlobalIncidents } from "../../src/health-serving.mjs";
 import {
+  applyQueryFilters,
+  listQueryParamNames,
+  paginationLinkHeader,
+} from "../list-query.mjs";
+import {
   loadSubnetHealthTrends,
   loadSubnetIncidents,
   loadSubnetPercentiles,
@@ -622,8 +627,13 @@ export async function loadGlobalIncidentsLedger(env, { label = "7d" } = {}) {
   return { data, incidentRows: [] };
 }
 
+// The list-query params GET /api/v1/incidents accepts on top of its own `window`
+// scope (#6571): limit/cursor/sort/order + the netuid filter, so a caller can page
+// a 30-day incident list the way the sibling endpoint-incidents route already can.
+const GLOBAL_INCIDENTS_LIST_PARAMS = listQueryParamNames("incidents");
+
 export async function handleGlobalIncidents(request, env, url) {
-  const { label, error } = analyticsWindow(url);
+  const { label, error } = analyticsWindow(url, GLOBAL_INCIDENTS_LIST_PARAMS);
   if (error) {
     return analyticsQueryError(error);
   }
@@ -635,17 +645,37 @@ export async function handleGlobalIncidents(request, env, url) {
     const result = await loadGlobalIncidentsLedger(env, { label });
     data = result.data;
   }
+  // Page/sort/filter the window-scoped `surfaces` ledger through the shared
+  // list-query engine (#6571). `window` is this route's own scope param, already
+  // validated above, so it is stripped before the engine — which only knows the
+  // collection's own vocabulary and would otherwise reject it as an unknown param.
+  const listUrl = new URL(url.href);
+  listUrl.searchParams.delete("window");
+  const transformed = applyQueryFilters(data, listUrl, "incidents");
+  if (transformed.error) {
+    return analyticsQueryError(transformed.error);
+  }
+  // Pin the resolved window onto every page link so paging a non-default window
+  // doesn't silently fall back to 7d (canonicalListSearch keeps only list params).
+  const link = paginationLinkHeader(url, transformed.meta.pagination, {
+    queryCollection: "incidents",
+    searchParams: { window: label },
+  });
   const response = await envelopeResponse(
     request,
     {
-      data,
-      meta: await analyticsMeta(
-        env,
-        "/metagraph/incidents.json",
-        data.observed_at,
-      ),
+      data: transformed.data,
+      meta: {
+        ...(await analyticsMeta(
+          env,
+          "/metagraph/incidents.json",
+          data.observed_at,
+        )),
+        ...transformed.meta,
+      },
     },
     "short",
+    link ? { link } : {},
   );
   return isFallback ? markD1FallbackResponse(response) : response;
 }

@@ -1439,9 +1439,9 @@ describe("handleGlobalIncidents", () => {
 
   test("rejects unsupported extra params", async () => {
     const res = await handleGlobalIncidents(
-      req(`${base}?window=7d&netuid=7`),
+      req(`${base}?window=7d&bogus=1`),
       emptyEnv(),
-      url(`${base}?window=7d&netuid=7`),
+      url(`${base}?window=7d&bogus=1`),
     );
     await errorJson(res);
   });
@@ -1520,6 +1520,100 @@ describe("handleGlobalIncidents", () => {
       url(`${base}?window=7d`),
     );
     assert.equal(res.status, 200);
+  });
+
+  // #6571: the window-scoped ledger now pages/sorts/filters like the sibling
+  // endpoint-incidents route. Non-empty surfaces come from the Postgres tier (the
+  // D1 fallback ledger is always empty now), so these stub DATA_API with a payload
+  // in the exact shape formatGlobalIncidents emits.
+  function withSurfaces(surfaces) {
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          window: "7d",
+          observed_at: LAST_RUN_AT,
+          source: "live-cron-prober",
+          summary: {
+            incident_count: surfaces.length,
+            affected_surface_count: surfaces.length,
+          },
+          surfaces,
+        }),
+    };
+    return env;
+  }
+
+  const SURFACE_ROWS = [
+    { netuid: 7, surface_id: "a", incident_count: 1, downtime_ms: 300 },
+    { netuid: 7, surface_id: "b", incident_count: 3, downtime_ms: 100 },
+    { netuid: 12, surface_id: "c", incident_count: 2, downtime_ms: 900 },
+  ];
+
+  test("paginates the surfaces ledger and advertises a Link header", async () => {
+    const p = `${base}?window=7d&limit=1`;
+    const res = await handleGlobalIncidents(
+      req(p),
+      withSurfaces(SURFACE_ROWS),
+      url(p),
+    );
+    const body = await json(res);
+    assert.equal(body.data.surfaces.length, 1);
+    assert.equal(body.meta.pagination.collection, "surfaces");
+    assert.equal(body.meta.pagination.total, 3);
+    assert.equal(body.meta.pagination.limit, 1);
+    assert.equal(body.meta.pagination.next_cursor, 1);
+    const link = res.headers.get("link");
+    assert.ok(link.includes('rel="next"'));
+    // window is pinned onto every page link, never dropped back to the 7d default.
+    assert.ok(link.includes("window=7d"));
+  });
+
+  test("sort + order reorder the surfaces list", async () => {
+    const p = `${base}?window=7d&sort=downtime_ms&order=desc`;
+    const body = await json(
+      await handleGlobalIncidents(req(p), withSurfaces(SURFACE_ROWS), url(p)),
+    );
+    assert.deepEqual(
+      body.data.surfaces.map((s) => s.surface_id),
+      ["c", "a", "b"],
+    );
+    assert.equal(body.meta.pagination.sort, "downtime_ms");
+    assert.equal(body.meta.pagination.order, "desc");
+  });
+
+  test("netuid filter narrows the surfaces list", async () => {
+    const p = `${base}?window=7d&netuid=12`;
+    const body = await json(
+      await handleGlobalIncidents(req(p), withSurfaces(SURFACE_ROWS), url(p)),
+    );
+    assert.deepEqual(
+      body.data.surfaces.map((s) => s.netuid),
+      [12],
+    );
+    assert.equal(body.meta.pagination.total, 1);
+  });
+
+  test("rejects an out-of-range limit like the sibling list routes", async () => {
+    const p = `${base}?window=7d&limit=abc`;
+    const body = await errorJson(
+      await handleGlobalIncidents(req(p), withSurfaces(SURFACE_ROWS), url(p)),
+    );
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "limit");
+  });
+
+  test("unpaged request omits the Link header", async () => {
+    const p = `${base}?window=7d`;
+    const res = await handleGlobalIncidents(
+      req(p),
+      withSurfaces(SURFACE_ROWS),
+      url(p),
+    );
+    await json(res);
+    assert.equal(res.headers.get("link"), null);
   });
 });
 
