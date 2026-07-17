@@ -138,6 +138,15 @@ function pinnedFetch(url, resolvedAddresses, signal) {
           nextAddress += 1;
           callback(null, record.address, record.family);
         },
+        // Node's Happy-Eyeballs dual-stack connect path (default on since
+        // Node 20+) calls the custom `lookup` with `{ all: true }` and
+        // expects an array back; this callback only ever returns a single
+        // scalar address, which the multi-connect path then rejects as
+        // "Invalid IP address: undefined" -- a 100% failure regardless of
+        // target (confirmed live: every one of 598 fixtures failed
+        // identically). Opting out restores the single pinned-address
+        // connect this DNS-pinning lookup was actually written for.
+        autoSelectFamily: false,
         signal,
       },
       resolve,
