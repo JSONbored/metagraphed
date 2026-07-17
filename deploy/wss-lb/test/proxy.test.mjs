@@ -36,12 +36,12 @@ function echoServer() {
   });
 }
 
-function lbServer(upstreams) {
+function lbServer(upstreams, proxyOpts = {}) {
   return new Promise((resolve) => {
     const http = createServer();
     const wss = new WebSocketServer({ server: http });
     wss.on("connection", (client) =>
-      proxy(client, upstreams, { handshakeTimeout: 2000 }),
+      proxy(client, upstreams, { handshakeTimeout: 2000, ...proxyOpts }),
     );
     http.listen(0, "127.0.0.1", () => {
       const { port } = http.address();
@@ -97,6 +97,42 @@ test("all upstreams dead → client closed with 1013", async () => {
   });
   assert.equal(code, 1013);
   await lb.close();
+});
+
+test("all upstreams dead → onNoUpstream fires exactly once (for Sentry aggregate reporting)", async () => {
+  let calls = 0;
+  const lb = await lbServer([await deadUrl(), await deadUrl()], {
+    onNoUpstream: () => {
+      calls += 1;
+    },
+  });
+  await new Promise((resolve) => {
+    const c = new WebSocket(lb.url);
+    c.on("close", () => resolve());
+    setTimeout(resolve, 8000);
+  });
+  assert.equal(calls, 1);
+  await lb.close();
+});
+
+test("onNoUpstream is never called on a successful failover (only on total exhaustion)", async () => {
+  let calls = 0;
+  const good = await echoServer();
+  const lb = await lbServer([await deadUrl(), good.url], {
+    onNoUpstream: () => {
+      calls += 1;
+    },
+  });
+  await new Promise((resolve, reject) => {
+    const c = new WebSocket(lb.url);
+    c.on("open", () => c.close());
+    c.on("close", resolve);
+    c.on("error", reject);
+    setTimeout(() => reject(new Error("timeout")), 8000);
+  });
+  assert.equal(calls, 0);
+  await lb.close();
+  await good.close();
 });
 
 test("security: unsafe and oversized client RPC frames do not reach upstream", async () => {

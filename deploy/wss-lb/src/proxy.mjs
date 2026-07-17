@@ -139,6 +139,11 @@ export function proxy(client, upstreams, opts = {}) {
     if (clientClosed) return;
     if (attempt >= upstreams.length) {
       try {
+        opts.onNoUpstream?.();
+      } catch {
+        /* a reporting-callback failure must never prevent closing the client */
+      }
+      try {
         client.close(1013, "no upstream available");
       } catch {
         /* already closed */

@@ -12,7 +12,9 @@
 // INTEGRATION-PENDING: the live ws-piping is verified on deploy; the pure
 // upstream selection is unit-tested (test/select.test.mjs). Public behind
 // Cloudflare DNS for TLS/DDoS. Env: METAGRAPHED_API, PORT, REFRESH_MS,
-// MAX_BLOCK_LAG, NETWORKS, HANDSHAKE_TIMEOUT_MS.
+// MAX_BLOCK_LAG, NETWORKS, HANDSHAKE_TIMEOUT_MS. Optionally SENTRY_DSN/
+// SENTRY_ENVIRONMENT/SENTRY_RELEASE (silently no-ops if SENTRY_DSN is unset
+// -- see src/observability.mjs).
 import http from "node:http";
 
 import { WebSocketServer } from "ws";
@@ -20,6 +22,14 @@ import { WebSocketServer } from "ws";
 import { MAX_RPC_BODY_BYTES } from "./rpc-policy.mjs";
 import { proxy } from "./proxy.mjs";
 import { selectWssUpstreams } from "./select.mjs";
+import {
+  initSentry,
+  computeNoUpstreamWindowUpdate,
+  reportNoUpstreamWindow,
+  reportPoolStale,
+} from "./observability.mjs";
+
+initSentry();
 
 // Numeric env with a NaN/positivity guard: Number(process.env.X || d) returns NaN
 // for a non-numeric string (the `|| d` only catches empty/unset), which would
@@ -43,6 +53,14 @@ const log = (...a) => console.log(new Date().toISOString(), ...a);
 
 let poolsArtifact = null;
 let lastRefresh = 0;
+let wasStale = false; // edge-detection state -- see reportPoolStale's own comment
+let noUpstreamWindow = null; // owned here, not module-level in observability.mjs -- see computeNoUpstreamWindowUpdate's own comment
+
+function noteNoUpstream(network) {
+  const update = computeNoUpstreamWindowUpdate(noUpstreamWindow, network);
+  noUpstreamWindow = update.nextWindow;
+  if (update.report) reportNoUpstreamWindow(update);
+}
 
 async function refresh() {
   try {
@@ -64,6 +82,11 @@ async function refresh() {
   } catch (e) {
     log("refresh failed:", String(e?.message || e).slice(0, 160));
   }
+  const stale = !lastRefresh || Date.now() - lastRefresh > REFRESH_MS * 3;
+  if (stale && !wasStale) {
+    reportPoolStale(`no successful refresh in over ${REFRESH_MS * 3}ms`);
+  }
+  wasStale = stale;
 }
 
 function poolFor(network) {
@@ -138,6 +161,7 @@ server.on("upgrade", (req, socket, head) => {
   if (!upstreams.length) {
     socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
     socket.destroy();
+    noteNoUpstream(network);
     return;
   }
   wss.handleUpgrade(req, socket, head, (client) => {
@@ -145,7 +169,10 @@ server.on("upgrade", (req, socket, head) => {
     client.on("pong", () => {
       client.isAlive = true;
     });
-    proxy(client, upstreams, { handshakeTimeout: HANDSHAKE_TIMEOUT_MS });
+    proxy(client, upstreams, {
+      handshakeTimeout: HANDSHAKE_TIMEOUT_MS,
+      onNoUpstream: () => noteNoUpstream(network),
+    });
   });
 });
 

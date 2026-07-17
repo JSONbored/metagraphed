@@ -9,6 +9,7 @@
     "test": "node --test --test-force-exit test/*.test.mjs"
   },
   "dependencies": {
+    "@sentry/node": "^10.66.0",
     "ws": "^8.21.0"
   },
   "engines": {
