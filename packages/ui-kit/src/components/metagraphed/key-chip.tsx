@@ -7,6 +7,7 @@ import {
 import { useCopy } from "@/hooks/use-copy";
 import { classNames } from "@/lib/format";
 import { CopyIconToggle } from "./copy-icon-toggle";
+import { CopyStatusRegion } from "./copy-status-region";
 
 interface Props {
   /** Full value (e.g. coldkey/hotkey/long hash). */
@@ -70,6 +71,11 @@ export function KeyChip({
           {value}
         </TooltipContent>
       </Tooltip>
+      {/* #6372: the tooltip is pointer/focus affordance only -- the copy result
+          still needs its own live region, same as every sibling control. */}
+      <CopyStatusRegion>
+        {copied ? `${label} copied to clipboard` : ""}
+      </CopyStatusRegion>
     </TooltipProvider>
   );
 }

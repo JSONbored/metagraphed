@@ -3,6 +3,7 @@ import { Check, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { classNames } from "@/lib/format";
 import { useCopy } from "@/hooks/use-copy";
+import { CopyStatusRegion } from "./copy-status-region";
 
 interface Props {
   /** Optional explicit URL; defaults to current window.location.href. */
@@ -61,8 +62,8 @@ export function ShareButton({
         title="Copy link with current filters, sort, and page"
         className={classNames(
           bare
-            ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-            : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors",
+            ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           className,
         )}
       >
@@ -73,10 +74,8 @@ export function ShareButton({
         )}
         {copied ? "Link copied" : label}
       </button>
-      {/* Screen-reader status — visually hidden, polite live region. */}
-      <span role="status" aria-live="polite" className="sr-only">
-        {announcement}
-      </span>
+      {/* Screen-reader status — the shared region every copy control now uses. */}
+      <CopyStatusRegion>{announcement}</CopyStatusRegion>
     </>
   );
 }

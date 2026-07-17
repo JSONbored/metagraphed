@@ -1344,6 +1344,9 @@ function CopyIconToggle({ copied, size = 3, className }) {
     }
   );
 }
+function CopyStatusRegion({ children }) {
+  return /* @__PURE__ */ jsx("span", { role: "status", "aria-live": "polite", className: "sr-only", children });
+}
 function CopyButton({
   value,
   label,
@@ -1351,25 +1354,33 @@ function CopyButton({
   compact
 }) {
   const { copied, copy } = useCopy({ label });
-  return /* @__PURE__ */ jsx(
-    "button",
-    {
-      type: "button",
-      onClick: () => copy(value),
-      "aria-label": copied ? "Copied" : `Copy ${label ?? "value"}`,
-      title: copied ? "Copied!" : `Copy ${label ?? "value"}`,
-      className: classNames(
-        // min-h-11 min-w-11 gives the icon-only button the same 44px minimum
-        // touch target as every other header icon button in the shell (the
-        // convention list-shell.tsx documents); p-1 keeps the icon itself compact
-        // and centered within that hit area.
-        "shrink-0 inline-flex items-center justify-center rounded p-1 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong transition-colors",
-        compact && "-my-3.5",
-        className
-      ),
-      children: /* @__PURE__ */ jsx(CopyIconToggle, { copied })
-    }
-  );
+  return /* @__PURE__ */ jsxs(Fragment, { children: [
+    /* @__PURE__ */ jsx(
+      "button",
+      {
+        type: "button",
+        onClick: () => copy(value),
+        "aria-label": copied ? "Copied" : `Copy ${label ?? "value"}`,
+        title: copied ? "Copied!" : `Copy ${label ?? "value"}`,
+        className: classNames(
+          // min-h-11 min-w-11 gives the icon-only button the same 44px minimum
+          // touch target as every other header icon button in the shell (the
+          // convention list-shell.tsx documents); p-1 keeps the icon itself compact
+          // and centered within that hit area.
+          "shrink-0 inline-flex items-center justify-center rounded p-1 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong transition-colors",
+          // Focus ring drawn inside the 44px box (ring-inset) so it stays visible
+          // rather than clipping against a `compact` row's -my-3.5 fold or a
+          // tight table cell. KeyChip's own ring-offset treatment can't be reused
+          // verbatim here for that reason (#6371).
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60",
+          compact && "-my-3.5",
+          className
+        ),
+        children: /* @__PURE__ */ jsx(CopyIconToggle, { copied })
+      }
+    ),
+    /* @__PURE__ */ jsx(CopyStatusRegion, { children: copied ? `${label ?? "Value"} copied to clipboard` : "" })
+  ] });
 }
 function CopyableCode({
   value,
@@ -1378,59 +1389,66 @@ function CopyableCode({
   truncate = true
 }) {
   const { copied, copy } = useCopy({ label: label ?? "value" });
-  return /* @__PURE__ */ jsxs(
-    "button",
-    {
-      type: "button",
-      onClick: () => copy(value),
-      title: value,
-      "aria-label": copied ? "Copied" : `Copy ${label ?? "value"}`,
-      className: classNames(
-        "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left font-mono text-[11px] text-ink hover:border-ink/30 transition-colors",
-        className
-      ),
-      children: [
-        label ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted uppercase tracking-wider text-[10px]", children: label }) : null,
-        /* @__PURE__ */ jsx(
-          "code",
-          {
-            className: classNames(
-              "min-w-0 text-ink-strong",
-              truncate ? "truncate" : "truncate sm:whitespace-normal sm:break-all"
-            ),
-            children: value
-          }
+  return /* @__PURE__ */ jsxs(Fragment, { children: [
+    /* @__PURE__ */ jsxs(
+      "button",
+      {
+        type: "button",
+        onClick: () => copy(value),
+        title: value,
+        "aria-label": copied ? "Copied" : `Copy ${label ?? "value"}`,
+        className: classNames(
+          "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left font-mono text-[11px] text-ink hover:border-ink/30 transition-colors",
+          // Matches KeyChip's ring treatment -- this one is a bordered chip like
+          // KeyChip (not an icon-only hit area), so the offset ring reads cleanly
+          // against the card behind it (#6371).
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card",
+          className
         ),
-        /* @__PURE__ */ jsxs(
-          "span",
-          {
-            className: "relative inline-flex size-3 shrink-0 items-center justify-center",
-            "aria-hidden": true,
-            children: [
-              /* @__PURE__ */ jsx(
-                Check,
-                {
-                  className: classNames(
-                    "absolute size-3 text-health-ok transition-all duration-150",
-                    copied ? "scale-100 opacity-100" : "scale-50 opacity-0"
-                  )
-                }
+        children: [
+          label ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted uppercase tracking-wider text-[10px]", children: label }) : null,
+          /* @__PURE__ */ jsx(
+            "code",
+            {
+              className: classNames(
+                "min-w-0 text-ink-strong",
+                truncate ? "truncate" : "truncate sm:whitespace-normal sm:break-all"
               ),
-              /* @__PURE__ */ jsx(
-                Copy,
-                {
-                  className: classNames(
-                    "absolute size-3 text-ink-muted group-hover:text-ink transition-all duration-150",
-                    copied ? "scale-50 opacity-0" : "scale-100 opacity-100"
-                  )
-                }
-              )
-            ]
-          }
-        )
-      ]
-    }
-  );
+              children: value
+            }
+          ),
+          /* @__PURE__ */ jsxs(
+            "span",
+            {
+              className: "relative inline-flex size-3 shrink-0 items-center justify-center",
+              "aria-hidden": true,
+              children: [
+                /* @__PURE__ */ jsx(
+                  Check,
+                  {
+                    className: classNames(
+                      "absolute size-3 text-health-ok transition-all duration-150",
+                      copied ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                    )
+                  }
+                ),
+                /* @__PURE__ */ jsx(
+                  Copy,
+                  {
+                    className: classNames(
+                      "absolute size-3 text-ink-muted group-hover:text-ink transition-all duration-150",
+                      copied ? "scale-50 opacity-0" : "scale-100 opacity-100"
+                    )
+                  }
+                )
+              ]
+            }
+          )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsx(CopyStatusRegion, { children: copied ? `${label ?? "Value"} copied to clipboard` : "" })
+  ] });
 }
 function SegmentedToggle({
   options,
@@ -1894,41 +1912,44 @@ function KeyChip({
   const short = value.length > head + tail + 1 ? `${value.slice(0, head)}\u2026${value.slice(-tail)}` : value;
   return (
     // Self-wrapped so KeyChip works outside AppShell's global provider.
-    /* @__PURE__ */ jsx(TooltipProvider, { children: /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 120, children: [
-      /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
-        "button",
-        {
-          type: "button",
-          onClick: () => copy(value),
-          "aria-label": copied ? `${label} copied` : `Copy ${label}: ${value}`,
-          className: classNames(
-            "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left font-mono text-[11px] text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
-            className
-          ),
-          children: [
-            /* @__PURE__ */ jsx("span", { className: "truncate tabular-nums", children: short }),
-            /* @__PURE__ */ jsx(
-              CopyIconToggle,
-              {
-                copied,
-                className: "text-ink-muted group-hover:text-ink"
-              }
-            )
-          ]
-        }
-      ) }),
-      /* @__PURE__ */ jsxs(
-        TooltipContent,
-        {
-          side: "top",
-          className: "max-w-[90vw] break-all font-mono text-[11px]",
-          children: [
-            /* @__PURE__ */ jsx("span", { className: "mr-1 uppercase tracking-widest text-[9px] opacity-70", children: label }),
-            value
-          ]
-        }
-      )
-    ] }) })
+    /* @__PURE__ */ jsxs(TooltipProvider, { children: [
+      /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 120, children: [
+        /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
+          "button",
+          {
+            type: "button",
+            onClick: () => copy(value),
+            "aria-label": copied ? `${label} copied` : `Copy ${label}: ${value}`,
+            className: classNames(
+              "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left font-mono text-[11px] text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
+              className
+            ),
+            children: [
+              /* @__PURE__ */ jsx("span", { className: "truncate tabular-nums", children: short }),
+              /* @__PURE__ */ jsx(
+                CopyIconToggle,
+                {
+                  copied,
+                  className: "text-ink-muted group-hover:text-ink"
+                }
+              )
+            ]
+          }
+        ) }),
+        /* @__PURE__ */ jsxs(
+          TooltipContent,
+          {
+            side: "top",
+            className: "max-w-[90vw] break-all font-mono text-[11px]",
+            children: [
+              /* @__PURE__ */ jsx("span", { className: "mr-1 uppercase tracking-widest text-[9px] opacity-70", children: label }),
+              value
+            ]
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsx(CopyStatusRegion, { children: copied ? `${label} copied to clipboard` : "" })
+    ] })
   );
 }
 function ListShell({
@@ -2457,7 +2478,7 @@ function ShareButton({
         "aria-label": "Copy link with current filters, sort, and page",
         title: "Copy link with current filters, sort, and page",
         className: classNames(
-          bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors",
+          bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           className
         ),
         children: [
@@ -2466,7 +2487,7 @@ function ShareButton({
         ]
       }
     ),
-    /* @__PURE__ */ jsx("span", { role: "status", "aria-live": "polite", className: "sr-only", children: announcement })
+    /* @__PURE__ */ jsx(CopyStatusRegion, { children: announcement })
   ] });
 }
 function ActionBar({
