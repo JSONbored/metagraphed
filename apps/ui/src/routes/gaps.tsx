@@ -407,13 +407,22 @@ function MissingKindsAtAGlance() {
               <button
                 type="button"
                 onClick={() => {
+                  // Toggle k into the existing multi-select (matching the
+                  // Open-gaps panel's additive-Set logic) instead of
+                  // overwriting it with a single kind (#6582). Only snap
+                  // status/sort to the "open by priority" view on a fresh jump
+                  // (nothing previously selected) -- an in-progress multi-select
+                  // keeps the user's own status/sort choices.
+                  const next = new Set(activeMissing);
+                  if (next.has(k)) next.delete(k);
+                  else next.add(k);
+                  const wasEmpty = activeMissing.size === 0;
                   navigate({
                     search: (prev: Record<string, unknown>) =>
                       ({
                         ...prev,
-                        missing: k,
-                        status: "open",
-                        sort: "priority",
+                        missing: Array.from(next).join(","),
+                        ...(wasEmpty ? { status: "open", sort: "priority" } : {}),
                       }) as never,
                     replace: true,
                   });
