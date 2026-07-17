@@ -907,7 +907,7 @@ export async function handleCompareValidators(request, env, url) {
       )) ?? buildValidatorDetail([], hotkey);
     details.push(detail);
     if (
-      detail?.captured_at &&
+      detail.captured_at &&
       (latestCapturedAt == null || detail.captured_at > latestCapturedAt)
     ) {
       latestCapturedAt = detail.captured_at;

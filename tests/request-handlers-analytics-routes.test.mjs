@@ -1063,6 +1063,17 @@ describe("handleCompareValidators", () => {
   const HOTKEY_A = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const HOTKEY_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
+  test("rejects an unsupported query param with 400", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleCompareValidators(
+      req("/"),
+      env,
+      url(`/api/v1/compare/validators?hotkeys=${HOTKEY_A}&bogus=1`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "bogus");
+  });
+
   test("requires hotkeys", async () => {
     const env = createLocalArtifactEnv();
     const res = await handleCompareValidators(
