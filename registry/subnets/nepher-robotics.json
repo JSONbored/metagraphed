@@ -142,7 +142,8 @@
         "https://tournament-api.nepher.ai/docs",
         "https://tournament-api.nepher.ai/openapi.json"
       ],
-      "url": "https://tournament-api.nepher.ai/openapi.json"
+      "url": "https://tournament-api.nepher.ai/openapi.json",
+      "schema_url": "https://tournament-api.nepher.ai/openapi.json"
     },
     {
       "auth_required": true,

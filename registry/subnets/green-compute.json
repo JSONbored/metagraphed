@@ -101,7 +101,8 @@
         "https://api.green-compute.com/openapi.json",
         "https://www.green-compute.com/"
       ],
-      "url": "https://api.green-compute.com/openapi.json"
+      "url": "https://api.green-compute.com/openapi.json",
+      "schema_url": "https://api.green-compute.com/openapi.json"
     },
     {
       "auth_required": false,

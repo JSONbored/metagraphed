@@ -201,6 +201,18 @@ for (const file of files) {
           "(the /rpc endpoint lane), not per-subnet contributor surfaces.",
       );
     }
+    // A surface that advertises a machine-readable schema must say where to fetch
+    // it: schema_status is the claim, schema_url is the address. 56/62 openapi
+    // surfaces already pair them (schema_url is usually the surface's own url, but
+    // not always — numinous.json serves docs at url and the spec at schema_url), so
+    // the claim without the address leaves callers with nothing to fetch (#6331).
+    if (surface.schema_status === "machine-readable" && !surface.schema_url) {
+      errors.push(
+        `${label}: schema_status "machine-readable" requires a schema_url pointing at ` +
+          "the fetchable spec (commonly the surface's own url) — a machine-readable " +
+          "claim with no address gives callers nothing to fetch.",
+      );
+    }
   }
   for (const [normalizedUrl, ids] of surfaceIdsByUrl) {
     if (

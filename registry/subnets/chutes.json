@@ -222,7 +222,8 @@
         "https://api.chutes.ai/openapi.json",
         "https://github.com/chutesai/chutes"
       ],
-      "url": "https://api.chutes.ai/openapi.json"
+      "url": "https://api.chutes.ai/openapi.json",
+      "schema_url": "https://api.chutes.ai/openapi.json"
     },
     {
       "auth_required": false,

@@ -137,7 +137,8 @@
         "https://www.desearch.ai/openapi.json",
         "https://api.desearch.ai"
       ],
-      "url": "https://www.desearch.ai/openapi.json"
+      "url": "https://www.desearch.ai/openapi.json",
+      "schema_url": "https://www.desearch.ai/openapi.json"
     },
     {
       "auth_required": true,

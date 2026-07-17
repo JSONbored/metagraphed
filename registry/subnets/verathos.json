@@ -116,7 +116,8 @@
         "https://verathos.ai/docs",
         "https://verathos.ai/openapi.json"
       ],
-      "url": "https://verathos.ai/openapi.json"
+      "url": "https://verathos.ai/openapi.json",
+      "schema_url": "https://verathos.ai/openapi.json"
     },
     {
       "auth_required": false,
