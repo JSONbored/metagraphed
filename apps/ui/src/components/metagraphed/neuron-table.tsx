@@ -136,7 +136,7 @@ export function NeuronTable({
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
             <tr>
@@ -298,6 +298,111 @@ export function NeuronTable({
           </tbody>
         </table>
       </div>
+      {/* < md: the 8-10 column table is unreadable on a narrow viewport, so
+          mobile gets a stacked card per neuron — mirrors ValidatorCardList, the
+          same fallback the global validators table uses (#5320). */}
+      <div className="md:hidden divide-y divide-border/60">
+        {sorted.map((n) => {
+          const active = selectedUid === n.uid;
+          return (
+            <div key={n.uid} className={classNames("space-y-2 p-3", active && "bg-accent-surface")}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                    UID
+                  </span>
+                  {onSelect ? (
+                    <button
+                      type="button"
+                      className="font-mono text-[12px] tabular-nums text-ink-strong underline underline-offset-2 hover:text-accent"
+                      onClick={() => onSelect(n.uid)}
+                    >
+                      {n.uid}
+                    </button>
+                  ) : (
+                    <span className="font-mono text-[12px] tabular-nums text-ink-strong">
+                      {n.uid}
+                    </span>
+                  )}
+                </div>
+                {n.validator_permit ? (
+                  <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+                    Validator
+                  </span>
+                ) : null}
+              </div>
+              <div className="flex min-w-0 items-center gap-1.5 font-mono text-[11px]">
+                {n.featured ? <SponsoredBadge /> : null}
+                {n.hotkey ? (
+                  <>
+                    {isValidator ? (
+                      <Link
+                        to="/validators/$hotkey"
+                        params={{ hotkey: n.hotkey }}
+                        title={n.hotkey}
+                        className="truncate text-ink-muted hover:text-ink hover:underline"
+                      >
+                        {shortHash(n.hotkey) ?? n.hotkey}
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: n.hotkey }}
+                        title={n.hotkey}
+                        className="truncate text-ink-muted hover:text-ink hover:underline"
+                      >
+                        {shortHash(n.hotkey) ?? n.hotkey}
+                      </Link>
+                    )}
+                    <CopyButton value={n.hotkey} label="hotkey" compact />
+                  </>
+                ) : (
+                  "—"
+                )}
+              </div>
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+                <CardStat label="Stake τ" value={taoCompact(n.stake_tao)} />
+                <CardStat label="Emission τ" value={taoCompact(n.emission_tao)} />
+                {isValidator ? (
+                  <>
+                    <CardStat label="Dividends" value={scoreStr(n.dividends)} />
+                    <CardStat label="Val Trust" value={scoreStr(validatorTrustValue(n))} />
+                    <CardStat label="Take" value={formatTakePct(n.take)} />
+                    <CardStat
+                      label="Est. APY"
+                      value={formatApyPct(
+                        annualizedDelegatorApyPct(n.emission_tao ?? 0, n.stake_tao ?? 0, n.take),
+                      )}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <CardStat label="Rank" value={n.rank == null ? "—" : String(n.rank)} />
+                    <CardStat label="Trust" value={scoreStr(n.trust)} />
+                    <CardStat label="Consensus" value={scoreStr(n.consensus)} />
+                  </>
+                )}
+              </dl>
+              {isValidator && n.hotkey ? (
+                <StakeUnstakeModal
+                  hotkey={n.hotkey}
+                  netuid={netuid}
+                  trigger={(open) => (
+                    <button
+                      type="button"
+                      onClick={open}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+                    >
+                      <Coins className="size-3 text-ink-muted" aria-hidden />
+                      Delegate
+                    </button>
+                  )}
+                />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
       <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
         <span>
           {sorted.length} {sorted.length === 1 ? "neuron" : "neurons"} · subnet {netuid}
@@ -313,6 +418,18 @@ export function NeuronTable({
           Download CSV
         </a>
       </div>
+    </div>
+  );
+}
+
+// Labelled metric row for the < md card fallback (mirrors ValidatorCardList's
+// Stat): each value is self-labelled so a card reads correctly without the
+// column headers the desktop table provides.
+function CardStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="font-mono tabular-nums text-ink">{value}</dd>
     </div>
   );
 }
