@@ -115,6 +115,7 @@ import { SubnetValidatorsPreview } from "@/components/metagraphed/subnet-validat
 import { SubnetFilterProvider } from "@/components/metagraphed/subnet-filter-context";
 import { SubnetCompareDrawer } from "@/components/metagraphed/subnet-compare-drawer";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
+import { WatchSubnetAlert } from "@/components/metagraphed/watch-subnet-alert";
 
 type SearchParams = {
   tab?: string;
@@ -345,6 +346,21 @@ function ProfileShell({ netuid }: { netuid: number }) {
             </SectionAnchor>
           ) : null}
           {tab === "api" ? <ApiPanel netuid={netuid} /> : null}
+        </div>
+
+        {/* #6558: the backend accepts netuid-scoped alert triggers, but only the
+            validator page exposed a Watch UI. Extend the same pattern here.
+            Outside the tab switch, so it's reachable from any tab -- same as the
+            "Watch this validator" section on the validator page. */}
+        <div className="mt-8">
+          <SectionAnchor
+            id="watch"
+            title="Watch this subnet"
+            subtitle="Alert on on-chain activity for this subnet, via the existing chain alert-triggers API."
+            tone="accent"
+          >
+            <WatchSubnetAlert netuid={netuid} />
+          </SectionAnchor>
         </div>
 
         {/* #6432: outside the tab switch, so the way back is there whichever

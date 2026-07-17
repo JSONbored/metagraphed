@@ -14,14 +14,15 @@ import {
   type Channel,
 } from "@/components/metagraphed/watch-alert-form";
 
-// #4984's event_kind is a single value per trigger (not a filter list), so
-// this is a single-select rather than the webhook manager's checkbox-set
-// "kinds" pattern. Leaving it unset still matches every event for this
-// hotkey (validateAlertTriggerInput requires only one of
-// netuid/event_kind/account/min_amount_tao — `account` below always
-// satisfies that on its own).
+// The backend (src/alert-triggers.mjs) validates `netuid` (0-65535) as an
+// independently-sufficient match condition, so a netuid-only trigger fires on
+// every matching chain event for that subnet. This mirrors WatchValidatorAlert
+// (account-scoped) — same #4984 endpoint, create-token gate, and one-time
+// owner-token result — but sends `netuid` instead of `account` (#6558).
+// Mirror WatchValidatorAlert's proven kinds (the backend accepts any string but
+// only these are known to occur); the netuid scope is what makes it subnet-wide.
 const EVENT_KINDS = [
-  { value: "", label: "Any delegation or stake event" },
+  { value: "", label: "Any event on this subnet" },
   { value: "DelegateAdded", label: "New delegation" },
   { value: "StakeAdded", label: "Stake added" },
 ] as const;
@@ -33,8 +34,8 @@ interface CreateVariables {
   destination: string;
 }
 
-/** "Watch this validator": a scoped alert trigger (account=hotkey) over the existing #4984 alerts API. */
-export function WatchValidatorAlert({ hotkey }: { hotkey: string }) {
+/** "Watch this subnet": a netuid-scoped alert trigger over the existing #4984 alerts API. */
+export function WatchSubnetAlert({ netuid }: { netuid: number }) {
   const [token, setToken] = useState("");
   const [eventKind, setEventKind] = useState("");
   const [channel, setChannel] = useState<Channel>("webhook");
@@ -50,7 +51,7 @@ export function WatchValidatorAlert({ hotkey }: { hotkey: string }) {
             [CREATE_TOKEN_HEADER]: vars.token,
           },
           body: JSON.stringify({
-            account: hotkey,
+            netuid,
             ...(vars.eventKind ? { event_kind: vars.eventKind } : {}),
             channel: vars.channel,
             destination: vars.destination,
@@ -76,15 +77,11 @@ export function WatchValidatorAlert({ hotkey }: { hotkey: string }) {
   return (
     <div className="space-y-3">
       <p className="max-w-2xl text-[13px] text-ink-muted">
-        Get a webhook or Discord notification when this validator receives new delegations or stake.
-        Creation requires a trigger token issued by a metagraphed operator — this app never bundles
-        one.
+        Get a webhook or Discord notification for on-chain activity on SN{netuid}. Creation requires
+        a trigger token issued by a metagraphed operator — this app never bundles one.
       </p>
       <form onSubmit={onSubmit} className="space-y-3 rounded border border-border bg-card p-4">
-        <Field
-          label="Event"
-          hint="Leave as 'any' to watch every delegation/stake event for this hotkey."
-        >
+        <Field label="Event" hint="Leave as 'any' to watch every indexed event on this subnet.">
           <select
             value={eventKind}
             onChange={(e) => setEventKind(e.target.value)}
@@ -122,7 +119,7 @@ export function WatchValidatorAlert({ hotkey }: { hotkey: string }) {
           disabled={mutation.isPending}
           className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-[12px] font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
         >
-          {mutation.isPending ? "Creating…" : "Watch this validator"}
+          {mutation.isPending ? "Creating…" : "Watch this subnet"}
         </button>
       </form>
 
