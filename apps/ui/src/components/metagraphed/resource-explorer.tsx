@@ -463,7 +463,14 @@ function EndpointRow({ e }: { e: Endpoint }) {
                     <ExternalLinkIcon className="size-3" />
                   </a>
                 ) : (
+                  // #6423: role="img" carries the label here. This span is the
+                  // only AT-reachable carrier of the blocked state: the two
+                  // "Blocked unsafe URL" strings nearby are both TooltipContent,
+                  // which needs hover/focus, and this element is deliberately
+                  // not focusable (unlike the safeUrl <a> sibling) -- so without
+                  // a role the state is announced nowhere.
                   <span
+                    role="img"
                     aria-label="Blocked unsafe endpoint URL"
                     className="cursor-not-allowed rounded p-1 text-ink-muted/50"
                   >

@@ -534,7 +534,10 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                         <div className="mg-label">{p.kind ?? "provider"}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {isOfficial ? (
+                            // #6423: see hero-subnet-chips -- role="img" so the
+                            // colour-only badge announces its meaning.
                             <span
+                              role="img"
                               aria-label="Official provider"
                               title="Official"
                               className="inline-block size-1.5 rounded-full bg-accent shrink-0"

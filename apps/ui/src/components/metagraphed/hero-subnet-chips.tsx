@@ -96,8 +96,13 @@ export function HeroSubnetChips({ limit = 14 }: { limit?: number }) {
             <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
               SN{s.netuid}
             </span>
+            {/* #6423: role="img" so the label is exposed -- a plain span is
+                role="generic", whose aria-label AT is not required to announce.
+                Matches ui-kit HealthDot's treatment of this same visual. */}
             <span
+              role="img"
               aria-label={`health ${health}`}
+              title={`health ${health}`}
               className={classNames("size-1.5 rounded-full shrink-0", TONE[health])}
             />
           </Link>
