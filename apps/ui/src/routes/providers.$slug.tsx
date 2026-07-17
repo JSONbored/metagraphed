@@ -65,9 +65,11 @@ export const Route = createFileRoute("/providers/$slug")({
   notFoundComponent: () => (
     <AppShell>
       <PageHeading title="Provider not found" />
-      <Link to="/providers" className="text-sm underline">
-        Back to providers
-      </Link>
+      <EmptyState
+        title="Provider not found"
+        description="No provider matches this slug. Browse the provider directory to find the one you're looking for."
+        action={{ label: "Back to providers", href: "/providers" }}
+      />
     </AppShell>
   ),
 });

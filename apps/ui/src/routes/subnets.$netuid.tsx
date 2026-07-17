@@ -177,9 +177,11 @@ export const Route = createFileRoute("/subnets/$netuid")({
         title="Subnet not found"
         description="No active Finney netuid matches this URL."
       />
-      <Link to="/subnets" className="text-sm underline">
-        Back to registry
-      </Link>
+      <EmptyState
+        title="Subnet not found"
+        description="No active Finney netuid matches this URL. Browse the registry to find an active subnet."
+        action={{ label: "Back to registry", href: "/subnets" }}
+      />
     </AppShell>
   ),
 });
