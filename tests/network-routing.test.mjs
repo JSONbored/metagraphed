@@ -350,6 +350,9 @@ describe("multi-network routing prefix (Phase 1)", () => {
       // Nominator-side position reconstruction (#5233) reads the same
       // mainnet-only neurons D1 tier as /portfolio above.
       `/api/v1/testnet/accounts/${SS58}/positions`,
+      // Validator-side compare (#6325) reads the same mainnet-only neurons
+      // D1 tier as /api/v1/validators/{hotkey} and /api/v1/compare above.
+      `/api/v1/testnet/compare/validators?hotkeys=${SS58}`,
       "/api/v1/testnet/incidents",
 
       "/api/v1/testnet/rpc/usage",

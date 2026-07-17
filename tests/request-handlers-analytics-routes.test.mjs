@@ -1164,6 +1164,39 @@ describe("handleCompareValidators", () => {
     assert.equal(body.data.validators[0].subnet_context.uid, 3);
   });
 
+  test("generated_at tracks the latest captured_at across mixed-order per-hotkey responses", async () => {
+    const env = createLocalArtifactEnv();
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    const HOTKEY_C = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
+    const capturedAtByHotkey = {
+      [HOTKEY_A]: "2026-06-20T00:00:00.000Z",
+      [HOTKEY_B]: "2026-06-19T00:00:00.000Z", // earlier -- must not overwrite
+      [HOTKEY_C]: "2026-06-22T00:00:00.000Z", // later -- must overwrite
+    };
+    env.DATA_API = {
+      fetch: async (request) => {
+        const hotkey = new URL(request.url).pathname.split("/").pop();
+        return Response.json({
+          schema_version: 1,
+          hotkey,
+          captured_at: capturedAtByHotkey[hotkey],
+          subnet_count: 0,
+          subnets: [],
+        });
+      },
+    };
+    const body = await json(
+      await handleCompareValidators(
+        req("/"),
+        env,
+        url(
+          `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B},${HOTKEY_C}`,
+        ),
+      ),
+    );
+    assert.equal(body.meta.generated_at, "2026-06-22T00:00:00.000Z");
+  });
+
   // #6325: REST and MCP share the identical composeValidatorComparison
   // projection and the identical tryPostgresTier(METAGRAPH_NEURONS_SOURCE)
   // per-hotkey fallback contract -- this proves it directly rather than only
