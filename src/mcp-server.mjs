@@ -476,6 +476,7 @@ import {
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
 } from "./subnet-deregistrations.mjs";
 import { buildAccountPortfolio } from "./account-portfolio.mjs";
+import { buildAccountPositions } from "./account-nominator-positions.mjs";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
@@ -6107,6 +6108,43 @@ export const MCP_TOOLS = [
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/portfolio`),
           "METAGRAPH_NEURONS_SOURCE",
         )) ?? buildAccountPortfolio([], ss58)
+      );
+    },
+  },
+  {
+    name: "get_account_positions",
+    title: "Get an account's nominator-side positions",
+    description:
+      "This account's reconstructed nominator-side positions (by SS58 coldkey): " +
+      "what it holds delegated across every hotkey/subnet — hotkey, netuid, " +
+      "share_fraction (0-1, this account's share of that hotkey's alpha-pool " +
+      "shares on that subnet), and the derived stake_tao. Distinct from " +
+      "get_account_portfolio's hotkey-scoped view — a pure delegator shows " +
+      "near-zero there since its stake lives on someone ELSE's hotkey row. Root " +
+      "(netuid 0) stake is not covered — root has no alpha pool. An address with " +
+      "no delegated positions returns an empty card, not an error. Mirrors " +
+      "GET /api/v1/accounts/{ss58}/positions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's coldkey SS58 address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/positions`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildAccountPositions([], new Map(), ss58)
       );
     },
   },
@@ -12322,6 +12360,19 @@ const TOOL_OUTPUT_SCHEMAS = {
       total_emission_tao: { type: "number" },
       overall_yield: { type: ["number", "null"] },
       stake_concentration: { type: ["object", "null"] },
+      positions: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_account_positions: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "position_count", "total_stake_tao", "positions"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      captured_at: NULLABLE_STRING,
+      position_count: { type: "integer" },
+      total_stake_tao: { type: "number" },
       positions: { type: "array", items: { type: "object" } },
     },
   },

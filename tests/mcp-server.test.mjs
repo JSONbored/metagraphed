@@ -16267,6 +16267,27 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
     });
     assert.equal(badWindow.body.result.isError, true);
   });
+
+  // nominator_positions never had a D1-era predecessor (#6323), same
+  // no-D1-fallback shape as get_account_position_history above -- flag
+  // absent means straight to the schema-stable empty card, no D1 query at all.
+  test("get_account_positions returns a schema-stable empty card with no Postgres flag", async () => {
+    const res = await callTool("get_account_positions", { ss58: SS58 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.captured_at, null);
+    assert.equal(out.position_count, 0);
+    assert.equal(out.total_stake_tao, 0);
+    assert.deepEqual(out.positions, []);
+  });
+
+  test("get_account_positions rejects a malformed ss58", async () => {
+    const res = await callTool("get_account_positions", {
+      ss58: "not-an-address",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /ss58/);
+  });
 });
 
 describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () => {
@@ -16703,6 +16724,11 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
       tool: "get_account_portfolio",
       args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
       path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/portfolio",
+    },
+    {
+      tool: "get_account_positions",
+      args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/positions",
     },
     {
       tool: "get_account_position_history",
