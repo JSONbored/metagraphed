@@ -109,11 +109,7 @@ export { HoverPreview } from "@/components/metagraphed/hover-preview";
 export { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 export { Kbd } from "@/components/metagraphed/kbd";
 export { KeyChip } from "@/components/metagraphed/key-chip";
-export {
-  ListShell,
-  ListCard,
-  LoadMore,
-} from "@/components/metagraphed/list-shell";
+export { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 export { PageHero } from "@/components/metagraphed/page-hero";
 export {
   type EntityHeroProps,

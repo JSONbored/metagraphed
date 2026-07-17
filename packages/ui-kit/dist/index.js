@@ -1999,25 +1999,6 @@ function ListShell({
     ] })
   ] });
 }
-function ListCard({
-  to,
-  onClick,
-  children
-}) {
-  const cls = "block rounded border border-border bg-card p-3 min-h-11 hover:border-ink/30 active:bg-surface transition-colors";
-  if (to) {
-    return /* @__PURE__ */ jsx("a", { href: to, onClick, className: cls, children });
-  }
-  return /* @__PURE__ */ jsx(
-    "button",
-    {
-      type: "button",
-      onClick,
-      className: `${cls} text-left w-full`,
-      children
-    }
-  );
-}
 function LoadMore({
   hasMore,
   isLoading,
@@ -4011,4 +3992,4 @@ function TreemapMini({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EntityHero, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EntityHero, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel };

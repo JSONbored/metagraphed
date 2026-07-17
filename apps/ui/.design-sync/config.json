@@ -44,7 +44,6 @@
     "Kbd": "src/components/metagraphed/kbd.tsx",
     "KeyChip": "src/components/metagraphed/key-chip.tsx",
     "ListShell": "src/components/metagraphed/list-shell.tsx",
-    "ListCard": "src/components/metagraphed/list-shell.tsx",
     "LoadMore": "src/components/metagraphed/list-shell.tsx",
     "PageHero": "src/components/metagraphed/page-hero.tsx",
     "PageSection": "src/components/metagraphed/page-section.tsx",

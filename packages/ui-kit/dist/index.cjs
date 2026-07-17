@@ -2028,25 +2028,6 @@ function ListShell({
     ] })
   ] });
 }
-function ListCard({
-  to,
-  onClick,
-  children
-}) {
-  const cls = "block rounded border border-border bg-card p-3 min-h-11 hover:border-ink/30 active:bg-surface transition-colors";
-  if (to) {
-    return /* @__PURE__ */ jsxRuntime.jsx("a", { href: to, onClick, className: cls, children });
-  }
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "button",
-    {
-      type: "button",
-      onClick,
-      className: `${cls} text-left w-full`,
-      children
-    }
-  );
-}
 function LoadMore({
   hasMore,
   isLoading,
@@ -4096,7 +4077,6 @@ exports.HoverPreview = HoverPreview;
 exports.InfoTooltip = InfoTooltip;
 exports.Kbd = Kbd;
 exports.KeyChip = KeyChip;
-exports.ListCard = ListCard;
 exports.ListShell = ListShell;
 exports.LoadMore = LoadMore;
 exports.McpToolsList = McpToolsList;

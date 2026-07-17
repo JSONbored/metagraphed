@@ -89,48 +89,6 @@ export function ListShell({
 }
 
 /**
- * Tap-friendly card row used by mobile card fallbacks.
- * Targets a 44px minimum height for accessible tap targets.
- *
- * `to` and `onClick` are independent and may be combined: with `to` the card is
- * a link, and `onClick` (if given) fires on activation *in addition to*
- * navigation -- the click-tracking-alongside-navigation case. It does not
- * preventDefault, so the link still navigates. With no `to`, the card is a
- * button and `onClick` is its only behaviour.
- *
- * (#6376: the link branch used to drop `onClick` silently -- no warning, no
- * navigation change, the handler simply never ran.)
- */
-export function ListCard({
-  to,
-  onClick,
-  children,
-}: {
-  to?: string;
-  onClick?: () => void;
-  children: ReactNode;
-}) {
-  const cls =
-    "block rounded border border-border bg-card p-3 min-h-11 hover:border-ink/30 active:bg-surface transition-colors";
-  if (to) {
-    return (
-      <a href={to} onClick={onClick} className={cls}>
-        {children}
-      </a>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`${cls} text-left w-full`}
-    >
-      {children}
-    </button>
-  );
-}
-
-/**
  * Cursor-pagination "Load more" affordance with skeletons during fetch and
  * an inline retry strip on error. Keeps already-loaded rows visible.
  */
