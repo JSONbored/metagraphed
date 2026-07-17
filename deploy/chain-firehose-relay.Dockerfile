@@ -6,31 +6,32 @@
 # scripts/chain-firehose-relay.mjs's own header comment for why this is safe
 # by construction, unlike the retired streamer (docs/adr/0014).
 #
-# Deployed the same way the (also retired) metagraphed-streamer was: the
-# Ansible `chain-firehose-relay` role in JSONbored/metagraphed-infra copies
-# this Dockerfile + scripts/chain-firehose-relay.mjs into
-# roles/chain-firehose-relay/files/ and builds directly on the indexer box
-# (no cross-compilation concern -- this is a single small ESM file + one npm
-# dependency). Re-run that role after updating either file to rebuild with
-# the latest fix.
+# Clone-at-runtime, like metagraph-fetch.Dockerfile/data-refresh-node.Dockerfile
+# /economics-refresh.Dockerfile: this image holds no copy of
+# chain-firehose-relay.mjs itself (see scripts/chain-firehose-relay-entrypoint.sh).
+# metagraphed-infra used to track a second, independently-drifting copy of
+# this file (metagraphed#6451); the entrypoint now clones the real one from
+# GitHub at container start instead. The Ansible `chain-firehose-relay` role
+# in JSONbored/metagraphed-infra now copies only this Dockerfile + the
+# entrypoint script into roles/chain-firehose-relay/files/ and builds
+# directly on the indexer box. Restarting the container (not rebuilding the
+# image) is enough to pick up the latest main.
 #
 # Local:  docker build -f deploy/chain-firehose-relay.Dockerfile -t metagraphed-chain-firehose-relay .
 FROM node:22.23.1-alpine
+RUN apk add --no-cache bash git ca-certificates
 # BusyBox adduser (Alpine's) -- -D skips setting a password, -u pins the uid.
 RUN adduser -D -u 10001 relay
 WORKDIR /app
 
-# Pinned dependencies (postgres.js matches the root package.json's own pin,
-# the same driver workers/data-api.mjs uses) -- never auto-pull a future
-# release independently of the rest of the repo. @sentry/node also matches
-# the root package.json pin.
-RUN npm install --no-audit --no-fund postgres@3.4.9 @sentry/node@10.66.0
-
-COPY scripts/chain-firehose-relay.mjs ./scripts/chain-firehose-relay.mjs
+COPY --chown=relay:relay scripts/chain-firehose-relay-entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 ENV NODE_ENV=production
 
 USER relay
 # Provide at runtime (NOT baked in): DATABASE_URL, CHAIN_FIREHOSE_SYNC_SECRET,
-# and optionally CHAIN_FIREHOSE_INGEST_URL (defaults to the production hub).
-CMD ["node", "scripts/chain-firehose-relay.mjs"]
+# and optionally CHAIN_FIREHOSE_INGEST_URL (defaults to the production hub),
+# SENTRY_DSN, SENTRY_RELEASE (auto-derived from the freshly-cloned HEAD if
+# unset).
+ENTRYPOINT ["./entrypoint.sh"]
