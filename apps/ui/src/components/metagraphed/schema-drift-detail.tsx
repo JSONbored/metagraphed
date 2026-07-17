@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { Copy, Check, ExternalLink as ExternalIcon } from "lucide-react";
 import {
@@ -23,15 +24,41 @@ interface Props {
   onOpenInExplorer?: (id: string) => void;
 }
 
+/** #6555: whether a captured opener element is still worth restoring focus to
+ *  (present and still in the document) — pure so it can be unit-tested. */
+export function shouldRestoreFocus(el: HTMLElement | null): el is HTMLElement {
+  return el != null && el.isConnected;
+}
+
 /**
  * Modal that explains what changed in a drifting schema: a compact field/line
  * diff, a derived compatibility-impact chip row, and evidence links so the
  * user can verify against the underlying snapshots.
  */
 export function SchemaDriftDetail({ schema, open, onOpenChange, onOpenInExplorer }: Props) {
+  // #6555: this Dialog is driven by a URL search param and has no in-tree
+  // <DialogTrigger>, so Radix has no trigger to auto-restore focus to on close
+  // and drops it to <body>. Mirror api-drawer.tsx (#6418): record the element
+  // focused when the dialog opens, and restore it in onCloseAutoFocus.
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (open) {
+      restoreFocusRef.current = (document.activeElement as HTMLElement | null) ?? null;
+    }
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent
+        className="max-w-3xl"
+        onCloseAutoFocus={(event) => {
+          const el = restoreFocusRef.current;
+          if (shouldRestoreFocus(el)) {
+            event.preventDefault();
+            el.focus();
+          }
+        }}
+      >
         {schema ? (
           <DriftBody
             schema={schema}
