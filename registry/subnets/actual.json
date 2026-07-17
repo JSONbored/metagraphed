@@ -39,7 +39,7 @@
   "notes": "Reviewed overlay for SN95 Actual. The Actual Computer website metadata identifies the project with Bittensor, Subnet 95, decentralized AI, and inference software. The previous GitHub organization candidate currently returns 404 and is not promoted. Re-review pass (2026-07-15): fixed 1 missing probe block; still no GitHub source repository reference found anywhere on the site.",
   "schema_version": 1,
   "slug": "actual",
-  "source_repo": null,
+  "source_repo": "https://github.com/actual-computer/actual-subnet-95",
   "status": "active",
   "surfaces": [
     {
