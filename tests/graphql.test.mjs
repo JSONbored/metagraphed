@@ -12203,6 +12203,93 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
   });
 });
 
+describe("graphql — subnet_burn (#6321, live chain RPC via subnet-burn.mjs)", () => {
+  // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
+  // in tests/subnet-burn.test.mjs.
+  function withFetchStub(stub, fn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  test("resolves burn_tao from a live RPC hit", async () => {
+    await withFetchStub(
+      async () => ({
+        ok: true,
+        json: async () => ({
+          jsonrpc: "2.0",
+          id: 1,
+          result: "0x20a1070000000000", // little-endian u64 for 500000 rao
+        }),
+      }),
+      async () => {
+        const { status, body } = await gql(
+          "{ subnet_burn(netuid: 1) { schema_version netuid burn_tao queried_at } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.subnet_burn;
+        assert.equal(r.schema_version, 1);
+        assert.equal(r.netuid, 1);
+        assert.equal(r.burn_tao, 0.0005);
+        assert.ok(r.queried_at);
+      },
+    );
+  });
+
+  test("RPC failure degrades burn_tao to null, never a GraphQL error", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("network unreachable");
+      },
+      async () => {
+        const { status, body } = await gql(
+          "{ subnet_burn(netuid: 1) { burn_tao } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.subnet_burn.burn_tao, null);
+      },
+    );
+  });
+
+  test("an out-of-range netuid is BAD_USER_INPUT and never reaches the RPC", async () => {
+    let called = false;
+    await withFetchStub(
+      async () => {
+        called = true;
+        return { ok: true, json: async () => ({ result: "0x0" }) };
+      },
+      async () => {
+        const { status, body } = await gql(
+          "{ subnet_burn(netuid: 99999) { burn_tao } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.data.subnet_burn, null);
+        assert.ok(
+          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+        );
+        assert.equal(called, false);
+      },
+    );
+  });
+
+  test("a negative netuid is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      "{ subnet_burn(netuid: -1) { burn_tao } }",
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("subnet_burn is weighted heavier than a Postgres-tier relationship field, since it hits live chain RPC", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_burn, 10);
+    assert.ok(FIELD_COMPLEXITY.subnet_burn > FIELD_COMPLEXITY.chain_weights);
+  });
+});
+
 describe("graphql — account_balance (#5700, live chain RPC via account-balance.mjs)", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 

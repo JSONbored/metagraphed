@@ -15901,6 +15901,74 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
       globalThis.fetch = orig;
     }
   });
+
+  test("get_subnet_burn returns burn_tao:0 for genuinely unset storage", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+    });
+    try {
+      const res = await callTool("get_subnet_burn", { netuid: 7 }, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.netuid, 7);
+      assert.equal(out.burn_tao, 0);
+      assert.ok(out.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_subnet_burn returns burn_tao:null on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("rpc down");
+    };
+    try {
+      const res = await callTool("get_subnet_burn", { netuid: 7 }, {});
+      assert.equal(res.body.result.structuredContent.burn_tao, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_subnet_burn rejects a netuid outside the u16 range", async () => {
+    const res = await callTool("get_subnet_burn", { netuid: 70000 }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /u16/);
+  });
+
+  test("get_subnet_burn applies the RPC rate limiter before the finney fetch", async () => {
+    let limiterKey;
+    let fetchCalled = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      fetchCalled = true;
+      throw new Error("should not fetch");
+    };
+    const env = {
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: false };
+        },
+      },
+    };
+    try {
+      const res = await callTool("get_subnet_burn", { netuid: 7 }, { env });
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rate_limited/);
+      assert.equal(limiterKey, "burn:mcp:anonymous");
+      assert.equal(fetchCalled, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
 });
 
 describe("MCP account identity/position-history tools (#5225 parity)", () => {
