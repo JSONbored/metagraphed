@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, GitCompare, X } from "lucide-react";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@jsonbored/ui-kit";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@jsonbored/ui-kit";
 import {
   economicsQuery,
   subnetEndpointsQuery,
@@ -22,78 +29,79 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
   const [peer, setPeer] = useState<number | null>(null);
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors"
-        aria-haspopup="dialog"
-      >
-        <GitCompare className="size-3 text-ink-muted" />
-        Compare
-      </button>
+    <Sheet open={open} onOpenChange={setOpen}>
+      {/* #6420: the Compare button is now a SheetTrigger inside <Sheet>, so Radix
+          tracks it and restores focus to it on close. As a plain sibling it was
+          never the dialog's trigger, so closing dropped focus to <body>. */}
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong hover:border-accent/50 hover:text-accent transition-colors"
+        >
+          <GitCompare className="size-3 text-ink-muted" />
+          Compare
+        </button>
+      </SheetTrigger>
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="font-display text-lg">Compare with another subnet</SheetTitle>
-            <SheetDescription>
-              Pick any active netuid (0–1024). Differences in pool ratio, top providers, and
-              endpoint health are highlighted.
-            </SheetDescription>
-          </SheetHeader>
+      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="font-display text-lg">Compare with another subnet</SheetTitle>
+          <SheetDescription>
+            Pick any active netuid (0–1024). Differences in pool ratio, top providers, and endpoint
+            health are highlighted.
+          </SheetDescription>
+        </SheetHeader>
 
-          <form
-            className="mt-4 flex items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const n = Number(draft.replace(/\D/g, ""));
-              if (Number.isFinite(n)) setPeer(n);
-            }}
+        <form
+          className="mt-4 flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const n = Number(draft.replace(/\D/g, ""));
+            if (Number.isFinite(n)) setPeer(n);
+          }}
+        >
+          <label htmlFor="cmp-netuid" className="sr-only">
+            Compare against netuid
+          </label>
+          <input
+            id="cmp-netuid"
+            inputMode="numeric"
+            placeholder="e.g. 1"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="w-32 rounded border border-border bg-card px-2 py-1.5 font-mono text-sm tabular-nums text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <button
+            type="submit"
+            className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-ink-strong hover:border-accent/50 hover:text-accent"
           >
-            <label htmlFor="cmp-netuid" className="sr-only">
-              Compare against netuid
-            </label>
-            <input
-              id="cmp-netuid"
-              inputMode="numeric"
-              placeholder="e.g. 1"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              className="w-32 rounded border border-border bg-card px-2 py-1.5 font-mono text-sm tabular-nums text-ink-strong focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            />
+            Compare <ArrowRight className="size-3" />
+          </button>
+          {peer != null ? (
             <button
-              type="submit"
-              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-ink-strong hover:border-accent/50 hover:text-accent"
+              type="button"
+              onClick={() => {
+                setPeer(null);
+                setDraft("");
+              }}
+              className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
             >
-              Compare <ArrowRight className="size-3" />
+              <X className="size-3" /> clear
             </button>
-            {peer != null ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setPeer(null);
-                  setDraft("");
-                }}
-                className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
-              >
-                <X className="size-3" /> clear
-              </button>
-            ) : null}
-          </form>
+          ) : null}
+        </form>
 
-          <div className="mt-5">
-            {peer == null ? (
-              <p className="rounded border border-dashed border-border bg-paper/40 px-3 py-6 text-center text-[12px] text-ink-muted">
-                Enter a netuid above to load a side-by-side comparison.
-              </p>
-            ) : (
-              <CompareBody base={netuid} peer={peer} />
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
+        <div className="mt-5">
+          {peer == null ? (
+            <p className="rounded border border-dashed border-border bg-paper/40 px-3 py-6 text-center text-[12px] text-ink-muted">
+              Enter a netuid above to load a side-by-side comparison.
+            </p>
+          ) : (
+            <CompareBody base={netuid} peer={peer} />
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
