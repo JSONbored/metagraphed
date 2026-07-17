@@ -617,9 +617,9 @@ function AccountExtrinsicsSection({
                   {x.success == null ? (
                     <span className="text-ink-muted">—</span>
                   ) : x.success ? (
-                    <span className="text-emerald-500">ok</span>
+                    <span className="text-health-ok">ok</span>
                   ) : (
-                    <span className="text-rose-500">fail</span>
+                    <span className="text-health-down">fail</span>
                   )}
                 </td>
                 <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
@@ -726,9 +726,9 @@ function AccountTransfersSection({
                   </td>
                   <td className="px-5 py-4 font-mono text-[11px]">
                     {t.direction === "received" ? (
-                      <span className="text-emerald-500">received</span>
+                      <span className="text-health-ok">received</span>
                     ) : t.direction === "sent" ? (
-                      <span className="text-amber-500">sent</span>
+                      <span className="text-health-warn-text">sent</span>
                     ) : (
                       <span className="text-ink-muted">—</span>
                     )}
@@ -1031,7 +1031,7 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
                   {p.net_tao == null ? (
                     <span className="text-ink-muted">—</span>
                   ) : (
-                    <span className={p.net_tao >= 0 ? "text-emerald-500" : "text-amber-500"}>
+                    <span className={p.net_tao >= 0 ? "text-health-ok" : "text-health-warn-text"}>
                       {p.net_tao >= 0 ? "+" : ""}
                       {formatNumber(p.net_tao)} τ
                     </span>
@@ -1069,12 +1069,15 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
 
 const STAKE_FLOW_WINDOWS = ["7d", "30d", "90d"] as const;
 
-// Direction label → tone, reusing the emerald/amber/muted convention the
-// transfers section uses for sent/received direction.
+// Direction label → tone, reusing the health-ok/warn/muted convention the
+// transfers section uses for sent/received direction. `exiting` and `churning`
+// were amber-500 vs amber-400 -- a shade split the health-* scale doesn't carry,
+// so both land on the single warn tone; the branches stay as they are because the
+// tone is the only thing this maps.
 function stakeFlowDirClass(dir: string | null | undefined): string {
-  if (dir === "accumulating") return "text-emerald-500";
-  if (dir === "exiting") return "text-amber-500";
-  if (dir === "churning") return "text-amber-400";
+  if (dir === "accumulating") return "text-health-ok";
+  if (dir === "exiting") return "text-health-warn-text";
+  if (dir === "churning") return "text-health-warn-text";
   return "text-ink-muted"; // idle / unknown
 }
 
@@ -1150,7 +1153,9 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
           tone="accent"
           value={
             <span
-              className={netFlow != null && netFlow < 0 ? "text-amber-500" : "text-emerald-500"}
+              className={
+                netFlow != null && netFlow < 0 ? "text-health-warn-text" : "text-health-ok"
+              }
             >
               {netStr}
             </span>
@@ -1241,7 +1246,9 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
                         <span className="text-ink-muted">—</span>
                       ) : (
                         <span
-                          className={s.net_flow_tao >= 0 ? "text-emerald-500" : "text-amber-500"}
+                          className={
+                            s.net_flow_tao >= 0 ? "text-health-ok" : "text-health-warn-text"
+                          }
                         >
                           {s.net_flow_tao >= 0 ? "+" : "−"}
                           {fmtStake(Math.abs(s.net_flow_tao))}
@@ -1391,9 +1398,9 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
                     </td>
                     <td className="px-5 py-4 font-mono text-[11px]">
                       {pos.role === "validator" ? (
-                        <span className="text-emerald-500">validator</span>
+                        <span className="text-health-ok">validator</span>
                       ) : pos.role === "miner" ? (
-                        <span className="text-sky-500">miner</span>
+                        <span className="text-chart-1">miner</span>
                       ) : (
                         <span className="text-ink-muted">{"—"}</span>
                       )}
@@ -2076,7 +2083,7 @@ function AccountFootprintSection({
                 </td>
                 <td className="px-5 py-4 font-mono text-[11px]">
                   {r.active ? (
-                    <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-500">
+                    <span className="inline-flex rounded-full bg-health-ok/10 px-2 py-0.5 text-health-ok">
                       active
                     </span>
                   ) : (
@@ -2110,7 +2117,7 @@ function AccountFootprintSection({
                 {r.validator_permit ? <ValidatorPermitBadge ss58={ss58} /> : null}
               </div>
               {r.active ? (
-                <span className="inline-flex shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] text-emerald-500">
+                <span className="inline-flex shrink-0 rounded-full bg-health-ok/10 px-2 py-0.5 font-mono text-[11px] text-health-ok">
                   active
                 </span>
               ) : (
@@ -2158,7 +2165,7 @@ function ValidatorPermitBadge({ ss58 }: { ss58: string }) {
       to="/validators/$hotkey"
       params={{ hotkey: ss58 }}
       title={`Validator profile for ${ss58}`}
-      className="inline-flex shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] text-emerald-500 transition-colors hover:bg-emerald-500/20"
+      className="inline-flex shrink-0 rounded-full bg-health-ok/10 px-2 py-0.5 font-mono text-[11px] text-health-ok transition-colors hover:bg-health-ok/20"
     >
       validator
     </Link>
