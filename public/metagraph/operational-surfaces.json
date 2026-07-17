@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 558,
+  "surface_count": 557,
   "surfaces": [
     {
       "auth_required": false,
@@ -839,24 +839,6 @@
       "surface_id": "allways-swaps-count",
       "surface_key": "srf-b1738ebcc631a0d2",
       "url": "https://api.all-ways.io/swaps/count"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 7,
-      "probe": {
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "allways",
-      "public_safe": true,
-      "subnet_name": "Allways",
-      "subnet_slug": "allways",
-      "surface_id": "sn-7-allways-data-artifact",
-      "surface_key": "srf-c1b8cc4bcbfbe442",
-      "url": "https://api.all-ways.io/miners/leaderboard"
     },
     {
       "auth_required": false,
