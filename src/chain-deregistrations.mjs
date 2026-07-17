@@ -4,10 +4,10 @@
 // NeuronRegistered demand in /chain/registrations, and the account_events companion to the
 // neuron_daily validator-set churn in /chain/turnover (which measures net snapshot change, not raw
 // event volume), the same split as /chain/stake-flow vs /chain/turnover. Pure shaping
-// (buildChainDeregistrations) + a thin D1 loader (loadChainDeregistrations); the field semantics
-// live in schemas/components/05-subnets.schema.json (ChainDeregistrationsArtifact).
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+// (buildChainDeregistrations); the D1 loader was retired in #4909 (account_events' D1 table was
+// dropped in #4772, so it always missed -- see #6013). Callers now go
+// tryPostgresTier() ?? buildChainDeregistrations([]). The field semantics live in
+// schemas/components/05-subnets.schema.json (ChainDeregistrationsArtifact).
 
 // The account_events kind emitted when a neuron is deregistered (evicted) from a subnet.
 export const DEREGISTRATION_EVENT_KIND = "NeuronDeregistered";
@@ -211,39 +211,4 @@ export function buildChainDeregistrations(
     ),
     subnets: subnets.slice(0, normalizedLimit),
   };
-}
-
-// Network-wide neuron-deregistration activity, computed live: read the account_events
-// NeuronDeregistered stream over the window (observed_at >= now - windowDays, epoch ms), first as a
-// single network aggregate (true distinct hotkeys + newest observed_at) and then grouped by netuid
-// for the per-subnet leaderboard, and shape with buildChainDeregistrations. The newest-observed
-// probe doubles as the cold-store guard: a null MAX(observed_at) skips the per-subnet read. The
-// handler resolves windowLabel/windowDays from analyticsWindow (7d/30d). Cold/absent store -> the
-// schema-stable empty block.
-export async function loadChainDeregistrations(
-  d1,
-  { windowLabel, windowDays, limit } = {},
-) {
-  const cutoff = Date.now() - windowDays * DAY_MS;
-  const networkRows = await d1(
-    "SELECT COUNT(DISTINCT hotkey) AS distinct_deregistered_hotkeys, " +
-      "MAX(observed_at) AS newest_observed " +
-      "FROM account_events WHERE event_kind = ? AND observed_at >= ?",
-    [DEREGISTRATION_EVENT_KIND, cutoff],
-  );
-  const networkDistinct = networkRows?.[0] ?? null;
-  let subnetRows = [];
-  if (networkDistinct?.newest_observed != null) {
-    subnetRows = await d1(
-      "SELECT netuid, COUNT(*) AS deregistrations, COUNT(DISTINCT hotkey) AS distinct_deregistered_hotkeys " +
-        "FROM account_events WHERE event_kind = ? AND observed_at >= ? GROUP BY netuid " +
-        "ORDER BY deregistrations DESC, netuid ASC",
-      [DEREGISTRATION_EVENT_KIND, cutoff],
-    );
-  }
-  return buildChainDeregistrations(subnetRows, {
-    window: windowLabel,
-    limit,
-    networkDistinct,
-  });
 }

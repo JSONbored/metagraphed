@@ -5546,6 +5546,89 @@ export default {
           return json({ rows });
         }
 
+        // GET /api/v1/internal/health-status-live?since=<epoch-ms> (D1
+        // retirement, 2026-07-16, item 5 of the D1->Postgres cleanup):
+        // src/health-serving.mjs's resolveLiveHealth reconstructs the "KV
+        // health:current is cold" fallback from surface_status directly (no
+        // client request to forward -- same "internal, no secret header"
+        // shape as /api/v1/internal/compare-health above, since a read has no
+        // mutation to gate). Reuses METAGRAPH_HEALTH_SOURCE (same table
+        // compare-health already reads from Postgres). Column list and the
+        // last_checked freshness filter mirror resolveLiveHealth's own D1
+        // query exactly, so liveFromStatusRows formats either tier's rows
+        // identically. last_checked/last_ok are BIGINT epoch-ms -- postgres.js
+        // returns those as strings (see numberOrNull's own header comment),
+        // so they're coerced here rather than left for the consumer's
+        // Number.isFinite/isInteger checks (written against D1's native
+        // numbers) to silently null them out.
+        if (url.pathname === "/api/v1/internal/health-status-live") {
+          // A missing param coerces through Number(null) === 0, which is
+          // finite -- must be rejected explicitly before the Number() cast,
+          // not folded into the isFinite check (mirrors the netuids empty-
+          // string guard on the neighboring routes above).
+          const sinceRaw = url.searchParams.get("since");
+          const since = sinceRaw ? Number(sinceRaw) : NaN;
+          if (!Number.isFinite(since)) {
+            return json({ rows: [] });
+          }
+          const rawRows = await sql`
+            SELECT surface_id, surface_key, netuid, kind, provider, url,
+                   status, classification, latency_ms, status_code,
+                   last_checked, last_ok
+            FROM surface_status
+            WHERE last_checked >= ${since}`;
+          const rows = rawRows.map((row) => ({
+            ...row,
+            netuid: numberOrNull(row.netuid),
+            latency_ms: numberOrNull(row.latency_ms),
+            status_code: numberOrNull(row.status_code),
+            last_checked: numberOrNull(row.last_checked),
+            last_ok: numberOrNull(row.last_ok),
+          }));
+          return json({ rows });
+        }
+
+        // GET /api/v1/internal/latest-block-number (D1 retirement,
+        // 2026-07-16, item 10 of the D1->Postgres cleanup):
+        // src/subnet-identity-history.mjs's latestBlockNumber has no client
+        // request to forward -- it's an internal cron-triggered helper inside
+        // recordSubnetIdentityChanges, not a route -- so it synthesizes this
+        // request itself, same "internal, no secret header" shape as
+        // /api/v1/internal/compare-health above. Reuses METAGRAPH_BLOCKS_SOURCE
+        // (same blocks table already flipped to postgres for the public
+        // /api/v1/blocks route). Mirrors the identical query
+        // handleSubnetIdentitySync already runs inline above for its own
+        // block_number stamp.
+        if (url.pathname === "/api/v1/internal/latest-block-number") {
+          const [row] = await sql`
+            SELECT MAX(block_number) AS block_number FROM blocks`;
+          const blockNumber =
+            row?.block_number == null ? null : Number(row.block_number);
+          return json({ block_number: blockNumber });
+        }
+
+        // GET /api/v1/internal/subnet-identity-latest-hashes (D1 retirement,
+        // 2026-07-16, item 8 of the D1->Postgres cleanup):
+        // src/subnet-identity-history.mjs's recordSubnetIdentityChanges reads
+        // D1's own latest identity_hash per netuid to diff against the fresh
+        // profiles.json snapshot -- same "internal cron helper, no client
+        // request to forward" shape as /api/v1/internal/latest-block-number
+        // above. Mirrors D1's own latestIdentityHashes query exactly (latest
+        // row per netuid via a self-join on MAX(id)), against Postgres's
+        // subnet_identity_history (the real writer since
+        // syncSubnetIdentityToPostgres landed).
+        if (url.pathname === "/api/v1/internal/subnet-identity-latest-hashes") {
+          const rows = await sql`
+            SELECT h.netuid, h.identity_hash
+            FROM subnet_identity_history h
+            INNER JOIN (
+              SELECT netuid, MAX(id) AS max_id
+              FROM subnet_identity_history
+              GROUP BY netuid
+            ) latest ON h.netuid = latest.netuid AND h.id = latest.max_id`;
+          return json({ hashes: rows });
+        }
+
         // GET /api/v1/internal/subnet-identity-aliases?netuids=1,7,19 (#4832
         // gap-closure follow-up): src/subnet-identity-history.mjs's
         // loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids are D1-fetch

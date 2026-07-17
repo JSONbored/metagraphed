@@ -3,53 +3,10 @@ import { afterEach, describe, test } from "vitest";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-  CHAIN_IDENTITY_HISTORY_READ_COLUMNS,
   buildChainIdentityHistory,
-  loadChainIdentityHistory,
 } from "../src/chain-identity-history.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
-import { readIdentityHistoryCacheStamp } from "../workers/request-handlers/analytics.mjs";
-
-describe("readIdentityHistoryCacheStamp", () => {
-  const envWith = (results) => ({
-    METAGRAPH_HEALTH_DB: {
-      prepare: () => ({
-        bind: () => ({ all: () => Promise.resolve({ results }) }),
-      }),
-    },
-  });
-
-  test("returns the newest observed_at across all subnets as a string", async () => {
-    const stamp = await readIdentityHistoryCacheStamp(
-      envWith([{ observed_at: 1_700_000_000_000 }]),
-    );
-    assert.equal(stamp, "1700000000000");
-  });
-
-  test("coerces D1 numeric-string observed_at stamps", async () => {
-    const stamp = await readIdentityHistoryCacheStamp(
-      envWith([{ observed_at: "1700000000000" }]),
-    );
-    assert.equal(stamp, "1700000000000");
-  });
-
-  test("returns null when the store is cold or the stamp is non-positive/non-integer", async () => {
-    assert.equal(
-      await readIdentityHistoryCacheStamp(envWith([{ observed_at: null }])),
-      null,
-    );
-    assert.equal(
-      await readIdentityHistoryCacheStamp(envWith([{ observed_at: 0 }])),
-      null,
-    );
-    assert.equal(await readIdentityHistoryCacheStamp(envWith([])), null);
-  });
-
-  test("returns null when D1 is unbound (fallback rows)", async () => {
-    assert.equal(await readIdentityHistoryCacheStamp({}), null);
-  });
-});
 
 // A network feed: identity changes from two subnets, newest first (the loader
 // reads block_number DESC, netuid ASC).
@@ -199,108 +156,37 @@ describe("buildChainIdentityHistory", () => {
   });
 });
 
-describe("loadChainIdentityHistory", () => {
-  test("issues one un-filtered SELECT ordered newest-first with a clamped limit", async () => {
-    let seen;
-    const d1 = async (sql, params) => {
-      seen = { sql, params };
-      return ROWS;
-    };
-    const out = await loadChainIdentityHistory(d1, { limit: 2 });
-    assert.match(seen.sql, /FROM subnet_identity_history/);
-    assert.doesNotMatch(seen.sql, /WHERE netuid/); // network-wide: no filter
-    assert.match(seen.sql, /ORDER BY block_number DESC, netuid ASC/);
-    assert.match(seen.sql, /LIMIT \?/);
-    assert.match(seen.sql, new RegExp(CHAIN_IDENTITY_HISTORY_READ_COLUMNS));
-    assert.deepEqual(seen.params, [2]); // clamped limit bound
-    assert.equal(out.count, 2);
-    assert.equal(out.subnet_count, 2);
-  });
-
-  test("clamps an over-max limit before binding it", async () => {
-    let seen;
-    const d1 = async (sql, params) => {
-      seen = { sql, params };
-      return [];
-    };
-    await loadChainIdentityHistory(d1, { limit: 10_000 });
-    assert.deepEqual(seen.params, [CHAIN_IDENTITY_HISTORY_LIMIT_MAX]);
-  });
-
-  test("falls back to the default limit when absent", async () => {
-    let seen;
-    const d1 = async (sql, params) => {
-      seen = { sql, params };
-      return [];
-    };
-    await loadChainIdentityHistory(d1);
-    assert.deepEqual(seen.params, [CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT]);
-  });
-});
-
 describe("GET /api/v1/chain/identity-history", () => {
-  // The MAX(observed_at) cache stamp and the feed read both hit
-  // `FROM subnet_identity_history`, so route the stamp query first.
-  function identityEnv(rows) {
-    return {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind: (...params) => ({
-              all: () =>
-                Promise.resolve({
-                  results: /MAX\(observed_at\)/.test(sql)
-                    ? [{ observed_at: 1_700_000_000_000 }]
-                    : rows,
-                  __params: params,
-                }),
-            }),
-          };
-        },
-      },
-    };
-  }
-
+  // D1 fully eliminated (2026-07-16): subnet_identity_history's D1 write path
+  // is retired, so without a Postgres hit this route always serves the
+  // schema-stable empty feed -- mirrors chain-performance.test.mjs's own
+  // post-#4772 "GET" describe block (its neurons-tier D1 mock is likewise
+  // vestigial, kept only for the validation-error assertions below).
   const req = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/chain/identity-history${q}`);
 
-  test("returns the recent change feed across all subnets (200)", async () => {
-    const res = await handleRequest(
-      req(),
-      identityEnv([
-        change({ id: 2, netuid: 12, block_number: 200, subnet_name: "Beta" }),
-        change({ id: 1, netuid: 7, block_number: 100, subnet_name: "Alpha" }),
-      ]),
-      {},
-    );
+  test("cold store (no Postgres tier flag) → 200 with a schema-stable empty feed", async () => {
+    const res = await handleRequest(req(), createLocalArtifactEnv(), {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.count, 2);
-    assert.equal(body.data.subnet_count, 2);
-    assert.equal(body.data.changes[0].netuid, 12);
-    assert.equal(body.data.changes[0].subnet_name, "Beta");
-    assert.equal(body.meta.source, "metagraph-snapshot");
-  });
-
-  test("cold/empty store → 200 with a schema-stable empty feed", async () => {
-    const res = await handleRequest(req(), identityEnv([]), {});
-    assert.equal(res.status, 200);
-    const body = await res.json();
     assert.equal(body.data.count, 0);
     assert.equal(body.data.subnet_count, 0);
     assert.deepEqual(body.data.changes, []);
   });
 
   test("rejects an unexpected query parameter with 400", async () => {
-    const res = await handleRequest(req("?window=7d"), identityEnv([]), {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      createLocalArtifactEnv(),
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
   test("rejects an out-of-range / non-integer limit with 400", async () => {
     for (const q of ["?limit=0", "?limit=201", "?limit=abc", "?limit=-3"]) {
-      const res = await handleRequest(req(q), identityEnv([]), {});
+      const res = await handleRequest(req(q), createLocalArtifactEnv(), {});
       assert.equal(res.status, 400, q);
     }
   });
@@ -308,24 +194,19 @@ describe("GET /api/v1/chain/identity-history", () => {
   test("accepts a valid in-range limit (200)", async () => {
     const res = await handleRequest(
       req("?limit=10"),
-      identityEnv([change()]),
+      createLocalArtifactEnv(),
       {},
     );
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.data.count, 1);
+    assert.equal(body.data.count, 0);
   });
 
   // #4832 gap-closure: METAGRAPH_SUBNET_IDENTITY_SOURCE reused (same
-  // subnet_identity_history table this route already reads, no new flag) --
-  // tryPostgresTier's own fallback contract is unit-tested in
-  // workers/postgres-tier.mjs's own tests, so these two just prove the
-  // wiring: a Postgres hit is served as-is with D1 never queried, and a
-  // Postgres failure falls back to D1.
-  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
-    let d1Called = false;
+  // subnet_identity_history table this route already reads, no new flag).
+  test("flag=postgres serves the DATA_API response", async () => {
     const env = {
-      ...identityEnv([]),
+      ...createLocalArtifactEnv(),
       METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
       DATA_API: {
         fetch: async () =>
@@ -337,23 +218,16 @@ describe("GET /api/v1/chain/identity-history", () => {
           }),
       },
     };
-    env.METAGRAPH_HEALTH_DB.prepare = () => {
-      d1Called = true;
-      throw new Error(
-        "D1 must not be queried when Postgres serves the request",
-      );
-    };
     const res = await handleRequest(req(), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.count, 1);
     assert.equal(body.data.changes[0].netuid, 99);
-    assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+  test("flag=postgres degrades to the empty feed when DATA_API fails", async () => {
     const env = {
-      ...identityEnv([change({ id: 1, netuid: 7, subnet_name: "Alpha" })]),
+      ...createLocalArtifactEnv(),
       METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
@@ -364,8 +238,8 @@ describe("GET /api/v1/chain/identity-history", () => {
     const res = await handleRequest(req(), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.data.count, 1);
-    assert.equal(body.data.changes[0].subnet_name, "Alpha");
+    assert.equal(body.data.count, 0);
+    assert.deepEqual(body.data.changes, []);
   });
 });
 
@@ -375,63 +249,66 @@ describe("chain/identity-history edge cache", () => {
     globalThis.caches = originalCaches;
   });
 
-  function identityEnv(rows) {
+  // D1 fully eliminated (2026-07-16): the bespoke readIdentityHistoryCacheStamp
+  // (D1 MAX(observed_at)) is retired alongside the D1 read it existed to bust
+  // on -- this route now busts on the same shared health-cron `last_run_at`
+  // KV value every sibling Postgres-tier analytics route already uses,
+  // mirroring chain-performance.test.mjs's own post-#4772 edge-cache tests.
+  function controlEnv(lastRunAt) {
     return {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind: () => ({
-              all: () =>
-                Promise.resolve({
-                  results: /MAX\(observed_at\)/.test(sql)
-                    ? [{ observed_at: 1_700_000_000_000 }]
-                    : rows,
-                }),
-            }),
-          };
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key !== "health:meta") return null;
+          return lastRunAt ? { last_run_at: lastRunAt } : null;
         },
       },
     };
   }
 
-  test("engages the edge cache, busting on the newest identity observed_at", async () => {
-    originalCaches = globalThis.caches;
+  function mockCacheStore() {
     const store = new Map();
-    globalThis.caches = {
-      default: {
-        async match(request) {
-          const cached = store.get(request.url);
-          return cached ? cached.clone() : undefined;
-        },
-        async put(request, response) {
-          store.set(request.url, response.clone());
-        },
+    return {
+      store,
+      install() {
+        globalThis.caches = {
+          default: {
+            async match(request) {
+              const cached = store.get(request.url);
+              return cached ? cached.clone() : undefined;
+            },
+            async put(request, response) {
+              store.set(request.url, response.clone());
+            },
+          },
+        };
       },
     };
+  }
+
+  test("engages the edge cache, busting on the health-cron last_run_at stamp", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCacheStore();
+    cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/identity-history"),
-      identityEnv([
-        {
-          id: 1,
-          netuid: 1,
-          block_number: 400,
-          observed_at: 1_700_000_000_000,
-          subnet_name: "Alpha",
-          symbol: "α",
-          description: "d",
-          github_repo: null,
-          subnet_url: null,
-          discord: null,
-          logo_url: null,
-          identity_hash: "h1",
-        },
-      ]),
+      controlEnv("2026-06-18T00:00:00.000Z"),
       { waitUntil: (promise) => promise },
     );
     assert.equal(res.status, 200);
-    // A non-null stamp resolver + 200 means the response was cached: proof the
-    // readIdentityHistoryCacheStamp arrow ran and returned the network observed_at.
-    assert.equal(store.size, 1);
+    assert.equal(cache.store.size, 1);
+  });
+
+  test("skips the cache entirely when the health stamp is cold", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCacheStore();
+    cache.install();
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/identity-history"),
+      controlEnv(null),
+      { waitUntil: (promise) => promise },
+    );
+    assert.equal(res.status, 200);
+    assert.equal(cache.store.size, 0);
   });
 });

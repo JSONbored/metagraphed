@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
-import { describe, test, vi } from "vitest";
+import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
-import * as healthServing from "../src/health-serving.mjs";
 import {
   GET_NETWORK_HEALTH_INSTRUCTIONS,
   GET_NETWORK_HEALTH_MCP_TOOL,
@@ -85,29 +84,15 @@ describe("global-operational-health", () => {
     assert.equal(out.contract_version, 5);
   });
 
-  test("forwards an explicit db binding instead of env.METAGRAPH_HEALTH_DB", async () => {
-    const seen = { db: null };
-    const spy = vi
-      .spyOn(healthServing, "resolveLiveHealth")
-      .mockImplementation(async ({ db }) => {
-        seen.db = db;
-        return null;
-      });
-    try {
-      const explicitDb = { prepare: () => ({}) };
-      await loadGlobalOperationalHealth(
-        {
-          env: { METAGRAPH_HEALTH_DB: { prepare: () => ({}) } },
-          readHealthKv: async () => null,
-          db: explicitDb,
-        },
-        { contractVersion: () => 1 },
-      );
-      assert.equal(seen.db, explicitDb);
-    } finally {
-      spy.mockRestore();
-    }
-  });
+  // The "forwards an explicit db binding instead of env.METAGRAPH_HEALTH_DB"
+  // regression test that used to live here asserted loadGlobalOperationalHealth
+  // forwarded a `db` option through to resolveLiveHealth. D1 is fully
+  // eliminated now: loadGlobalOperationalHealth({env, readHealthKv}, ...)
+  // destructures only env/readHealthKv (no `db`), and calls
+  // resolveLiveHealth({readHealthKv, env}) with no db forwarded at all --
+  // src/health-serving.mjs's resolveLiveHealth no longer takes a `db` param
+  // either. There is no db-forwarding behavior left to test, so the test was
+  // deleted rather than converted.
 
   test("MCP tool metadata and outputSchema compile", () => {
     assert.equal(GET_NETWORK_HEALTH_MCP_TOOL.name, "get_network_health");

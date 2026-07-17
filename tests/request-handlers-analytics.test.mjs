@@ -4,7 +4,7 @@
 // payloads without routing through workers/api.mjs.
 
 import assert from "node:assert/strict";
-import { afterEach, describe, test, vi } from "vitest";
+import { afterEach, describe, test } from "vitest";
 import {
   configureAnalytics,
   withEdgeCache,
@@ -20,7 +20,6 @@ import {
   validateQueryParams,
   analyticsWindow,
   d1All,
-  d1Runner,
   hasD1FallbackRows,
   markD1FallbackResponse,
   analyticsQueryError,
@@ -534,7 +533,7 @@ describe("analyticsQueryError", () => {
   });
 });
 
-// ---- B) d1All / d1Runner / fallback bookkeeping -----------------------------
+// ---- B) d1All / fallback bookkeeping -----------------------------
 
 describe("d1All", () => {
   test("returns empty array when METAGRAPH_HEALTH_DB is unbound", async () => {
@@ -596,22 +595,8 @@ describe("d1All", () => {
   });
 });
 
-describe("d1Runner", () => {
-  test("binds env into a (sql, params) => rows function", async () => {
-    const { env } = dbWith();
-    const run = d1Runner(env);
-    const rows = await run("SELECT netuid FROM surface_uptime_daily", []);
-    assert.ok(Array.isArray(rows));
-    assert.ok(rows.length > 0);
-  });
-
-  test("runner inherits cold-env fallback semantics", async () => {
-    const run = d1Runner(emptyEnv());
-    const rows = await run("SELECT 1", []);
-    assert.deepEqual(rows, []);
-    assert.equal(hasD1FallbackRows(rows), true);
-  });
-});
+// d1Runner was deleted (2026-07-17, D1 fully eliminated) -- it had zero
+// remaining callers once every handler stopped reading D1.
 
 describe("markD1FallbackResponse / hasD1FallbackRows", () => {
   test("markD1FallbackResponse tags a Response object", () => {
@@ -942,28 +927,6 @@ describe("handleBulkHealthTrends", () => {
     assert.equal(body.data.observed_at, null);
   });
 
-  test("happy path includes surface_uptime_daily aggregates per window", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-25T00:00:00.000Z"));
-    try {
-      globalThis.caches = undefined;
-      const { env } = dbWith();
-      env.__healthMeta = { last_run_at: LAST_RUN_AT };
-      const body = await json(
-        await handleBulkHealthTrends(
-          req("/api/v1/health/trends"),
-          env,
-          url("/api/v1/health/trends"),
-        ),
-      );
-      assert.equal(body.data.observed_at, LAST_RUN_AT);
-      assert.ok(body.data.windows["7d"].subnets.length > 0);
-      assert.equal(body.data.windows["7d"].subnets[0].netuid, NETUID);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   test("meta block carries bulk trends artifact path", async () => {
     globalThis.caches = undefined;
     const { env } = dbWith();
@@ -993,21 +956,39 @@ describe("handleBulkHealthTrends", () => {
     assert.deepEqual(body.data.windows["7d"].subnets, []);
   });
 
-  test("edge cache MISS then HIT avoids second D1 query", async () => {
+  test("edge cache MISS then HIT avoids a second DATA_API call", async () => {
+    // D1 fully eliminated (2026-07-17): a Postgres-tier miss now falls straight
+    // through to an empty payload that's ALWAYS marked a D1 fallback, so it can
+    // never be cached (mirrors withEdgeCache's own D1_FALLBACK_RESPONSES guard).
+    // The only path that still gets cached is a Postgres-tier HIT, so that's
+    // what this now exercises -- was a D1-mock MISS/HIT pair.
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
-    const env = analyticsEnv(queries);
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    let dataApiCalls = 0;
+    env.DATA_API = {
+      fetch: async () => {
+        dataApiCalls += 1;
+        return Response.json({
+          schema_version: 1,
+          windows: { "7d": {}, "30d": {} },
+        });
+      },
+    };
     const path = "/api/v1/health/trends";
 
     await handleBulkHealthTrends(req(path), env, url(path), ctx);
     await Promise.resolve();
-    const afterMiss = queries.length;
-    assert.ok(afterMiss > 0);
+    assert.equal(dataApiCalls, 1, "the cold MISS must call DATA_API once");
 
     await handleBulkHealthTrends(req(path), env, url(path), ctx);
-    assert.equal(queries.length, afterMiss);
+    assert.equal(
+      dataApiCalls,
+      1,
+      "the warm HIT must be served from cache, not DATA_API",
+    );
   });
 
   test("accepts request with no query string", async () => {
@@ -1069,18 +1050,6 @@ describe("handleHealthTrends", () => {
     assert.deepEqual(body.data.windows["30d"].surfaces, []);
   });
 
-  test("happy path returns ranked CTE aggregates per window", async () => {
-    globalThis.caches = undefined;
-    const { env } = dbWith();
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    const body = await json(
-      await handleHealthTrends(req(trendsPath), env, NETUID, url(trendsPath)),
-    );
-    assert.equal(body.data.observed_at, LAST_RUN_AT);
-    assert.equal(body.data.windows["7d"].surfaces[0].surface_id, "s1");
-    assert.ok(body.data.windows["7d"].surfaces[0].uptime_ratio > 0);
-  });
-
   test("meta references per-subnet trends artifact", async () => {
     globalThis.caches = undefined;
     const { env } = dbWith();
@@ -1102,16 +1071,6 @@ describe("handleHealthTrends", () => {
       await handleHealthTrends(req(trendsPath), env, NETUID, url(trendsPath)),
     );
     assert.deepEqual(body.data.windows["7d"].surfaces, []);
-  });
-
-  test("issues parallel D1 queries for each configured window", async () => {
-    globalThis.caches = undefined;
-    const cap = { sql: [], params: [] };
-    const { env } = dbWith({ captures: cap });
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    await handleHealthTrends(req(trendsPath), env, NETUID, url(trendsPath));
-    const rankedQueries = cap.sql.filter((s) => s.includes("ranked"));
-    assert.equal(rankedQueries.length, 2);
   });
 
   test("edge cache HIT avoids D1 on second request", async () => {
@@ -1139,15 +1098,6 @@ describe("handleHealthTrends", () => {
       ctx,
     );
     assert.equal(queries.length, afterMiss);
-  });
-
-  test("binds netuid param into ranked CTE query", async () => {
-    globalThis.caches = undefined;
-    const cap = { sql: [], params: [] };
-    const { env } = dbWith({ captures: cap });
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    await handleHealthTrends(req(trendsPath), env, NETUID, url(trendsPath));
-    assert.ok(cap.params.some((p) => p[0] === NETUID));
   });
 });
 
@@ -1202,24 +1152,6 @@ describe("handleHealthPercentiles", () => {
     assert.equal(body.data.observed_at, null);
   });
 
-  test("happy path maps latency percentiles from ranked CTE", async () => {
-    globalThis.caches = undefined;
-    const { env } = dbWith();
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    const body = await json(
-      await handleHealthPercentiles(
-        req(`${base}?window=30d`),
-        env,
-        NETUID,
-        url(`${base}?window=30d`),
-      ),
-    );
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.surfaces[0].surface_id, "s1");
-    assert.equal(body.data.surfaces[0].latency_ms.p50, 120);
-    assert.equal(body.data.surfaces[0].latency_ms.p95, 400);
-  });
-
   test("meta uses percentiles artifact path", async () => {
     globalThis.caches = undefined;
     const { env } = dbWith();
@@ -1271,10 +1203,18 @@ describe("handleHealthPercentiles", () => {
   });
 
   test("edge cache stores percentiles under window-specific key", async () => {
+    // D1 fully eliminated (2026-07-17): a Postgres-tier miss is ALWAYS marked a
+    // D1 fallback now (no live D1 read left to distinguish "had rows" from
+    // "cold"), so it can never be cached -- only a Postgres-tier HIT is.
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, netuid: NETUID, surfaces: [] }),
+    };
     await handleHealthPercentiles(
       req(`${base}?window=7d`),
       env,
@@ -1325,42 +1265,6 @@ describe("handleHealthIncidents", () => {
     );
     assert.deepEqual(body.data.surfaces, []);
     assert.equal(body.data.observed_at, null);
-  });
-
-  test("happy path merges SLA rows and gap-island incidents", async () => {
-    globalThis.caches = undefined;
-    const { env } = dbWith();
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    const body = await json(
-      await handleHealthIncidents(
-        req(`${base}?window=7d`),
-        env,
-        NETUID,
-        url(`${base}?window=7d`),
-      ),
-    );
-    assert.equal(body.data.window, "7d");
-    assert.equal(body.data.surfaces.length, 1);
-    assert.equal(body.data.surfaces[0].surface_id, "s1");
-    assert.ok(body.data.surfaces[0].uptime_ratio > 0);
-    assert.equal(body.data.surfaces[0].incidents.length, 1);
-  });
-
-  test("issues parallel SLA and incident SQL queries", async () => {
-    globalThis.caches = undefined;
-    const cap = { sql: [], params: [] };
-    const { env } = dbWith({ captures: cap });
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    await handleHealthIncidents(
-      req(`${base}?window=30d`),
-      env,
-      NETUID,
-      url(`${base}?window=30d`),
-    );
-    assert.ok(cap.sql.some((s) => s.includes("GROUP BY COALESCE")));
-    assert.ok(cap.sql.some((s) => s.includes("WITH checks")));
-    assert.ok(cap.sql.some((s) => s.includes("ROW_NUMBER()")));
-    assert.equal(cap.sql.length, 2);
   });
 
   test("meta references incidents artifact path", async () => {
@@ -1460,24 +1364,6 @@ describe("handleGlobalIncidents", () => {
     assert.equal(body.data.observed_at, null);
   });
 
-  test("happy path runs global incident gap-island SQL", async () => {
-    const cap = { sql: [], params: [] };
-    const { env } = dbWith({ captures: cap });
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    const body = await json(
-      await handleGlobalIncidents(
-        req(`${base}?window=7d`),
-        env,
-        url(`${base}?window=7d`),
-      ),
-    );
-    assert.ok(cap.sql[0].includes("recent_checks"));
-    assert.equal(body.data.window, "7d");
-    assert.equal(body.data.surfaces.length, 1);
-    assert.equal(body.data.surfaces[0].netuid, NETUID);
-    assert.equal(body.data.surfaces[0].incidents.length, 1);
-  });
-
   test("defaults to 7d when window omitted", async () => {
     const { env } = dbWith();
     env.__healthMeta = { last_run_at: LAST_RUN_AT };
@@ -1528,28 +1414,17 @@ describe("handleGlobalIncidents", () => {
   });
 
   test("does not use withEdgeCache (no ctx required)", async () => {
-    const cap = { sql: [], params: [] };
-    const { env } = dbWith({ captures: cap });
+    // handleGlobalIncidents (unlike its sibling health handlers) never wraps
+    // itself in withEdgeCache, so it takes no ctx param -- confirm it still
+    // resolves cleanly when called without one.
+    const { env } = dbWith();
     env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    await handleGlobalIncidents(
+    const res = await handleGlobalIncidents(
       req(`${base}?window=7d`),
       env,
       url(`${base}?window=7d`),
     );
-    assert.equal(cap.sql.length, 1);
-  });
-
-  test("binds since timestamp and cap params into global SQL", async () => {
-    const cap = { sql: [], params: [] };
-    const { env } = dbWith({ captures: cap });
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    await handleGlobalIncidents(
-      req(`${base}?window=7d`),
-      env,
-      url(`${base}?window=7d`),
-    );
-    assert.ok(Array.isArray(cap.params[0]));
-    assert.ok(typeof cap.params[0][0] === "number");
+    assert.equal(res.status, 200);
   });
 });
 
@@ -1670,6 +1545,11 @@ describe("chain analytics ?format=csv export", () => {
       handler: handleChainActivity,
       header:
         "day,block_count,extrinsic_count,event_count,successful_extrinsics,success_rate,unique_signers",
+      // #4909/#6013: extrinsics'/blocks' D1 write path is retired, so
+      // chain-activity no longer queries D1 at all (D1 fully eliminated,
+      // 2026-07-16) -- there is no "degraded D1" scenario to mark as
+      // fallback anymore.
+      skipDegradedD1: true,
     },
     {
       name: "chain-calls",
@@ -1693,6 +1573,10 @@ describe("chain analytics ?format=csv export", () => {
       handler: handleChainFees,
       header:
         "day,extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao",
+      // #4909/#6013: extrinsics' D1 write path is retired, so chain-fees no
+      // longer queries D1 at all (D1 fully eliminated, 2026-07-16) -- there
+      // is no "degraded D1" scenario to mark as fallback anymore.
+      skipDegradedD1: true,
     },
   ];
 

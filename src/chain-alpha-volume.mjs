@@ -2,9 +2,9 @@
 // market activity right now, ranked by total_volume_tao, with a network rollup (including a
 // network-wide sentiment reading) and a distribution of per-subnet volume across the network.
 // The network companion to /api/v1/subnets/{netuid}/volume, mirroring how /chain/stake-flow
-// companions /subnets/{netuid}/stake-flow. Pure shaping (buildChainAlphaVolume) + a thin D1
-// loader (loadChainAlphaVolume); the Worker adds the REST envelope. Null-safe: a cold store or
-// an empty window yields schema-stable zeros (never throws), matching the sibling live tiers.
+// companions /subnets/{netuid}/stake-flow. Pure shaping (buildChainAlphaVolume); the Worker
+// adds the REST envelope. Null-safe: a cold store or an empty window yields schema-stable
+// zeros (never throws), matching the sibling live tiers.
 //
 // Reuses alpha-volume.mjs's buildAlphaVolume for each subnet's scorecard (buy/sell/total volume
 // + sentiment) rather than re-deriving the same math — this module only groups rows by netuid,
@@ -20,8 +20,6 @@ import {
   sentimentRatio,
   classifySentiment,
 } from "./alpha-volume.mjs";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT = 20;
 export const CHAIN_ALPHA_VOLUME_LIMIT_MAX = 100;
@@ -201,21 +199,9 @@ export function buildChainAlphaVolume(
   };
 }
 
-// Network-wide rolling 24h alpha volume, computed live: sum StakeAdded/StakeRemoved
-// alpha_amount + amount_tao from account_events over the last 24h (observed_at >= now - 24h,
-// epoch ms), grouped by (netuid, event_kind), shaped with buildChainAlphaVolume. Rides the same
-// account_events shape alpha-volume.mjs's own per-subnet loader queries, just without the
-// `netuid = ?` filter. Cold/absent D1 -> schema-stable zeros, never throws.
-export async function loadChainAlphaVolume(d1, { limit } = {}) {
-  const cutoff = Date.now() - DAY_MS;
-  const rows = await d1(
-    "SELECT netuid, event_kind, COALESCE(SUM(alpha_amount), 0) AS alpha_volume, " +
-      "COALESCE(SUM(amount_tao), 0) AS tao_volume, COUNT(*) AS event_count, " +
-      "MAX(observed_at) AS last_observed " +
-      "FROM account_events " +
-      "WHERE event_kind IN (?, ?) AND observed_at >= ? " +
-      "GROUP BY netuid, event_kind",
-    [STAKE_ADDED_KIND, STAKE_REMOVED_KIND, cutoff],
-  );
-  return buildChainAlphaVolume(rows, { limit });
-}
+// #4772 D1 retirement: loadChainAlphaVolume (the D1 loader that read the
+// account_events StakeAdded/StakeRemoved stream) was removed here -- that D1 write
+// path is retired and the `account_events` table is dropped in production, so a live
+// D1 query would always miss. Serving now goes tryPostgresTier -> buildChainAlphaVolume([...]),
+// never D1. See src/graphql.mjs's chain_alpha_volume and src/mcp-server.mjs's
+// get_chain_alpha_volume tool for the call sites.

@@ -5,12 +5,16 @@
 // writeSubnetSnapshot, fired every hour): 47k+ rows back to 2025-06-23.
 // Postgres only started receiving rows via syncSubnetSnapshotToPostgres's
 // best-effort dual-write mirror once #4832 landed
-// (workers/data-api.mjs's handleSubnetSnapshotSync), so it is missing over a
-// year of history D1 already has -- exactly why METAGRAPH_SUBNET_SNAPSHOTS_SOURCE
-// stays deliberately unflipped in wrangler.jsonc (see
-// workers/request-handlers/analytics-routes.mjs's own header comment):
-// flipping serving to Postgres before this backfill runs would truncate every
-// trajectory/economics-trends chart down to the dual-write's short tail.
+// (workers/data-api.mjs's handleSubnetSnapshotSync), so it was missing over a
+// year of history D1 already had -- exactly why METAGRAPH_SUBNET_SNAPSHOTS_SOURCE
+// stayed unflipped in wrangler.jsonc until this backfill ran: flipping
+// serving to Postgres before it would have truncated every trajectory/
+// economics-trends chart down to the dual-write's short tail. That backfill
+// has since run (Postgres held 48,311 rows spanning 2025-06-23 through
+// 2026-07-17 as of 2026-07-16) and the flag is now flipped to "postgres" --
+// see wrangler.jsonc's own header comment on that flag for the verification
+// writeup. This script is kept for reference / a future re-run if Postgres
+// ever needs to be rebuilt from D1's frozen copy, not for routine use.
 //
 // This is a pure COPY, not a decode operation -- D1's values are already
 // correct/final. The script pages the full D1 table (ordered by the table's

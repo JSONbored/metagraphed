@@ -17,6 +17,20 @@ import { createLocalArtifactEnv, latestArtifactDate } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.mjs";
+import { buildChainStakeMoves } from "../src/chain-stake-moves.mjs";
+import { buildChainStakeTransfers } from "../src/chain-stake-transfers.mjs";
+import { buildChainWeightSetters } from "../src/chain-weight-setters.mjs";
+import { buildChainAxonRemovals } from "../src/chain-axon-removals.mjs";
+import { buildChainDeregistrations } from "../src/chain-deregistrations.mjs";
+import { buildChainServing } from "../src/chain-serving.mjs";
+import { buildChainPrometheus } from "../src/chain-prometheus.mjs";
+import { buildChainRegistrations } from "../src/chain-registrations.mjs";
+import { buildChainStakeFlow } from "../src/chain-stake-flow.mjs";
+import { buildChainAlphaVolume } from "../src/chain-alpha-volume.mjs";
+import { buildChainWeights } from "../src/chain-weights.mjs";
+import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
+import { buildChainTransfers } from "../src/chain-transfers.mjs";
+import { buildChainCalls } from "../src/chain-analytics.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -3345,47 +3359,13 @@ describe("MCP get_subnet_performance", () => {
 });
 
 describe("MCP get_chain_signers", () => {
-  test("returns signers ranked by tx_count from D1", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              return {
-                async all() {
-                  assert.match(sql, /FROM extrinsics/);
-                  assert.ok(params.includes(50));
-                  return {
-                    results: [
-                      {
-                        signer:
-                          "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                        tx_count: 12,
-                        total_fee_tao: 1.5,
-                        total_tip_tao: 0.25,
-                        last_tx_block: 4200000,
-                      },
-                    ],
-                  };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-    const res = await callTool(
-      "get_chain_signers",
-      { window: "7d", limit: 50 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.window, "7d");
-    assert.equal(out.sort, "tx_count");
-    assert.equal(out.signer_count, 1);
-    assert.equal(out.signers[0].tx_count, 12);
-    assert.equal(out.signers[0].total_fee_tao, 1.5);
-  });
+  // #4772 D1 retirement: the `extrinsics` D1 table is dropped in production,
+  // so loadMcpChainSigners (src/mcp-server.mjs) never issues a live D1 read
+  // any more -- it always resolves to the schema-stable empty leaderboard via
+  // buildChainSigners({..., rows: []}), regardless of any METAGRAPH_HEALTH_DB
+  // mock the caller binds. A batch's shared limiter charge is still exercised
+  // (its own D1-free coverage) by "a batch of identical signers calls shares
+  // one limiter charge, not one per duplicate" below.
 
   test("rejects an invalid sort", async () => {
     const res = await callTool("get_chain_signers", { sort: "bogus" }, {});
@@ -3394,33 +3374,14 @@ describe("MCP get_chain_signers", () => {
   });
 
   test("ranks signers by total_fee_tao when requested", async () => {
-    let capturedSql;
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capturedSql = sql;
-              return {
-                async all() {
-                  assert.match(sql, /FROM extrinsics/);
-                  assert.ok(params.includes(50));
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
     const res = await callTool(
       "get_chain_signers",
       { window: "7d", sort: "total_fee_tao", limit: 50 },
-      { env },
+      {},
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.sort, "total_fee_tao");
-    assert.match(capturedSql, /ORDER BY total_fee_tao DESC, signer ASC/);
+    assert.deepEqual(out.signers, []);
   });
 
   test("rejects an invalid window", async () => {
@@ -3440,32 +3401,14 @@ describe("MCP get_chain_signers", () => {
   });
 
   test("scopes the leaderboard by call_module", async () => {
-    let boundModule;
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              boundModule = params[1];
-              return {
-                async all() {
-                  assert.match(sql, /call_module = \?/);
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
     const res = await callTool(
       "get_chain_signers",
       { window: "30d", call_module: "Balances", limit: 10 },
-      { env },
+      {},
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "30d");
-    assert.equal(boundModule, "Balances");
+    assert.deepEqual(out.signers, []);
   });
 
   test("returns an empty leaderboard on a cold D1 store", async () => {
@@ -3475,8 +3418,7 @@ describe("MCP get_chain_signers", () => {
     assert.deepEqual(out.signers, []);
   });
 
-  test("applies the data-tier limiter before the D1 signers aggregation", async () => {
-    let d1Calls = 0;
+  test("applies the data-tier limiter before the signers aggregation", async () => {
     const limiterKeys = [];
     const res = await callTool(
       "get_chain_signers",
@@ -3489,31 +3431,15 @@ describe("MCP get_chain_signers", () => {
               return { success: false };
             },
           },
-          METAGRAPH_HEALTH_DB: {
-            prepare() {
-              d1Calls += 1;
-              return {
-                bind() {
-                  return {
-                    async all() {
-                      return { results: [] };
-                    },
-                  };
-                },
-              };
-            },
-          },
         },
       },
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /Too many data API requests/);
     assert.deepEqual(limiterKeys, ["data:anonymous"]);
-    assert.equal(d1Calls, 0);
   });
 
-  test("proceeds to the D1 signers aggregation when the data-tier limiter allows the request", async () => {
-    let d1Calls = 0;
+  test("proceeds to the empty signers leaderboard when the data-tier limiter allows the request", async () => {
     const limiterKeys = [];
     const res = await callTool(
       "get_chain_signers",
@@ -3526,62 +3452,15 @@ describe("MCP get_chain_signers", () => {
               return { success: true };
             },
           },
-          METAGRAPH_HEALTH_DB: {
-            prepare() {
-              d1Calls += 1;
-              return {
-                bind() {
-                  return {
-                    async all() {
-                      return { results: [] };
-                    },
-                  };
-                },
-              };
-            },
-          },
         },
       },
     );
     assert.equal(res.body.result.isError, false);
     assert.deepEqual(limiterKeys, ["data:anonymous"]);
-    assert.equal(d1Calls, 1);
+    assert.deepEqual(res.body.result.structuredContent.signers, []);
   });
 
-  test("coalesces identical batched signers calls into one D1 query", async () => {
-    let d1Calls = 0;
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          d1Calls += 1;
-          return {
-            bind() {
-              return {
-                async all() {
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-    const message = (id) => ({
-      jsonrpc: "2.0",
-      id,
-      method: "tools/call",
-      params: {
-        name: "get_chain_signers",
-        arguments: { window: "7d", limit: 50 },
-      },
-    });
-    const res = await rpc([message(1), message(2)], { env });
-    assert.equal(res.status, 200);
-    assert.equal(res.body.length, 2);
-    assert.equal(d1Calls, 1);
-  });
-
-  test("returns an empty leaderboard when the signers D1 query times out", async () => {
+  test("returns an empty leaderboard when the signers query times out", async () => {
     const env = {
       METAGRAPH_D1_TIMEOUT_MS: "1",
       METAGRAPH_HEALTH_DB: {
@@ -3655,60 +3534,43 @@ describe("MCP get_chain_signers", () => {
 });
 
 describe("MCP get_chain_fees", () => {
-  test("returns daily series and top payers from D1", async () => {
-    // The median query only runs for days the daily aggregate already proved
-    // are within the sample cap, so the mocked day must be one the real
-    // window actually covers — use today (UTC), which any window ending at
-    // the real "now" includes.
-    const today = new Date().toISOString().slice(0, 10);
+  // D1 fully eliminated (2026-07-16): extrinsics' D1 write path is retired
+  // (#4772) and the table is dropped in production, so get_chain_fees now
+  // goes tryPostgresTier -> buildChainFees({...}) on any miss/outage, never a
+  // live D1 read. The COALESCE/median SQL-shape assertions this used to
+  // verify against D1 now apply to Postgres's own equivalent query in
+  // workers/data-api.mjs's chain-fees route (its own dedicated coverage).
+  test("returns daily series and top payers from the Postgres tier", async () => {
     const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              return {
-                async all() {
-                  if (/ROW_NUMBER\(\) OVER/.test(sql)) {
-                    return {
-                      results: [
-                        {
-                          day: today,
-                          median_fee_tao: 0.4,
-                          median_tip_tao: 0.05,
-                        },
-                      ],
-                    };
-                  }
-                  if (/GROUP BY day/.test(sql)) {
-                    return {
-                      results: [
-                        {
-                          day: today,
-                          extrinsic_count: 20,
-                          total_fee_tao: 8,
-                          total_tip_tao: 2,
-                        },
-                      ],
-                    };
-                  }
-                  assert.match(sql, /ORDER BY total_fee_tao DESC, signer ASC/);
-                  assert.ok(params.includes(25));
-                  return {
-                    results: [
-                      {
-                        signer:
-                          "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                        total_fee_tao: 4,
-                        total_tip_tao: 1,
-                        extrinsic_count: 6,
-                      },
-                    ],
-                  };
-                },
-              };
-            },
-          };
-        },
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            observed_at: null,
+            day_count: 1,
+            daily: [
+              {
+                day: new Date().toISOString().slice(0, 10),
+                extrinsic_count: 20,
+                total_fee_tao: 8,
+                avg_fee_tao: 0.4,
+                median_fee_tao: 0.4,
+                total_tip_tao: 2,
+                avg_tip_tao: 0.1,
+                median_tip_tao: 0.05,
+              },
+            ],
+            top_fee_payers: [
+              {
+                signer: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                total_fee_tao: 4,
+                total_tip_tao: 1,
+                extrinsic_count: 6,
+              },
+            ],
+          }),
       },
     };
     const res = await callTool(
@@ -3725,39 +3587,21 @@ describe("MCP get_chain_fees", () => {
     assert.equal(out.top_fee_payers[0].total_fee_tao, 4);
   });
 
-  test("scopes every chain-fees query by call_module", async () => {
-    // The median query only runs for days the daily aggregate already proved
-    // are within the sample cap, so the mocked daily response must report a
-    // real day (today, UTC) rather than an empty result set.
-    const today = new Date().toISOString().slice(0, 10);
-    const calls = [];
+  test("forwards call_module on the Postgres-tier request", async () => {
+    let requestedUrl;
     const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              if (sql.includes("call_module = ?")) {
-                calls.push(params);
-              }
-              return {
-                async all() {
-                  if (/GROUP BY day/.test(sql)) {
-                    return {
-                      results: [
-                        {
-                          day: today,
-                          extrinsic_count: 10,
-                          total_fee_tao: 1,
-                          total_tip_tao: 1,
-                        },
-                      ],
-                    };
-                  }
-                  return { results: [] };
-                },
-              };
-            },
-          };
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (request) => {
+          requestedUrl = new URL(request.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: null,
+            day_count: 0,
+            daily: [],
+            top_fee_payers: [],
+          });
         },
       },
     };
@@ -3766,15 +3610,9 @@ describe("MCP get_chain_fees", () => {
       { window: "30d", call_module: "Balances", limit: 10 },
       { env },
     );
-    assert.equal(calls.length, 3);
-    assert.equal(calls[0][1], "Balances"); // daily series
-    assert.equal(calls[1][1], "Balances"); // top fee payers
-    // Median query: the call_module filter is bound ONCE (numbered ?1) and
-    // reused across every UNION ALL day block, followed by a
-    // day-start/day-end pair per safe UTC day.
-    const medianParams = calls[2];
-    assert.equal(medianParams[0], "Balances");
-    assert.equal((medianParams.length - 1) % 2, 0);
+    assert.equal(requestedUrl.searchParams.get("call_module"), "Balances");
+    assert.equal(requestedUrl.searchParams.get("window"), "30d");
+    assert.equal(requestedUrl.searchParams.get("limit"), "10");
   });
 
   test("rejects an invalid window", async () => {
@@ -3803,47 +3641,44 @@ describe("MCP get_chain_fees", () => {
 });
 
 describe("MCP get_chain_registrations", () => {
-  // Route the two loadChainRegistrations reads by SQL: the network aggregate
-  // (distinct_registrants + newest_observed, single row) vs the per-subnet
-  // GROUP BY netuid leaderboard. The network aggregate's newest_observed must
-  // be non-null or the loader short-circuits the per-subnet read.
-  function registrationsD1(
-    {
-      network = { distinct_registrants: 7, newest_observed: 1_700_000_000_000 },
-      subnets = [
-        { netuid: 5, registrations: 12, distinct_registrants: 10 },
-        { netuid: 2, registrations: 4, distinct_registrants: 4 },
-      ],
-    } = {},
-    capture = [],
-  ) {
+  // D1 fully eliminated (2026-07-16): account_events' D1 write path is
+  // retired (#4772) and the table is dropped in production, so
+  // loadChainRegistrations (the D1-querying loader) is gone -- the tool now
+  // goes tryPostgresTier -> buildChainRegistrations([], {...}) on any
+  // miss/outage. This mocks the Postgres tier by running the same pure
+  // builder the real Postgres route would.
+  function registrationsPostgresEnv({
+    network = { distinct_registrants: 7, newest_observed: 1_700_000_000_000 },
+    subnets = [
+      { netuid: 5, registrations: 12, distinct_registrants: 10 },
+      { netuid: 2, registrations: 4, distinct_registrants: 4 },
+    ],
+  } = {}) {
     return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                async all() {
-                  if (/GROUP BY netuid/.test(sql)) {
-                    return { results: subnets };
-                  }
-                  return { results: network ? [network] : [] };
-                },
-              };
-            },
-          };
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (request) => {
+          const url = new URL(request.url);
+          const window = url.searchParams.get("window") || "7d";
+          const limitParam = url.searchParams.get("limit");
+          const limit = limitParam != null ? Number(limitParam) : undefined;
+          return Response.json(
+            buildChainRegistrations(subnets, {
+              window,
+              limit,
+              networkDistinct: network,
+            }),
+          );
         },
       },
     };
   }
 
-  test("returns the per-subnet leaderboard and network rollup from D1", async () => {
-    const capture = [];
+  test("returns the per-subnet leaderboard and network rollup from the Postgres tier", async () => {
     const res = await callTool(
       "get_chain_registrations",
       { window: "7d", limit: 20 },
-      { env: registrationsD1({}, capture) },
+      { env: registrationsPostgresEnv() },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -3857,9 +3692,6 @@ describe("MCP get_chain_registrations", () => {
     // summed across subnets (12 + 4).
     assert.equal(out.network.distinct_registrants, 7);
     assert.equal(out.network.registrations, 16);
-    // The aggregate read runs before the GROUP BY leaderboard read.
-    assert.ok(!/GROUP BY netuid/.test(capture[0].sql));
-    assert.match(capture[1].sql, /GROUP BY netuid/);
   });
 
   test("rejects an invalid window", async () => {
@@ -3924,13 +3756,50 @@ describe("MCP get_chain_transfers", () => {
     };
   }
 
+  // D1 fully eliminated (2026-07-17): account_events' D1 write path is
+  // retired (#4772) and the table is dropped in production, so
+  // get_chain_transfers now goes tryPostgresTier -> buildChainTransfers({...})
+  // on any miss/outage, never a live D1 read. This mocks the Postgres tier by
+  // running the same pure builder over the caller's own window query param,
+  // so the mocked response is byte-identical to what production would
+  // actually serve.
+  function chainTransfersPostgresEnv({ totals, senders, receivers }) {
+    return {
+      env: {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            const url = new URL(request.url);
+            const window = url.searchParams.get("window") || "7d";
+            return Response.json(
+              buildChainTransfers({
+                window,
+                observedAt: null,
+                totals,
+                senders,
+                receivers,
+              }),
+            );
+          },
+        },
+      },
+    };
+  }
+
   test("aggregates volume and ranks top senders/receivers", async () => {
-    const capture = [];
-    const env = chainTransfersD1({}, capture);
     const res = await callTool(
       "get_chain_transfers",
       { window: "7d", limit: 5 },
-      { env },
+      chainTransfersPostgresEnv({
+        totals: {
+          transfer_count: 10,
+          total_volume_tao: 100,
+          unique_senders: 4,
+          unique_receivers: 6,
+        },
+        senders: [{ address: "5Sa", volume_tao: 80, transfer_count: 5 }],
+        receivers: [{ address: "5Rx", volume_tao: 60, transfer_count: 4 }],
+      }),
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -3938,9 +3807,6 @@ describe("MCP get_chain_transfers", () => {
     assert.equal(out.top_senders[0].address, "5Sa");
     assert.equal(out.top_receivers[0].address, "5Rx");
     assert.equal(out.top_sender_share, 0.8);
-    const senders = capture.find((c) => /GROUP BY hotkey/.test(c.sql));
-    assert.match(senders.sql, /event_kind = \?/);
-    assert.equal(senders.params.at(-1), 5);
   });
 
   test("defaults to the 7d window", async () => {
@@ -5501,44 +5367,32 @@ describe("MCP get_subnet_yield_history", () => {
 });
 
 describe("MCP get_network_activity", () => {
-  test("merges extrinsics + blocks tiers from D1", async () => {
+  // D1 fully eliminated (2026-07-16): extrinsics'/blocks' D1 write path is
+  // retired (#4772) and the tables are dropped in production, so
+  // loadNetworkActivity (the D1-querying loader) is gone -- the tool now
+  // goes tryPostgresTier -> buildChainActivity({...}) on any miss/outage.
+  test("merges extrinsics + blocks tiers from the Postgres tier", async () => {
     const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              return {
-                async all() {
-                  if (/FROM extrinsics/.test(sql)) {
-                    assert.ok(typeof params[0] === "number");
-                    return {
-                      results: [
-                        {
-                          day: "2026-06-25",
-                          extrinsic_count: 100,
-                          successful_extrinsics: 99,
-                          unique_signers: 40,
-                        },
-                      ],
-                    };
-                  }
-                  if (/FROM blocks/.test(sql)) {
-                    return {
-                      results: [
-                        {
-                          day: "2026-06-25",
-                          block_count: 7200,
-                          event_count: 15000,
-                        },
-                      ],
-                    };
-                  }
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            observed_at: null,
+            day_count: 1,
+            days: [
+              {
+                day: "2026-06-25",
+                block_count: 7200,
+                extrinsic_count: 100,
+                event_count: 15000,
+                successful_extrinsics: 99,
+                success_rate: 0.99,
+                unique_signers: 40,
+              },
+            ],
+          }),
       },
     };
     const res = await callTool(
@@ -5636,12 +5490,56 @@ describe("MCP get_rpc_usage", () => {
     };
   }
 
-  test("returns usage analytics from rpc_proxy_events", async () => {
-    const res = await callTool(
-      "get_rpc_usage",
-      { window: "7d" },
-      { env: rpcUsageDb() },
-    );
+  // D1 fully eliminated (2026-07-17): rpc_proxy_events is Postgres-only now
+  // (loadRpcUsage is only reached on a tier miss and always returns the
+  // schema-stable empty shape), so get_rpc_usage now goes tryPostgresTier ->
+  // formatRpcUsage(...) on any miss/outage, never a live D1 read. This mocks
+  // the Postgres tier directly with a REST-shaped response, mirroring
+  // workers/data-api.mjs's own rpc/usage route.
+  test("returns usage analytics from the Postgres tier", async () => {
+    const env = {
+      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            bucket_granularity: "1h",
+            observed_at: null,
+            source: "rpc-proxy",
+            summary: {
+              total_requests: 50,
+              ok_requests: 48,
+              error_requests: 2,
+              error_rate: 0.04,
+              failover_requests: 2,
+              failover_rate: 0.04,
+              cache_hits: 10,
+              cache_hit_rate: 0.2,
+              latency_ms: { p50: 70, p95: 200, avg: 80 },
+            },
+            endpoints: [
+              {
+                endpoint_id: "a",
+                provider: "p",
+                requests: 50,
+                ok_requests: 48,
+                avg_latency_ms: 80,
+              },
+            ],
+            networks: [{ network: "finney", requests: 50, ok_requests: 48 }],
+            buckets: [
+              {
+                ts: new Date(1_700_000_000_000).toISOString(),
+                requests: 5,
+                errors: 0,
+                avg_latency_ms: 75,
+              },
+            ],
+          }),
+      },
+    };
+    const res = await callTool("get_rpc_usage", { window: "7d" }, { env });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
     assert.equal(out.summary.total_requests, 50);
@@ -9033,27 +8931,27 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /uid/);
   });
 
-  test("get_subnet_trajectory computes the time series + deltas (sorted ascending)", async () => {
-    const res = await callTool(
-      "get_subnet_trajectory",
-      { netuid: 7 },
-      { env: d1Env },
-    );
+  // subnet_snapshots' D1 write path is retired (#4772) and the table is
+  // dropped in production, so get_subnet_trajectory always resolves over the
+  // schema-stable empty trajectory (loadSubnetTrajectory -> formatTrajectory
+  // with rows: []) -- a D1 mock, if bound, is never queried. Real Postgres-tier
+  // wiring (byte-identical marker round-trip) is covered by "MCP
+  // subnet-snapshots-tier analytics tools — Postgres tier wiring" below.
+  test("get_subnet_trajectory returns a schema-stable empty trajectory (subnet_snapshots D1 tier retired)", async () => {
+    const res = await callTool("get_subnet_trajectory", { netuid: 7 });
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 7);
-    assert.equal(out.point_count, 2);
-    assert.equal(out.points[0].date, "2026-06-01");
-    assert.equal(out.points[1].validator_count, 12);
-    assert.equal(out.deltas["7d"].completeness_score, 7);
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
+    assert.deepEqual(out.deltas, { "7d": null, "30d": null });
   });
 
-  test("get_economics_trends defaults to 30d and rolls subnet_snapshots rows", async () => {
-    const res = await callTool("get_economics_trends", {}, { env: d1Env });
+  test("get_economics_trends defaults to 30d with an empty schema-stable rollup", async () => {
+    const res = await callTool("get_economics_trends", {});
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "30d");
-    assert.equal(out.day_count, 2);
-    assert.equal(out.days[0].snapshot_date, "2026-06-01");
-    assert.equal(out.days[1].total_stake_tao, "1000.000000000");
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.days, []);
   });
 
   test("get_economics_trends rejects an invalid window", async () => {
@@ -9133,58 +9031,39 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_identity_history summarizes recent changes across subnets", async () => {
-    const identityDb = {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            return {
-              all() {
-                if (sql.includes("FROM subnet_identity_history")) {
-                  assert.equal(params[params.length - 1], 2); // clamped limit bound
-                  return Promise.resolve({
-                    results: [
-                      {
-                        id: 2,
-                        netuid: 12,
-                        block_number: 200,
-                        observed_at: 1_700_000_000_000,
-                        subnet_name: "Beta",
-                        symbol: "β",
-                        description: null,
-                        github_repo: null,
-                        subnet_url: null,
-                        discord: null,
-                        logo_url: null,
-                        identity_hash: "h2",
-                      },
-                      {
-                        id: 1,
-                        netuid: 7,
-                        block_number: 100,
-                        observed_at: 1_600_000_000_000,
-                        subnet_name: "Alpha",
-                        symbol: "α",
-                        description: null,
-                        github_repo: null,
-                        subnet_url: null,
-                        discord: null,
-                        logo_url: null,
-                        identity_hash: "h1",
-                      },
-                    ],
-                  });
-                }
-                return Promise.resolve({ results: [] });
+    const env = {
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            count: 2,
+            subnet_count: 2,
+            changes: [
+              {
+                netuid: 12,
+                block_number: 200,
+                observed_at: new Date(1_700_000_000_000).toISOString(),
+                subnet_name: "Beta",
+                symbol: "β",
+                identity_hash: "h2",
               },
-            };
-          },
-        };
+              {
+                netuid: 7,
+                block_number: 100,
+                observed_at: new Date(1_600_000_000_000).toISOString(),
+                subnet_name: "Alpha",
+                symbol: "α",
+                identity_hash: "h1",
+              },
+            ],
+          }),
       },
     };
     const res = await callTool(
       "get_chain_identity_history",
       { limit: 2 },
-      { env: { METAGRAPH_HEALTH_DB: identityDb } },
+      { env },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.count, 2);
@@ -9196,48 +9075,23 @@ describe("MCP economics + metagraph data tools", () => {
 
   // #4832 gap-closure: get_chain_identity_history mirrors REST's
   // handleChainIdentityHistory tier-selection exactly (same
-  // METAGRAPH_SUBNET_IDENTITY_SOURCE flag, same tryPostgresTier fallback
-  // contract) -- see the equivalent "flag=postgres" tests for
-  // handleSubnetIdentityHistory in tests/request-handlers-entities.test.mjs.
-  describe("get_chain_identity_history D1 -> Postgres serving cutover", () => {
-    function identityHistoryD1(rows, capture = []) {
-      return {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                all() {
-                  if (sql.includes("FROM subnet_identity_history")) {
-                    return Promise.resolve({ results: rows });
-                  }
-                  return Promise.resolve({ results: [] });
-                },
-              };
-            },
-          };
-        },
-      };
-    }
+  // METAGRAPH_SUBNET_IDENTITY_SOURCE flag, same tryPostgresTier contract) --
+  // see the equivalent "flag=postgres" tests for handleSubnetIdentityHistory
+  // in tests/request-handlers-entities.test.mjs. D1 fully eliminated
+  // (2026-07-16): a Postgres miss/outage now degrades straight to the
+  // schema-stable empty feed, never a live D1 read.
+  describe("get_chain_identity_history Postgres tier", () => {
     const ALPHA_ROW = {
-      id: 1,
       netuid: 7,
       block_number: 100,
-      observed_at: 1_600_000_000_000,
+      observed_at: new Date(1_600_000_000_000).toISOString(),
       subnet_name: "Alpha",
       symbol: "α",
-      description: null,
-      github_repo: null,
-      subnet_url: null,
-      discord: null,
-      logo_url: null,
       identity_hash: "h1",
     };
 
-    test("flag=postgres uses Postgres data, D1 never queried", async () => {
-      const capture = [];
+    test("flag=postgres uses Postgres data", async () => {
       const env = {
-        METAGRAPH_HEALTH_DB: identityHistoryD1([], capture),
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
         DATA_API: {
           fetch: async () =>
@@ -9252,13 +9106,10 @@ describe("MCP economics + metagraph data tools", () => {
       const res = await callTool("get_chain_identity_history", {}, { env });
       const out = res.body.result.structuredContent;
       assert.equal(out.changes[0].subnet_name, "pg-only");
-      assert.deepEqual(capture, []);
     });
 
-    test("flag=postgres falls back to D1 on failure", async () => {
-      const capture = [];
+    test("flag=postgres degrades to the empty feed on failure", async () => {
       const env = {
-        METAGRAPH_HEALTH_DB: identityHistoryD1([ALPHA_ROW], capture),
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
         DATA_API: {
           fetch: async () => {
@@ -9268,34 +9119,31 @@ describe("MCP economics + metagraph data tools", () => {
       };
       const res = await callTool("get_chain_identity_history", {}, { env });
       const out = res.body.result.structuredContent;
-      assert.equal(out.changes[0].subnet_name, "Alpha");
-      assert.ok(capture.length > 0, "D1 must actually be queried on fallback");
+      assert.equal(out.count, 0);
+      assert.deepEqual(out.changes, []);
     });
 
-    test("flag absent uses D1 even when DATA_API is bound (zero regression, unflipped)", async () => {
-      const capture = [];
+    test("flag absent yields the empty feed even when DATA_API is bound (unflipped)", async () => {
       const env = {
-        METAGRAPH_HEALTH_DB: identityHistoryD1([ALPHA_ROW], capture),
         DATA_API: {
           fetch: async () =>
             Response.json({
               schema_version: 1,
-              count: 0,
-              subnet_count: 0,
-              changes: [],
+              count: 1,
+              subnet_count: 1,
+              changes: [ALPHA_ROW],
             }),
         },
       };
       const res = await callTool("get_chain_identity_history", {}, { env });
       const out = res.body.result.structuredContent;
-      assert.equal(out.changes[0].subnet_name, "Alpha");
-      assert.ok(capture.length > 0, "D1 must actually be queried");
+      assert.equal(out.count, 0);
+      assert.deepEqual(out.changes, []);
     });
 
     test("flag=postgres forwards limit as a REST-equivalent query param", async () => {
       let seenUrl;
       const env = {
-        METAGRAPH_HEALTH_DB: identityHistoryD1([]),
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
         DATA_API: {
           fetch: async (request) => {
@@ -9317,7 +9165,6 @@ describe("MCP economics + metagraph data tools", () => {
     test("flag=postgres omits the limit param when not supplied", async () => {
       let seenUrl;
       const env = {
-        METAGRAPH_HEALTH_DB: identityHistoryD1([]),
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
         DATA_API: {
           fetch: async (request) => {
@@ -9454,12 +9301,16 @@ describe("MCP economics + metagraph data tools", () => {
     };
   }
 
+  // D1 fully eliminated (2026-07-16): account_events' D1 write path is
+  // retired (#4772) and the table is dropped in production, so
+  // get_chain_stake_flow now goes tryPostgresTier -> buildChainStakeFlow([],
+  // ...) on any miss/outage, never a live D1 read. This mocks the Postgres
+  // tier by running the same pure builder over the caller's own window/limit
+  // params, reusing the shared chainAccountEventsPostgresEnv helper (its
+  // buildFn ignores the unused networkDistinct arg for this tool, which
+  // computes its network rollup straight off the row list).
   function chainStakeFlowEnv(rows) {
-    return {
-      env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({ accountEvents: rows }),
-      },
-    };
+    return chainAccountEventsPostgresEnv(buildChainStakeFlow, null, rows);
   }
 
   test("get_chain_stake_flow returns schema-stable zeros on cold D1", async () => {
@@ -9559,12 +9410,14 @@ describe("MCP economics + metagraph data tools", () => {
     };
   }
 
+  // D1 fully eliminated (2026-07-16): account_events' D1 write path is
+  // retired (#4772) and the table is dropped in production, so
+  // get_chain_alpha_volume now goes tryPostgresTier -> buildChainAlphaVolume(
+  // [], ...) on any miss/outage, never a live D1 read. Reuses the shared
+  // chainAccountEventsPostgresEnv helper (this builder ignores the unused
+  // window/networkDistinct options — fixed 24h window, own row-derived rollup).
   function chainAlphaVolumeEnv(rows) {
-    return {
-      env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({ accountEvents: rows }),
-      },
-    };
+    return chainAccountEventsPostgresEnv(buildChainAlphaVolume, null, rows);
   }
 
   test("get_chain_alpha_volume returns schema-stable zeros on cold D1", async () => {
@@ -9666,15 +9519,14 @@ describe("MCP economics + metagraph data tools", () => {
     return { netuid, weight_sets, distinct_setters };
   }
 
+  // D1 fully eliminated (2026-07-16): account_events' D1 write path is
+  // retired (#4772) and the table is dropped in production, so
+  // get_chain_weights now goes tryPostgresTier -> buildChainWeights([], ...)
+  // on any miss/outage, never a live D1 read. Reuses the shared
+  // chainAccountEventsPostgresEnv helper -- same shape as
+  // get_chain_stake_moves' Postgres-tier test above.
   function chainWeightsEnv(network, subnets) {
-    return {
-      env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({
-          weightsNetworkRows: network ? [network] : [],
-          weightsSubnetRows: subnets,
-        }),
-      },
-    };
+    return chainAccountEventsPostgresEnv(buildChainWeights, network, subnets);
   }
 
   test("get_chain_weights returns schema-stable zeros on cold D1", async () => {
@@ -9755,27 +9607,52 @@ describe("MCP economics + metagraph data tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  function chainWeightSettersD1(
-    { leaderboardRows = [], totalsRow = null } = {},
-    capture = [],
-  ) {
+  // D1 fully eliminated (2026-07-16): account_events' D1 write path is
+  // retired (#4772) and the table is dropped in production, so these tools'
+  // D1-querying loaders are gone -- they now go tryPostgresTier ->
+  // buildX([], ...) on any miss/outage. This mocks the Postgres tier by
+  // running the SAME pure builder the real Postgres route
+  // (workers/data-api.mjs) would, over the caller's own window/limit query
+  // params, so the mocked response is byte-identical to what production
+  // would actually serve.
+  function chainAccountEventsPostgresEnv(buildFn, networkDistinct, subnetRows) {
     return {
       env: {
-        METAGRAPH_HEALTH_DB: {
-          prepare(sql) {
-            return {
-              bind(...params) {
-                capture.push({ sql, params });
-                return {
-                  async all() {
-                    if (/GROUP BY/.test(sql)) {
-                      return { results: leaderboardRows };
-                    }
-                    return { results: totalsRow ? [totalsRow] : [] };
-                  },
-                };
-              },
-            };
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            const url = new URL(request.url);
+            const window = url.searchParams.get("window") || "7d";
+            const limitParam = url.searchParams.get("limit");
+            const limit = limitParam != null ? Number(limitParam) : undefined;
+            return Response.json(
+              buildFn(subnetRows, { window, limit, networkDistinct }),
+            );
+          },
+        },
+      },
+    };
+  }
+
+  function chainWeightSettersD1({
+    leaderboardRows = [],
+    totalsRow = null,
+  } = {}) {
+    return {
+      env: {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            const url = new URL(request.url);
+            const window = url.searchParams.get("window") || "7d";
+            const limitParam = url.searchParams.get("limit");
+            const limit = limitParam != null ? Number(limitParam) : undefined;
+            return Response.json(
+              buildChainWeightSetters(leaderboardRows, totalsRow, {
+                window,
+                limit,
+              }),
+            );
           },
         },
       },
@@ -9893,14 +9770,11 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainStakeMovesEnv(network, subnets) {
-    return {
-      env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({
-          stakeMovesNetworkRows: network ? [network] : [],
-          stakeMovesSubnetRows: subnets,
-        }),
-      },
-    };
+    return chainAccountEventsPostgresEnv(
+      buildChainStakeMoves,
+      network,
+      subnets,
+    );
   }
 
   test("get_chain_stake_moves returns schema-stable zeros on cold D1", async () => {
@@ -9997,14 +9871,11 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainStakeTransfersEnv(network, subnets) {
-    return {
-      env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({
-          stakeTransfersNetworkRows: network ? [network] : [],
-          stakeTransfersSubnetRows: subnets,
-        }),
-      },
-    };
+    return chainAccountEventsPostgresEnv(
+      buildChainStakeTransfers,
+      network,
+      subnets,
+    );
   }
 
   test("get_chain_stake_transfers returns schema-stable zeros on cold D1", async () => {
@@ -10105,14 +9976,11 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainAxonRemovalsEnv(network, subnets) {
-    return {
-      env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({
-          axonRemovalsNetworkRows: network ? [network] : [],
-          axonRemovalsSubnetRows: subnets,
-        }),
-      },
-    };
+    return chainAccountEventsPostgresEnv(
+      buildChainAxonRemovals,
+      network,
+      subnets,
+    );
   }
 
   test("get_chain_axon_removals returns schema-stable zeros on cold D1", async () => {
@@ -10217,14 +10085,11 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainDeregistrationsEnv(network, subnets) {
-    return {
-      env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({
-          chainDeregistrationsNetworkRows: network ? [network] : [],
-          chainDeregistrationsSubnetRows: subnets,
-        }),
-      },
-    };
+    return chainAccountEventsPostgresEnv(
+      buildChainDeregistrations,
+      network,
+      subnets,
+    );
   }
 
   test("get_chain_deregistrations returns schema-stable zeros on cold D1", async () => {
@@ -10325,14 +10190,7 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainServingEnv(network, subnets) {
-    return {
-      env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({
-          chainServingNetworkRows: network ? [network] : [],
-          chainServingSubnetRows: subnets,
-        }),
-      },
-    };
+    return chainAccountEventsPostgresEnv(buildChainServing, network, subnets);
   }
 
   test("get_chain_serving returns schema-stable zeros on cold D1", async () => {
@@ -10429,14 +10287,11 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainPrometheusEnv(network, subnets) {
-    return {
-      env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({
-          chainPrometheusNetworkRows: network ? [network] : [],
-          chainPrometheusSubnetRows: subnets,
-        }),
-      },
-    };
+    return chainAccountEventsPostgresEnv(
+      buildChainPrometheus,
+      network,
+      subnets,
+    );
   }
 
   test("get_chain_prometheus returns schema-stable zeros on cold D1", async () => {
@@ -10550,13 +10405,33 @@ describe("MCP economics + metagraph data tools", () => {
     };
   }
 
+  // D1 fully eliminated (2026-07-16): account_events' D1 write path is
+  // retired (#4772) and the table is dropped in production, so
+  // get_chain_transfer_pairs now goes tryPostgresTier ->
+  // buildChainTransferPairs({...}) on any miss/outage, never a live D1 read.
+  // This mocks the Postgres tier by running the same pure builder over the
+  // caller's own window/sort query params, so the mocked response is
+  // byte-identical to what production would actually serve.
   function chainTransferPairsEnv(totals, pairs) {
     return {
       env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({
-          transferPairTotals: totals ? [totals] : [],
-          transferPairRows: pairs,
-        }),
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            const url = new URL(request.url);
+            const window = url.searchParams.get("window") || "7d";
+            const sort = url.searchParams.get("sort") || "volume";
+            return Response.json(
+              buildChainTransferPairs({
+                window,
+                sort,
+                observedAt: null,
+                totals,
+                pairs,
+              }),
+            );
+          },
+        },
       },
     };
   }
@@ -11022,51 +10897,13 @@ describe("MCP economics + metagraph data tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  test("get_health_trends aggregates bulk trend rows from D1", async () => {
-    // loadBulkHealthTrends windows rows by `date >= now - Nd`, so a fixed seed
-    // date must be pinned against a fixed `now` — otherwise the 2026-06-28 row
-    // ages out of the 7d window once wall-clock time passes 2026-07-05 and the
-    // test flakes. Freeze the clock like the sibling D1-window tests above.
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const env = {
-        METAGRAPH_HEALTH_DB: {
-          prepare(sql) {
-            return {
-              bind() {
-                return {
-                  async all() {
-                    assert.match(sql, /FROM surface_uptime_daily/);
-                    return {
-                      results: [
-                        {
-                          netuid: 7,
-                          date: "2026-06-28",
-                          total: 20,
-                          ok_count: 18,
-                          avg_latency_ms: 42,
-                        },
-                      ],
-                    };
-                  },
-                };
-              },
-            };
-          },
-        },
-      };
-      const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
-      const res = await callTool("get_health_trends", {}, { deps, env });
-      const out = res.body.result.structuredContent;
-      assert.equal(out.observed_at, FRESH_RUN);
-      assert.equal(out.windows["7d"].subnet_count, 1);
-      assert.equal(out.windows["7d"].subnets[0].netuid, 7);
-      assert.equal(out.windows["7d"].subnets[0].samples, 20);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
+  // surface_uptime_daily's D1 write path is retired (#4772) and the table is
+  // dropped in production, so get_health_trends always resolves over the
+  // schema-stable empty windows on a tier miss -- a D1 mock, if bound, is
+  // never queried. Real Postgres-tier wiring (byte-identical marker
+  // round-trip) is covered by "MCP health-tier analytics tools — Postgres
+  // tier wiring" below; the empty-shape outcome is covered by "returns
+  // schema-stable empty windows on cold D1" above.
 
   test("get_chain_calls returns schema-stable empty calls on cold D1", async () => {
     const res = await callTool("get_chain_calls", { window: "7d" });
@@ -11083,34 +10920,50 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(groupBy.body.result.isError, true);
   });
 
-  test("get_chain_calls aggregates extrinsic rows with honest shares", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(..._params) {
-              const rows = /GROUP BY call_module/.test(sql)
-                ? [
-                    { call_module: "SubtensorModule", count: 60 },
-                    { call_module: "Balances", count: 30 },
-                  ]
-                : /COUNT\(\*\) AS total/.test(sql)
-                  ? [{ total: 120 }]
-                  : [];
-              return { all: () => Promise.resolve({ results: rows }) };
-            },
-          };
+  // D1 fully eliminated (2026-07-16): extrinsics' D1 write path is retired
+  // (#4772) and the table is dropped in production, so get_chain_calls now
+  // goes tryPostgresTier -> buildChainCalls({...}) on any miss/outage, never
+  // a live D1 read. This mocks the Postgres tier by running the same pure
+  // builder over the caller's own window/group_by query params, so the
+  // mocked response is byte-identical to what production would actually
+  // serve.
+  function chainCallsPostgresEnv({ total, rows }) {
+    return {
+      env: {
+        METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            const url = new URL(request.url);
+            const window = url.searchParams.get("window") || "7d";
+            const groupBy = url.searchParams.get("group_by") || "module";
+            return Response.json(
+              buildChainCalls({
+                window,
+                groupBy,
+                observedAt: null,
+                total,
+                rows,
+              }),
+            );
+          },
         },
       },
     };
-    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+  }
+
+  test("get_chain_calls aggregates extrinsic rows with honest shares", async () => {
     const res = await callTool(
       "get_chain_calls",
       { window: "30d", limit: 2 },
-      { deps, env },
+      chainCallsPostgresEnv({
+        total: 120,
+        rows: [
+          { call_module: "SubtensorModule", count: 60 },
+          { call_module: "Balances", count: 30 },
+        ],
+      }),
     );
     const out = res.body.result.structuredContent;
-    assert.equal(out.observed_at, FRESH_RUN);
     assert.equal(out.total_extrinsics, 120);
     assert.equal(out.calls[0].share, 0.5);
   });
@@ -11126,31 +10979,22 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_calls scopes grouped rows and totals by call_module", async () => {
-    const captured = [];
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              captured.push({ sql, params });
-              const rows = /GROUP BY call_module, call_function/.test(sql)
-                ? [
-                    {
-                      call_module: "SubtensorModule",
-                      call_function: "add_stake",
-                      count: 50,
-                    },
-                  ]
-                : /COUNT\(\*\) AS total/.test(sql)
-                  ? [{ total: 80 }]
-                  : [];
-              return { all: () => Promise.resolve({ results: rows }) };
-            },
-          };
+    let requestedUrl;
+    const env = chainCallsPostgresEnv({
+      total: 80,
+      rows: [
+        {
+          call_module: "SubtensorModule",
+          call_function: "add_stake",
+          count: 50,
         },
-      },
+      ],
+    });
+    const originalFetch = env.env.DATA_API.fetch;
+    env.env.DATA_API.fetch = async (request) => {
+      requestedUrl = new URL(request.url);
+      return originalFetch(request);
     };
-    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
     const res = await callTool(
       "get_chain_calls",
       {
@@ -11159,20 +11003,16 @@ describe("MCP economics + metagraph data tools", () => {
         call_module: "SubtensorModule",
         limit: 3,
       },
-      { deps, env },
+      env,
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.group_by, "module_function");
     assert.equal(out.total_extrinsics, 80);
     assert.equal(out.calls[0].share, 0.625);
-    const extrinsicsQueries = captured.filter((q) =>
-      /FROM extrinsics/.test(q.sql),
+    assert.equal(
+      requestedUrl.searchParams.get("call_module"),
+      "SubtensorModule",
     );
-    assert.equal(extrinsicsQueries.length, 2);
-    for (const q of extrinsicsQueries) {
-      assert.match(q.sql, /AND call_module = \?/);
-      assert.ok(q.params.includes("SubtensorModule"));
-    }
   });
 
   test("get_registry_leaderboards returns boards from committed profiles", async () => {
@@ -11275,9 +11115,13 @@ describe("MCP economics + metagraph data tools", () => {
     assert.ok(out.subnets[0].economics);
   });
 
-  test("compare_subnets: health dimension flag=postgres falls back to D1 on DATA_API failure", async () => {
+  // D1 fully eliminated (2026-07-17): surface_status is Postgres-only now, so
+  // a Postgres-tier failure here falls through to loadCompareSubnets's own
+  // schema-stable healthRows: [] (never a live D1 read) -- composeCompareData
+  // then folds that into health: null for every requested subnet (no matching
+  // row in an empty healthByNetuid map).
+  test("compare_subnets: health dimension flag=postgres falls back to the schema-stable empty health on DATA_API failure", async () => {
     const env = {
-      ...d1Env,
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
@@ -11292,13 +11136,7 @@ describe("MCP economics + metagraph data tools", () => {
     );
     assert.equal(res.body.result.isError, false);
     const out = res.body.result.structuredContent;
-    // Same surfaceStatus fixture d1Env's METAGRAPH_HEALTH_DB serves the
-    // existing "composes health-only dimensions" test above.
-    assert.deepEqual(out.subnets[0].health, {
-      surface_count: 3,
-      ok_count: 2,
-      avg_latency_ms: 120,
-    });
+    assert.equal(out.subnets[0].health, null);
   });
 
   test("compare_subnets: non-health dimensions never attempt Postgres even when flag=postgres", async () => {
@@ -11356,104 +11194,14 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(board.body.result.isError, true);
   });
 
-  test("get_subnet_uptime returns per-surface history for the 1y window", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: metagraphD1({
-        uptimeRows: [
-          {
-            surface_id: "api-root",
-            surface_key: "api-root",
-            day: "2026-06-01",
-            samples: 100,
-            ok_count: 95,
-            uptime_ratio: 0.95,
-            avg_latency_ms: 80,
-            p50: 70,
-            p95: 120,
-            p99: 150,
-            status: "ok",
-          },
-        ],
-      }),
-    };
-    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
-    const res = await callTool(
-      "get_subnet_uptime",
-      { netuid: 7, window: "1y" },
-      { deps, env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.window, "1y");
-    assert.equal(out.observed_at, FRESH_RUN);
-    assert.equal(out.surfaces.length, 1);
-    assert.equal(out.surfaces[0].samples, 100);
-  });
-
-  test("get_subnet_health_trends aggregates ranked-CTE rows into both windows", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: metagraphD1({
-        incidentRows: [
-          {
-            surface_id: "api-root",
-            surface_key: "api-root",
-            total: 100,
-            ok_count: 95,
-            latency_samples: 95,
-            avg_latency_ms: 90,
-            p50: 80,
-            p95: 110,
-            p99: 130,
-          },
-        ],
-      }),
-    };
-    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
-    const res = await callTool(
-      "get_subnet_health_trends",
-      { netuid: 7 },
-      { deps, env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.observed_at, FRESH_RUN);
-    for (const label of ["7d", "30d"]) {
-      assert.equal(out.windows[label].surfaces[0].surface_id, "api-root");
-      assert.equal(out.windows[label].surfaces[0].uptime_ratio, 0.95);
-    }
-  });
-
-  test("get_subnet_health_percentiles shapes per-surface latency percentiles from ranked rows", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: metagraphD1({
-        incidentRows: [
-          {
-            surface_id: "api-root",
-            surface_key: "api-root",
-            latency_samples: 95,
-            p50: 80,
-            p95: 110,
-            p99: 130,
-            avg_latency_ms: 90,
-            min_latency_ms: 40,
-            max_latency_ms: 200,
-          },
-        ],
-      }),
-    };
-    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
-    const res = await callTool(
-      "get_subnet_health_percentiles",
-      { netuid: 7, window: "30d" },
-      { deps, env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "30d");
-    assert.equal(out.observed_at, FRESH_RUN);
-    assert.equal(out.surfaces[0].surface_id, "api-root");
-    assert.equal(out.surfaces[0].samples, 95);
-    assert.equal(out.surfaces[0].latency_ms.p95, 110);
-    assert.equal(out.surfaces[0].latency_ms.max, 200);
-  });
+  // surface_uptime_daily / surface_status' D1 write paths are retired
+  // (#4772) and their tables are dropped in production, so
+  // get_subnet_uptime / get_subnet_health_trends / get_subnet_health_percentiles
+  // always resolve over the schema-stable empty shape on a tier miss -- a D1
+  // mock, if bound, is never queried. Real Postgres-tier wiring (byte-identical
+  // marker round-trip) is covered by "MCP health-tier analytics tools —
+  // Postgres tier wiring" below; the empty-shape outcome is covered by the
+  // "cold D1" tests already in this describe block.
 
   test("get_subnet_health_percentiles returns schema-stable empty surfaces (default 7d) on cold D1", async () => {
     const res = await callTool("get_subnet_health_percentiles", { netuid: 7 });
@@ -11473,68 +11221,13 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /window/);
   });
 
-  // get_subnet_health_incidents issues TWO surface_checks reads (SLA rollup +
-  // gap-island incident scan); route each to the right rows by a unique clause.
-  function incidentsEnv(slaRows = [], incidentRows = []) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind() {
-              return {
-                all() {
-                  return Promise.resolve({
-                    results: /WITH checks AS/.test(sql)
-                      ? incidentRows
-                      : slaRows,
-                  });
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("get_subnet_health_incidents joins SLA + downtime incidents from D1", async () => {
-    const env = incidentsEnv(
-      [
-        {
-          surface_id: "api-root",
-          surface_key: "api-root",
-          total: 100,
-          ok_count: 96,
-        },
-      ],
-      [
-        {
-          surface_id: "api-root",
-          surface_key: "api-root",
-          started_at: 1000,
-          ended_at: 1300,
-          failed_samples: 4,
-        },
-      ],
-    );
-    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
-    const res = await callTool(
-      "get_subnet_health_incidents",
-      { netuid: 7, window: "30d" },
-      { deps, env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "30d");
-    assert.equal(out.observed_at, FRESH_RUN);
-    const surface = out.surfaces[0];
-    assert.equal(surface.surface_id, "api-root");
-    assert.equal(surface.samples, 100);
-    assert.equal(surface.uptime_ratio, 0.96);
-    assert.equal(surface.incident_count, 1);
-    assert.equal(surface.downtime_ms, 300);
-    assert.equal(surface.incidents[0].failed_samples, 4);
-  });
+  // surface_checks' D1 write path is retired (#4772) and the table is
+  // dropped in production, so get_subnet_health_incidents always resolves
+  // over the schema-stable empty shape on a tier miss -- a D1 mock, if bound,
+  // is never queried. Real Postgres-tier wiring (byte-identical marker
+  // round-trip) is covered by "MCP health-tier analytics tools — Postgres
+  // tier wiring" below; the empty-shape outcome is covered by the "cold D1"
+  // test right below.
 
   test("get_subnet_health_incidents returns schema-stable empty surfaces (default 7d) on cold D1", async () => {
     const res = await callTool("get_subnet_health_incidents", { netuid: 7 });
@@ -11565,6 +11258,12 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal("fastest-rpc" in out.boards, false);
   });
 
+  // surface_status' D1 write path is retired (#4772) and the table is
+  // dropped in production, so the health dimension always folds down to
+  // health: null per subnet (loadCompareSubnets's healthRows: [] on a tier
+  // miss) -- a D1 mock, if bound, is never queried. structure/economics
+  // aren't D1-sourced (registry artifact + live economics KV), so those stay
+  // real.
   test("compare_subnets defaults to all dimensions and uses live economics KV", async () => {
     const deps = {
       ...liveAnalyticsDeps,
@@ -11581,47 +11280,24 @@ describe("MCP economics + metagraph data tools", () => {
       { netuids: [1, 7] },
       {
         deps,
-        env: { ...d1Env, METAGRAPH_CONTRACT_VERSION: "test-contract" },
+        env: { METAGRAPH_CONTRACT_VERSION: "test-contract" },
       },
     );
     const out = res.body.result.structuredContent;
     assert.deepEqual(out.dimensions, ["structure", "economics", "health"]);
     assert.equal(out.subnets[1].structure.completeness_score, 70);
     assert.equal(out.subnets[1].economics.open_slots, 3);
-    assert.equal(out.subnets[1].health.ok_count, 2);
+    assert.equal(out.subnets[1].health, null);
     assert.equal(out.observed_at, FRESH_RUN);
   });
 
-  test("get_global_incidents returns incident rows for the 30d window", async () => {
-    const now = Date.now();
-    const env = {
-      METAGRAPH_HEALTH_DB: metagraphD1({
-        incidentRows: [
-          {
-            netuid: 7,
-            surface_id: "api-root",
-            surface_key: "api-root",
-            started_at: now - 3_600_000,
-            ended_at: now - 1_800_000,
-            failed_samples: 3,
-          },
-        ],
-      }),
-    };
-    const res = await callTool(
-      "get_global_incidents",
-      { window: "30d" },
-      {
-        deps: makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } }),
-        env,
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.window, "30d");
-    assert.equal(out.observed_at, FRESH_RUN);
-    assert.equal(out.summary.incident_count, 1);
-    assert.equal(out.surfaces[0].incidents[0].failed_samples, 3);
-  });
+  // surface_checks' D1 write path is retired (#4772) and the table is
+  // dropped in production, so get_global_incidents always resolves over the
+  // schema-stable empty summary on a tier miss -- a D1 mock, if bound, is
+  // never queried. Real Postgres-tier wiring (byte-identical marker
+  // round-trip) is covered by "MCP health-tier analytics tools — Postgres
+  // tier wiring" below; the empty-shape outcome is covered by "returns empty
+  // summary on cold D1" above.
 
   test("get_feed requires kind and rejects an unknown one", async () => {
     const missing = await callTool("get_feed", {});
@@ -11684,33 +11360,19 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.items, []);
   });
 
-  test("get_feed kind=incidents returns items from the live D1 incident ledger", async () => {
-    const now = Date.now();
-    const env = {
-      METAGRAPH_HEALTH_DB: metagraphD1({
-        incidentRows: [
-          {
-            netuid: 7,
-            surface_id: "api-root",
-            surface_key: "api-root",
-            started_at: now - 3_600_000,
-            ended_at: now - 1_800_000,
-            failed_samples: 3,
-          },
-        ],
-      }),
-    };
+  // get_feed's kind=incidents wires through the same loadGlobalIncidents
+  // call get_global_incidents uses; surface_checks' D1 write path is retired
+  // (#4772) and the table is dropped in production, so this always degrades
+  // to an empty feed on a tier miss -- a D1 mock, if bound, is never queried.
+  test("get_feed kind=incidents degrades to an empty feed on a Postgres-tier miss", async () => {
     const res = await callTool(
       "get_feed",
       { kind: "incidents" },
-      {
-        deps: makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } }),
-        env,
-      },
+      { deps: makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } }) },
     );
     const out = res.body.result.structuredContent;
-    assert.equal(out.returned, 1);
-    assert.equal(out.items[0].tags.includes("sn7"), true);
+    assert.equal(out.returned, 0);
+    assert.deepEqual(out.items, []);
   });
 
   test("get_feed kind=gaps returns items from the enrichment-queue artifact", async () => {
@@ -11752,8 +11414,12 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.items, []);
   });
 
-  test("get_feed kind=subnet combines that subnet's registry changes and incidents", async () => {
-    const now = Date.now();
+  // surface_checks' D1 write path is retired (#4772) and the table is
+  // dropped in production, so the incidents half of kind=subnet's combined
+  // feed always resolves empty on a tier miss -- a D1 mock, if bound, is
+  // never queried. Only the registry-changelog half still carries a real
+  // item.
+  test("get_feed kind=subnet combines that subnet's registry changes with an empty incident feed", async () => {
     const feedDeps = makeDeps({
       "/metagraph/changelog.json": {
         generated_at: "2026-06-15T00:00:00.000Z",
@@ -11766,31 +11432,17 @@ describe("MCP economics + metagraph data tools", () => {
         },
       },
     });
-    const env = {
-      METAGRAPH_HEALTH_DB: metagraphD1({
-        incidentRows: [
-          {
-            netuid: 7,
-            surface_id: "api-root",
-            surface_key: "api-root",
-            started_at: now - 3_600_000,
-            ended_at: now - 1_800_000,
-            failed_samples: 3,
-          },
-        ],
-      }),
-    };
     const res = await callTool(
       "get_feed",
       { kind: "subnet", netuid: 7 },
-      { deps: feedDeps, env },
+      { deps: feedDeps },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 7);
-    assert.equal(out.returned, 2);
+    assert.equal(out.returned, 1);
     const tagSets = out.items.map((item) => item.tags);
     assert.ok(tagSets.some((tags) => tags.includes("registry")));
-    assert.ok(tagSets.some((tags) => tags.includes("incident")));
+    assert.ok(!tagSets.some((tags) => tags.includes("incident")));
   });
 
   test("get_feed filters by tag, since/until, and caps with limit", async () => {
@@ -12341,33 +11993,14 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     };
   }
 
-  test("get_account_history returns daily series with fields correctly shaped", async () => {
-    const env = tailD1({
-      days: [
-        {
-          day: "2025-06-24",
-          netuid: 7,
-          event_count: 3,
-          event_kinds: "StakeAdded,WeightsSet",
-          first_block: 100,
-          last_block: 200,
-        },
-      ],
-    });
-    const res = await callTool("get_account_history", { ss58: SS58 }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.day_count, 1);
-    assert.equal(out.days[0].day, "2025-06-24");
-    assert.equal(out.days[0].netuid, 7);
-    assert.deepEqual(out.days[0].event_kinds, ["StakeAdded", "WeightsSet"]);
-    assert.equal(out.days[0].first_block, 100);
-  });
-
-  test("get_account_history passes netuid and date bounds to the SQL query", async () => {
-    const capture = [];
-    const env = tailD1({ days: [] }, capture);
-    await callTool(
+  // account_events_daily's D1 write path is retired (#4772) and the table is
+  // dropped in production, so get_account_history's loader
+  // (src/account-events.mjs's loadAccountHistory) now ignores netuid/from/to/
+  // cursor entirely and always returns the schema-stable empty shape -- a D1
+  // mock, if bound, is never queried. netuid/from/to are still validated
+  // (accepted, not rejected) even though they no longer filter anything.
+  test("get_account_history accepts netuid and date bounds but they no longer filter (D1 tier retired)", async () => {
+    const res = await callTool(
       "get_account_history",
       {
         ss58: SS58,
@@ -12376,17 +12009,13 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
         to: "2025-06-30",
         limit: 10,
       },
-      { env },
+      { env: tailD1({ days: [] }) },
     );
-    const q = capture.find((c) => /FROM account_events_daily/.test(c.sql));
-    assert.ok(q, "daily query must be executed");
-    assert.ok(/AND netuid = \?/.test(q.sql), "netuid filter must be applied");
-    assert.ok(/AND day >= \?/.test(q.sql), "from filter must be applied");
-    assert.ok(/AND day <= \?/.test(q.sql), "to filter must be applied");
-    assert.ok(q.params.includes(7));
-    assert.ok(q.params.includes("2025-01-01"));
-    assert.ok(q.params.includes("2025-06-30"));
-    assert.ok(q.params.includes(10));
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.days, []);
   });
 
   test("get_account_history degrades to empty payload on cold D1", async () => {
@@ -13504,7 +13133,11 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.match(res.body.result.content[0].text, /window/);
   });
 
-  test("get_subnet_identity_history returns the append-only identity timeline", async () => {
+  // D1 fully eliminated (2026-07-17): loadSubnetIdentityHistoryTool
+  // (src/mcp-server.mjs) tries the Postgres tier first and, on any miss,
+  // resolves straight to buildSubnetIdentityHistory([], netuid, {...}) --
+  // never a live D1 read. A D1 mock, if bound, is never queried.
+  test("get_subnet_identity_history returns a schema-stable empty timeline (D1 tier retired)", async () => {
     const env = parityD1({
       identityHistory: [
         {
@@ -13529,8 +13162,8 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 86);
-    assert.equal(out.entry_count, 1);
-    assert.equal(out.entries[0].subnet_name, "MIAO");
+    assert.equal(out.entry_count, 0);
+    assert.deepEqual(out.entries, []);
     assert.equal(out.limit, 10);
   });
 
@@ -13585,7 +13218,11 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
       assert.deepEqual(capture, []);
     });
 
-    test("flag=postgres falls back to D1 on failure", async () => {
+    // D1 fully eliminated (2026-07-17): a Postgres-tier failure/miss no
+    // longer falls back to D1 -- it resolves to the schema-stable empty
+    // shape (buildSubnetIdentityHistory([], netuid, {...})), same as the
+    // flag-absent case below. A D1 mock, if bound, is never queried.
+    test("flag=postgres falls back to the schema-stable empty shape on failure", async () => {
       const env = {
         ...parityD1({ identityHistory: [MIAO_ROW] }),
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
@@ -13601,10 +13238,12 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
         { env },
       );
       const out = res.body.result.structuredContent;
-      assert.equal(out.entries[0].identity_hash, "hash-1");
+      assert.equal(res.body.result.isError, false);
+      assert.equal(out.entry_count, 0);
+      assert.deepEqual(out.entries, []);
     });
 
-    test("flag absent uses D1 even when DATA_API is bound (zero regression, unflipped)", async () => {
+    test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
       const capture = [];
       const env = {
         ...parityD1({ identityHistory: [MIAO_ROW] }, capture),
@@ -13624,8 +13263,9 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
         { env },
       );
       const out = res.body.result.structuredContent;
-      assert.equal(out.entries[0].identity_hash, "hash-1");
-      assert.ok(capture.length > 0, "D1 must actually be queried");
+      assert.equal(out.entry_count, 0);
+      assert.deepEqual(out.entries, []);
+      assert.deepEqual(capture, [], "D1 must never be queried");
     });
 
     test("flag=postgres forwards netuid + limit/offset/cursor as a REST-equivalent request", async () => {
@@ -16165,29 +15805,12 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
     assert.equal(out.captured_at, null);
   });
 
-  test("get_account_identity returns the real identity from D1", async () => {
-    const env = accountIdentityD1({
-      identity: [
-        {
-          account: SS58,
-          name: "Alice",
-          url: "https://alice.example",
-          github: "https://github.com/alice",
-          image: null,
-          discord: "alice#0001",
-          description: "validator",
-          additional: null,
-          captured_at: 1_700_000_000_000,
-        },
-      ],
-    });
-    const res = await callTool("get_account_identity", { ss58: SS58 }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.has_identity, true);
-    assert.equal(out.name, "Alice");
-    assert.equal(out.github, "https://github.com/alice");
-    assert.ok(out.captured_at);
-  });
+  // D1 fully eliminated (2026-07-17): get_account_identity's handler tries
+  // the Postgres tier first and, on any miss, resolves straight to
+  // buildAccountIdentity(null, ss58) -- never a live D1 read. A D1 mock, if
+  // bound, is never queried. Covered by "returns has_identity:false on cold
+  // D1" above; real Postgres-tier data flow is covered by the
+  // "D1 -> Postgres serving cutover" describe below.
 
   test("get_account_identity rejects an invalid ss58", async () => {
     const res = await callTool("get_account_identity", { ss58: "not-ss58" });
@@ -16219,7 +15842,11 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
       assert.deepEqual(capture, []);
     });
 
-    test("flag=postgres falls back to D1 on failure", async () => {
+    // D1 fully eliminated (2026-07-17): a Postgres-tier failure/miss no
+    // longer falls back to D1 -- it resolves to the schema-stable
+    // has_identity:false shape (buildAccountIdentity(null, ss58)), same as
+    // the cold-D1 case above. A D1 mock, if bound, is never queried.
+    test("flag=postgres falls back to the schema-stable empty identity on failure", async () => {
       const env = {
         ...accountIdentityD1({
           identity: [{ account: SS58, name: "D1Alice", captured_at: 1 }],
@@ -16236,7 +15863,10 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
         { ss58: SS58 },
         { env },
       );
-      assert.equal(res.body.result.structuredContent.name, "D1Alice");
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false);
+      assert.equal(out.has_identity, false);
+      assert.equal(out.name, null);
     });
   });
 
@@ -16252,33 +15882,12 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
     assert.equal(out.limit, 10);
   });
 
-  test("get_account_identity_history returns the real timeline from D1", async () => {
-    const env = accountIdentityD1({
-      identityHistory: [
-        {
-          id: 2,
-          observed_at: 1_700_000_000_000,
-          name: "Alice",
-          url: null,
-          github: null,
-          image: null,
-          discord: null,
-          description: null,
-          additional: null,
-          identity_hash: "hash-1",
-        },
-      ],
-    });
-    const res = await callTool(
-      "get_account_identity_history",
-      { ss58: SS58 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.entry_count, 1);
-    assert.equal(out.entries[0].identity_hash, "hash-1");
-    assert.equal(out.entries[0].name, "Alice");
-  });
+  // D1 fully eliminated (2026-07-17): get_account_identity_history's handler
+  // tries the Postgres tier first and, on any miss, resolves straight to
+  // buildAccountIdentityHistory([], ss58, {...}) -- never a live D1 read. A
+  // D1 mock, if bound, is never queried. Covered by "returns an empty
+  // timeline on cold D1" above; real Postgres-tier data flow is covered by
+  // the "D1 -> Postgres serving cutover" describe below.
 
   describe("get_account_identity_history D1 -> Postgres serving cutover", () => {
     test("flag=postgres uses Postgres data, D1 never queried", async () => {

@@ -1,8 +1,9 @@
-// Network-wide economics trends D1 loader for REST + MCP parity (#1307).
-// Pure orchestration over subnet_snapshots rows + buildEconomicsTrends; REST
-// handlers keep edge-cache + envelope wiring.
+// Network-wide economics trends loader for REST + MCP parity (#1307).
+//
+// D1 fully eliminated (2026-07-17): subnet_snapshots is Postgres-only now
+// (every caller tries the Postgres tier first) -- this is only reached on a
+// tier miss, so it always returns the schema-stable empty shape.
 
-import { DAY_MS } from "../workers/config.mjs";
 import {
   buildEconomicsTrends,
   DEFAULT_HISTORY_WINDOW,
@@ -20,30 +21,7 @@ export function parseEconomicsTrendsWindow(window) {
   return parsed;
 }
 
-export async function loadEconomicsTrends(
-  d1,
-  { windowLabel, windowDays = null, now = Date.now() } = {},
-) {
-  const params = [];
-  let sql =
-    "SELECT snapshot_date, total_stake_tao, alpha_price_tao, " +
-    "validator_count, miner_count, emission_share " +
-    "FROM subnet_snapshots WHERE TRUE";
-  if (windowDays != null) {
-    const cutoff = new Date(now - windowDays * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    sql += " AND snapshot_date >= ?";
-    params.push(cutoff);
-  }
-  sql += " ORDER BY snapshot_date DESC LIMIT ?";
-  params.push(ECONOMICS_TRENDS_ROW_CAP);
-  const rows = await d1(sql, params);
-  // Hitting the LIMIT means the oldest snapshot_date is truncated mid-day; flag it
-  // so buildEconomicsTrends drops that partial day (mirrors loadSubnetConcentrationHistory).
-  const data = buildEconomicsTrends(rows, {
-    window: windowLabel,
-    capped: rows.length >= ECONOMICS_TRENDS_ROW_CAP,
-  });
-  return { data, rows };
+export async function loadEconomicsTrends({ windowLabel } = {}) {
+  const data = buildEconomicsTrends([], { window: windowLabel, capped: false });
+  return { data, rows: [] };
 }

@@ -1762,28 +1762,14 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
     assert.equal(body.data.compare.observed_at, "2026-06-23T00:00:00.000Z");
   });
 
-  test("the health dimension runs the D1 surface_status aggregate", async () => {
+  // D1 fully eliminated (2026-07-17): surface_status is Postgres-only now, so
+  // the health dimension is always empty -- even a "warm" D1 mock (real rows)
+  // must not change the response.
+  test("never queries D1 even when mocked with real rows: health dimension is always null", async () => {
     const env = profilesEnv();
     env.METAGRAPH_HEALTH_DB = {
       prepare() {
-        return {
-          bind() {
-            return {
-              async all() {
-                return {
-                  results: [
-                    {
-                      netuid: 1,
-                      surface_count: 3,
-                      ok_count: 3,
-                      avg_latency_ms: 42,
-                    },
-                  ],
-                };
-              },
-            };
-          },
-        };
+        throw new Error("D1 must not be queried -- surface_status is retired");
       },
     };
     const { status, body } = await gql(
@@ -1793,8 +1779,7 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
       env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.compare.subnets[0].health.ok_count, 3);
-    assert.equal(body.data.compare.subnets[0].health.avg_latency_ms, 42);
+    assert.equal(body.data.compare.subnets[0].health, null);
   });
 
   test("a D1 result with no rows yields null health (results || [] fallback)", async () => {
@@ -3229,24 +3214,6 @@ describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback
     deltas { window from_date to_date completeness_score tao_in_pool_tao }
   } }`;
 
-  // loadSubnetTrajectory issues a single SELECT over subnet_snapshots (no GROUP
-  // BY); formatTrajectory re-sorts ascending and derives the 7d/30d deltas.
-  function trajectoryD1(rows = []) {
-    return {
-      prepare() {
-        return {
-          bind() {
-            return {
-              async all() {
-                return { results: rows };
-              },
-            };
-          },
-        };
-      },
-    };
-  }
-
   const P1 = {
     date: "2026-07-01",
     completeness_score: 50,
@@ -3336,24 +3303,28 @@ describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback
     assert.deepEqual(body.data.subnet_trajectory.deltas, []);
   });
 
-  test("no Postgres tier flag: formats the subnet_snapshots rows straight off D1, deriving deltas", async () => {
+  // D1 fully eliminated (2026-07-17): subnet_snapshots is Postgres-only now,
+  // so a tier miss always yields an empty trajectory -- even a "warm" D1 mock
+  // (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns a schema-stable empty trajectory", async () => {
     const env = {
-      METAGRAPH_HEALTH_DB: trajectoryD1([
-        { ...P2, snapshot_date: P2.date },
-        { ...P1, snapshot_date: P1.date },
-      ]),
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error(
+            "D1 must not be queried -- subnet_snapshots is retired",
+          );
+        },
+      },
     };
     const { status, body } = await gql(trajectoryQuery, env);
     assert.equal(status, 200);
-    assert.equal(body.data.subnet_trajectory.point_count, 2);
-    // formatTrajectory re-sorts ascending, so the earliest point is first.
-    assert.equal(body.data.subnet_trajectory.points[0].date, "2026-07-01");
-    assert.equal(body.data.subnet_trajectory.points[1].completeness_score, 60);
-    const d7 = body.data.subnet_trajectory.deltas.find(
-      (d) => d.window === "7d",
-    );
-    assert.ok(d7);
-    assert.equal(d7.completeness_score, 10);
+    assert.deepEqual(body.data.subnet_trajectory, {
+      schema_version: 1,
+      netuid: 3,
+      point_count: 0,
+      points: [],
+      deltas: [],
+    });
   });
 
   test("subnet_trajectory is weighted as a fan-out field", () => {
@@ -3445,36 +3416,17 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
     ]);
   });
 
-  test("D1 fallback path shapes rows through loadSubnetIdentityHistory", async () => {
-    const observedAt = Date.parse("2026-06-15T12:00:00.000Z");
+  // D1 fully eliminated (2026-07-17): subnet_identity_history is built
+  // directly from an empty row set on a tier miss now (buildSubnetIdentityHistory([], ...)),
+  // so a tier miss always yields the schema-stable empty timeline -- even a
+  // "warm" D1 mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns a schema-stable empty timeline", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
-          return {
-            bind() {
-              return {
-                async all() {
-                  return {
-                    results: [
-                      {
-                        id: 11,
-                        block_number: 100,
-                        observed_at: observedAt,
-                        subnet_name: "Alpha",
-                        symbol: "A",
-                        description: "alpha desc",
-                        github_repo: "https://github.com/jsonbored/alpha",
-                        subnet_url: "https://metagraph.sh",
-                        discord: "alpha#1234",
-                        logo_url: null,
-                        identity_hash: "deadbeef",
-                      },
-                    ],
-                  };
-                },
-              };
-            },
-          };
+          throw new Error(
+            "D1 must not be queried -- subnet_identity_history is retired",
+          );
         },
       },
     };
@@ -3489,14 +3441,9 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
     assert.equal(body.errors, undefined);
     const r = body.data.subnet_identity_history;
     assert.equal(r.netuid, 86);
-    assert.equal(r.entry_count, 1);
+    assert.equal(r.entry_count, 0);
     assert.equal(r.limit, 10);
-    assert.equal(r.entries.length, 1);
-    assert.equal(r.entries[0].block_number, 100);
-    assert.equal(r.entries[0].observed_at, "2026-06-15T12:00:00.000Z");
-    assert.equal(r.entries[0].subnet_name, "Alpha");
-    assert.equal(r.entries[0].symbol, "A");
-    assert.equal(r.entries[0].identity_hash, "deadbeef");
+    assert.deepEqual(r.entries, []);
   });
 
   test("pagination args are forwarded to the Postgres tier", async () => {
@@ -8693,9 +8640,11 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     assert.equal(capture.url.searchParams.get("to"), "2026-07-16");
   });
 
-  test("the D1 fallback path rejects a malformed bound before it reaches the query", async () => {
-    // The regression the issue describes: with a D1 tier available, a bad bound
-    // used to reach `day >= ?` and return days: [] rather than erroring.
+  // The regression the issue describes predates D1 elimination (2026-07-17):
+  // with a D1 tier available, a bad bound used to reach `day >= ?` and return
+  // days: [] rather than erroring. D1 is never queried at all now, so this
+  // just confirms validation still runs before any tier lookup.
+  test("a malformed bound is rejected before any tier lookup, D1 never queried", async () => {
     let prepared = false;
     const env = {
       METAGRAPH_HEALTH_DB: {
@@ -8713,16 +8662,6 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
     assert.equal(prepared, false, "must not reach D1");
   });
-
-  // loadAccountHistory issues exactly one SELECT per call, so the mock ignores
-  // the SQL text and always returns the given rows.
-  function accountHistoryD1(rows = []) {
-    return {
-      prepare: () => ({
-        bind: () => ({ all: async () => ({ results: rows }) }),
-      }),
-    };
-  }
 
   test("cold store: no Postgres flag returns a schema-stable empty series, never null", async () => {
     const { status, body } = await gql(query(`(ss58: "${SS58}")`));
@@ -8873,34 +8812,31 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     ]);
   });
 
-  test("no Postgres tier flag: reads the daily rollup straight off D1", async () => {
+  // D1 fully eliminated (2026-07-17): loadAccountHistory (src/account-events.mjs)
+  // now ignores its d1 argument entirely and always returns the empty shape --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns a schema-stable empty series", async () => {
     const env = {
-      METAGRAPH_HEALTH_DB: accountHistoryD1([
-        {
-          day: "2026-06-25",
-          netuid: 7,
-          event_count: 2,
-          event_kinds: "StakeAdded,WeightsSet",
-          first_block: 1000,
-          last_block: 1100,
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error(
+            "D1 must not be queried -- account_history is retired",
+          );
         },
-      ]),
+      },
     };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.account_history.ss58, SS58);
-    assert.equal(body.data.account_history.day_count, 1);
-    assert.deepEqual(body.data.account_history.days, [
-      {
-        day: "2026-06-25",
-        netuid: 7,
-        event_count: 2,
-        event_kinds: ["StakeAdded", "WeightsSet"],
-        first_block: 1000,
-        last_block: 1100,
-      },
-    ]);
+    assert.deepEqual(body.data.account_history, {
+      schema_version: 1,
+      ss58: SS58,
+      day_count: 0,
+      limit: 100,
+      offset: 0,
+      next_cursor: null,
+      days: [],
+    });
   });
 
   test("rejects a malformed ss58 before hitting the Postgres tier", async () => {
@@ -8939,17 +8875,11 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
     } }`;
   }
 
-  // loadAccountIdentityHistory issues exactly one SELECT per call (no
-  // two-query branching like chain_weight_setters), so the mock ignores the
-  // SQL text and always returns the given rows.
-  function accountIdentityHistoryD1(rows = []) {
-    return {
-      prepare: () => ({
-        bind: () => ({ all: async () => ({ results: rows }) }),
-      }),
-    };
-  }
-
+  // D1 fully eliminated (2026-07-17): account_identity_history is built
+  // directly from an empty row set on a tier miss now
+  // (buildAccountIdentityHistory([], ss58, { limit, offset, nextCursor: null })),
+  // passing the raw (unclamped) GraphQL args straight through -- with no
+  // args supplied, limit/offset resolve to null, not a clamped default.
   test("cold store, default args: schema-stable empty timeline, never null", async () => {
     const { status, body } = await gql(historyQuery(`(ss58: "${SS58}")`));
     assert.equal(status, 200);
@@ -8958,8 +8888,8 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
       schema_version: 1,
       account: SS58,
       entry_count: 0,
-      limit: 100,
-      offset: 0,
+      limit: null,
+      offset: null,
       next_cursor: null,
       entries: [],
     });
@@ -9056,33 +8986,24 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
     ]);
   });
 
-  test("no Postgres tier flag: reads the diff-tracked timeline straight off D1", async () => {
+  // D1 fully eliminated (2026-07-17): account_identity_history's D1
+  // write/read path is fully retired -- even a "warm" D1 mock (real rows)
+  // must not change the response.
+  test("no Postgres tier flag: never queries D1, returns a schema-stable empty timeline", async () => {
     const env = {
-      METAGRAPH_HEALTH_DB: accountIdentityHistoryD1([
-        {
-          id: 2,
-          observed_at: 1_750_000_000_000,
-          name: "Example",
-          url: "https://example.com",
-          github: "example",
-          image: null,
-          discord: null,
-          description: null,
-          additional: null,
-          identity_hash: "abc123",
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error(
+            "D1 must not be queried -- account_identity_history is retired",
+          );
         },
-      ]),
+      },
     };
     const { status, body } = await gql(historyQuery(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.equal(body.data.account_identity_history.account, SS58);
-    assert.equal(body.data.account_identity_history.entry_count, 1);
-    assert.equal(body.data.account_identity_history.entries[0].name, "Example");
-    assert.equal(
-      body.data.account_identity_history.entries[0].identity_hash,
-      "abc123",
-    );
-    assert.ok(body.data.account_identity_history.entries[0].observed_at);
+    assert.equal(body.data.account_identity_history.entry_count, 0);
+    assert.deepEqual(body.data.account_identity_history.entries, []);
   });
 
   test("a D1 query error degrades to a schema-stable empty timeline (no throw)", async () => {
@@ -9207,30 +9128,16 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     assert.deepEqual(body.data.economics_trends.days, []);
   });
 
-  test("no Postgres tier flag: rolls up subnet_snapshots rows straight off D1", async () => {
+  // D1 fully eliminated (2026-07-17): loadEconomicsTrends (src/economics-trends.mjs)
+  // no longer takes a d1 argument and always returns the schema-stable empty
+  // shape -- even a "warm" D1 mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns a schema-stable empty series", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
-          return {
-            bind() {
-              return {
-                async all() {
-                  return {
-                    results: [
-                      {
-                        snapshot_date: "2026-06-10",
-                        total_stake_tao: 1000,
-                        alpha_price_tao: 0.06,
-                        validator_count: 12,
-                        miner_count: 200,
-                        emission_share: 0.05,
-                      },
-                    ],
-                  };
-                },
-              };
-            },
-          };
+          throw new Error(
+            "D1 must not be queried -- subnet_snapshots is retired",
+          );
         },
       },
     };
@@ -9242,16 +9149,8 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     );
     assert.equal(status, 200);
     assert.equal(body.data.economics_trends.window, "7d");
-    assert.equal(body.data.economics_trends.day_count, 1);
-    assert.equal(
-      body.data.economics_trends.days[0].snapshot_date,
-      "2026-06-10",
-    );
-    assert.equal(
-      body.data.economics_trends.days[0].total_stake_tao,
-      "1000.000000000",
-    );
-    assert.equal(body.data.economics_trends.days[0].validator_count, 12);
+    assert.equal(body.data.economics_trends.day_count, 0);
+    assert.deepEqual(body.data.economics_trends.days, []);
   });
 
   test("a D1 query error degrades to a schema-stable empty series (no throw)", async () => {
@@ -9716,7 +9615,10 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
     assert.deepEqual(body.data.chain_weights.subnets, []);
   });
 
-  test("no Postgres tier flag: rolls up the account_events WeightsSet stream straight off D1", async () => {
+  // #4772 D1 retirement: the `account_events` D1 table is dropped in
+  // production, so this resolver no longer queries D1 at all -- even a
+  // "warm" D1 mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns the schema-stable empty leaderboard (retired -- #4772)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainWeightsD1({
         network: {
@@ -9727,16 +9629,14 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
         subnets: [{ netuid: 3, weight_sets: 40, distinct_setters: 4 }],
       }),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
     const { status, body } = await gql(weightsQuery('(window: "7d")'), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_weights.window, "7d");
-    assert.equal(body.data.chain_weights.subnet_count, 1);
-    assert.equal(body.data.chain_weights.network.distinct_setters, 4);
-    assert.equal(body.data.chain_weights.network.weight_sets, 40);
-    assert.equal(body.data.chain_weights.network.sets_per_setter, 10);
-    assert.equal(body.data.chain_weights.subnets[0].netuid, 3);
-    assert.equal(body.data.chain_weights.intensity_distribution.count, 1);
-    assert.ok(body.data.chain_weights.observed_at);
+    assert.equal(body.data.chain_weights.subnet_count, 0);
+    assert.deepEqual(body.data.chain_weights.subnets, []);
   });
 
   test("a D1 query error degrades to a schema-stable empty leaderboard (no throw)", async () => {
@@ -10344,7 +10244,10 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
     assert.deepEqual(body.data.chain_serving.subnets, []);
   });
 
-  test("no Postgres tier flag: rolls up the account_events AxonServed stream straight off D1", async () => {
+  // #4909/#6013: account_events' D1 write path is retired and the table is
+  // dropped in production, so this resolver no longer queries D1 at all --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns the schema-stable empty leaderboard (retired -- #4909/#6013)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainServingD1({
         network: {
@@ -10354,28 +10257,12 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
         subnets: [{ netuid: 3, announcements: 40, distinct_servers: 4 }],
       }),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
     const { status, body } = await gql(servingQuery('(window: "7d")'), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_serving.window, "7d");
-    assert.equal(body.data.chain_serving.subnet_count, 1);
-    assert.equal(body.data.chain_serving.network.distinct_servers, 4);
-    assert.equal(body.data.chain_serving.network.announcements, 40);
-    assert.equal(body.data.chain_serving.network.announcements_per_server, 10);
-    assert.equal(body.data.chain_serving.subnets[0].netuid, 3);
-    assert.equal(body.data.chain_serving.intensity_distribution.count, 1);
-    assert.ok(body.data.chain_serving.observed_at);
-  });
-
-  test("a D1 query error degrades to a schema-stable empty leaderboard (no throw)", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          throw new Error("db unavailable");
-        },
-      },
-    };
-    const { status, body } = await gql(servingQuery(""), env);
-    assert.equal(status, 200);
     assert.equal(body.data.chain_serving.subnet_count, 0);
     assert.deepEqual(body.data.chain_serving.subnets, []);
   });
@@ -10396,34 +10283,12 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
   });
 });
 
-describe("graphql — chain_weight_setters (#5689, Postgres-tier + D1-live fallback)", () => {
+describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully eliminated)", () => {
   function weightSettersQuery(argsClause) {
     return `{ chain_weight_setters${argsClause} {
       schema_version window observed_at distinct_setters weight_sets setter_count
       setters { hotkey netuid uid weight_sets share first_set_at last_set_at }
     } }`;
-  }
-
-  // The per-setter leaderboard is GROUP BY the hotkey-or-(netuid,uid) identity
-  // and ORDER BY weight_sets DESC; the network-wide totals query has no GROUP
-  // BY -- same two-query shape loadChainWeightSetters always issues.
-  function chainWeightSettersD1({ rows = [], totals } = {}) {
-    return {
-      prepare(sql) {
-        return {
-          bind() {
-            return {
-              async all() {
-                if (sql.includes("ORDER BY weight_sets DESC")) {
-                  return { results: rows };
-                }
-                return { results: totals ? [totals] : [] };
-              },
-            };
-          },
-        };
-      },
-    };
   }
 
   test("cold store, default args: schema-stable empty leaderboard", async () => {
@@ -10493,54 +10358,6 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier + D1-live fallb
     assert.equal(body.data.chain_weight_setters.window, "7d");
     assert.equal(body.data.chain_weight_setters.distinct_setters, 0);
     assert.equal(body.data.chain_weight_setters.weight_sets, 0);
-    assert.equal(body.data.chain_weight_setters.setter_count, 0);
-    assert.deepEqual(body.data.chain_weight_setters.setters, []);
-  });
-
-  test("no Postgres tier flag: rolls up the account_events WeightsSet stream straight off D1", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: chainWeightSettersD1({
-        rows: [
-          {
-            hotkey: "5Setter",
-            netuid: null,
-            uid: null,
-            weight_sets: 40,
-            first_set: 1_749_000_000_000,
-            last_set: 1_750_000_000_000,
-          },
-        ],
-        totals: {
-          weight_sets: 40,
-          distinct_setters: 1,
-          newest_observed: 1_750_000_000_000,
-        },
-      }),
-    };
-    const { status, body } = await gql(
-      weightSettersQuery('(window: "7d")'),
-      env,
-    );
-    assert.equal(status, 200);
-    assert.equal(body.data.chain_weight_setters.window, "7d");
-    assert.equal(body.data.chain_weight_setters.distinct_setters, 1);
-    assert.equal(body.data.chain_weight_setters.weight_sets, 40);
-    assert.equal(body.data.chain_weight_setters.setter_count, 1);
-    assert.equal(body.data.chain_weight_setters.setters[0].hotkey, "5Setter");
-    assert.equal(body.data.chain_weight_setters.setters[0].share, 1);
-    assert.ok(body.data.chain_weight_setters.observed_at);
-  });
-
-  test("a D1 query error degrades to a schema-stable empty leaderboard (no throw)", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          throw new Error("db unavailable");
-        },
-      },
-    };
-    const { status, body } = await gql(weightSettersQuery(""), env);
-    assert.equal(status, 200);
     assert.equal(body.data.chain_weight_setters.setter_count, 0);
     assert.deepEqual(body.data.chain_weight_setters.setters, []);
   });
@@ -10731,7 +10548,10 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
     assert.deepEqual(card.subnets, []);
   });
 
-  test("no Postgres tier flag: rolls up the account_events StakeAdded/StakeRemoved stream straight off D1", async () => {
+  // #4772 D1 retirement: the `account_events` D1 table is dropped in
+  // production, so this resolver no longer queries D1 at all -- even a
+  // "warm" D1 mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns the schema-stable zeroed card (retired -- #4772)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainAlphaVolumeD1([
         {
@@ -10752,22 +10572,15 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
         },
       ]),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
     const { status, body } = await gql(alphaVolumeQuery(), env);
     assert.equal(status, 200);
     const card = body.data.chain_alpha_volume;
-    assert.equal(card.subnet_count, 1);
-    assert.equal(card.network.buy_volume_alpha, 100);
-    assert.equal(card.network.sell_volume_alpha, 40);
-    assert.equal(card.network.total_volume_tao, 70);
-    assert.equal(card.network.net_volume_alpha, 60);
-    assert.equal(card.network.sentiment_ratio, 0.4286);
-    assert.equal(card.network.sentiment, "bullish");
-    assert.equal(card.volume_distribution.count, 1);
-    assert.equal(card.volume_distribution.median, 70);
-    assert.equal(card.subnets[0].netuid, 3);
-    assert.equal(card.subnets[0].total_volume_tao, 70);
-    assert.equal(card.subnets[0].vol_mcap_ratio, null);
-    assert.equal(card.observed_at, new Date(1_750_000_000_000).toISOString());
+    assert.equal(card.subnet_count, 0);
+    assert.equal(card.network.total_volume_tao, 0);
+    assert.deepEqual(card.subnets, []);
   });
 
   test("a D1 query error degrades to a schema-stable zeroed card (no throw)", async () => {
@@ -10878,15 +10691,10 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
     assert.deepEqual(body.data.health_trends.windows, {});
   });
 
-  test("no Postgres tier flag: aggregates surface_uptime_daily rows straight off D1", async () => {
-    // Relative to Date.now(), not a hardcoded literal -- a fixed past date
-    // drifts outside the resolver's real "7d" window as wall-clock time
-    // moves on, making this fail independent of any code change once it
-    // does (it just did: the literal was "2026-07-09"). loadBulkHealthTrends
-    // (src/bulk-health-trends.mjs) computes the window cutoff from the real
-    // Date.now() by default, so the fixture must track it the same way
-    // tests/request-handlers-analytics.test.mjs's `recentDay` already does
-    // for the identical surface_uptime_daily shape.
+  // D1 fully eliminated (2026-07-17): surface_uptime_daily is Postgres-only
+  // now, so a tier miss always yields zeroed windows -- even a "warm" D1
+  // mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns schema-stable zeroed windows", async () => {
     const recentDay = new Date(Date.now() - 2 * DAY_MS)
       .toISOString()
       .slice(0, 10);
@@ -10901,12 +10709,17 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
         },
       ]),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error(
+        "D1 must not be queried -- surface_uptime_daily is retired",
+      );
+    };
     const { status, body } = await gql(trendsQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.health_trends.schema_version, 1);
-    assert.equal(body.data.health_trends.windows["7d"].subnet_count, 1);
-    assert.equal(body.data.health_trends.windows["7d"].subnets[0].netuid, 7);
-    assert.equal(body.data.health_trends.windows["30d"].subnet_count, 1);
+    assert.equal(body.data.health_trends.windows["7d"].subnet_count, 0);
+    assert.deepEqual(body.data.health_trends.windows["7d"].subnets, []);
+    assert.equal(body.data.health_trends.windows["30d"].subnet_count, 0);
   });
 
   test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
@@ -11151,7 +10964,10 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
     });
   });
 
-  test("no Postgres tier flag: formats surface_uptime_daily rows straight off D1", async () => {
+  // D1 fully eliminated (2026-07-17): surface_uptime_daily is Postgres-only
+  // now, so a tier miss always yields an empty surfaces card -- even a
+  // "warm" D1 mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns a schema-stable empty surfaces card", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: uptimeD1([
         {
@@ -11170,18 +10986,25 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
         },
       ]),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error(
+        "D1 must not be queried -- surface_uptime_daily is retired",
+      );
+    };
     const { status, body } = await gql(uptimeQuery(), env);
     assert.equal(status, 200);
-    const d = body.data.subnet_uptime;
-    assert.equal(d.schema_version, 1);
-    assert.equal(d.window, "90d");
-    assert.equal(d.source, "live-cron-prober");
-    assert.equal(d.surfaces.length, 1);
-    assert.equal(d.surfaces[0].surface_id, "api-root");
-    assert.equal(d.surfaces[0].samples, 50);
-    assert.equal(d.surfaces[0].days[0].status, "degraded");
-    assert.ok(d.reliability);
-    assert.equal(d.reliability.sample_count, 50);
+    assert.deepEqual(body.data.subnet_uptime, {
+      schema_version: 1,
+      netuid: NETUID,
+      window: "90d",
+      observed_at: null,
+      // formatUptime always stamps this literal, independent of whether
+      // any rows were found -- unlike the malformed-Postgres-tier-body case
+      // above (a genuine tier hit whose body happens to omit `source`).
+      source: "live-cron-prober",
+      reliability: null,
+      surfaces: [],
+    });
   });
 
   test("unsupported window is a BAD_USER_INPUT error", async () => {
@@ -11411,7 +11234,10 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
     assert.deepEqual(usage.buckets, []);
   });
 
-  test("no Postgres tier flag: computes the card straight off the rpc_proxy_events D1 telemetry", async () => {
+  // D1 fully eliminated (2026-07-17): rpc_proxy_events is Postgres-only now,
+  // so a tier miss always yields the schema-stable empty card -- even a
+  // "warm" D1 mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns the schema-stable zeroed card", async () => {
     const env = {
       METAGRAPH_RPC_USAGE_SOURCE: "d1",
       METAGRAPH_HEALTH_DB: rpcUsageD1({
@@ -11443,29 +11269,19 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
         ],
       }),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- rpc_proxy_events is retired");
+    };
     const { status, body } = await gql(usageQuery('(window: "7d")'), env);
     assert.equal(status, 200);
     const usage = body.data.rpc_usage;
     assert.equal(usage.window, "7d");
     assert.equal(usage.bucket_granularity, "1h");
     assert.equal(usage.source, "rpc-proxy");
-    assert.equal(usage.summary.total_requests, 200);
-    assert.equal(usage.summary.ok_requests, 190);
-    assert.equal(usage.summary.error_requests, 10);
-    assert.equal(usage.summary.error_rate, 0.05);
-    assert.equal(usage.summary.failover_requests, 8);
-    assert.equal(usage.summary.cache_hits, 120);
-    assert.equal(usage.summary.cache_hit_rate, 0.6);
-    assert.equal(usage.summary.latency_ms.p50, 18);
-    assert.equal(usage.summary.latency_ms.p95, 70);
-    assert.equal(usage.summary.latency_ms.avg, 27);
-    assert.equal(usage.endpoints[0].rank, 1);
-    assert.equal(usage.endpoints[0].endpoint_id, "ep-1");
-    assert.equal(usage.endpoints[0].error_rate, 0.0333);
-    assert.equal(usage.networks[0].network, "finney");
-    assert.equal(usage.networks[0].error_rate, 0.05);
-    assert.equal(usage.buckets[0].requests, 30);
-    assert.equal(usage.buckets[0].errors, 2);
+    assert.equal(usage.summary.total_requests, 0);
+    assert.deepEqual(usage.endpoints, []);
+    assert.deepEqual(usage.networks, []);
+    assert.deepEqual(usage.buckets, []);
   });
 
   test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
@@ -11794,7 +11610,10 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.equal(body.data.validator_nominators.nominators[0].event_count, 3);
   });
 
-  test("no Postgres tier flag: buckets the account_events stake stream straight off D1", async () => {
+  // #4772 D1 retirement: the `account_events` D1 table is dropped in
+  // production, so this resolver no longer queries D1 at all -- even a
+  // "warm" D1 mock (real rows) must not change the response.
+  test("no Postgres tier flag: never queries D1, returns the schema-stable empty list (retired -- #4772)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: nominatorsD1([
         {
@@ -11806,20 +11625,16 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
         },
       ]),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}")`),
       env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.validator_nominators.nominator_count, 1);
-    const first = body.data.validator_nominators.nominators[0];
-    assert.equal(
-      first.coldkey,
-      "5FNominatorColdkeyBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-    );
-    assert.equal(first.net_staked_tao, 10);
-    assert.equal(first.gross_staked_tao, 15);
-    assert.ok(first.last_observed_at);
+    assert.equal(body.data.validator_nominators.nominator_count, 0);
+    assert.deepEqual(body.data.validator_nominators.nominators, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
@@ -12509,7 +12324,11 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
     }
   });
 
-  test("an explicit board returns only that board, ranked from the D1 rows", async () => {
+  // D1 fully eliminated (2026-07-17): this route never had a Postgres-tier
+  // mirror for the health/rpc/growth/reliability boards, so composeLeaderboardsData
+  // always passes healthRows: [] now rather than adding new tier plumbing --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("an explicit board returns only that board, always empty now that health has no D1 read", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: healthDb([
         { netuid: 7, total: 4, ok_count: 2, avg_latency_ms: 90 },
@@ -12526,28 +12345,7 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
     assert.equal(r.board, "healthiest");
     // Filtered response carries just the requested board, matching REST.
     assert.deepEqual(Object.keys(r.boards), ["healthiest"]);
-    // Ranked by uptime_ratio desc — the fully-ok subnet leads.
-    assert.deepEqual(
-      r.boards.healthiest.map((e) => e.netuid),
-      [3, 7],
-    );
-    assert.equal(r.boards.healthiest[0].surfaces_ok, 4);
-    assert.equal(r.boards.healthiest[0].avg_latency_ms, 42);
-  });
-
-  test("limit caps each board's entries", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: healthDb([
-        { netuid: 7, total: 4, ok_count: 2, avg_latency_ms: 90 },
-        { netuid: 3, total: 4, ok_count: 4, avg_latency_ms: 42 },
-      ]),
-    };
-    const { body } = await gql(
-      `{ registry_leaderboards(board: "healthiest", limit: 1) { boards } }`,
-      env,
-    );
-    assert.equal(body.errors, undefined);
-    assert.equal(body.data.registry_leaderboards.boards.healthiest.length, 1);
+    assert.deepEqual(r.boards.healthiest, []);
   });
 
   test("an unknown board is a BAD_USER_INPUT error, not a silent empty board", async () => {
@@ -12813,7 +12611,11 @@ describe("Query.account_identity", () => {
     };
   }
 
-  test("resolves an account's identity from D1", async () => {
+  // D1 fully eliminated (2026-07-16): account_identity's D1 write/read path
+  // is fully retired, so a tier miss always resolves through
+  // buildAccountIdentity(null, ss58) -- even a "warm" D1 mock (real rows)
+  // must not change the response.
+  test("never queries D1 even when mocked with real rows: has_identity is always false on a tier miss", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: identityD1([
         {
@@ -12829,6 +12631,9 @@ describe("Query.account_identity", () => {
         },
       ]),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- account_identity is retired");
+    };
     const { status, body } = await gql(
       `{ account_identity(ss58: "${AI_SS58}") { ${AI_FIELDS} } }`,
       env,
@@ -12838,11 +12643,8 @@ describe("Query.account_identity", () => {
     const got = body.data.account_identity;
     assert.equal(got.schema_version, 1);
     assert.equal(got.account, AI_SS58);
-    assert.equal(got.has_identity, true);
-    assert.equal(got.name, "Alice");
-    assert.equal(got.description, "a validator");
-    assert.equal(got.additional, "extra");
-    assert.equal(got.captured_at, new Date(1780000000000).toISOString());
+    assert.equal(got.has_identity, false);
+    assert.equal(got.name, null);
   });
 
   test("an account that never set an identity resolves to has_identity:false with null fields, never null", async () => {
@@ -13015,7 +12817,10 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
     });
   });
 
-  test("resolves the D1-live tier: per-subnet leaderboard + network rollup", async () => {
+  // #4909/#6013: account_events' D1 write path is retired and the table is
+  // dropped in production, so this resolver no longer queries D1 at all --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainPrometheusD1({
         network: { distinct_exporters: 3, newest_observed: 1780000000000 },
@@ -13025,35 +12830,15 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
         ],
       }),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
     const { status, body } = await gql(prometheusQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const got = body.data.chain_prometheus;
-    assert.equal(got.subnet_count, 2);
-    assert.equal(got.observed_at, new Date(1780000000000).toISOString());
-    // The network rollup is the true distinct count, not the sum of per-subnet
-    // exporters (a hotkey announcing on several subnets counts once).
-    assert.deepEqual(got.network, {
-      distinct_exporters: 3,
-      announcements: 14,
-      // 14 announcements / 3 distinct exporters, rounded to the builder's 2dp.
-      announcements_per_exporter: 4.67,
-    });
-    assert.deepEqual(got.subnets, [
-      {
-        netuid: 1,
-        distinct_exporters: 2,
-        announcements: 10,
-        announcements_per_exporter: 5,
-      },
-      {
-        netuid: 7,
-        distinct_exporters: 2,
-        announcements: 4,
-        announcements_per_exporter: 2,
-      },
-    ]);
-    assert.equal(got.intensity_distribution.count, 2);
+    assert.equal(got.subnet_count, 0);
+    assert.deepEqual(got.subnets, []);
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
@@ -13237,7 +13022,10 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     });
   });
 
-  test("resolves the D1-live tier: per-subnet leaderboard + network rollup", async () => {
+  // #4909/#6013: account_events' D1 write path is retired and the table is
+  // dropped in production, so this resolver no longer queries D1 at all --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainAxonRemovalsD1({
         network: { distinct_removers: 3, newest_observed: 1780000000000 },
@@ -13247,35 +13035,15 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
         ],
       }),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
     const { status, body } = await gql(removalsQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const got = body.data.chain_axon_removals;
-    assert.equal(got.subnet_count, 2);
-    assert.equal(got.observed_at, new Date(1780000000000).toISOString());
-    // The rollup uses the true network-wide distinct count (3), not the sum of
-    // the per-subnet removers (4) -- a hotkey tearing down on several subnets
-    // counts once.
-    assert.deepEqual(got.network, {
-      distinct_removers: 3,
-      removals: 12,
-      removals_per_remover: 4,
-    });
-    assert.deepEqual(got.subnets, [
-      {
-        netuid: 1,
-        distinct_removers: 3,
-        removals: 9,
-        removals_per_remover: 3,
-      },
-      {
-        netuid: 7,
-        distinct_removers: 1,
-        removals: 3,
-        removals_per_remover: 3,
-      },
-    ]);
-    assert.equal(got.intensity_distribution.count, 2);
+    assert.equal(got.subnet_count, 0);
+    assert.deepEqual(got.subnets, []);
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
@@ -13458,7 +13226,10 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
     });
   });
 
-  test("resolves the D1-live tier: per-subnet leaderboard + network rollup", async () => {
+  // #4909/#6013: account_events' D1 write path is retired and the table is
+  // dropped in production, so this resolver no longer queries D1 at all --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainRegD1({
         network: {
@@ -13471,35 +13242,15 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
         ],
       }),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
     const { status, body } = await gql(regQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const got = body.data.chain_registrations;
-    assert.equal(got.subnet_count, 2);
-    assert.equal(got.observed_at, new Date(1780000000000).toISOString());
-    // The rollup uses the true network-wide distinct count (3), not the sum of
-    // the per-subnet hotkeys (4) -- a hotkey registered on several subnets
-    // counts once.
-    assert.deepEqual(got.network, {
-      distinct_registrants: 3,
-      registrations: 12,
-      registrations_per_registrant: 4,
-    });
-    assert.deepEqual(got.subnets, [
-      {
-        netuid: 1,
-        distinct_registrants: 3,
-        registrations: 9,
-        registrations_per_registrant: 3,
-      },
-      {
-        netuid: 7,
-        distinct_registrants: 1,
-        registrations: 3,
-        registrations_per_registrant: 3,
-      },
-    ]);
-    assert.equal(got.intensity_distribution.count, 2);
+    assert.equal(got.subnet_count, 0);
+    assert.deepEqual(got.subnets, []);
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
@@ -13680,7 +13431,10 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
     });
   });
 
-  test("resolves the D1-live tier: per-subnet leaderboard + network rollup", async () => {
+  // #4909/#6013: account_events' D1 write path is retired and the table is
+  // dropped in production, so this resolver no longer queries D1 at all --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: chainDeregD1({
         network: {
@@ -13693,35 +13447,15 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
         ],
       }),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
     const { status, body } = await gql(deregQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const got = body.data.chain_deregistrations;
-    assert.equal(got.subnet_count, 2);
-    assert.equal(got.observed_at, new Date(1780000000000).toISOString());
-    // The rollup uses the true network-wide distinct count (3), not the sum of
-    // the per-subnet hotkeys (4) -- a hotkey deregistered from several subnets
-    // counts once.
-    assert.deepEqual(got.network, {
-      distinct_deregistered_hotkeys: 3,
-      deregistrations: 12,
-      deregistrations_per_hotkey: 4,
-    });
-    assert.deepEqual(got.subnets, [
-      {
-        netuid: 1,
-        distinct_deregistered_hotkeys: 3,
-        deregistrations: 9,
-        deregistrations_per_hotkey: 3,
-      },
-      {
-        netuid: 7,
-        distinct_deregistered_hotkeys: 1,
-        deregistrations: 3,
-        deregistrations_per_hotkey: 3,
-      },
-    ]);
-    assert.equal(got.intensity_distribution.count, 2);
+    assert.equal(got.subnet_count, 0);
+    assert.deepEqual(got.subnets, []);
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
@@ -13888,7 +13622,10 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     });
   });
 
-  test("resolves the D1-live tier and shapes each signer row", async () => {
+  // #4772 D1 retirement: the `extrinsics` D1 table is dropped in
+  // production, so this resolver no longer queries D1 at all -- even a
+  // "warm" D1 mock (real rows) must not change the response.
+  test("never queries D1 even when mocked with real rows (retired -- #4772)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: signersD1([
         {
@@ -13900,21 +13637,15 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
         },
       ]),
     };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      throw new Error("D1 must not be queried -- extrinsics is retired");
+    };
     const { status, body } = await gql(signersQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const got = body.data.chain_signers;
-    assert.equal(got.signer_count, 1);
-    assert.equal(got.sort, "tx_count");
-    assert.deepEqual(got.signers, [
-      {
-        signer: SIGNER,
-        tx_count: 12,
-        total_fee_tao: 1.5,
-        total_tip_tao: 0.25,
-        last_tx_block: 5000000,
-      },
-    ]);
+    assert.equal(got.signer_count, 0);
+    assert.deepEqual(got.signers, []);
   });
 
   test("resolves Postgres-tier data, forwarding window/limit/sort/call_module", async () => {

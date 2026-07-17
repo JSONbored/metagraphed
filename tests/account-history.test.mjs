@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { encodeCursor } from "../src/cursor.mjs";
+import { buildAccountHistory } from "../src/account-events.mjs";
 
 // SQL-capturing D1 mock variant: records each bound (sql, params) so a test can
 // assert the query shape (keyset seek vs offset).
@@ -36,28 +36,6 @@ function req(path) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-// D1 mock routing by SQL shape: the history handler reads account_events_daily
-// filtered by hotkey (#1854). A cold/absent DB returns no rows → schema-stable.
-function dbWith({ days } = {}) {
-  return {
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind() {
-            return {
-              async all() {
-                if (/FROM account_events_daily/.test(sql))
-                  return { results: days || [] };
-                return { results: [] };
-              },
-            };
-          },
-        };
-      },
-    },
-  };
-}
-
 const DAY = {
   day: "2026-06-24",
   netuid: 7,
@@ -67,8 +45,31 @@ const DAY = {
   last_block: 4_000_900,
 };
 
+// D1 fully eliminated (2026-07-17, #1854): handleAccountHistory now reads
+// METAGRAPH_ACCOUNT_EVENTS_SOURCE's Postgres tier only, via
+// tryPostgresTier(env, request, ...) -> DATA_API. On a hit, DATA_API's JSON
+// body is used directly as `data` (no reshaping), so the mock returns the
+// already-built buildAccountHistory output, mirroring what
+// workers/data-api.mjs actually serves for this route.
+function postgresEnv({ days } = {}) {
+  return {
+    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+    DATA_API: {
+      async fetch() {
+        return Response.json(
+          buildAccountHistory(days || [], SS58, {
+            limit: 100,
+            offset: 0,
+            nextCursor: null,
+          }),
+        );
+      },
+    },
+  };
+}
+
 test("GET /accounts/{ss58}/history returns the per-day series (#1854)", async () => {
-  const env = dbWith({ days: [DAY] });
+  const env = postgresEnv({ days: [DAY] });
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history`),
     env,
@@ -88,21 +89,6 @@ test("GET /accounts/{ss58}/history returns the per-day series (#1854)", async ()
     "WeightsSet",
   ]);
   assert.ok(res.headers.get("etag"));
-});
-
-test("GET /accounts/{ss58}/history honors ?netuid / ?from / ?to / ?limit", async () => {
-  const env = dbWith({ days: [DAY] });
-  const res = await handleRequest(
-    req(
-      `/api/v1/accounts/${SS58}/history?netuid=7&from=2026-06-01&to=2026-06-30&limit=50`,
-    ),
-    env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.data.limit, 50);
-  assert.equal(body.data.days[0].netuid, 7);
 });
 
 test("GET /accounts/{ss58}/history rejects malformed ?from / ?to", async () => {
@@ -138,43 +124,13 @@ test("GET /accounts/{ss58}/history is schema-stable when cold (never 404)", asyn
   assert.equal(Array.isArray(body.data.days), true);
 });
 
-test("GET /accounts/{ss58}/history cursor uses a (day, netuid) keyset seek, not offset", async () => {
-  const { env, captured } = dbCapture([DAY]);
-  const res = await handleRequest(
-    req(
-      `/api/v1/accounts/${SS58}/history?limit=1&cursor=${encodeCursor([20260625, 9])}`,
-    ),
-    env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  const sql = captured.find((q) => /FROM account_events_daily/.test(q.sql)).sql;
-  assert.ok(/\(day, netuid\) < \(\?, \?\)/.test(sql));
-  assert.ok(!/OFFSET/.test(sql));
-  // DAY is 2026-06-24 / netuid 7 → next_cursor encodes day as 20260624.
-  assert.equal(body.data.next_cursor, encodeCursor([20260624, 7]));
-});
-
-test("GET /accounts/{ss58}/history ignores a malformed cursor (first page)", async () => {
-  const { env, captured } = dbCapture([DAY]);
-  await handleRequest(
-    req(`/api/v1/accounts/${SS58}/history?cursor=not-a-cursor`),
-    env,
-    {},
-  );
-  const sql = captured.find((q) => /FROM account_events_daily/.test(q.sql)).sql;
-  assert.ok(/OFFSET/.test(sql));
-  assert.ok(!/\(day, netuid\) </.test(sql));
-});
-
 test("GET /accounts/{ss58}/history exposes x-metagraph-artifact-source on both the normal and inverted-range short-circuit paths (#2618)", async () => {
   // The normal path stamps meta.source and exposes the CORS header; the inverted
   // from>to short-circuit stamps the same meta.source, so it must expose the
   // header too — it must not be dropped just because the range is empty.
   const normal = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history`),
-    dbWith({ days: [DAY] }),
+    postgresEnv({ days: [DAY] }),
     {},
   );
   assert.equal(

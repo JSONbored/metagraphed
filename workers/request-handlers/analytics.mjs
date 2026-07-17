@@ -3,8 +3,12 @@
 // This module co-locates three things that form ONE indivisible state contract
 // (extracted from workers/api.mjs per #1763, extraction 1 of N):
 //
-//   1. The D1 read path (`d1All` / `d1Runner`) — the single place a D1 failure is
-//      caught and degraded to an empty result.
+//   1. The D1 read path (`d1All`) — the single place a D1 failure is caught
+//      and degraded to an empty result. D1 fully eliminated (2026-07-17): no
+//      route in this file calls it anymore (every handler now goes straight
+//      to the schema-stable empty shape on a Postgres-tier miss); `d1All` is
+//      kept only because it's still directly unit-tested for its
+//      dark-serve-log behavior.
 //   2. The fallback-generation machinery (`d1FallbackGeneration` counter + the two
 //      WeakSets + the mark/has helpers) — the bookkeeping that lets the cache guard
 //      tell a real result from a degraded one.
@@ -29,8 +33,6 @@ import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
-  DAY_MS,
-  MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   resolveClientIp,
 } from "../config.mjs";
@@ -48,58 +50,56 @@ import {
   tryPostgresTier,
 } from "../postgres-tier.mjs";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
+import { formatGlobalIncidents } from "../../src/health-serving.mjs";
 import {
-  formatGlobalIncidents,
-  INCIDENT_GAP_MS,
-  MIN_INCIDENT_SAMPLES,
-} from "../../src/health-serving.mjs";
-import {
-  loadChainCalls,
-  loadChainFees,
-  loadNetworkActivity,
   loadSubnetHealthTrends,
   loadSubnetIncidents,
   loadSubnetPercentiles,
 } from "../../src/analytics-live.mjs";
 import { CHAIN_SIGNERS_SORTS } from "../../src/chain-query-loaders.mjs";
-import { buildChainSigners } from "../../src/chain-analytics.mjs";
+import {
+  buildChainActivity,
+  buildChainCalls,
+  buildChainFees,
+  buildChainSigners,
+} from "../../src/chain-analytics.mjs";
 import {
   CHAIN_TRANSFER_PAIR_SORTS,
   buildChainTransferPairs,
 } from "../../src/chain-transfer-pairs.mjs";
 import { buildChainTransfers } from "../../src/chain-transfers.mjs";
 import {
-  loadChainServing,
+  buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
   CHAIN_SERVING_LIMIT_MAX,
 } from "../../src/chain-serving.mjs";
 import {
-  loadChainPrometheus,
+  buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
   CHAIN_PROMETHEUS_LIMIT_MAX,
 } from "../../src/chain-prometheus.mjs";
 import {
-  loadChainAxonRemovals,
+  buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
 } from "../../src/chain-axon-removals.mjs";
 import {
-  loadChainRegistrations,
+  buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
 } from "../../src/chain-registrations.mjs";
 import {
-  loadChainDeregistrations,
+  buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
 } from "../../src/chain-deregistrations.mjs";
 import {
-  loadChainStakeMoves,
+  buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
   CHAIN_STAKE_MOVES_LIMIT_MAX,
 } from "../../src/chain-stake-moves.mjs";
 import {
-  loadChainStakeTransfers,
+  buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
   CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
 } from "../../src/chain-stake-transfers.mjs";
@@ -109,7 +109,7 @@ import {
   CHAIN_WEIGHTS_LIMIT_MAX,
 } from "../../src/chain-weights.mjs";
 import {
-  loadChainWeightSetters,
+  buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
 } from "../../src/chain-weight-setters.mjs";
@@ -308,10 +308,6 @@ async function d1All(env, sql, params) {
   }
 }
 
-// Bind the timeout-guarded D1 reader to an env as a (sql, params) => rows runner
-// for the shared loaders, so these routes and the MCP tools share one read path.
-const d1Runner = (env) => (sql, params) => d1All(env, sql, params);
-
 async function analyticsMeta(env, artifactPath, observedAt) {
   return {
     artifact_path: artifactPath,
@@ -335,12 +331,13 @@ async function analyticsMeta(env, artifactPath, observedAt) {
 //
 // The key varies on everything that changes the body: contract_version (a deploy
 // can never serve a cross-version payload) + a freshness stamp + the request
-// path (carries netuid) + the canonical search (carries `window`). By default
-// the stamp is the health cron snapshot (`last_run_at`); the still-D1-written
-// identity-history routes pass `resolveCacheStamp` to bust on
-// `readIdentityHistoryCacheStamp`'s `observed_at` instead (#1346) — the sole
-// remaining bespoke-stamp consumer now that the neurons/neuron_daily tables (and
-// the cache stamps that read them) are gone (#4772, #5358).
+// path (carries netuid) + the canonical search (carries `window`). The stamp is
+// the health cron snapshot (`last_run_at`) for every route, including chain/
+// identity-history -- its own bespoke `readIdentityHistoryCacheStamp` stamp was
+// retired alongside the D1 read it existed to bust on (D1 fully eliminated,
+// 2026-07-16), the same way the neurons/neuron_daily-backed stamps were
+// retired when #4772 dropped those tables from D1. `resolveCacheStamp` stays
+// as an override hook for any future bespoke-stamp need, just unused today.
 // `keyParts` is the extra namespace segment per route. When the stamp is cold
 // (null), caching is skipped entirely so a cold-KV/empty payload can never seed
 // a stale entry — identical to the overlay cache's `if (lastRunAt)` guard. The
@@ -416,31 +413,6 @@ export async function withEdgeCache(
     : response;
 }
 
-// D1 MAX(captured_at) is INTEGER but often surfaces as a numeric string; coerce
-// before the integer guard so neurons-tier edge-cache stamps are not always null.
-function coerceCapturedAtStamp(value) {
-  if (value == null) return null;
-  const n = Number(value);
-  return Number.isInteger(n) && n > 0 ? String(n) : null;
-}
-
-// Network-wide identity-history cache stamp: the newest observed_at across ALL
-// subnets' identity changes, so the network identity-history feed busts its edge
-// cache the moment any subnet records a new change. The sole remaining bespoke
-// edge-cache stamp (see withEdgeCache's own doc comment above) — every other
-// analytics route now busts on the shared health-cron `last_run_at` stamp
-// (#5358; the neurons/neuron_daily-backed stamps this once sat beside were
-// removed once #4772 dropped those tables from D1).
-export async function readIdentityHistoryCacheStamp(env) {
-  const rows = await d1All(
-    env,
-    "SELECT MAX(observed_at) AS observed_at FROM subnet_identity_history",
-    [],
-  );
-  if (hasD1FallbackRows(rows)) return null;
-  return coerceCapturedAtStamp(rows[0]?.observed_at);
-}
-
 // D1-backed 7d/30d daily uptime + latency trends across all subnets. This is a
 // compact matrix feed for UI dashboards and agents, so it groups by netuid/day
 // instead of returning every surface series.
@@ -466,16 +438,18 @@ export async function handleBulkHealthTrends(
     "bulk-trends",
     async (cacheRequest) => {
       const meta = await readHealthMetaKv(env);
-      // #4832 gap-closure: METAGRAPH_HEALTH_SOURCE is a NEW flag (unlike every
-      // other tier's tryPostgresTier wiring this session, which reused an
-      // already-flipped flag on an already-backfilled table) -- surface_checks/
-      // surface_uptime_daily only started accumulating from the dual-write
-      // landing (#4881/#4885), with no historical backfill. Left unset in
-      // wrangler.jsonc deliberately: an empty/short Postgres window is still a
-      // valid 200 response, so tryPostgresTier's error-only fallback can't
-      // detect "technically fine but missing D1's history" the way it detects
-      // a hard failure. Flip only once Postgres has accumulated a real 30-day
-      // window.
+      // #4832 gap-closure: METAGRAPH_HEALTH_SOURCE was left unset in
+      // wrangler.jsonc for a long stretch after this tier's tryPostgresTier
+      // wiring landed -- surface_checks/surface_uptime_daily only started
+      // accumulating from the dual-write landing (#4881/#4885), with no
+      // historical backfill, and an empty/short Postgres window is still a
+      // valid 200 response that tryPostgresTier's error-only fallback can't
+      // tell apart from "technically fine but missing D1's history". FLIPPED
+      // to "postgres" (D1 retirement, 2026-07-16) once Postgres accumulated a
+      // real window: direct `psql` confirmed surface_checks holds 111,088 rows
+      // and surface_uptime_daily holds 1,182 rows spanning 2026-07-11 through
+      // 2026-07-16, a full rolling window. See wrangler.jsonc's own comment on
+      // this flag for the complete verification writeup.
       let isFallback = false;
       let data = await tryPostgresTier(
         env,
@@ -483,11 +457,11 @@ export async function handleBulkHealthTrends(
         "METAGRAPH_HEALTH_SOURCE",
       );
       if (!data) {
-        const result = await loadBulkHealthTrends(d1Runner(env), {
+        isFallback = true;
+        const result = await loadBulkHealthTrends({
           observedAt: meta?.last_run_at || null,
         });
         data = result.data;
-        isFallback = hasD1FallbackRows(result.rows);
       }
       const response = await envelopeResponse(
         cacheRequest,
@@ -521,9 +495,7 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   return withEdgeCache(request, ctx, env, "trends", async (cacheRequest) => {
-    // See handleBulkHealthTrends' own comment: METAGRAPH_HEALTH_SOURCE is a
-    // new, deliberately-unflipped flag pending Postgres accumulating a real
-    // history window.
+    // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
     let usedFallback = false;
     let data = await tryPostgresTier(
       env,
@@ -533,16 +505,13 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
     if (!data) {
       // Read through the shared d1All (rather than handing the loader the bare
       // db) so a failure is still logged + marked as a D1 fallback (the
-      // dark-serve log contract) — usedFallback tracks it across the loader's
-      // parallel per-window reads since the formatted result no longer exposes
-      // the raw row arrays hasD1FallbackRows used to check.
-      const d1 = async (sql, params) => {
-        const rows = await d1All(env, sql, params);
-        if (hasD1FallbackRows(rows)) usedFallback = true;
-        return rows;
-      };
+      // dark-serve log contract) — a Postgres-tier miss now falls straight
+      // through to the pure formatter with no rows (never a live D1 query),
+      // so it's always marked a fallback (never edge-cache a schema-stable
+      // empty payload).
+      usedFallback = true;
       const meta = await readHealthMetaKv(env);
-      data = await loadSubnetHealthTrends(d1, netuid, {
+      data = await loadSubnetHealthTrends(netuid, {
         observedAt: meta?.last_run_at || null,
       });
     }
@@ -591,17 +560,12 @@ export async function handleHealthPercentiles(
         "METAGRAPH_HEALTH_SOURCE",
       );
       if (!data) {
-        // Wrap d1All so a failure is still logged + marked as a D1 fallback
-        // (the dark-serve contract), since the formatted result no longer
-        // exposes the raw rows hasD1FallbackRows used to check (mirrors
-        // handleHealthTrends).
-        const d1 = async (sql, params) => {
-          const rows = await d1All(env, sql, params);
-          if (hasD1FallbackRows(rows)) usedFallback = true;
-          return rows;
-        };
+        // A Postgres-tier miss now falls straight through to the pure
+        // formatter with no rows (never a live D1 query), so it's always
+        // marked a fallback (mirrors handleHealthTrends).
+        usedFallback = true;
         const meta = await readHealthMetaKv(env);
-        data = await loadSubnetPercentiles(d1, netuid, {
+        data = await loadSubnetPercentiles(netuid, {
           window: label,
           observedAt: meta?.last_run_at || null,
         });
@@ -648,17 +612,12 @@ export async function handleHealthIncidents(
         "METAGRAPH_HEALTH_SOURCE",
       );
       if (!data) {
-        // Wrap d1All so a failure in either read is still logged + marked
-        // as a D1 fallback (the dark-serve contract), since the formatted
-        // result no longer exposes the raw row arrays hasD1FallbackRows
-        // used to check (mirrors handleHealthTrends / handleHealthPercentiles).
-        const d1 = async (sql, params) => {
-          const rows = await d1All(env, sql, params);
-          if (hasD1FallbackRows(rows)) usedFallback = true;
-          return rows;
-        };
+        // A Postgres-tier miss now falls straight through to the pure
+        // formatter with no rows (never a live D1 query), so it's always
+        // marked a fallback (mirrors handleHealthTrends / handleHealthPercentiles).
+        usedFallback = true;
         const meta = await readHealthMetaKv(env);
-        data = await loadSubnetIncidents(d1, netuid, {
+        data = await loadSubnetIncidents(netuid, {
           window: label,
           observedAt: meta?.last_run_at || null,
         });
@@ -683,93 +642,34 @@ export async function handleHealthIncidents(
 
 // Global, cross-subnet incident ledger — the same gap-island grouping as the
 // per-subnet route but with no netuid filter, grouped by (netuid, surface_id)
-// and capped. Powers a public status page's "recent incidents" feed. Returns a
-// schema-stable empty payload when D1 is unbound/cold.
+// and capped. Powers a public status page's "recent incidents" feed.
 //
-// APPROXIMATE NEAR THE SOURCE-ROW CAP: the inner `recent_checks` CTE truncates
-// to the newest MAX_GLOBAL_INCIDENT_SOURCE_ROWS checks before the gap-island
-// pass runs. An incident whose probe samples straddle that boundary is seen only
-// partially, so its started_at / failed_samples can be clipped (or the incident
-// dropped entirely if too few of its samples survive the LIMIT). This is a
-// best-effort recent-incidents feed for a status page, not an exact audit ledger
-// — the per-subnet /incidents route (no global cap) is the authoritative source
-// for a single subnet. Widening this to an exact bound would mean aggregating
-// from surface_uptime_daily (out of scope here).
-const GLOBAL_INCIDENTS_SQL = `WITH recent_checks AS (
-       -- Source-row cap (LIMIT ?): bounds the gap-island scan, but an incident
-       -- straddling this newest-N boundary is only partially counted (see the
-       -- handler doc-note above — this feed is approximate near the cap).
-       SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key, surface_id, checked_at, ok
-       FROM surface_checks
-       WHERE checked_at >= ?
-       ORDER BY checked_at DESC
-       LIMIT ?
-     ),
-     checks AS (
-       SELECT netuid, surface_key, surface_id, checked_at, ok,
-              checked_at - LAG(checked_at)
-                OVER (
-                  PARTITION BY netuid, surface_key
-                  ORDER BY checked_at
-                ) AS gap
-       FROM recent_checks
-     ),
-     grouped AS (
-       SELECT netuid, surface_key, surface_id, checked_at, ok,
-              SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
-                OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS grp
-       FROM checks
-     )
-     SELECT netuid,
-            MAX(surface_id) AS surface_id,
-            surface_key,
-            MIN(checked_at) AS started_at,
-            MAX(checked_at) AS ended_at,
-            COUNT(*) AS failed_samples
-     FROM grouped
-     WHERE ok = 0
-     GROUP BY netuid, surface_key, grp
-     HAVING COUNT(*) >= ?
-     ORDER BY started_at DESC
-     LIMIT ?`;
-
-/** Shared D1 incident ledger used by GET /api/v1/incidents and content feeds. */
-export async function loadGlobalIncidentsLedger(
-  env,
-  { label = "7d", days = 7 } = {},
-) {
-  const since = Date.now() - days * DAY_MS;
-  const incidentRows = await d1All(env, GLOBAL_INCIDENTS_SQL, [
-    since,
-    MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
-    INCIDENT_GAP_MS,
-    MIN_INCIDENT_SAMPLES,
-    MAX_INCIDENT_ROWS,
-  ]);
+// D1 fully eliminated (2026-07-17): surface_checks is Postgres-only now (every
+// caller tries the Postgres tier first) -- this is only reached on a tier
+// miss, so it always returns the schema-stable empty payload.
+export async function loadGlobalIncidentsLedger(env, { label = "7d" } = {}) {
   const meta = await readHealthMetaKv(env);
   const data = formatGlobalIncidents({
     window: label,
     observedAt: meta?.last_run_at || null,
-    incidentRows,
+    incidentRows: [],
     maxIncidents: MAX_INCIDENT_ROWS,
   });
-  return { data, incidentRows };
+  return { data, incidentRows: [] };
 }
 
 export async function handleGlobalIncidents(request, env, url) {
-  const { label, days, error } = analyticsWindow(url);
+  const { label, error } = analyticsWindow(url);
   if (error) {
     return analyticsQueryError(error);
   }
-  // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE. Only
-  // this REST handler is wired -- loadGlobalIncidentsLedger's other caller
-  // (a content feed, workers/api.mjs) stays D1-only, out of scope here.
+  // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
   let isFallback = false;
   let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
   if (!data) {
-    const result = await loadGlobalIncidentsLedger(env, { label, days });
+    isFallback = true;
+    const result = await loadGlobalIncidentsLedger(env, { label });
     data = result.data;
-    isFallback = hasD1FallbackRows(result.incidentRows);
   }
   const response = await envelopeResponse(
     request,
@@ -975,34 +875,30 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
     "chain-activity",
     async (cacheRequest) => {
       const meta = await readHealthMetaKv(env);
-      // A Postgres hit is never a fallback (the rows never touched
-      // hasD1FallbackRows' WeakSets, which only track D1's own degraded-
-      // empty-result bookkeeping); only the D1 branch below can set this.
-      let isFallback = false;
-      let data = await tryPostgresTier(
-        env,
-        cacheRequest,
-        "METAGRAPH_EXTRINSICS_SOURCE",
-      );
-      if (!data) {
-        const result = await loadNetworkActivity(d1Runner(env), {
+      // #4909 D1 retirement: extrinsics'/blocks' D1 write path is retired
+      // (#4772) and the tables are dropped in production, so a D1 query here
+      // would always miss. Postgres → schema-stable empty stub, never a live
+      // D1 read.
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        )) ??
+        buildChainActivity({
           window: label,
           observedAt: meta?.last_run_at || null,
         });
-        data = result.data;
-        isFallback = hasD1FallbackRows(result.extrinsicRows, result.blockRows);
-      }
       if (csv) {
-        const csvRes = await csvResponse(
+        return csvResponse(
           data.days,
           "chain-activity",
           "short",
           cacheRequest,
           CHAIN_ACTIVITY_CSV_COLUMNS,
         );
-        return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
       }
-      const response = await envelopeResponse(
+      return envelopeResponse(
         cacheRequest,
         {
           data,
@@ -1014,7 +910,6 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return isFallback ? markD1FallbackResponse(response) : response;
     },
     // Canonicalize the cache key on the RESOLVED window so the bare path, an
     // explicit ?window=<default>, and reordered/duplicate variants all share one
@@ -1042,13 +937,12 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
     "module_function",
   ]);
   if (groupByError) return analyticsQueryError(groupByError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const { error: limitError } = parseLimitParam(url, {
     defaultLimit: 50,
     maxLimit: 100,
   });
   if (limitError) return analyticsQueryError(limitError);
   const groupBy = url.searchParams.get("group_by") || "module";
-  const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
   const csv = csvRequested(url, request);
@@ -1058,6 +952,10 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
     env,
     "chain-calls",
     async (cacheRequest) => {
+      // #4772 D1 retirement: the `extrinsics` D1 table is dropped in production, so
+      // a postgres-tier miss now falls straight back to the pure builder with no
+      // rows (never a live D1 query) -- always mark that response as a fallback
+      // (never edge-cache a schema-stable empty payload).
       let usedFallback = false;
       const meta = await readHealthMetaKv(env);
       let data = await tryPostgresTier(
@@ -1066,17 +964,13 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
         "METAGRAPH_EXTRINSICS_SOURCE",
       );
       if (!data) {
-        const d1 = async (sql, params) => {
-          const rows = await d1All(env, sql, params);
-          if (hasD1FallbackRows(rows)) usedFallback = true;
-          return rows;
-        };
-        data = await loadChainCalls(d1, {
+        usedFallback = true;
+        data = buildChainCalls({
           window: label,
           groupBy,
-          callModule,
-          limit,
           observedAt: meta?.last_run_at || null,
+          total: 0,
+          rows: [],
         });
       }
       if (csv) {
@@ -1577,7 +1471,7 @@ export async function handleChainWeights(request, env, url, ctx = {}) {
 // cache and repeatedly force the network-wide aggregation. The leaderboard is fixed to
 // most-active-first (total WeightsSet events).
 export async function handleChainWeightSetters(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -1598,17 +1492,15 @@ export async function handleChainWeightSetters(request, env, url, ctx = {}) {
     env,
     "chain-weight-setters",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainWeightSetters(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }));
+        )) ?? buildChainWeightSetters([], null, { window: label, limit });
       if (csv) {
         return csvResponse(
           data.setters,
@@ -1644,7 +1536,7 @@ export async function handleChainWeightSetters(request, env, url, ctx = {}) {
 // the edge cache and repeatedly force the network-wide aggregations, cache keyed on the analytics
 // cron freshness. The leaderboard is fixed to most-active-first (total AxonServed events).
 export async function handleChainServing(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -1665,17 +1557,16 @@ export async function handleChainServing(request, env, url, ctx = {}) {
     env,
     "chain-serving",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013). Postgres → schema-stable empty stub, never a
+      // live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainServing(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }));
+        )) ?? buildChainServing([], { window: label, limit });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-weights).
       if (csv) {
@@ -1713,7 +1604,7 @@ export async function handleChainServing(request, env, url, ctx = {}) {
 // probes normalized through the GET cache key so they cannot bypass the edge cache and repeatedly
 // force the network-wide aggregations. The leaderboard is fixed to most-active-first (total events).
 export async function handleChainPrometheus(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -1734,17 +1625,16 @@ export async function handleChainPrometheus(request, env, url, ctx = {}) {
     env,
     "chain-prometheus",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013). Postgres → schema-stable empty stub, never a
+      // live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainPrometheus(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }));
+        )) ?? buildChainPrometheus([], { window: label, limit });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1783,7 +1673,7 @@ export async function handleChainPrometheus(request, env, url, ctx = {}) {
 // so they cannot bypass the edge cache and repeatedly force the network-wide aggregations. The
 // leaderboard is fixed to most-active-first (total AxonInfoRemoved events).
 export async function handleChainAxonRemovals(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -1804,17 +1694,16 @@ export async function handleChainAxonRemovals(request, env, url, ctx = {}) {
     env,
     "chain-axon-removals",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013). Postgres → schema-stable empty stub, never a
+      // live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainAxonRemovals(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }));
+        )) ?? buildChainAxonRemovals([], { window: label, limit });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1852,7 +1741,7 @@ export async function handleChainAxonRemovals(request, env, url, ctx = {}) {
 // edge cache and repeatedly force the network-wide aggregations, cache keyed on the analytics cron
 // freshness. The leaderboard is fixed to most-active-first (total NeuronRegistered events).
 export async function handleChainRegistrations(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -1873,17 +1762,16 @@ export async function handleChainRegistrations(request, env, url, ctx = {}) {
     env,
     "chain-registrations",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013). Postgres → schema-stable empty stub, never a
+      // live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainRegistrations(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }));
+        )) ?? buildChainRegistrations([], { window: label, limit });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1922,7 +1810,7 @@ export async function handleChainRegistrations(request, env, url, ctx = {}) {
 // network-wide aggregations, cache keyed on the analytics cron freshness. The leaderboard is fixed
 // to most-active-first (total NeuronDeregistered events).
 export async function handleChainDeregistrations(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -1943,17 +1831,16 @@ export async function handleChainDeregistrations(request, env, url, ctx = {}) {
     env,
     "chain-deregistrations",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013). Postgres → schema-stable empty stub, never a
+      // live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainDeregistrations(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }));
+        )) ?? buildChainDeregistrations([], { window: label, limit });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
       if (csv) {
@@ -1992,7 +1879,7 @@ export async function handleChainDeregistrations(request, env, url, ctx = {}) {
 // repeatedly force the network-wide aggregations. The leaderboard is fixed to most-active-first
 // (total StakeMoved events).
 export async function handleChainStakeMoves(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -2013,17 +1900,15 @@ export async function handleChainStakeMoves(request, env, url, ctx = {}) {
     env,
     "chain-stake-moves",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainStakeMoves(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }));
+        )) ?? buildChainStakeMoves([], { window: label, limit });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
       if (csv) {
@@ -2062,7 +1947,7 @@ export async function handleChainStakeMoves(request, env, url, ctx = {}) {
 // and repeatedly force the network-wide aggregations. The leaderboard is fixed to most-active-first
 // (total StakeTransferred events).
 export async function handleChainStakeTransfers(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  const { label, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -2083,17 +1968,15 @@ export async function handleChainStakeTransfers(request, env, url, ctx = {}) {
     env,
     "chain-stake-transfers",
     async () => {
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       const data =
         (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainStakeTransfers(d1Runner(env), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }));
+        )) ?? buildChainStakeTransfers([], { window: label, limit });
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-moves).
       if (csv) {
@@ -2137,14 +2020,13 @@ export async function handleChainFees(request, env, url, ctx = {}) {
   if (error) return analyticsQueryError(error);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const { error: limitError } = parseLimitParam(url, {
     defaultLimit: 25,
     maxLimit: 100,
   });
   if (limitError) return analyticsQueryError(limitError);
   // Optional pallet scope (applies to both the daily series and the payer list),
   // backed by idx_extrinsics_module_block.
-  const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
   const csv = csvRequested(url, request);
@@ -2155,7 +2037,9 @@ export async function handleChainFees(request, env, url, ctx = {}) {
     "chain-fees",
     async (cacheRequest) => {
       const meta = await readHealthMetaKv(env);
-      let isFallback = false;
+      // #4909/#4772 D1 retirement: extrinsics' D1 write path is retired and
+      // the table is dropped in production, so a D1 query here would always
+      // miss. Postgres → schema-stable empty stub, never a live D1 read.
       let data = null;
       if (env.METAGRAPH_EXTRINSICS_SOURCE === "postgres" && env.DATA_API) {
         const limited = await dataRateLimitResponse(cacheRequest, env);
@@ -2166,31 +2050,20 @@ export async function handleChainFees(request, env, url, ctx = {}) {
           "METAGRAPH_EXTRINSICS_SOURCE",
         );
       }
-      if (!data) {
-        const result = await loadChainFees(d1Runner(env), {
-          window: label,
-          limit,
-          callModule,
-          observedAt: meta?.last_run_at || null,
-        });
-        data = result.data;
-        isFallback = hasD1FallbackRows(
-          result.dailyRows,
-          result.payerRows,
-          result.medianRows,
-        );
-      }
+      data ??= buildChainFees({
+        window: label,
+        observedAt: meta?.last_run_at || null,
+      });
       if (csv) {
-        const csvRes = await csvResponse(
+        return csvResponse(
           data.daily,
           "chain-fees",
           "short",
           cacheRequest,
           CHAIN_FEES_CSV_COLUMNS,
         );
-        return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
       }
-      const response = await envelopeResponse(
+      return envelopeResponse(
         cacheRequest,
         {
           data,
@@ -2202,7 +2075,6 @@ export async function handleChainFees(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return isFallback ? markD1FallbackResponse(response) : response;
     },
     `${canonicalAnalyticsCacheRoute(url, ["limit", "call_module"])}${csv ? "&format=csv" : ""}`,
   );
@@ -2218,7 +2090,6 @@ export {
   canonicalAnalyticsCacheRoute,
   analyticsWindow,
   d1All,
-  d1Runner,
   hasD1FallbackRows,
   markD1FallbackResponse,
   validateQueryParams,

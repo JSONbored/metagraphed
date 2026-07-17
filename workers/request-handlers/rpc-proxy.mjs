@@ -37,7 +37,6 @@ import {
   analyticsMeta,
   analyticsQueryError,
   analyticsWindow,
-  d1Runner,
 } from "./analytics.mjs";
 import {
   findSurface,
@@ -109,8 +108,11 @@ export async function readRpcPoolArtifact(env, now = Date.now()) {
   return poolArtifact;
 }
 
-// #4832 gap-closure: best-effort Postgres mirror of a single rpc_proxy_events
-// row, called alongside the D1 write below. Unlike every other #4832 sync
+// Best-effort Postgres mirror of a single rpc_proxy_events row -- the sole
+// writer now (D1 write retired 2026-07-16, item 7 of the D1->Postgres
+// cleanup: confirmed unconditionally called here, live since 2026-07-11 per
+// METAGRAPH_RPC_USAGE_SOURCE's own wrangler.jsonc comment, so removing the
+// redundant D1 INSERT below loses nothing). Unlike every other #4832 sync
 // route (all cron/workflow batch writes), this fires once per live proxied
 // request -- confirmed live 2026-07-11 the real volume is trivial (69 rows
 // over ~25 days), so a plain per-request env.DATA_API.fetch() under the
@@ -134,43 +136,18 @@ function syncRpcUsageEventToPostgres(env, ctx, event) {
 
 // Best-effort, async usage telemetry for the RPC proxy (B3). A telemetry write
 // must never add latency to, or fail, a proxied call — so it runs under
-// ctx.waitUntil and swallows every error (notably "no such table" before the
-// 0004 migration is applied). When the binding/ctx is absent (tests, local dev)
-// it is a no-op. The proxy degrades to "no analytics", never to "broken".
+// ctx.waitUntil and swallows every error. When the binding/ctx is absent
+// (tests, local dev) it is a no-op. The proxy degrades to "no analytics",
+// never to "broken".
 function recordRpcUsage(env, ctx, event) {
   syncRpcUsageEventToPostgres(env, ctx, event);
-  const db = env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare || typeof ctx?.waitUntil !== "function") return;
-  try {
-    const write = db
-      .prepare(
-        `INSERT INTO rpc_proxy_events
-           (observed_at, network, endpoint_id, provider, ok, status, attempts, latency_ms, cache)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        event.observed_at,
-        event.network,
-        event.endpoint_id ?? null,
-        event.provider ?? null,
-        event.ok ? 1 : 0,
-        event.status ?? null,
-        event.attempts ?? null,
-        event.latency_ms ?? null,
-        event.cache ?? null,
-      )
-      .run();
-    ctx.waitUntil(Promise.resolve(write).catch(() => {}));
-  } catch {
-    // prepare/bind threw synchronously (malformed binding); drop the sample.
-  }
 }
 
 // RPC reverse-proxy usage analytics (B3): request volume, latency p50/p95,
 // failover + error rate, cache-hit rate, and the per-endpoint distribution that
-// shows whether the load balancer is actually spreading traffic. Computed live
-// from the rpc_proxy_events D1 telemetry; cold/unmigrated D1 returns a
-// schema-stable zeroed payload (d1All swallows the missing-table error).
+// shows whether the load balancer is actually spreading traffic. D1 fully
+// eliminated (2026-07-17): rpc_proxy_events is Postgres-only now, so a tier
+// miss returns a schema-stable zeroed payload rather than a live D1 query.
 export async function handleRpcUsage(request, env, url) {
   const { label, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
@@ -186,7 +163,7 @@ export async function handleRpcUsage(request, env, url) {
   // history a backfill could leave behind.
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_RPC_USAGE_SOURCE")) ??
-    (await loadRpcUsage(d1Runner(env), {
+    (await loadRpcUsage({
       window: label,
       observedAt: meta?.last_run_at || null,
     }));

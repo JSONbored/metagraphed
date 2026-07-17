@@ -1,15 +1,18 @@
 // Live network-wide stake-transfer activity from the account_events StakeTransferred stream: a
 // per-subnet leaderboard plus a network rollup and intensity distribution. Pure shaping
-// (buildChainStakeTransfers) + a thin D1 loader (loadChainStakeTransfers); the field semantics live
-// in schemas/components/05-subnets.schema.json (ChainStakeTransfersArtifact). The between-coldkeys
-// companion to the within-account re-delegation churn of /chain/stake-moves: StakeTransferred
-// (transfer_stake, #2556) moves staked alpha from one coldkey to ANOTHER coldkey on the same hotkey,
-// so it relocates ownership rather than net capital or delegation. Ranked and counted by the ORIGIN
-// (netuid, coldkey); the distinct sender is the origin coldkey initiating the transfer. Only the
-// origin leg has columns (destination coldkey/netuid are dropped at ingest), so this is inherently
-// an origin-side view — see scripts/fetch-events.py `_stake_transferred` (#2556).
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+// (buildChainStakeTransfers); the Worker / data-api Postgres tier supplies the rows and adds the
+// REST envelope. The field semantics live in schemas/components/05-subnets.schema.json
+// (ChainStakeTransfersArtifact). The between-coldkeys companion to the within-account re-delegation
+// churn of /chain/stake-moves: StakeTransferred (transfer_stake, #2556) moves staked alpha from one
+// coldkey to ANOTHER coldkey on the same hotkey, so it relocates ownership rather than net capital
+// or delegation. Ranked and counted by the ORIGIN (netuid, coldkey); the distinct sender is the
+// origin coldkey initiating the transfer. Only the origin leg has columns (destination
+// coldkey/netuid are dropped at ingest), so this is inherently an origin-side view — see
+// scripts/fetch-events.py `_stake_transferred` (#2556).
+//
+// The D1 loader (loadChainStakeTransfers) was removed — account_events' D1 write path is retired
+// and the table is dropped in production (#4772 / #4909), so serving goes tryPostgresTier →
+// schema-stable empty stub, never D1.
 
 // The account_events kind emitted when a coldkey transfers stake to another coldkey (transfer_stake).
 export const STAKE_TRANSFERRED_EVENT_KIND = "StakeTransferred";
@@ -202,39 +205,4 @@ export function buildChainStakeTransfers(
     ),
     subnets: subnets.slice(0, normalizedLimit),
   };
-}
-
-// Network-wide stake-transfer activity, computed live: read the account_events StakeTransferred
-// stream over the window (observed_at >= now - windowDays, epoch ms), first as a single network
-// aggregate (true distinct senders + newest observed_at, bounded by idx_account_events_observed) and
-// then grouped by netuid for the per-subnet leaderboard, and shape with buildChainStakeTransfers. The
-// newest-observed probe doubles as the cold-store guard: a null MAX(observed_at) skips the per-subnet
-// read. The handler resolves windowLabel/windowDays from analyticsWindow (7d/30d). Cold/absent store
-// -> the schema-stable empty block.
-export async function loadChainStakeTransfers(
-  d1,
-  { windowLabel, windowDays, limit } = {},
-) {
-  const cutoff = Date.now() - windowDays * DAY_MS;
-  const networkRows = await d1(
-    "SELECT COUNT(DISTINCT coldkey) AS distinct_senders, " +
-      "MAX(observed_at) AS newest_observed " +
-      "FROM account_events WHERE event_kind = ? AND observed_at >= ?",
-    [STAKE_TRANSFERRED_EVENT_KIND, cutoff],
-  );
-  const networkDistinct = networkRows?.[0] ?? null;
-  let subnetRows = [];
-  if (networkDistinct?.newest_observed != null) {
-    subnetRows = await d1(
-      "SELECT netuid, COUNT(*) AS transfers, COUNT(DISTINCT coldkey) AS distinct_senders " +
-        "FROM account_events WHERE event_kind = ? AND observed_at >= ? GROUP BY netuid " +
-        "ORDER BY transfers DESC, netuid ASC",
-      [STAKE_TRANSFERRED_EVENT_KIND, cutoff],
-    );
-  }
-  return buildChainStakeTransfers(subnetRows, {
-    window: windowLabel,
-    limit,
-    networkDistinct,
-  });
 }

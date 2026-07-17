@@ -4,10 +4,9 @@
 // limit/offset through the SAME shared parser with the SAME per-route profile, so
 // a fix in one route can no longer drift from the others. These tests drive every
 // refactored handler with the identical edge inputs (over-cap, below-min, absent,
-// over-cap offset) and assert the bound LIMIT/OFFSET matches the route's profile —
+// over-cap offset) and assert the bound limit/offset matches the route's profile —
 // the regression that a wrong-profile wiring would introduce, which line coverage
-// alone cannot catch. The handlers are null-safe, so a capturing D1 stub that
-// returns empty rows is enough to read back the bound clamp values.
+// alone cannot catch.
 
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
@@ -19,7 +18,6 @@ import {
 import { handleAccountHistory } from "../workers/request-handlers/entities.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-const BLOCK_NUM = 1234;
 
 function req(path) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -29,74 +27,29 @@ function url(path) {
   return new URL(`https://api.metagraph.sh${path}`);
 }
 
-// A capturing D1 stub: records every (sql, params) and returns empty rows, except
-// the block-ref resolution lookup, which must return a row so the block
-// sub-resource feed query actually runs.
-function capturingEnv() {
-  const calls = [];
-  return {
-    calls,
-    env: {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              calls.push({ sql, params });
-              return {
-                async all() {
-                  if (
-                    /SELECT block_number FROM blocks WHERE block_number = \? LIMIT 1/.test(
-                      sql,
-                    )
-                  ) {
-                    return { results: [{ block_number: BLOCK_NUM }] };
-                  }
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    },
-  };
-}
-
-// The feed query is the one carrying a bound `LIMIT ?` (the ref-resolution lookup
-// uses a literal `LIMIT 1`, so it is excluded).
-function feedCall(calls, feedPattern) {
-  return calls.find((c) => feedPattern.test(c.sql) && /LIMIT \?/.test(c.sql));
-}
-
-// limit + offset are always the last bound params: `... LIMIT ?` (keyset) or
-// `... LIMIT ? OFFSET ?` (offset fallback).
-function boundPage(call) {
-  assert.ok(call, "expected a feed query to run");
-  const p = call.params;
-  return /OFFSET \?\s*$/.test(call.sql)
-    ? { limit: p[p.length - 2], offset: p[p.length - 1] }
-    : { limit: p[p.length - 1], offset: null };
-}
-
 // #4909 D1 retirement: this suite used to cover 9 routes, but 8 of them
 // (accounts/{ss58}/events, extrinsics, transfers; subnets/{netuid}/events;
 // blocks/{ref}/events, blocks/{ref}/extrinsics; blocks; extrinsics) had their
 // D1 write path retired (#4772) and the underlying tables dropped in
-// production, so entities.mjs no longer runs a D1 query for them at all --
-// there is nothing left for a "the bound LIMIT/OFFSET matches the profile"
-// D1-capture assertion to observe. account_events_daily (the source behind
-// /accounts/{ss58}/history) is NOT part of that retirement -- it has its own
-// independent Postgres-side rollup and D1's copy is still a real,
-// live-queried fallback tier -- so its parity coverage stays.
+// production. account_events_daily (the source behind /accounts/{ss58}/history)
+// has since (2026-07-17) had its D1 copy fully eliminated too -- the route now
+// reads the METAGRAPH_ACCOUNT_EVENTS_SOURCE Postgres tier only, via
+// tryPostgresTier, and D1 is never queried at all. clampLimit/clampOffset still
+// run BEFORE the tier check though (parsePagination happens ahead of
+// tryPostgresTier in handleAccountHistory), and the clamped values thread
+// straight through to the schema-stable payload on a tier miss
+// (buildAccountHistory([], ss58, { limit, offset, ... })) -- so reading
+// data.limit/data.offset off the plain JSON response (no env flag, no D1/
+// DATA_API mock needed) is enough to observe the bound clamp, no SQL capture
+// required.
 const ROUTES = [
   {
     name: "GET /accounts/{ss58}/history",
     profile: FEED_PAGINATION,
-    feed: /FROM account_events_daily/,
-    invoke: (env, qs) =>
+    invoke: (qs) =>
       handleAccountHistory(
         req(`/api/v1/accounts/${SS58}/history`),
-        env,
+        {},
         SS58,
         url(`/api/v1/accounts/${SS58}/history?${qs}`),
       ),
@@ -104,9 +57,9 @@ const ROUTES = [
 ];
 
 async function pageFor(route, qs) {
-  const { env, calls } = capturingEnv();
-  await route.invoke(env, qs);
-  return boundPage(feedCall(calls, route.feed));
+  const res = await route.invoke(qs);
+  const body = await res.json();
+  return { limit: body.data.limit, offset: body.data.offset };
 }
 
 for (const route of ROUTES) {

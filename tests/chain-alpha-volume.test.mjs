@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainAlphaVolume,
-  loadChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
 } from "../src/chain-alpha-volume.mjs";
 import { handleRequest } from "../workers/api.mjs";
@@ -290,35 +289,6 @@ describe("buildChainAlphaVolume", () => {
     );
     assert.equal(data.subnet_count, 2);
     assert.equal(data.observed_at, new Date(OBS).toISOString());
-  });
-});
-
-describe("loadChainAlphaVolume", () => {
-  test("queries account_events over the last 24h and shapes the result", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      return ROWS;
-    };
-    const before = Date.now();
-    const data = await loadChainAlphaVolume(d1, { limit: 20 });
-    assert.match(calls[0].sql, /FROM account_events/);
-    assert.match(calls[0].sql, /event_kind IN \(\?, \?\)/);
-    assert.match(calls[0].sql, /GROUP BY netuid, event_kind/);
-    assert.equal(calls[0].params[0], "StakeAdded");
-    assert.equal(calls[0].params[1], "StakeRemoved");
-    assert.equal(typeof calls[0].params[2], "number"); // epoch-ms cutoff
-    // Cutoff is ~24h before "now" (within the test's execution window).
-    assert.ok(calls[0].params[2] <= before - 24 * 60 * 60 * 1000 + 1000);
-    assert.equal(data.window, "24h");
-    assert.equal(data.subnet_count, 3);
-    assert.equal(data.subnets[0].netuid, 1);
-  });
-
-  test("cold store yields the empty card", async () => {
-    const data = await loadChainAlphaVolume(async () => [], {});
-    assert.equal(data.subnet_count, 0);
-    assert.deepEqual(data.subnets, []);
   });
 });
 

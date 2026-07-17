@@ -151,6 +151,41 @@ function mockCaches() {
   };
 }
 
+// D1 fully eliminated (2026-07-17): percentiles/incidents/trends/bulk-trends/
+// global-incidents/uptime/trajectory now ALWAYS mark a Postgres-tier MISS as a
+// D1 fallback (there's no live D1 read left to tell "had rows" apart from
+// "cold"), so a MISS can never be cached -- only a Postgres-tier HIT is. This
+// backs a route with a call-counting DATA_API mock instead of a D1 mock, so the
+// MISS/HIT edge-cache invariants that used to run against a fake D1 can still
+// be exercised against the surviving cacheable path.
+function postgresTierEnv(
+  calls,
+  {
+    flag = "METAGRAPH_HEALTH_SOURCE",
+    body = { schema_version: 1 },
+    lastRunAt = LAST_RUN_AT,
+  } = {},
+) {
+  return {
+    ...createLocalArtifactEnv(),
+    [flag]: "postgres",
+    DATA_API: {
+      fetch: async () => {
+        calls.push(1);
+        return Response.json(body);
+      },
+    },
+    METAGRAPH_CONTROL: {
+      async get(key) {
+        if (key === "health:meta") {
+          return lastRunAt ? { last_run_at: lastRunAt } : null;
+        }
+        return null;
+      },
+    },
+  };
+}
+
 // Rebuild the exact cache key the worker computes, so the invariant assertions
 // don't hard-code a brittle literal and survive a contract-version bump.
 function expectedKey(keyParts, pathname, search = "") {
@@ -168,11 +203,14 @@ afterEach(() => {
 
 describe("analytics edge cache", () => {
   test("INVARIANT: cache key includes contract_version + snapshot stamp + netuid + window", async () => {
+    // D1 fully eliminated (2026-07-17): percentiles always marks a Postgres-tier
+    // MISS a D1 fallback (never cached), so only a Postgres-tier HIT exercises
+    // this key-shape invariant now.
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
-    const env = analyticsEnv(queries);
+    const calls = [];
+    const env = postgresTierEnv(calls);
 
     // Per-subnet percentiles (netuid + window both vary the key).
     const res = await handleRequest(
@@ -198,30 +236,30 @@ describe("analytics edge cache", () => {
     assert.ok(key.includes("window=30d"), "window");
   });
 
-  // #5554: HEAD probes on the D1-aggregation routes must be normalized through
-  // the GET cache key so a HEAD-probe burst is served from the warm cache
-  // instead of re-running the full aggregation every call (matching the 12
-  // sibling routes). Before the fix these routes passed the raw HEAD request +
-  // a zero-arg builder to withEdgeCache, so `cache` resolved to null and every
-  // HEAD bypassed the cache and re-queried D1.
-  test("REGRESSION #5554: a HEAD request hits the warm edge cache without re-querying D1", async () => {
+  // #5554: HEAD probes on the analytics routes must be normalized through the
+  // GET cache key so a HEAD-probe burst is served from the warm cache instead
+  // of re-running the aggregation every call (matching the 12 sibling routes).
+  // Before the fix these routes passed the raw HEAD request + a zero-arg
+  // builder to withEdgeCache, so `cache` resolved to null and every HEAD
+  // bypassed the cache and re-ran the tier call.
+  test("REGRESSION #5554: a HEAD request hits the warm edge cache without re-querying the Postgres tier", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
-    const env = analyticsEnv(queries);
+    const calls = [];
+    const env = postgresTierEnv(calls);
     const target =
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d";
 
-    // Warm the cache with a GET — a cold cache must touch D1 and store one entry.
+    // Warm the cache with a GET — a cold cache must call DATA_API and store one entry.
     const getRes = await handleRequest(new Request(target), env, ctx);
     assert.equal(getRes.status, 200);
     assert.equal(cache.putKeys.length, 1);
-    const queriesAfterGet = queries.length;
-    assert.ok(queriesAfterGet > 0, "cold GET should query D1");
+    const callsAfterGet = calls.length;
+    assert.ok(callsAfterGet > 0, "cold GET should call the Postgres tier");
 
-    // A HEAD probe against the warm entry must be served from cache: no new D1
-    // query, no re-put, a bodyless 200.
+    // A HEAD probe against the warm entry must be served from cache: no new
+    // DATA_API call, no re-put, a bodyless 200.
     const headRes = await handleRequest(
       new Request(target, { method: "HEAD" }),
       env,
@@ -230,9 +268,9 @@ describe("analytics edge cache", () => {
     assert.equal(headRes.status, 200);
     assert.equal(await headRes.text(), "", "HEAD carries no body");
     assert.equal(
-      queries.length,
-      queriesAfterGet,
-      "HEAD cache hit must not re-run the D1 aggregation",
+      calls.length,
+      callsAfterGet,
+      "HEAD cache hit must not re-run the Postgres tier call",
     );
     assert.equal(cache.putKeys.length, 1, "HEAD hit must not re-put");
   });
@@ -241,8 +279,8 @@ describe("analytics edge cache", () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
-    const env = analyticsEnv(queries);
+    const calls = [];
+    const env = postgresTierEnv(calls);
 
     for (const url of [
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d",
@@ -780,24 +818,27 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
-  test("HIT: a pre-populated cache serves the cached body WITHOUT touching D1", async () => {
+  test("HIT: a pre-populated cache serves the cached body WITHOUT re-calling the Postgres tier", async () => {
+    // D1 fully eliminated (2026-07-17): incidents always marks a Postgres-tier
+    // MISS a D1 fallback (never cached), so only a Postgres-tier HIT can prove
+    // the cached body is served without a second upstream call.
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
-    const env = analyticsEnv(queries);
+    const calls = [];
+    const env = postgresTierEnv(calls);
     const url =
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents?window=7d";
 
-    // First request is a MISS: it runs D1 and populates the cache.
+    // First request is a MISS: it calls the Postgres tier and populates the cache.
     const first = await handleRequest(new Request(url), env, ctx);
     await Promise.resolve();
     const firstBody = await first.text();
     assert.equal(first.status, 200);
-    assert.ok(queries.length > 0, "the cold MISS must run the D1 aggregation");
+    assert.ok(calls.length > 0, "the cold MISS must call the Postgres tier");
 
-    // Second request is a HIT: served from cache, D1 untouched.
-    const queryCountAfterMiss = queries.length;
+    // Second request is a HIT: served from cache, DATA_API untouched.
+    const callCountAfterMiss = calls.length;
     const second = await handleRequest(new Request(url), env, ctx);
     assert.equal(second.status, 200);
     assert.equal(
@@ -806,9 +847,9 @@ describe("analytics edge cache", () => {
       "the cached body is byte-identical",
     );
     assert.equal(
-      queries.length,
-      queryCountAfterMiss,
-      "a cache HIT must not issue any D1 query",
+      calls.length,
+      callCountAfterMiss,
+      "a cache HIT must not issue any Postgres-tier call",
     );
   });
 
@@ -840,12 +881,17 @@ describe("analytics edge cache", () => {
     );
   });
 
-  test("MISS: an empty cache runs D1 once and issues a cache.put via waitUntil", async () => {
+  test("MISS: an empty cache calls the Postgres tier once and issues a cache.put via waitUntil", async () => {
+    // D1 fully eliminated (2026-07-17): bulk-trends always marks a
+    // Postgres-tier MISS a D1 fallback (never cached), so only a Postgres-tier
+    // HIT still schedules a cache write.
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
-    const env = analyticsEnv(queries);
+    const calls = [];
+    const env = postgresTierEnv(calls, {
+      body: { schema_version: 1, windows: { "7d": {}, "30d": {} } },
+    });
 
     let putAt = null;
     const putCtx = {
@@ -868,6 +914,7 @@ describe("analytics edge cache", () => {
     // The cached response is the success 200 (never a placeholder/error).
     const cached = cache.store.get(cache.putKeys[0]);
     assert.equal(cached.status, 200);
+    assert.equal(calls.length, 1, "the MISS must call the Postgres tier once");
   });
 
   test("NO-CACHE-ON-ERROR: a 400 (bad window) is never cached", async () => {
@@ -1298,11 +1345,14 @@ describe("analytics edge cache", () => {
   });
 
   test("health percentiles: bare path populates cache; explicit ?window=7d is a HIT", async () => {
+    // D1 fully eliminated (2026-07-17): a Postgres-tier MISS is always marked a
+    // D1 fallback (never cached), so this canonical-key invariant only survives
+    // on a Postgres-tier HIT.
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
-    const env = analyticsEnv(queries);
+    const calls = [];
+    const env = postgresTierEnv(calls);
     const base = "/api/v1/subnets/7/health/percentiles";
 
     const miss = await handleRequest(
@@ -1312,7 +1362,7 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(miss.status, 200);
-    const queriesAfterMiss = queries.length;
+    const callsAfterMiss = calls.length;
 
     const hit = await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=7d`),
@@ -1321,8 +1371,8 @@ describe("analytics edge cache", () => {
     );
     assert.equal(hit.status, 200);
     assert.equal(
-      queries.length,
-      queriesAfterMiss,
+      calls.length,
+      callsAfterMiss,
       "explicit ?window=7d must be a cache HIT after bare request",
     );
     assert.deepEqual(cache.putKeys, [
@@ -1359,11 +1409,14 @@ describe("analytics edge cache", () => {
   });
 
   test("health incidents: bare path populates cache; explicit ?window=7d is a HIT", async () => {
+    // D1 fully eliminated (2026-07-17): a Postgres-tier MISS is always marked a
+    // D1 fallback (never cached), so this canonical-key invariant only survives
+    // on a Postgres-tier HIT.
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
-    const env = analyticsEnv(queries);
+    const calls = [];
+    const env = postgresTierEnv(calls);
     const base = "/api/v1/subnets/7/health/incidents";
 
     const miss = await handleRequest(
@@ -1373,7 +1426,7 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(miss.status, 200);
-    const queriesAfterMiss = queries.length;
+    const callsAfterMiss = calls.length;
 
     const hit = await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=7d`),
@@ -1382,8 +1435,8 @@ describe("analytics edge cache", () => {
     );
     assert.equal(hit.status, 200);
     assert.equal(
-      queries.length,
-      queriesAfterMiss,
+      calls.length,
+      callsAfterMiss,
       "explicit ?window=7d must be a cache HIT after bare request",
     );
     assert.deepEqual(cache.putKeys, [
@@ -1419,42 +1472,49 @@ describe("analytics edge cache", () => {
     );
   });
 
-  test("the 4 additional deterministic routes are now edge-cached (MISS→put under their key, HIT→no D1)", async () => {
-    // These routes (global incidents, per-subnet trajectory, per-subnet uptime,
-    // registry leaderboards) were edgeCache=0 — they re-ran their D1 aggregation
-    // on every request. Now wrapped in withEdgeCache at the call site, keyed on
-    // the same contract_version + last_run_at + pathname + search.
+  test("the 3 additional deterministic routes are now edge-cached (MISS→put under their key, HIT→no further Postgres-tier call)", async () => {
+    // These routes (global incidents, per-subnet trajectory, per-subnet uptime)
+    // were edgeCache=0 — they re-ran their D1 aggregation on every request. Now
+    // wrapped in withEdgeCache at the call site, keyed on the same
+    // contract_version + last_run_at + pathname + search. D1 fully eliminated
+    // (2026-07-17): a Postgres-tier MISS is always marked a D1 fallback (never
+    // cached), so only a Postgres-tier HIT still gets cached here.
+    //
+    // The 4th route this test used to cover, registry leaderboards, never had
+    // Postgres-tier wiring to begin with (its health/rpc/growth/reliability
+    // boards are permanently empty now) and handleLeaderboards unconditionally
+    // marks its response a D1 fallback -- it is categorically never
+    // edge-cacheable anymore, covered instead by "NO-CACHE-ON-ERROR: D1
+    // fallback on the five additional edge-cached routes is not cached" below.
     const routes = [
-      {
-        keyParts: "leaderboards",
-        path: "/api/v1/registry/leaderboards",
-        search: "?limit=20",
-      },
       {
         keyParts: "global-incidents",
         path: "/api/v1/incidents",
         search: "?window=7d",
+        flag: "METAGRAPH_HEALTH_SOURCE",
       },
       {
         keyParts: "trajectory",
         path: "/api/v1/subnets/7/trajectory",
         search: "",
+        flag: "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
       },
       {
         keyParts: "uptime",
         path: "/api/v1/subnets/7/uptime",
         search: "?window=90d",
+        flag: "METAGRAPH_HEALTH_SOURCE",
       },
     ];
     originalCaches = globalThis.caches;
     for (const r of routes) {
       const cache = mockCaches();
       cache.install();
-      const queries = [];
-      const env = analyticsEnv(queries);
+      const calls = [];
+      const env = postgresTierEnv(calls, { flag: r.flag });
       const url = `https://api.metagraph.sh${r.path}${r.search}`;
 
-      // MISS: runs D1 and caches under the route's key.
+      // MISS: calls the Postgres tier and caches under the route's key.
       const miss = await handleRequest(new Request(url), env, ctx);
       await Promise.resolve();
       assert.equal(miss.status, 200, `${r.keyParts}: MISS is 200`);
@@ -1462,15 +1522,15 @@ describe("analytics edge cache", () => {
         cache.putKeys.includes(expectedKey(r.keyParts, r.path, r.search)),
         `${r.keyParts}: cached under its expected key`,
       );
-      const queriesAfterMiss = queries.length;
+      const callsAfterMiss = calls.length;
 
-      // HIT: served from cache, no additional D1.
+      // HIT: served from cache, no additional Postgres-tier call.
       const hit = await handleRequest(new Request(url), env, ctx);
       assert.equal(hit.status, 200, `${r.keyParts}: HIT is 200`);
       assert.equal(
-        queries.length,
-        queriesAfterMiss,
-        `${r.keyParts}: a HIT issues no further D1 query`,
+        calls.length,
+        callsAfterMiss,
+        `${r.keyParts}: a HIT issues no further Postgres-tier call`,
       );
     }
   });
@@ -1718,11 +1778,13 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
   });
 
   test("health percentiles still bust on health last_run_at (unaffected sibling route)", async () => {
+    // D1 fully eliminated (2026-07-17): a Postgres-tier MISS is always marked a
+    // D1 fallback (never cached), so only a Postgres-tier HIT still seeds a
+    // cache entry keyed on the shared health-cron last_run_at stamp.
     originalCaches = globalThis.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
-    const env = analyticsEnv(queries);
+    const env = postgresTierEnv([]);
 
     await handleRequest(
       new Request(

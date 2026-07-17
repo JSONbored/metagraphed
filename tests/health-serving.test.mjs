@@ -1187,11 +1187,11 @@ describe("worker live health serving", () => {
     assert.equal(body.meta.operational_observed_at, FRESH_RUN);
   });
 
-  test("/api/v1/subnets/0/health/trends queries D1", async () => {
+  // D1 fully eliminated (2026-07-17): surface_checks/surface_uptime_daily are
+  // Postgres-only now, so both trends routes are only ever reached on a
+  // Postgres-tier miss and always serve the schema-stable empty shape.
+  test("/api/v1/subnets/0/health/trends is schema-stable empty (D1 retired)", async () => {
     const env = createLocalArtifactEnv({
-      METAGRAPH_HEALTH_DB: d1With([
-        { surface_id: "rpc-a", total: 100, ok_count: 99, avg_latency_ms: 42 },
-      ]),
       METAGRAPH_CONTROL: kvWith({
         "health:meta": { last_run_at: "2026-06-11T00:00:00.000Z" },
       }),
@@ -1204,7 +1204,8 @@ describe("worker live health serving", () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.netuid, 0);
-    assert.equal(body.data.windows["7d"].uptime_ratio, 0.99);
+    assert.equal(body.data.windows["7d"].uptime_ratio, null);
+    assert.deepEqual(body.data.windows["7d"].surfaces, []);
     assert.equal(body.data.source, "live-cron-prober");
   });
 
@@ -1230,62 +1231,8 @@ describe("worker live health serving", () => {
     assert.equal(body.meta.parameter, "cacheBust");
   });
 
-  test("/api/v1/health/trends reads the bounded daily rollup once", async () => {
-    const queries = [];
+  test("/api/v1/health/trends is schema-stable empty (D1 retired)", async () => {
     const env = createLocalArtifactEnv({
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          queries.push(sql);
-          return {
-            bind(...params) {
-              queries.push(params);
-              return {
-                async all() {
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    });
-    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
-    assert.equal(res.status, 200);
-    assert.equal(
-      queries.filter((entry) => typeof entry === "string").length,
-      1,
-    );
-    assert.match(queries[0], /FROM surface_uptime_daily/);
-    assert.doesNotMatch(queries[0], /FROM surface_checks/);
-    assert.match(queries[0], /LIMIT \?/);
-    assert.equal(queries[1][1], 10000);
-  });
-
-  test("/api/v1/health/trends queries compact all-subnet D1 rows", async () => {
-    // Date the rows relative to "now" so they always fall inside the live 7d
-    // window the handler derives from Date.now() (`day >= now − 7d`). A fixed
-    // calendar date ages out of the window and turns this into a time-bomb that
-    // fails repo-wide the day the clock passes it.
-    const recentDay = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 10);
-    const env = createLocalArtifactEnv({
-      METAGRAPH_HEALTH_DB: d1With([
-        {
-          netuid: 8,
-          date: recentDay,
-          total: 10,
-          ok_count: 8,
-          avg_latency_ms: 30,
-        },
-        {
-          netuid: 7,
-          date: recentDay,
-          total: 5,
-          ok_count: 5,
-          avg_latency_ms: 20,
-        },
-      ]),
       METAGRAPH_CONTROL: kvWith({
         "health:meta": { last_run_at: "2026-06-11T00:00:00.000Z" },
       }),
@@ -1295,15 +1242,10 @@ describe("worker live health serving", () => {
     const body = await res.json();
     assert.equal(body.meta.artifact_path, "/metagraph/health/trends.json");
     assert.equal(body.data.observed_at, "2026-06-11T00:00:00.000Z");
-    assert.equal(body.data.windows["7d"].days, 7);
-    assert.deepEqual(
-      body.data.windows["7d"].subnets.map((entry) => entry.netuid),
-      [7, 8],
-    );
-    assert.equal(
-      body.data.windows["7d"].subnets[1].points[0].uptime_ratio,
-      0.8,
-    );
+    assert.equal(body.data.windows["7d"].subnet_count, 0);
+    assert.deepEqual(body.data.windows["7d"].subnets, []);
+    assert.equal(body.data.windows["30d"].subnet_count, 0);
+    assert.deepEqual(body.data.windows["30d"].subnets, []);
   });
 
   test("/api/v1/rpc/pools overlays live KV health so a dead upstream is marked ineligible", async () => {
@@ -1389,7 +1331,7 @@ describe("worker live health serving", () => {
   });
 });
 
-describe("resolveLiveHealth (KV → D1 → null)", () => {
+describe("resolveLiveHealth (KV → Postgres → null)", () => {
   const liveKv = {
     last_run_at: FRESH_RUN,
     surfaces: [
@@ -1419,88 +1361,153 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     const live = await resolveLiveHealth({
       readHealthKv: async (_e, key) =>
         key === "health:current" ? stale : null,
-      env: {}, // no db → stale KV rejected → null (caller serves `unknown`)
+      env: {}, // no postgres tier → stale KV rejected → null (caller serves `unknown`)
     });
     assert.equal(live, null);
   });
 
-  test("falls back to fresh D1 surface_status rows when KV is cold", async () => {
-    const observedCutoffs = [];
-    const now = 1_700_000_600_000;
-    const db = {
-      prepare: (sql) => {
-        assert.match(sql, /WHERE last_checked >= \?/);
-        assert.match(sql, /surface_key/);
-        return {
-          bind: (cutoff) => {
-            observedCutoffs.push(cutoff);
-            return {
-              all: async () => ({
-                results: [
+  // D1 fully eliminated (2026-07-16, item 5 of the D1->Postgres cleanup): the
+  // KV-cold fallback now reads Postgres ONLY via
+  // tryPostgresTier(METAGRAPH_HEALTH_SOURCE) against
+  // /api/v1/internal/health-status-live -- no D1 fallback remains (surface_
+  // status's own D1 write is retired too, see runHealthProber's own header
+  // comment in src/health-prober.mjs).
+  describe("Postgres tier (item 5)", () => {
+    test("serves Postgres surface_status rows when the flag is on", async () => {
+      let requestedUrl;
+      const env = {
+        METAGRAPH_HEALTH_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            requestedUrl = request.url;
+            return new Response(
+              JSON.stringify({
+                rows: [
                   {
                     surface_id: "7:subnet-api:x",
-                    surface_key: "srf-d1fallback0000",
+                    surface_key: "srf-pgfallback0000",
                     netuid: 7,
                     kind: "subnet-api",
                     provider: "x",
                     url: "https://x",
-                    status: "failed",
-                    classification: "down",
-                    latency_ms: null,
-                    status_code: 503,
+                    status: "ok",
+                    classification: "up",
+                    latency_ms: 12,
+                    status_code: 200,
                     last_checked: 1_700_000_000_000,
-                    last_ok: 1_699_000_000_000,
+                    last_ok: 1_700_000_000_000,
                   },
                 ],
               }),
-            };
+              { status: 200 },
+            );
           },
-        };
-      },
-    };
-    const live = await resolveLiveHealth({
-      readHealthKv: async () => null,
-      env: {},
-      db,
-      now: () => now,
+        },
+      };
+      const live = await resolveLiveHealth({
+        readHealthKv: async () => null,
+        env,
+        now: () => 1_700_000_600_000,
+      });
+      assert.ok(
+        requestedUrl.includes("/api/v1/internal/health-status-live"),
+        requestedUrl,
+      );
+      assert.equal(live.surfaces[0].surface_key, "srf-pgfallback0000");
+      assert.equal(live.surfaces[0].status, "ok");
     });
-    assert.equal(live.health_source, "live-d1-fallback");
-    assert.equal(live.surfaces[0].status, "failed");
-    assert.equal(live.surfaces[0].surface_key, "srf-d1fallback0000");
-    assert.equal(live.subnets[0].netuid, 7);
-    assert.equal(live.subnets[0].status, "failed");
-    // cutoff = now (1_700_000_600_000) − D1_HEALTH_FALLBACK_MAX_AGE_MS (25 min).
-    assert.deepEqual(observedCutoffs, [1_699_999_100_000]);
-    // ms → ISO conversion for D1 timestamps.
-    assert.match(live.surfaces[0].last_checked, /^20\d\d-/);
+
+    test("returns null when the Postgres tier returns no rows", async () => {
+      const env = {
+        METAGRAPH_HEALTH_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () =>
+            new Response(JSON.stringify({ rows: [] }), { status: 200 }),
+        },
+      };
+      const live = await resolveLiveHealth({
+        readHealthKv: async () => null,
+        env,
+        now: () => 1_700_000_600_000,
+      });
+      assert.equal(live, null);
+    });
+
+    test("returns null when the Postgres fetch fails", async () => {
+      const env = {
+        METAGRAPH_HEALTH_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("network down");
+          },
+        },
+      };
+      const live = await resolveLiveHealth({
+        readHealthKv: async () => null,
+        env,
+        now: () => 1_700_000_600_000,
+      });
+      assert.equal(live, null);
+    });
+
+    test("never reaches Postgres when the flag is off, and returns null", async () => {
+      let fetched = false;
+      const env = {
+        DATA_API: {
+          fetch: async () => {
+            fetched = true;
+            return new Response(JSON.stringify({ rows: [] }), {
+              status: 200,
+            });
+          },
+        },
+      };
+      const live = await resolveLiveHealth({
+        readHealthKv: async () => null,
+        env,
+        now: () => 1_700_000_600_000,
+      });
+      assert.equal(fetched, false);
+      assert.equal(live, null);
+    });
   });
 
-  test("D1 fallback survives an out-of-range last_checked/last_ok (no RangeError)", async () => {
+  test("Postgres tier survives an out-of-range last_checked/last_ok (no RangeError)", async () => {
     // A finite but out-of-range epoch-ms (beyond the ±8.64e15 JS Date limit)
     // would make new Date().toISOString() throw a RangeError and 500 the live
     // health response. One corrupt cell must degrade to null, not crash the row.
-    const db = d1With([
-      {
-        surface_id: "7:subnet-api:x",
-        surface_key: "srf-oob00000000000",
-        netuid: 7,
-        kind: "subnet-api",
-        provider: "x",
-        url: "https://x",
-        status: "ok",
-        classification: "up",
-        latency_ms: 10,
-        status_code: 200,
-        last_checked: 9e15, // out of the JS Date range
-        last_ok: 1_699_000_000_000,
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          new Response(
+            JSON.stringify({
+              rows: [
+                {
+                  surface_id: "7:subnet-api:x",
+                  surface_key: "srf-oob00000000000",
+                  netuid: 7,
+                  kind: "subnet-api",
+                  provider: "x",
+                  url: "https://x",
+                  status: "ok",
+                  classification: "up",
+                  latency_ms: 10,
+                  status_code: 200,
+                  last_checked: 9e15, // out of the JS Date range
+                  last_ok: 1_699_000_000_000,
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
       },
-    ]);
+    };
     let live;
     await assert.doesNotReject(async () => {
       live = await resolveLiveHealth({
         readHealthKv: async () => null,
-        env: {},
-        db,
+        env,
         now: () => 1_700_000_600_000,
       });
     });
@@ -1509,37 +1516,38 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.match(live.surfaces[0].last_ok, /^20\d\d-/);
   });
 
-  test("D1 fallback folds unrecognized surface status into unknown in global status_counts", async () => {
-    const now = 1_700_000_600_000;
-    const db = {
-      prepare: () => ({
-        bind: () => ({
-          all: async () => ({
-            results: [
-              {
-                surface_id: "7:subnet-api:x",
-                surface_key: "srf-d1fallback0000",
-                netuid: 7,
-                kind: "subnet-api",
-                provider: "x",
-                url: "https://x",
-                status: "throttled",
-                classification: "rate-limited",
-                latency_ms: null,
-                status_code: 429,
-                last_checked: 1_700_000_000_000,
-                last_ok: null,
-              },
-            ],
-          }),
-        }),
-      }),
+  test("folds unrecognized surface status into unknown in global status_counts", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          new Response(
+            JSON.stringify({
+              rows: [
+                {
+                  surface_id: "7:subnet-api:x",
+                  surface_key: "srf-pgfallback0000",
+                  netuid: 7,
+                  kind: "subnet-api",
+                  provider: "x",
+                  url: "https://x",
+                  status: "throttled",
+                  classification: "rate-limited",
+                  latency_ms: null,
+                  status_code: 429,
+                  last_checked: 1_700_000_000_000,
+                  last_ok: null,
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+      },
     };
     const live = await resolveLiveHealth({
       readHealthKv: async () => null,
-      env: {},
-      db,
-      now: () => now,
+      env,
+      now: () => 1_700_000_600_000,
     });
     assert.equal(live.summary.status_counts.unknown, 1);
     assert.equal(live.summary.status_counts.throttled, undefined);
@@ -1548,51 +1556,15 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.equal(live.subnets[0].status, "unknown");
   });
 
-  test("does not return stale D1-only surface_status rows", async () => {
-    const db = {
-      prepare: () => ({
-        bind: (cutoff) => ({
-          all: async () => ({
-            results: [
-              {
-                surface_id: "7:subnet-api:current",
-                netuid: 7,
-                kind: "subnet-api",
-                provider: "current",
-                url: "https://current.example/api",
-                status: "ok",
-                classification: "live",
-                latency_ms: 10,
-                status_code: 200,
-                last_checked: cutoff,
-                last_ok: cutoff,
-              },
-            ],
-          }),
-        }),
-      }),
-    };
-    const live = await resolveLiveHealth({
-      readHealthKv: async () => null,
-      env: {},
-      db,
-      now: () => 1_700_000_600_000,
-    });
-    assert.deepEqual(
-      live.surfaces.map((surface) => surface.surface_id),
-      ["7:subnet-api:current"],
-    );
-  });
-
-  test("returns null when neither KV nor D1 has data", async () => {
+  test("returns null when neither KV nor Postgres has data", async () => {
     assert.equal(
       await resolveLiveHealth({ readHealthKv: async () => null, env: {} }),
       null,
     );
   });
 
-  test("KV throwing or returning a non-snapshot falls through to D1/null", async () => {
-    // KV read throws → D1 (cold) → null.
+  test("KV throwing or returning a non-snapshot falls through to Postgres/null", async () => {
+    // KV read throws → Postgres (no flag set here) → null.
     assert.equal(
       await resolveLiveHealth({
         readHealthKv: async () => {
@@ -1608,20 +1580,6 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
         readHealthKv: async () => ({ not: "a snapshot" }),
         env: {},
       }),
-      null,
-    );
-  });
-
-  test("D1 query throwing degrades to null (never a baked value)", async () => {
-    const db = {
-      prepare: () => ({
-        all: async () => {
-          throw new Error("d1 down");
-        },
-      }),
-    };
-    assert.equal(
-      await resolveLiveHealth({ readHealthKv: async () => null, env: {}, db }),
       null,
     );
   });
@@ -2622,20 +2580,11 @@ describe("formatUptime (daily uptime history)", () => {
 });
 
 describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
-  test("serves the live daily uptime rollup from D1", async () => {
+  // D1 fully eliminated (2026-07-17): surface_uptime_daily is Postgres-only
+  // now, so this route always serves the schema-stable empty series.
+  test("serves a schema-stable empty daily uptime rollup (D1 retired)", async () => {
     const UPTIME_RUN = "2026-06-22T01:00:00.000Z";
     const env = createLocalArtifactEnv({
-      METAGRAPH_HEALTH_DB: d1With([
-        {
-          surface_id: "7:subnet-api:x",
-          day: "2026-06-13",
-          samples: 700,
-          ok_count: 700,
-          uptime_ratio: 1,
-          avg_latency_ms: 40,
-          status: "ok",
-        },
-      ]),
       METAGRAPH_CONTROL: kvWith({ "health:meta": { last_run_at: UPTIME_RUN } }),
     });
     const res = await handleRequest(
@@ -2648,8 +2597,7 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "1y");
     assert.equal(body.data.observed_at, UPTIME_RUN);
-    assert.equal(body.data.surfaces[0].surface_id, "7:subnet-api:x");
-    assert.equal(body.data.surfaces[0].uptime_ratio, 1);
+    assert.deepEqual(body.data.surfaces, []);
     assert.equal(body.meta.source, "live-cron-prober");
     assert.equal(body.meta.generated_at, UPTIME_RUN);
   });
@@ -2902,239 +2850,20 @@ describe("computeReliability (score from uptime history)", () => {
   });
 });
 
-describe("loadSubnetReliability (D1-backed)", () => {
-  function uptimeDb(rows) {
-    return {
-      prepare() {
-        return {
-          bind() {
-            return this;
-          },
-          async all() {
-            return { results: rows };
-          },
-        };
-      },
-    };
-  }
-
-  test("returns null when D1 is unbound", async () => {
-    assert.equal(
-      await loadSubnetReliability({ db: undefined, netuid: 7 }),
-      null,
-    );
-  });
-
-  test("scores from surface_uptime_daily rows", async () => {
-    const out = await loadSubnetReliability({
-      db: uptimeDb([
-        {
-          surface_id: "a",
-          day: "2026-06-12",
-          samples: 720,
-          ok_count: 720,
-          avg_latency_ms: 120,
-        },
-        {
-          surface_id: "b",
-          day: "2026-06-12",
-          samples: 720,
-          ok_count: 360,
-          avg_latency_ms: 900,
-        },
-      ]),
-      netuid: 7,
-      now: "2026-06-13T00:00:00.000Z",
-    });
-    assert.equal(out.window, "30d");
-    assert.equal(out.surface_count, 2);
-    assert.equal(out.uptime_ratio, 0.75); // (720+360)/1440
-    assert.equal(out.computed_at, "2026-06-13T00:00:00.000Z");
-  });
-
-  test("counts a renamed surface once across the rename boundary", async () => {
-    // The query GROUP BYs COALESCE(surface_key, surface_id) per day and emits
-    // MAX(surface_id) per group, so a surface renamed mid-window yields rows with
-    // ONE stable surface_key but a different surface_id on each side of the
-    // rename. surface_count must stay 1 (not inflate to 2).
-    const out = await loadSubnetReliability({
-      db: uptimeDb([
-        {
-          surface_id: "7:api:new",
-          surface_key: "srf-stableapi0000",
-          day: "2026-06-13",
-          samples: 720,
-          ok_count: 720,
-          avg_latency_ms: 120,
-        },
-        {
-          surface_id: "7:api:old",
-          surface_key: "srf-stableapi0000",
-          day: "2026-06-12",
-          samples: 720,
-          ok_count: 540,
-          avg_latency_ms: 120,
-        },
-      ]),
-      netuid: 7,
-      now: "2026-06-14T00:00:00.000Z",
-    });
-    assert.equal(out.surface_count, 1);
-    assert.equal(out.uptime_ratio, 0.875); // (720+540)/1440
-  });
-
-  test("returns null (not throw) when the query fails", async () => {
-    const out = await loadSubnetReliability({
-      db: {
-        prepare() {
-          throw new Error("d1 down");
-        },
-      },
-      netuid: 7,
-    });
-    assert.equal(out, null);
-  });
-
-  test("returns null when there is no history yet", async () => {
-    assert.equal(
-      await loadSubnetReliability({ db: uptimeDb([]), netuid: 7 }),
-      null,
-    );
+// D1 fully eliminated (2026-07-17): surface_uptime_daily has no Postgres-tier
+// mirror wired for either read yet, so both loaders always return null now
+// (out of scope for D1 retirement to add new tier plumbing) -- callers already
+// treat a null reliability as the no-data case (matches the prior cold-D1
+// behavior exactly), so the reliability badge/health-score renders "n/a".
+describe("loadSubnetReliability (D1 retired, no Postgres-tier mirror yet)", () => {
+  test("always returns null", async () => {
+    assert.equal(await loadSubnetReliability(), null);
   });
 });
 
-describe("loadReliabilityAggregate (D1-backed, one query for many subnets)", () => {
-  // Fake D1 returning a single aggregate row from .first(); also records the
-  // bound params so we can assert the netuid IN-list was built correctly.
-  function aggregateDb(row, sink = {}) {
-    return {
-      prepare(sql) {
-        sink.sql = sql;
-        return {
-          bind(...params) {
-            sink.params = params;
-            return this;
-          },
-          async first() {
-            return row;
-          },
-        };
-      },
-    };
-  }
-
-  test("returns null when D1 is unbound or no netuids given", async () => {
-    assert.equal(
-      await loadReliabilityAggregate({ db: undefined, netuids: [7] }),
-      null,
-    );
-    assert.equal(
-      await loadReliabilityAggregate({ db: aggregateDb({}), netuids: [] }),
-      null,
-    );
-  });
-
-  test("scores the summed samples/ok_count via scoreFromStats", async () => {
-    const sink = {};
-    const out = await loadReliabilityAggregate({
-      db: aggregateDb(
-        {
-          covered_netuids: 2,
-          samples: 1440,
-          ok_count: 1080,
-          avg_latency_ms: 600,
-        },
-        sink,
-      ),
-      netuids: [7, 12],
-      now: "2026-06-13T00:00:00.000Z",
-    });
-    // (1080/1440)=0.75 uptime; latency 600 → -1 penalty → score 74, grade F.
-    assert.deepEqual(
-      out,
-      scoreFromStats({ samples: 1440, okCount: 1080, avgLatencyMs: 600 }),
-    );
-    assert.equal(out.uptime_ratio, 0.75);
-    // One IN-list query over a deduped, sorted netuid set + the day cutoff.
-    assert.match(sink.sql, /COUNT\(DISTINCT netuid\)/);
-    assert.match(sink.sql, /netuid IN \(\?,\?\)/);
-    assert.deepEqual(sink.params, [7, 12, "2026-05-14"]);
-  });
-
-  test("returns null for a multi-subnet rollup when any netuid lacks in-window rows", async () => {
-    assert.equal(
-      await loadReliabilityAggregate({
-        db: aggregateDb({
-          covered_netuids: 1,
-          samples: 720,
-          ok_count: 700,
-          avg_latency_ms: 400,
-        }),
-        netuids: [7, 12],
-      }),
-      null,
-    );
-  });
-
-  test("weights the latency mean by healthy readings, not total probes", async () => {
-    // Regression for the badge under-scoring failure-heavy days: avg_latency_ms
-    // is a success-only mean, so re-aggregating it must weight by latency_samples
-    // (healthy readings), not samples (total probes incl. failures). Mirrors the
-    // canonical dailyLatencyColumns() helper. The mocked .first() can't run SQL,
-    // so assert the weighting lives in the emitted query.
-    const sink = {};
-    await loadReliabilityAggregate({
-      db: aggregateDb({ samples: 10, ok_count: 8 }, sink),
-      netuids: [7],
-    });
-    assert.match(sink.sql, /COALESCE\(latency_samples, samples\)/);
-    // The bare `avg_latency_ms * samples` total-probe weighting must be gone.
-    assert.doesNotMatch(sink.sql, /avg_latency_ms \* samples\b/);
-  });
-
-  test("dedupes netuids and ignores non-integers", async () => {
-    const sink = {};
-    await loadReliabilityAggregate({
-      db: aggregateDb({ samples: 10, ok_count: 10 }, sink),
-      netuids: [7, 7, 12, "x", null, undefined],
-    });
-    assert.match(sink.sql, /netuid IN \(\?,\?\)/);
-    assert.deepEqual(sink.params.slice(0, 2), [7, 12]);
-  });
-
-  test("no rows → null (no samples, by design)", async () => {
-    assert.equal(
-      await loadReliabilityAggregate({
-        db: aggregateDb({
-          samples: null,
-          ok_count: null,
-          avg_latency_ms: null,
-        }),
-        netuids: [7],
-      }),
-      null,
-    );
-    assert.equal(
-      await loadReliabilityAggregate({
-        db: aggregateDb(null),
-        netuids: [7],
-      }),
-      null,
-    );
-  });
-
-  test("returns null (not throw) when the query fails", async () => {
-    assert.equal(
-      await loadReliabilityAggregate({
-        db: {
-          prepare() {
-            throw new Error("d1 down");
-          },
-        },
-        netuids: [7],
-      }),
-      null,
-    );
+describe("loadReliabilityAggregate (D1 retired, no Postgres-tier mirror yet)", () => {
+  test("always returns null", async () => {
+    assert.equal(await loadReliabilityAggregate(), null);
   });
 });
 

@@ -1,13 +1,13 @@
 // Live network-wide axon-removal activity from the account_events AxonInfoRemoved stream: a
 // per-subnet leaderboard plus a network rollup and intensity distribution. Pure shaping
-// (buildChainAxonRemovals) + a thin D1 loader (loadChainAxonRemovals); the field semantics live in
+// (buildChainAxonRemovals); the D1 loader was retired in #4909 (account_events' D1 table was
+// dropped in #4772, so it always missed -- see #6013). Callers now go
+// tryPostgresTier() ?? buildChainAxonRemovals([]). The field semantics live in
 // schemas/components/05-subnets.schema.json (ChainAxonRemovalsArtifact). The teardown-side companion
 // to the axon-announcement /chain/serving: AxonInfoRemoved is emitted when a neuron's announced axon
 // endpoint is removed on a subnet (which subnets churn their serving infrastructure), read from the
 // same account_events [netuid, hotkey] tuple AxonServed uses — the network-wide companion to the
 // per-subnet /api/v1/subnets/{netuid}/axon-removals.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // The account_events kind emitted when a neuron's announced axon endpoint is removed on a subnet.
 export const AXON_REMOVAL_EVENT_KIND = "AxonInfoRemoved";
@@ -199,40 +199,4 @@ export function buildChainAxonRemovals(
     ),
     subnets: subnets.slice(0, normalizedLimit),
   };
-}
-
-// Network-wide axon-removal activity, computed live: read the account_events AxonInfoRemoved stream
-// over the window (observed_at >= now - windowDays, epoch ms), first as a single network aggregate
-// (true distinct removers + newest observed_at, bounded by idx_account_events_observed) and then
-// grouped by netuid for the per-subnet leaderboard, and shape with buildChainAxonRemovals. The
-// newest-observed probe doubles as the cold-store guard: a null MAX(observed_at) skips the
-// per-subnet read. An AxonInfoRemoved event always carries the removing hotkey, so
-// COUNT(DISTINCT hotkey) is exact. The handler resolves windowLabel/windowDays from analyticsWindow
-// (7d/30d). Cold/absent store -> the schema-stable empty block.
-export async function loadChainAxonRemovals(
-  d1,
-  { windowLabel, windowDays, limit } = {},
-) {
-  const cutoff = Date.now() - windowDays * DAY_MS;
-  const networkRows = await d1(
-    "SELECT COUNT(DISTINCT hotkey) AS distinct_removers, " +
-      "MAX(observed_at) AS newest_observed " +
-      "FROM account_events WHERE event_kind = ? AND observed_at >= ?",
-    [AXON_REMOVAL_EVENT_KIND, cutoff],
-  );
-  const networkDistinct = networkRows?.[0] ?? null;
-  let subnetRows = [];
-  if (networkDistinct?.newest_observed != null) {
-    subnetRows = await d1(
-      "SELECT netuid, COUNT(*) AS removals, COUNT(DISTINCT hotkey) AS distinct_removers " +
-        "FROM account_events WHERE event_kind = ? AND observed_at >= ? GROUP BY netuid " +
-        "ORDER BY removals DESC, netuid ASC",
-      [AXON_REMOVAL_EVENT_KIND, cutoff],
-    );
-  }
-  return buildChainAxonRemovals(subnetRows, {
-    window: windowLabel,
-    limit,
-    networkDistinct,
-  });
 }

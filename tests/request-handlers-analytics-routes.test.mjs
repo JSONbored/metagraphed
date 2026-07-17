@@ -52,25 +52,46 @@ async function errorJson(res, status = 400) {
   return body;
 }
 
-function d1Env(rowsBySql = {}) {
+// D1 fully eliminated (2026-07-17): every tier miss below falls straight
+// through to the schema-stable empty payload, never a live D1 query. These
+// helpers build a Postgres-tier hit (flag + DATA_API mock) so the handlers'
+// serve/CSV/format-negotiation logic can still be exercised with real data.
+function postgresTrajectoryEnv(points) {
   return {
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(..._params) {
-            return {
-              async all() {
-                for (const [pattern, rows] of Object.entries(rowsBySql)) {
-                  if (new RegExp(pattern).test(sql)) {
-                    return { results: rows };
-                  }
-                }
-                return { results: [] };
-              },
-            };
-          },
-        };
-      },
+    METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          netuid: NETUID,
+          points,
+          point_count: points.length,
+          deltas: { "7d": null, "30d": null },
+        }),
+    },
+  };
+}
+
+function postgresEconomicsTrendsEnv(days, window = "30d") {
+  return {
+    METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          window,
+          day_count: days.length,
+          days,
+        }),
+    },
+  };
+}
+
+function postgresUptimeEnv(surfaces, window = "90d") {
+  return {
+    METAGRAPH_HEALTH_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () => Response.json({ netuid: NETUID, window, surfaces }),
     },
   };
 }
@@ -83,7 +104,7 @@ beforeEach(() => {
 });
 
 describe("handleTrajectory", () => {
-  test("returns schema-stable empty trajectory on cold D1", async () => {
+  test("returns schema-stable empty trajectory when the tier is cold", async () => {
     const body = await json(
       await handleTrajectory(req("/"), {}, NETUID, url("/")),
     );
@@ -98,70 +119,43 @@ describe("handleTrajectory", () => {
     assert.equal(body.meta.parameter, "bogus");
   });
 
-  test("formats snapshot rows ascending by date", async () => {
-    const env = d1Env({
-      "FROM subnet_snapshots": [
-        {
-          snapshot_date: "2026-06-02",
-          completeness_score: 40,
-          surface_count: 2,
-          endpoint_count: 1,
-          validator_count: 8,
-          miner_count: 64,
-          total_stake_tao: 100,
-          alpha_price_tao: 0.01,
-          emission_share: 0.02,
-        },
-        {
-          snapshot_date: "2026-06-01",
-          completeness_score: 35,
-          surface_count: 1,
-          endpoint_count: 1,
-          validator_count: 8,
-          miner_count: 60,
-          total_stake_tao: 90,
-          alpha_price_tao: 0.01,
-          emission_share: 0.02,
-        },
-      ],
-    });
-    const body = await json(
-      await handleTrajectory(req("/"), env, NETUID, url("/")),
-    );
-    assert.deepEqual(
-      body.data.points.map((p) => p.date),
-      ["2026-06-01", "2026-06-02"],
-    );
-    assert.equal(body.data.points[1].completeness_score, 40);
-  });
-
+  // formatTrajectory's own row-formatting/sorting logic (ascending by date,
+  // numeric coercion, deltas) is covered directly in tests/analytics.test.mjs
+  // and tests/economics-history.test.mjs -- these handler tests only need to
+  // prove the Postgres-tier response is served/CSV-formatted as-is.
   test("returns CSV response when ?format=csv is present", async () => {
-    const env = d1Env({
-      "FROM subnet_snapshots": [
-        {
-          snapshot_date: "2026-06-02",
-          completeness_score: 40,
-          surface_count: 2,
-          endpoint_count: 1,
-          validator_count: 8,
-          miner_count: 64,
-          total_stake_tao: 100,
-          alpha_price_tao: 0.01,
-          emission_share: 0.02,
-        },
-        {
-          snapshot_date: "2026-06-01",
-          completeness_score: 35,
-          surface_count: 1,
-          endpoint_count: 1,
-          validator_count: 8,
-          miner_count: 60,
-          total_stake_tao: 90,
-          alpha_price_tao: 0.01,
-          emission_share: 0.02,
-        },
-      ],
-    });
+    const env = postgresTrajectoryEnv([
+      {
+        date: "2026-06-01",
+        completeness_score: 35,
+        surface_count: 1,
+        endpoint_count: 1,
+        validator_count: 8,
+        miner_count: 60,
+        total_stake_tao: 90,
+        alpha_price_tao: 0.01,
+        emission_share: 0.02,
+        tao_in_pool_tao: null,
+        alpha_in_pool: null,
+        alpha_out_pool: null,
+        subnet_volume_tao: null,
+      },
+      {
+        date: "2026-06-02",
+        completeness_score: 40,
+        surface_count: 2,
+        endpoint_count: 1,
+        validator_count: 8,
+        miner_count: 64,
+        total_stake_tao: 100,
+        alpha_price_tao: 0.01,
+        emission_share: 0.02,
+        tao_in_pool_tao: null,
+        alpha_in_pool: null,
+        alpha_out_pool: null,
+        subnet_volume_tao: null,
+      },
+    ]);
     const res = await handleTrajectory(
       req("/"),
       env,
@@ -186,21 +180,23 @@ describe("handleTrajectory", () => {
   });
 
   test("returns CSV response when Accept: text/csv header is present", async () => {
-    const env = d1Env({
-      "FROM subnet_snapshots": [
-        {
-          snapshot_date: "2026-06-01",
-          completeness_score: 35,
-          surface_count: 1,
-          endpoint_count: 1,
-          validator_count: 8,
-          miner_count: 60,
-          total_stake_tao: 90,
-          alpha_price_tao: 0.01,
-          emission_share: 0.02,
-        },
-      ],
-    });
+    const env = postgresTrajectoryEnv([
+      {
+        date: "2026-06-01",
+        completeness_score: 35,
+        surface_count: 1,
+        endpoint_count: 1,
+        validator_count: 8,
+        miner_count: 60,
+        total_stake_tao: 90,
+        alpha_price_tao: 0.01,
+        emission_share: 0.02,
+        tao_in_pool_tao: null,
+        alpha_in_pool: null,
+        alpha_out_pool: null,
+        subnet_volume_tao: null,
+      },
+    ]);
     const request = new Request("https://api.metagraph.sh/", {
       headers: { accept: "text/csv" },
     });
@@ -212,7 +208,7 @@ describe("handleTrajectory", () => {
     assert.equal(lines[1], "2026-06-01,35,1,1,8,60,90,0.01,0.02,,,,");
   });
 
-  test("returns header-only CSV when D1 is cold", async () => {
+  test("returns header-only CSV when the tier is cold", async () => {
     const res = await handleTrajectory(
       req("/"),
       {},
@@ -249,21 +245,23 @@ describe("handleTrajectory", () => {
   });
 
   test("?format=json keeps the JSON envelope even when Accept asks for CSV", async () => {
-    const env = d1Env({
-      "FROM subnet_snapshots": [
-        {
-          snapshot_date: "2026-06-01",
-          completeness_score: 35,
-          surface_count: 1,
-          endpoint_count: 1,
-          validator_count: 8,
-          miner_count: 60,
-          total_stake_tao: 90,
-          alpha_price_tao: 0.01,
-          emission_share: 0.02,
-        },
-      ],
-    });
+    const env = postgresTrajectoryEnv([
+      {
+        date: "2026-06-01",
+        completeness_score: 35,
+        surface_count: 1,
+        endpoint_count: 1,
+        validator_count: 8,
+        miner_count: 60,
+        total_stake_tao: 90,
+        alpha_price_tao: 0.01,
+        emission_share: 0.02,
+        tao_in_pool_tao: null,
+        alpha_in_pool: null,
+        alpha_out_pool: null,
+        subnet_volume_tao: null,
+      },
+    ]);
     const request = new Request("https://api.metagraph.sh/", {
       headers: { accept: "text/csv" },
     });
@@ -283,25 +281,8 @@ describe("handleTrajectory", () => {
   // deliberately left unset in wrangler.jsonc (no historical backfill --
   // see handleTrajectory's own header comment) -- these tests only prove
   // the wiring, not a live flip.
-  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
-    let d1Called = false;
-    const env = d1Env();
-    env.METAGRAPH_HEALTH_DB.prepare = () => {
-      d1Called = true;
-      throw new Error(
-        "D1 must not be queried when Postgres serves the request",
-      );
-    };
-    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          netuid: NETUID,
-          points: [],
-          point_count: 0,
-        }),
-    };
+  test("flag=postgres serves the DATA_API response", async () => {
+    const env = postgresTrajectoryEnv([]);
     const res = await handleTrajectory(
       req(`/api/v1/subnets/${NETUID}/trajectory`),
       env,
@@ -311,15 +292,15 @@ describe("handleTrajectory", () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.netuid, NETUID);
-    assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
-    const env = d1Env();
-    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => {
-        throw new Error("boom");
+  test("flag=postgres falls back to schema-stable empty when DATA_API fails", async () => {
+    const env = {
+      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
       },
     };
     const res = await handleTrajectory(
@@ -335,7 +316,7 @@ describe("handleTrajectory", () => {
 });
 
 describe("handleEconomicsTrends", () => {
-  test("returns schema-stable empty series on cold D1", async () => {
+  test("returns schema-stable empty series when the tier is cold", async () => {
     const body = await json(
       await handleEconomicsTrends(req("/"), {}, url("/")),
     );
@@ -360,98 +341,26 @@ describe("handleEconomicsTrends", () => {
     );
   });
 
-  test("aggregates per-day across subnets (sums + weighted/median price)", async () => {
-    const env = d1Env({
-      "FROM subnet_snapshots": [
-        // newest day first (the SQL orders DESC); two subnets contribute.
-        {
-          snapshot_date: "2026-06-02",
-          total_stake_tao: 300,
-          alpha_price_tao: 0.02,
-          validator_count: 8,
-          miner_count: 50,
-          emission_share: 0.04,
-        },
-        {
-          snapshot_date: "2026-06-02",
-          total_stake_tao: 100,
-          alpha_price_tao: 0.06,
-          validator_count: 2,
-          miner_count: 10,
-          emission_share: 0.02,
-        },
-        {
-          snapshot_date: "2026-06-01",
-          total_stake_tao: 100,
-          alpha_price_tao: 0.01,
-          validator_count: 4,
-          miner_count: 20,
-          emission_share: 0.03,
-        },
-      ],
-    });
-    const body = await json(
-      await handleEconomicsTrends(req("/"), env, url("/?window=7d")),
-    );
-    assert.equal(body.data.window, "7d");
-    assert.equal(body.data.day_count, 2);
-    // Newest-first order preserved from the query.
-    const [recent, older] = body.data.days;
-    assert.equal(recent.snapshot_date, "2026-06-02");
-    assert.equal(recent.subnet_count, 2);
-    assert.equal(recent.total_stake_tao, "400.000000000");
-    assert.equal(recent.validator_count, 10);
-    assert.equal(recent.miner_count, 60);
-    // Stake-weighted mean price: (0.02·300 + 0.06·100) / 400 = 0.03.
-    assert.equal(recent.alpha_price_tao_weighted, 0.03);
-    // Unweighted median of [0.02, 0.06] = 0.04.
-    assert.equal(recent.alpha_price_tao_median, 0.04);
-    // Mean emission share: (0.04 + 0.02) / 2 = 0.03.
-    assert.equal(recent.mean_emission_share, 0.03);
-    assert.equal(older.snapshot_date, "2026-06-01");
-    assert.equal(older.subnet_count, 1);
-    assert.equal(older.total_stake_tao, "100.000000000");
-  });
-
-  test("nulls a metric for a day when no subnet reported it", async () => {
-    const env = d1Env({
-      "FROM subnet_snapshots": [
-        {
-          snapshot_date: "2026-06-03",
-          total_stake_tao: null,
-          alpha_price_tao: null,
-          validator_count: null,
-          miner_count: null,
-          emission_share: null,
-        },
-      ],
-    });
-    const body = await json(
-      await handleEconomicsTrends(req("/"), env, url("/")),
-    );
-    const [day] = body.data.days;
-    assert.equal(day.subnet_count, 1);
-    assert.equal(day.total_stake_tao, null);
-    assert.equal(day.alpha_price_tao_weighted, null);
-    assert.equal(day.alpha_price_tao_median, null);
-    assert.equal(day.validator_count, null);
-    assert.equal(day.miner_count, null);
-    assert.equal(day.mean_emission_share, null);
-  });
-
+  // buildEconomicsTrends' own per-day aggregation logic (sums, weighted/median
+  // price, null-safety for a day with no reporting subnet) is covered directly
+  // in tests/neuron-history.test.mjs -- these handler tests only need to prove
+  // the Postgres-tier response is served/CSV-formatted as-is.
   test("returns CSV response when ?format=csv is requested", async () => {
-    const env = d1Env({
-      "FROM subnet_snapshots": [
+    const env = postgresEconomicsTrendsEnv(
+      [
         {
           snapshot_date: "2026-06-02",
-          total_stake_tao: 300,
-          alpha_price_tao: 0.02,
+          subnet_count: 1,
+          total_stake_tao: "300.000000000",
+          alpha_price_tao_weighted: 0.02,
+          alpha_price_tao_median: 0.02,
           validator_count: 8,
           miner_count: 50,
-          emission_share: 0.04,
+          mean_emission_share: 0.04,
         },
       ],
-    });
+      "30d",
+    );
     const res = await handleEconomicsTrends(req("/"), env, url("/?format=csv"));
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
@@ -470,18 +379,18 @@ describe("handleEconomicsTrends", () => {
   });
 
   test("returns CSV response when Accept: text/csv header is present", async () => {
-    const env = d1Env({
-      "FROM subnet_snapshots": [
-        {
-          snapshot_date: "2026-06-02",
-          total_stake_tao: 300,
-          alpha_price_tao: 0.02,
-          validator_count: 8,
-          miner_count: 50,
-          emission_share: 0.04,
-        },
-      ],
-    });
+    const env = postgresEconomicsTrendsEnv([
+      {
+        snapshot_date: "2026-06-02",
+        subnet_count: 1,
+        total_stake_tao: "300.000000000",
+        alpha_price_tao_weighted: 0.02,
+        alpha_price_tao_median: 0.02,
+        validator_count: 8,
+        miner_count: 50,
+        mean_emission_share: 0.04,
+      },
+    ]);
     const request = new Request("https://api.metagraph.sh/", {
       headers: { accept: "text/csv" },
     });
@@ -520,18 +429,18 @@ describe("handleEconomicsTrends", () => {
   });
 
   test("?format=json keeps the JSON envelope even when Accept asks for CSV", async () => {
-    const env = d1Env({
-      "FROM subnet_snapshots": [
-        {
-          snapshot_date: "2026-06-02",
-          total_stake_tao: 300,
-          alpha_price_tao: 0.02,
-          validator_count: 8,
-          miner_count: 50,
-          emission_share: 0.04,
-        },
-      ],
-    });
+    const env = postgresEconomicsTrendsEnv([
+      {
+        snapshot_date: "2026-06-02",
+        subnet_count: 1,
+        total_stake_tao: "300.000000000",
+        alpha_price_tao_weighted: 0.02,
+        alpha_price_tao_median: 0.02,
+        validator_count: 8,
+        miner_count: 50,
+        mean_emission_share: 0.04,
+      },
+    ]);
     const request = new Request("https://api.metagraph.sh/", {
       headers: { accept: "text/csv" },
     });
@@ -544,20 +453,8 @@ describe("handleEconomicsTrends", () => {
 
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
   // and same deliberately-unflipped rationale as handleTrajectory above.
-  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
-    let d1Called = false;
-    const env = d1Env();
-    env.METAGRAPH_HEALTH_DB.prepare = () => {
-      d1Called = true;
-      throw new Error(
-        "D1 must not be queried when Postgres serves the request",
-      );
-    };
-    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, day_count: 0, days: [] }),
-    };
+  test("flag=postgres serves the DATA_API response", async () => {
+    const env = postgresEconomicsTrendsEnv([]);
     const res = await handleEconomicsTrends(
       req("/api/v1/economics/trends"),
       env,
@@ -566,15 +463,15 @@ describe("handleEconomicsTrends", () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.day_count, 0);
-    assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
-    const env = d1Env();
-    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => {
-        throw new Error("boom");
+  test("flag=postgres falls back to schema-stable empty when DATA_API fails", async () => {
+    const env = {
+      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
       },
     };
     const res = await handleEconomicsTrends(
@@ -589,7 +486,7 @@ describe("handleEconomicsTrends", () => {
 });
 
 describe("handleUptime", () => {
-  test("defaults window to 90d and returns empty surfaces on cold D1", async () => {
+  test("defaults window to 90d and returns empty surfaces when the tier is cold", async () => {
     const body = await json(
       await handleUptime(
         req("/"),
@@ -624,52 +521,17 @@ describe("handleUptime", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("aggregates surface_uptime_daily rows for the requested window", async () => {
-    const env = d1Env({
-      "FROM surface_uptime_daily": [
-        {
-          surface_id: "sn-7-acme-subnet-api",
-          surface_key: "subnet-api",
-          day: "2026-06-01",
-          samples: 10,
-          ok_count: 9,
-          uptime_ratio: 0.9,
-          avg_latency_ms: 120,
-          latency_samples: 10,
-          p50: 100,
-          p95: 200,
-          p99: 250,
-          status: "degraded",
-        },
-      ],
-    });
-    const body = await json(
-      await handleUptime(req("/"), env, NETUID, url("/?window=1y")),
-    );
-    assert.equal(body.data.window, "1y");
-    assert.equal(body.data.surfaces.length, 1);
-    assert.equal(body.data.surfaces[0].surface_id, "sn-7-acme-subnet-api");
-    assert.equal(body.data.surfaces[0].days[0].uptime_ratio, 0.9);
-  });
-
+  // formatUptime's own row-grouping/rollup logic (per-surface aggregation,
+  // uptime_ratio math) is covered directly in tests/health-serving.test.mjs --
+  // these handler tests only need to prove the Postgres-tier response is
+  // served/CSV-formatted as-is.
+  //
   // #4832 gap-closure: METAGRAPH_HEALTH_SOURCE is a NEW flag, deliberately
   // left unset in wrangler.jsonc (see handleBulkHealthTrends' own header
   // comment in analytics.mjs) -- these tests only prove the wiring, not a
   // live flip.
-  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
-    let d1Called = false;
-    const env = d1Env();
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ netuid: NETUID, window: "90d", surfaces: [] }),
-    };
-    env.METAGRAPH_HEALTH_DB.prepare = () => {
-      d1Called = true;
-      throw new Error(
-        "D1 must not be queried when Postgres serves the request",
-      );
-    };
+  test("flag=postgres serves the DATA_API response", async () => {
+    const env = postgresUptimeEnv([]);
     const body = await json(
       await handleUptime(
         req(`/api/v1/subnets/${NETUID}/uptime`),
@@ -680,15 +542,15 @@ describe("handleUptime", () => {
     );
     assert.equal(body.data.netuid, NETUID);
     assert.deepEqual(body.data.surfaces, []);
-    assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
-    const env = d1Env();
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => {
-        throw new Error("boom");
+  test("flag=postgres falls back to schema-stable empty when DATA_API fails", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
       },
     };
     const body = await json(
@@ -704,24 +566,29 @@ describe("handleUptime", () => {
   });
 
   test("returns CSV response when ?format=csv is present, flattening surfaces into one row per (surface, day)", async () => {
-    const env = d1Env({
-      "FROM surface_uptime_daily": [
+    const env = postgresUptimeEnv(
+      [
         {
           surface_id: "sn-7-acme-subnet-api",
-          surface_key: "subnet-api",
-          day: "2026-06-01",
+          day_count: 1,
           samples: 10,
-          ok_count: 9,
           uptime_ratio: 0.9,
-          avg_latency_ms: 120,
-          latency_samples: 10,
-          p50: 100,
-          p95: 200,
-          p99: 250,
-          status: "degraded",
+          reliability: null,
+          days: [
+            {
+              day: "2026-06-01",
+              samples: 10,
+              uptime_ratio: 0.9,
+              avg_latency_ms: 120,
+              latency_sample_count: 10,
+              latency_ms: { p50: 100, p95: 200, p99: 250 },
+              status: "degraded",
+            },
+          ],
         },
       ],
-    });
+      "1y",
+    );
     const res = await handleUptime(
       req("/"),
       env,
@@ -747,32 +614,15 @@ describe("handleUptime", () => {
   });
 
   test("returns CSV response when Accept: text/csv header is present", async () => {
-    const env = d1Env({
-      "FROM surface_uptime_daily": [
-        {
-          surface_id: "sn-7-acme-subnet-api",
-          surface_key: "subnet-api",
-          day: "2026-06-01",
-          samples: 10,
-          ok_count: 9,
-          avg_latency_ms: 120,
-          latency_samples: 10,
-          p50: 100,
-          p95: 200,
-          p99: 250,
-          status: "ok",
-        },
-      ],
-    });
     const request = new Request("https://api.metagraph.sh/", {
       headers: { accept: "text/csv" },
     });
-    const res = await handleUptime(request, env, NETUID, url("/"));
+    const res = await handleUptime(request, {}, NETUID, url("/"));
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
   });
 
-  test("returns a header-only CSV on cold D1, with no surfaces to flatten", async () => {
+  test("returns a header-only CSV when the tier is cold, with no surfaces to flatten", async () => {
     const res = await handleUptime(req("/"), {}, NETUID, url("/?format=csv"));
     assert.equal(res.status, 200);
     const lines = (await res.text()).split("\r\n");
@@ -792,7 +642,7 @@ describe("handleUptime", () => {
 });
 
 describe("handleLeaderboards", () => {
-  test("returns all boards with empty D1 projections on cold store", async () => {
+  test("returns all boards, composed from the registry + economics tiers", async () => {
     const env = createLocalArtifactEnv();
     const body = await json(
       await handleLeaderboards(
@@ -804,6 +654,20 @@ describe("handleLeaderboards", () => {
     assert.ok(typeof body.data.boards === "object");
     assert.ok(Object.keys(body.data.boards).length > 0);
     assert.equal(body.meta.source, "registry+live-cron-prober");
+  });
+
+  // D1 fully eliminated (2026-07-17): composeLeaderboardsData never had a
+  // Postgres-tier mirror for these boards either, so they're permanently
+  // empty now (see that function's header comment) -- only the profiles-
+  // derived most-complete board (registry artifact, not D1) has real data.
+  test("health/rpc/growth/reliability boards are always empty; most-complete is not", async () => {
+    const env = createLocalArtifactEnv();
+    const body = await json(await handleLeaderboards(req("/"), env, url("/")));
+    assert.deepEqual(body.data.boards["healthiest"], []);
+    assert.deepEqual(body.data.boards["fastest-rpc"], []);
+    assert.deepEqual(body.data.boards["fastest-growing"], []);
+    assert.deepEqual(body.data.boards["most-reliable"], []);
+    assert.ok(body.data.boards["most-complete"].length > 0);
   });
 
   test("rejects unknown board names", async () => {
@@ -846,101 +710,6 @@ describe("handleLeaderboards", () => {
     );
     assert.equal(body.data.board, "most-complete");
     assert.ok(Array.isArray(body.data.boards["most-complete"]));
-  });
-
-  test("uses surface uptime rollups for most-reliable board", async () => {
-    const env = d1Env({
-      "FROM surface_uptime_daily": [
-        {
-          netuid: 7,
-          samples: 10,
-          ok_count: 9,
-          avg_latency_ms: 100,
-          latency_samples: 10,
-        },
-      ],
-    });
-    const body = await json(
-      await handleLeaderboards(
-        req("/"),
-        env,
-        url("/?board=most-reliable&limit=5"),
-      ),
-    );
-    assert.equal(body.data.board, "most-reliable");
-    assert.equal(body.data.boards["most-reliable"].length, 1);
-    assert.equal(body.data.boards["most-reliable"][0].netuid, 7);
-  });
-
-  test("healthiest SQL averages only ok surface_status latencies", async () => {
-    const surfaceStatusSql = [];
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind() {
-              return {
-                async all() {
-                  if (/FROM surface_status/.test(sql)) {
-                    surfaceStatusSql.push(sql);
-                    return {
-                      results: [
-                        {
-                          netuid: 1,
-                          total: 2,
-                          ok_count: 1,
-                          avg_latency_ms: 100,
-                        },
-                      ],
-                    };
-                  }
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-    await json(
-      await handleLeaderboards(
-        req("/"),
-        env,
-        url("/?board=healthiest&limit=5"),
-      ),
-    );
-    const healthSql = surfaceStatusSql.find((sql) =>
-      /SUM\(CASE WHEN status = 'ok'/.test(sql),
-    );
-    assert.ok(
-      healthSql,
-      "expected leaderboards healthRows surface_status query",
-    );
-    assert.match(healthSql, /status = 'ok'/);
-    assert.match(healthSql, /AVG\(CASE WHEN/);
-    assert.doesNotMatch(healthSql, /AVG\(latency_ms\)/);
-  });
-
-  test("fastest-growing latches growth from the first non-null completeness score", async () => {
-    const env = d1Env({
-      "WHERE snapshot_date >= \\?": [
-        { netuid: 9, snapshot_date: "2026-06-03", completeness_score: null },
-        { netuid: 9, snapshot_date: "2026-06-06", completeness_score: 80 },
-        { netuid: 9, snapshot_date: "2026-06-10", completeness_score: 85 },
-      ],
-    });
-    const body = await json(
-      await handleLeaderboards(
-        req("/"),
-        env,
-        url("/?board=fastest-growing&limit=5"),
-      ),
-    );
-    const entry = body.data.boards["fastest-growing"].find(
-      (e) => e.netuid === 9,
-    );
-    assert.ok(entry, "leading-null subnet must rank once real scores exist");
-    assert.equal(entry.completeness_delta, 5);
   });
 });
 
@@ -994,10 +763,10 @@ describe("handleCompare", () => {
   // its health dimension synthesizes its own /api/v1/internal/compare-health
   // request rather than reusing tryPostgresTier's usual "forward the caller's
   // request unchanged" contract -- these tests prove that wiring in
-  // isolation (D1 called or not), same reused METAGRAPH_HEALTH_SOURCE flag
-  // as handleUptime above.
-  test("health dimension: flag=postgres serves the DATA_API response, D1 never queried", async () => {
-    let d1Called = false;
+  // isolation, same reused METAGRAPH_HEALTH_SOURCE flag as handleUptime
+  // above. D1 fully eliminated (2026-07-17): a tier miss now always falls
+  // through to an empty health row set, never a live D1 query.
+  test("health dimension: flag=postgres serves the DATA_API response", async () => {
     const env = createLocalArtifactEnv();
     env.METAGRAPH_HEALTH_SOURCE = "postgres";
     env.DATA_API = {
@@ -1008,14 +777,6 @@ describe("handleCompare", () => {
           ],
         }),
     };
-    env.METAGRAPH_HEALTH_DB = {
-      prepare() {
-        d1Called = true;
-        throw new Error(
-          "D1 must not be queried when Postgres serves the request",
-        );
-      },
-    };
     const body = await json(
       await handleCompare(
         req("/api/v1/compare"),
@@ -1024,11 +785,10 @@ describe("handleCompare", () => {
       ),
     );
     assert.equal(body.data.subnets[0].netuid, 7);
-    assert.equal(d1Called, false);
+    assert.equal(body.data.subnets[0].health.ok_count, 2);
   });
 
-  test("health dimension: flag=postgres falls back to D1 when DATA_API fails", async () => {
-    let d1Called = false;
+  test("health dimension: falls back to an empty health row when DATA_API fails", async () => {
     const env = createLocalArtifactEnv();
     env.METAGRAPH_HEALTH_SOURCE = "postgres";
     env.DATA_API = {
@@ -1036,17 +796,6 @@ describe("handleCompare", () => {
         throw new Error("boom");
       },
     };
-    const baseEnv = d1Env({
-      "FROM surface_status": [
-        { netuid: 7, surface_count: 5, ok_count: 4, avg_latency_ms: 90 },
-      ],
-    });
-    env.METAGRAPH_HEALTH_DB = {
-      prepare(sqlText) {
-        d1Called = true;
-        return baseEnv.METAGRAPH_HEALTH_DB.prepare(sqlText);
-      },
-    };
     const body = await json(
       await handleCompare(
         req("/api/v1/compare"),
@@ -1055,7 +804,8 @@ describe("handleCompare", () => {
       ),
     );
     assert.equal(body.data.subnets[0].netuid, 7);
-    assert.equal(d1Called, true);
+    assert.equal(body.data.subnets[0].found, true);
+    assert.equal(body.data.subnets[0].health, null);
   });
 });
 

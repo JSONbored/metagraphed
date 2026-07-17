@@ -1,52 +1,21 @@
-// Shared all-subnet bulk health trends D1 loader for REST + MCP parity.
-// Pure orchestration over surface_uptime_daily rows + formatBulkTrends; REST
-// handlers keep edge-cache + envelope wiring.
+// Shared all-subnet bulk health trends loader for REST + MCP parity.
+//
+// D1 fully eliminated (2026-07-17): surface_uptime_daily is Postgres-only now
+// (both callers try the Postgres tier first) -- this loader is only reached
+// on a tier miss, so it always returns the schema-stable empty shape.
 
-import {
-  DAY_MS,
-  HEALTH_TREND_WINDOWS,
-  MAX_BULK_TREND_ROWS,
-} from "../workers/config.mjs";
+import { HEALTH_TREND_WINDOWS } from "../workers/config.mjs";
 import { formatBulkTrends } from "./health-serving.mjs";
-import { dailyLatencyColumns } from "./health-sql.mjs";
 
-// Compact all-subnet 7d/30d daily uptime + latency trend matrix (#1164).
-// `d1` is a (sql, params) => rows runner — d1Runner(env) in the Worker,
-// mcpD1Runner(ctx) in the MCP server.
-export async function loadBulkHealthTrends(
-  d1,
-  { observedAt = null, now = Date.now() } = {},
-) {
-  const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
-  const cutoffDay = new Date(now - maxWindowDays * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-  const rows = await d1(
-    `SELECT netuid,
-            day AS date,
-            SUM(samples) AS total,
-            SUM(ok_count) AS ok_count,
-            ${dailyLatencyColumns()}
-     FROM surface_uptime_daily
-     WHERE day >= ?
-     GROUP BY netuid, day
-     ORDER BY netuid, day
-     LIMIT ?`,
-    [cutoffDay, MAX_BULK_TREND_ROWS],
-  );
+export async function loadBulkHealthTrends({ observedAt = null } = {}) {
   const windows = {};
-  for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
-    const windowCutoff = new Date(now - days * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    windows[label] = rows.filter(
-      (row) => String(row.day || row.date) >= windowCutoff,
-    );
+  for (const label of Object.keys(HEALTH_TREND_WINDOWS)) {
+    windows[label] = [];
   }
   const data = formatBulkTrends({
     observedAt,
     windows,
     windowDays: HEALTH_TREND_WINDOWS,
   });
-  return { data, rows };
+  return { data, rows: [] };
 }

@@ -9,18 +9,17 @@
 // payload (never a 404 or a throw), matching the live tiers the analytics module
 // already owns.
 //
-// Dependency wiring (the analytics.mjs pattern): the D1 read path (`d1All` /
-// `d1Runner`) and the query-param guards (`validateQueryParams` /
-// `analyticsQueryError`) live in request-handlers/analytics.mjs, which this module
-// imports directly. analytics.mjs imports nothing from here, so the two are a
-// clean leaf chain with no cycle — no injected deps are needed. Everything else is
-// imported straight from the src/* leaf modules + config. api.mjs imports the
+// Dependency wiring (the analytics.mjs pattern): the query-param guards
+// (`validateQueryParams` / `analyticsQueryError`) live in
+// request-handlers/analytics.mjs, which this module imports directly.
+// analytics.mjs imports nothing from here, so the two are a clean leaf chain
+// with no cycle — no injected deps are needed. Everything else is imported
+// straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
 import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.mjs";
 import {
   BLOCK_PAGINATION,
-  DAY_PATTERN,
   FEED_PAGINATION,
   parseDateRange,
   parseLimitParam,
@@ -38,8 +37,6 @@ import { tryPostgresTier } from "../postgres-tier.mjs";
 import { csvRequested, csvResponse } from "../csv.mjs";
 import {
   analyticsQueryError,
-  d1All,
-  d1Runner,
   markD1FallbackResponse,
   validateQueryParams,
 } from "./analytics.mjs";
@@ -93,8 +90,8 @@ import {
 import { buildAccountPortfolio } from "../../src/account-portfolio.mjs";
 import { buildAccountPositions } from "../../src/account-nominator-positions.mjs";
 import { buildAccountPositionHistory } from "../../src/account-position-history.mjs";
-import { loadAccountIdentity } from "../../src/account-identity.mjs";
-import { loadAccountIdentityHistory } from "../../src/account-identity-history.mjs";
+import { buildAccountIdentity } from "../../src/account-identity.mjs";
+import { buildAccountIdentityHistory } from "../../src/account-identity-history.mjs";
 import {
   isFinneySs58Address,
   loadAccountBalance,
@@ -103,7 +100,6 @@ import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { computeStakeQuote } from "../../src/stake-quote.mjs";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
-import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.mjs";
 import { buildBlocksSummary } from "../../src/blocks-summary.mjs";
 import {
@@ -123,9 +119,9 @@ import {
 import { buildChainPerformance } from "../../src/chain-performance.mjs";
 import { buildChainYield } from "../../src/chain-yield.mjs";
 import {
+  buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-  loadChainIdentityHistory,
 } from "../../src/chain-identity-history.mjs";
 import {
   buildSubnetPerformance,
@@ -262,7 +258,7 @@ import {
   CHAIN_TURNOVER_LIMIT_DEFAULT,
   CHAIN_TURNOVER_LIMIT_MAX,
 } from "../../src/chain-turnover.mjs";
-import { loadSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
+import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
 
 const RESPONSE_FORMATS = ["json", "csv"];
 const NEURON_CSV_COLUMNS = [
@@ -1193,17 +1189,10 @@ export async function handleSubnetIdentityHistory(request, env, netuid, url) {
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
-  async function fromD1() {
-    return loadSubnetIdentityHistory(d1Runner(env), netuid, {
-      limit,
-      offset,
-      cursor,
-    });
-  }
+  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_SUBNET_IDENTITY_SOURCE")) ??
-    (await fromD1());
+    buildSubnetIdentityHistory([], netuid, { limit, offset, nextCursor: null });
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
   // limit/offset/cursor-bounded, so the CSV path carries the identical page the
   // JSON path would. Cold store -> empty entries -> header-only CSV.
@@ -1349,9 +1338,13 @@ export async function handleChainIdentityHistory(request, env, url) {
     maxLimit: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
   });
   if (limitError) return analyticsQueryError(limitError);
+  // D1 retirement: subnet_identity_history's D1 write path is retired
+  // (2026-07-16, syncSubnetIdentityToPostgres is the sole writer now), so a
+  // Postgres miss/outage degrades to a schema-stable empty feed, never a
+  // live D1 read.
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_SUBNET_IDENTITY_SOURCE")) ??
-    (await loadChainIdentityHistory(d1Runner(env), { limit }));
+    buildChainIdentityHistory([], { limit });
   return envelopeResponse(
     request,
     {
@@ -2915,17 +2908,16 @@ export async function handleAccountEvents(request, env, ss58, url) {
 
 // GET /api/v1/accounts/{ss58}/history (#1854): the durable per-day activity
 // series for an account, from the account_events_daily rollup. ?netuid filters
-// to one subnet; ?from / ?to are YYYY-MM-DD bounds (lexicographic on the TEXT
-// `day` column); ?limit (<=1000) / ?offset. Newest day first. Inverted from>to
-// date bounds short-circuit to an empty feed before D1 (never throws). Cold/absent store
-// → schema-stable zero (never 404).
+// to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.
+// Newest day first. D1 fully eliminated (2026-07-17): account_events_daily is
+// Postgres-only now, so a tier miss (incl. inverted from>to bounds, which
+// short-circuit before the tier call) always returns the schema-stable empty
+// shape, never a live D1 query.
 //
 // SCOPE: the rollup writes only hotkey-attributed rows, so an ss58 with no
 // hotkey activity returns zero days even when /events shows activity — a
 // documented limitation of the hotkey-keyed rollup, not a bug (the contract
 // description spells out the contrast with /events in full).
-const ACCOUNT_DAY_COLUMNS =
-  "day, netuid, event_count, event_kinds, first_block, last_block";
 
 export async function handleAccountHistory(request, env, ss58, url) {
   const validationError = validateEntityQuery(url, [
@@ -2941,7 +2933,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
   const range = parseDateRange(url);
   if (range.error) return errorResponse("invalid_param", range.error, 400);
   const { from, to } = range;
-  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
+  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const netuid = url.searchParams.get("netuid");
   if (
     netuid != null &&
@@ -3000,47 +2992,9 @@ export async function handleAccountHistory(request, env, ss58, url) {
   // changed) page order. offset stays as a deprecated fallback; cursor wins. A
   // cursor that does not decode to a valid YYYYMMDD day is ignored (falls back to
   // the first page), preserving the never-throw contract.
-  const cur = decodeCursor(cursor, 2);
-  const cursorDay = cur
-    ? String(cur[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
-    : null;
-  const useCursor = Boolean(cursorDay && DAY_PATTERN.test(cursorDay));
-  const params = [ss58];
-  let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
-  if (netuid != null) {
-    sql += " AND netuid = ?";
-    params.push(Number(netuid));
-  }
-  if (from) {
-    sql += " AND day >= ?";
-    params.push(from);
-  }
-  if (to) {
-    sql += " AND day <= ?";
-    params.push(to);
-  }
-  if (useCursor) {
-    sql += " AND (day, netuid) < (?, ?)";
-    params.push(cursorDay, cur[1]);
-  }
-  sql += " ORDER BY day DESC, netuid DESC LIMIT ?";
-  params.push(limit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(offset);
-  }
-  async function fromD1() {
-    const rows = await d1All(env, sql, params);
-    const last = rows.length === limit ? rows[rows.length - 1] : null;
-    const nextCursor =
-      last && typeof last.day === "string" && DAY_PATTERN.test(last.day)
-        ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
-        : null;
-    return buildAccountHistory(rows, ss58, { limit, offset, nextCursor });
-  }
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
-    (await fromD1());
+    buildAccountHistory([], ss58, { limit, offset, nextCursor: null });
   // CSV export mirrors handleAccountEvents/Extrinsics/Transfers: the rows are
   // already range/netuid-filtered and paginated, so the CSV path carries the
   // identical set the JSON path would (#5741). Cold → empty array → header-only.
@@ -3437,10 +3391,9 @@ export async function handleAccountPositionHistory(
 // D1 retirement: account_identity's D1 write path (loadStagedAccountIdentity,
 // formerly workers/request-handlers/staging.mjs, now deleted) is retired --
 // refresh-account-identity writes Postgres only now (indexer-box cron
-// pipeline). D1's copy is frozen at whatever it last held, not actively
-// wrong, and stays as the fallback below (unlike handleSubnetHyperparams,
-// which dropped its D1 fallback entirely on retirement) since Postgres
-// outages are the realistic failure mode this fallback still guards against.
+// pipeline). D1 fully eliminated (2026-07-16): a Postgres miss/outage now
+// degrades to the schema-stable "no identity" shape, never a live D1 read of
+// D1's frozen copy.
 export async function handleAccountIdentity(request, env, ss58, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
@@ -3449,7 +3402,7 @@ export async function handleAccountIdentity(request, env, ss58, url) {
       env,
       request,
       "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
-    )) ?? (await loadAccountIdentity(d1Runner(env), ss58));
+    )) ?? buildAccountIdentity(null, ss58);
   return envelopeResponse(
     request,
     {
@@ -3477,20 +3430,14 @@ export async function handleAccountIdentityHistory(request, env, ss58, url) {
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
-  async function fromD1() {
-    return loadAccountIdentityHistory(d1Runner(env), ss58, {
-      limit,
-      offset,
-      cursor,
-    });
-  }
+  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const data =
     (await tryPostgresTier(
       env,
       request,
       "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
-    )) ?? (await fromD1());
+    )) ??
+    buildAccountIdentityHistory([], ss58, { limit, offset, nextCursor: null });
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
   // limit/offset/cursor-bounded, so the CSV path carries the identical page the
   // JSON path would. Cold store -> empty entries -> header-only CSV.

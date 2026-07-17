@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainStakeFlow,
-  loadChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
 } from "../src/chain-stake-flow.mjs";
 import { handleRequest } from "../workers/api.mjs";
@@ -279,39 +278,6 @@ describe("buildChainStakeFlow", () => {
 
   test("omitted window defaults to null", () => {
     assert.equal(buildChainStakeFlow([], {}).window, null);
-  });
-});
-
-describe("loadChainStakeFlow", () => {
-  test("queries account_events over the window cutoff and shapes the result", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      return ROWS;
-    };
-    const data = await loadChainStakeFlow(d1, {
-      windowLabel: "7d",
-      windowDays: 7,
-      limit: 20,
-    });
-    assert.match(calls[0].sql, /FROM account_events/);
-    assert.match(calls[0].sql, /event_kind IN \(\?, \?\)/);
-    assert.match(calls[0].sql, /GROUP BY netuid, event_kind/);
-    assert.equal(calls[0].params[0], "StakeAdded");
-    assert.equal(calls[0].params[1], "StakeRemoved");
-    assert.equal(typeof calls[0].params[2], "number"); // epoch-ms cutoff
-    assert.equal(data.window, "7d");
-    assert.equal(data.subnet_count, 3);
-    assert.equal(data.subnets[0].netuid, 1);
-  });
-
-  test("cold store yields the empty card", async () => {
-    const data = await loadChainStakeFlow(async () => [], {
-      windowLabel: "30d",
-      windowDays: 30,
-    });
-    assert.equal(data.subnet_count, 0);
-    assert.deepEqual(data.subnets, []);
   });
 
   test("ignores a malformed out-of-range timestamp instead of throwing", () => {

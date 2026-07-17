@@ -115,23 +115,30 @@ function fakeCache() {
   };
 }
 
-// In-isolate health-db double capturing the events recordRpcUsage binds, so a
-// test can assert the `?? null` fallback arms fired for missing fields.
+// D1 write retired 2026-07-16 (item 7 of the D1->Postgres cleanup): this
+// double is unused now that recordRpcUsage never touches
+// METAGRAPH_HEALTH_DB, kept only so any stray reference in this file fails
+// loudly with "not a function" rather than silently no-op-ing.
 function captureDb() {
-  const events = [];
   return {
-    events,
     prepare() {
-      return {
-        bind(...args) {
-          events.push(args);
-          return {
-            run() {
-              return Promise.resolve({});
-            },
-          };
-        },
-      };
+      throw new Error(
+        "recordRpcUsage must never touch METAGRAPH_HEALTH_DB (D1 write retired)",
+      );
+    },
+  };
+}
+
+// DATA_API double capturing every request recordRpcUsage's Postgres mirror
+// (syncRpcUsageEventToPostgres) posts, so a test can assert on the JSON body
+// it shipped -- the sole write target for rpc_proxy_events now.
+function dataApiCapture() {
+  const calls = [];
+  return {
+    calls,
+    fetch: async (request) => {
+      calls.push(request);
+      return Response.json({ ok: true });
     },
   };
 }
@@ -241,12 +248,16 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
       body: JSON.stringify(body),
     });
 
+  // D1 write retired 2026-07-16 (item 7 of the D1->Postgres cleanup):
+  // syncRpcUsageEventToPostgres (via env.DATA_API) is the sole writer now --
+  // these two drive it the same "dataApiCapture" way the
+  // "syncRpcUsageEventToPostgres wiring" describe block below does.
   test("records a null endpoint_id telemetry event when all upstreams fail", async () => {
     // Drives the served-event recordRpcUsage with a 502 bare response: the
     // attempts header is absent (proxyWithFailover's exhausted-pool path never
     // sets it) so `Number(null) || Math.min(candidates.length, RPC_MAX_ATTEMPTS)`
     // supplies the attempt count, and endpoint_id falls back through `?? null`.
-    const db = captureDb();
+    const dataApi = dataApiCapture();
     const ctx = { waitUntil: () => {} };
     const original = globalThis.fetch;
     globalThis.fetch = scriptedFetch(
@@ -261,17 +272,19 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
       const res = await handleRpcProxyRequest(
         rpcPost({ jsonrpc: "2.0", id: 1, method: "system_health" }),
         rpcEnv(poolWith(ep("a", SAFE_A), ep("b", SAFE_B)), {
-          METAGRAPH_HEALTH_DB: db,
+          DATA_API: dataApi,
+          RPC_USAGE_SYNC_SECRET: "test-secret",
         }),
         url("/rpc/v1/finney"),
         ctx,
       );
       const body = await errorJson(res, 502);
       assert.equal(body.error.code, "rpc_upstream_unavailable");
-      // The served telemetry event was bound: endpoint_id null, attempts = 2.
-      const served = db.events.at(-1);
-      assert.equal(served[2], null); // endpoint_id ?? null
-      assert.equal(served[6], 2); // attempts || Math.min(candidates.length, RPC_MAX_ATTEMPTS)
+      // The served telemetry event was posted: endpoint_id null, attempts = 2.
+      assert.equal(dataApi.calls.length, 1);
+      const served = await dataApi.calls[0].json();
+      assert.equal(served.endpoint_id, null); // endpoint_id ?? null
+      assert.equal(served.attempts, 2); // attempts || Math.min(candidates.length, RPC_MAX_ATTEMPTS)
     } finally {
       globalThis.fetch = original;
     }
@@ -283,7 +296,7 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
     // so the fallback attempt count reported when its attempts header is absent
     // must match that cap, not the full (uncapped) candidate count — otherwise
     // rpc_usage_events.attempts is inflated whenever the eligible pool > 3.
-    const db = captureDb();
+    const dataApi = dataApiCapture();
     const ctx = { waitUntil: () => {} };
     const original = globalThis.fetch;
     const fetchFn = scriptedFetch(
@@ -308,7 +321,7 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
             ep("c", "https://entrypoint-finney.opentensor.ai"),
             ep("d", "https://lite.chain.opentensor.ai"),
           ),
-          { METAGRAPH_HEALTH_DB: db },
+          { DATA_API: dataApi, RPC_USAGE_SYNC_SECRET: "test-secret" },
         ),
         url("/rpc/v1/finney"),
         ctx,
@@ -317,8 +330,9 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
       assert.equal(body.error.code, "rpc_upstream_unavailable");
       // Only 3 upstream calls were actually made (the failover cap), not 4.
       assert.equal(fetchFn.calls.length, 3);
-      const served = db.events.at(-1);
-      assert.equal(served[6], 3); // capped, not the uncapped 4-candidate count
+      assert.equal(dataApi.calls.length, 1);
+      const served = await dataApi.calls[0].json();
+      assert.equal(served.attempts, 3); // capped, not the uncapped 4-candidate count
     } finally {
       globalThis.fetch = original;
     }
@@ -494,17 +508,6 @@ describe("syncRpcUsageEventToPostgres wiring (#4832 gap-closure)", () => {
       },
       body: JSON.stringify(body),
     });
-
-  function dataApiCapture() {
-    const calls = [];
-    return {
-      calls,
-      fetch: async (request) => {
-        calls.push(request);
-        return Response.json({ ok: true });
-      },
-    };
-  }
 
   const failBothUpstreams = () =>
     scriptedFetch(

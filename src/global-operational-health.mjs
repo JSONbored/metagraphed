@@ -1,6 +1,7 @@
 // Global operational health loader for REST + MCP parity on GET /api/v1/health.
-// Live-only: KV health:current → D1 surface_status, with an explicit unknown
-// payload when the live store is cold (never a stale baked fallback).
+// Live-only: KV health:current → Postgres tier (D1 fully eliminated,
+// 2026-07-17), with an explicit unknown payload when the live store is cold
+// (never a stale baked fallback).
 
 import { buildGlobalHealth, resolveLiveHealth } from "./health-serving.mjs";
 
@@ -21,18 +22,14 @@ export function unknownGlobalHealth(contractVersionValue) {
 }
 
 export async function loadGlobalOperationalHealth(
-  { env, readHealthKv, db },
+  { env, readHealthKv },
   { contractVersion } = {},
 ) {
   const contractVersionValue =
     typeof contractVersion === "function"
       ? contractVersion(env)
       : contractVersion;
-  const liveSnapshot = await resolveLiveHealth({
-    readHealthKv,
-    env,
-    db: db ?? env?.METAGRAPH_HEALTH_DB,
-  });
+  const liveSnapshot = await resolveLiveHealth({ readHealthKv, env });
   const liveData = liveSnapshot
     ? buildGlobalHealth(liveSnapshot, {
         contract_version: contractVersionValue,

@@ -270,6 +270,50 @@
     // switching the read tier. tryPostgresTier still falls back to D1 on any
     // failure, so this remains a single-flag revert.
     "METAGRAPH_RPC_USAGE_SOURCE": "postgres",
+    // subnet_snapshots (D1 retirement, 2026-07-16): FLIPPED to "postgres".
+    // Both handleTrajectory and handleEconomicsTrends
+    // (workers/request-handlers/analytics-routes.mjs) already wired
+    // tryPostgresTier(METAGRAPH_SUBNET_SNAPSHOTS_SOURCE) months ago but this
+    // flag was deliberately left OUT of wrangler.jsonc -- subnet_snapshots had
+    // no historical backfill at the time, only accumulating from
+    // writeSubnetSnapshot's dual-write landing, so flipping early would have
+    // served a much shorter trajectory than D1's. That gap is closed: a
+    // direct database query against the self-hosted Postgres confirms
+    // subnet_snapshots now holds 48,311 rows spanning 2025-06-23 through
+    // 2026-07-17, with a
+    // row-level value match against D1 on the overlapping dates (verified
+    // 2026-07-16). The remaining pre-2025-06-23 depth is a known, accepted gap
+    // (D1 goes back further) -- not a blocker, same "no real production
+    // traffic yet" trade-off already accepted for the blocks/extrinsics flips
+    // above; the self-hosted archive node's own backfill will not extend this
+    // series further since subnet_snapshots is a daily rollup, not chain-
+    // derived. writeSubnetSnapshot's own D1 write is being retired in the same
+    // change that adds this flag (src/health-prober.mjs) --
+    // syncSubnetSnapshotToPostgres is now the sole writer. tryPostgresTier
+    // still falls back to D1 on any failure, so this remains a single-flag
+    // revert (D1's copy is frozen from this point on, not actively wrong).
+    "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE": "postgres",
+    // health_trends / surface_checks / surface_uptime_daily / surface_status
+    // (D1 retirement, 2026-07-16): FLIPPED to "postgres". This flag already
+    // gates handleBulkHealthTrends, handleHealthTrends, handleHealthPercentiles,
+    // handleHealthIncidents, handleGlobalIncidents, handleUptime
+    // (workers/request-handlers/analytics.mjs + analytics-routes.mjs), and the
+    // surface_status slice of handleCompare -- all deliberately left unset
+    // pending Postgres accumulating a real 30-day history window, since an
+    // empty/short Postgres window is still a valid 200 response that
+    // tryPostgresTier's error-only fallback can't distinguish from "missing
+    // D1's real history." That window has since filled in: direct `psql`
+    // confirms surface_checks holds 111,088 rows and surface_uptime_daily
+    // holds 1,182 rows spanning 2026-07-11 through 2026-07-16 (a full rolling
+    // window), and surface_status holds 564 current rows (verified
+    // 2026-07-16). src/health-prober.mjs's own D1 writes for surface_checks
+    // and surface_uptime_daily's D1-derived rollup are retired in the same
+    // change that adds this flag -- syncHealthChecksToPostgres and
+    // syncHealthUptimeRollupToPostgres (already unconditional) are the sole
+    // writers now. tryPostgresTier still falls back to D1 on any failure, so
+    // this remains a single-flag revert (D1's copy is frozen from this point
+    // on, not actively wrong).
+    "METAGRAPH_HEALTH_SOURCE": "postgres",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the

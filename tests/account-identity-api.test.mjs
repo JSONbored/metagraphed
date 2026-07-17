@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
+import { buildAccountIdentity } from "../src/account-identity.mjs";
+import { buildAccountIdentityHistory } from "../src/account-identity-history.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -39,32 +41,35 @@ function historyRow(overrides = {}) {
   };
 }
 
-function dbWith({ identity, identityHistory } = {}) {
+// D1 fully eliminated (2026-07-16, #4328): handleAccountIdentity /
+// handleAccountIdentityHistory now read METAGRAPH_ACCOUNT_IDENTITY_SOURCE's
+// Postgres tier only, via tryPostgresTier(env, request, ...) -> DATA_API. On a
+// hit, DATA_API's JSON body is used directly as `data` (no reshaping), so the
+// mock returns the already-built builder output, mirroring what
+// workers/data-api.mjs actually serves for these two routes.
+function postgresIdentityEnv({ identity, identityHistory } = {}) {
   return {
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind() {
-            return {
-              async all() {
-                if (/FROM account_identity WHERE account = \?/.test(sql)) {
-                  return { results: identity || [] };
-                }
-                if (/FROM account_identity_history/.test(sql)) {
-                  return { results: identityHistory || [] };
-                }
-                return { results: [] };
-              },
-            };
-          },
-        };
+    METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+    DATA_API: {
+      async fetch(request) {
+        const url = new URL(request.url);
+        if (/\/identity-history$/.test(url.pathname)) {
+          return Response.json(
+            buildAccountIdentityHistory(identityHistory || [], SS58, {
+              limit: 100,
+              offset: 0,
+              nextCursor: null,
+            }),
+          );
+        }
+        return Response.json(buildAccountIdentity(identity ?? null, SS58));
       },
     },
   };
 }
 
 test("GET /accounts/{ss58}/identity returns the account's identity (#4328)", async () => {
-  const env = dbWith({ identity: [identityRow()] });
+  const env = postgresIdentityEnv({ identity: identityRow() });
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/identity`),
     env,
@@ -100,7 +105,7 @@ test("GET /accounts/{ss58}/identity is schema-stable when D1 is cold", async () 
 });
 
 test("GET /accounts/{ss58}/identity-history returns the identity timeline (#4328)", async () => {
-  const env = dbWith({ identityHistory: [historyRow()] });
+  const env = postgresIdentityEnv({ identityHistory: [historyRow()] });
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/identity-history`),
     env,

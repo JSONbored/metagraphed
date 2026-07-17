@@ -2,16 +2,15 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildChainWeightSetters,
-  loadChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
 } from "../src/chain-weight-setters.mjs";
-import { WEIGHTS_EVENT_KIND } from "../src/chain-weights.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
-// Two per-setter leaderboard rows + the network-wide totals, as the two D1 reads return them.
+// Two per-setter leaderboard rows + the network-wide totals, matching the
+// shape buildChainWeightSetters expects.
 const LEADER_ROWS = [
   {
     hotkey: "5Grw...alice",
@@ -228,77 +227,39 @@ describe("buildChainWeightSetters", () => {
   });
 });
 
-describe("loadChainWeightSetters", () => {
-  test("runs the leaderboard + totals reads over account_events (no netuid filter) and shapes them", async () => {
-    const captured = [];
-    const d1 = async (sql, params) => {
-      captured.push({ sql, params });
-      return sql.includes("GROUP BY") ? LEADER_ROWS : [TOTALS];
-    };
-    const d = await loadChainWeightSetters(d1, {
-      windowLabel: "7d",
-      windowDays: 7,
-      limit: 20,
-    });
-    // Leaderboard read: grouped by the hotkey-or-(netuid,uid) identity, capped, ordered.
-    const leader = captured.find((c) => c.sql.includes("GROUP BY"));
-    assert.match(leader.sql, /FROM account_events/);
-    assert.doesNotMatch(leader.sql, /netuid = \?/); // network-wide: no netuid filter
-    assert.match(leader.sql, /WHEN hotkey IS NOT NULL/);
-    assert.match(leader.sql, /'uid:' \|\| netuid \|\| ':' \|\| uid/);
-    assert.match(leader.sql, /AS netuid/);
-    assert.match(leader.sql, /MAX\(netuid\)/);
-    assert.match(leader.sql, /ORDER BY weight_sets DESC/);
-    assert.equal(leader.params[0], WEIGHTS_EVENT_KIND);
-    assert.equal(typeof leader.params[1], "number"); // cutoff epoch ms
-    // Totals read: distinct-setter count over the same identity, no GROUP BY.
-    const totals = captured.find((c) => c.sql.includes("COUNT(DISTINCT"));
-    assert.doesNotMatch(totals.sql, /GROUP BY/);
-    assert.equal(d.setter_count, 2);
-    assert.equal(d.weight_sets, 40);
-    assert.equal(d.setters[0].share, 0.75);
-  });
-
-  test("a cold store (no rows) yields the empty leaderboard", async () => {
-    const d = await loadChainWeightSetters(async () => [], {
-      windowLabel: "30d",
-      windowDays: 30,
-    });
-    assert.equal(d.setter_count, 0);
-    assert.equal(d.weight_sets, 0);
-    assert.deepEqual(d.setters, []);
-  });
-});
-
+// D1 fully eliminated (2026-07-16): account_events' D1 write path is retired
+// (#4772) and the table is dropped in production, so loadChainWeightSetters
+// (the D1-querying loader) is gone -- the handler now degrades straight to
+// buildChainWeightSetters([], null, {...}) on any Postgres miss/outage.
 describe("GET /api/v1/chain/weights/setters", () => {
-  function eventsEnv(leaderRows, totalsRow) {
+  const req = (q = "") =>
+    new Request(`https://api.metagraph.sh/api/v1/chain/weights/setters${q}`);
+
+  function postgresEnv(body) {
     return {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind: () => ({
-              all: () =>
-                Promise.resolve({
-                  results: sql.includes("GROUP BY")
-                    ? leaderRows
-                    : totalsRow
-                      ? [totalsRow]
-                      : [],
-                }),
-            }),
-          };
-        },
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => Response.json(body),
       },
     };
   }
-  const req = (q = "") =>
-    new Request(`https://api.metagraph.sh/api/v1/chain/weights/setters${q}`);
 
   test("returns the leaderboard at the requested window", async () => {
     const res = await handleRequest(
       req("?window=30d"),
-      eventsEnv(LEADER_ROWS, TOTALS),
+      postgresEnv({
+        schema_version: 1,
+        window: "30d",
+        observed_at: "2026-01-01T00:00:00.000Z",
+        distinct_setters: 2,
+        weight_sets: 40,
+        setter_count: 2,
+        setters: [
+          { hotkey: "5Grw...alice", uid: 3, weight_sets: 30, share: 0.75 },
+          { hotkey: null, uid: 8, weight_sets: 10, share: 0.25 },
+        ],
+      }),
       {},
     );
     assert.equal(res.status, 200);
@@ -313,7 +274,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   });
 
   test("defaults to the 7d window when omitted", async () => {
-    const res = await handleRequest(req(), eventsEnv([], null), {});
+    const res = await handleRequest(req(), createLocalArtifactEnv(), {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.window, "7d");
@@ -324,7 +285,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/weights/setters", {
         method: "HEAD",
       }),
-      eventsEnv(LEADER_ROWS, TOTALS),
+      createLocalArtifactEnv(),
       {},
     );
     assert.equal(res.status, 200);
@@ -332,65 +293,60 @@ describe("GET /api/v1/chain/weights/setters", () => {
   });
 
   test("rejects an unknown query parameter with 400", async () => {
-    const res = await handleRequest(req("?bogus=1"), eventsEnv([], null), {});
+    const res = await handleRequest(
+      req("?bogus=1"),
+      createLocalArtifactEnv(),
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleRequest(req("?window=1y"), eventsEnv([], null), {});
+    const res = await handleRequest(
+      req("?window=1y"),
+      createLocalArtifactEnv(),
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
   test("rejects an out-of-range limit with 400", async () => {
-    const res = await handleRequest(req("?limit=0"), eventsEnv([], null), {});
+    const res = await handleRequest(
+      req("?limit=0"),
+      createLocalArtifactEnv(),
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
-  test("cold store → 200 with an empty leaderboard", async () => {
-    const res = await handleRequest(req(), eventsEnv([], null), {});
+  test("cold store (no Postgres tier flag) → 200 with an empty leaderboard", async () => {
+    const res = await handleRequest(req(), createLocalArtifactEnv(), {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.setter_count, 0);
     assert.deepEqual(body.data.setters, []);
   });
 
-  // #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
-  // table this handler already reads, no new flag) -- tryPostgresTier's own
-  // fallback contract is unit-tested in workers/postgres-tier.mjs's own
-  // tests, so these two just prove the wiring: a Postgres hit is served
-  // as-is with D1 never queried, and a Postgres failure falls back to D1.
-  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
-    let d1Called = false;
-    const env = {
-      ...eventsEnv([], null),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: "2026-01-01T00:00:00.000Z",
-            setter_count: 99,
-            setters: [{ hotkey: "5Pg", weight_sets: 1 }],
-          }),
-      },
-    };
-    env.METAGRAPH_HEALTH_DB.prepare = () => {
-      d1Called = true;
-      throw new Error(
-        "D1 must not be queried when Postgres serves the request",
-      );
-    };
-    const res = await handleRequest(req("?window=7d"), env, {});
+  test("flag=postgres serves the DATA_API response", async () => {
+    const res = await handleRequest(
+      req("?window=7d"),
+      postgresEnv({
+        schema_version: 1,
+        window: "7d",
+        observed_at: "2026-01-01T00:00:00.000Z",
+        setter_count: 99,
+        setters: [{ hotkey: "5Pg", weight_sets: 1 }],
+      }),
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.setter_count, 99);
-    assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+  test("flag=postgres degrades to the empty leaderboard when DATA_API fails", async () => {
     const env = {
-      ...eventsEnv(LEADER_ROWS, TOTALS),
+      ...createLocalArtifactEnv(),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
@@ -401,7 +357,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
     const res = await handleRequest(req("?window=7d"), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.data.setter_count, 2);
+    assert.equal(body.data.setter_count, 0);
   });
 
   const WEIGHT_SETTERS_CSV_HEADER =
@@ -410,7 +366,18 @@ describe("GET /api/v1/chain/weights/setters", () => {
   test("exports the leaderboard as CSV with ?format=csv", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
-      eventsEnv(LEADER_ROWS, TOTALS),
+      postgresEnv({
+        schema_version: 1,
+        window: "7d",
+        observed_at: "2026-01-01T00:00:00.000Z",
+        distinct_setters: 2,
+        weight_sets: 40,
+        setter_count: 2,
+        setters: [
+          { hotkey: "5Grw...alice", uid: 3, weight_sets: 30, share: 0.75 },
+          { hotkey: null, uid: 8, weight_sets: 10, share: 0.25 },
+        ],
+      }),
       {},
     );
     assert.equal(res.status, 200);
@@ -427,7 +394,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   test("emits a header-only CSV on a cold store", async () => {
     const res = await handleRequest(
       req("?format=csv"),
-      eventsEnv([], null),
+      createLocalArtifactEnv(),
       {},
     );
     assert.equal(res.status, 200);
@@ -438,7 +405,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   test("rejects an unsupported format value with 400", async () => {
     const res = await handleRequest(
       req("?format=xml"),
-      eventsEnv([], null),
+      createLocalArtifactEnv(),
       {},
     );
     assert.equal(res.status, 400);

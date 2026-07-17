@@ -81,33 +81,6 @@ function rpcEnv(overrides = {}) {
   };
 }
 
-function usageDb(rows = {}) {
-  return {
-    prepare: (sql) => ({
-      bind: () => ({
-        async all() {
-          if (sql.includes("COUNT(*) AS total")) {
-            return { results: [rows.totals] };
-          }
-          if (sql.includes("ranked")) {
-            return { results: [rows.latency] };
-          }
-          if (sql.includes("GROUP BY endpoint_id")) {
-            return { results: rows.endpoints || [] };
-          }
-          if (sql.includes("GROUP BY network")) {
-            return { results: rows.networks || [] };
-          }
-          if (sql.includes("GROUP BY ts")) {
-            return { results: rows.buckets || [] };
-          }
-          return { results: [] };
-        },
-      }),
-    }),
-  };
-}
-
 beforeEach(() => {
   configureRpcProxy({
     readHealthMetaKv: async () => ({ last_run_at: OBSERVED_AT }),
@@ -115,7 +88,10 @@ beforeEach(() => {
 });
 
 describe("handleRpcUsage", () => {
-  test("returns a schema-stable zeroed payload on cold D1", async () => {
+  // D1 fully eliminated (2026-07-17): loadRpcUsage never queries
+  // rpc_proxy_events any more, so a Postgres-tier miss always returns the
+  // schema-stable empty payload -- this is now the only cold-path shape.
+  test("returns a schema-stable zeroed payload on a Postgres-tier miss", async () => {
     const body = await json(
       await handleRpcUsage(
         req("/api/v1/rpc/usage"),
@@ -150,52 +126,6 @@ describe("handleRpcUsage", () => {
     );
     const body = await errorJson(res, 400);
     assert.equal(body.meta.parameter, "window");
-  });
-
-  test("aggregates rpc_proxy_events telemetry for the requested window", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: usageDb({
-        totals: {
-          total: 100,
-          ok_count: 95,
-          failover_count: 5,
-          cache_hits: 20,
-          avg_latency_ms: 150,
-        },
-        latency: { p50: 120, p95: 400 },
-        endpoints: [
-          {
-            endpoint_id: "fx",
-            provider: "onfinality",
-            requests: 100,
-            ok_count: 95,
-            avg_latency_ms: 140,
-          },
-        ],
-        networks: [{ network: "finney", requests: 100, ok_count: 95 }],
-        buckets: [
-          {
-            ts: 1_718_323_200_000,
-            requests: 100,
-            errors: 5,
-            avg_latency_ms: 150,
-          },
-        ],
-      }),
-    };
-    const body = await json(
-      await handleRpcUsage(
-        req("/api/v1/rpc/usage?window=30d"),
-        env,
-        url("/api/v1/rpc/usage?window=30d"),
-      ),
-    );
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.summary.total_requests, 100);
-    assert.equal(body.data.summary.error_requests, 5);
-    assert.equal(body.data.endpoints[0].endpoint_id, "fx");
-    assert.equal(body.data.networks[0].network, "finney");
-    assert.equal(body.data.buckets.length, 1);
   });
 
   // #4832 gap-closure: METAGRAPH_RPC_USAGE_SOURCE is flipped to "postgres" in
@@ -234,7 +164,7 @@ describe("handleRpcUsage", () => {
     assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+  test("flag=postgres falls back to the empty payload when DATA_API fails", async () => {
     const env = {
       METAGRAPH_RPC_USAGE_SOURCE: "postgres",
       DATA_API: {

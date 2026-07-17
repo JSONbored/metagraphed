@@ -7,66 +7,26 @@ function req(path) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-function identityHistoryEnv(rows = []) {
-  return {
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            return {
-              async all() {
-                if (!/subnet_identity_history/.test(sql)) {
-                  return { results: [] };
-                }
-                if (/ORDER BY observed_at DESC, id DESC LIMIT/.test(sql)) {
-                  return { results: rows.filter((row) => row.id != null) };
-                }
-                if (/netuid IN/.test(sql)) {
-                  return {
-                    results: rows.filter((row) => params.includes(row.netuid)),
-                  };
-                }
-                if (/GROUP BY subnet_name/.test(sql)) {
-                  return {
-                    results: rows.map(
-                      ({ netuid, subnet_name, observed_at }) => ({
-                        netuid,
-                        subnet_name,
-                        observed_at,
-                      }),
-                    ),
-                  };
-                }
-                return { results: rows };
-              },
-            };
-          },
-        };
-      },
+// D1 fully eliminated (2026-07-16): subnet_identity_history's D1 write/read
+// path is fully retired -- handleSubnetIdentityHistory now goes
+// tryPostgresTier -> buildSubnetIdentityHistory([], ...) on any miss/outage,
+// never a live D1 read.
+test("GET /subnets/{netuid}/identity-history returns the identity timeline (#1647)", async () => {
+  const env = {
+    METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          netuid: 86,
+          entry_count: 1,
+          limit: null,
+          offset: null,
+          next_cursor: null,
+          entries: [{ subnet_name: "MIAO", identity_hash: "hash-1" }],
+        }),
     },
   };
-}
-
-function dbWith({ identityHistory } = {}) {
-  return identityHistoryEnv(identityHistory || []);
-}
-
-const ROW = {
-  id: 1,
-  block_number: 100,
-  observed_at: 1_700_000_000_000,
-  subnet_name: "MIAO",
-  symbol: "α",
-  description: "sound AI",
-  github_repo: null,
-  subnet_url: null,
-  discord: null,
-  logo_url: null,
-  identity_hash: "hash-1",
-};
-
-test("GET /subnets/{netuid}/identity-history returns the identity timeline (#1647)", async () => {
-  const env = dbWith({ identityHistory: [ROW] });
   const res = await handleRequest(
     req("/api/v1/subnets/86/identity-history"),
     env,
@@ -89,7 +49,7 @@ test("GET /subnets/{netuid}/identity-history rejects an unsupported query param"
   assert.equal(res.status, 400);
 });
 
-test("GET /subnets/{netuid}/identity-history is schema-stable when D1 is cold", async () => {
+test("GET /subnets/{netuid}/identity-history is schema-stable when cold (no Postgres tier flag)", async () => {
   const res = await handleRequest(
     req("/api/v1/subnets/86/identity-history"),
     {},
@@ -102,9 +62,22 @@ test("GET /subnets/{netuid}/identity-history is schema-stable when D1 is cold", 
   assert.deepEqual(body.data.entries, []);
 });
 
+// D1 fully eliminated (2026-07-16): loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids
+// (the D1-querying loaders workers/api.mjs's overlay wrappers used to fall back
+// to) are gone -- these overlays only ever populate previously_known_as when
+// the Postgres tier flag is on now (see the "flag=postgres" tests below);
+// without it, the overlay is simply absent (schema-stable), never sourced
+// from a live D1 read.
+function postgresAliasesEnv(rows) {
+  return {
+    METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+    DATA_API: { fetch: async () => Response.json({ rows }) },
+  };
+}
+
 test("GET /subnets/{netuid} overlays previously_known_as on the subnet detail", async () => {
   const env = createLocalArtifactEnv({
-    ...identityHistoryEnv([
+    ...postgresAliasesEnv([
       { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
     ]),
   });
@@ -116,7 +89,7 @@ test("GET /subnets/{netuid} overlays previously_known_as on the subnet detail", 
 
 test("GET /subnets/{netuid} overlays previously_known_as on flat subnet detail", async () => {
   const env = createLocalArtifactEnv({
-    ...identityHistoryEnv([
+    ...postgresAliasesEnv([
       { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
     ]),
     METAGRAPH_ARCHIVE: {
@@ -154,7 +127,7 @@ test("GET /subnets/{netuid} overlays previously_known_as on flat subnet detail",
 
 test("GET /agent-catalog overlays previously_known_as on index entries", async () => {
   const env = createLocalArtifactEnv({
-    ...identityHistoryEnv([
+    ...postgresAliasesEnv([
       { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
     ]),
   });
@@ -168,7 +141,7 @@ test("GET /agent-catalog overlays previously_known_as on index entries", async (
 
 test("GET /agent-catalog/{netuid} overlays previously_known_as on the detail entry", async () => {
   const env = createLocalArtifactEnv({
-    ...identityHistoryEnv([
+    ...postgresAliasesEnv([
       { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
     ]),
   });
@@ -232,11 +205,8 @@ test("GET /agent-catalog/{netuid}: flag=postgres serves the DATA_API response, D
   assert.equal(tracker.called, false);
 });
 
-test("GET /agent-catalog/{netuid}: flag=postgres falls back to D1 when DATA_API fails", async () => {
+test("GET /agent-catalog/{netuid}: flag=postgres degrades to no overlay when DATA_API fails", async () => {
   const env = createLocalArtifactEnv({
-    ...identityHistoryEnv([
-      { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
-    ]),
     METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
     DATA_API: {
       fetch: async () => {
@@ -247,7 +217,7 @@ test("GET /agent-catalog/{netuid}: flag=postgres falls back to D1 when DATA_API 
   const res = await handleRequest(req("/api/v1/agent-catalog/7"), env, {});
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.deepEqual(body.data.previously_known_as, ["Old Allways"]);
+  assert.equal(body.data.previously_known_as, undefined);
 });
 
 test("GET /agent-catalog: flag=postgres serves the bulk DATA_API response, D1 never queried", async () => {

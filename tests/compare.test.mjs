@@ -425,30 +425,26 @@ describe("GET /api/v1/compare", () => {
     assert.equal(body.meta.parameter, "netuids");
   });
 
-  test("stamps observed_at from the live cron snapshot and reads the health tier from D1", async () => {
-    const queries = [];
+  // D1 fully eliminated (2026-07-17): the health dimension's Postgres tier
+  // (METAGRAPH_HEALTH_SOURCE) is the only source for these rows now -- a tier
+  // miss falls straight through to an empty health row (never a live D1
+  // query). These tests exercise the full GET /api/v1/compare request path
+  // (through handleRequest, not handleCompare directly) to prove observed_at
+  // stamping and netuid threading into the synthesized internal
+  // compare-health request still work end to end.
+  test("stamps observed_at from the live cron snapshot and threads netuids to the health tier", async () => {
+    const requests = [];
     const healthEnv = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              queries.push({ sql, params });
-              return {
-                all: () =>
-                  Promise.resolve({
-                    results: [
-                      {
-                        netuid: 7,
-                        surface_count: 3,
-                        ok_count: 2,
-                        avg_latency_ms: 150,
-                      },
-                    ],
-                  }),
-              };
-            },
-          };
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (request) => {
+          requests.push(request.url);
+          return Response.json({
+            rows: [
+              { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 150 },
+            ],
+          });
         },
       },
       METAGRAPH_CONTROL: {
@@ -472,24 +468,21 @@ describe("GET /api/v1/compare", () => {
     assert.equal(body.data.observed_at, "2026-06-24T01:02:03.000Z");
     assert.deepEqual(body.data.dimensions, ["health"]);
     assert.equal(body.data.subnets[0].netuid, 7);
-    assert.match(queries[0].sql, /WHERE netuid IN \(\?\)/);
-    assert.deepEqual(queries[0].params, [7]);
+    assert.equal(body.data.subnets[0].health.ok_count, 2);
+    assert.equal(requests.length, 1);
+    assert.match(requests[0], /\/api\/v1\/internal\/compare-health\?/);
+    assert.match(requests[0], /netuids=7(?:$|&)/);
   });
 
-  test("health D1 aggregation is constrained to de-duplicated requested netuids", async () => {
-    const queries = [];
+  test("health tier request is constrained to de-duplicated requested netuids", async () => {
+    const requests = [];
     const healthEnv = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              queries.push({ sql, params });
-              return {
-                all: () => Promise.resolve({ results: [] }),
-              };
-            },
-          };
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (request) => {
+          requests.push(request.url);
+          return Response.json({ rows: [] });
         },
       },
     };
@@ -502,9 +495,8 @@ describe("GET /api/v1/compare", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.equal(queries.length, 1);
-    assert.match(queries[0].sql, /WHERE netuid IN \(\?, \?\)/);
-    assert.deepEqual(queries[0].params, [7, 1]);
+    assert.equal(requests.length, 1);
+    assert.match(requests[0], /netuids=7,1(?:$|&)/);
   });
 });
 

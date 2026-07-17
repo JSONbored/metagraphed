@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test, vi } from "vitest";
+import { test } from "vitest";
 import {
   buildChainActivity,
   buildChainCalls,
@@ -35,49 +35,43 @@ function installMapCache() {
   };
 }
 
-// A D1 mock that routes the two grouped aggregations by table and records the
-// bound SQL/params so a test can assert the query shape + the merged response.
-function chainActivityEnv(captured = []) {
+// D1 fully eliminated (2026-07-16): extrinsics'/blocks' D1 write path is
+// retired (#4772) and the tables are dropped in production, so
+// handleChainActivity now goes tryPostgresTier -> buildChainActivity([...])
+// on any miss/outage, never a live D1 read. This mocks the Postgres tier
+// instead of D1.
+function chainActivityPostgresEnv() {
   return {
     ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            const rows = /FROM extrinsics/.test(sql)
-              ? [
-                  {
-                    day: "2026-06-25",
-                    extrinsic_count: 100,
-                    successful_extrinsics: 99,
-                    unique_signers: 40,
-                  },
-                  {
-                    day: "2026-06-24",
-                    extrinsic_count: 50,
-                    successful_extrinsics: 50,
-                    unique_signers: 20,
-                  },
-                ]
-              : /FROM blocks/.test(sql)
-                ? [
-                    {
-                      day: "2026-06-25",
-                      block_count: 7200,
-                      event_count: 30000,
-                    },
-                    {
-                      day: "2026-06-24",
-                      block_count: 7100,
-                      event_count: 29000,
-                    },
-                  ]
-                : [];
-            return { all: () => Promise.resolve({ results: rows }) };
-          },
-        };
-      },
+    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          window: "7d",
+          observed_at: "2026-06-26T12:00:00.000Z",
+          day_count: 2,
+          days: [
+            {
+              day: "2026-06-25",
+              block_count: 7200,
+              extrinsic_count: 100,
+              event_count: 30000,
+              successful_extrinsics: 99,
+              success_rate: 0.99,
+              unique_signers: 40,
+            },
+            {
+              day: "2026-06-24",
+              block_count: 7100,
+              extrinsic_count: 50,
+              event_count: 29000,
+              successful_extrinsics: 50,
+              success_rate: 1,
+              unique_signers: 20,
+            },
+          ],
+        }),
     },
   };
 }
@@ -232,10 +226,9 @@ test("ignores junk rows (null, non-object, missing/non-string day)", () => {
 // ---- handler (#1987) -------------------------------------------------------
 
 test("GET /api/v1/chain/activity merges + groups the chain tiers by UTC day", async () => {
-  const captured = [];
   const res = await handleRequest(
     activityReq("?window=7d"),
-    chainActivityEnv(captured),
+    chainActivityPostgresEnv(),
     {},
   );
   assert.equal(res.status, 200);
@@ -249,19 +242,12 @@ test("GET /api/v1/chain/activity merges + groups the chain tiers by UTC day", as
   assert.equal(body.data.days[0].block_count, 7200);
   assert.equal(body.data.days[0].unique_signers, 40);
   assert.equal(body.data.days[1].success_rate, 1); // 50/50
-  // two grouped aggregations, both window-bound by a numeric cutoff.
-  const ex = captured.find((q) => /FROM extrinsics/.test(q.sql));
-  const bl = captured.find((q) => /FROM blocks/.test(q.sql));
-  assert.match(ex.sql, /GROUP BY day/);
-  assert.match(ex.sql, /COUNT\(DISTINCT signer\)/);
-  assert.match(bl.sql, /SUM\(event_count\)/);
-  assert.equal(typeof ex.params[0], "number"); // observed_at cutoff
 });
 
 test("GET /api/v1/chain/activity rejects an unsupported window with 400", async () => {
   const res = await handleRequest(
     activityReq("?window=99d"),
-    chainActivityEnv(),
+    createLocalArtifactEnv(),
     {},
   );
   assert.equal(res.status, 400);
@@ -342,27 +328,41 @@ test("buildChainCalls drops empty call_module and call_function buckets", () => 
   assert.equal(moduleFunction.calls[0].call_function, "transfer");
 });
 
-test("GET /api/v1/chain/calls groups by call_module with honest share + 400 on junk param", async () => {
-  const captured = [];
+// #4772 D1 retirement: the `extrinsics` D1 table is dropped in production, so
+// handleChainCalls no longer runs a live D1 aggregation -- a Postgres-tier
+// miss now falls straight through to buildChainCalls({total: 0, rows: []})
+// (see workers/request-handlers/analytics.mjs's own #4772 comment on
+// handleChainCalls). This mocks the Postgres tier (DATA_API) instead of D1 to
+// exercise the real grouped/shared response; the junk-param 400 is unrelated
+// to data-sourcing and is exercised on the same env.
+test("GET /api/v1/chain/calls groups by call_module with honest share via the Postgres tier + 400 on junk param", async () => {
   const env = {
     ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            const rows = /GROUP BY call_module/.test(sql)
-              ? [
-                  { call_module: "SubtensorModule", count: 60 },
-                  { call_module: "Balances", count: 30 },
-                ]
-              : /COUNT\(\*\) AS total/.test(sql)
-                ? [{ total: 120 }]
-                : [];
-            return { all: () => Promise.resolve({ results: rows }) };
-          },
-        };
-      },
+    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          window: "30d",
+          group_by: "module",
+          total_extrinsics: 120,
+          call_count: 2,
+          observed_at: "2026-06-26T00:00:00.000Z",
+          calls: [
+            {
+              call_module: "SubtensorModule",
+              call_function: null,
+              count: 60,
+              share: 0.5,
+            },
+            {
+              call_module: "Balances",
+              call_function: null,
+              count: 30,
+              share: 0.25,
+            },
+          ],
+        }),
     },
   };
   const res = await handleRequest(
@@ -376,9 +376,6 @@ test("GET /api/v1/chain/calls groups by call_module with honest share + 400 on j
   const body = await res.json();
   assert.equal(body.data.total_extrinsics, 120);
   assert.equal(body.data.calls[0].share, 0.5); // 60/120 (full window), not 60/90
-  const grp = captured.find((q) => /GROUP BY call_module/.test(q.sql));
-  assert.match(grp.sql, /ORDER BY count DESC/);
-  assert.equal(grp.params.at(-1), 2); // limit bound
 
   const bad = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/calls?bogus=1"),
@@ -388,29 +385,36 @@ test("GET /api/v1/chain/calls groups by call_module with honest share + 400 on j
   assert.equal(bad.status, 400);
 });
 
-test("GET /api/v1/chain/calls scopes module-function groups by call_module", async () => {
-  const captured = [];
+// #4772 D1 retirement: the call_module scoping this used to verify across 3
+// separate D1 queries now happens server-side in Postgres (workers/data-api.mjs's
+// own dedicated coverage, not re-tested here) -- the handler's own contract is
+// just to forward call_module + group_by on the request it hands to
+// tryPostgresTier, and to pass the Postgres-tier body through untouched
+// (mirrors the "GET /api/v1/chain/fees forwards call_module" test below).
+test("GET /api/v1/chain/calls forwards call_module scoping to the Postgres tier for module-function groups", async () => {
+  let requestedUrl;
   const env = {
     ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            const rows = /GROUP BY call_module, call_function/.test(sql)
-              ? [
-                  {
-                    call_module: "SubtensorModule",
-                    call_function: "add_stake",
-                    count: 50,
-                  },
-                ]
-              : /COUNT\(\*\) AS total/.test(sql)
-                ? [{ total: 80 }]
-                : [];
-            return { all: () => Promise.resolve({ results: rows }) };
-          },
-        };
+    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async (request) => {
+        requestedUrl = new URL(request.url);
+        return Response.json({
+          schema_version: 1,
+          window: "7d",
+          group_by: "module_function",
+          total_extrinsics: 80,
+          call_count: 1,
+          observed_at: "2026-06-26T00:00:00.000Z",
+          calls: [
+            {
+              call_module: "SubtensorModule",
+              call_function: "add_stake",
+              count: 50,
+              share: 0.625,
+            },
+          ],
+        });
       },
     },
   };
@@ -427,15 +431,8 @@ test("GET /api/v1/chain/calls scopes module-function groups by call_module", asy
   assert.equal(body.data.total_extrinsics, 80);
   assert.equal(body.data.calls[0].call_function, "add_stake");
   assert.equal(body.data.calls[0].share, 0.625);
-
-  const extrinsicsQueries = captured.filter((q) =>
-    /FROM extrinsics/.test(q.sql),
-  );
-  assert.equal(extrinsicsQueries.length, 2);
-  for (const q of extrinsicsQueries) {
-    assert.match(q.sql, /AND call_module = \?/);
-    assert.ok(q.params.includes("SubtensorModule"));
-  }
+  assert.equal(requestedUrl.searchParams.get("call_module"), "SubtensorModule");
+  assert.equal(requestedUrl.searchParams.get("group_by"), "module_function");
 });
 
 test("GET /api/v1/chain/calls rejects inert group_by and non-canonical limits", async () => {
@@ -1281,37 +1278,27 @@ test("GET /api/v1/chain/transfer-pairs: flag=postgres falls back to D1 when DATA
   assert.equal(body.data.total_volume_tao, 0);
 });
 
-test("GET /api/v1/chain/fees scopes every extrinsics query by call_module", async () => {
-  // The median query only runs for days the daily aggregate already proved
-  // are within the sample cap, so the daily response must report a real day
-  // (today, UTC) rather than an empty result set.
-  const today = new Date().toISOString().slice(0, 10);
-  const captured = [];
+// D1 fully eliminated (2026-07-16): extrinsics' D1 write path is retired
+// (#4772) and the table is dropped in production, so the call_module scoping
+// this used to verify across 3 separate D1 queries now happens server-side
+// in Postgres -- the handler's own contract is just to forward call_module
+// on the request it hands to tryPostgresTier.
+test("GET /api/v1/chain/fees forwards call_module on the Postgres-tier request", async () => {
+  let requestedUrl;
   const env = {
     ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            if (/GROUP BY day/.test(sql)) {
-              return {
-                all: () =>
-                  Promise.resolve({
-                    results: [
-                      {
-                        day: today,
-                        extrinsic_count: 10,
-                        total_fee_tao: 1,
-                        total_tip_tao: 1,
-                      },
-                    ],
-                  }),
-              };
-            }
-            return { all: () => Promise.resolve({ results: [] }) };
-          },
-        };
+    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async (request) => {
+        requestedUrl = new URL(request.url);
+        return Response.json({
+          schema_version: 1,
+          window: "7d",
+          observed_at: null,
+          day_count: 0,
+          daily: [],
+          top_fee_payers: [],
+        });
       },
     },
   };
@@ -1323,16 +1310,7 @@ test("GET /api/v1/chain/fees scopes every extrinsics query by call_module", asyn
     {},
   );
   assert.equal(res.status, 200);
-  // All extrinsics queries (daily series, payer list, medians) are scoped;
-  // filter to them explicitly rather than assuming the captured order/count.
-  const extrinsicsQueries = captured.filter((q) =>
-    /FROM extrinsics/.test(q.sql),
-  );
-  assert.equal(extrinsicsQueries.length, 3);
-  for (const q of extrinsicsQueries) {
-    assert.match(q.sql, /AND call_module = \?/);
-    assert.ok(q.params.includes("SubtensorModule"));
-  }
+  assert.equal(requestedUrl.searchParams.get("call_module"), "SubtensorModule");
 });
 
 test("chain signers/fees reject an over-long call_module with 400", async () => {
@@ -1452,79 +1430,56 @@ test("buildChainFees reports malformed median rows as null, not JSON numbers", (
   assert.equal(JSON.parse(JSON.stringify(out)).daily[0].median_fee_tao, null);
 });
 
-test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL fees", async () => {
-  // loadChainFees's day-safety window is computed from the real Date.now() at
-  // request time (handleRequest doesn't thread a `now` override through from
-  // the HTTP layer), so a hardcoded mock day drifts out of the 7d window as
-  // real time passes and the day-boundary loop silently stops matching it.
-  // Freeze the clock to a fixed instant one day after the mocked day so this
-  // test never goes stale.
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date("2026-06-26T12:00:00.000Z"));
-  try {
-    const captured = [];
-    const env = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              captured.push({ sql, params });
-              const rows = /ROW_NUMBER\(\) OVER/.test(sql)
-                ? [
-                    {
-                      day: "2026-06-25",
-                      median_fee_tao: 0.006,
-                      median_tip_tao: 0,
-                    },
-                  ]
-                : /GROUP BY day/.test(sql)
-                  ? [
-                      {
-                        day: "2026-06-25",
-                        extrinsic_count: 50,
-                        total_fee_tao: 0.5,
-                        total_tip_tao: 0,
-                      },
-                    ]
-                  : /GROUP BY signer/.test(sql)
-                    ? [
-                        {
-                          signer: "5Pay",
-                          total_fee_tao: 0.5,
-                          total_tip_tao: 0,
-                          extrinsic_count: 50,
-                        },
-                      ]
-                    : [];
-              return { all: () => Promise.resolve({ results: rows }) };
+// D1 fully eliminated (2026-07-16): the COALESCE/median SQL-shape assertions
+// this used to verify against D1 now apply to Postgres's own equivalent
+// query in workers/data-api.mjs's chain-fees route (its own dedicated
+// coverage, not re-tested here) -- this just proves the REST envelope
+// passes the Postgres-tier body through untouched.
+test("GET /api/v1/chain/fees returns daily series + top payers from the Postgres tier", async () => {
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          window: "7d",
+          observed_at: "2026-06-25T00:00:00.000Z",
+          day_count: 1,
+          daily: [
+            {
+              day: "2026-06-25",
+              extrinsic_count: 50,
+              total_fee_tao: 0.5,
+              avg_fee_tao: 0.01,
+              median_fee_tao: 0.006,
+              total_tip_tao: 0,
+              avg_tip_tao: 0,
+              median_tip_tao: 0,
             },
-          };
-        },
-      },
-    };
-    const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/chain/fees?window=7d"),
-      env,
-      {},
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.daily[0].avg_fee_tao, 0.01); // 0.5/50
-    assert.equal(body.data.daily[0].median_fee_tao, 0.006);
-    assert.equal(body.data.daily[0].median_tip_tao, 0);
-    assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
-    const daily = captured.find(
-      (q) => /GROUP BY day/.test(q.sql) && !/ROW_NUMBER\(\) OVER/.test(q.sql),
-    );
-    assert.match(daily.sql, /COALESCE\(fee_tao, 0\)/);
-    const median = captured.find((q) => /ROW_NUMBER\(\) OVER/.test(q.sql));
-    assert.match(median.sql, /PARTITION BY day ORDER BY fee_tao/);
-    assert.match(median.sql, /PARTITION BY day ORDER BY tip_tao/);
-    assert.doesNotMatch(median.sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
-  } finally {
-    vi.useRealTimers();
-  }
+          ],
+          top_fee_payers: [
+            {
+              signer: "5Pay",
+              total_fee_tao: 0.5,
+              total_tip_tao: 0,
+              extrinsic_count: 50,
+            },
+          ],
+        }),
+    },
+  };
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/fees?window=7d"),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.daily[0].avg_fee_tao, 0.01);
+  assert.equal(body.data.daily[0].median_fee_tao, 0.006);
+  assert.equal(body.data.daily[0].median_tip_tao, 0);
+  assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
 });
 
 test("GET /api/v1/chain/fees rejects non-canonical limits", async () => {

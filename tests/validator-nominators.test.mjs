@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import { describe, test, vi } from "vitest";
+import { describe, test } from "vitest";
 import {
   buildValidatorNominators,
-  loadValidatorNominators,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
-  DEFAULT_NOMINATOR_WINDOW,
   DEFAULT_NOMINATOR_SORT,
   NOMINATOR_LIMIT_MAX,
 } from "../src/validator-nominators.mjs";
@@ -291,119 +289,6 @@ describe("buildValidatorNominators", () => {
       HOTKEY,
     );
     assert.equal(d.nominators[0].net_staked_tao, -0.1);
-  });
-});
-
-describe("loadValidatorNominators", () => {
-  test("queries account_events by hotkey + stake kinds, shapes the result", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      return [added("ck-a", 100, 2, 5000), removed("ck-a", 30, 1, 6000)];
-    };
-    const d = await loadValidatorNominators(d1, HOTKEY, {
-      windowLabel: "30d",
-    });
-    assert.match(calls[0].sql, /FROM account_events/);
-    assert.match(
-      calls[0].sql,
-      /INDEXED BY idx_account_events_hotkey_kind_observed/,
-    );
-    assert.match(calls[0].sql, /WHERE hotkey = \?/);
-    assert.match(calls[1].sql, /GROUP BY coldkey/);
-    assert.match(calls[1].sql, /LIMIT \? OFFSET \?/);
-    assert.equal(calls[1].params[3], HOTKEY);
-    assert.equal(calls[1].params[4], STAKE_ADDED_KIND);
-    assert.equal(calls[1].params[5], STAKE_REMOVED_KIND);
-    assert.equal(d.data.nominators[0].net_staked_tao, 70);
-    assert.equal(d.generatedAt, new Date(6000).toISOString());
-  });
-
-  test("defaults to the 30d window", async () => {
-    const d1 = async () => [];
-    const d = await loadValidatorNominators(d1, HOTKEY, {});
-    assert.equal(d.data.window, DEFAULT_NOMINATOR_WINDOW);
-  });
-
-  test("an unknown window label falls back to the 30d cutoff", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    let cutoff;
-    const d1 = async (sql, params) => {
-      cutoff ??= params[3];
-      return [];
-    };
-    await loadValidatorNominators(d1, HOTKEY, { windowLabel: "bogus" });
-    assert.equal(cutoff, Date.now() - 30 * 24 * 60 * 60 * 1000);
-    vi.useRealTimers();
-  });
-
-  test("pushes normalized fallback pagination into SQL", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      return [];
-    };
-    await loadValidatorNominators(d1, HOTKEY, {
-      limit: "bogus",
-      offset: -1,
-    });
-    assert.equal(calls[1].params.at(-2), 20);
-    assert.equal(calls[1].params.at(-1), 0);
-  });
-
-  test("coldkey narrows the query to one nominator's own flow", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      return [added("ck-a", 50, 1, 4000)];
-    };
-    await loadValidatorNominators(d1, HOTKEY, {
-      windowLabel: "7d",
-      coldkey: "ck-a",
-    });
-    assert.match(calls[0].sql, /AND coldkey = \?/);
-    assert.equal(calls[0].params[4], "ck-a");
-  });
-
-  test("omitted coldkey does not narrow the query", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      return [];
-    };
-    await loadValidatorNominators(d1, HOTKEY, { windowLabel: "7d" });
-    assert.doesNotMatch(calls[0].sql, /AND coldkey = \?/);
-    assert.equal(calls[0].params.length, 4);
-  });
-
-  test("cold store yields an empty list + generatedAt null", async () => {
-    const d1 = async () => [];
-    const d = await loadValidatorNominators(d1, HOTKEY, {
-      windowLabel: "7d",
-    });
-    assert.equal(d.data.nominator_count, 0);
-    assert.equal(d.generatedAt, null);
-  });
-
-  test("a non-array result degrades to an empty list", async () => {
-    const d1 = async () => null;
-    const d = await loadValidatorNominators(d1, HOTKEY, {
-      windowLabel: "7d",
-    });
-    assert.deepEqual(d.data.nominators, []);
-    assert.equal(d.generatedAt, null);
-  });
-
-  test("generatedAt picks the max observed_at regardless of row order", async () => {
-    const d1 = async () => [
-      added("ck-a", 10, 1, 9000),
-      removed("ck-a", 5, 1, 3000),
-    ];
-    const d = await loadValidatorNominators(d1, HOTKEY, {
-      windowLabel: "7d",
-    });
-    assert.equal(d.generatedAt, new Date(9000).toISOString());
   });
 });
 

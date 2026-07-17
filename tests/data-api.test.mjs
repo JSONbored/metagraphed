@@ -6533,6 +6533,77 @@ test("GET /api/v1/internal/subnet-identity-aliases: no netuids returns rows:[] w
   expect(body.rows).toEqual([]);
 });
 
+// D1 retirement (2026-07-16, item 5 of the D1->Postgres cleanup):
+// src/health-serving.mjs's resolveLiveHealth KV-cold fallback.
+test("GET /api/v1/internal/health-status-live: coerces BIGINT epoch-ms columns to numbers", async () => {
+  // postgres.js returns BIGINT columns as strings (see numberOrNull's own
+  // header comment) -- this route must coerce them before returning JSON, or
+  // the consumer's Number.isFinite/isInteger checks (written for D1's native
+  // numbers) would silently null them out.
+  mockRows.current = [
+    {
+      surface_id: "7:subnet-api:x",
+      surface_key: "srf-pglive0000000",
+      netuid: 7,
+      kind: "subnet-api",
+      provider: "x",
+      url: "https://x",
+      status: "ok",
+      classification: "up",
+      latency_ms: "12",
+      status_code: "200",
+      last_checked: "1700000000000",
+      last_ok: "1700000000000",
+    },
+  ];
+  const res = await req(
+    "/api/v1/internal/health-status-live?since=1699999999999",
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.rows).toEqual([
+    {
+      surface_id: "7:subnet-api:x",
+      surface_key: "srf-pglive0000000",
+      netuid: 7,
+      kind: "subnet-api",
+      provider: "x",
+      url: "https://x",
+      status: "ok",
+      classification: "up",
+      latency_ms: 12,
+      status_code: 200,
+      last_checked: 1700000000000,
+      last_ok: 1700000000000,
+    },
+  ]);
+});
+
+test("GET /api/v1/internal/health-status-live: a missing/non-finite since returns rows:[] without querying", async () => {
+  const res = await req("/api/v1/internal/health-status-live");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.rows).toEqual([]);
+});
+
+// D1 retirement (2026-07-16, item 10 of the D1->Postgres cleanup):
+// src/subnet-identity-history.mjs's latestBlockNumber.
+test("GET /api/v1/internal/latest-block-number: returns the coerced MAX(block_number)", async () => {
+  mockRows.current = [{ block_number: "8404076" }];
+  const res = await req("/api/v1/internal/latest-block-number");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ block_number: 8404076 });
+});
+
+test("GET /api/v1/internal/latest-block-number: returns block_number:null on an empty blocks table", async () => {
+  mockRows.current = [{ block_number: null }];
+  const res = await req("/api/v1/internal/latest-block-number");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ block_number: null });
+});
+
 test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", async () => {
   mockRows.current = [
     {

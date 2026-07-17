@@ -91,52 +91,38 @@ describe("static edge cache — range-filtered collection key", () => {
 });
 
 describe("hourly maintenance cron — pruneHealthHistory isolation", () => {
-  test("a rejecting pruneHealthHistory degrades to a no-op without aborting the cron", async () => {
+  // D1 fully eliminated from pruneHealthHistory (2026-07-16): it no longer
+  // touches env.METAGRAPH_HEALTH_DB at all -- its only remaining work is
+  // syncRpcProxyEventsPruneToPostgres, which already catches every DATA_API
+  // failure internally and never rejects (see that function's own try/catch).
+  // So pruneHealthHistory itself can no longer reject at all; the
+  // `.catch(() => ({ pruned: false }))` wrapper around it in workers/api.mjs
+  // is now unreachable defensive-only code, kept as a cheap safety net. This
+  // test proves the *new* single point of failure (a failing Postgres prune
+  // sync) still resolves cleanly and never aborts the cron.
+  test("pruneHealthHistory resolves cleanly even when the Postgres prune sync fails", async () => {
     originalCaches = globalThis.caches;
-
-    // A D1 stub whose statements resolve, so the two daily rollups confirm
-    // (rolled: true) and the cron reaches the prune fan-out.
-    const goodStmt = {
-      bind: () => ({ run: () => Promise.resolve({ meta: { changes: 0 } }) }),
-    };
-    const goodDb = {
-      prepare: () => goodStmt,
-      batch: () => Promise.resolve([]),
-    };
-    // A D1 stub whose `prepare` ACCESS throws (a throwing getter). That is the
-    // one way pruneHealthHistory can reject: its `if (!db?.prepare)` guard reads
-    // the property before the try block, so the throw escapes as a rejection
-    // (every actual DB call inside the try is already caught and folded to
-    // { pruned: false }). This proves the new `.catch(() => ({ pruned: false }))`
-    // isolation around it actually fires.
-    const throwingDb = {
-      get prepare() {
-        throw new Error("transient D1 error");
-      },
-      batch: () => Promise.resolve([]),
-    };
-
-    // handleScheduled reads env.METAGRAPH_HEALTH_DB once per consumer, in order:
-    // rollupDailyUptime (1), writeSubnetSnapshot (2), then pruneHealthHistory (3)
-    // — the first member of the prune Promise.all. #4772 D1 chain-data retirement
-    // removed the D1-side rollupAccountEventsDaily call that used to sit between
-    // rollupDailyUptime and writeSubnetSnapshot, shifting pruneHealthHistory's
-    // read from the 4th to the 3rd. Hand pruneHealthHistory the throwing DB so it
-    // rejects; everyone before it gets the working DB so the rollup confirms and
-    // the prune fan-out is reached.
-    let dbReads = 0;
+    // rollupDailyUptime must itself succeed (Postgres-only now) or
+    // handleScheduled takes its own early-return before ever reaching
+    // pruneHealthHistory -- only the rpc-usage-prune sync fails here.
     const env = {
-      get METAGRAPH_HEALTH_DB() {
-        dbReads += 1;
-        return dbReads === 3 ? throwingDb : goodDb;
+      DATA_API: {
+        fetch: async (request) => {
+          if (
+            new URL(request.url).pathname === "/api/v1/internal/rpc-usage-prune"
+          ) {
+            throw new Error("transient network error");
+          }
+          return new Response("{}", { status: 200 });
+        },
       },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+      RPC_USAGE_SYNC_SECRET: "test-secret",
     };
 
     const result = await handleScheduled({ cron: "0 * * * *" }, env, ctx);
 
-    // The rejection was isolated to a no-op for this tick (not propagated out of
-    // the Promise.all): the cron returns the .catch fallback, not a throw.
-    assert.deepEqual(result, { pruned: false });
-    assert.ok(dbReads >= 3, "the prune fan-out was reached");
+    assert.equal(result.pruned, true);
+    assert.ok(Number.isFinite(result.cutoff));
   });
 });

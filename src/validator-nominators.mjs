@@ -6,8 +6,6 @@
 // behind it. No new capture: StakeAdded/StakeRemoved carry both hotkey
 // (validator) and coldkey (staker) on every row (migrations/0009_account_events.sql).
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 // Both carry a positive amount_tao (migrations/0009_account_events.sql), so
 // net = staked - unstaked.
 export const STAKE_ADDED_KIND = "StakeAdded";
@@ -167,90 +165,9 @@ export function buildValidatorNominators(
   };
 }
 
-// D1 read path shared by the REST handler (and, if ever needed, MCP tools).
-// `d1` is a (sql, params) => Promise<rows[]> runner. `coldkey`, when supplied,
-// narrows to a single nominator's own flow (an exact-match lookup, not a
-// fuzzy search — SS58 addresses aren't typo-searched) instead of ranking the
-// full set.
-export async function loadValidatorNominators(
-  d1,
-  hotkey,
-  { windowLabel = DEFAULT_NOMINATOR_WINDOW, sort, limit, offset, coldkey } = {},
-) {
-  const days =
-    NOMINATOR_WINDOWS[windowLabel] ??
-    NOMINATOR_WINDOWS[DEFAULT_NOMINATOR_WINDOW];
-  const cutoff = Date.now() - days * DAY_MS;
-  const normalizedSort = NOMINATOR_SORTS.includes(sort)
-    ? sort
-    : DEFAULT_NOMINATOR_SORT;
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, NOMINATOR_LIMIT_MAX))
-    : NOMINATOR_LIMIT_DEFAULT;
-  const flooredOffset = Math.floor(Number(offset));
-  const normalizedOffset =
-    Number.isFinite(flooredOffset) && flooredOffset > 0 ? flooredOffset : 0;
-  const whereParams = [hotkey, STAKE_ADDED_KIND, STAKE_REMOVED_KIND, cutoff];
-  let whereSql =
-    "WHERE hotkey = ? AND event_kind IN (?, ?) AND observed_at >= ?";
-  if (coldkey) {
-    whereSql += " AND coldkey = ?";
-    whereParams.push(coldkey);
-  }
-  const countRows = await d1(
-    "SELECT COUNT(DISTINCT coldkey) AS nominator_count " +
-      "FROM account_events INDEXED BY idx_account_events_hotkey_kind_observed " +
-      whereSql,
-    whereParams,
-  );
-  const totalCount = Math.max(
-    0,
-    Math.trunc(Number(countRows?.[0]?.nominator_count) || 0),
-  );
-  const orderBy = {
-    net_staked: "net_staked_tao DESC, coldkey ASC",
-    gross_staked: "gross_staked_tao DESC, coldkey ASC",
-    last_activity: "last_observed DESC, coldkey ASC",
-  }[normalizedSort];
-  const sql =
-    "SELECT coldkey, " +
-    "COALESCE(SUM(CASE WHEN event_kind = ? THEN amount_tao ELSE 0 END), 0) AS staked_tao, " +
-    "COALESCE(SUM(CASE WHEN event_kind = ? THEN amount_tao ELSE 0 END), 0) AS unstaked_tao, " +
-    "COUNT(*) AS event_count, MAX(observed_at) AS last_observed, " +
-    "COALESCE(SUM(CASE WHEN event_kind = ? THEN amount_tao ELSE -amount_tao END), 0) AS net_staked_tao, " +
-    "COALESCE(SUM(amount_tao), 0) AS gross_staked_tao " +
-    "FROM account_events INDEXED BY idx_account_events_hotkey_kind_observed " +
-    whereSql +
-    " GROUP BY coldkey ORDER BY " +
-    orderBy +
-    " LIMIT ? OFFSET ?";
-  const rows = await d1(sql, [
-    STAKE_ADDED_KIND,
-    STAKE_REMOVED_KIND,
-    STAKE_ADDED_KIND,
-    ...whereParams,
-    normalizedLimit,
-    normalizedOffset,
-  ]);
-  let latestObserved = null;
-  for (const row of Array.isArray(rows) ? rows : []) {
-    const observed = coerceEpochMs(row?.last_observed);
-    if (
-      observed != null &&
-      (latestObserved == null || observed > latestObserved)
-    ) {
-      latestObserved = observed;
-    }
-  }
-  return {
-    data: buildValidatorNominators(rows, hotkey, {
-      window: windowLabel,
-      sort,
-      limit,
-      offset,
-      totalCount,
-    }),
-    generatedAt: toIso(latestObserved),
-  };
-}
+// #4772 D1 retirement: loadValidatorNominators (the D1 loader that read the
+// account_events StakeAdded/StakeRemoved stream) was removed here -- that D1 write
+// path is retired and the `account_events` table is dropped in production, so a live
+// D1 query would always miss. Serving now goes tryPostgresTier -> buildValidatorNominators([...
+// ], hotkey, {...}), never D1. See src/graphql.mjs's validator_nominators resolver and
+// src/mcp-server.mjs's get_validator_nominators tool for the call sites.

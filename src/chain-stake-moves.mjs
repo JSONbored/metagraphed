@@ -1,13 +1,16 @@
 // Live network-wide stake-movement (re-delegation) activity from the account_events StakeMoved
 // stream: a per-subnet leaderboard plus a network rollup and intensity distribution. Pure shaping
-// (buildChainStakeMoves) + a thin D1 loader (loadChainStakeMoves); the field semantics live in
-// schemas/components/05-subnets.schema.json (ChainStakeMovesArtifact). The re-delegation-churn
-// companion to the net-capital-flow /chain/stake-flow: StakeMoved is a coldkey relocating its
-// stake between hotkeys/subnets (move_stake) without unstaking, so it never changes a subnet's
-// net stake — it measures churn, not flow. Ranked and counted by the origin (netuid, coldkey);
-// the distinct mover is the coldkey (the account initiating the move), not the origin hotkey.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+// (buildChainStakeMoves); the Worker / data-api Postgres tier supplies the rows and adds the REST
+// envelope. The field semantics live in schemas/components/05-subnets.schema.json
+// (ChainStakeMovesArtifact). The re-delegation-churn companion to the net-capital-flow
+// /chain/stake-flow: StakeMoved is a coldkey relocating its stake between hotkeys/subnets
+// (move_stake) without unstaking, so it never changes a subnet's net stake — it measures churn,
+// not flow. Ranked and counted by the origin (netuid, coldkey); the distinct mover is the coldkey
+// (the account initiating the move), not the origin hotkey.
+//
+// The D1 loader (loadChainStakeMoves) was removed — account_events' D1 write path is retired and
+// the table is dropped in production (#4772 / #4909), so serving goes tryPostgresTier →
+// schema-stable empty stub, never D1.
 
 // The account_events kind emitted when a coldkey moves stake between hotkeys/subnets (move_stake).
 export const STAKE_MOVED_EVENT_KIND = "StakeMoved";
@@ -196,39 +199,4 @@ export function buildChainStakeMoves(
     ),
     subnets: subnets.slice(0, normalizedLimit),
   };
-}
-
-// Network-wide stake-movement activity, computed live: read the account_events StakeMoved stream
-// over the window (observed_at >= now - windowDays, epoch ms), first as a single network aggregate
-// (true distinct movers + newest observed_at, bounded by idx_account_events_observed) and then
-// grouped by netuid for the per-subnet leaderboard, and shape with buildChainStakeMoves. The
-// newest-observed probe doubles as the cold-store guard: a null MAX(observed_at) skips the
-// per-subnet read. The handler resolves windowLabel/windowDays from analyticsWindow (7d/30d).
-// Cold/absent store -> the schema-stable empty block.
-export async function loadChainStakeMoves(
-  d1,
-  { windowLabel, windowDays, limit } = {},
-) {
-  const cutoff = Date.now() - windowDays * DAY_MS;
-  const networkRows = await d1(
-    "SELECT COUNT(DISTINCT coldkey) AS distinct_movers, " +
-      "MAX(observed_at) AS newest_observed " +
-      "FROM account_events WHERE event_kind = ? AND observed_at >= ?",
-    [STAKE_MOVED_EVENT_KIND, cutoff],
-  );
-  const networkDistinct = networkRows?.[0] ?? null;
-  let subnetRows = [];
-  if (networkDistinct?.newest_observed != null) {
-    subnetRows = await d1(
-      "SELECT netuid, COUNT(*) AS movements, COUNT(DISTINCT coldkey) AS distinct_movers " +
-        "FROM account_events WHERE event_kind = ? AND observed_at >= ? GROUP BY netuid " +
-        "ORDER BY movements DESC, netuid ASC",
-      [STAKE_MOVED_EVENT_KIND, cutoff],
-    );
-  }
-  return buildChainStakeMoves(subnetRows, {
-    window: windowLabel,
-    limit,
-    networkDistinct,
-  });
 }

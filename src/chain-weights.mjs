@@ -3,8 +3,6 @@
 // kind-filtered sibling of chain-transfers / chain-stake-flow. Pure shaping + a thin D1 loader; the
 // Worker adds the envelope. See the schema/contracts for the full response contract.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 // The account_events kind emitted when a validator sets weights on a subnet.
 export const WEIGHTS_EVENT_KIND = "WeightsSet";
 
@@ -195,47 +193,9 @@ export function buildChainWeights(
   };
 }
 
-// Network-wide weight-setting activity, computed live: read the account_events WeightsSet stream
-// over the window (observed_at >= now - windowDays, epoch ms), first as a single network aggregate
-// (best available distinct setters + newest observed_at, covered by
-// idx_account_events(event_kind, observed_at) from migration 0032) and then grouped by netuid for
-// the per-subnet leaderboard (served by
-// idx_account_events(netuid, event_kind, block_number) from migration 0024), and shape with
-// buildChainWeights. The
-// newest-observed probe doubles as the cold-store guard: a null MAX(observed_at) skips the
-// per-subnet read. The handler resolves windowLabel/windowDays from analyticsWindow (7d/30d).
-// Cold/absent store -> the schema-stable empty block.
-export async function loadChainWeights(
-  d1,
-  { windowLabel, windowDays, limit } = {},
-) {
-  const cutoff = Date.now() - windowDays * DAY_MS;
-  const setterIdentity =
-    "CASE " +
-    "WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey " +
-    "WHEN uid IS NOT NULL AND netuid IS NOT NULL THEN 'uid:' || netuid || ':' || uid " +
-    "ELSE NULL END";
-  const networkRows = await d1(
-    "SELECT COUNT(*) AS weight_sets, COUNT(DISTINCT " +
-      setterIdentity +
-      ") AS distinct_setters, MAX(observed_at) AS newest_observed " +
-      "FROM account_events WHERE event_kind = ? AND observed_at >= ?",
-    [WEIGHTS_EVENT_KIND, cutoff],
-  );
-  const networkDistinct = networkRows?.[0] ?? null;
-  let subnetRows = [];
-  if (networkDistinct?.newest_observed != null) {
-    subnetRows = await d1(
-      "SELECT netuid, COUNT(*) AS weight_sets, COUNT(DISTINCT " +
-        setterIdentity +
-        ") AS distinct_setters " +
-        "FROM account_events WHERE event_kind = ? AND observed_at >= ? GROUP BY netuid",
-      [WEIGHTS_EVENT_KIND, cutoff],
-    );
-  }
-  return buildChainWeights(subnetRows, {
-    window: windowLabel,
-    limit,
-    networkDistinct,
-  });
-}
+// #4772 D1 retirement: loadChainWeights (the D1 loader that read the account_events
+// WeightsSet stream) was removed here -- that D1 write path is retired and the
+// `account_events` table is dropped in production, so a live D1 query would always
+// miss. Serving now goes tryPostgresTier -> buildChainWeights([...], { networkDistinct:
+// null }), never D1. See src/graphql.mjs's chain_weights and src/mcp-server.mjs's
+// get_chain_weights tool for the call sites.

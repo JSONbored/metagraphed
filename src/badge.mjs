@@ -375,7 +375,6 @@ async function reliabilityContent({
   target,
   readArtifact,
   env,
-  db,
   loadReliability,
   metric,
 }) {
@@ -391,7 +390,7 @@ async function reliabilityContent({
     const provider = findProvider(providers, target.slug);
     if (provider) netuids = provider.netuids || [];
   }
-  const rel = netuids.length ? await loadReliability({ db, netuids }) : null;
+  const rel = netuids.length ? await loadReliability({ netuids }) : null;
   return rel
     ? {
         message:
@@ -464,7 +463,6 @@ export async function handleBadgeRequest(request, env, url, deps = {}) {
     target,
     readArtifact,
     env,
-    db: deps.db ?? env?.METAGRAPH_HEALTH_DB,
     loadReliability: deps.loadReliability || loadReliabilityAggregate,
   };
 

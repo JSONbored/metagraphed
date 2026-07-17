@@ -1,9 +1,8 @@
 // Live network-wide axon-serving announcement activity from the account_events AxonServed stream:
 // a per-subnet leaderboard plus a network rollup and intensity distribution. Pure shaping
-// (buildChainServing) + a thin D1 loader (loadChainServing); the field semantics live in
-// schemas/components/05-subnets.schema.json (ChainServingArtifact).
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+// (buildChainServing); the D1 loader was retired in #4909 (account_events' D1 table was dropped
+// in #4772, so it always missed -- see #6013). Callers now go tryPostgresTier() ?? buildChainServing([]).
+// The field semantics live in schemas/components/05-subnets.schema.json (ChainServingArtifact).
 
 // The account_events kind emitted when a neuron announces its axon endpoint on a subnet.
 export const SERVING_EVENT_KIND = "AxonServed";
@@ -200,39 +199,4 @@ export function buildChainServing(
     ),
     subnets: subnets.slice(0, normalizedLimit),
   };
-}
-
-// Network-wide axon-serving activity, computed live: read the account_events AxonServed stream
-// over the window (observed_at >= now - windowDays, epoch ms), first as a single network aggregate
-// (true distinct servers + newest observed_at, bounded by idx_account_events_observed) and then
-// grouped by netuid for the per-subnet leaderboard, and shape with buildChainServing. The
-// newest-observed probe doubles as the cold-store guard: a null MAX(observed_at) skips the
-// per-subnet read. The handler resolves windowLabel/windowDays from analyticsWindow (7d/30d).
-// Cold/absent store -> the schema-stable empty block.
-export async function loadChainServing(
-  d1,
-  { windowLabel, windowDays, limit } = {},
-) {
-  const cutoff = Date.now() - windowDays * DAY_MS;
-  const networkRows = await d1(
-    "SELECT COUNT(DISTINCT hotkey) AS distinct_servers, " +
-      "MAX(observed_at) AS newest_observed " +
-      "FROM account_events WHERE event_kind = ? AND observed_at >= ?",
-    [SERVING_EVENT_KIND, cutoff],
-  );
-  const networkDistinct = networkRows?.[0] ?? null;
-  let subnetRows = [];
-  if (networkDistinct?.newest_observed != null) {
-    subnetRows = await d1(
-      "SELECT netuid, COUNT(*) AS announcements, COUNT(DISTINCT hotkey) AS distinct_servers " +
-        "FROM account_events WHERE event_kind = ? AND observed_at >= ? GROUP BY netuid " +
-        "ORDER BY announcements DESC, netuid ASC",
-      [SERVING_EVENT_KIND, cutoff],
-    );
-  }
-  return buildChainServing(subnetRows, {
-    window: windowLabel,
-    limit,
-    networkDistinct,
-  });
 }

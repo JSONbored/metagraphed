@@ -966,17 +966,6 @@ test("buildAccountSummary nulls all-time first_* when the event scan is capped",
   assert.ok(full.first_seen_at);
 });
 
-// ---- Async loader failure-path coverage ------------------------------------
-// The shared loaders take a (sql, params) => Promise<rows[]> runner. The real
-// d1All swallows a D1 timeout/schema-drift to [] (workers analytics), so from a
-// loader's view a cold store, a timed-out read, and an empty subnet all arrive
-// as []. These assert the loaders stay schema-stable on that empty path and that
-// pagination (offset vs keyset cursor, clamping) is wired correctly.
-
-// A d1 runner that returns [] for every query — the shape d1All hands back on a
-// cold/unbound DB OR a swallowed D1 timeout/schema-drift error.
-const emptyD1 = async () => [];
-
 test("buildSubnetEventSummary groups event kinds into coarse categories", () => {
   const out = buildSubnetEventSummary(
     [
@@ -1132,7 +1121,10 @@ test("buildSubnetEventSummary keeps unknown future kinds in the other category",
 });
 
 test("loadAccountHistory is schema-stable when the D1 read yields nothing", async () => {
-  const out = await loadAccountHistory(emptyD1, "5Hk", {
+  // D1 fully eliminated (2026-07-17): account_events_daily is Postgres-only
+  // now, so loadAccountHistory no longer takes a `d1` runner and always
+  // returns the cold/empty shape.
+  const out = await loadAccountHistory("5Hk", {
     limit: 25,
     offset: 0,
   });
@@ -1142,130 +1134,4 @@ test("loadAccountHistory is schema-stable when the D1 read yields nothing", asyn
   assert.deepEqual(out.days, []);
   assert.equal(out.limit, 25);
   assert.equal(out.offset, 0);
-});
-
-test("loadAccountHistory propagates a rejecting D1 runner", async () => {
-  await assert.rejects(
-    loadAccountHistory(async () => {
-      throw new Error("d1 down");
-    }, "5Hk"),
-    /d1 down/,
-  );
-});
-
-test("loadAccountHistory binds netuid/from/to filters and clamps pagination", async () => {
-  let captured;
-  await loadAccountHistory(
-    async (sql, params) => {
-      captured = { sql, params };
-      return [];
-    },
-    "5Hk",
-    { netuid: 7, from: "2026-06-01", to: "2026-06-30", limit: 0, offset: 5 },
-  );
-  assert.ok(/AND netuid = \?/.test(captured.sql));
-  assert.ok(/AND day >= \?/.test(captured.sql));
-  assert.ok(/AND day <= \?/.test(captured.sql));
-  // Same-day rows are tie-broken on netuid so the order is total; no cursor →
-  // offset paging.
-  assert.ok(
-    /ORDER BY day DESC, netuid DESC LIMIT \? OFFSET \?/.test(captured.sql),
-  );
-  assert.ok(!/\(day, netuid\) < /.test(captured.sql));
-  // limit 0 is below the floor → clamps to 1; offset 5 passes through.
-  assert.deepEqual(captured.params, [
-    "5Hk",
-    7,
-    "2026-06-01",
-    "2026-06-30",
-    1,
-    5,
-  ]);
-});
-
-test("loadAccountHistory short-circuits an inverted from>to window before D1", async () => {
-  let called = false;
-  const out = await loadAccountHistory(
-    async () => {
-      called = true;
-      return [];
-    },
-    "5Hk",
-    { from: "2026-06-30", to: "2026-06-01", limit: 50, offset: 0 },
-  );
-  assert.equal(out.day_count, 0);
-  assert.deepEqual(out.days, []);
-  assert.equal(called, false);
-});
-
-test("loadAccountHistory applies a (day, netuid) keyset cursor and drops offset", async () => {
-  let captured;
-  const out = await loadAccountHistory(
-    async (sql, params) => {
-      captured = { sql, params };
-      return [
-        { day: "2026-06-20", netuid: 3, event_count: 2, event_kinds: "" },
-        { day: "2026-06-20", netuid: 1, event_count: 5, event_kinds: "" },
-      ];
-    },
-    "5Hk",
-    { limit: 2, offset: 99, cursor: encodeCursor([20260624, 7]) },
-  );
-  // Cursor path: keyset predicate present, OFFSET dropped, day re-hyphenated.
-  assert.ok(/AND \(day, netuid\) < \(\?, \?\)/.test(captured.sql));
-  assert.ok(/ORDER BY day DESC, netuid DESC LIMIT \?/.test(captured.sql));
-  assert.ok(!/OFFSET/.test(captured.sql));
-  assert.deepEqual(captured.params, ["5Hk", "2026-06-24", 7, 2]);
-  // A full page (rows.length === limit) yields a next_cursor from the last row.
-  assert.deepEqual(out.next_cursor, encodeCursor([20260620, 1]));
-});
-
-test("loadAccountHistory ignores a malformed cursor and emits no next_cursor on a short page", async () => {
-  let captured;
-  const out = await loadAccountHistory(
-    async (sql, params) => {
-      captured = { sql, params };
-      return [
-        { day: "2026-06-20", netuid: 1, event_count: 5, event_kinds: "" },
-      ];
-    },
-    "5Hk",
-    { limit: 50, cursor: "not-a-valid-cursor" },
-  );
-  // Malformed cursor → first page (offset path), no keyset predicate, no throw.
-  assert.ok(!/\(day, netuid\) < /.test(captured.sql));
-  assert.ok(
-    /ORDER BY day DESC, netuid DESC LIMIT \? OFFSET \?/.test(captured.sql),
-  );
-  // Short page (rows.length < limit) → no next_cursor.
-  assert.equal(out.next_cursor, null);
-});
-
-test("loadAccountHistory ignores a non-integer netuid filter", async () => {
-  let captured;
-  await loadAccountHistory(
-    async (sql, params) => {
-      captured = { sql, params };
-      return [];
-    },
-    "5Hk",
-    { netuid: 7.5 },
-  );
-  assert.ok(!/AND netuid = \?/.test(captured.sql));
-  assert.deepEqual(captured.params, ["5Hk", 100, 0]);
-});
-
-test("loadAccountHistory maps sparse rollup rows null-safely", async () => {
-  const out = await loadAccountHistory(
-    async () => [
-      { day: "2026-06-24" }, // every other column absent
-      { day: "2026-06-23", netuid: 1, event_count: 4, event_kinds: "" },
-    ],
-    "5Hk",
-  );
-  assert.equal(out.day_count, 2);
-  assert.equal(out.days[0].netuid, null);
-  assert.equal(out.days[0].event_count, null);
-  assert.deepEqual(out.days[0].event_kinds, []); // missing CSV → []
-  assert.deepEqual(out.days[1].event_kinds, []); // empty CSV → []
 });

@@ -15,6 +15,10 @@ import {
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import {
+  d1All,
+  hasD1FallbackRows,
+} from "../workers/request-handlers/analytics.mjs";
 
 // --- Pure format helpers ----------------------------------------------------
 
@@ -744,29 +748,16 @@ describe("formatTrajectory", () => {
     assert.equal(point.emission_share, null);
     assert.equal(point.completeness_score, 70);
   });
-  test("loadSubnetTrajectory threads D1 string cells through formatTrajectory", async () => {
-    const d1 = async (sql, params) => {
-      assert.ok(sql.includes("FROM subnet_snapshots"));
-      assert.deepEqual(params, [11]);
-      return [
-        {
-          snapshot_date: "2026-06-15",
-          completeness_score: "88",
-          surface_count: "6",
-          endpoint_count: "4",
-          validator_count: "12",
-          miner_count: "300",
-          total_stake_tao: "1000000",
-          alpha_price_tao: "0.055",
-          emission_share: "0.000049",
-        },
-      ];
-    };
-    const out = await loadSubnetTrajectory(d1, 11);
-    const point = out.points[0];
-    assert.equal(point.validator_count, 12);
-    assert.equal(point.alpha_price_tao, 0.055);
-    assert.equal(point.emission_share, 0.000049);
+  test("loadSubnetTrajectory is schema-stable (D1 fully eliminated, 2026-07-17)", async () => {
+    // loadSubnetTrajectory no longer takes a D1 runner -- subnet_snapshots is
+    // Postgres-only now (the REST route tries the Postgres tier first), so
+    // this loader is only reached on a tier miss and always returns an empty
+    // trajectory. See tests/request-handlers-analytics-routes.test.mjs for the
+    // Postgres-tier-hit coverage of handleTrajectory itself.
+    const out = await loadSubnetTrajectory(11);
+    assert.equal(out.netuid, 11);
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
   });
   test("preserves sub-4dp emission_share when coercing D1 strings", () => {
     const out = formatTrajectory({
@@ -802,6 +793,15 @@ function fakeBatchDb() {
   };
 }
 
+// D1 write retired 2026-07-16 (item 2 of the D1->Postgres cleanup):
+// writeSubnetSnapshot's own `subnet_snapshots` result now comes entirely from
+// syncSubnetSnapshotToPostgres -- there is no more D1 batch to inspect, and
+// `ok`/`rows`/`reason` reflect that Postgres write's own outcome. The
+// identity-history mirror (syncSubnetIdentityToPostgres, an unrelated table)
+// stays independent/best-effort exactly as before. The COALESCE-backfill SQL
+// text assertion that used to live here moved to
+// tests/data-api.test.mjs's handleSubnetSnapshotSync coverage, since that's
+// where the ON CONFLICT ... COALESCE upsert actually runs now.
 describe("writeSubnetSnapshot", () => {
   const profiles = {
     ok: true,
@@ -827,7 +827,39 @@ describe("writeSubnetSnapshot", () => {
   };
   const reader = (data) => () => Promise.resolve(data);
 
-  test("returns unavailable without a db or reader", async () => {
+  // Mocks BOTH DATA_API sync routes writeSubnetSnapshot fires --
+  // subnet-identity-sync (unrelated table, best-effort/independent) and
+  // subnet-snapshot-sync (this function's own primary write) -- capturing
+  // each route's request body separately by URL so asserting on one never
+  // depends on call order between the two.
+  function postgresEnv({ snapshotOk = true, identityOk = true } = {}) {
+    const captured = {};
+    const env = {
+      DATA_API: {
+        fetch: async (request) => {
+          const body = await request.json();
+          if (request.url.includes("subnet-identity-sync")) {
+            captured.identity = body;
+            return identityOk
+              ? new Response(JSON.stringify({ ok: true }), { status: 200 })
+              : new Response("nope", { status: 502 });
+          }
+          captured.snapshot = body;
+          return snapshotOk
+            ? new Response(
+                JSON.stringify({ ok: true, rows_written: body.length }),
+                { status: 200 },
+              )
+            : new Response("nope", { status: 502 });
+        },
+      },
+      SUBNET_IDENTITY_SYNC_SECRET: "shh-identity",
+      SUBNET_SNAPSHOT_SYNC_SECRET: "shh-snapshot",
+    };
+    return { env, captured };
+  }
+
+  test("returns unavailable without a reader", async () => {
     assert.equal((await writeSubnetSnapshot({}, {})).reason, "unavailable");
     assert.equal(
       (await writeSubnetSnapshot({}, { db: fakeBatchDb() })).reason,
@@ -837,75 +869,71 @@ describe("writeSubnetSnapshot", () => {
   test("reports when profiles are unavailable", async () => {
     const r = await writeSubnetSnapshot(
       {},
-      { db: fakeBatchDb(), readArtifact: reader({ ok: false }) },
+      { readArtifact: reader({ ok: false }) },
     );
     assert.equal(r.reason, "profiles_unavailable");
   });
   test("reports when there are no profiles", async () => {
     const r = await writeSubnetSnapshot(
       {},
-      {
-        db: fakeBatchDb(),
-        readArtifact: reader({ ok: true, data: { profiles: [] } }),
-      },
+      { readArtifact: reader({ ok: true, data: { profiles: [] } }) },
     );
     assert.equal(r.reason, "no_profiles");
   });
-  test("batches one row per integer-netuid profile", async () => {
-    const db = fakeBatchDb();
-    const r = await writeSubnetSnapshot(
-      {},
-      { db, readArtifact: reader(profiles), now: () => Date.UTC(2026, 5, 10) },
-    );
+  test("writes one row per integer-netuid profile to Postgres", async () => {
+    const { env } = postgresEnv();
+    const r = await writeSubnetSnapshot(env, {
+      readArtifact: reader(profiles),
+      now: () => Date.UTC(2026, 5, 10),
+    });
     assert.equal(r.ok, true);
     assert.equal(r.rows, 2); // null-netuid profile skipped
     assert.equal(r.date, "2026-06-10");
-    assert.equal(db.calls.batched[0].length, 2);
   });
-  // #4832 gap-closure: syncSubnetIdentityToPostgres is called best-effort
-  // right after the D1 write, via env.DATA_API -- an absent/failing binding
-  // must never affect writeSubnetSnapshot's own D1-derived result.
-  test("mirrors the same profiles into Postgres via DATA_API, without affecting the D1 result", async () => {
-    const db = fakeBatchDb();
-    let receivedBody;
-    const env = {
-      DATA_API: {
-        fetch: async (request) => {
-          receivedBody = await request.json();
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        },
-      },
-      SUBNET_IDENTITY_SYNC_SECRET: "shh",
-    };
+  test("mirrors the same profiles into Postgres identity-sync, independent of the snapshot-sync result", async () => {
+    const { env, captured } = postgresEnv();
     const r = await writeSubnetSnapshot(env, {
-      db,
       readArtifact: reader(profiles),
       now: () => Date.UTC(2026, 5, 10),
     });
     assert.equal(r.ok, true);
     assert.equal(r.rows, 2);
-    assert.deepEqual(receivedBody, profiles.data.profiles);
+    assert.deepEqual(captured.identity, profiles.data.profiles);
   });
-  test("still returns the D1 result when the Postgres mirror fails", async () => {
-    const db = fakeBatchDb();
+  test("returns ok:false with the sync's reason when the Postgres snapshot sync fails, even if identity-sync succeeds", async () => {
+    const { env } = postgresEnv({ snapshotOk: false });
+    const r = await writeSubnetSnapshot(env, {
+      readArtifact: reader(profiles),
+      now: () => Date.UTC(2026, 5, 10),
+    });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "status_502");
+  });
+  test("returns unavailable without DATA_API/secret configured", async () => {
+    const r = await writeSubnetSnapshot(
+      {},
+      { readArtifact: reader(profiles), now: () => Date.UTC(2026, 5, 10) },
+    );
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "unavailable");
+  });
+  test("returns fetch_failed when the Postgres write throws outright", async () => {
     const env = {
       DATA_API: {
         fetch: async () => {
-          throw new Error("network down");
+          throw new Error("boom");
         },
       },
-      SUBNET_IDENTITY_SYNC_SECRET: "shh",
+      SUBNET_SNAPSHOT_SYNC_SECRET: "shh-snapshot",
     };
     const r = await writeSubnetSnapshot(env, {
-      db,
       readArtifact: reader(profiles),
-      now: () => Date.UTC(2026, 5, 10),
     });
-    assert.equal(r.ok, true);
-    assert.equal(r.rows, 2);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "fetch_failed");
   });
-  test("chunks large subnet snapshot writes into bounded D1 batches", async () => {
-    const db = fakeBatchDb();
+  test("ships every integer-netuid profile to Postgres in one request, no D1 batching cap", async () => {
+    const { env, captured } = postgresEnv();
     const manyProfiles = {
       ok: true,
       data: {
@@ -919,96 +947,31 @@ describe("writeSubnetSnapshot", () => {
         })),
       },
     };
-    const r = await writeSubnetSnapshot(
-      {},
-      {
-        db,
-        readArtifact: reader(manyProfiles),
-        now: () => Date.UTC(2026, 5, 10),
-      },
-    );
+    const r = await writeSubnetSnapshot(env, {
+      readArtifact: reader(manyProfiles),
+      now: () => Date.UTC(2026, 5, 10),
+    });
     assert.equal(r.ok, true);
     assert.equal(r.rows, 55);
-    assert.equal(db.calls.batched.length, 2);
-    assert.equal(db.calls.batched[0].length, 50);
-    assert.equal(db.calls.batched[1].length, 5);
+    assert.equal(captured.snapshot.length, 55);
   });
-  test("still writes structural rows when optional economics read throws", async () => {
-    const db = fakeBatchDb();
-    const r = await writeSubnetSnapshot(
-      {},
-      {
-        db,
-        readArtifact: (_env, path) => {
-          if (path === "/metagraph/economics.json") {
-            throw new Error("malformed economics artifact");
-          }
-          return Promise.resolve(profiles);
-        },
-        now: () => Date.UTC(2026, 5, 10),
+  test("still counts structural rows when optional economics read throws", async () => {
+    const { env, captured } = postgresEnv();
+    const r = await writeSubnetSnapshot(env, {
+      readArtifact: (_env, path) => {
+        if (path === "/metagraph/economics.json") {
+          throw new Error("malformed economics artifact");
+        }
+        return Promise.resolve(profiles);
       },
-    );
+      now: () => Date.UTC(2026, 5, 10),
+    });
 
     assert.equal(r.ok, true);
     assert.equal(r.rows, 2);
-    assert.equal(db.calls.batched[0].length, 2);
-    assert.equal(db.calls.batched[0][0].__params[7], null);
-    assert.equal(db.calls.batched[0][0].__params[11], null);
-  });
-  test("returns write_failed when the batch throws", async () => {
-    const db = {
-      prepare: () => ({ bind: () => ({}) }),
-      batch: () => Promise.reject(new Error("boom")),
-    };
-    const r = await writeSubnetSnapshot(
-      {},
-      { db, readArtifact: reader(profiles) },
-    );
-    assert.equal(r.reason, "write_failed");
-  });
-  test("backfills NULL economics via COALESCE DO UPDATE, not DO NOTHING", async () => {
-    let captured = "";
-    const db = {
-      prepare(sql) {
-        captured = sql;
-        return { bind: () => ({}) };
-      },
-      batch: (s) => Promise.resolve(s.map(() => ({}))),
-    };
-    await writeSubnetSnapshot(
-      {},
-      { db, readArtifact: reader(profiles), now: () => Date.UTC(2026, 5, 10) },
-    );
-    // A later same-day fire backfills economics rather than freezing the row.
-    assert.match(
-      captured,
-      /ON CONFLICT \(netuid, snapshot_date\) DO UPDATE SET/,
-    );
-    assert.doesNotMatch(captured, /DO NOTHING/);
-    // Each economics column is COALESCE(existing, excluded): fills a NULL, but a
-    // later NULL can never wipe an earlier fire's good value.
-    for (const col of [
-      "validator_count",
-      "miner_count",
-      "total_stake_tao",
-      "alpha_price_tao",
-      "emission_share",
-      "tao_in_pool_tao",
-      "alpha_in_pool",
-      "alpha_out_pool",
-      "subnet_volume_tao",
-    ]) {
-      assert.match(
-        captured,
-        new RegExp(
-          `${col} = COALESCE\\(subnet_snapshots\\.${col}, excluded\\.${col}\\)`,
-        ),
-      );
-    }
-    // Structural columns + captured_at stay owned by the first fire (not in SET).
-    for (const col of ["completeness_score", "surface_count", "captured_at"]) {
-      assert.doesNotMatch(captured, new RegExp(`${col}\\s*=`));
-    }
+    assert.equal(captured.snapshot.length, 2);
+    assert.equal(captured.snapshot[0].total_stake_tao, null);
+    assert.equal(captured.snapshot[0].alpha_in_pool, null);
   });
 });
 
@@ -1175,20 +1138,6 @@ describe("syncSubnetSnapshotToPostgres", () => {
 
 // --- Worker dispatch (cold D1 -> empty-valid; fake D1 -> with data) ----------
 
-function analyticsD1() {
-  return {
-    prepare(sql) {
-      return {
-        bind() {
-          return {
-            all: () => Promise.resolve({ results: rowsForSql(sql) }),
-            run: () => Promise.resolve({ meta: {} }),
-          };
-        },
-      };
-    },
-  };
-}
 function captureD1Env(queries) {
   return {
     ...createLocalArtifactEnv(),
@@ -1485,105 +1434,11 @@ describe("analytics routes (cold local D1)", () => {
   });
 });
 
-describe("analytics routes (fake D1 with data)", () => {
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: analyticsD1(),
-  };
-  test("percentiles surfaces p95 from D1", async () => {
-    const queries = [];
-    const { body } = await getJson(
-      "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d",
-      captureD1Env(queries),
-    );
-    assert.equal(body.data.surfaces[0].latency_ms.p95, 400);
-    assert.match(
-      queries[0].sql,
-      /PARTITION BY COALESCE\(surface_key, surface_id\)/,
-    );
-    assert.match(queries[0].sql, /GROUP BY surface_key/);
-    // Surfaces with no healthy-latency reading are excluded (no all-null rows).
-    assert.match(queries[0].sql, /HAVING MAX\(lat_cnt\) > 0/);
-  });
-  test("incidents computes uptime + incidents from D1", async () => {
-    const queries = [];
-    const { body } = await getJson(
-      "https://api.metagraph.sh/api/v1/subnets/7/health/incidents",
-      captureD1Env(queries),
-    );
-    assert.equal(body.data.surfaces[0].uptime_ratio, 0.98);
-    assert.equal(body.data.surfaces[0].incident_count, 1);
-    assert.match(
-      queries[0].sql,
-      /GROUP BY COALESCE\(surface_key, surface_id\)/,
-    );
-    assert.match(queries[1].sql, /PARTITION BY surface_key/);
-    assert.doesNotMatch(
-      queries[1].sql,
-      /WHERE netuid = \? AND checked_at >= \? AND ok = 0/,
-    );
-    assert.match(
-      queries[1].sql,
-      /SUM\(CASE WHEN ok = 1 OR gap IS NULL OR gap > \?/,
-    );
-    assert.match(queries[1].sql, /incidents AS \(/);
-    assert.match(queries[1].sql, /FROM grouped\n {9}WHERE ok = 0/);
-  });
-  test("incidents SQL caps rows per surface_key", async () => {
-    const queries = [];
-    const { status } = await getJson(
-      "https://api.metagraph.sh/api/v1/subnets/7/health/incidents",
-      captureD1Env(queries),
-    );
-    assert.equal(status, 200);
-    const incidentQuery = queries.find((query) =>
-      query.sql.includes("WITH checks"),
-    );
-    assert.ok(incidentQuery.sql.includes("ROW_NUMBER()"));
-    assert.ok(incidentQuery.sql.includes("WHERE rn <= ?"));
-    assert.equal(incidentQuery.params.at(-1), 1000);
-    // Single-probe blips are excluded: an incident needs >= 2 consecutive fails.
-    assert.ok(incidentQuery.sql.includes("HAVING COUNT(*) >= ?"));
-    assert.equal(incidentQuery.params.at(-2), 2);
-  });
-
-  test("uptime ?min_samples adds a bound HAVING sample floor (#2582)", async () => {
-    const queries = [];
-    const envWithCapture = captureD1Env(queries);
-    const { status } = await getJson(
-      "https://api.metagraph.sh/api/v1/subnets/7/uptime?min_samples=3",
-      envWithCapture,
-    );
-    assert.equal(status, 200);
-    const uptimeQuery = queries.find((query) =>
-      query.sql.includes("FROM surface_uptime_daily"),
-    );
-    // The floor is a bound HAVING predicate between GROUP BY and ORDER BY, so
-    // sparse day rows (including SUM(samples)=0 'unknown' days) drop in SQL.
-    assert.match(
-      uptimeQuery.sql,
-      /GROUP BY COALESCE\(surface_key, surface_id\), day\s+HAVING SUM\(samples\) >= \?\s+ORDER BY day DESC/,
-    );
-    assert.equal(uptimeQuery.params[0], 7); // netuid
-    assert.equal(uptimeQuery.params[2], 3); // the bound HAVING floor
-    assert.equal(uptimeQuery.params.length, 4); // netuid, cutoff, floor, LIMIT
-  });
-
-  test("uptime without min_samples keeps the unfiltered query shape", async () => {
-    const queries = [];
-    const envWithCapture = captureD1Env(queries);
-    const { status } = await getJson(
-      "https://api.metagraph.sh/api/v1/subnets/7/uptime",
-      envWithCapture,
-    );
-    assert.equal(status, 200);
-    const uptimeQuery = queries.find((query) =>
-      query.sql.includes("FROM surface_uptime_daily"),
-    );
-    assert.doesNotMatch(uptimeQuery.sql, /HAVING/);
-    assert.equal(uptimeQuery.params.length, 3); // netuid, cutoff, LIMIT only
-  });
-
+describe("analytics routes reject malformed params before any tier call", () => {
+  // D1 fully eliminated (2026-07-17): percentiles/incidents/uptime/trends never
+  // read D1 anymore (a Postgres-tier miss falls straight through to the
+  // schema-stable empty payload), so the query-validation-before-any-read
+  // contract is the only thing left to assert here.
   test("uptime rejects a malformed min_samples with a 400", async () => {
     const queries = [];
     const envWithCapture = captureD1Env(queries);
@@ -1595,145 +1450,6 @@ describe("analytics routes (fake D1 with data)", () => {
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "min_samples");
     assert.equal(queries.length, 0, "malformed input must not reach D1");
-  });
-
-  test("trends and uptime SQL group by stable surface key", async () => {
-    const queries = [];
-    const envWithCapture = captureD1Env(queries);
-    await getJson(
-      "https://api.metagraph.sh/api/v1/subnets/7/health/trends",
-      envWithCapture,
-    );
-    await getJson(
-      "https://api.metagraph.sh/api/v1/subnets/7/uptime",
-      envWithCapture,
-    );
-    // Trends rolls raw checks through the shared ok-latency CTE, which coalesces
-    // surface_key ?? surface_id once, then groups on that stable key.
-    const trendsSql =
-      queries.find((query) => query.sql.includes("FROM ranked"))?.sql || "";
-    assert.match(
-      trendsSql,
-      /COALESCE\(surface_key, surface_id\) AS surface_key/,
-    );
-    assert.match(trendsSql, /GROUP BY surface_key/);
-    assert.match(
-      queries.find((query) => query.sql.includes("FROM surface_uptime_daily"))
-        ?.sql || "",
-      /GROUP BY COALESCE\(surface_key, surface_id\), day/,
-    );
-  });
-
-  test("global incidents SQL bounds source rows before window grouping", async () => {
-    const queries = [];
-    const envWithCapture = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              queries.push({ sql, params });
-              return {
-                all: () => Promise.resolve({ results: rowsForSql(sql) }),
-              };
-            },
-          };
-        },
-      },
-    };
-    const { status } = await getJson(
-      "https://api.metagraph.sh/api/v1/incidents?window=30d",
-      envWithCapture,
-    );
-    assert.equal(status, 200);
-    const incidentQuery = queries.find((query) =>
-      query.sql.includes("WITH recent_checks"),
-    );
-    assert.ok(incidentQuery.sql.includes("ORDER BY checked_at DESC"));
-    assert.doesNotMatch(incidentQuery.sql, /WHERE checked_at >= \? AND ok = 0/);
-    assert.match(
-      incidentQuery.sql,
-      /SUM\(CASE WHEN ok = 1 OR gap IS NULL OR gap > \?/,
-    );
-    assert.match(incidentQuery.sql, /FROM grouped\n {5}WHERE ok = 0/);
-    assert.ok(incidentQuery.sql.includes("LIMIT ?"));
-    assert.equal(incidentQuery.params[1], 5000);
-    assert.equal(incidentQuery.params.at(-1), 1000);
-    // Single-probe blips are excluded: an incident needs >= 2 consecutive fails.
-    assert.ok(incidentQuery.sql.includes("HAVING COUNT(*) >= ?"));
-    assert.equal(incidentQuery.params.at(-2), 2);
-  });
-
-  test("trajectory computes deltas from snapshots", async () => {
-    const { body } = await getJson(
-      "https://api.metagraph.sh/api/v1/subnets/7/trajectory",
-      env,
-    );
-    assert.equal(body.data.point_count, 2);
-    assert.equal(body.data.deltas["7d"].completeness_score, 7);
-    const latest = body.data.points[1];
-    assert.equal(typeof latest.total_stake_tao, "number");
-    assert.equal(typeof latest.alpha_price_tao, "number");
-    assert.equal(typeof latest.emission_share, "number");
-    assert.equal(latest.emission_share, 0.009);
-    // #2552: pool liquidity + volume ride the same D1 string-coerced path.
-    assert.equal(latest.tao_in_pool_tao, 26707.57);
-    assert.equal(latest.alpha_in_pool, 2956464.98);
-    assert.equal(latest.alpha_out_pool, 2257199.02);
-    assert.equal(latest.subnet_volume_tao, 798027.45);
-    assert.equal(body.data.deltas["7d"].tao_in_pool_tao, 6707.57);
-  });
-  test("leaderboards combines D1 health with registry growth", async () => {
-    const { body } = await getJson(
-      "https://api.metagraph.sh/api/v1/registry/leaderboards?board=fastest-growing",
-      env,
-    );
-    assert.equal(body.data.boards["fastest-growing"][0].netuid, 7);
-    assert.equal(body.data.boards["fastest-growing"][0].completeness_delta, 7);
-  });
-});
-
-describe("leaderboards growth baseline handles a null window-start score", () => {
-  // A subnet whose earliest in-window snapshot is unscored (null) must latch
-  // the first real completeness score, not pin `first` to null for the whole
-  // window — otherwise REST diverges from MCP and drops genuinely fast-growing
-  // subnets (mirrors growthRowsFromSamples / #2602).
-  function growthD1(growthRows) {
-    return {
-      prepare(sql) {
-        return {
-          bind() {
-            return {
-              all: () =>
-                Promise.resolve({
-                  results: sql.includes("WHERE snapshot_date >= ?")
-                    ? growthRows
-                    : [],
-                }),
-            };
-          },
-        };
-      },
-    };
-  }
-  test("includes a subnet once real scores exist after a leading null", async () => {
-    const env = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: growthD1([
-        { netuid: 9, snapshot_date: "2026-06-03", completeness_score: null },
-        { netuid: 9, snapshot_date: "2026-06-06", completeness_score: 80 },
-        { netuid: 9, snapshot_date: "2026-06-10", completeness_score: 85 },
-      ]),
-    };
-    const { body } = await getJson(
-      "https://api.metagraph.sh/api/v1/registry/leaderboards?board=fastest-growing",
-      env,
-    );
-    const entry = body.data.boards["fastest-growing"].find(
-      (e) => e.netuid === 9,
-    );
-    assert.ok(entry, "leading-null subnet must rank once real scores exist");
-    assert.equal(entry.completeness_delta, 5);
   });
 });
 
@@ -1780,7 +1496,11 @@ describe("writeSubnetSnapshot no integer netuids", () => {
 
 describe("hourly cron writes a daily snapshot", () => {
   test("handleScheduled hourly runs prune + snapshot", async () => {
-    const captured = [];
+    // subnet_snapshots is Postgres-only now (D1 write retired, item 2 of the
+    // D1->Postgres cleanup) -- the snapshot batch this test used to capture
+    // off METAGRAPH_HEALTH_DB.batch is now a POST to DATA_API's
+    // subnet-snapshot-sync route instead.
+    let snapshotRowCount = null;
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
@@ -1789,23 +1509,35 @@ describe("hourly cron writes a daily snapshot", () => {
             run: () => Promise.resolve({ meta: { changes: 0 } }),
           }),
         }),
-        batch: (stmts) => {
-          captured.push(stmts.length);
-          return Promise.resolve([]);
+      },
+      DATA_API: {
+        fetch: async (request) => {
+          if (request.url.includes("subnet-snapshot-sync")) {
+            const rows = await request.json();
+            snapshotRowCount = rows.length;
+          }
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
         },
       },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+      SUBNET_SNAPSHOT_SYNC_SECRET: "test-secret",
     };
     const result = await handleScheduled({ cron: "0 * * * *" }, env, {});
     assert.equal(result.pruned, true);
-    assert.ok(captured[0] > 0, "snapshot batch should write rows");
+    assert.ok(snapshotRowCount > 0, "snapshot sync should ship rows");
   });
 });
 
 describe("d1All graceful degradation (#1715)", () => {
   test("a D1 read failure degrades to an empty response and is logged, not silent", async () => {
     // A throwing D1 read used to be swallowed to [] with no signal (this is what
-    // dark-served the uptime tier for days). The route must still degrade
-    // gracefully (200 + empty), but the error must now be surfaced.
+    // dark-served the uptime tier for days). D1 fully eliminated (2026-07-17):
+    // no live route reaches d1All anymore (every analytics route tries the
+    // Postgres tier first and a miss falls through to a pure empty-shape
+    // builder, never a live D1 query) -- e.g. /api/v1/rpc/usage now serves
+    // loadRpcUsage's schema-stable stub unconditionally. d1All itself is still
+    // exported and still the dark-serve logging contract for any future/direct
+    // caller, so it's exercised directly here rather than through a route.
     const throwingDb = {
       prepare: () => ({
         bind: () => ({
@@ -1822,21 +1554,16 @@ describe("d1All graceful degradation (#1715)", () => {
     const errors = [];
     const originalError = console.error;
     console.error = (...args) => errors.push(args.map(String).join(" "));
+    let rows;
     try {
-      const res = await handleRequest(
-        new Request("https://api.metagraph.sh/api/v1/rpc/usage"),
-        env,
-        {},
-      );
-      assert.equal(res.status, 200);
-      const body = await res.json();
-      assert.equal(body.ok, true);
-      // d1All caught the throw → [] fallback → empty-but-valid usage envelope.
-      assert.equal(body.data.summary.total_requests, 0);
-      assert.deepEqual(body.data.endpoints, []);
+      rows = await d1All(env, "SELECT 1", []);
     } finally {
       console.error = originalError;
     }
+    // d1All caught the throw → [] fallback, marked so a caller can tell a real
+    // empty result from a degraded one.
+    assert.deepEqual(rows, []);
+    assert.equal(hasD1FallbackRows(rows), true);
     assert.ok(
       errors.some((line) => line.includes("[d1All]")),
       "d1All should log the swallowed read failure",

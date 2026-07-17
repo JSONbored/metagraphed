@@ -2,9 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainAxonRemovals,
-  loadChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
-  AXON_REMOVAL_EVENT_KIND,
 } from "../src/chain-axon-removals.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -214,49 +212,6 @@ describe("buildChainAxonRemovals", () => {
   });
 });
 
-describe("loadChainAxonRemovals", () => {
-  test("reads the network aggregate then the per-subnet leaderboard over the window", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      if (/GROUP BY netuid/.test(sql)) return SUBNETS;
-      return [NETWORK];
-    };
-    const data = await loadChainAxonRemovals(d1, {
-      windowLabel: "7d",
-      windowDays: 7,
-      limit: 20,
-    });
-    assert.match(calls[0].sql, /COUNT\(DISTINCT hotkey\)/);
-    assert.doesNotMatch(calls[0].sql, /GROUP BY/);
-    assert.match(
-      calls[1].sql,
-      /event_kind = \? AND observed_at >= \? GROUP BY netuid/,
-    );
-    assert.equal(calls[0].params[0], AXON_REMOVAL_EVENT_KIND);
-    assert.equal(typeof calls[0].params[1], "number"); // epoch-ms cutoff
-    assert.equal(calls[1].params[1], calls[0].params[1]); // same window cutoff
-    assert.equal(data.subnet_count, 3);
-    assert.equal(data.subnets[0].netuid, 1);
-  });
-
-  test("a cold store skips the per-subnet read and returns the empty block", async () => {
-    const calls = [];
-    const d1 = async (sql) => {
-      calls.push(sql);
-      if (/GROUP BY netuid/.test(sql)) return SUBNETS;
-      return []; // network aggregate returns no row on a fully cold store
-    };
-    const data = await loadChainAxonRemovals(d1, {
-      windowLabel: "7d",
-      windowDays: 7,
-    });
-    assert.equal(calls.length, 1);
-    assert.equal(data.subnet_count, 0);
-    assert.equal(data.observed_at, null);
-  });
-});
-
 describe("GET /api/v1/chain/axon-removals", () => {
   function axonRemovalsEnv({ networkRow, subnetRows }) {
     return {
@@ -282,21 +237,27 @@ describe("GET /api/v1/chain/axon-removals", () => {
   const cold = { networkRow: [{ newest_observed: null }], subnetRows: [] };
   const warm = { networkRow: [NETWORK], subnetRows: SUBNETS };
 
-  test("dispatches to the network axon-removal scorecard", async () => {
-    const res = await handleRequest(
-      req("?window=7d"),
-      axonRemovalsEnv(warm),
-      {},
-    );
+  // #4909/#6013: account_events' D1 write path is retired and the table is
+  // dropped in production, so this handler no longer queries D1 at all --
+  // even a "warm" D1 mock (real rows) must not change the response.
+  test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
+    let d1Called = false;
+    const env = axonRemovalsEnv(warm);
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error("D1 must not be queried -- account_events is retired");
+    };
+    const res = await handleRequest(req("?window=7d"), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.subnet_count, 3);
-    assert.equal(body.data.subnets[0].netuid, 1);
+    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(body.data.subnets, []);
     assert.equal(
       body.meta.artifact_path,
       "/metagraph/chain/axon-removals.json",
     );
+    assert.equal(d1Called, false);
   });
 
   test("serves a HEAD probe through the GET cache key with no body", async () => {
@@ -356,7 +317,10 @@ describe("GET /api/v1/chain/axon-removals", () => {
     assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+  // #4909/#6013: the D1 "fallback" is a schema-stable empty stub, not a real
+  // D1 read (account_events is retired) -- a Postgres failure degrades to the
+  // empty card, not to whatever a D1 mock might return.
+  test("flag=postgres falls back to the empty stub (not D1) when DATA_API fails", async () => {
     const env = {
       ...axonRemovalsEnv(warm),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
@@ -369,7 +333,7 @@ describe("GET /api/v1/chain/axon-removals", () => {
     const res = await handleRequest(req("?window=7d"), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.data.subnet_count, 3);
+    assert.equal(body.data.subnet_count, 0);
   });
 
   test("rejects an unsupported window with 400", async () => {
@@ -394,7 +358,9 @@ describe("GET /api/v1/chain/axon-removals", () => {
   const AXON_REMOVALS_CSV_HEADER =
     "netuid,distinct_removers,removals,removals_per_remover";
 
-  test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
+  // #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
+  // export is always header-only now (account_events is retired).
+  test("CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
       axonRemovalsEnv(warm),
@@ -407,10 +373,8 @@ describe("GET /api/v1/chain/axon-removals", () => {
       /attachment; filename="chain-axon-removals\.csv"/,
     );
     const lines = (await res.text()).trim().split("\r\n");
+    assert.equal(lines.length, 1);
     assert.equal(lines[0], AXON_REMOVALS_CSV_HEADER);
-    // Ranked by total removals desc: netuid 1 (40), 2 (30), 5 (25).
-    assert.equal(lines.length, 4); // header + 3 subnet rows
-    assert.equal(lines[1], "1,4,40,10");
   });
 
   test("honors Accept: text/csv the same as ?format=csv", async () => {
@@ -511,11 +475,13 @@ describe("chain/axon-removals edge cache", () => {
       );
     const res = await call();
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).data.subnet_count, 3);
+    // #4909/#6013: account_events is retired, so even this "warm" D1 mock
+    // never reaches the response -- subnet_count stays 0.
+    assert.equal((await res.json()).data.subnet_count, 0);
     await Promise.all(waits);
     assert.equal(store.size, 1);
     const cached = await call();
     assert.equal(cached.status, 200);
-    assert.equal((await cached.json()).data.subnet_count, 3);
+    assert.equal((await cached.json()).data.subnet_count, 0);
   });
 });

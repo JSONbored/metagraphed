@@ -1201,9 +1201,21 @@ describe("handleSubnetIdentityHistory", () => {
   });
 
   test("happy path returns identity timeline rows", async () => {
-    const { env } = dbWith({
-      subnetIdentityHistory: [identityHistoryRow()],
-    });
+    const env = {
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            netuid: NETUID,
+            entry_count: 1,
+            limit: 20,
+            offset: null,
+            next_cursor: null,
+            entries: [{ subnet_name: "MIAO", identity_hash: "abc" }],
+          }),
+      },
+    };
     const body = await json(
       await handleSubnetIdentityHistory(
         req(`/api/v1/subnets/${NETUID}/identity-history`),
@@ -2768,35 +2780,12 @@ describe("handleAccountHistory", () => {
     assert.deepEqual(body.data.days, []);
   });
 
-  test("happy path returns per-day rollup rows", async () => {
-    const { env } = dbWith({ accountEventsDaily: [accountDayRow()] });
-    const body = await json(
-      await handleAccountHistory(
-        req(`/api/v1/accounts/${SS58}/history`),
-        env,
-        SS58,
-        url(
-          `/api/v1/accounts/${SS58}/history?netuid=${NETUID}&from=2026-06-01&to=2026-06-30&limit=50`,
-        ),
-      ),
-    );
-    assert.equal(body.data.day_count, 1);
-    assert.equal(body.data.days[0].day, "2026-06-24");
-    assert.equal(body.data.limit, 50);
-  });
-
-  test("netuid filter is bound when numeric", async () => {
-    const { env, captures } = dbWith({ accountEventsDaily: [accountDayRow()] });
-    await handleAccountHistory(
-      req(`/api/v1/accounts/${SS58}/history`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/history?netuid=${NETUID}`),
-    );
-    const sql = captures.sql.find((s) => /account_events_daily/.test(s));
-    assert.ok(/netuid = \?/.test(sql));
-    assert.ok(captures.params.some((p) => p.includes(NETUID)));
-  });
+  // D1 fully eliminated (2026-07-17): account_events_daily is Postgres-only
+  // now, so ?netuid/?from/?to/?limit no longer drive a live D1 query -- a
+  // Postgres-tier miss (the only path this handler has without
+  // METAGRAPH_ACCOUNT_EVENTS_SOURCE=postgres) always returns the
+  // schema-stable empty shape regardless of those filters. See "returns
+  // schema-stable empty days on cold D1" above for that coverage.
 
   test("short-circuits an inverted from>to date window before D1", async () => {
     const { env, captures } = dbWith({ accountEventsDaily: [accountDayRow()] });
@@ -3544,7 +3533,18 @@ describe("handleAccountIdentity", () => {
   });
 
   test("happy path returns the account's identity", async () => {
-    const { env } = dbWith({ accountIdentity: [accountIdentityRow()] });
+    const env = {
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            account: SS58,
+            has_identity: true,
+            name: "Example Team",
+          }),
+      },
+    };
     const body = await json(
       await handleAccountIdentity(
         req(`/api/v1/accounts/${SS58}/identity`),
@@ -3583,22 +3583,27 @@ describe("handleAccountIdentityHistory", () => {
   });
 
   test("happy path returns identity timeline rows", async () => {
-    const { env } = dbWith({
-      accountIdentityHistory: [
-        {
-          id: 10,
-          observed_at: OBSERVED_AT,
-          name: "Example Team",
-          url: null,
-          github: null,
-          image: null,
-          discord: null,
-          description: null,
-          additional: null,
-          identity_hash: "abc",
-        },
-      ],
-    });
+    const env = {
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            account: SS58,
+            entry_count: 1,
+            limit: 20,
+            offset: null,
+            next_cursor: null,
+            entries: [
+              {
+                observed_at: new Date(OBSERVED_AT).toISOString(),
+                name: "Example Team",
+                identity_hash: "abc",
+              },
+            ],
+          }),
+      },
+    };
     const body = await json(
       await handleAccountIdentityHistory(
         req(`/api/v1/accounts/${SS58}/identity-history`),
@@ -4418,8 +4423,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountIdentity: flag=postgres falls back to D1 on failure", async () => {
-    const { env } = dbWith({ accountIdentity: [accountIdentityRow()] });
+  test("handleAccountIdentity: flag=postgres falls back to schema-stable null on failure (D1 retired)", async () => {
+    const env = {};
     env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
     env.DATA_API = {
       fetch: async () => {
@@ -4430,7 +4435,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountIdentity(req(path), env, SS58, url(path)),
     );
-    assert.equal(body.data.name, "Example Team");
+    assert.equal(body.data.has_identity, false);
+    assert.equal(body.data.name, null);
   });
 
   test("handleAccountIdentityHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
@@ -4470,23 +4476,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountIdentityHistory: flag=postgres falls back to D1 on failure", async () => {
-    const { env } = dbWith({
-      accountIdentityHistory: [
-        {
-          id: 10,
-          observed_at: OBSERVED_AT,
-          name: "Example Team",
-          url: null,
-          github: null,
-          image: null,
-          discord: null,
-          description: null,
-          additional: null,
-          identity_hash: "abc",
-        },
-      ],
-    });
+  test("handleAccountIdentityHistory: flag=postgres falls back to schema-stable empty on failure (D1 retired)", async () => {
+    const env = {};
     env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
     env.DATA_API = {
       fetch: async () => {
@@ -4497,7 +4488,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountIdentityHistory(req(path), env, SS58, url(path)),
     );
-    assert.equal(body.data.entries[0].identity_hash, "abc");
+    assert.equal(body.data.entry_count, 0);
+    assert.deepEqual(body.data.entries, []);
   });
 
   // #4832 gap-closure: subnet_identity_history's new Postgres tier, own
@@ -4528,10 +4520,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetIdentityHistory: flag=postgres falls back to D1 on failure", async () => {
-    const { env } = dbWith({
-      subnetIdentityHistory: [identityHistoryRow()],
-    });
+  test("handleSubnetIdentityHistory: flag=postgres falls back to schema-stable empty on failure (D1 retired)", async () => {
+    const env = {};
     env.METAGRAPH_SUBNET_IDENTITY_SOURCE = "postgres";
     env.DATA_API = {
       fetch: async () => {
@@ -4542,7 +4532,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetIdentityHistory(req(path), env, NETUID, url(path)),
     );
-    assert.equal(body.data.entries[0].identity_hash, "abc");
+    assert.equal(body.data.entry_count, 0);
+    assert.deepEqual(body.data.entries, []);
   });
 
   test("handleSubnetValidators: flag=postgres uses Postgres data, D1 never queried", async () => {
@@ -5792,7 +5783,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountHistory: flag=postgres falls back to D1 on failure", async () => {
+  // D1 fully eliminated (2026-07-17): a Postgres-tier failure now falls
+  // through to the schema-stable empty shape, never a live D1 read.
+  test("handleAccountHistory: flag=postgres falls back to schema-stable empty on failure, D1 never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
     env.DATA_API = {
@@ -5809,7 +5802,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       ),
     );
     assert.equal(body.data.marker, undefined);
-    assert.ok(captures.sql.length > 0);
+    assert.equal(body.data.day_count, 0);
+    assert.deepEqual(body.data.days, []);
+    assert.deepEqual(captures.sql, []);
   });
 });
 

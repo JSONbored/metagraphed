@@ -10,28 +10,28 @@ import { readArtifact, readHealthKv } from "../workers/storage.mjs";
 import { contractVersion } from "../workers/responses.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import {
-  loadChainAxonRemovals,
+  buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_WINDOWS,
   DEFAULT_CHAIN_AXON_REMOVALS_WINDOW,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
 } from "./chain-axon-removals.mjs";
 import {
-  loadChainDeregistrations,
+  buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
 } from "./chain-deregistrations.mjs";
 import {
-  loadChainRegistrations,
+  buildChainRegistrations,
   CHAIN_REGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_REGISTRATIONS_WINDOW,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
 } from "./chain-registrations.mjs";
 import {
-  loadChainPrometheus,
+  buildChainPrometheus,
   CHAIN_PROMETHEUS_WINDOWS,
   DEFAULT_CHAIN_PROMETHEUS_WINDOW,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
@@ -89,7 +89,6 @@ import {
 } from "./concentration.mjs";
 import {
   analyticsWindow,
-  d1Runner,
   loadGlobalIncidentsLedger,
 } from "../workers/request-handlers/analytics.mjs";
 import {
@@ -99,8 +98,8 @@ import {
   clampLimit,
   clampOffset,
 } from "../workers/request-params.mjs";
-import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
-import { loadChainIdentityHistory } from "./chain-identity-history.mjs";
+import { buildSubnetIdentityHistory } from "./subnet-identity-history.mjs";
+import { buildChainIdentityHistory } from "./chain-identity-history.mjs";
 import {
   buildGlobalHealth,
   formatLeaderboards,
@@ -199,8 +198,8 @@ import {
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
 } from "./account-stake-moves.mjs";
-import { loadAccountIdentity } from "./account-identity.mjs";
-import { loadAccountIdentityHistory } from "./account-identity-history.mjs";
+import { buildAccountIdentity } from "./account-identity.mjs";
+import { buildAccountIdentityHistory } from "./account-identity-history.mjs";
 import {
   buildCounterparties,
   buildCounterpartyRelationship,
@@ -213,7 +212,6 @@ import {
 } from "../workers/config.mjs";
 import { loadRpcUsage } from "./rpc-usage-loader.mjs";
 import {
-  loadChainSigners,
   CHAIN_SIGNERS_SORTS,
   CHAIN_SIGNERS_LIMIT_DEFAULT,
   CHAIN_SIGNERS_LIMIT_MAX,
@@ -239,14 +237,14 @@ import {
   CHAIN_WEIGHTS_LIMIT_MAX,
   CHAIN_WEIGHTS_WINDOWS,
   DEFAULT_CHAIN_WEIGHTS_WINDOW,
-  loadChainWeights,
+  buildChainWeights,
 } from "./chain-weights.mjs";
 import {
   CHAIN_SERVING_LIMIT_DEFAULT,
   CHAIN_SERVING_LIMIT_MAX,
   CHAIN_SERVING_WINDOWS,
   DEFAULT_CHAIN_SERVING_WINDOW,
-  loadChainServing,
+  buildChainServing,
 } from "./chain-serving.mjs";
 import {
   buildChainTurnover,
@@ -260,27 +258,28 @@ import {
   buildChainActivity,
   buildChainCalls,
   buildChainFees,
+  buildChainSigners,
 } from "./chain-analytics.mjs";
 import { buildChainPerformance } from "./chain-performance.mjs";
 import { buildChainConcentration } from "./concentration.mjs";
 import {
   DEFAULT_NOMINATOR_SORT,
   DEFAULT_NOMINATOR_WINDOW,
-  loadValidatorNominators,
+  buildValidatorNominators,
   NOMINATOR_SORTS,
   NOMINATOR_WINDOWS,
 } from "./validator-nominators.mjs";
 import {
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
-  loadChainAlphaVolume,
+  buildChainAlphaVolume,
 } from "./chain-alpha-volume.mjs";
 import {
+  buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
   CHAIN_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
-  loadChainWeightSetters,
 } from "./chain-weight-setters.mjs";
 import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
 
@@ -3228,25 +3227,6 @@ function loadEconomics(context) {
   });
 }
 
-// A (sql, params) => Promise<rows[]> runner over the health DB, mirroring REST's
-// d1All and the MCP compare runner: a cold DB or query error yields [] so the
-// compare health dimension degrades to null rows instead of erroring.
-function graphqlD1(context) {
-  return async (sql, params) => {
-    const db = context.env?.METAGRAPH_HEALTH_DB;
-    if (!db?.prepare) return [];
-    try {
-      const result = await db
-        .prepare(sql)
-        .bind(...params)
-        .all();
-      return result?.results || [];
-    } catch {
-      return [];
-    }
-  };
-}
-
 // Cron snapshot freshness stamp (KV health:meta) — the same observed_at REST
 // compare stamps its envelope with. Null when the live store is cold.
 function loadObservedAt(context) {
@@ -3590,7 +3570,7 @@ const rootValue = {
         context.env,
         postgresTierRequest(context, `/api/v1/subnets/${netuid}/trajectory`),
         "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-      )) ?? (await loadSubnetTrajectory(graphqlD1(context), netuid));
+      )) ?? (await loadSubnetTrajectory(netuid));
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -3766,9 +3746,10 @@ const rootValue = {
     params.set("offset", String(safeOffset));
     if (cursor) params.set("cursor", cursor);
     // Same tryPostgresTier(METAGRAPH_SUBNET_IDENTITY_SOURCE) ->
-    // loadSubnetIdentityHistory fallback contract handleSubnetIdentityHistory
-    // uses; a subnet with no matching events is a schema-stable empty
-    // timeline (entry_count 0), never a GraphQL error.
+    // D1 retirement: subnet_identity_history's D1 write/read path is fully
+    // retired (2026-07-16), so a Postgres miss/outage degrades straight to
+    // the schema-stable empty timeline (entry_count 0), never a GraphQL
+    // error and never a live D1 read.
     const data =
       (await tryPostgresTier(
         context.env,
@@ -3779,11 +3760,11 @@ const rootValue = {
         ),
         "METAGRAPH_SUBNET_IDENTITY_SOURCE",
       )) ??
-      (await loadSubnetIdentityHistory(graphqlD1(context), netuid, {
+      buildSubnetIdentityHistory([], netuid, {
         limit: safeLimit,
         offset: safeOffset,
-        cursor,
-      }));
+        nextCursor: null,
+      });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -3802,19 +3783,15 @@ const rootValue = {
     const safeLimit = clampLimit(limit, FEED_PAGINATION);
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_SUBNET_IDENTITY_SOURCE) ->
-    // loadChainIdentityHistory fallback contract handleChainIdentityHistory
-    // uses; a store with no identity changes is a schema-stable empty feed
-    // (count 0), never a GraphQL error.
+    // D1 retirement: subnet_identity_history's D1 write path is retired
+    // (2026-07-16), so a Postgres miss/outage degrades to a schema-stable
+    // empty feed (count 0), never a GraphQL error.
     const data =
       (await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/identity-history", params),
         "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-      )) ??
-      (await loadChainIdentityHistory(graphqlD1(context), {
-        limit: safeLimit,
-      }));
+      )) ?? buildChainIdentityHistory([], { limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
       count: data.count ?? 0,
@@ -4310,7 +4287,7 @@ const rootValue = {
     const profiles = Array.isArray(profilesData?.profiles)
       ? profilesData.profiles
       : [];
-    return loadCompareSubnets(graphqlD1(context), {
+    return loadCompareSubnets({
       profiles,
       economicsRows: parsedDimensions.includes("economics")
         ? await loadEconomicsRows(context)
@@ -4386,7 +4363,7 @@ const rootValue = {
         ),
         "METAGRAPH_HEALTH_SOURCE",
       )) ??
-      (await loadSubnetIncidents(graphqlD1(context), netuid, {
+      (await loadSubnetIncidents(netuid, {
         window: label,
         observedAt: await loadObservedAt(context),
       }));
@@ -4698,26 +4675,30 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     if (sort != null) params.set("sort", sort);
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadValidatorNominators
-    // fallback contract REST uses. Both sides return the SAME { data, generatedAt }
-    // envelope, so the destructure covers either tier; `generatedAt` is REST
-    // envelope meta with no GraphQL field to carry it. A hotkey with no nominators
-    // yields a schema-stable empty list, never a GraphQL error. limit/offset are
-    // deliberately not GraphQL args, so the module's own defaults apply.
-    const { data } =
-      (await tryPostgresTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          `/api/v1/validators/${encodeURIComponent(hotkey)}/nominators`,
-          params,
-        ),
-        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
-      (await loadValidatorNominators(graphqlD1(context), hotkey, {
-        windowLabel: requestedWindow,
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildValidatorNominators
+    // fallback contract REST uses. The Postgres tier's response is a REST-style
+    // { data, generatedAt } envelope, so only its `.data` is taken; `generatedAt` is
+    // REST envelope meta with no GraphQL field to carry it. A hotkey with no
+    // nominators yields a schema-stable empty list, never a GraphQL error. limit/offset
+    // are deliberately not GraphQL args, so the module's own defaults apply. #4772 D1
+    // retirement: the `account_events` D1 table is dropped in production, so the
+    // fallback goes straight to the pure builder with no rows, never a live D1 query.
+    const data =
+      (
+        await tryPostgresTier(
+          context.env,
+          postgresTierRequest(
+            context,
+            `/api/v1/validators/${encodeURIComponent(hotkey)}/nominators`,
+            params,
+          ),
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )
+      )?.data ??
+      buildValidatorNominators([], hotkey, {
+        window: requestedWindow,
         sort: sort ?? undefined,
-      }));
+      });
     return {
       schema_version: data.schema_version ?? 1,
       hotkey: data.hotkey ?? hotkey,
@@ -5329,10 +5310,11 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_IDENTITY_SOURCE) -> D1
-    // (loadAccountIdentity) fallback handleAccountIdentity uses. Most accounts
-    // have never called set_identity, so a row-less account is the common case:
-    // has_identity:false with every field null, never a GraphQL error.
+    // D1 retirement: account_identity's D1 write/read path is fully retired
+    // (2026-07-16). Most accounts have never called set_identity, so a
+    // row-less account is already the common case: has_identity:false with
+    // every field null, never a GraphQL error -- a Postgres miss/outage
+    // degrades to that exact same schema-stable shape, never a live D1 read.
     const data =
       (await tryPostgresTier(
         context.env,
@@ -5341,7 +5323,7 @@ const rootValue = {
           `/api/v1/accounts/${encodeURIComponent(ss58)}/identity`,
         ),
         "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
-      )) ?? (await loadAccountIdentity(d1Runner(context.env), ss58));
+      )) ?? buildAccountIdentity(null, ss58);
     return {
       schema_version: data.schema_version ?? 1,
       account: data.account ?? ss58,
@@ -5365,11 +5347,11 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_IDENTITY_SOURCE) -> D1
-    // (loadAccountIdentityHistory) fallback handleAccountIdentityHistory uses,
-    // forwarding limit/offset/cursor as query params -- an address with no
-    // identity-history rows is a schema-stable empty timeline, never a
-    // GraphQL error.
+    // D1 retirement: account_identity_history's D1 write/read path is fully
+    // retired (2026-07-16), forwarding limit/offset/cursor as query params --
+    // an address with no identity-history rows is a schema-stable empty
+    // timeline, never a GraphQL error, and a Postgres miss/outage now
+    // degrades to that same shape, never a live D1 read.
     const params = new URLSearchParams();
     if (limit != null) params.set("limit", String(limit));
     if (offset != null) params.set("offset", String(offset));
@@ -5384,11 +5366,11 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
       )) ??
-      (await loadAccountIdentityHistory(d1Runner(context.env), ss58, {
+      buildAccountIdentityHistory([], ss58, {
         limit,
         offset,
-        cursor,
-      }));
+        nextCursor: null,
+      });
     return {
       schema_version: data.schema_version ?? 1,
       account: data.account ?? ss58,
@@ -5764,8 +5746,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
-      (await loadAccountHistory(d1Runner(context.env), ss58, historyOptions));
+      )) ?? (await loadAccountHistory(ss58, historyOptions));
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,
@@ -5804,7 +5785,7 @@ const rootValue = {
         "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
       )) ??
       (
-        await loadEconomicsTrends(graphqlD1(context), {
+        await loadEconomicsTrends({
           windowLabel: label,
           windowDays: days,
         })
@@ -6122,20 +6103,22 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainWeights
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildChainWeights
     // fallback contract REST's handleChainWeights uses -- a cold store yields a
-    // schema-stable empty leaderboard, never a GraphQL error.
+    // schema-stable empty leaderboard, never a GraphQL error. #4772 D1 retirement:
+    // the `account_events` D1 table is dropped in production, so the fallback goes
+    // straight to the pure builder with no rows, never a live D1 query.
     const data =
       (await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/weights", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) ??
-      (await loadChainWeights(graphqlD1(context), {
-        windowLabel: requestedWindow,
-        windowDays: CHAIN_WEIGHTS_WINDOWS[requestedWindow],
+      buildChainWeights([], {
+        window: requestedWindow,
         limit: safeLimit,
-      }));
+        networkDistinct: null,
+      });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -6166,20 +6149,18 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainServing
-    // fallback contract REST's chainServing route uses -- a cold store yields a
-    // schema-stable zeroed card, never a GraphQL error.
+    // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
+    // the table is dropped in production, so a D1 query here would always miss
+    // (#6013). Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
+    // schema-stable zeroed card contract REST's chainServing route uses, never
+    // a GraphQL error.
     const data =
       (await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/serving", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) ??
-      (await loadChainServing(graphqlD1(context), {
-        windowLabel: requestedWindow,
-        windowDays: CHAIN_SERVING_WINDOWS[requestedWindow],
-        limit: safeLimit,
-      }));
+      buildChainServing([], { window: requestedWindow, limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -6210,20 +6191,18 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainAxonRemovals
-    // fallback contract REST's handleChainAxonRemovals uses -- a cold store yields a
-    // schema-stable zeroed card, never a GraphQL error.
+    // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
+    // the table is dropped in production, so a D1 query here would always miss
+    // (#6013). Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
+    // schema-stable zeroed card contract REST's handleChainAxonRemovals uses,
+    // never a GraphQL error.
     const data =
       (await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/axon-removals", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) ??
-      (await loadChainAxonRemovals(graphqlD1(context), {
-        windowLabel: requestedWindow,
-        windowDays: CHAIN_AXON_REMOVALS_WINDOWS[requestedWindow],
-        limit: safeLimit,
-      }));
+      buildChainAxonRemovals([], { window: requestedWindow, limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -6257,20 +6236,21 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainDeregistrations
-    // fallback contract REST's handleChainDeregistrations uses -- a cold store yields a
-    // schema-stable zeroed card, never a GraphQL error.
+    // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
+    // the table is dropped in production, so a D1 query here would always miss
+    // (#6013). Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
+    // schema-stable zeroed card contract REST's handleChainDeregistrations
+    // uses, never a GraphQL error.
     const data =
       (await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/deregistrations", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) ??
-      (await loadChainDeregistrations(graphqlD1(context), {
-        windowLabel: requestedWindow,
-        windowDays: CHAIN_DEREGISTRATIONS_WINDOWS[requestedWindow],
+      buildChainDeregistrations([], {
+        window: requestedWindow,
         limit: safeLimit,
-      }));
+      });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -6301,20 +6281,21 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainRegistrations
-    // fallback contract REST's handleChainRegistrations uses -- a cold store yields a
-    // schema-stable zeroed card, never a GraphQL error.
+    // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
+    // the table is dropped in production, so a D1 query here would always miss
+    // (#6013). Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
+    // schema-stable zeroed card contract REST's handleChainRegistrations uses,
+    // never a GraphQL error.
     const data =
       (await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/registrations", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) ??
-      (await loadChainRegistrations(graphqlD1(context), {
-        windowLabel: requestedWindow,
-        windowDays: CHAIN_REGISTRATIONS_WINDOWS[requestedWindow],
+      buildChainRegistrations([], {
+        window: requestedWindow,
         limit: safeLimit,
-      }));
+      });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -6345,20 +6326,18 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainPrometheus
-    // fallback contract REST's handleChainPrometheus uses -- a cold store yields a
-    // schema-stable zeroed card, never a GraphQL error.
+    // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
+    // the table is dropped in production, so a D1 query here would always miss
+    // (#6013). Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> the
+    // schema-stable zeroed card contract REST's handleChainPrometheus uses,
+    // never a GraphQL error.
     const data =
       (await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/prometheus", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) ??
-      (await loadChainPrometheus(graphqlD1(context), {
-        windowLabel: requestedWindow,
-        windowDays: CHAIN_PROMETHEUS_WINDOWS[requestedWindow],
-        limit: safeLimit,
-      }));
+      buildChainPrometheus([], { window: requestedWindow, limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -6384,7 +6363,7 @@ const rootValue = {
     const windowUrl = new URL(context.request.url);
     windowUrl.search = "";
     if (window != null) windowUrl.searchParams.set("window", window);
-    const { label, days, error } = analyticsWindow(windowUrl);
+    const { label, error } = analyticsWindow(windowUrl);
     if (error) {
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6413,10 +6392,12 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     if (sort != null) params.set("sort", sort);
     if (callModule != null) params.set("call_module", callModule);
-    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> loadChainSigners
+    // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainSigners
     // fallback contract handleChainSigners uses, including the KV health:meta
     // observed_at stamp REST passes; no ranking/aggregation logic is duplicated
-    // here, and a cold store yields a schema-stable empty leaderboard.
+    // here, and a cold store yields a schema-stable empty leaderboard. #4772 D1
+    // retirement: the `extrinsics` D1 table is dropped in production, so the
+    // fallback goes straight to the pure builder with no rows, never a live D1 query.
     const tier = await tryPostgresTier(
       context.env,
       postgresTierRequest(context, "/api/v1/chain/signers", params),
@@ -6424,16 +6405,12 @@ const rootValue = {
     );
     const data =
       tier ??
-      (
-        await loadChainSigners(graphqlD1(context), {
-          windowLabel: label,
-          windowDays: days,
-          observedAt: await loadObservedAt(context),
-          limit: safeLimit,
-          callModule,
-          sort,
-        })
-      ).data;
+      buildChainSigners({
+        window: label,
+        sort,
+        observedAt: await loadObservedAt(context),
+        rows: [],
+      });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,
@@ -6465,19 +6442,19 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainWeightSetters
-    // fallback contract REST's handleChainWeightSetters uses.
+    // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+    // and the table is dropped in production, so a D1 query here would
+    // always miss. Postgres → schema-stable empty stub, never a live D1 read.
     const data =
       (await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/weights/setters", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) ??
-      (await loadChainWeightSetters(graphqlD1(context), {
-        windowLabel: requestedWindow,
-        windowDays: CHAIN_WEIGHT_SETTERS_WINDOWS[requestedWindow],
+      buildChainWeightSetters([], null, {
+        window: requestedWindow,
         limit: safeLimit,
-      }));
+      });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -6496,17 +6473,18 @@ const rootValue = {
     });
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
-    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> loadChainAlphaVolume
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildChainAlphaVolume
     // fallback contract REST's handleChainAlphaVolume uses -- a cold store yields
     // a schema-stable zeroed card (subnet_count 0, empty leaderboard, neutral
-    // sentiment), never a GraphQL error. Fixed 24h window, no window arg.
+    // sentiment), never a GraphQL error. Fixed 24h window, no window arg. #4772 D1
+    // retirement: the `account_events` D1 table is dropped in production, so the
+    // fallback goes straight to the pure builder with no rows, never a live D1 query.
     const data =
       (await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/alpha-volume", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
-      (await loadChainAlphaVolume(graphqlD1(context), { limit: safeLimit }));
+      )) ?? buildChainAlphaVolume([], { limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? "24h",
@@ -6542,7 +6520,7 @@ const rootValue = {
         "METAGRAPH_HEALTH_SOURCE",
       )) ??
       (
-        await loadBulkHealthTrends(graphqlD1(context), {
+        await loadBulkHealthTrends({
           observedAt: await loadObservedAt(context),
         })
       ).data;
@@ -6568,7 +6546,7 @@ const rootValue = {
         postgresTierRequest(context, `/api/v1/subnets/${netuid}/health/trends`),
         "METAGRAPH_HEALTH_SOURCE",
       )) ??
-      (await loadSubnetHealthTrends(graphqlD1(context), netuid, {
+      (await loadSubnetHealthTrends(netuid, {
         observedAt: await loadObservedAt(context),
       }));
     return {
@@ -6616,7 +6594,7 @@ const rootValue = {
         ),
         "METAGRAPH_HEALTH_SOURCE",
       )) ??
-      (await loadSubnetUptime(graphqlD1(context), netuid, {
+      (await loadSubnetUptime(netuid, {
         window: windowParam,
         observedAt: await loadObservedAt(context),
         minSamples: sampleFloor,
@@ -6651,7 +6629,7 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/rpc/usage", params),
         "METAGRAPH_RPC_USAGE_SOURCE",
       )) ??
-      (await loadRpcUsage(graphqlD1(context), {
+      (await loadRpcUsage({
         window: requestedWindow,
         observedAt: await loadObservedAt(context),
       }));

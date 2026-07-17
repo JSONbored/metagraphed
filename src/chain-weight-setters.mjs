@@ -5,13 +5,13 @@
 // /api/v1/chain/weights, which only reports the aggregate (distinct setters + total events +
 // intensity per subnet) and never names the setters across the whole network — the same relationship
 // /api/v1/subnets/{netuid}/weights/setters has to its own /weights. Read live from the account_events
-// WeightsSet stream. Pure shaping (buildChainWeightSetters) + a thin D1 loader
-// (loadChainWeightSetters); the Worker adds the envelope. Null-safe: a cold store yields a
-// schema-stable empty leaderboard.
-
-import { WEIGHTS_EVENT_KIND } from "./chain-weights.mjs";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+// WeightsSet stream. Pure shaping (buildChainWeightSetters); the Worker / data-api Postgres tier
+// supplies the rows and adds the envelope. Null-safe: a cold store yields a schema-stable empty
+// leaderboard.
+//
+// The D1 loader (loadChainWeightSetters) was removed — account_events' D1 write path is retired
+// and the table is dropped in production (#4772 / #4909), so serving goes tryPostgresTier →
+// schema-stable empty stub, never D1.
 
 // Supported windows (label -> days) + default, matching the sibling /chain/weights route.
 export const CHAIN_WEIGHT_SETTERS_WINDOWS = { "7d": 7, "30d": 30 };
@@ -25,11 +25,6 @@ export const CHAIN_WEIGHT_SETTERS_LIMIT_MAX = 100;
 // its own subnet, so a uid-only setter stays scoped to the subnet it was observed on, exactly
 // mirroring the sibling subnet-weight-setters.mjs identity. Rows whose identity is NULL (no hotkey
 // AND no uid) are excluded from the leaderboard rather than collapsed into one bogus setter.
-const SETTER_IDENTITY =
-  "CASE " +
-  "WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey " +
-  "WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid " +
-  "ELSE NULL END";
 
 // Round a share to a stable 4dp precision WITHOUT letting a sub-1 share round up to an exact 1 —
 // a setter that drove < 100% of the network's weight-setting must not read as a flat 1 while
@@ -118,41 +113,4 @@ export function buildChainWeightSetters(
     setter_count: setters.length,
     setters,
   };
-}
-
-// The network-wide weight-setter leaderboard, computed live. Two bounded reads over the
-// account_events WeightsSet stream over the window (observed_at >= now - windowDays, epoch ms; no
-// netuid filter): the per-setter leaderboard (GROUP BY the hotkey-or-(netuid,uid) identity, top-N
-// by count) and the network-wide totals (count + true distinct setters + newest observed_at,
-// matching /chain/weights). Cold/absent store -> the schema-stable empty card.
-export async function loadChainWeightSetters(
-  d1,
-  { windowLabel, windowDays, limit } = {},
-) {
-  const cutoff = Date.now() - windowDays * DAY_MS;
-  const rows = await d1(
-    "SELECT MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END) AS hotkey, " +
-      "CASE WHEN MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END) " +
-      "IS NULL THEN MAX(netuid) ELSE NULL END AS netuid, " +
-      "MAX(uid) AS uid, COUNT(*) AS weight_sets, " +
-      "MIN(observed_at) AS first_set, MAX(observed_at) AS last_set " +
-      "FROM account_events WHERE event_kind = ? AND observed_at >= ? " +
-      "AND (" +
-      SETTER_IDENTITY +
-      ") IS NOT NULL GROUP BY " +
-      SETTER_IDENTITY +
-      " ORDER BY weight_sets DESC, last_set DESC LIMIT ?",
-    [WEIGHTS_EVENT_KIND, cutoff, CHAIN_WEIGHT_SETTERS_LIMIT_MAX],
-  );
-  const totals = await d1(
-    "SELECT COUNT(*) AS weight_sets, COUNT(DISTINCT " +
-      SETTER_IDENTITY +
-      ") AS distinct_setters, MAX(observed_at) AS newest_observed " +
-      "FROM account_events WHERE event_kind = ? AND observed_at >= ?",
-    [WEIGHTS_EVENT_KIND, cutoff],
-  );
-  return buildChainWeightSetters(rows, totals?.[0] ?? null, {
-    window: windowLabel,
-    limit,
-  });
 }

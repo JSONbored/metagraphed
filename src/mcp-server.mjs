@@ -42,7 +42,6 @@ import {
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
-import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import {
   handleRpcProxyRequest,
@@ -252,14 +251,11 @@ import {
   buildConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "./concentration.mjs";
-import {
-  CHAIN_SIGNERS_SORTS,
-  loadChainSigners,
-} from "./chain-query-loaders.mjs";
+import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.mjs";
 import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
 import { loadRpcUsage } from "./rpc-usage-loader.mjs";
 import {
-  loadChainTransfers,
+  buildChainTransfers,
   CHAIN_TRANSFER_LIMIT_DEFAULT,
   CHAIN_TRANSFER_LIMIT_MAX,
   CHAIN_TRANSFER_WINDOWS,
@@ -273,47 +269,47 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "./chain-turnover.mjs";
 import {
-  loadChainStakeFlow,
+  buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
   CHAIN_STAKE_FLOW_WINDOWS,
   DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
 } from "./chain-stake-flow.mjs";
 import {
-  loadChainAlphaVolume,
+  buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
 } from "./chain-alpha-volume.mjs";
 import {
-  loadChainWeights,
+  buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
   CHAIN_WEIGHTS_LIMIT_MAX,
   CHAIN_WEIGHTS_WINDOWS,
   DEFAULT_CHAIN_WEIGHTS_WINDOW,
 } from "./chain-weights.mjs";
 import {
-  loadChainWeightSetters,
+  buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
   CHAIN_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
 } from "./chain-weight-setters.mjs";
 import {
-  loadChainStakeMoves,
+  buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
   CHAIN_STAKE_MOVES_LIMIT_MAX,
   CHAIN_STAKE_MOVES_WINDOWS,
   DEFAULT_CHAIN_STAKE_MOVES_WINDOW,
 } from "./chain-stake-moves.mjs";
 import {
-  loadChainStakeTransfers,
+  buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
   CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
   CHAIN_STAKE_TRANSFERS_WINDOWS,
   DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW,
 } from "./chain-stake-transfers.mjs";
 import {
-  loadChainTransferPairs,
+  buildChainTransferPairs,
   CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
   CHAIN_TRANSFER_PAIR_LIMIT_MAX,
   CHAIN_TRANSFER_PAIR_WINDOWS,
@@ -329,10 +325,13 @@ import {
   buildCounterpartyRelationship,
 } from "./counterparties.mjs";
 import {
+  buildChainActivity,
+  buildChainCalls,
+  buildChainFees,
+  buildChainSigners,
+} from "./chain-analytics.mjs";
+import {
   loadCompareSubnets,
-  loadChainCalls,
-  loadChainFees,
-  loadNetworkActivity,
   loadGlobalIncidents,
   loadRegistryLeaderboards,
   loadSubnetHealthTrends,
@@ -349,33 +348,33 @@ import {
   COMPARE_VALIDATORS_MAX,
 } from "./analytics-live.mjs";
 import {
-  loadChainRegistrations,
+  buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
 } from "./chain-registrations.mjs";
 import {
-  loadChainAxonRemovals,
+  buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
   CHAIN_AXON_REMOVALS_WINDOWS,
   DEFAULT_CHAIN_AXON_REMOVALS_WINDOW,
 } from "./chain-axon-removals.mjs";
 import {
-  loadChainDeregistrations,
+  buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
   CHAIN_DEREGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
 } from "./chain-deregistrations.mjs";
 import {
-  loadChainPrometheus,
+  buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
   CHAIN_PROMETHEUS_LIMIT_MAX,
   CHAIN_PROMETHEUS_WINDOWS,
   DEFAULT_CHAIN_PROMETHEUS_WINDOW,
 } from "./chain-prometheus.mjs";
 import {
-  loadChainServing,
+  buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
   CHAIN_SERVING_LIMIT_MAX,
   CHAIN_SERVING_WINDOWS,
@@ -490,7 +489,7 @@ import {
   buildSubnetHistory,
   parseHistoryWindow,
 } from "./neuron-history.mjs";
-import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
+import { buildSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import {
   buildTurnover,
   buildTurnoverChanges,
@@ -510,9 +509,9 @@ import { buildChainPerformance } from "./chain-performance.mjs";
 import { buildChainYield } from "./chain-yield.mjs";
 import { buildBlocksSummary } from "./blocks-summary.mjs";
 import {
+  buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-  loadChainIdentityHistory,
 } from "./chain-identity-history.mjs";
 import {
   buildStakeFlow,
@@ -607,8 +606,8 @@ import {
 } from "./subnet-ohlc.mjs";
 import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
 import { buildAccountPositionHistory } from "./account-position-history.mjs";
-import { loadAccountIdentity } from "./account-identity.mjs";
-import { loadAccountIdentityHistory } from "./account-identity-history.mjs";
+import { buildAccountIdentity } from "./account-identity.mjs";
+import { buildAccountIdentityHistory } from "./account-identity-history.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
@@ -1034,29 +1033,6 @@ function mcpContractVersion(ctx) {
   return ctx.env?.METAGRAPH_CONTRACT_VERSION || CONTRACT_VERSION;
 }
 
-// A (sql, params) => Promise<rows[]> runner over the health DB for the metagraph
-// / trajectory loaders. Like the REST d1All, a cold DB, timeout, or query error
-// yields [] (schema-stable empty payload). The timeout keeps public MCP tools
-// from monopolizing D1/Worker time with expensive aggregates.
-function mcpD1Runner(ctx) {
-  return async (sql, params) => {
-    const db = ctx.env?.METAGRAPH_HEALTH_DB;
-    if (!db?.prepare) return [];
-    try {
-      const result = await withTimeout(
-        db
-          .prepare(sql)
-          .bind(...params)
-          .all(),
-        d1TimeoutMs(ctx.env),
-      );
-      return result?.results || [];
-    } catch {
-      return [];
-    }
-  };
-}
-
 // Synthetic GET /api/v1/extrinsics{...} requests forwarded UNCHANGED to
 // DATA_API via tryPostgresTier (#4694) -- MCP tool handlers receive
 // structured args, not an inbound Request the way REST's handleExtrinsics
@@ -1360,22 +1336,23 @@ async function loadMcpChainSigners(ctx, options) {
   const key = chainSignersCacheKey(options);
   if (!ctx.chainSignersCache.has(key)) {
     // The limiter charge lives inside the cache-miss promise (not ahead of the
-    // cache check) so a batch of identical calls shares one limiter charge
-    // alongside the one D1 aggregation, instead of paying the limiter once per
-    // duplicate request in the batch.
+    // cache check) so a batch of identical calls shares one limiter charge,
+    // instead of paying the limiter once per duplicate request in the batch.
+    // #4772 D1 retirement: the `extrinsics` D1 table is dropped in production, so
+    // there is no live D1 aggregation left to run here -- this always resolves to
+    // the schema-stable empty leaderboard via buildChainSigners([...]).
     ctx.chainSignersCache.set(
       key,
       requireDataTierRateLimit(ctx)
-        .then(() =>
-          loadChainSigners(mcpD1Runner(ctx), {
-            windowLabel: options.label,
-            windowDays: options.days,
-            observedAt: options.observedAt,
-            limit: options.limit,
-            callModule: options.callModule,
+        .then(() => ({
+          data: buildChainSigners({
+            window: options.label,
             sort: options.sort,
+            observedAt: options.observedAt,
+            rows: [],
           }),
-        )
+          rows: [],
+        }))
         .catch((error) => {
           ctx.chainSignersCache.delete(key);
           throw error;
@@ -1419,7 +1396,8 @@ async function loadSubnetHistory(ctx, netuid, { label }) {
 }
 
 // Mirrors REST's handleSubnetIdentityHistory: try Postgres first, fall back
-// to D1 on any failure -- same tryPostgresTier contract, same
+// to the schema-stable empty payload on any miss (D1 fully eliminated,
+// 2026-07-17) -- same tryPostgresTier contract, same
 // METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST route (#4832), so this
 // tool and GET /api/v1/subnets/{netuid}/identity-history never diverge on
 // which tier answered.
@@ -1434,11 +1412,7 @@ async function loadSubnetIdentityHistoryTool(
       mcpSubnetIdentityHistoryRequest(netuid, { limit, offset, cursor }),
       "METAGRAPH_SUBNET_IDENTITY_SOURCE",
     )) ??
-    (await loadSubnetIdentityHistory(mcpD1Runner(ctx), netuid, {
-      limit,
-      offset,
-      cursor,
-    }))
+    buildSubnetIdentityHistory([], netuid, { limit, offset, nextCursor: null })
   );
 }
 
@@ -2609,7 +2583,7 @@ export const MCP_TOOLS = [
       const netuid = requireNetuid(args);
       const [live, reliability] = await Promise.all([
         mcpLiveHealth(ctx),
-        loadSubnetReliability({ db: ctx.env?.METAGRAPH_HEALTH_DB, netuid }),
+        loadSubnetReliability(),
       ]);
       const overlaid = overlaySubnetHealth(null, live, netuid);
       if (overlaid) {
@@ -2652,7 +2626,7 @@ export const MCP_TOOLS = [
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/health/trends`),
           "METAGRAPH_HEALTH_SOURCE",
         )) ??
-        (await loadSubnetHealthTrends(mcpD1Runner(ctx), netuid, {
+        (await loadSubnetHealthTrends(netuid, {
           observedAt: await mcpObservedAt(ctx),
         }))
       );
@@ -2680,7 +2654,7 @@ export const MCP_TOOLS = [
         "METAGRAPH_HEALTH_SOURCE",
       );
       if (postgres) return postgres;
-      const { data } = await loadBulkHealthTrends(mcpD1Runner(ctx), {
+      const { data } = await loadBulkHealthTrends({
         observedAt: await mcpObservedAt(ctx),
       });
       return data;
@@ -2725,7 +2699,7 @@ export const MCP_TOOLS = [
           ),
           "METAGRAPH_HEALTH_SOURCE",
         )) ??
-        (await loadSubnetPercentiles(mcpD1Runner(ctx), netuid, {
+        (await loadSubnetPercentiles(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
         }))
@@ -2772,7 +2746,7 @@ export const MCP_TOOLS = [
           }),
           "METAGRAPH_HEALTH_SOURCE",
         )) ??
-        (await loadSubnetIncidents(mcpD1Runner(ctx), netuid, {
+        (await loadSubnetIncidents(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
         }))
@@ -2997,7 +2971,7 @@ export const MCP_TOOLS = [
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/trajectory`),
           "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-        )) ?? (await loadSubnetTrajectory(mcpD1Runner(ctx), netuid))
+        )) ?? (await loadSubnetTrajectory(netuid))
       );
     },
   },
@@ -3033,7 +3007,7 @@ export const MCP_TOOLS = [
         "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
       );
       if (postgres) return postgres;
-      const { data } = await loadEconomicsTrends(mcpD1Runner(ctx), {
+      const { data } = await loadEconomicsTrends({
         windowLabel: label,
         windowDays: days,
       });
@@ -3178,20 +3152,18 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args, ctx) {
-      // Mirrors REST's handleChainIdentityHistory: try Postgres first, fall
-      // back to D1 on any failure -- same tryPostgresTier contract, same
-      // METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST route (#4832), so
-      // this tool and GET /api/v1/chain/identity-history never diverge on
-      // which tier answered.
+      // Mirrors REST's handleChainIdentityHistory: same tryPostgresTier
+      // contract, same METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST
+      // route (#4832), so this tool and GET /api/v1/chain/identity-history
+      // never diverge on which tier answered. D1 retirement: a Postgres
+      // miss/outage degrades to a schema-stable empty feed, never a live D1
+      // read.
       return (
         (await tryPostgresTier(
           ctx.env,
           mcpChainIdentityHistoryRequest({ limit: args?.limit }),
           "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-        )) ??
-        (await loadChainIdentityHistory(mcpD1Runner(ctx), {
-          limit: args?.limit,
-        }))
+        )) ?? buildChainIdentityHistory([], { limit: args?.limit })
       );
     },
   },
@@ -3333,11 +3305,10 @@ export const MCP_TOOLS = [
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
-        (await loadChainStakeFlow(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_STAKE_FLOW_WINDOWS[window],
+        buildChainStakeFlow([], {
+          window,
           limit,
-        }))
+        })
       );
     },
   },
@@ -3378,7 +3349,7 @@ export const MCP_TOOLS = [
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/chain/alpha-volume", { limit }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? (await loadChainAlphaVolume(mcpD1Runner(ctx), { limit }))
+        )) ?? buildChainAlphaVolume([], { limit })
       );
     },
   },
@@ -3435,11 +3406,11 @@ export const MCP_TOOLS = [
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
-        (await loadChainWeights(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_WEIGHTS_WINDOWS[window],
+        buildChainWeights([], {
+          window,
           limit,
-        }))
+          networkDistinct: null,
+        })
       );
     },
   },
@@ -3486,6 +3457,9 @@ export const MCP_TOOLS = [
         CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
         CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
       );
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3494,12 +3468,7 @@ export const MCP_TOOLS = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainWeightSetters(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_WEIGHT_SETTERS_WINDOWS[window],
-          limit,
-        }))
+        )) ?? buildChainWeightSetters([], null, { window, limit })
       );
     },
   },
@@ -3548,6 +3517,9 @@ export const MCP_TOOLS = [
         CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
         CHAIN_STAKE_MOVES_LIMIT_MAX,
       );
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3556,12 +3528,7 @@ export const MCP_TOOLS = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainStakeMoves(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_STAKE_MOVES_WINDOWS[window],
-          limit,
-        }))
+        )) ?? buildChainStakeMoves([], { window, limit })
       );
     },
   },
@@ -3610,6 +3577,9 @@ export const MCP_TOOLS = [
         CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
         CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
       );
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3618,12 +3588,7 @@ export const MCP_TOOLS = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainStakeTransfers(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_STAKE_TRANSFERS_WINDOWS[window],
-          limit,
-        }))
+        )) ?? buildChainStakeTransfers([], { window, limit })
       );
     },
   },
@@ -3672,6 +3637,9 @@ export const MCP_TOOLS = [
         CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
         CHAIN_AXON_REMOVALS_LIMIT_MAX,
       );
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013).
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3680,12 +3648,7 @@ export const MCP_TOOLS = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainAxonRemovals(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_AXON_REMOVALS_WINDOWS[window],
-          limit,
-        }))
+        )) ?? buildChainAxonRemovals([], { window, limit })
       );
     },
   },
@@ -3735,6 +3698,9 @@ export const MCP_TOOLS = [
         CHAIN_SERVING_LIMIT_DEFAULT,
         CHAIN_SERVING_LIMIT_MAX,
       );
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013).
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3743,12 +3709,7 @@ export const MCP_TOOLS = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainServing(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_SERVING_WINDOWS[window],
-          limit,
-        }))
+        )) ?? buildChainServing([], { window, limit })
       );
     },
   },
@@ -3798,6 +3759,9 @@ export const MCP_TOOLS = [
         CHAIN_PROMETHEUS_LIMIT_DEFAULT,
         CHAIN_PROMETHEUS_LIMIT_MAX,
       );
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013).
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3806,12 +3770,7 @@ export const MCP_TOOLS = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainPrometheus(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_PROMETHEUS_WINDOWS[window],
-          limit,
-        }))
+        )) ?? buildChainPrometheus([], { window, limit })
       );
     },
   },
@@ -4707,7 +4666,7 @@ export const MCP_TOOLS = [
           }),
           "METAGRAPH_HEALTH_SOURCE",
         )) ??
-        (await loadSubnetUptime(mcpD1Runner(ctx), netuid, {
+        (await loadSubnetUptime(netuid, {
           window,
           observedAt: await mcpObservedAt(ctx),
           minSamples,
@@ -4748,7 +4707,7 @@ export const MCP_TOOLS = [
       const profiles =
         (await loadArtifactData(ctx, "/metagraph/profiles.json")).profiles ||
         [];
-      return loadRegistryLeaderboards(mcpD1Runner(ctx), {
+      return loadRegistryLeaderboards({
         profiles,
         economicsRows: await loadEconomicsSubnetRows(ctx),
         board,
@@ -4866,7 +4825,7 @@ export const MCP_TOOLS = [
           });
         }
       }
-      return loadCompareSubnets(mcpD1Runner(ctx), {
+      return loadCompareSubnets({
         profiles,
         economicsRows,
         netuids,
@@ -4905,7 +4864,7 @@ export const MCP_TOOLS = [
           mcpNeuronsTierRequest("/api/v1/incidents", { window: label }),
           "METAGRAPH_HEALTH_SOURCE",
         )) ??
-        (await loadGlobalIncidents(mcpD1Runner(ctx), {
+        (await loadGlobalIncidents({
           windowLabel: label,
           windowDays: days,
           observedAt: await mcpObservedAt(ctx),
@@ -6176,7 +6135,7 @@ export const MCP_TOOLS = [
           ctx.env,
           mcpAccountIdentityRequest(ss58),
           "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
-        )) ?? (await loadAccountIdentity(mcpD1Runner(ctx), ss58))
+        )) ?? buildAccountIdentity(null, ss58)
       );
     },
   },
@@ -6226,11 +6185,11 @@ export const MCP_TOOLS = [
           mcpAccountIdentityHistoryRequest(ss58, { limit, offset, cursor }),
           "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
         )) ??
-        (await loadAccountIdentityHistory(mcpD1Runner(ctx), ss58, {
+        buildAccountIdentityHistory([], ss58, {
           limit,
           offset,
-          cursor,
-        }))
+          nextCursor: null,
+        })
       );
     },
   },
@@ -6809,7 +6768,7 @@ export const MCP_TOOLS = [
             historyOptions,
           ),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? (await loadAccountHistory(mcpD1Runner(ctx), ss58, historyOptions))
+        )) ?? (await loadAccountHistory(ss58, historyOptions))
       );
     },
   },
@@ -8018,13 +7977,13 @@ export const MCP_TOOLS = [
           }),
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) ??
-        (await loadChainCalls(mcpD1Runner(ctx), {
+        buildChainCalls({
           window: label,
           groupBy,
-          callModule,
-          limit,
           observedAt: await mcpObservedAt(ctx),
-        }))
+          total: 0,
+          rows: [],
+        })
       );
     },
   },
@@ -8146,6 +8105,9 @@ export const MCP_TOOLS = [
           "call_module must be at most 100 characters.",
         );
       }
+      // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
+      // the table is dropped in production, so a D1 query here would always
+      // miss. Postgres → schema-stable empty stub, never a live D1 read.
       const postgres = await tryPostgresTier(
         ctx.env,
         mcpNeuronsTierRequest("/api/v1/chain/fees", {
@@ -8156,13 +8118,10 @@ export const MCP_TOOLS = [
         "METAGRAPH_EXTRINSICS_SOURCE",
       );
       if (postgres) return postgres;
-      const { data } = await loadChainFees(mcpD1Runner(ctx), {
+      return buildChainFees({
         window: label,
-        limit,
-        callModule,
         observedAt: await mcpObservedAt(ctx),
       });
-      return data;
     },
   },
   {
@@ -8197,12 +8156,15 @@ export const MCP_TOOLS = [
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label, days } = parsed;
+      const { label } = parsed;
       const limit = clampLimit(
         args?.limit,
         CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
         CHAIN_REGISTRATIONS_LIMIT_MAX,
       );
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013).
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -8211,12 +8173,7 @@ export const MCP_TOOLS = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainRegistrations(mcpD1Runner(ctx), {
-          windowLabel: label,
-          windowDays: days,
-          limit,
-        }))
+        )) ?? buildChainRegistrations([], { window: label, limit })
       );
     },
   },
@@ -8265,6 +8222,9 @@ export const MCP_TOOLS = [
         CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
         CHAIN_DEREGISTRATIONS_LIMIT_MAX,
       );
+      // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss (#6013).
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -8273,12 +8233,7 @@ export const MCP_TOOLS = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await loadChainDeregistrations(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_DEREGISTRATIONS_WINDOWS[window],
-          limit,
-        }))
+        )) ?? buildChainDeregistrations([], { window, limit })
       );
     },
   },
@@ -8332,12 +8287,13 @@ export const MCP_TOOLS = [
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
-        (await loadChainTransfers(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_TRANSFER_WINDOWS[window],
+        buildChainTransfers({
+          window,
           observedAt: await mcpObservedAt(ctx),
-          limit,
-        }))
+          totals: null,
+          senders: [],
+          receivers: [],
+        })
       );
     },
   },
@@ -8404,13 +8360,13 @@ export const MCP_TOOLS = [
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
-        (await loadChainTransferPairs(mcpD1Runner(ctx), {
-          windowLabel: window,
-          windowDays: CHAIN_TRANSFER_PAIR_WINDOWS[window],
-          observedAt: await mcpObservedAt(ctx),
-          limit,
+        buildChainTransferPairs({
+          window,
           sort,
-        }))
+          observedAt: await mcpObservedAt(ctx),
+          totals: null,
+          pairs: [],
+        })
       );
     },
   },
@@ -8440,17 +8396,20 @@ export const MCP_TOOLS = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label } = parsed;
+      // #4909 D1 retirement: extrinsics'/blocks' D1 write path is retired
+      // (#4772) and the tables are dropped in production, so a D1 query here
+      // would always miss. Postgres → schema-stable empty stub, never a live
+      // D1 read.
       const postgres = await tryPostgresTier(
         ctx.env,
         mcpNeuronsTierRequest("/api/v1/chain/activity", { window: label }),
         "METAGRAPH_EXTRINSICS_SOURCE",
       );
       if (postgres) return postgres;
-      const { data } = await loadNetworkActivity(mcpD1Runner(ctx), {
+      return buildChainActivity({
         window: label,
         observedAt: await mcpObservedAt(ctx),
       });
-      return data;
     },
   },
   {
@@ -9226,7 +9185,7 @@ export const MCP_TOOLS = [
         // (mcpD1Runner + mcpObservedAt), widest window (30d) -- get_feed's own
         // since/until narrow further from there.
         async loadIncidents() {
-          return loadGlobalIncidents(mcpD1Runner(ctx), {
+          return loadGlobalIncidents({
             windowLabel: "30d",
             windowDays: 30,
             observedAt: await mcpObservedAt(ctx),
@@ -9323,7 +9282,7 @@ export const MCP_TOOLS = [
           mcpNeuronsTierRequest("/api/v1/rpc/usage", { window: label }),
           "METAGRAPH_RPC_USAGE_SOURCE",
         )) ??
-        loadRpcUsage(mcpD1Runner(ctx), {
+        loadRpcUsage({
           window: label,
           observedAt: await mcpObservedAt(ctx),
         })
@@ -14141,7 +14100,7 @@ async function readLiveChainStreamResource(ctx) {
 async function readSubnetStatusResource(ctx, netuid) {
   const [live, reliability] = await Promise.all([
     mcpLiveHealth(ctx),
-    loadSubnetReliability({ db: ctx.env?.METAGRAPH_HEALTH_DB, netuid }),
+    loadSubnetReliability(),
   ]);
   const overlaid = overlaySubnetHealth(null, live, netuid);
   if (overlaid) {

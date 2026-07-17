@@ -17,8 +17,8 @@ import {
   normalizeProbeStatus,
   okLatencyMs,
 } from "./health-probe-core.mjs";
-import { dailyLatencyColumns } from "./health-sql.mjs";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
+import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 
 // Must exceed the probe cadence (15 min) so a live D1 health row is never treated
 // as stale just because the next probe hasn't run yet. 25 min = cadence + a
@@ -1137,23 +1137,12 @@ export function formatTrajectory({ netuid, rows }) {
   };
 }
 
-// One subnet's trajectory from the daily snapshots, via the injected `d1` runner
-// (shared by the REST route and the MCP tool). DESC keeps the most-recent window
-// — formatTrajectory re-sorts ascending, and ASC + LIMIT would freeze on the
-// oldest 400 days once history exceeds the cap. Cold D1 → [] → empty trajectory.
-export async function loadSubnetTrajectory(d1, netuid) {
-  const rows = await d1(
-    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
-            validator_count, miner_count, total_stake_tao, alpha_price_tao,
-            emission_share, tao_in_pool_tao, alpha_in_pool, alpha_out_pool,
-            subnet_volume_tao
-     FROM subnet_snapshots
-     WHERE netuid = ?
-     ORDER BY snapshot_date DESC
-     LIMIT 400`,
-    [netuid],
-  );
-  return formatTrajectory({ netuid, rows });
+// One subnet's trajectory from the daily snapshots (shared by the REST route
+// and the MCP tool). D1 fully eliminated (2026-07-17): subnet_snapshots is
+// Postgres-only now (both callers try the Postgres tier first), so this is
+// only reached on a tier miss and always returns an empty trajectory.
+export async function loadSubnetTrajectory(netuid) {
+  return formatTrajectory({ netuid, rows: [] });
 }
 
 function diff(now, then) {
@@ -1273,110 +1262,45 @@ export function formatUptime({
   };
 }
 
-// Load + score a subnet's reliability from surface_uptime_daily over a window.
-// Mirrors resolveLiveHealth's I/O posture (the caller passes the D1 binding);
-// returns null when D1 is unbound/cold or no history has accrued.
-export async function loadSubnetReliability({
-  db,
-  netuid,
-  windowDays = 30,
-  now = null,
-  limit = 5000,
-}) {
-  if (!db?.prepare) {
-    return null;
-  }
-  const nowMs = now ? Date.parse(now) : Date.now();
-  const cutoff = new Date(nowMs - windowDays * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const computedAt = new Date(nowMs).toISOString();
-  try {
-    const result = await db
-      .prepare(
-        `SELECT MAX(surface_id) AS surface_id,
-                COALESCE(surface_key, surface_id) AS surface_key,
-                day,
-                SUM(samples) AS samples,
-                SUM(ok_count) AS ok_count,
-                ${dailyLatencyColumns({ roundedAvg: true })}
-         FROM surface_uptime_daily
-         WHERE netuid = ? AND day >= ?
-         GROUP BY COALESCE(surface_key, surface_id), day
-         ORDER BY day DESC
-         LIMIT ?`,
-      )
-      .bind(netuid, cutoff, limit)
-      .all();
-    const rows = result?.results || [];
-    return computeReliability(rows, {
-      window: `${windowDays}d`,
-      now: computedAt,
-    }).subnet;
-  } catch {
-    return null;
-  }
+// Load + score a subnet's reliability from surface_uptime_daily over a
+// window. D1 fully eliminated (2026-07-17): this table has no Postgres-tier
+// mirror wired for this read yet, so it always returns null now rather than
+// adding new tier plumbing out of scope for D1 retirement -- callers already
+// treat a null reliability as the no-data case (matches the prior cold-D1
+// behavior exactly).
+export async function loadSubnetReliability() {
+  return null;
 }
 
 // Sample-weighted reliability score over one or many subnets in a single
 // aggregate query, so a provider spanning dozens of subnets stays one D1
-// round-trip. Returns the scoreFromStats shape (no per-surface breakdown the
-// badge doesn't need), or null when D1 is unbound/cold or has no history.
-export async function loadReliabilityAggregate({
-  db,
-  netuids,
-  windowDays = 30,
-  now = null,
-}) {
-  // Keep only integer netuids (no coercion, so Number(null) can't slip in as
-  // subnet 0), then dedupe so the IN-list has no repeats.
-  const ids = [...new Set((netuids || []).filter((n) => Number.isInteger(n)))];
-  if (!db?.prepare || ids.length === 0) {
-    return null;
-  }
-  const nowMs = now ? Date.parse(now) : Date.now();
-  const cutoff = new Date(nowMs - windowDays * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const placeholders = ids.map(() => "?").join(",");
-  try {
-    const row = await db
-      .prepare(
-        `SELECT COUNT(DISTINCT netuid) AS covered_netuids,
-                SUM(samples) AS samples,
-                SUM(ok_count) AS ok_count,
-                ${dailyLatencyColumns({ roundedAvg: true })}
-         FROM surface_uptime_daily
-         WHERE netuid IN (${placeholders}) AND day >= ?`,
-      )
-      .bind(...ids, cutoff)
-      .first();
-    const covered = Number(row?.covered_netuids) || 0;
-    // Multi-subnet rollups (provider badges) require every netuid to have at
-    // least one in-window daily row. Summing only the subnets that happened to
-    // report would headline a partial provider as if it were fully covered.
-    if (ids.length > 1 && covered !== ids.length) {
-      return null;
-    }
-    return scoreFromStats({
-      samples: Number(row?.samples) || 0,
-      okCount: Number(row?.ok_count) || 0,
-      avgLatencyMs:
-        row?.avg_latency_ms == null ? null : Number(row.avg_latency_ms),
-      latencySamples: Number(row?.latency_samples) || 0,
-    });
-  } catch {
-    return null;
-  }
+// round-trip. D1 fully eliminated (2026-07-17): this table has no
+// Postgres-tier mirror wired for the badge read path yet, so it always
+// returns null now rather than adding new tier plumbing out of scope for D1
+// retirement -- the reliability badge renders "n/a" for this metric, exactly
+// as it already did whenever D1 was cold/unbound.
+export async function loadReliabilityAggregate() {
+  return null;
 }
 
 // --- Live-everywhere health resolution + composed-artifact overlays ----------
 // Health must never be served from a build-time artifact. resolveLiveHealth
 // returns the freshest live snapshot — KV health:current first, then a
-// reconstruction from D1 surface_status (latest per-surface) when KV is cold —
+// reconstruction from surface_status (latest per-surface) when KV is cold —
 // or null when no live source exists (callers then serve `unknown`, never a
 // baked value). The overlay helpers below are pure: they take the resolved
 // snapshot and replace the embedded health on composed artifacts.
+//
+// D1 retirement (2026-07-16, item 5 of the D1->Postgres cleanup): the KV-cold
+// fallback reads Postgres via tryPostgresTier(METAGRAPH_HEALTH_SOURCE) against
+// a synthesized internal request to /api/v1/internal/health-status-live
+// (workers/data-api.mjs) -- the same "no client request to forward,
+// synthesize one" shape workers/request-handlers/analytics-routes.mjs's
+// handleCompare already uses for this exact table. D1 is fully eliminated
+// here (no write, no read fallback) -- surface_status's D1 write retired the
+// same day (see health-prober.mjs's runHealthProber header comment); a
+// Postgres miss/outage now returns null and the caller serves `unknown`,
+// same degrade every other route in this file already tolerates.
 
 // A finite but out-of-range epoch-ms (|ms| > 8.64e15, the JS Date limit) makes
 // toISOString() throw a RangeError, which would 500 the live endpoint response
@@ -1388,7 +1312,7 @@ function isoFromMs(ms) {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-function liveFromD1Rows(rows) {
+function liveFromStatusRows(rows) {
   const surfaces = rows.map((r) => ({
     surface_id: r.surface_id,
     surface_key: r.surface_key ?? null,
@@ -1421,26 +1345,27 @@ function liveFromD1Rows(rows) {
     schema_version: 1,
     generated_at: lastRun,
     last_run_at: lastRun,
-    source: "live-d1-fallback",
-    health_source: "live-d1-fallback",
+    source: "live-postgres-fallback",
+    health_source: "live-postgres-fallback",
     summary: { surface_count: surfaces.length, status_counts: statusCounts },
     subnets,
     surfaces,
   };
 }
 
-export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
+export async function resolveLiveHealth({ readHealthKv, env, now } = {}) {
   if (typeof readHealthKv === "function" && env) {
     try {
       const current = await readHealthKv(env, KV_HEALTH_CURRENT);
       // The prober writes surfaces + subnets + summary; accept any live snapshot
       // that carries the per-surface or per-subnet rows the overlays consume —
-      // but freshness-gate it exactly like the D1 fallback below. KV health:current
-      // has NO TTL, so without this a wedged prober would serve its last snapshot
-      // as fresh forever. last_run_at older than the window → skip → fall through
-      // to the (freshness-gated) D1 path → null (caller serves `unknown`). A
-      // missing/unparseable last_run_at is treated as fresh (back-compat: a wedged
-      // prober still emits its real last_run_at, so the stale case is covered).
+      // but freshness-gate it exactly like the Postgres fallback below. KV
+      // health:current has NO TTL, so without this a wedged prober would serve
+      // its last snapshot as fresh forever. last_run_at older than the window →
+      // skip → fall through to the (freshness-gated) Postgres path → null
+      // (caller serves `unknown`). A missing/unparseable last_run_at is treated
+      // as fresh (back-compat: a wedged prober still emits its real
+      // last_run_at, so the stale case is covered).
       if (
         current &&
         (Array.isArray(current.surfaces) || Array.isArray(current.subnets))
@@ -1455,28 +1380,21 @@ export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
         }
       }
     } catch {
-      // fall through to D1
+      // fall through to Postgres
     }
   }
-  const database = db || env?.METAGRAPH_HEALTH_DB;
-  if (database?.prepare) {
-    try {
-      const currentTime = typeof now === "function" ? now() : Date.now();
-      const freshnessCutoff = currentTime - D1_HEALTH_FALLBACK_MAX_AGE_MS;
-      const { results } = await database
-        .prepare(
-          `SELECT surface_id, netuid, kind, provider, url, status, classification,
-                  surface_key, latency_ms, status_code, last_checked, last_ok
-           FROM surface_status
-           WHERE last_checked >= ?`,
-        )
-        .bind(freshnessCutoff)
-        .all();
-      if (Array.isArray(results) && results.length) {
-        return liveFromD1Rows(results);
-      }
-    } catch {
-      // fall through to null (caller serves `unknown`)
+  const currentTime = typeof now === "function" ? now() : Date.now();
+  const freshnessCutoff = currentTime - D1_HEALTH_FALLBACK_MAX_AGE_MS;
+  if (env) {
+    const pg = await tryPostgresTier(
+      env,
+      new Request(
+        `https://api.metagraph.sh/api/v1/internal/health-status-live?since=${freshnessCutoff}`,
+      ),
+      "METAGRAPH_HEALTH_SOURCE",
+    );
+    if (Array.isArray(pg?.rows) && pg.rows.length) {
+      return liveFromStatusRows(pg.rows);
     }
   }
   return null;

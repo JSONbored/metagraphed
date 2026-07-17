@@ -3,11 +3,9 @@
 // stream, ranked into a leaderboard of where capital is flowing across the network, with a
 // network rollup and a distribution of per-subnet net flow. The network companion to
 // /api/v1/subnets/{netuid}/stake-flow, mirroring how /chain/concentration companions the
-// per-subnet concentration route. Pure shaping (buildChainStakeFlow) + a thin D1 loader
-// (loadChainStakeFlow); the Worker adds the REST envelope. Null-safe: a cold store or an
-// empty window yields schema-stable zeros (never throws), matching the sibling live tiers.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+// per-subnet concentration route. Pure shaping (buildChainStakeFlow); the Worker adds the
+// REST envelope. Null-safe: a cold store or an empty window yields schema-stable zeros
+// (never throws), matching the sibling live tiers.
 
 // The two account_events kinds that move stake: StakeAdded is capital entering a subnet,
 // StakeRemoved is capital leaving. Both carry a positive amount_tao, so net = staked - unstaked.
@@ -233,25 +231,8 @@ export function buildChainStakeFlow(
   };
 }
 
-// Network-wide cross-subnet capital flow, computed live: sum StakeAdded/StakeRemoved amount_tao
-// from account_events over the window (observed_at >= now - windowDays, epoch ms), grouped by
-// (netuid, event_kind), shaped with buildChainStakeFlow. The query is bounded by the window via
-// idx_account_events_observed (observed_at) — the same bounded network-wide account_events scan
-// the sibling chain-transfers route runs — with the two stake kinds a residual filter. The
-// handler resolves windowLabel/windowDays from analyticsWindow (7d/30d). Cold/absent store or an
-// empty window -> schema-stable zeros.
-export async function loadChainStakeFlow(
-  d1,
-  { windowLabel, windowDays, limit } = {},
-) {
-  const cutoff = Date.now() - windowDays * DAY_MS;
-  const rows = await d1(
-    "SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao, " +
-      "COUNT(*) AS event_count, MAX(observed_at) AS last_observed " +
-      "FROM account_events " +
-      "WHERE event_kind IN (?, ?) AND observed_at >= ? " +
-      "GROUP BY netuid, event_kind",
-    [STAKE_ADDED_KIND, STAKE_REMOVED_KIND, cutoff],
-  );
-  return buildChainStakeFlow(rows, { window: windowLabel, limit });
-}
+// #4772 D1 retirement: loadChainStakeFlow (the D1 loader that read the
+// account_events StakeAdded/StakeRemoved stream) was removed here -- that D1 write
+// path is retired and the `account_events` table is dropped in production, so a live
+// D1 query would always miss. Serving now goes tryPostgresTier -> buildChainStakeFlow([...]),
+// never D1. See src/mcp-server.mjs's get_chain_stake_flow tool for the call site.

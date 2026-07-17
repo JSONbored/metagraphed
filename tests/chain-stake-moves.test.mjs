@@ -2,9 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainStakeMoves,
-  loadChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_MAX,
-  STAKE_MOVED_EVENT_KIND,
 } from "../src/chain-stake-moves.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -213,76 +211,45 @@ describe("buildChainStakeMoves", () => {
   });
 });
 
-describe("loadChainStakeMoves", () => {
-  test("reads the network aggregate then the per-subnet leaderboard over the window", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      if (/GROUP BY netuid/.test(sql)) return SUBNETS;
-      return [NETWORK];
-    };
-    const data = await loadChainStakeMoves(d1, {
-      windowLabel: "7d",
-      windowDays: 7,
-      limit: 20,
-    });
-    assert.match(calls[0].sql, /COUNT\(DISTINCT coldkey\)/);
-    assert.doesNotMatch(calls[0].sql, /GROUP BY/);
-    assert.match(
-      calls[1].sql,
-      /event_kind = \? AND observed_at >= \? GROUP BY netuid/,
-    );
-    assert.equal(calls[0].params[0], STAKE_MOVED_EVENT_KIND);
-    assert.equal(typeof calls[0].params[1], "number"); // epoch-ms cutoff
-    assert.equal(calls[1].params[1], calls[0].params[1]); // same window cutoff
-    assert.equal(data.subnet_count, 3);
-    assert.equal(data.subnets[0].netuid, 1);
-  });
-
-  test("a cold store skips the per-subnet read and returns the empty block", async () => {
-    const calls = [];
-    const d1 = async (sql) => {
-      calls.push(sql);
-      if (/GROUP BY netuid/.test(sql)) return SUBNETS;
-      return []; // network aggregate returns no row on a fully cold store
-    };
-    const data = await loadChainStakeMoves(d1, {
-      windowLabel: "7d",
-      windowDays: 7,
-    });
-    assert.equal(calls.length, 1);
-    assert.equal(data.subnet_count, 0);
-    assert.equal(data.observed_at, null);
-  });
-});
-
+// D1 fully eliminated (2026-07-16): account_events' D1 write path is retired
+// (#4772) and the table is dropped in production, so loadChainStakeMoves
+// (the D1-querying loader) is gone -- the handler now degrades straight to
+// buildChainStakeMoves([], {...}) on any Postgres miss/outage.
 describe("GET /api/v1/chain/stake-moves", () => {
-  function stakeMovesEnv({ networkRow, subnetRows }) {
+  function postgresEnv(body) {
     return {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind: () => ({
-              all: () =>
-                Promise.resolve({
-                  results: /GROUP BY netuid/.test(sql)
-                    ? subnetRows
-                    : networkRow,
-                }),
-            }),
-          };
-        },
-      },
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json(body) },
     };
   }
   const req = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/chain/stake-moves${q}`);
-  const cold = { networkRow: [{ newest_observed: null }], subnetRows: [] };
-  const warm = { networkRow: [NETWORK], subnetRows: SUBNETS };
+  const warmBody = {
+    schema_version: 1,
+    window: "7d",
+    observed_at: new Date(OBS).toISOString(),
+    subnet_count: 3,
+    network: { distinct_movers: 12, movements: 95, movements_per_mover: 7.92 },
+    intensity_distribution: { count: 3, min: 2.5, max: 15 },
+    subnets: [
+      { netuid: 1, distinct_movers: 4, movements: 40, movements_per_mover: 10 },
+      { netuid: 2, distinct_movers: 2, movements: 30, movements_per_mover: 15 },
+      {
+        netuid: 5,
+        distinct_movers: 10,
+        movements: 25,
+        movements_per_mover: 2.5,
+      },
+    ],
+  };
 
   test("dispatches to the network stake-movement scorecard", async () => {
-    const res = await handleRequest(req("?window=7d"), stakeMovesEnv(warm), {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      postgresEnv(warmBody),
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
@@ -296,7 +263,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/stake-moves", {
         method: "HEAD",
       }),
-      stakeMovesEnv(warm),
+      postgresEnv(warmBody),
       {},
     );
     assert.equal(res.status, 200);
@@ -304,7 +271,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
   });
 
   test("serves a schema-stable empty card on a cold store", async () => {
-    const res = await handleRequest(req(), stakeMovesEnv(cold), {});
+    const res = await handleRequest(req(), createLocalArtifactEnv(), {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
@@ -312,45 +279,28 @@ describe("GET /api/v1/chain/stake-moves", () => {
     assert.equal(body.data.intensity_distribution, null);
   });
 
-  // #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
-  // table this handler already reads, no new flag) -- tryPostgresTier's own
-  // fallback contract is unit-tested in workers/postgres-tier.mjs's own
-  // tests, so these two just prove the wiring: a Postgres hit is served
-  // as-is with D1 never queried, and a Postgres failure falls back to D1.
-  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
-    let d1Called = false;
-    const env = {
-      ...stakeMovesEnv(cold),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: "2026-01-01T00:00:00.000Z",
-            subnet_count: 99,
-            network: {},
-            intensity_distribution: null,
-            subnets: [{ netuid: 42 }],
-          }),
-      },
-    };
-    env.METAGRAPH_HEALTH_DB.prepare = () => {
-      d1Called = true;
-      throw new Error(
-        "D1 must not be queried when Postgres serves the request",
-      );
-    };
-    const res = await handleRequest(req("?window=7d"), env, {});
+  test("flag=postgres serves the DATA_API response", async () => {
+    const res = await handleRequest(
+      req("?window=7d"),
+      postgresEnv({
+        schema_version: 1,
+        window: "7d",
+        observed_at: "2026-01-01T00:00:00.000Z",
+        subnet_count: 99,
+        network: {},
+        intensity_distribution: null,
+        subnets: [{ netuid: 42 }],
+      }),
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 99);
-    assert.equal(d1Called, false);
   });
 
-  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+  test("flag=postgres degrades to the empty card when DATA_API fails", async () => {
     const env = {
-      ...stakeMovesEnv(warm),
+      ...createLocalArtifactEnv(),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
@@ -361,25 +311,33 @@ describe("GET /api/v1/chain/stake-moves", () => {
     const res = await handleRequest(req("?window=7d"), env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
-    assert.equal(body.data.subnet_count, 3);
+    assert.equal(body.data.subnet_count, 0);
   });
 
   test("rejects an unsupported window with 400", async () => {
     const res = await handleRequest(
       req("?window=90d"),
-      stakeMovesEnv(cold),
+      createLocalArtifactEnv(),
       {},
     );
     assert.equal(res.status, 400);
   });
 
   test("rejects an unknown query param with 400", async () => {
-    const res = await handleRequest(req("?bogus=1"), stakeMovesEnv(cold), {});
+    const res = await handleRequest(
+      req("?bogus=1"),
+      createLocalArtifactEnv(),
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
   test("rejects an out-of-range limit with 400", async () => {
-    const res = await handleRequest(req("?limit=0"), stakeMovesEnv(cold), {});
+    const res = await handleRequest(
+      req("?limit=0"),
+      createLocalArtifactEnv(),
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
@@ -389,7 +347,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
   test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
-      stakeMovesEnv(warm),
+      postgresEnv(warmBody),
       {},
     );
     assert.equal(res.status, 200);
@@ -410,7 +368,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/stake-moves", {
         headers: { accept: "text/csv" },
       }),
-      stakeMovesEnv(warm),
+      postgresEnv(warmBody),
       {},
     );
     assert.equal(res.status, 200);
@@ -420,7 +378,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
   test("emits a header-only CSV on a cold store", async () => {
     const res = await handleRequest(
       req("?format=csv"),
-      stakeMovesEnv(cold),
+      createLocalArtifactEnv(),
       {},
     );
     assert.equal(res.status, 200);
@@ -434,7 +392,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
         "https://api.metagraph.sh/api/v1/chain/stake-moves?format=csv",
         { method: "HEAD" },
       ),
-      stakeMovesEnv(warm),
+      postgresEnv(warmBody),
       {},
     );
     assert.equal(res.status, 200);
@@ -445,7 +403,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
   test("rejects an unsupported format value with 400", async () => {
     const res = await handleRequest(
       req("?format=xml"),
-      stakeMovesEnv(cold),
+      createLocalArtifactEnv(),
       {},
     );
     assert.equal(res.status, 400);
@@ -481,17 +439,41 @@ describe("chain/stake-moves edge cache", () => {
             : null;
         },
       },
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind: () => ({
-              all: () =>
-                Promise.resolve({
-                  results: /GROUP BY netuid/.test(sql) ? SUBNETS : [NETWORK],
-                }),
-            }),
-          };
-        },
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            observed_at: new Date(OBS).toISOString(),
+            subnet_count: 3,
+            network: {
+              distinct_movers: 12,
+              movements: 95,
+              movements_per_mover: 7.92,
+            },
+            intensity_distribution: { count: 3, min: 2.5, max: 15 },
+            subnets: [
+              {
+                netuid: 1,
+                distinct_movers: 4,
+                movements: 40,
+                movements_per_mover: 10,
+              },
+              {
+                netuid: 2,
+                distinct_movers: 2,
+                movements: 30,
+                movements_per_mover: 15,
+              },
+              {
+                netuid: 5,
+                distinct_movers: 10,
+                movements: 25,
+                movements_per_mover: 2.5,
+              },
+            ],
+          }),
       },
     };
     const waits = [];

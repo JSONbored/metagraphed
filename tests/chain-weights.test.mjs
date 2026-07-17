@@ -2,9 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainWeights,
-  loadChainWeights,
   CHAIN_WEIGHTS_LIMIT_MAX,
-  WEIGHTS_EVENT_KIND,
 } from "../src/chain-weights.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -204,129 +202,6 @@ describe("buildChainWeights", () => {
       assert.equal(data.network.distinct_setters, 0);
       assert.equal(data.network.sets_per_setter, null);
     }
-  });
-});
-
-describe("loadChainWeights", () => {
-  test("reads the network aggregate then the per-subnet leaderboard over the window", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
-      calls.push({ sql, params });
-      if (/GROUP BY netuid/.test(sql)) return SUBNETS;
-      return [NETWORK];
-    };
-    const data = await loadChainWeights(d1, {
-      windowLabel: "7d",
-      windowDays: 7,
-      limit: 20,
-    });
-    assert.match(calls[0].sql, /COUNT\(DISTINCT CASE/);
-    assert.match(calls[0].sql, /WHEN hotkey IS NOT NULL/);
-    assert.match(calls[0].sql, /WHEN uid IS NOT NULL AND netuid IS NOT NULL/);
-    assert.doesNotMatch(calls[0].sql, /GROUP BY/);
-    assert.match(
-      calls[1].sql,
-      /event_kind = \? AND observed_at >= \? GROUP BY netuid/,
-    );
-    assert.equal(calls[0].params[0], WEIGHTS_EVENT_KIND);
-    assert.equal(typeof calls[0].params[1], "number"); // epoch-ms cutoff
-    assert.equal(calls[1].params[1], calls[0].params[1]); // same window cutoff
-    assert.equal(data.subnet_count, 3);
-    assert.equal(data.subnets[0].netuid, 1);
-  });
-
-  test("counts uid identities when WeightsSet rows have no hotkey", async () => {
-    const now = Date.now();
-    const rows = [
-      {
-        event_kind: WEIGHTS_EVENT_KIND,
-        observed_at: now,
-        netuid: 1,
-        uid: 7,
-        hotkey: null,
-      },
-      {
-        event_kind: WEIGHTS_EVENT_KIND,
-        observed_at: now + 1,
-        netuid: 1,
-        uid: 7,
-        hotkey: null,
-      },
-      {
-        event_kind: WEIGHTS_EVENT_KIND,
-        observed_at: now + 2,
-        netuid: 2,
-        uid: 7,
-        hotkey: null,
-      },
-    ];
-    const d1 = async (sql, params) => {
-      assert.equal(params[0], WEIGHTS_EVENT_KIND);
-      const filtered = rows.filter(
-        (row) => row.event_kind === params[0] && row.observed_at >= params[1],
-      );
-      const identity = (row) =>
-        row.hotkey ? `hotkey:${row.hotkey}` : `uid:${row.netuid}:${row.uid}`;
-      if (!/GROUP BY netuid/.test(sql)) {
-        return [
-          {
-            weight_sets: filtered.length,
-            distinct_setters: new Set(filtered.map(identity)).size,
-            newest_observed: Math.max(
-              ...filtered.map((row) => row.observed_at),
-            ),
-          },
-        ];
-      }
-      const byNetuid = new Map();
-      for (const row of filtered) {
-        const bucket = byNetuid.get(row.netuid) ?? [];
-        bucket.push(row);
-        byNetuid.set(row.netuid, bucket);
-      }
-      return [...byNetuid.entries()].map(([netuid, bucket]) => ({
-        netuid,
-        weight_sets: bucket.length,
-        distinct_setters: new Set(bucket.map(identity)).size,
-      }));
-    };
-
-    const data = await loadChainWeights(d1, {
-      windowLabel: "7d",
-      windowDays: 7,
-      limit: 20,
-    });
-
-    assert.equal(data.subnet_count, 2);
-    assert.equal(data.network.weight_sets, 3);
-    assert.equal(data.network.distinct_setters, 2);
-    assert.deepEqual(
-      data.subnets.map((subnet) => [
-        subnet.netuid,
-        subnet.distinct_setters,
-        subnet.weight_sets,
-      ]),
-      [
-        [1, 1, 2],
-        [2, 1, 1],
-      ],
-    );
-  });
-
-  test("a cold store skips the per-subnet read and returns the empty block", async () => {
-    const calls = [];
-    const d1 = async (sql) => {
-      calls.push(sql);
-      if (/GROUP BY netuid/.test(sql)) return SUBNETS;
-      return []; // network aggregate returns no row on a fully cold store
-    };
-    const data = await loadChainWeights(d1, {
-      windowLabel: "7d",
-      windowDays: 7,
-    });
-    assert.equal(calls.length, 1);
-    assert.equal(data.subnet_count, 0);
-    assert.equal(data.observed_at, null);
   });
 });
 

@@ -4,9 +4,6 @@
 // /accounts/{ss58}/counterparties (one account's local relationships).
 // Null-safe: a cold store or empty window yields a zeroed card.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const TRANSFER_KIND = "Transfer";
-
 export const CHAIN_TRANSFER_PAIR_WINDOWS = { "7d": 7, "30d": 30 };
 export const DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW = "7d";
 export const CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT = 25;
@@ -129,66 +126,8 @@ export function buildChainTransferPairs({
   };
 }
 
-const PAIR_FILTER =
-  "event_kind = ? AND observed_at >= ? AND hotkey IS NOT NULL AND coldkey IS NOT NULL " +
-  "AND hotkey <> '' AND coldkey <> '' AND hotkey <> coldkey " +
-  "AND amount_tao IS NOT NULL AND amount_tao >= 0";
-
-export async function loadChainTransferPairs(
-  d1,
-  {
-    windowLabel = DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
-    windowDays,
-    observedAt = null,
-    limit = CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
-    sort = "volume",
-  } = {},
-) {
-  const effectiveWindowLabel = Object.prototype.hasOwnProperty.call(
-    CHAIN_TRANSFER_PAIR_WINDOWS,
-    windowLabel,
-  )
-    ? windowLabel
-    : DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
-  const rawDays =
-    windowDays ?? CHAIN_TRANSFER_PAIR_WINDOWS[effectiveWindowLabel];
-  const days = Math.max(1, toCount(rawDays));
-  const cutoff = Date.now() - days * DAY_MS;
-  const sortBy = normalizeSort(sort);
-  const boundedLimit = Math.min(
-    CHAIN_TRANSFER_PAIR_LIMIT_MAX,
-    Math.max(1, toCount(limit)),
-  );
-
-  const totalsRows = await d1(
-    "WITH pair_totals AS (" +
-      "SELECT hotkey, coldkey, SUM(amount_tao) AS volume_tao, COUNT(*) AS transfer_count " +
-      `FROM account_events WHERE ${PAIR_FILTER} GROUP BY hotkey, coldkey` +
-      ") " +
-      "SELECT COALESCE(SUM(transfer_count), 0) AS transfer_count, " +
-      "COALESCE(SUM(volume_tao), 0) AS total_volume_tao, " +
-      "COUNT(*) AS unique_pairs, " +
-      "COALESCE(MAX(volume_tao), 0) AS top_pair_volume_tao FROM pair_totals",
-    [TRANSFER_KIND, cutoff],
-  );
-
-  const orderBy =
-    sortBy === "count"
-      ? "transfer_count DESC, volume_tao DESC, hotkey ASC, coldkey ASC"
-      : "volume_tao DESC, transfer_count DESC, hotkey ASC, coldkey ASC";
-  const pairRows = await d1(
-    "SELECT hotkey AS from_address, coldkey AS to_address, SUM(amount_tao) AS volume_tao, " +
-      "COUNT(*) AS transfer_count, MAX(block_number) AS last_block, " +
-      `MAX(observed_at) AS last_observed_at FROM account_events WHERE ${PAIR_FILTER} ` +
-      `GROUP BY hotkey, coldkey ORDER BY ${orderBy} LIMIT ?`,
-    [TRANSFER_KIND, cutoff, boundedLimit],
-  );
-
-  return buildChainTransferPairs({
-    window: effectiveWindowLabel,
-    sort: sortBy,
-    observedAt,
-    totals: Array.isArray(totalsRows) ? totalsRows[0] : null,
-    pairs: pairRows,
-  });
-}
+// #4772 D1 retirement: loadChainTransferPairs (the D1 loader that read the
+// account_events Transfer stream) was removed here -- that D1 write path is
+// retired and the `account_events` table is dropped in production, so a live D1
+// query would always miss. Serving now goes tryPostgresTier -> buildChainTransferPairs({}),
+// never D1. See src/mcp-server.mjs's get_chain_transfer_pairs tool for the call site.

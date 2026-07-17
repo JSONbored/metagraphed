@@ -25,15 +25,28 @@ afterEach(() => {
 
 function installMockCache() {
   const store = new Map();
+  let putCount = 0;
+  let matchCount = 0;
   globalThis.caches = {
     default: {
       async match(request) {
+        matchCount += 1;
         const cached = store.get(request.url);
         return cached ? cached.clone() : undefined;
       },
       async put(request, response) {
+        putCount += 1;
         store.set(request.url, response.clone());
       },
+    },
+  };
+  return {
+    store,
+    get putCount() {
+      return putCount;
+    },
+    get matchCount() {
+      return matchCount;
     },
   };
 }
@@ -1268,39 +1281,19 @@ describe("feeds — Worker dispatch integration", () => {
     assert.match(await res.text(), /<rss version="2\.0"/);
   });
 
-  test("handleRequest caches live incidents feed aggregations at the edge", async () => {
-    installMockCache();
-    let recentChecksQueries = 0;
+  // D1 fully eliminated (2026-07-17): the feed route wires loadLiveIncidents to
+  // loadGlobalIncidentsLedger (workers/api.mjs), which always returns
+  // incidentRows: [] now (workers/request-handlers/analytics.mjs's own
+  // #4772/D1-retirement comment) -- the incidents feed is schema-stable empty
+  // forever, never live D1 content, regardless of any METAGRAPH_HEALTH_DB
+  // mock. What this test still exercises: the feed route's edge-cache
+  // mechanics (one cache.put, an unrelated query param reuses the entry, HEAD
+  // reuses the GET entry, a matching If-None-Match 304s) are unrelated to the
+  // data source and still work.
+  test("handleRequest caches the incidents feed response at the edge", async () => {
+    const cache = installMockCache();
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind() {
-              return {
-                all: () => {
-                  if (sql.includes("recent_checks")) {
-                    recentChecksQueries += 1;
-                    return Promise.resolve({
-                      results: [
-                        {
-                          netuid: 7,
-                          surface_id: "allways-api",
-                          surface_key: "allways-api",
-                          started_at: 1781266255266,
-                          ended_at: 1781499480737,
-                          failed_samples: 1945,
-                        },
-                      ],
-                    });
-                  }
-                  return Promise.resolve({ results: [] });
-                },
-              };
-            },
-          };
-        },
-      },
       METAGRAPH_CONTROL: {
         async get(key) {
           if (key === "health:meta") {
@@ -1317,10 +1310,10 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(first.status, 200);
-    assert.ok((await first.json()).items[0].id.startsWith("incident:"));
+    assert.deepEqual((await first.json()).items, []);
     const etag = first.headers.get("etag");
     assert.ok(etag);
-    assert.equal(recentChecksQueries, 1);
+    assert.equal(cache.putCount, 1);
 
     const cached = await handleRequest(
       new Request(
@@ -1330,7 +1323,11 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(cached.status, 200);
-    assert.equal(recentChecksQueries, 1);
+    assert.equal(
+      cache.putCount,
+      1,
+      "an unrelated param reuses the cached entry",
+    );
 
     const head = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json", {
@@ -1341,7 +1338,11 @@ describe("feeds — Worker dispatch integration", () => {
     );
     assert.equal(head.status, 200);
     assert.equal(await head.text(), "");
-    assert.equal(recentChecksQueries, 1);
+    assert.equal(
+      cache.putCount,
+      1,
+      "HEAD reuses the GET-populated cache entry",
+    );
 
     const conditionalHead = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json", {
@@ -1353,42 +1354,18 @@ describe("feeds — Worker dispatch integration", () => {
     );
     assert.equal(conditionalHead.status, 304);
     assert.equal(await conditionalHead.text(), "");
-    assert.equal(recentChecksQueries, 1);
   });
 
+  // D1 fully eliminated (2026-07-17): the incidents feed is schema-stable
+  // empty regardless of `since` now (see loadGlobalIncidentsLedger's own
+  // comment), so this no longer proves `since` changes the returned items --
+  // it proves `since` and an unfiltered request are keyed as SEPARATE
+  // edge-cache entries (each gets its own cache.put), which is the actual
+  // caching-mechanics contract this test exists to guard.
   test("handleRequest keys edge-cached feeds by since", async () => {
-    installMockCache();
-    let recentChecksQueries = 0;
+    const cache = installMockCache();
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind() {
-              return {
-                all: () => {
-                  if (sql.includes("recent_checks")) {
-                    recentChecksQueries += 1;
-                    return Promise.resolve({
-                      results: [
-                        {
-                          netuid: 7,
-                          surface_id: "allways-api",
-                          surface_key: "allways-api",
-                          started_at: 1781266255266,
-                          ended_at: 1781499480737,
-                          failed_samples: 1945,
-                        },
-                      ],
-                    });
-                  }
-                  return Promise.resolve({ results: [] });
-                },
-              };
-            },
-          };
-        },
-      },
       METAGRAPH_CONTROL: {
         async get(key) {
           if (key === "health:meta") {
@@ -1409,7 +1386,7 @@ describe("feeds — Worker dispatch integration", () => {
     );
     assert.equal(future.status, 200);
     assert.deepEqual((await future.json()).items, []);
-    assert.equal(recentChecksQueries, 1);
+    assert.equal(cache.putCount, 1);
 
     const unfiltered = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
@@ -1417,8 +1394,12 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(unfiltered.status, 200);
-    assert.ok((await unfiltered.json()).items.length > 0);
-    assert.equal(recentChecksQueries, 2);
+    assert.deepEqual((await unfiltered.json()).items, []);
+    assert.equal(
+      cache.putCount,
+      2,
+      "since= and unfiltered use distinct cache entries",
+    );
 
     const invalid = await handleRequest(
       new Request(
@@ -1434,37 +1415,14 @@ describe("feeds — Worker dispatch integration", () => {
     );
   });
 
+  // D1 fully eliminated (2026-07-17): mirrors the ?since= test above -- the
+  // incidents feed is schema-stable empty regardless of `until`, so this
+  // proves the edge-cache key still varies on `until` (a distinct cache.put
+  // per value), not that `until` changes the returned items.
   test("handleRequest keys edge-cached feeds by until", async () => {
-    installMockCache();
+    const cache = installMockCache();
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind() {
-              return {
-                all: () => {
-                  if (sql.includes("recent_checks")) {
-                    return Promise.resolve({
-                      results: [
-                        {
-                          netuid: 7,
-                          surface_id: "allways-api",
-                          surface_key: "allways-api",
-                          started_at: 1781266255266,
-                          ended_at: 1781499480737,
-                          failed_samples: 1945,
-                        },
-                      ],
-                    });
-                  }
-                  return Promise.resolve({ results: [] });
-                },
-              };
-            },
-          };
-        },
-      },
       METAGRAPH_CONTROL: {
         async get(key) {
           if (key === "health:meta") {
@@ -1476,8 +1434,6 @@ describe("feeds — Worker dispatch integration", () => {
     };
     const ctx = { waitUntil: (promise) => promise };
 
-    // A past `until` excludes every item. If the edge-cache key ignored
-    // `until`, the later unfiltered request would be served this empty body.
     const past = await handleRequest(
       new Request(
         "https://api.metagraph.sh/api/v1/feeds/incidents.json?until=2000-01-01",
@@ -1487,6 +1443,7 @@ describe("feeds — Worker dispatch integration", () => {
     );
     assert.equal(past.status, 200);
     assert.deepEqual((await past.json()).items, []);
+    assert.equal(cache.putCount, 1);
 
     const unfiltered = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
@@ -1494,7 +1451,12 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(unfiltered.status, 200);
-    assert.ok((await unfiltered.json()).items.length > 0);
+    assert.deepEqual((await unfiltered.json()).items, []);
+    assert.equal(
+      cache.putCount,
+      2,
+      "until= and unfiltered use distinct cache entries",
+    );
 
     const invalid = await handleRequest(
       new Request(

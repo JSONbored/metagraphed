@@ -1,6 +1,11 @@
 // On-chain subnet identity history (#1647): detect SubnetIdentitiesV3 changes from
-// the hourly profiles artifact, store append-only rows in D1, and serve a paginated
-// timeline + previously_known_as provenance hints. Pure + injectable for tests.
+// the hourly profiles artifact and serve a paginated timeline +
+// previously_known_as provenance hints (read side still tiered D1/Postgres,
+// see loadSubnetIdentityHistory below). The append-only write itself is
+// Postgres-only now (syncSubnetIdentityToPostgres in this file, called from
+// writeSubnetSnapshot) -- D1's own write path is retired (2026-07-16, see
+// recordSubnetIdentityChanges' own header comment). Pure + injectable for
+// tests.
 
 import { encodeCursor, decodeCursor } from "./cursor.mjs";
 import {
@@ -12,8 +17,7 @@ import {
   clampOffset,
   FEED_PAGINATION,
 } from "../workers/request-params.mjs";
-
-const D1_STATEMENTS_PER_BATCH = 100;
+import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 
 const READ_COLUMNS =
   "id, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash";
@@ -136,12 +140,6 @@ export function overlayPreviouslyKnownAs(detail, names) {
   return { ...detail, previously_known_as: names };
 }
 
-async function runStatementBatches(db, statements) {
-  for (let i = 0; i < statements.length; i += D1_STATEMENTS_PER_BATCH) {
-    await db.batch(statements.slice(i, i + D1_STATEMENTS_PER_BATCH));
-  }
-}
-
 // D1 hands INTEGER columns back as numeric strings on GROUP BY / JOIN read paths
 // (the convention account-events.mjs and analytics-routes.mjs coerce for). Accept
 // ONLY a real number or an all-digits string so a blank/null/false cell is rejected
@@ -157,38 +155,53 @@ function rowNetuid(value) {
   return null;
 }
 
-async function latestIdentityHashes(db) {
-  const res = await db
-    .prepare(
-      `SELECT h.netuid, h.identity_hash
-       FROM subnet_identity_history h
-       INNER JOIN (
-         SELECT netuid, MAX(id) AS max_id
-         FROM subnet_identity_history
-         GROUP BY netuid
-       ) latest ON h.netuid = latest.netuid AND h.id = latest.max_id`,
-    )
-    .all();
+// D1 retirement (2026-07-16, item 8 of the D1->Postgres cleanup): used to
+// query D1's own subnet_identity_history directly; now reads the same latest-
+// per-netuid hash via the Postgres-backed internal endpoint (workers/data-
+// api.mjs's /api/v1/internal/subnet-identity-latest-hashes), reusing
+// METAGRAPH_SUBNET_IDENTITY_SOURCE (same table, already flipped to postgres).
+// An unavailable/off tier degrades to an empty map -- every profile then
+// reads as "changed" for that one run, the same degrade recordSubnetIdentity
+// Changes already tolerates on a cold table.
+async function latestIdentityHashes(env) {
+  const pg = await tryPostgresTier(
+    env,
+    new Request(
+      "https://api.metagraph.sh/api/v1/internal/subnet-identity-latest-hashes",
+    ),
+    "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+  );
   const map = new Map();
-  for (const row of res?.results || []) {
+  for (const row of pg?.hashes || []) {
     const netuid = rowNetuid(row.netuid);
     if (netuid != null) map.set(netuid, row.identity_hash);
   }
   return map;
 }
 
-async function latestBlockNumber(db) {
-  try {
-    const res = await db
-      .prepare("SELECT MAX(block_number) AS block_number FROM blocks")
-      .all();
-    const raw = res?.results?.[0]?.block_number;
-    if (raw == null || raw === "") return null;
-    const block = Number(raw);
-    return Number.isSafeInteger(block) && block > 0 ? block : null;
-  } catch {
-    return null;
-  }
+// D1 retirement (2026-07-16, item 10 of the D1->Postgres cleanup): D1's own
+// `blocks` table was fully dropped in an earlier migration (#4772), so a
+// `SELECT MAX(block_number) FROM blocks` against D1 always threw and this
+// function always returned null -- silently, forever, not intermittently.
+// Postgres's own `blocks` table is the live source now (already the
+// flipped/current tier for the public /api/v1/blocks route via
+// METAGRAPH_BLOCKS_SOURCE); this synthesizes an internal request the same
+// "no client request to forward" way /api/v1/internal/compare-health does,
+// since this call site is a cron-triggered internal helper, not a route.
+// There is no D1 fallback left to attempt for this specific query -- the
+// table it would have queried no longer exists in D1 at all -- so this
+// simply returns null when Postgres is unavailable or the flag is off,
+// same degrade as before, but now for a real reason instead of a guaranteed
+// D1 miss.
+async function latestBlockNumber(env) {
+  const pg = await tryPostgresTier(
+    env,
+    new Request("https://api.metagraph.sh/api/v1/internal/latest-block-number"),
+    "METAGRAPH_BLOCKS_SOURCE",
+  );
+  return Number.isSafeInteger(pg?.block_number) && pg.block_number > 0
+    ? pg.block_number
+    : null;
 }
 
 /**
@@ -234,75 +247,55 @@ export async function syncSubnetIdentityToPostgres(env, { profiles } = {}) {
 }
 
 /**
- * Diff profiles.json native_identity against the last stored hash per netuid;
- * append a row when any tracked field changes. Idempotent when unchanged.
+ * Diff profiles.json native_identity against the last stored hash per netuid.
+ * D1 write retired (2026-07-16, item 8 of the D1->Postgres cleanup):
+ * syncSubnetIdentityToPostgres (called right after this, from
+ * writeSubnetSnapshot) is the real, working writer -- this function's own D1
+ * INSERT had never successfully appended a single row to production D1
+ * (confirmed via direct `wrangler d1 execute`, both before and after a live
+ * cron tick -- see wrangler.jsonc's METAGRAPH_SUBNET_IDENTITY_SOURCE comment
+ * for the full writeup). This now only reads D1's (frozen, from here on)
+ * last-known hashes to report how many profiles' identity fields look
+ * changed against that baseline -- writeSubnetSnapshot's own `identity_history`
+ * return value -- without writing anything back.
  */
 export async function recordSubnetIdentityChanges(
   env,
-  { profiles, now = Date.now(), db } = {},
+  { profiles, now = Date.now() } = {},
 ) {
-  const database = db || env?.METAGRAPH_HEALTH_DB;
-  if (!database?.prepare || !Array.isArray(profiles) || profiles.length === 0) {
+  if (!Array.isArray(profiles) || profiles.length === 0) {
     return { recorded: false, reason: "unavailable" };
   }
   let latestByNetuid;
   try {
-    latestByNetuid = await latestIdentityHashes(database);
+    latestByNetuid = await latestIdentityHashes(env);
   } catch (error) {
-    // #4832 gap-closure follow-up: a swallowed D1 error here (prod schema
-    // drift, a locked/unavailable DB) dark-served the identity-history
-    // write for an unknown stretch before anyone noticed -- same failure
-    // class d1All was hardened against, see that fix's own comment.
+    // #4832 gap-closure follow-up: a swallowed read error here dark-served
+    // the identity-history diff for an unknown stretch before anyone
+    // noticed -- same failure class d1All was originally hardened against.
     console.error(
       "[recordSubnetIdentityChanges]",
       String(error?.message ?? error),
     );
     return { recorded: false, reason: "read_failed" };
   }
-  const blockNumber = await latestBlockNumber(database);
-  const stmt = database.prepare(
-    `INSERT INTO subnet_identity_history
-       (netuid, block_number, observed_at, subnet_name, symbol, description,
-        github_repo, subnet_url, discord, logo_url, identity_hash)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
-  const statements = [];
+  const blockNumber = await latestBlockNumber(env);
+  let changed = 0;
   for (const profile of profiles) {
     if (!Number.isInteger(profile?.netuid)) continue;
     const snapshot = identitySnapshotFromProfile(profile);
     if (!snapshot) continue;
     const hash = await identityHash(snapshot);
     if (latestByNetuid.get(profile.netuid) === hash) continue;
-    statements.push(
-      stmt.bind(
-        profile.netuid,
-        blockNumber,
-        now,
-        snapshot.subnet_name,
-        snapshot.symbol,
-        snapshot.description,
-        snapshot.github_repo,
-        snapshot.subnet_url,
-        snapshot.discord,
-        snapshot.logo_url,
-        hash,
-      ),
-    );
+    changed += 1;
     latestByNetuid.set(profile.netuid, hash);
   }
-  if (!statements.length) {
-    return { recorded: true, rows: 0 };
-  }
-  try {
-    await runStatementBatches(database, statements);
-    return { recorded: true, rows: statements.length };
-  } catch (error) {
-    console.error(
-      "[recordSubnetIdentityChanges]",
-      String(error?.message ?? error),
-    );
-    return { recorded: false, reason: "write_failed" };
-  }
+  return {
+    recorded: true,
+    rows: changed,
+    block_number: blockNumber,
+    observed_at: now,
+  };
 }
 
 export async function loadSubnetIdentityHistory(

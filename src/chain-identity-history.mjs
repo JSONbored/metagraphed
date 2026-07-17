@@ -5,18 +5,13 @@
 // and the identity-change companion to the other chain/* aggregates. Each entry is
 // shaped identically to the per-subnet route via the shared
 // formatIdentityHistoryEntry, plus the `netuid` it belongs to so a change is
-// attributable to its subnet. Every function is pure + injectable for tests; the
-// Worker does the D1 read + envelope. Null-safe: a non-array/empty read yields a
+// attributable to its subnet. Pure + injectable for tests; the Worker does the
+// Postgres read + envelope (D1 fully eliminated, 2026-07-16 -- the pure builder
+// below is called directly with an empty array on a Postgres miss/outage,
+// never a live D1 read). Null-safe: a non-array/empty read yields a
 // schema-stable empty feed and never throws.
 
 import { formatIdentityHistoryEntry } from "./subnet-identity-history.mjs";
-
-// The identity columns the network feed reads — the same tracked-field set as the
-// per-subnet READ_COLUMNS but WITH `netuid`, so each emitted change carries which
-// subnet it belongs to (mirrors CHAIN_PERFORMANCE_READ_COLUMNS keeping `netuid`).
-export const CHAIN_IDENTITY_HISTORY_READ_COLUMNS =
-  "id, netuid, block_number, observed_at, subnet_name, symbol, description, " +
-  "github_repo, subnet_url, discord, logo_url, identity_hash";
 
 // Analytics-feed limit convention copied from the chain-calls / chain-signers feeds
 // (parseLimitParam with defaultLimit: 50, maxLimit: 200 — the recent-events feed
@@ -73,16 +68,4 @@ export function buildChainIdentityHistory(rows, { limit } = {}) {
     subnet_count: netuids.size,
     changes,
   };
-}
-
-// Shared D1 loader (mirrors loadSubnetIdentityHistory but with NO netuid filter):
-// read the most-recent identity changes across EVERY subnet in one pass and shape
-// them into the network feed. Exported for the MCP tool.
-export async function loadChainIdentityHistory(d1, { limit } = {}) {
-  const cap = clampFeedLimit(limit);
-  const rows = await d1(
-    `SELECT ${CHAIN_IDENTITY_HISTORY_READ_COLUMNS} FROM subnet_identity_history ORDER BY block_number DESC, netuid ASC, id DESC LIMIT ?`,
-    [cap],
-  );
-  return buildChainIdentityHistory(rows, { limit: cap });
 }

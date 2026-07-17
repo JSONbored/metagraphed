@@ -130,7 +130,10 @@ async function getJson(url, env) {
 }
 
 describe("/api/v1/rpc/usage route", () => {
-  test("cold local D1 returns an empty-but-valid envelope", async () => {
+  // D1 fully eliminated (2026-07-17): loadRpcUsage never queries
+  // rpc_proxy_events any more, so a Postgres-tier miss always returns the
+  // schema-stable empty payload -- this is now the only cold-path shape.
+  test("cold miss returns an empty-but-valid envelope", async () => {
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/rpc/usage",
       createLocalArtifactEnv(),
@@ -151,136 +154,6 @@ describe("/api/v1/rpc/usage route", () => {
       assert.equal(status, 400);
       assert.equal(body.error.code, "invalid_query");
     }
-  });
-
-  test("aggregates volume, latency, endpoints, and networks from D1", async () => {
-    // One mock D1 that routes each of the four aggregation queries by SQL shape.
-    const usageDb = {
-      prepare: (sql) => ({
-        bind: () => ({
-          async all() {
-            if (sql.includes("COUNT(*) AS total")) {
-              return {
-                results: [
-                  {
-                    total: 500,
-                    ok_count: 480,
-                    failover_count: 12,
-                    cache_hits: 100,
-                    avg_latency_ms: 150,
-                  },
-                ],
-              };
-            }
-            if (sql.includes("ranked")) {
-              return { results: [{ p50: 110, p95: 430 }] };
-            }
-            if (sql.includes("GROUP BY endpoint_id")) {
-              return {
-                results: [
-                  {
-                    endpoint_id: "fx",
-                    provider: "onfinality",
-                    requests: 500,
-                    ok_count: 480,
-                    avg_latency_ms: 150,
-                  },
-                ],
-              };
-            }
-            if (sql.includes("GROUP BY network")) {
-              return {
-                results: [{ network: "finney", requests: 500, ok_count: 480 }],
-              };
-            }
-            if (sql.includes("GROUP BY ts")) {
-              return {
-                results: [
-                  {
-                    ts: 1_718_323_200_000,
-                    requests: 120,
-                    errors: 5,
-                    avg_latency_ms: 155.6,
-                  },
-                ],
-              };
-            }
-            return { results: [] };
-          },
-        }),
-      }),
-    };
-    const env = { ...createLocalArtifactEnv(), METAGRAPH_HEALTH_DB: usageDb };
-    const { status, body } = await getJson(
-      "https://api.metagraph.sh/api/v1/rpc/usage?window=30d",
-      env,
-    );
-    assert.equal(status, 200);
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.summary.total_requests, 500);
-    assert.equal(body.data.summary.error_requests, 20);
-    assert.equal(body.data.summary.latency_ms.p95, 430);
-    assert.equal(body.data.endpoints[0].endpoint_id, "fx");
-    assert.equal(body.data.networks[0].network, "finney");
-    assert.equal(body.data.bucket_granularity, "6h");
-    assert.deepEqual(body.data.buckets, [
-      {
-        ts: 1_718_323_200_000,
-        requests: 120,
-        errors: 5,
-        avg_latency_ms: 156,
-      },
-    ]);
-  });
-
-  test("uses bounded bucket params per window", async () => {
-    const calls = [];
-    const usageDb = {
-      prepare: (sql) => ({
-        bind: (...params) => ({
-          async all() {
-            calls.push({ sql, params });
-            return { results: [] };
-          },
-        }),
-      }),
-    };
-    const env = { ...createLocalArtifactEnv(), METAGRAPH_HEALTH_DB: usageDb };
-    const { status, body } = await getJson(
-      "https://api.metagraph.sh/api/v1/rpc/usage",
-      env,
-    );
-    assert.equal(status, 200);
-    assert.equal(body.data.bucket_granularity, "1h");
-    const bucketCall = calls.find((call) => call.sql.includes("GROUP BY ts"));
-    assert.ok(bucketCall);
-    assert.equal(bucketCall.params[0], 60 * 60 * 1000);
-    assert.equal(bucketCall.params[1], 60 * 60 * 1000);
-    assert.equal(bucketCall.params[3], 7 * 24);
-  });
-
-  test("bucket query keeps the most-recent buckets (current bucket not dropped)", async () => {
-    // Regression: `since` is unaligned to bucket boundaries, so a full window
-    // spans maxBuckets+1 buckets. The LIMIT must keep the NEWEST maxBuckets
-    // (inner ORDER BY ts DESC) and re-order ascending for the chart — a bare
-    // ascending LIMIT would drop the current (leading-edge) bucket.
-    const calls = [];
-    const usageDb = {
-      prepare: (sql) => ({
-        bind: (...params) => ({
-          async all() {
-            calls.push({ sql, params });
-            return { results: [] };
-          },
-        }),
-      }),
-    };
-    const env = { ...createLocalArtifactEnv(), METAGRAPH_HEALTH_DB: usageDb };
-    await getJson("https://api.metagraph.sh/api/v1/rpc/usage", env);
-    const sql = calls.find((call) => call.sql.includes("GROUP BY ts")).sql;
-    // Inner query takes the newest buckets; outer query restores chronological order.
-    assert.match(sql, /ORDER BY ts DESC\s+LIMIT \?/);
-    assert.match(sql, /\)\s*ORDER BY ts ASC\s*$/);
   });
 });
 
@@ -332,19 +205,22 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
     });
   }
 
+  // D1 write retired 2026-07-16 (item 7 of the D1->Postgres cleanup):
+  // syncRpcUsageEventToPostgres (via env.DATA_API) is the sole writer for
+  // rpc_proxy_events now -- confirmed unconditionally called, live since
+  // 2026-07-11 per METAGRAPH_RPC_USAGE_SOURCE's own wrangler.jsonc comment.
   test("records a served request (endpoint, ok, latency, bypass cache)", async () => {
     const captured = [];
-    const db = {
-      prepare: (sql) => ({
-        bind: (...binds) => ({
-          async run() {
-            captured.push({ sql, binds });
-            return { meta: {} };
-          },
-        }),
-      }),
+    const env = {
+      ...baseEnv(),
+      DATA_API: {
+        fetch: async (request) => {
+          captured.push(await request.json());
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
+      },
+      RPC_USAGE_SYNC_SECRET: "test-secret",
     };
-    const env = { ...baseEnv(), METAGRAPH_HEALTH_DB: db };
     const waits = [];
     const ctx = { waitUntil: (p) => waits.push(p) };
     await withFetch(
@@ -361,22 +237,22 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
       },
     );
     assert.equal(captured.length, 1);
-    assert.match(captured[0].sql, /INSERT INTO rpc_proxy_events/);
-    const [, network, endpointId, , ok, , , , cache] = captured[0].binds;
-    assert.equal(network, "finney");
-    assert.equal(endpointId, "fx");
-    assert.equal(ok, 1);
-    assert.equal(cache, "bypass");
+    const event = captured[0];
+    assert.equal(event.network, "finney");
+    assert.equal(event.endpoint_id, "fx");
+    assert.equal(event.ok, true);
+    assert.equal(event.cache, "bypass");
   });
 
   test("a telemetry write that throws never breaks the proxied call", async () => {
     const env = {
       ...baseEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
+      DATA_API: {
+        fetch: async () => {
           throw new Error("telemetry binding exploded");
         },
       },
+      RPC_USAGE_SYNC_SECRET: "test-secret",
     };
     const ctx = { waitUntil() {} };
     await withFetch(
@@ -392,15 +268,16 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
   });
 
   test("no telemetry without a ctx.waitUntil (no-op, proxy still serves)", async () => {
-    let prepared = false;
+    let fetched = false;
     const env = {
       ...baseEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          prepared = true;
-          return { bind: () => ({ run: async () => ({}) }) };
+      DATA_API: {
+        fetch: async () => {
+          fetched = true;
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
         },
       },
+      RPC_USAGE_SYNC_SECRET: "test-secret",
     };
     await withFetch(
       async () =>
@@ -412,7 +289,7 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
         assert.equal(res.status, 200);
       },
     );
-    assert.equal(prepared, false);
+    assert.equal(fetched, false);
   });
 
   test("records a routing failure (no eligible endpoint → 503)", async () => {
@@ -429,16 +306,13 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
           };
         },
       },
-      METAGRAPH_HEALTH_DB: {
-        prepare: (sql) => ({
-          bind: (...binds) => ({
-            async run() {
-              captured.push({ sql, binds });
-              return { meta: {} };
-            },
-          }),
-        }),
+      DATA_API: {
+        fetch: async (request) => {
+          captured.push(await request.json());
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
       },
+      RPC_USAGE_SYNC_SECRET: "test-secret",
     };
     const waits = [];
     const res = await handleRequest(reqFor("system_health"), env, {
@@ -447,8 +321,8 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
     assert.equal(res.status, 503);
     await Promise.all(waits);
     assert.equal(captured.length, 1);
-    const [, , endpointId, , ok] = captured[0].binds;
-    assert.equal(endpointId, null);
-    assert.equal(ok, 0);
+    const event = captured[0];
+    assert.equal(event.endpoint_id, null);
+    assert.equal(event.ok, false);
   });
 });

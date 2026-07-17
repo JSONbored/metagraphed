@@ -2665,46 +2665,17 @@ describe("health trends D1 error handling", () => {
     assert.equal(body.data.windows["7d"].uptime_ratio, null);
   });
 
-  test("logs the swallowed D1 error via the [d1All] dark-serve contract (#2076)", async () => {
-    // Regression: handleHealthTrends previously inlined db.prepare().bind().all()
-    // with a BARE catch that returned [] silently — re-introducing the dark-serve
-    // failure the [d1All] logging exists to catch. Reading through d1All now logs
-    // every swallowed failure, so a prod schema drift is diagnosable.
-    const env = createLocalArtifactEnv({
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return {
-            bind() {
-              return {
-                async all() {
-                  throw new Error("no such column: surface_key");
-                },
-              };
-            },
-          };
-        },
-      },
-    });
-    const calls = [];
-    const original = console.error;
-    console.error = (...args) => calls.push(args);
-    try {
-      const res = await handleRequest(
-        req("/api/v1/subnets/0/health/trends"),
-        env,
-        {},
-      );
-      assert.equal(res.status, 200);
-    } finally {
-      console.error = original;
-    }
-    const logged = calls.find((args) => args[0] === "[d1All]");
-    assert.ok(
-      logged,
-      "the swallowed trends D1 error must be logged with the [d1All] prefix",
-    );
-    assert.match(String(logged[1]), /no such column/);
-  });
+  // The "[d1All] dark-serve contract (#2076)" regression test that used to live
+  // here drove a D1-throwing scenario through handleHealthTrends and asserted
+  // the swallowed error was logged via d1All's own "[d1All]" prefix. D1 is now
+  // fully eliminated from this route (workers/request-handlers/analytics.mjs's
+  // handleHealthTrends goes tryPostgresTier -> loadSubnetHealthTrends with no
+  // rows on any miss, never a live D1 read), so d1All is never reached from
+  // this route anymore -- the assertion tested dead wiring. d1All itself
+  // (still present, unchanged, and still exercised via other D1-mock tests in
+  // this describe block) is not exported from workers/request-handlers/
+  // analytics.mjs, so there is no direct-unit-test alternative to keep; the
+  // test was deleted rather than converted.
 
   test("bulk route returns a schema-stable empty payload when D1 throws", async () => {
     const env = createLocalArtifactEnv({

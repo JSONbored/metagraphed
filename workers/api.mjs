@@ -47,7 +47,6 @@ import {
 } from "./request-handlers/discovery.mjs";
 import {
   configureAnalytics,
-  d1Runner,
   handleBulkHealthTrends,
   handleChainActivity,
   handleChainCalls,
@@ -72,7 +71,6 @@ import {
   handleHealthPercentiles,
   handleHealthTrends,
   withEdgeCache,
-  readIdentityHistoryCacheStamp,
 } from "./request-handlers/analytics.mjs";
 import {
   handleSubnetMetagraph,
@@ -253,8 +251,6 @@ import {
 import {
   deriveNetuidGroupedAliases,
   derivePreviouslyKnownAs,
-  loadPreviouslyKnownAs,
-  loadPreviouslyKnownAsForNetuids,
   overlayPreviouslyKnownAs,
 } from "../src/subnet-identity-history.mjs";
 import { tryPostgresTier } from "./postgres-tier.mjs";
@@ -1556,7 +1552,6 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   ) {
     return handleBadgeRequest(request, env, url, {
       readArtifact,
-      db: env.METAGRAPH_HEALTH_DB,
     });
   }
 
@@ -2739,10 +2734,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       );
     }
     // GET /api/v1/chain/identity-history: network-wide recent subnet-identity-change
-    // feed across ALL subnets (newest first) — edge-cache busts on the newest
-    // identity change's observed_at; ?limit rides the canonical cache path so a bare
-    // request and an explicit-default request share one slot (like chain/performance
-    // but a capped feed, not a per-subnet aggregate).
+    // feed across ALL subnets (newest first); ?limit rides the canonical cache
+    // path so a bare request and an explicit-default request share one slot
+    // (like chain/performance but a capped feed, not a per-subnet aggregate).
+    // Edge-cache busts on the shared health-cron stamp like every sibling
+    // Postgres-tier route — its own bespoke observed_at stamp was retired
+    // alongside the D1 read it existed to bust on (D1 fully eliminated,
+    // 2026-07-16).
     if (resolved.url.pathname === "/api/v1/chain/identity-history") {
       return withEdgeCache(
         request,
@@ -2751,7 +2749,6 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         "chain-identity-history",
         () => handleChainIdentityHistory(request, env, resolved.url),
         canonicalChainIdentityHistoryCachePath(resolved.url),
-        (edgeEnv) => readIdentityHistoryCacheStamp(edgeEnv),
       );
     }
     // GET /api/v1/chain/yield: network-wide emission-yield (return rate) aggregate
@@ -3092,7 +3089,6 @@ async function handleRawArtifactRequest(
     const liveSnapshot = await resolveLiveHealth({
       readHealthKv,
       env,
-      db: env.METAGRAPH_HEALTH_DB,
     });
     data = overlayArtifactEndpoints(data, liveSnapshot) ?? data;
   }
@@ -3498,14 +3494,16 @@ async function lookupSubnetNetuid(
 }
 
 // loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids (src/subnet-identity-
-// history.mjs) are D1-fetch helpers embedded in 3 overlay call sites below
-// rather than standalone routes, so there is no single client request for
-// tryPostgresTier to forward unchanged -- these two wrappers synthesize their
-// own internal /api/v1/internal/subnet-identity-aliases request instead,
-// mirroring composeCompareData's health-dimension wiring (#4832 gap-closure).
-// Reuses METAGRAPH_SUBNET_IDENTITY_SOURCE, already flipped to postgres for
-// /identity-history. derivePreviouslyKnownAs/deriveNetuidGroupedAliases run
-// identically over rows regardless of which tier served them.
+// history.mjs) are Postgres-fetch helpers embedded in 3 overlay call sites
+// below rather than standalone routes, so there is no single client request
+// for tryPostgresTier to forward unchanged -- these two wrappers synthesize
+// their own internal /api/v1/internal/subnet-identity-aliases request
+// instead, mirroring composeCompareData's health-dimension wiring (#4832
+// gap-closure). Reuses METAGRAPH_SUBNET_IDENTITY_SOURCE, already flipped to
+// postgres for /identity-history. D1 fully eliminated (2026-07-16): a tier
+// miss/outage now returns an empty alias list rather than falling back to
+// D1's frozen copy, same degrade every other route reusing this flag already
+// tolerates.
 async function loadPreviouslyKnownAsTiered(env, netuid, currentName) {
   const pgUrl = new URL(
     "https://data-api.internal/api/v1/internal/subnet-identity-aliases",
@@ -3516,8 +3514,7 @@ async function loadPreviouslyKnownAsTiered(env, netuid, currentName) {
     new Request(pgUrl),
     "METAGRAPH_SUBNET_IDENTITY_SOURCE",
   );
-  if (pgData) return derivePreviouslyKnownAs(pgData.rows, currentName);
-  return loadPreviouslyKnownAs(d1Runner(env), netuid, currentName);
+  return derivePreviouslyKnownAs(pgData?.rows ?? [], currentName);
 }
 
 async function loadPreviouslyKnownAsForNetuidsTiered(env, entries) {
@@ -3533,8 +3530,7 @@ async function loadPreviouslyKnownAsForNetuidsTiered(env, entries) {
     new Request(pgUrl),
     "METAGRAPH_SUBNET_IDENTITY_SOURCE",
   );
-  if (pgData) return deriveNetuidGroupedAliases(pgData.rows, entries);
-  return loadPreviouslyKnownAsForNetuids(d1Runner(env), entries);
+  return deriveNetuidGroupedAliases(pgData?.rows ?? [], entries);
 }
 
 async function handleApiRequest(
@@ -3642,12 +3638,13 @@ async function handleApiRequest(
     // KV/D1 health overlay is mainnet-only.
     artifact = await readArtifact(env, artifactPath);
   } else if (matched.id === "health") {
-    // Live-only global operational health: KV health:current → D1
-    // surface_status, and an explicit `unknown` global when the live store is
-    // cold. There is no stored health summary to fall back to (live-only).
+    // Live-only global operational health: KV health:current → Postgres tier
+    // (D1 fully eliminated, 2026-07-17), and an explicit `unknown` global when
+    // the live store is cold. There is no stored health summary to fall back
+    // to (live-only).
     live = {
       data: await loadGlobalOperationalHealth(
-        { env, readHealthKv, db: env.METAGRAPH_HEALTH_DB },
+        { env, readHealthKv },
         { contractVersion: (e) => contractVersion(e) },
       ),
     };
@@ -4546,7 +4543,6 @@ async function handleAskRequest(request, env) {
     const liveHealth = await resolveLiveHealth({
       readHealthKv,
       env,
-      db: env.METAGRAPH_HEALTH_DB,
     });
     const data = await askQuestion(
       env,
@@ -4611,7 +4607,6 @@ async function liveHealthOverlay(env, matched, staticData) {
         (await resolveLiveHealth({
           readHealthKv,
           env,
-          db: env.METAGRAPH_HEALTH_DB,
         })) || null;
     }
     return resolved;

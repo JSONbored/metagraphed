@@ -4,7 +4,6 @@
 // the daily rollup, the prune, and the row→API shaping (#1347). Pure + exported
 // for tests; the Worker runs the D1 I/O.
 import {
-  DAY_PATTERN,
   FEED_PAGINATION,
   clampLimit,
   clampOffset,
@@ -611,81 +610,18 @@ export const ACCOUNT_EVENT_SUMMARY_SCAN_CAP = 5000;
 // same loader pattern (clamp, cursor, schema-stable zero) as the other account
 // read paths.
 
-// Columns selected from the account_events_daily rollup (#1854). Only hotkey-
-// attributed rows are written, so a coldkey-only ss58 may return zero days.
-const ACCOUNT_DAY_COLUMNS =
-  "day, netuid, event_count, event_kinds, first_block, last_block";
-
 // Per-day activity series for one account, from the account_events_daily
-// rollup. ?netuid narrows to one subnet; ?from / ?to are YYYY-MM-DD bounds
-// (lexicographic on the TEXT `day` column). Newest day first. Clamps limit to
-// 1-1000 (default 100); clamps offset to 0-1 000 000. Null-safe on cold store.
-//
-// account_events_daily holds one row per (hotkey, day, netuid), so `day` alone
-// is not a total order — an account active on several subnets has multiple rows
-// per day. Ordering by `day DESC` only left same-day rows in an unspecified
-// order, which made offset paging non-deterministic (a page boundary inside a
-// day could drop or repeat a same-day row). Tie-break on `netuid DESC` so the
-// order is total, and expose the same `(day, netuid)` keyset cursor the REST
-// handler (handleAccountHistory) and the sibling tail loaders use, so callers
-// can page stable head-growing windows. A cursor takes precedence over offset;
-// a cursor that does not decode to a valid YYYY-MM-DD day is ignored (falls back
-// to the first page), preserving the never-throw contract.
-export async function loadAccountHistory(
-  d1,
-  ss58,
-  { netuid, from, to, limit, offset, cursor } = {},
-) {
+// rollup. D1 fully eliminated (2026-07-17): account_events_daily is
+// Postgres-only now (every caller tries the Postgres tier first) -- this is
+// only reached on a tier miss, so it always returns the schema-stable empty
+// shape. Clamps limit to 1-1000 (default 100); clamps offset to 0-1 000 000.
+export async function loadAccountHistory(ss58, { limit, offset } = {}) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
-  // Inverted YYYY-MM-DD bounds are a deterministic no-match. Short-circuit before
-  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
-  if (from && to && from > to) {
-    return buildAccountHistory([], ss58, {
-      limit: lim,
-      offset: off,
-      nextCursor: null,
-    });
-  }
-  const params = [ss58];
-  let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
-  if (netuid != null && Number.isInteger(netuid)) {
-    sql += " AND netuid = ?";
-    params.push(netuid);
-  }
-  if (from) {
-    sql += " AND day >= ?";
-    params.push(from);
-  }
-  if (to) {
-    sql += " AND day <= ?";
-    params.push(to);
-  }
-  const cur = decodeCursor(cursor, 2);
-  const cursorDay = cur
-    ? String(cur[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
-    : null;
-  const useCursor = Boolean(cursorDay && DAY_PATTERN.test(cursorDay));
-  if (useCursor) {
-    sql += " AND (day, netuid) < (?, ?)";
-    params.push(cursorDay, cur[1]);
-  }
-  sql += " ORDER BY day DESC, netuid DESC LIMIT ?";
-  params.push(lim);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(off);
-  }
-  const rows = await d1(sql, params);
-  const last = rows.length === lim ? rows[rows.length - 1] : null;
-  const nextCursor =
-    last && typeof last.day === "string" && DAY_PATTERN.test(last.day)
-      ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
-      : null;
-  return buildAccountHistory(rows, ss58, {
+  return buildAccountHistory([], ss58, {
     limit: lim,
     offset: off,
-    nextCursor,
+    nextCursor: null,
   });
 }
 

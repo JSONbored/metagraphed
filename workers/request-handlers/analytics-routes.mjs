@@ -1,14 +1,16 @@
-// Deferred D1-backed analytics handlers extracted from workers/api.mjs (#1763,
-// continuation). Trajectory, uptime, leaderboards, and compare share the
-// fileless-D1 pattern: live SQL + registry projections, schema-stable empty
-// payloads on cold D1, and the D1-fallback WeakSet contract owned by
-// analytics.mjs.
+// Analytics handlers extracted from workers/api.mjs (#1763, continuation).
+// Trajectory, uptime, leaderboards, and compare share the registry-projection
+// + schema-stable-empty-payload pattern. D1 fully eliminated (2026-07-17):
+// every D1 read here is gone -- a Postgres-tier miss (or, for leaderboards,
+// which never had tier plumbing) always falls through to the empty shape,
+// marked via the D1-fallback WeakSet contract owned by analytics.mjs so it's
+// never edge-cached as fresh.
 //
 // Dependency wiring mirrors configureAnalytics: the in-isolate memoized KV reads
 // (`readHealthMetaKv`, `readEconomicsCurrentKv`) stay in api.mjs and are
 // injected once at module-init so this file never imports api.mjs back.
 
-import { DAY_MS, MAX_UPTIME_ROWS, UPTIME_WINDOWS } from "../config.mjs";
+import { UPTIME_WINDOWS } from "../config.mjs";
 import { tryPostgresTier } from "../postgres-tier.mjs";
 import { csvRequested, csvResponse } from "../csv.mjs";
 import { errorResponse } from "../http.mjs";
@@ -17,15 +19,9 @@ import { contractVersion, envelopeResponse } from "../responses.mjs";
 import {
   analyticsMeta,
   analyticsQueryError,
-  d1All,
-  hasD1FallbackRows,
   markD1FallbackResponse,
   validateQueryParams,
 } from "./analytics.mjs";
-import {
-  dailyLatencyColumns,
-  surfaceStatusAvgLatencySql,
-} from "../../src/health-sql.mjs";
 import {
   parseLimitParam,
   parseNonNegativeIntParam,
@@ -171,24 +167,16 @@ export function configureAnalyticsRoutes(deps) {
 const LEADERBOARD_PROFILES_TTL_MS = 300_000;
 let leaderboardProfilesCache = null; // { subnetMeta, mostComplete, builtAt }
 
-async function envelopeWithD1Fallback(request, payload, cacheProfile, rowSets) {
-  const response = await envelopeResponse(request, payload, cacheProfile);
-  return hasD1FallbackRows(...rowSets)
-    ? markD1FallbackResponse(response)
-    : response;
-}
-
 // Week-over-week structural trajectory from daily snapshots.
 export async function handleTrajectory(request, env, netuid, url) {
   const validationError = validateQueryParams(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE (deliberately
-  // unflipped -- subnet_snapshots has no historical backfill, only started
-  // accumulating from writeSubnetSnapshot's dual-write landing, same
-  // rationale as METAGRAPH_HEALTH_SOURCE's own header comment). A Postgres
-  // hit never reaches d1All, so it can never be marked a fallback.
+  // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, flipped to
+  // "postgres" in wrangler.jsonc (D1 retirement, 2026-07-16). D1 fully
+  // eliminated (2026-07-17): a tier miss now always falls through to the
+  // schema-stable empty payload (never a live D1 query).
   let isFallback = false;
   let data = await tryPostgresTier(
     env,
@@ -196,20 +184,8 @@ export async function handleTrajectory(request, env, netuid, url) {
     "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
   );
   if (!data) {
-    const rows = await d1All(
-      env,
-      `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
-              validator_count, miner_count, total_stake_tao, alpha_price_tao,
-              emission_share, tao_in_pool_tao, alpha_in_pool, alpha_out_pool,
-              subnet_volume_tao
-       FROM subnet_snapshots
-       WHERE netuid = ?
-       ORDER BY snapshot_date DESC
-       LIMIT 400`,
-      [netuid],
-    );
-    data = formatTrajectory({ netuid, rows });
-    isFallback = hasD1FallbackRows(rows);
+    isFallback = true;
+    data = formatTrajectory({ netuid, rows: [] });
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
@@ -247,12 +223,10 @@ export async function handleEconomicsTrends(request, env, url) {
   if (validationError) return analyticsQueryError(validationError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { label, days, error } = parseHistoryWindow(
-    url.searchParams.get("window"),
-  );
+  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
   if (error) return analyticsQueryError(error);
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
-  // and same deliberately-unflipped rationale as handleTrajectory above.
+  // and same flip as handleTrajectory above. D1 fully eliminated (2026-07-17).
   let isFallback = false;
   let data = await tryPostgresTier(
     env,
@@ -260,12 +234,9 @@ export async function handleEconomicsTrends(request, env, url) {
     "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
   );
   if (!data) {
-    const loaded = await loadEconomicsTrends(
-      (sql, params) => d1All(env, sql, params),
-      { windowLabel: label, windowDays: days },
-    );
+    isFallback = true;
+    const loaded = await loadEconomicsTrends({ windowLabel: label });
     data = loaded.data;
-    isFallback = hasD1FallbackRows(loaded.rows);
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
@@ -313,56 +284,23 @@ export async function handleUptime(request, env, netuid, url) {
     "min_samples",
   );
   if (minSamples.error) return analyticsQueryError(minSamples.error);
-  const days = UPTIME_WINDOWS[windowParam];
-  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
   // #4832 gap-closure follow-up: reuses METAGRAPH_HEALTH_SOURCE (same table
   // as the bulk-trends/trends/percentiles/incidents routes in analytics.mjs,
-  // deliberately unflipped pending Postgres accumulating a real history
-  // window -- see handleBulkHealthTrends' own header comment there).
+  // flipped to "postgres" in wrangler.jsonc -- see that flag's own header
+  // comment there). D1 fully eliminated (2026-07-17): a tier miss now always
+  // falls through to the schema-stable empty payload (never a live D1 query).
   let isFallback = false;
   let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
   if (!data) {
-    const rows = await d1All(
-      env,
-      `SELECT MAX(surface_id) AS surface_id,
-              COALESCE(surface_key, surface_id) AS surface_key,
-              day,
-              SUM(samples) AS samples,
-              SUM(ok_count) AS ok_count,
-              CASE
-                WHEN SUM(samples) > 0 THEN ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)
-                ELSE NULL
-              END AS uptime_ratio,
-              ${dailyLatencyColumns({ roundedAvg: true })},
-              MAX(p50_latency_ms) AS p50,
-              MAX(p95_latency_ms) AS p95,
-              MAX(p99_latency_ms) AS p99,
-              CASE
-                WHEN SUM(samples) = 0 THEN 'unknown'
-                WHEN SUM(ok_count) = SUM(samples) THEN 'ok'
-                WHEN SUM(ok_count) = 0 THEN 'failed'
-                ELSE 'degraded'
-              END AS status
-       FROM surface_uptime_daily
-       WHERE netuid = ? AND day >= ?
-       GROUP BY COALESCE(surface_key, surface_id), day
-       ${minSamples.value !== null ? "HAVING SUM(samples) >= ?\n       " : ""}ORDER BY day DESC
-       LIMIT ?`,
-      minSamples.value !== null
-        ? [netuid, cutoff, minSamples.value, MAX_UPTIME_ROWS]
-        : [netuid, cutoff, MAX_UPTIME_ROWS],
-    );
+    isFallback = true;
     const healthMeta = await readHealthMetaKv(env);
     data = formatUptime({
       netuid,
       window: windowParam,
       observedAt: healthMeta?.last_run_at || null,
-      rows,
+      rows: [],
       now: new Date().toISOString(),
     });
-    isFallback = hasD1FallbackRows(rows);
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
@@ -516,93 +454,40 @@ async function resolveEconomicsRows(env) {
 }
 
 /**
- * Compose the registry-leaderboards payload: the profiles projection plus the
- * D1 health/rpc/growth/reliability reads and the economics tier, folded through
- * formatLeaderboards.
+ * Compose the registry-leaderboards payload: the profiles projection and the
+ * economics tier, folded through formatLeaderboards.
+ *
+ * D1 fully eliminated (2026-07-17): this route never had a Postgres-tier
+ * mirror for the health/rpc/growth/reliability boards (surface_status/
+ * subnet_snapshots/surface_uptime_daily), so those boards are always empty
+ * now rather than adding new tier plumbing out of scope for D1 retirement.
+ * `economicsRows` isn't D1 -- it comes from the economics tier -- so that
+ * board is unaffected.
  *
  * Split out of handleLeaderboards so the GraphQL mirror
- * (Query.registry_leaderboards, #5661) reuses this exact projection instead of
- * duplicating the D1 queries. Callers own argument validation and response
- * wrapping; this only builds the payload. `d1Rows` is returned alongside it
- * because the HTTP path needs the raw row-sets for its cold-store fallback
- * signal — GraphQL ignores them.
+ * (Query.registry_leaderboards, #5661) reuses this exact projection.
  */
 export async function composeLeaderboardsData(
   env,
   { board = null, limit = 20 } = {},
 ) {
   const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
-
-  const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-  // `fastest-growing` uses a short completeness window; `most-reliable` is
-  // intentionally more durable and ranks the last 30d of uptime history.
-  const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-  const [healthRows, rpcRows, growthSamples, economicsRows, reliabilityRows] =
-    await Promise.all([
-      d1All(
-        env,
-        `SELECT netuid,
-              COUNT(*) AS total,
-              SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
-              ${surfaceStatusAvgLatencySql()} AS avg_latency_ms
-       FROM surface_status
-       GROUP BY netuid`,
-        [],
-      ),
-      d1All(
-        env,
-        `SELECT netuid, MIN(latency_ms) AS min_latency_ms
-       FROM surface_status
-       WHERE kind IN ('subtensor-rpc', 'subtensor-wss')
-         AND status = 'ok' AND latency_ms IS NOT NULL
-       GROUP BY netuid`,
-        [],
-      ),
-      d1All(
-        env,
-        `SELECT netuid, snapshot_date, completeness_score
-       FROM subnet_snapshots
-       WHERE snapshot_date >= ?
-       ORDER BY netuid, snapshot_date`,
-        [sevenDaysAgo],
-      ),
-      resolveEconomicsRows(env),
-      d1All(
-        env,
-        `SELECT netuid,
-              SUM(samples) AS samples,
-              SUM(ok_count) AS ok_count,
-              ${dailyLatencyColumns({ roundedAvg: true })}
-       FROM surface_uptime_daily
-       WHERE day >= ?
-       GROUP BY netuid`,
-        [thirtyDaysAgo],
-      ),
-    ]);
-
-  const growthRows = growthRowsFromSamples(growthSamples);
+  const economicsRows = await resolveEconomicsRows(env);
 
   const meta = await readHealthMetaKv(env);
   const data = formatLeaderboards({
     board,
     limit,
     observedAt: meta?.last_run_at || null,
-    healthRows,
-    rpcRows,
+    healthRows: [],
+    rpcRows: [],
     mostComplete,
-    growthRows,
-    reliabilityRows,
+    growthRows: growthRowsFromSamples([]),
+    reliabilityRows: [],
     economicsRows,
     subnetMeta,
   });
-  return {
-    data,
-    d1Rows: [healthRows, rpcRows, growthSamples, reliabilityRows],
-  };
+  return { data };
 }
 
 export async function handleLeaderboards(request, env, url) {
@@ -621,11 +506,11 @@ export async function handleLeaderboards(request, env, url) {
     return errorResponse("invalid_query", parsedLimit.error.message, 400);
   }
 
-  const { data, d1Rows } = await composeLeaderboardsData(env, {
+  const { data } = await composeLeaderboardsData(env, {
     board: requestedBoard || null,
     limit: parsedLimit.limit,
   });
-  return envelopeWithD1Fallback(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -638,8 +523,11 @@ export async function handleLeaderboards(request, env, url) {
       },
     },
     "standard",
-    d1Rows,
   );
+  // D1 fully eliminated (2026-07-17): the health/rpc/growth/reliability
+  // boards are always empty now (see composeLeaderboardsData) -- never
+  // edge-cache this as if it were a fresh read.
+  return markD1FallbackResponse(response);
 }
 
 export function canonicalCompareCachePath(url) {
@@ -786,13 +674,13 @@ export async function handleCompare(request, env, url) {
   }
 
   const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
-  // The health dimension is the only one of the three backed by a table with
-  // a Postgres mirror (surface_status, #4832 gap-closure) -- structure/
-  // economics stay D1-only. handleCompare has no clean 1:1 D1 route to
-  // forward, so it synthesizes its own internal request the same way a
+  // The health dimension is backed by surface_status via a Postgres mirror
+  // (#4832 gap-closure). handleCompare has no clean 1:1 D1 route to forward,
+  // so it synthesizes its own internal request the same way a
   // syncXToPostgres write helper builds one, rather than forwarding the
   // caller's netuids=/dimensions= request unchanged (tryPostgresTier's usual
-  // contract).
+  // contract). D1 fully eliminated (2026-07-17): a tier miss now always
+  // falls through to an empty row set (never a live D1 query).
   let healthIsFallback = false;
   const healthPromise = dimensions.includes("health")
     ? (async () => {
@@ -805,19 +693,8 @@ export async function handleCompare(request, env, url) {
           "METAGRAPH_HEALTH_SOURCE",
         );
         if (pgData) return pgData.rows;
-        const rows = await d1All(
-          env,
-          `SELECT netuid,
-                COUNT(*) AS surface_count,
-                SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
-                ${surfaceStatusAvgLatencySql({ rounded: true })} AS avg_latency_ms
-         FROM surface_status
-         WHERE netuid IN (${requestedNetuids.map(() => "?").join(", ")})
-         GROUP BY netuid`,
-          requestedNetuids,
-        );
-        healthIsFallback = hasD1FallbackRows(rows);
-        return rows;
+        healthIsFallback = true;
+        return [];
       })()
     : null;
   const [economicsRows, healthRows] = await Promise.all([

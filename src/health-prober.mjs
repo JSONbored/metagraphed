@@ -4,13 +4,15 @@
 // loads the committed operational-surfaces.json list, probes each surface with
 // the shared isomorphic core (src/health-probe-core.mjs) under bounded
 // concurrency, then writes:
-//   - D1 surface_checks  (append-only time-series → /health/trends)
-//   - D1 surface_status  (upserted latest row + circuit-breaker counter)
+//   - Postgres surface_checks (append-only time-series → /health/trends)
+//   - Postgres surface_status (upserted latest row + circuit-breaker counter,
+//     via the same sync call as surface_checks -- D1's copies of both tables
+//     are retired, 2026-07-16, D1 fully eliminated from this module)
 //   - KV health:current  (global + per-subnet operational rollup + 58 rows)
 //   - KV health:rpc-pool (live RPC/WSS endpoint eligibility for the proxy)
 //   - KV health:meta     (last_run_at + counts → freshness + self-monitoring)
 //
-// Everything is injected (db, kv, loadSurfaces, probe, now) so the whole run is
+// Everything is injected (kv, loadSurfaces, probe, now) so the whole run is
 // unit-testable without a live runtime. Decoupled from the data build: a stale
 // structural snapshot can never freeze health again.
 
@@ -22,8 +24,8 @@ import {
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
 } from "./health-probe-core.mjs";
-import { latencyStatColumns, rankedChecksCte } from "./health-sql.mjs";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
+import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import {
   recordSubnetIdentityChanges,
   syncSubnetIdentityToPostgres,
@@ -48,21 +50,6 @@ const PROBE_CONCURRENCY = 8;
 // headroom). Early signal to raise concurrency or shard before runs overlap.
 const PROBE_WALLTIME_WARN_MS = 8 * 60 * 1000;
 const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-// Cloudflare D1 batch() calls are capped (~100 statements per batch). Chunk large
-// probe/snapshot writes so a growing surface/subnet catalog cannot fail silently.
-export const D1_STATEMENTS_PER_BATCH = 50;
-
-export async function runD1StatementBatches(
-  db,
-  statements,
-  batchSize = D1_STATEMENTS_PER_BATCH,
-) {
-  if (!statements.length) return { ok: true, batches: 0 };
-  for (let i = 0; i < statements.length; i += batchSize) {
-    await db.batch(statements.slice(i, i + batchSize));
-  }
-  return { ok: true, batches: Math.ceil(statements.length / batchSize) };
-}
 const RPC_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 const DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
 const DNS_RECORD_TYPES = ["A", "AAAA"];
@@ -394,7 +381,6 @@ function summarizeGroup(rows) {
 // Run one full probe sweep and persist results. Returns a small summary object.
 export async function runHealthProber(env, ctx, overrides = {}) {
   const now = overrides.now || (() => Date.now());
-  const db = overrides.db || env.METAGRAPH_HEALTH_DB;
   const kv = overrides.kv || env.METAGRAPH_CONTROL;
   const loadSurfaces =
     overrides.loadSurfaces || (() => loadOperationalSurfaces(env));
@@ -416,27 +402,24 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   }
 
   // Prior status (last_ok + consecutive_failures) for continuity + the breaker.
+  // D1 retirement: this used to read D1's own surface_status directly; now
+  // reuses the same Postgres-backed internal endpoint resolveLiveHealth's
+  // KV-cold fallback calls (workers/data-api.mjs's
+  // /api/v1/internal/health-status-live), with since=0 so it returns every
+  // tracked surface regardless of freshness — this read needs the LAST known
+  // row per surface for continuity even if it's stale, unlike the serving
+  // fallback which deliberately filters to fresh rows only.
   const priorStatus = new Map();
-  if (db) {
-    try {
-      const keys = surfaces.map((s) => s.surface_key || s.surface_id);
-      const ids = surfaces.map((s) => s.surface_id);
-      const keyPlaceholders = keys.map(() => "?").join(",");
-      const idPlaceholders = ids.map(() => "?").join(",");
-      const { results } = await db
-        .prepare(
-          `SELECT surface_id, surface_key, last_ok, consecutive_failures
-           FROM surface_status
-           WHERE surface_key IN (${keyPlaceholders})
-              OR surface_id IN (${idPlaceholders})`,
-        )
-        .bind(...keys, ...ids)
-        .all();
-      for (const row of results || []) {
-        priorStatus.set(row.surface_key || row.surface_id, row);
-      }
-    } catch {
-      // First run / cold table — treat all as having no prior state.
+  const priorRows = await tryPostgresTier(
+    env,
+    new Request(
+      "https://api.metagraph.sh/api/v1/internal/health-status-live?since=0",
+    ),
+    "METAGRAPH_HEALTH_SOURCE",
+  );
+  if (Array.isArray(priorRows?.rows)) {
+    for (const row of priorRows.rows) {
+      priorStatus.set(row.surface_key || row.surface_id, row);
     }
   }
 
@@ -510,7 +493,6 @@ export async function runHealthProber(env, ctx, overrides = {}) {
 
   sanitizeRpcLatestBlocks(probed);
 
-  const d1Persist = await persistToD1(db, probed, runAt);
   const priorCurrent = await readHealthCurrentSnapshot(kv);
   const nextCurrent = await persistToKv(kv, probed, runAt);
   const changedNetuids = diffChangedSubnetNetuids(priorCurrent, nextCurrent);
@@ -539,82 +521,7 @@ export async function runHealthProber(env, ctx, overrides = {}) {
     counts,
     run_at: iso(runAt),
     duration_ms: durationMs,
-    d1_persisted: d1Persist.ok === true,
   };
-}
-
-async function persistToD1(db, probed, runAt) {
-  if (!db?.prepare) return { ok: false, reason: "unavailable" };
-  try {
-    const checkStmt = db.prepare(
-      `INSERT INTO surface_checks
-       (surface_id, surface_key, netuid, kind, status, classification, latency_ms, status_code, ok, checked_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    );
-    // #1005: surface_status now keys latest rows on surface_key, so a display
-    // id/slug rename updates the alias in-place instead of creating a new latest
-    // row and resetting breaker continuity.
-    const statusStmt = db.prepare(
-      `INSERT INTO surface_status
-       (surface_id, surface_key, netuid, kind, url, provider, status, classification, latency_ms, status_code, last_checked, last_ok, consecutive_failures, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(surface_key) WHERE surface_key IS NOT NULL DO UPDATE SET
-         surface_id=excluded.surface_id,
-         netuid=excluded.netuid, kind=excluded.kind, url=excluded.url,
-         provider=excluded.provider, status=excluded.status,
-         classification=excluded.classification, latency_ms=excluded.latency_ms,
-         status_code=excluded.status_code, last_checked=excluded.last_checked,
-         last_ok=excluded.last_ok, consecutive_failures=excluded.consecutive_failures,
-         updated_at=excluded.updated_at
-       ON CONFLICT(surface_id) DO UPDATE SET
-         surface_key=excluded.surface_key,
-         netuid=excluded.netuid, kind=excluded.kind, url=excluded.url,
-         provider=excluded.provider, status=excluded.status,
-         classification=excluded.classification, latency_ms=excluded.latency_ms,
-         status_code=excluded.status_code, last_checked=excluded.last_checked,
-         last_ok=excluded.last_ok, consecutive_failures=excluded.consecutive_failures,
-         updated_at=excluded.updated_at`,
-    );
-    const statements = [];
-    for (const row of probed) {
-      statements.push(
-        checkStmt.bind(
-          row.surface_id,
-          row.surface_key,
-          row.netuid,
-          row.kind,
-          row.status,
-          row.classification,
-          row.latency_ms,
-          row.status_code,
-          row.status === "ok" ? 1 : 0,
-          row.checked_at_ms,
-        ),
-        statusStmt.bind(
-          row.surface_id,
-          row.surface_key,
-          row.netuid,
-          row.kind,
-          row.url,
-          row.provider,
-          row.status,
-          row.classification,
-          row.latency_ms,
-          row.status_code,
-          row.checked_at_ms,
-          row.last_ok_ms,
-          row.consecutive_failures,
-          runAt,
-        ),
-      );
-    }
-    return await runD1StatementBatches(db, statements);
-  } catch {
-    // D1 unavailable / schema cold: KV still gets written so serving stays live,
-    // but surface the split so operators can spot analytics drift.
-    console.warn("health prober: D1 persist failed; KV snapshot still updated");
-    return { ok: false, reason: "batch_failed" };
-  }
 }
 
 async function readHealthCurrentSnapshot(kv) {
@@ -803,129 +710,46 @@ function utcDayBounds(ms) {
 
 // Durable daily uptime rollup (PR3). Aggregates the raw 15-minute surface_checks
 // for a UTC day into ONE row per (surface, day) in surface_uptime_daily —
-// retained indefinitely for long-term uptime analytics — so the 30-day raw
-// prune never loses history. MUST run before pruneHealthHistory. Rolls up today
-// + yesterday each hour (the post-midnight fire finalizes the prior day; upsert
-// keeps it idempotent). No-ops when D1 is unbound/cold. Latency is rolled up
-// success-only with its sample count, plus the day's exact p50/p95/p99 so tail
-// latency survives the raw prune (percentiles can't be rebuilt from a mean).
+// retained indefinitely for long-term uptime analytics. MUST run before
+// pruneHealthHistory: pruneHealthHistory's caller (workers/api.mjs) skips the
+// whole prune tick when `rolled` is false, so D1's raw surface_checks (the
+// only remaining recovery source if Postgres's rollup were ever silently
+// broken for a stretch) is never pruned out from under a day that hasn't
+// durably rolled up yet.
+//
+// D1 write retired (2026-07-16, item 3 of the D1->Postgres cleanup): this
+// function's own `INSERT INTO surface_uptime_daily` is gone --
+// syncHealthUptimeRollupToPostgres (below) is the sole writer now.
+// METAGRAPH_HEALTH_SOURCE flipped to "postgres" in wrangler.jsonc confirms
+// Postgres's surface_uptime_daily already holds a full rolling window (see
+// that flag's own header comment). `rolled` now reflects whether the
+// Postgres sync itself succeeded -- rolls up today + yesterday each hour
+// (the post-midnight fire finalizes the prior day; Postgres's own upsert,
+// data-api.mjs's handleHealthUptimeRollupSync, keeps this idempotent).
 export async function rollupDailyUptime(env, overrides = {}) {
   const now = overrides.now || (() => Date.now());
-  const db = overrides.db || env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) return { rolled: false };
   const runAt = now();
   const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
-  const conflictColumns = `
-       surface_id = excluded.surface_id,
-       surface_key = excluded.surface_key,
-       netuid = excluded.netuid,
-       samples = excluded.samples,
-       ok_count = excluded.ok_count,
-       uptime_ratio = excluded.uptime_ratio,
-       avg_latency_ms = excluded.avg_latency_ms,
-       latency_samples = excluded.latency_samples,
-       p50_latency_ms = excluded.p50_latency_ms,
-       p95_latency_ms = excluded.p95_latency_ms,
-       p99_latency_ms = excluded.p99_latency_ms,
-       status = excluded.status,
-       updated_at = excluded.updated_at`;
-  const stmt = db.prepare(
-    `${rankedChecksCte("checked_at >= ? AND checked_at < ?")}
-     INSERT INTO surface_uptime_daily
-       (surface_id, surface_key, netuid, day, samples, ok_count, uptime_ratio,
-        latency_samples, avg_latency_ms, p50_latency_ms, p95_latency_ms,
-        p99_latency_ms, status, updated_at)
-     SELECT
-       MAX(surface_id) AS surface_id,
-       surface_key,
-       netuid,
-       ? AS day,
-       COUNT(*) AS samples,
-       SUM(ok) AS ok_count,
-       -- Only a genuinely perfect day (every probe ok) stores 1; a sub-perfect
-       -- day whose 4-dp round would reach 1.0 (e.g. 0.99996) is clamped down to
-       -- 0.9999, mirroring displayUptimeRatio (#1799). Without this the stored
-       -- ratio contradicts the co-computed degraded status, and the per-day
-       -- series reports 100% for a day that had a failed probe.
-       CASE
-         WHEN SUM(ok) = COUNT(*) THEN 1.0
-         WHEN ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4) >= 1.0 THEN 0.9999
-         ELSE ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4)
-       END AS uptime_ratio,
-       ${latencyStatColumns({ roundedAvg: true, includeMinMax: false })},
-       CASE
-         WHEN SUM(ok) = COUNT(*) THEN 'ok'
-         WHEN SUM(ok) = 0 THEN 'failed'
-         ELSE 'degraded'
-       END AS status,
-       ? AS updated_at
-     FROM ranked
-     GROUP BY surface_key, netuid
-     ON CONFLICT(surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET${conflictColumns}
-     ON CONFLICT(surface_id, day) DO UPDATE SET${conflictColumns}`,
-  );
-  let result;
-  try {
-    await db.batch(
-      days.map(({ date, start, end }) => stmt.bind(start, end, date, runAt)),
-    );
-    result = { rolled: true, days: days.map((d) => d.date) };
-  } catch (error) {
-    // Don't swallow silently: a failing INSERT here (e.g. a missing column from
-    // un-applied schema migration) freezes the daily uptime rollup invisibly.
-    // Surface the reason so the hourly cron's result is diagnosable.
-    console.error("[rollupDailyUptime]", String(error?.message ?? error));
-    result = { rolled: false, error: String(error?.message ?? error) };
+  const result = await syncHealthUptimeRollupToPostgres(env, days, runAt);
+  if (!result.synced) {
+    return { rolled: false, reason: result.reason };
   }
-  // #4832 gap-closure: best-effort Postgres mirror, independent of the D1
-  // outcome above -- Postgres computes its OWN rollup from its own
-  // surface_checks (already populated by syncHealthChecksToPostgres in
-  // runHealthProber), it doesn't need D1's rolled-up rows shipped to it. A
-  // D1 failure here doesn't block attempting the Postgres side, and vice
-  // versa; each store's rollup is independently best-effort.
-  await syncHealthUptimeRollupToPostgres(env, days, runAt);
-  return result;
+  return { rolled: true, days: days.map((d) => d.date) };
 }
 
 // Hourly maintenance cron: prune time-series rows older than the retention
 // window so the hot table stays lean.
+// D1 retirement: this used to prune D1's own surface_checks/rpc_proxy_events
+// tables alongside their Postgres mirrors. Both D1 writes are gone (see
+// syncHealthChecksToPostgres/syncRpcUsageEventToPostgres's own header
+// comments), so D1's copies are frozen and nothing reads them anymore --
+// pruning a table nobody reads is pointless upkeep on a store being retired
+// wholesale. Only the Postgres-side prune remains.
 export async function pruneHealthHistory(env, overrides = {}) {
   const now = overrides.now || (() => Date.now());
-  const db = overrides.db || env.METAGRAPH_HEALTH_DB;
   const cutoff = now() - (overrides.retentionMs || HISTORY_RETENTION_MS);
-  const result = await pruneD1HealthHistory(db, cutoff);
-  // #5497 gap-closure: the Postgres mirror of rpc_proxy_events (#4832) has no
-  // equivalent retention -- best-effort and independent of the D1 outcome
-  // above (unconditional, not nested inside the try/catch below), same
-  // "each store's prune is its own best-effort" shape as rollupDailyUptime's
-  // Postgres mirror further down, whose own tests assert the Postgres sync
-  // still fires even when the D1 side threw.
   await syncRpcProxyEventsPruneToPostgres(env, cutoff);
-  return result;
-}
-
-async function pruneD1HealthHistory(db, cutoff) {
-  if (!db?.prepare) return { pruned: false };
-  try {
-    const result = await db
-      .prepare(`DELETE FROM surface_checks WHERE checked_at < ?`)
-      .bind(cutoff)
-      .run();
-    // Prune RPC proxy usage telemetry (B3) to the same 30-day hot window. Wrapped
-    // separately + best-effort so a not-yet-migrated rpc_proxy_events table never
-    // blocks the surface_checks prune (the table arrives with the 0004 migration).
-    try {
-      await db
-        .prepare(`DELETE FROM rpc_proxy_events WHERE observed_at < ?`)
-        .bind(cutoff)
-        .run();
-    } catch {
-      // rpc_proxy_events absent or transient error — skip the telemetry prune.
-    }
-    return { pruned: true, cutoff, changes: result?.meta?.changes ?? null };
-  } catch {
-    return { pruned: false };
-  }
+  return { pruned: true, cutoff };
 }
 
 // #5497: mirrors pruneHealthHistory's D1 rpc_proxy_events delete into the
@@ -1023,14 +847,16 @@ export async function syncSubnetSnapshotToPostgres(
 }
 
 // Daily growth snapshot (AI-4). Captures each subnet's structural maturity into
-// subnet_snapshots, keyed on (netuid, UTC date). Fired from the hourly cron;
-// ON CONFLICT DO NOTHING makes repeated fires within a day idempotent (the first
-// fire of the day wins). `overrides.readArtifact` is injected from the Worker.
+// subnet_snapshots, keyed on (netuid, UTC date). Fired from the hourly cron.
+// `overrides.readArtifact` is injected from the Worker. No D1 binding needed
+// anywhere in this function anymore -- subnet_snapshots is Postgres-only (see
+// syncSubnetSnapshotToPostgres below) and recordSubnetIdentityChanges reads
+// its own latest-hash baseline from Postgres too now (see that function's own
+// header comment in src/subnet-identity-history.mjs).
 export async function writeSubnetSnapshot(env, overrides = {}) {
   const now = overrides.now || (() => Date.now());
-  const db = overrides.db || env.METAGRAPH_HEALTH_DB;
   const readArtifact = overrides.readArtifact;
-  if (!db?.prepare || typeof readArtifact !== "function") {
+  if (typeof readArtifact !== "function") {
     return { ok: false, reason: "unavailable" };
   }
   const profilesResult = await readArtifact(env, "/metagraph/profiles.json");
@@ -1044,7 +870,6 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
   const identityHistory = await recordSubnetIdentityChanges(env, {
     profiles,
     now: capturedAt,
-    db,
   });
   // #4832 gap-closure: best-effort Postgres mirror of the D1 write above --
   // never awaited-and-thrown into the caller, see syncSubnetIdentityToPostgres's
@@ -1069,80 +894,40 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
   );
 
   const date = new Date(capturedAt).toISOString().slice(0, 10);
-  // #4832 gap-closure: best-effort Postgres mirror of the D1 upsert below --
-  // never awaited-and-thrown into the caller, see syncSubnetSnapshotToPostgres's
-  // own header comment for why this is a direct service-binding call rather
-  // than routing through the public proxy layer.
-  await syncSubnetSnapshotToPostgres(env, {
+  // D1 write retired (2026-07-16, item 2 of the D1->Postgres cleanup):
+  // syncSubnetSnapshotToPostgres (called unconditionally, best-effort, right
+  // above) is now the sole writer -- METAGRAPH_SUBNET_SNAPSHOTS_SOURCE flipped
+  // to "postgres" in wrangler.jsonc confirms Postgres already holds the full
+  // history (see that flag's own header comment for the verification
+  // writeup). Postgres's own handleSubnetSnapshotSync
+  // (workers/data-api.mjs) replicates the exact same COALESCE(existing,
+  // excluded) backfill semantics the retired D1 upsert used to apply here --
+  // the structural columns + captured_at stay owned by the first same-day
+  // fire, and NULL economics columns backfill on a later fire without a
+  // later NULL ever wiping an earlier fire's good value.
+  const syncResult = await syncSubnetSnapshotToPostgres(env, {
     profiles,
     economicsByNetuid,
     date,
     capturedAt,
   });
-  // The structural columns + captured_at are owned by the first same-day fire.
-  // The economics columns can arrive late (economics.json is pure chain state
-  // with no committed-asset fallback, unlike profiles.json), so DO NOTHING
-  // would freeze a NULL-economics first fire and the 23 later hourly fires could
-  // never backfill it — a permanent gap in the trajectory series. Backfill them
-  // with COALESCE(existing, excluded): a later fire fills a NULL, but a later
-  // NULL can never wipe an earlier fire's good value.
-  const stmt = db.prepare(
-    `INSERT INTO subnet_snapshots
-       (netuid, snapshot_date, completeness_score, surface_count,
-        endpoint_count, monitored_count, candidate_count,
-        validator_count, miner_count, total_stake_tao, alpha_price_tao,
-        emission_share, tao_in_pool_tao, alpha_in_pool, alpha_out_pool,
-        subnet_volume_tao, captured_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
-       validator_count = COALESCE(subnet_snapshots.validator_count, excluded.validator_count),
-       miner_count = COALESCE(subnet_snapshots.miner_count, excluded.miner_count),
-       total_stake_tao = COALESCE(subnet_snapshots.total_stake_tao, excluded.total_stake_tao),
-       alpha_price_tao = COALESCE(subnet_snapshots.alpha_price_tao, excluded.alpha_price_tao),
-       emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share),
-       tao_in_pool_tao = COALESCE(subnet_snapshots.tao_in_pool_tao, excluded.tao_in_pool_tao),
-       alpha_in_pool = COALESCE(subnet_snapshots.alpha_in_pool, excluded.alpha_in_pool),
-       alpha_out_pool = COALESCE(subnet_snapshots.alpha_out_pool, excluded.alpha_out_pool),
-       subnet_volume_tao = COALESCE(subnet_snapshots.subnet_volume_tao, excluded.subnet_volume_tao)`,
-  );
-  const statements = profiles
-    .filter((profile) => Number.isInteger(profile.netuid))
-    .map((profile) => {
-      const econ = economicsByNetuid.get(profile.netuid) || {};
-      return stmt.bind(
-        profile.netuid,
-        date,
-        profile.completeness_score ?? null,
-        profile.surface_count ?? null,
-        profile.endpoint_count ?? null,
-        profile.monitored_endpoint_count ?? null,
-        profile.candidate_count ?? null,
-        econ.validator_count ?? null,
-        econ.miner_count ?? null,
-        econ.total_stake_tao ?? null,
-        econ.alpha_price_tao ?? null,
-        econ.emission_share ?? null,
-        econ.tao_in_pool_tao ?? null,
-        econ.alpha_in_pool ?? null,
-        econ.alpha_out_pool ?? null,
-        econ.subnet_volume_tao ?? null,
-        capturedAt,
-      );
-    });
-  if (!statements.length) return { ok: false, reason: "no_rows" };
-  try {
-    await runD1StatementBatches(db, statements);
-    return {
-      ok: true,
-      date,
-      rows: statements.length,
-      identity_history: identityHistory,
-    };
-  } catch {
+  const rows = profiles.filter((profile) =>
+    Number.isInteger(profile.netuid),
+  ).length;
+  if (!rows) {
+    return { ok: false, reason: "no_rows", identity_history: identityHistory };
+  }
+  if (!syncResult.synced) {
     return {
       ok: false,
-      reason: "write_failed",
+      reason: syncResult.reason,
       identity_history: identityHistory,
     };
   }
+  return {
+    ok: true,
+    date,
+    rows,
+    identity_history: identityHistory,
+  };
 }
