@@ -23,7 +23,7 @@ export class MissingEndpointArtifactsError extends Error {
     super(
       [
         "Endpoint operations brief artifacts are missing.",
-        "Run `npm run artifacts:prepare-local` to build local R2 staging, or `npm run r2:download -- --prefix latest/` when R2 credentials are available, then retry `npm run endpoint:brief`.",
+        "Run `npm run artifacts:prepare-local` to build local R2 staging, or `npm run r2:download -- --prefix=latest/` when R2 credentials are available, then retry `npm run endpoint:brief`.",
         "Missing artifacts:",
         formattedPaths,
       ].join("\n"),

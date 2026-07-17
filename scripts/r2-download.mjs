@@ -1,7 +1,13 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { mkdir, readFile } from "node:fs/promises";
-import { readJson, repoRoot, sha256Hex, stableStringify } from "./lib.mjs";
+import {
+  flagValue,
+  readJson,
+  repoRoot,
+  sha256Hex,
+  stableStringify,
+} from "./lib.mjs";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForPath,
@@ -12,14 +18,15 @@ const write = args.has("--write");
 const manifest = await readJson(
   path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
 );
-const prefixArg = process.argv.find((arg) => arg.startsWith("--prefix="));
+// Both `--prefix=latest/` and `--prefix latest/` are accepted: the equals-only
+// parser this used to have silently dropped the space-separated form and fell
+// back to manifest.latest_prefix, which is how endpoint-ops-brief.mjs's
+// remediation command came to be wrong for over a release (#6365).
+const prefixArg = flagValue(process.argv, "--prefix");
 const prefix = prefixArg
-  ? prefixArg.slice("--prefix=".length).replace(/^\/+|\/+$/g, "") + "/"
+  ? prefixArg.replace(/^\/+|\/+$/g, "") + "/"
   : manifest.latest_prefix;
-const outputDirArg = process.argv.find((arg) => arg.startsWith("--out="));
-const outputDir = outputDirArg
-  ? outputDirArg.slice("--out=".length)
-  : "tmp/r2-download";
+const outputDir = flagValue(process.argv, "--out", "tmp/r2-download");
 const planned = manifest.artifacts.map((artifact) => ({
   key: `${prefix}${artifact.path.replace(/^\/metagraph\//, "")}`,
   local_path: localArtifactPath(outputDir, artifact.path),
