@@ -108,7 +108,44 @@ Hardening`) same as before.
 7. Quality over the number in what gets filed — don't pad with weak/duplicate/vague issues. This is
    not license to stop early: see point 1's "if under floor" note.
 
+## Pass 3 — Strategic epic/milestone health (once-per-day cadence)
+
+Beyond Pass 1/2's issue-level hygiene, this skill also runs a lighter, once-per-day strategic pass
+over active epics/roadmap issues — a `roadmap` label, "Epic:" in the title, or any issue with a
+`- [ ]`/`- [x]` child-issue checklist or native GitHub sub-issues. The scheduling automation gates
+this to at most once per day independent of how often the outer job itself fires (an external cadence
+tracker in the scheduling layer handles that gate — not part of this file).
+
+**When it runs:**
+
+1. Verify every active epic's claimed children are actually filed and in the right state — same
+   GraphQL cross-reference method as Pass 1, not text search. Surface now-unblocked follow-on work
+   when a previously-blocking issue closes.
+2. **Source real forward-looking work, not just verify.** Read each active epic/milestone's own
+   stated scope, the current shipped surface (`registry/`, `workers/`, `apps/ui`), and repo docs to
+   find concrete, buildable feature or milestone-scoped work that hasn't been filed yet — grounded in
+   the product as it exists and the milestone's documented direction, not speculative ideas untethered
+   from evidence.
+3. **Pass 3 shares Pass 2's own 50-100+ (push toward 100+) contributor-available target — one
+   combined per-run volume goal, not a separate small quota** (revised 2026-07-17; an earlier version
+   of this pass capped itself at "0-2 issues/day, zero is fine," which under-delivered). If Pass 2's
+   own top-up already reached the target, Pass 3 doesn't need to force more just to hit a number; if
+   the count is still under-target after Pass 2, Pass 3 should actively help close the gap with real
+   feature/milestone issues instead of sitting in verify-only mode. Quality still matters — don't pad
+   with weak/duplicate/vague issues — but that's not license to under-deliver: a pass that can't find
+   enough real work should say so explicitly in the digest (what was tried, why nothing else was
+   fileable), not quietly file 1-2 and call it done.
+4. Respect the same "what's safe to unleash" boundary as Pass 2 (native-staking/real-money work stays
+   `maintainer-only` by default — don't second-guess it).
+5. **Anything that's genuinely business/monetization/competitive-strategy thinking (pricing,
+   positioning, hosted-product business strategy) stays out of public issues entirely** — flag it in
+   the digest for the maintainer's private roadmap instead of filing it here. This repo's issue
+   tracker is contributor-facing; vague vision issues aren't actionable by a contributor anyway.
+6. Link every new issue as a native sub-issue of its parent epic via `addSubIssue` where a real parent
+   exists; give it a real milestone, same discipline as Pass 2.
+
 ## Daily digest
 
 Same shape as gittensory's: issues closed + why, milestones/checklists fixed, new issues filed with
-milestone/label, before/after contributor-available count, anything left alone on purpose.
+milestone/label (Pass 2 and Pass 3 combined), before/after contributor-available count, whether Pass 3
+ran this cycle, anything left alone on purpose.
