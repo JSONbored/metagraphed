@@ -1,0 +1,110 @@
+name: ui-sentry-release
+
+# Browser Sentry source-map upload for apps/ui. The REAL production build/deploy
+# is NOT driven by GitHub Actions -- Cloudflare's own Workers Builds git
+# integration owns that (see apps/ui/DEPLOY.md). That real build's
+# sentryVitePlugin (apps/ui/vite.config.ts) has always been a silent no-op in
+# production, not because sourcemaps themselves are disabled there (unlike
+# JSONbored/loopover's equivalent app, apps/ui's own vite.config.ts turns
+# `sourcemap: true` on unconditionally) but because SENTRY_AUTH_TOKEN has never
+# been set anywhere reachable from that build -- Cloudflare Workers Builds'
+# build-time variables are dashboard-only, with no wrangler/API path to set them
+# (confirmed against Cloudflare's own docs; there is no `wrangler builds`
+# subcommand at all).
+#
+# This workflow does its OWN independent build with SENTRY_AUTH_TOKEN present,
+# purely to let apps/ui/vite.config.ts's existing sentryVitePlugin create the
+# Sentry release + upload + associate + clean up its source maps -- it never
+# deploys anything (no `wrangler deploy`, no artifact upload). Mirrors
+# JSONbored/loopover's ui-sentry-release.yml, adapted: metagraphed's
+# vite.config.ts already handles release creation + upload via the plugin's own
+# release option, so this workflow doesn't need loopover's separate raw
+# sentry-cli invocation -- it only needs to run the SAME build the plugin is
+# already wired into, with the right env vars present.
+#
+# Release matching: the real deploy tags every Sentry event with
+# WORKERS_CI_COMMIT_SHA, which Cloudflare auto-injects as the exact git commit
+# SHA being deployed (see vite.config.ts's own comment). This workflow sets the
+# SAME var to $GITHUB_SHA for the SAME push-to-main commit that triggers the
+# real Cloudflare deploy, so the sourcemaps this workflow uploads land under the
+# identical release name events get tagged with -- no manual sync required
+# (unlike loopover's own documented caveat about keeping VITE_SENTRY_RELEASE in
+# sync by hand, which doesn't apply here).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/ui/**"
+      - "packages/ui-kit/**"
+      - "packages/client/**"
+      - ".github/workflows/ui-sentry-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-sentry-release
+  cancel-in-progress: true
+
+jobs:
+  upload-sourcemaps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20 # workspace install + a full Nitro/SSR production build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Detect Sentry auth token
+        id: sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          if [ -n "$SENTRY_AUTH_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Advisory-soft (skip, not error): source-map upload is opt-in polish
+      # (stack-trace readability), not required for Sentry itself to work --
+      # apps/ui's DSN already has a code-level production fallback (see
+      # src/lib/error-reporting.ts) that doesn't depend on this workflow at
+      # all. An unconfigured token should never block a merge to main.
+      - name: Skip when Sentry isn't configured
+        if: steps.sentry.outputs.enabled != 'true'
+        run: echo "::notice::SENTRY_AUTH_TOKEN not configured -- skipping source-map upload."
+
+      # Root-level install: there is no way to `npm ci` a single workspace in
+      # isolation, and packages/ui-kit + packages/client's dist/ output is
+      # already committed (see their own package.json build steps in
+      # validate.yml's ui job) -- no sibling-workspace build step needed here.
+      - name: Install
+        if: steps.sentry.outputs.enabled == 'true'
+        run: npm ci --legacy-peer-deps
+
+      # Matches apps/ui/DEPLOY.md's documented real Cloudflare Workers Builds
+      # command + build-time env vars exactly (LOVABLE_SANDBOX/NITRO_PRESET),
+      # plus the Sentry-specific vars sentryVitePlugin reads. This is a
+      # throwaway build purely for its Sentry side effect -- dist/ is never
+      # deployed or uploaded as an artifact from this job.
+      - name: Build apps/ui with source maps
+        if: steps.sentry.outputs.enabled == 'true'
+        working-directory: apps/ui
+        env:
+          LOVABLE_SANDBOX: "1"
+          NITRO_PRESET: cloudflare-module
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: jsonbored
+          SENTRY_PROJECT: metagraphed
+          WORKERS_CI_COMMIT_SHA: ${{ github.sha }}
+        run: npm run build
