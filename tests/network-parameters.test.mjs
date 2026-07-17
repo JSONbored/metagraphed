@@ -111,6 +111,21 @@ describe("loadNetworkParameters", () => {
     );
   });
 
+  test("all fields are null on a malformed (non-16-hex, non-null) storage result", async () => {
+    await withFetchStub(
+      async () => ({
+        ok: true,
+        json: async () => ({ jsonrpc: "2.0", id: 1, result: "0xnotvalid" }),
+      }),
+      async () => {
+        const data = await loadNetworkParameters({});
+        assert.equal(data.tao_weight, null);
+        assert.equal(data.stake_threshold_tao, null);
+        assert.equal(data.pending_childkey_cooldown_blocks, null);
+      },
+    );
+  });
+
   test("all fields are null when the RPC response is not ok", async () => {
     await withFetchStub(
       async () => ({ ok: false }),
