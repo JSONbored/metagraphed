@@ -834,6 +834,47 @@ class FetchAllAndModelsTest(unittest.TestCase):
         )
         self.assertIs(endpoint.raw["unknown_extra"], True)
 
+    def test_providers_convenience_returns_typed_models(self):
+        # Realistic providers-index row shape: the API exposes the slug as `id`
+        # (Provider aliases it), plus name / authority / surface_count.
+        captured_urls = []
+        page = {
+            "data": {
+                "providers": [
+                    {
+                        "id": "macrocosmos",
+                        "name": "Macrocosmos",
+                        "authority": "official",
+                        "surface_count": 12,
+                    }
+                ]
+            },
+            "meta": {
+                "pagination": {
+                    "collection": "providers",
+                    "next_cursor": None,
+                }
+            },
+        }
+
+        def fake_urlopen(request, timeout=None):
+            captured_urls.append(request.full_url)
+            return _FakeResponse(page)
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            providers = MetagraphedClient().providers(authority="official")
+
+        self.assertEqual(len(providers), 1)
+        provider = providers[0]
+        self.assertIsInstance(provider, Provider)
+        self.assertEqual(provider.slug, "macrocosmos")
+        self.assertEqual(provider.name, "Macrocosmos")
+        self.assertEqual(provider.authority, "official")
+        self.assertEqual(provider.surface_count, 12)
+        self.assertEqual(provider.raw["id"], "macrocosmos")
+        # Query kwargs reach fetch_all and land on the request URL.
+        self.assertIn("authority=official", captured_urls[0])
+
     def test_get_provider_returns_typed_provider(self):
         def fake_urlopen(request, timeout=None):
             self.assertIn("/api/v1/providers/macrocosmos", request.full_url)
