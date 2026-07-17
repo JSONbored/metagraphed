@@ -4507,6 +4507,133 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
   });
 });
 
+describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-card fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function query(argsClause) {
+    return `{ account_positions${argsClause} {
+      schema_version ss58 captured_at position_count total_stake_tao
+      positions { hotkey netuid share_fraction stake_tao }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty card, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_positions, {
+      schema_version: 1,
+      ss58: SS58,
+      captured_at: null,
+      position_count: 0,
+      total_stake_tao: 0,
+      positions: [],
+    });
+  });
+
+  test("resolves the Postgres-tier positions (flat body, matches GET /api/v1/accounts/{ss58}/positions parity)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            captured_at: "2026-07-10T00:00:00.000Z",
+            position_count: 2,
+            total_stake_tao: 1500,
+            positions: [
+              {
+                hotkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+                netuid: 3,
+                share_fraction: 0.5,
+                stake_tao: 1000,
+              },
+              {
+                hotkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+                netuid: 7,
+                share_fraction: 0.25,
+                stake_tao: 500,
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    const p = body.data.account_positions;
+    assert.equal(p.position_count, 2);
+    assert.equal(p.total_stake_tao, 1500);
+    assert.equal(p.positions[0].netuid, 3);
+    assert.equal(p.positions[0].share_fraction, 0.5);
+    assert.equal(
+      p.positions[1].hotkey,
+      "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+    );
+  });
+
+  test("ss58 is forwarded on the Postgres-tier request path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            positions: [],
+          });
+        },
+      },
+    };
+    await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/positions`);
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty card", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_positions, {
+      schema_version: 1,
+      ss58: SS58,
+      captured_at: null,
+      position_count: 0,
+      total_stake_tao: 0,
+      positions: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query('(ss58: "not-a-valid-address")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("account_positions is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_positions, 5);
+  });
+});
+
 describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-card fallback)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 

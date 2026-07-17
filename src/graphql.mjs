@@ -172,6 +172,7 @@ import {
   STAKE_FLOW_DIRECTIONS,
 } from "./stake-flow.mjs";
 import { buildAccountPortfolio } from "./account-portfolio.mjs";
+import { buildAccountPositions } from "./account-nominator-positions.mjs";
 import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
@@ -399,6 +400,8 @@ export const SDL = `
     account_position_history(ss58: String!, netuid: Int!, window: String): AccountPositionHistory!
     "One wallet's cross-subnet neuron portfolio: every subnet where the hotkey is a registered neuron, each position's economics (stake, emission, rank, trust, incentive, dividends, role) and emission/stake yield, plus wallet-level aggregates (totals, counts, overall return, stake concentration). Richer than account.registrations (registration footprint only). An address with no registered neurons resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/portfolio."
     account_portfolio(ss58: String!): AccountPortfolio!
+    "This account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from account_portfolio's hotkey-scoped view (a pure delegator shows near-zero there since its stake lives on someone ELSE's hotkey row). Root (netuid 0) stake is not covered -- root has no alpha pool, so an address that only holds root-delegated stake resolves to a schema-stable empty positions[], never null. Mirrors GET /api/v1/accounts/{ss58}/positions."
+    account_positions(ss58: String!): AccountPositions!
     "One account's live cross-subnet footprint: every subnet where the hotkey is currently registered as a neuron, each with its netuid, uid, stake, validator-permit and active flag, plus a subnet_count. The registration snapshot only (netuid/uid/stake/permit/active) -- account_portfolio is the richer economics view over the same neurons. An unregistered or never-seen address resolves to a schema-stable empty footprint (subnet_count 0, subnets []), never null. Mirrors GET /api/v1/accounts/{ss58}/subnets."
     account_subnets(ss58: String!): AccountSubnets!
     "One account's per-subnet axon-serving footprint over a 7d/30d/90d window (default 30d): AxonServed announcement count and first/last timestamps per subnet, an HHI concentration of where its serving activity is focused, and the dominant subnet; an address with no announcements in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/serving."
@@ -2701,6 +2704,25 @@ export const SDL = `
     yield: Float
   }
 
+  "This account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from AccountPortfolio's hotkey-scoped view. Mirrors GET /api/v1/accounts/{ss58}/positions."
+  type AccountPositions {
+    schema_version: Int!
+    ss58: String!
+    captured_at: String
+    position_count: Int!
+    total_stake_tao: Float!
+    positions: [NominatorPosition!]!
+  }
+
+  "One (hotkey, netuid) delegation this account holds, reconstructed from the nominator-positions ledger joined against the hotkey's live stake_tao for that netuid."
+  type NominatorPosition {
+    hotkey: String!
+    netuid: Int!
+    "This account's share of the hotkey's total alpha-pool shares on this subnet (0..1), not a TAO amount."
+    share_fraction: Float!
+    stake_tao: Float!
+  }
+
   # Realtime chain-event firehose (#4983, ADR 0015) -- a thin protocol adapter
   # over the SAME ChainFirehoseHub Durable Object connection #4982's SSE/WS
   # transports use, not a second event pipeline. Reached over WebSocket only
@@ -2913,6 +2935,7 @@ export const FIELD_COMPLEXITY = {
   account_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
   account_position_history: RELATIONSHIP_FIELD_COMPLEXITY,
   account_portfolio: RELATIONSHIP_FIELD_COMPLEXITY,
+  account_positions: RELATIONSHIP_FIELD_COMPLEXITY,
   account_subnets: RELATIONSHIP_FIELD_COMPLEXITY,
   // Fans out into leaderboardProfilesProjection plus several D1 reads and the
   // economics tier -- same cost class as the other relationship fields.
@@ -4982,6 +5005,36 @@ const rootValue = {
       total_emission_tao: data.total_emission_tao ?? 0,
       overall_yield: data.overall_yield ?? null,
       stake_concentration: data.stake_concentration ?? null,
+      positions: data.positions || [],
+    };
+  },
+
+  async account_positions({ ss58 }, context) {
+    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+      throw new GraphQLError("ss58 must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) ->
+    // buildAccountPositions([], new Map(), ss58) fallback contract
+    // handleAccountPositions uses -- Postgres-only (no D1 predecessor), flat
+    // body (like account_portfolio's), not the { data, generatedAt } envelope
+    // the account-event-footprint family uses.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/accounts/${encodeURIComponent(ss58)}/positions`,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildAccountPositions([], new Map(), ss58);
+    return {
+      schema_version: data.schema_version ?? 1,
+      ss58: data.ss58 ?? ss58,
+      captured_at: data.captured_at ?? null,
+      position_count: data.position_count ?? 0,
+      total_stake_tao: data.total_stake_tao ?? 0,
       positions: data.positions || [],
     };
   },
