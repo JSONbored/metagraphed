@@ -264,6 +264,7 @@ import {
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.mjs";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
+  CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
   ChainFirehoseHub,
 } from "./chain-firehose-hub.mjs";
 import { McpSessionHub } from "./mcp-session-hub.mjs";
@@ -1268,13 +1269,33 @@ async function handleChainFirehoseIngest(request, env) {
       503,
     );
   }
-  const body = await request.text();
+  // Enforce the DO's 16 KB ingest ceiling HERE, before buffering/forwarding.
+  // request.text() alone would let an authenticated caller (or a leaked
+  // sync secret) force the Worker to materialize an arbitrarily large body
+  // and copy it into the Durable Object binding, only for the DO to reject
+  // it after the cost was already paid. Mirror /ask's streaming bound so a
+  // chunked oversize body is cancelled as soon as it crosses the cap.
+  const boundedBody = await readBoundedRequestText(
+    request,
+    CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
+  );
+  if (!boundedBody.ok) {
+    return errorResponse(
+      "payload_too_large",
+      `Chain-firehose ingest body exceeds ${CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
   const stub = env.CHAIN_FIREHOSE_HUB.get(
     env.CHAIN_FIREHOSE_HUB.idFromName("global"),
   );
   const upstream = await stub.fetch(
     "https://chain-firehose-hub.internal/ingest",
-    { method: "POST", body, headers: { "content-type": "application/json" } },
+    {
+      method: "POST",
+      body: boundedBody.text,
+      headers: { "content-type": "application/json" },
+    },
   );
   return new Response(await upstream.text(), {
     status: upstream.status,

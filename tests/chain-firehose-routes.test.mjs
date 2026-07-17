@@ -8,6 +8,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
+import { CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES } from "../workers/chain-firehose-hub.mjs";
 
 function stubHub(fetchImpl) {
   return {
@@ -275,4 +276,93 @@ test("ingest: relays a non-2xx upstream status (e.g. 400 from an invalid payload
     {},
   );
   assert.equal(res.status, 400);
+});
+
+// The Durable Object rejects bodies over CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
+// but that only helps after the Worker has already buffered + forwarded the
+// payload. Bound the body at the auth edge so an authenticated caller (or a
+// leaked sync secret) cannot force unbounded memory/CPU on the public Worker.
+test("ingest: 413s on an oversized Content-Length before the hub is reached", async () => {
+  let forwarded = false;
+  const env = {
+    CHAIN_FIREHOSE_SYNC_SECRET: "shh",
+    CHAIN_FIREHOSE_HUB: stubHub(() => {
+      forwarded = true;
+      return new Response("{}", { status: 202 });
+    }),
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/internal/chain-firehose-ingest",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "content-length": String(CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES + 1),
+          "x-chain-firehose-sync-token": "shh",
+        },
+        // Body may be empty/short -- the declared length alone must trip the
+        // guard before any Durable Object call.
+        body: "{}",
+      },
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 413);
+  assert.equal((await res.json()).error.code, "payload_too_large");
+  assert.equal(forwarded, false, "oversized ingest must not reach the hub");
+});
+
+test("ingest: 413s on a chunked body that crosses the ingest byte cap before the hub is reached", async () => {
+  let forwarded = false;
+  const env = {
+    CHAIN_FIREHOSE_SYNC_SECRET: "shh",
+    CHAIN_FIREHOSE_HUB: stubHub(() => {
+      forwarded = true;
+      return new Response("{}", { status: 202 });
+    }),
+  };
+  // Omit Content-Length so the Worker must stream-bound the body (the
+  // Content-Length short-circuit is covered above).
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/internal/chain-firehose-ingest",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-chain-firehose-sync-token": "shh",
+        },
+        body: new Blob([
+          " ".repeat(CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES + 1),
+        ]).stream(),
+        duplex: "half",
+      },
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 413);
+  assert.equal((await res.json()).error.code, "payload_too_large");
+  assert.equal(forwarded, false, "oversized ingest must not reach the hub");
+});
+
+test("ingest: a body at the ingest byte cap is still forwarded to the hub", async () => {
+  let forwardedBody;
+  const env = {
+    CHAIN_FIREHOSE_SYNC_SECRET: "shh",
+    CHAIN_FIREHOSE_HUB: stubHub((_input, init) => {
+      forwardedBody = init.body;
+      return new Response(JSON.stringify({ ok: true }), { status: 202 });
+    }),
+  };
+  const body = "x".repeat(CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES);
+  const res = await handleRequest(
+    ingestRequest(body, { token: "shh" }),
+    env,
+    {},
+  );
+  assert.equal(res.status, 202);
+  assert.equal(forwardedBody, body);
 });
