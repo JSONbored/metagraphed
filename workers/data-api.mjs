@@ -5837,7 +5837,7 @@ export default {
           SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao,
             COUNT(*) AS event_count, MAX(observed_at) AS last_observed
           FROM account_events
-          WHERE coldkey = ${address}
+          WHERE (hotkey = ${address} OR coldkey = ${address})
             ${directionParam === "in" ? sql`AND event_kind = ${STAKE_ADDED_KIND}` : directionParam === "out" ? sql`AND event_kind = ${STAKE_REMOVED_KIND}` : sql`AND event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND})`}
             AND observed_at >= ${cutoff}
           GROUP BY netuid, event_kind`;
@@ -5902,7 +5902,7 @@ export default {
           SELECT netuid, COUNT(*) AS movements, MIN(observed_at) AS first_observed,
                  MAX(observed_at) AS last_observed
           FROM account_events
-          WHERE coldkey = ${address} AND event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff}
+          WHERE (hotkey = ${address} OR coldkey = ${address}) AND event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff}
           GROUP BY netuid`;
           return json({
             data: buildAccountStakeMoves(rows, address, {

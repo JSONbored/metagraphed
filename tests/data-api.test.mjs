@@ -3370,6 +3370,17 @@ test("GET /api/v1/accounts/:ss58/stake-flow defaults to summing both directions"
   expect(queryText()).toContain("event_kind IN (?, ?)");
 });
 
+test("GET /api/v1/accounts/:ss58/stake-flow matches the address as either hotkey or coldkey", async () => {
+  // Regression test: this query used to filter on coldkey only, so an
+  // address that only ever appears as a hotkey (e.g. a validator receiving
+  // delegations) silently reported an all-zero flow card despite having
+  // real account_events rows -- see the base /accounts/:ss58 route just
+  // above, which has always matched (hotkey = $1 OR coldkey = $1).
+  mockRows.current = [];
+  await req(`/api/v1/accounts/${SS58}/stake-flow`);
+  expect(queryText()).toContain("(hotkey = ? OR coldkey = ?)");
+});
+
 test("GET /api/v1/accounts/:ss58/stake-flow narrows to one side via ?direction=in", async () => {
   mockRows.current = [];
   await req(`/api/v1/accounts/${SS58}/stake-flow?direction=in`);
@@ -3412,6 +3423,14 @@ test("GET /api/v1/subnets/:netuid/stake-flow defaults to summing both directions
   mockRows.current = [];
   await req("/api/v1/subnets/4/stake-flow");
   expect(queryText()).toContain("event_kind IN (?, ?)");
+});
+
+test("GET /api/v1/accounts/:ss58/stake-moves matches the address as either hotkey or coldkey", async () => {
+  // Regression test: same coldkey-only bug as stake-flow above -- a hotkey-only
+  // address must still surface its StakeMoved re-delegation activity.
+  mockRows.current = [];
+  await req(`/api/v1/accounts/${SS58}/stake-moves`);
+  expect(queryText()).toContain("(hotkey = ? OR coldkey = ?)");
 });
 
 test("GET /api/v1/accounts/:ss58/stake-moves groups movements per subnet", async () => {
