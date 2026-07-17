@@ -2,7 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Coins, Flame, Award, Server, X } from "lucide-react";
 import { subnetNeuronQuery } from "@/lib/metagraphed/queries";
-import { RealtimeFreshness, StatTile } from "@jsonbored/ui-kit";
+import { RealtimeFreshness, StatTile, CopyButton } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -145,14 +145,17 @@ function KeyRow({ label, value }: { label: string; value?: string }) {
         {label}
       </span>
       {value ? (
-        <Link
-          to="/accounts/$ss58"
-          params={{ ss58: value }}
-          className="font-mono text-[12px] text-ink hover:text-accent hover:underline"
-          title={value}
-        >
-          {shortHash(value) ?? value}
-        </Link>
+        <span className="inline-flex items-center gap-1">
+          <Link
+            to="/accounts/$ss58"
+            params={{ ss58: value }}
+            className="font-mono text-[12px] text-ink hover:text-accent hover:underline"
+            title={value}
+          >
+            {shortHash(value) ?? value}
+          </Link>
+          <CopyButton value={value} label={label} />
+        </span>
       ) : (
         <span className="font-mono text-[12px] text-ink-muted">—</span>
       )}
