@@ -4328,13 +4328,24 @@ function aiUnavailableResponse() {
   );
 }
 
+// Mirrors the AI_RATE_LIMITER binding's `simple` config (limit 20 / period 60s)
+// so the 429's advertised quota matches what the limiter actually enforces.
+const AI_RATE_LIMIT = { limit: 20, windowSeconds: 60 };
+
 function aiRateLimitedResponse() {
+  // Same standard rate-limit header set the webhook / alert-trigger 429s expose
+  // (#6572), so an AI client can discover its quota, not just the retry delay.
   return errorResponse(
     "rate_limited",
     "Too many AI requests. Please retry shortly.",
     429,
     {},
-    { "retry-after": "60" },
+    {
+      "retry-after": String(AI_RATE_LIMIT.windowSeconds),
+      "x-ratelimit-limit": String(AI_RATE_LIMIT.limit),
+      "x-ratelimit-policy": `${AI_RATE_LIMIT.limit};w=${AI_RATE_LIMIT.windowSeconds}`,
+      "x-ratelimit-remaining": "0",
+    },
   );
 }
 

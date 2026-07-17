@@ -976,7 +976,7 @@ describe("AI routes through the Worker dispatch", () => {
     assert.equal(res.status, 405);
   });
 
-  test("rate-limited request returns 429", async () => {
+  test("rate-limited request returns 429 with the full rate-limit header set (#6572)", async () => {
     const env = aiWorkerEnv({
       AI_RATE_LIMITER: { limit: () => Promise.resolve({ success: false }) },
     });
@@ -986,7 +986,31 @@ describe("AI routes through the Worker dispatch", () => {
       {},
     );
     assert.equal(res.status, 429);
+    assert.equal((await res.json()).error.code, "rate_limited");
+    // The AI 429 now advertises quota like the webhook/alert-trigger limiters do,
+    // sourced from the AI_RATE_LIMITER binding (limit 20 / period 60).
     assert.equal(res.headers.get("retry-after"), "60");
+    assert.equal(res.headers.get("x-ratelimit-limit"), "20");
+    assert.equal(res.headers.get("x-ratelimit-policy"), "20;w=60");
+    assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
+  });
+
+  test("the /ask 429 carries the same rate-limit header set (#6572)", async () => {
+    const env = aiWorkerEnv({
+      AI_RATE_LIMITER: { limit: () => Promise.resolve({ success: false }) },
+    });
+    const res = await handleRequest(
+      new Request(ASK_URL, {
+        method: "POST",
+        body: JSON.stringify({ question: "x" }),
+      }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 429);
+    assert.equal(res.headers.get("x-ratelimit-limit"), "20");
+    assert.equal(res.headers.get("x-ratelimit-policy"), "20;w=60");
+    assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
   });
 
   test("an AI backend failure degrades to 502", async () => {
