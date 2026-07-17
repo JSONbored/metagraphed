@@ -337,6 +337,17 @@ async function captureVariant({
       // capturing, or the shot freezes on a loading skeleton.
       await page.waitForTimeout(1200);
 
+      // Self-hosted brand fonts (apps/ui/src/styles.css) load via
+      // font-display: swap, so the page paints in a fallback face first and
+      // reflows onto the real one whenever its woff2 lands. That download is
+      // real network activity, so the fixed wait above doesn't bound it -- a
+      // cold `before` server can still be mid-swap while a warm `after` server
+      // is already on the brand font. The pair then differs in *typeface*, and
+      // every glyph shifts, which is exactly the noise a before/after
+      // comparison must not have (responsive-overflow.spec.ts blocks on this
+      // for the same reason -- see #4876). Block until the swap has happened.
+      await page.evaluate(() => document.fonts.ready);
+
       if (section) {
         const found = await scrollToSection(page, section);
         if (!found && fallbackSection) {
