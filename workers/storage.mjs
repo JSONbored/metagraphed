@@ -8,6 +8,8 @@ import {
   artifactStorageTierForPath,
   ARTIFACT_STORAGE_TIERS,
   isR2PreferredDualArtifactPath,
+  isR2StableKeyArtifactPath,
+  stableR2Key,
 } from "../src/artifact-storage.mjs";
 import { METAGRAPH_LATEST_KEY } from "./config.mjs";
 
@@ -141,7 +143,14 @@ export async function readR2(env, artifactPath, storageTier) {
     };
   }
 
-  const key = await latestR2Key(artifactPath, env);
+  // Dated-archive artifacts (health/history/{date}.json) read from their own
+  // stable latest/{path} key instead of the rotating run-prefix pointer: their
+  // path is already permanently unique per day, so the pointer only ever
+  // resolving today's run would make every earlier date unreachable the
+  // moment the pointer advances. See #6508.
+  const key = isR2StableKeyArtifactPath(artifactPath)
+    ? stableR2Key(artifactPath)
+    : await latestR2Key(artifactPath, env);
   let object;
   try {
     object = await withTimeout(

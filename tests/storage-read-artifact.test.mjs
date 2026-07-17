@@ -174,3 +174,83 @@ test("readArtifact returns the non-404 R2 error over the asset 404 for an R2-pre
   vi.doUnmock("../src/artifact-storage.mjs");
   vi.resetModules();
 });
+
+// ---- Dated-archive artifacts read from a stable key (#6508) ----------------
+// health/history/{date}.json is a growing per-day archive, not "current state"
+// like most R2-only artifacts — reading it via the rotating runs/{timestamp}/
+// pointer only ever resolves whichever run is current right now, so every
+// earlier date became permanently unreachable once the pointer advanced past
+// the run that wrote it. These drive readR2's stable-key branch directly: the
+// R2 mock records the key it was actually queried with, proving a historical
+// date resolves via latest/health/history/{date}.json rather than the pointer.
+
+test("readR2 reads a dated health-history artifact from its stable latest/ key, bypassing the run pointer", async () => {
+  const requestedKeys = [];
+  const env = {
+    METAGRAPH_CONTROL: {
+      // If readR2 consulted the pointer for this path, it would resolve to
+      // today's run prefix — which never contains a historical date's file.
+      get: async () => ({ latest_prefix: "runs/2026-07-17T11-21-50-971Z/" }),
+    },
+    METAGRAPH_ARCHIVE: {
+      async get(key) {
+        requestedKeys.push(key);
+        return key === "latest/health/history/2026-06-01.json"
+          ? r2Object({ date: "2026-06-01", surfaces: [] })
+          : null;
+      },
+    },
+  };
+  const result = await readR2(
+    env,
+    "/metagraph/health/history/2026-06-01.json",
+    "r2",
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(requestedKeys, ["latest/health/history/2026-06-01.json"]);
+  assert.equal(result.data.date, "2026-06-01");
+});
+
+test("readR2 still uses the rotating run-prefix pointer for non-dated-archive R2-only artifacts", async () => {
+  const requestedKeys = [];
+  const env = {
+    METAGRAPH_CONTROL: {
+      get: async () => ({ latest_prefix: "runs/2026-07-17T11-21-50-971Z/" }),
+    },
+    METAGRAPH_ARCHIVE: {
+      async get(key) {
+        requestedKeys.push(key);
+        return r2Object({ from: "run-prefixed" });
+      },
+    },
+  };
+  const result = await readR2(env, "/metagraph/subnets.json", "r2");
+  assert.equal(result.ok, true);
+  assert.deepEqual(requestedKeys, [
+    "runs/2026-07-17T11-21-50-971Z/subnets.json",
+  ]);
+});
+
+test("readArtifact resolves a health-history date other than today via the stable key end-to-end", async () => {
+  const env = {
+    METAGRAPH_CONTROL: {
+      get: async () => ({ latest_prefix: "runs/2026-07-17T11-21-50-971Z/" }),
+    },
+    METAGRAPH_ARCHIVE: {
+      async get(key) {
+        // Only the stable key for yesterday's date resolves — the run-prefixed
+        // key a naive pointer-based read would ask for never exists for a
+        // date other than the run that wrote it.
+        return key === "latest/health/history/2026-07-16.json"
+          ? r2Object({ date: "2026-07-16", surfaces: [] })
+          : null;
+      },
+    },
+  };
+  const result = await readArtifact(
+    env,
+    "/metagraph/health/history/2026-07-16.json",
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.data.date, "2026-07-16");
+});

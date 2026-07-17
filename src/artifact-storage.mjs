@@ -399,6 +399,28 @@ export function isR2PreferredDualArtifactPath(artifactPath = "") {
   return R2_PREFERRED_DUAL_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
+// R2-only artifacts whose own relative path is already inherently
+// disambiguated (a dated filename), so a fixed `latest/{path}` key is always
+// the right address — unlike "current state" artifacts (subnets.json,
+// providers.json, ...) where every publish is expected to overwrite the same
+// path and the rotating runs/{timestamp}/ pointer is exactly what you want.
+// health/history/{date}.json is a growing per-day archive: reading it via the
+// pointer-resolved run prefix only ever resolves the run that happens to be
+// current right now, so every earlier date 404s the moment the pointer
+// advances past the run that wrote it, even though the box-side publish
+// (scripts/r2-manifest.mjs's per-artifact latest_key) already uploads every
+// changed artifact to this exact stable key on every run. See #6508.
+const R2_STABLE_KEY_PATTERNS = [/^health\/history\/\d{4}-\d{2}-\d{2}\.json$/];
+
+export function isR2StableKeyArtifactPath(artifactPath = "") {
+  const normalized = artifactRelativePath(artifactPath);
+  return R2_STABLE_KEY_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+export function stableR2Key(artifactPath = "") {
+  return `latest/${artifactRelativePath(artifactPath)}`;
+}
+
 export function artifactRelativePath(artifactPath = "") {
   const value = String(artifactPath);
   const normalized = value.replace(/^\/+/, "");

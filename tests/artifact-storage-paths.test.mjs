@@ -8,7 +8,9 @@ import {
   isGeneratedPublicArtifactRelativePath,
   isR2OnlyArtifactPath,
   isR2PreferredDualArtifactPath,
+  isR2StableKeyArtifactPath,
   schemaDetailArtifactRelativePath,
+  stableR2Key,
 } from "../src/artifact-storage.mjs";
 
 const SS58 = "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM";
@@ -247,6 +249,51 @@ describe("isR2PreferredDualArtifactPath", () => {
   test("defaults a missing argument to false", () => {
     assert.equal(isR2PreferredDualArtifactPath(), false);
     assert.equal(isR2PreferredDualArtifactPath(""), false);
+  });
+});
+
+describe("isR2StableKeyArtifactPath", () => {
+  test("returns true for a dated health-history artifact", () => {
+    assert.equal(
+      isR2StableKeyArtifactPath("/metagraph/health/history/2026-06-01.json"),
+      true,
+    );
+  });
+
+  test("returns false for the health-history route's unresolved {date} template", () => {
+    assert.equal(
+      isR2StableKeyArtifactPath("/metagraph/health/history/{date}.json"),
+      false,
+    );
+  });
+
+  test("returns false for other R2-only artifacts", () => {
+    assert.equal(isR2StableKeyArtifactPath("/metagraph/subnets.json"), false);
+    assert.equal(
+      isR2StableKeyArtifactPath("/metagraph/health/latest.json"),
+      false,
+    );
+  });
+
+  test("defaults a missing argument to false", () => {
+    assert.equal(isR2StableKeyArtifactPath(), false);
+    assert.equal(isR2StableKeyArtifactPath(""), false);
+  });
+});
+
+describe("stableR2Key", () => {
+  test("prefixes the relative artifact path with latest/", () => {
+    assert.equal(
+      stableR2Key("/metagraph/health/history/2026-06-01.json"),
+      "latest/health/history/2026-06-01.json",
+    );
+  });
+
+  test("handles a bare relative path the same as a /metagraph/-prefixed one", () => {
+    assert.equal(
+      stableR2Key("health/history/2026-06-01.json"),
+      "latest/health/history/2026-06-01.json",
+    );
   });
 });
 
