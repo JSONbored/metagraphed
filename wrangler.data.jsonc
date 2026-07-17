@@ -29,7 +29,11 @@
   // is applied.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "metagraphed-data-api",
-  "main": "workers/data-api.mjs",
+  // Sentry deploy-entry wrapper (metagraphed#6479/#6485), not the raw
+  // handler -- see workers/data-api.sentry.mjs's own header for why this
+  // can't be wrapped inline (breaks its existing tests, which import
+  // workers/data-api.mjs directly and are unaffected by this).
+  "main": "workers/data-api.sentry.mjs",
   // Reached only through the main Worker's DATA_API service binding. Wrangler
   // defaults workers.dev to enabled when a Worker has no public routes, so keep
   // both public and preview URLs disabled for this private data tier.
@@ -37,6 +41,15 @@
   "preview_urls": false,
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
+  // Auto-detected release for @sentry/cloudflare (workers/data-api.sentry.mjs's
+  // own CF_VERSION_METADATA?.id read) -- Cloudflare's own per-deploy
+  // version UUID, present on every deploy with no extra CI/build step
+  // needed. upload_source_maps makes Wrangler generate + upload sourcemaps
+  // for this Worker's own deploy.
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA",
+  },
+  "upload_source_maps": true,
   // Smart placement: run the Worker close to the Hyperdrive origin (self-hosted indexer
   // box Postgres, reached via Cloudflare Tunnel) to minimize the per-request DB round-trip,
   // not at the nearest edge to the client.

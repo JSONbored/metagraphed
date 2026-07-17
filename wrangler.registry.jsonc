@@ -9,9 +9,23 @@
   // Deploy: wrangler deploy -c wrangler.registry.jsonc
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "metagraphed-registry-sync-api",
-  "main": "workers/registry-sync-api.mjs",
+  // Sentry deploy-entry wrapper (metagraphed#6479/#6485), not the raw
+  // handler -- see workers/registry-sync-api.sentry.mjs's own header for
+  // why this can't be wrapped inline (breaks its 27 existing tests, which
+  // import workers/registry-sync-api.mjs directly and are unaffected by
+  // this).
+  "main": "workers/registry-sync-api.sentry.mjs",
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
+  // Auto-detected release for @sentry/cloudflare
+  // (workers/registry-sync-api.sentry.mjs's own CF_VERSION_METADATA?.id
+  // read) -- Cloudflare's own per-deploy version UUID, present on every
+  // deploy with no extra CI/build step needed. upload_source_maps makes
+  // Wrangler generate + upload sourcemaps for this Worker's own deploy.
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA",
+  },
+  "upload_source_maps": true,
   // Deliberately NOT smart-placed, unlike wrangler.data.jsonc's read-only
   // sibling. #4767 added `placement: {mode: "smart"}` here on a latency
   // rationale and was reverted the same day every registry-sync write was

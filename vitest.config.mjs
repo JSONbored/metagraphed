@@ -92,6 +92,23 @@ export default defineConfig({
         "scripts/{artifact-budgets,lib,openapi-components,registry-identity}.mjs",
         "scripts/lib/{build-readiness,economics-artifacts,endpoint-artifacts,enrichment-queue-artifacts,formatting,readme-links}.mjs",
       ],
+      // The workers/*.sentry.mjs deploy-entry wrappers (metagraphed#6479;
+      // currently data-api.sentry.mjs + registry-sync-api.sentry.mjs --
+      // workers/api.mjs's own Sentry wrapper hit that Worker's 1024 KiB
+      // Cloudflare bundle ceiling, tracked separately, see #6479's own
+      // follow-up) are deliberately coverage-invisible for the same reason
+      // chain-firehose-relay.mjs is: @sentry/cloudflare's withSentry()
+      // requires real Cloudflare Workers runtime primitives
+      // (AsyncLocalStorage-based context propagation via workerd) that
+      // don't exist in this plain-Node vitest environment -- confirmed
+      // empirically, importing one crashes with "Cannot read properties of
+      // undefined (reading 'bind')" inside @sentry/cloudflare's own
+      // flush-lock registry. Each wrapper is a thin, mechanical ~15-line
+      // `Sentry.withSentry(fn, handler)` re-export; the REAL handler logic
+      // it wraps (workers/data-api.mjs, workers/registry-sync-api.mjs) is
+      // unaffected and stays fully covered as before -- these tests were
+      // never routed through the wrapper.
+      exclude: ["workers/*.sentry.mjs"],
       // BACKSTOP floors only — NOT the primary gate. The real PR coverage gate is
       // Codecov (delta-based project + patch coverage, see codecov.yml). That
       // avoids the fixed-pin churn where every PR must match a near-peak absolute
