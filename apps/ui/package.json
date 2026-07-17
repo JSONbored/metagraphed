@@ -60,6 +60,7 @@
     "@eslint/js": "^9.39.5",
     "@lovable.dev/vite-tanstack-config": "^2.7.2",
     "@playwright/test": "^1.61.1",
+    "@sentry/vite-plugin": "^5.4.0",
     "@types/node": "^22.20.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

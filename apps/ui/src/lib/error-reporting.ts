@@ -10,7 +10,15 @@ import { reportLovableError } from "./lovable-error-reporting";
  * Sinks, in order, all best-effort:
  *  1. Sentry — only when a build-time `VITE_SENTRY_DSN` is set. `@sentry/browser`
  *     is loaded via a DYNAMIC import so it costs zero bundle bytes when the DSN
- *     is unset (the import is tree-shaken / never reached).
+ *     is unset (the import is tree-shaken / never reached). Tagged with a
+ *     `release` (Cloudflare Workers Builds' own commit SHA, bridged in at
+ *     build time via vite.config.ts's `define` -- see vite.config.ts's own
+ *     comment) and `environment` (production/development from Vite's own
+ *     `import.meta.env.PROD`), so a regression can be traced to the deploy
+ *     that introduced it. Source maps for this release are uploaded by
+ *     `@sentry/vite-plugin` (also wired in vite.config.ts), gated on
+ *     `SENTRY_AUTH_TOKEN` being set -- absent everywhere except the
+ *     production Cloudflare Workers Build once configured.
  *  2. Lovable capture channel — best-effort, no-op outside the Lovable editor.
  *  3. `console.error` in dev so the boundary + context are always greppable
  *     locally.
@@ -20,6 +28,11 @@ import { reportLovableError } from "./lovable-error-reporting";
  */
 
 const SENTRY_DSN = import.meta.env?.VITE_SENTRY_DSN as string | undefined;
+// Bridged in at build time from Cloudflare Workers Builds' own
+// WORKERS_CI_COMMIT_SHA (see vite.config.ts's `define` block) -- "" (not
+// undefined) whenever that var wasn't set, since Vite's `define` replaces
+// this with a literal string constant, never an actual `undefined`.
+const SENTRY_RELEASE = (import.meta.env?.VITE_SENTRY_RELEASE as string | undefined) || undefined;
 
 type SentryModule = typeof import("@sentry/browser");
 
@@ -29,7 +42,11 @@ function loadSentry(): Promise<SentryModule | null> {
   if (sentryInit) return sentryInit;
   sentryInit = import("@sentry/browser")
     .then((Sentry) => {
-      Sentry.init({ dsn: SENTRY_DSN });
+      Sentry.init({
+        dsn: SENTRY_DSN,
+        release: SENTRY_RELEASE,
+        environment: import.meta.env?.PROD ? "production" : "development",
+      });
       return Sentry;
     })
     .catch((err) => {
