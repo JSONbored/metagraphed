@@ -106,7 +106,7 @@ export function AccountPositionHistoryChart({ ss58, netuid }: { ss58: string; ne
             <HistoryRow
               label="Emission"
               series={series.emission}
-              color="var(--accent, #00c899)"
+              color="var(--accent)"
               format={taoStr}
             />
           ) : null}

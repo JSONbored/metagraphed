@@ -104,7 +104,7 @@ export function ValidatorHistoryChart({ hotkey }: { hotkey: string }) {
             <HistoryRow
               label="Rewards / 1k τ"
               series={series.rewards}
-              color="var(--accent, #00c899)"
+              color="var(--accent)"
               format={rewardsStr}
             />
           ) : null}

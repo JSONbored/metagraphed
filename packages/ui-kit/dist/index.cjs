@@ -3379,7 +3379,7 @@ function Sparkline({
   points,
   width = 120,
   height = 28,
-  color = "var(--accent, #00c899)",
+  color = "var(--accent)",
   fill = true,
   className,
   ariaLabel,
