@@ -4101,20 +4101,44 @@ export async function handleGovernanceConfigChanges(request, env, url) {
   );
 }
 
+// The three columns the /runtime page's table renders (Spec Version | Block |
+// Observed), in that order, so the download matches what the reader sees.
+const RUNTIME_VERSIONS_CSV_COLUMNS = [
+  "spec_version",
+  "block_number",
+  "observed_at",
+];
+
 // GET /api/v1/runtime (#4316/3.1): the spec-version transition timeline — the
 // earliest known block at each distinct spec_version the blocks D1 tier has
 // observed, ascending by block_number. A single-row aggregate over the whole
-// retained window, nothing to filter or paginate. See src/runtime-versions.mjs
-// for the coverage caveat (spec_version wasn't tracked before 2026-06-25 and
-// can't be back-filled for rows written before then).
+// retained window, nothing to filter or paginate (?format=csv is the one
+// accepted param, #6392). See src/runtime-versions.mjs for the coverage caveat
+// (spec_version wasn't tracked before 2026-06-25 and can't be back-filled for
+// rows written before then).
 export async function handleRuntime(request, env, url) {
-  const validationError = validateQueryParams(url, []);
+  const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE")) ??
     buildRuntimeVersionHistory([]);
+  // CSV exports the row-shaped transition timeline -- the same three columns
+  // the /runtime page's table renders (#6392). The rollup fields
+  // (current_spec_version, coverage_from_block/at) describe the series rather
+  // than belonging to any row, so they stay JSON-only, mirroring how
+  // chain-signers/chain-fees export their leaderboard and keep their totals out
+  // of the CSV. A cold store yields transitions: [] -> a header-only CSV.
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.transitions,
+      "runtime-versions",
+      "short",
+      request,
+      RUNTIME_VERSIONS_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {

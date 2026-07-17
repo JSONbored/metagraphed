@@ -1711,7 +1711,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the spec-version transition timeline — the earliest known block at each distinct runtime spec_version, ascending by block_number. No query params: a single aggregate over the whole retained blocks window. spec_version is best-effort/nullable and wasn't tracked before 2026-06-25, so coverage_from_block/coverage_from_at bound what this endpoint can see. Computed live from the first-party blocks D1 tier (#4316/3.1). */
+        /** Fetch the spec-version transition timeline — the earliest known block at each distinct runtime spec_version, ascending by block_number. A single aggregate over the whole retained blocks window, nothing to filter or paginate. spec_version is best-effort/nullable and wasn't tracked before 2026-06-25, so coverage_from_block/coverage_from_at bound what this endpoint can see. Computed live from the first-party blocks D1 tier (#4316/3.1). Pass ?format=csv to download the transition timeline as CSV (the current_spec_version + coverage_from_* rollup stays JSON-only). */
         get: operations["runtimeVersions"];
         put?: never;
         post?: never;
@@ -21629,14 +21629,17 @@ export interface operations {
     };
     runtimeVersions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Response format override. Use `csv` to download the transition timeline as text/csv; `json` (default) keeps the response envelope. */
+                format?: "json" | "csv";
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -21689,6 +21692,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["RuntimeVersionsArtifact"];
                     };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

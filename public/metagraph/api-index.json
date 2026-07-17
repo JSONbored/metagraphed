@@ -7823,14 +7823,26 @@
     {
       "artifact_path": "/metagraph/runtime.json",
       "cache": "short",
-      "description": "Fetch the spec-version transition timeline — the earliest known block at each distinct runtime spec_version, ascending by block_number. No query params: a single aggregate over the whole retained blocks window. spec_version is best-effort/nullable and wasn't tracked before 2026-06-25, so coverage_from_block/coverage_from_at bound what this endpoint can see. Computed live from the first-party blocks D1 tier (#4316/3.1).",
+      "description": "Fetch the spec-version transition timeline — the earliest known block at each distinct runtime spec_version, ascending by block_number. A single aggregate over the whole retained blocks window, nothing to filter or paginate. spec_version is best-effort/nullable and wasn't tracked before 2026-06-25, so coverage_from_block/coverage_from_at bound what this endpoint can see. Computed live from the first-party blocks D1 tier (#4316/3.1). Pass ?format=csv to download the transition timeline as CSV (the current_spec_version + coverage_from_* rollup stays JSON-only).",
       "id": "runtime-versions",
       "method": "GET",
       "path": "/api/v1/runtime",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "description": "Response format override. Use `csv` to download the transition timeline as text/csv; `json` (default) keeps the response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/chain/activity.json",

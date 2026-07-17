@@ -5201,6 +5201,114 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
+  // #6392: /runtime was the one Explorer list page with no CSV export, because
+  // the route rejected every query param -- ?format=csv 400'd before it could
+  // reach the handler.
+  describe("handleRuntime CSV export (#6392)", () => {
+    function pgEnv(transitions) {
+      const { env } = dbWith({ blocksFeed: [blockRow()] });
+      env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+      env.DATA_API = {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            transitions,
+            transition_count: transitions.length,
+            current_spec_version: transitions.at(-1)?.spec_version ?? null,
+            coverage_from_block: transitions[0]?.block_number ?? null,
+            coverage_from_at: transitions[0]?.observed_at ?? null,
+          }),
+      };
+      return env;
+    }
+
+    const ROWS = [
+      {
+        spec_version: 423,
+        block_number: 8000000,
+        observed_at: "2026-06-25T00:00:00.000Z",
+      },
+      {
+        spec_version: 424,
+        block_number: 8100000,
+        observed_at: "2026-07-01T00:00:00.000Z",
+      },
+    ];
+
+    test("?format=csv exports the transition timeline with the on-screen columns", async () => {
+      const res = await handleRuntime(
+        req("/api/v1/runtime?format=csv"),
+        pgEnv(ROWS),
+        url("/api/v1/runtime?format=csv"),
+      );
+      assert.equal(res.status, 200);
+      assert.match(res.headers.get("content-type") || "", /text\/csv/);
+      assert.equal(
+        res.headers.get("content-disposition"),
+        'attachment; filename="runtime-versions.csv"',
+      );
+      const lines = (await res.text()).trim().split("\r\n");
+      // The three columns the /runtime table renders: Spec Version | Block | Observed.
+      assert.equal(lines[0], "spec_version,block_number,observed_at");
+      assert.equal(lines[1], "423,8000000,2026-06-25T00:00:00.000Z");
+      assert.equal(lines.length, ROWS.length + 1);
+    });
+
+    test("the default response is still the JSON envelope", async () => {
+      const res = await handleRuntime(
+        req("/api/v1/runtime"),
+        pgEnv(ROWS),
+        url("/api/v1/runtime"),
+      );
+      assert.match(res.headers.get("content-type") || "", /application\/json/);
+      const body = await res.json();
+      // The rollup fields stay JSON-only -- they describe the series, not a row.
+      assert.equal(body.data.current_spec_version, 424);
+      assert.equal(body.data.coverage_from_block, 8000000);
+    });
+
+    test("?format=json is accepted and keeps the envelope", async () => {
+      const res = await handleRuntime(
+        req("/api/v1/runtime?format=json"),
+        pgEnv(ROWS),
+        url("/api/v1/runtime?format=json"),
+      );
+      assert.equal(res.status, 200);
+      assert.match(res.headers.get("content-type") || "", /application\/json/);
+    });
+
+    test("a cold store yields a header-only CSV, never an error", async () => {
+      const res = await handleRuntime(
+        req("/api/v1/runtime?format=csv"),
+        pgEnv([]),
+        url("/api/v1/runtime?format=csv"),
+      );
+      assert.equal(res.status, 200);
+      assert.equal(
+        (await res.text()).trim(),
+        "spec_version,block_number,observed_at",
+      );
+    });
+
+    test("an unsupported format is still rejected", async () => {
+      const res = await handleRuntime(
+        req("/api/v1/runtime?format=bogus"),
+        pgEnv(ROWS),
+        url("/api/v1/runtime?format=bogus"),
+      );
+      assert.equal(res.status, 400);
+    });
+
+    test("an unknown query param is still rejected (format is the only one)", async () => {
+      const res = await handleRuntime(
+        req("/api/v1/runtime?limit=5"),
+        pgEnv(ROWS),
+        url("/api/v1/runtime?limit=5"),
+      );
+      assert.equal(res.status, 400);
+    });
+  });
+
   // #4832 Tier 1b: the remaining account_events-derived handlers with no
   // Postgres tier at all -- same pattern as Tier 1a above.
 

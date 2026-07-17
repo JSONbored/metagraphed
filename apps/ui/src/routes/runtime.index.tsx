@@ -4,9 +4,17 @@ import { Suspense, type ReactNode } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import { PageHero, ShareButton, ActionBar, TableState, TimeAgo } from "@jsonbored/ui-kit";
+import {
+  PageHero,
+  ShareButton,
+  DownloadCsvButton,
+  ActionBar,
+  TableState,
+  TimeAgo,
+} from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { runtimeVersionHistoryQuery } from "@/lib/metagraphed/queries";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { RuntimeVersionHistory } from "@/lib/metagraphed/types";
 
@@ -31,6 +39,7 @@ export const Route = createFileRoute("/runtime/")({
 });
 
 function RuntimePage() {
+  const runtimeCsvUrl = buildUrl("/api/v1/runtime", { format: "csv" });
   return (
     <AppShell>
       <PageHero
@@ -40,6 +49,10 @@ function RuntimePage() {
         description="Spec-version upgrade history for the Bittensor chain, tracked from the first-party blocks tier — every observed runtime upgrade, newest first."
         actions={
           <ActionBar>
+            {/* /api/v1/runtime is a single whole-window aggregate with no
+                filters to carry, so the export needs no query params beyond
+                format -- unlike the filtered feeds' <page>QueryParams(search). */}
+            <DownloadCsvButton url={runtimeCsvUrl} bare />
             <ShareButton bare />
           </ActionBar>
         }
