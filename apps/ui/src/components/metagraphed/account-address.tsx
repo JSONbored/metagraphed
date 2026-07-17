@@ -38,7 +38,12 @@ export function AccountAddress({
             {shortHash(ss58, keep)}
           </Link>
         </EntityHoverCard>
-        <CopyButton value={ss58} label="account" className={copyButtonClassName} compact={compact} />
+        <CopyButton
+          value={ss58}
+          label="account"
+          className={copyButtonClassName}
+          compact={compact}
+        />
       </span>
     );
   }
