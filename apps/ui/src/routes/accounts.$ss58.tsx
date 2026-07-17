@@ -1999,7 +1999,13 @@ function AccountFootprintSection({
           <BarMini data={staked} showValue={false} />
         </div>
       ) : null}
-      <DataPanel>
+      {/* #6428: five columns at `px-5` do not fit a 375px viewport, so Permit
+          and Active -- and with them this section's only route to a validator
+          profile -- sit outside the scroll viewport on mobile. Desktop keeps
+          the table; mobile gets the card fallback endpoint-list.tsx uses for
+          the same problem, so every field (and the permit link) is reachable
+          without a horizontal swipe. */}
+      <DataPanel className="hidden md:block">
         <table className="w-full text-left text-sm">
           <thead className="bg-surface/50">
             <tr>
@@ -2037,9 +2043,7 @@ function AccountFootprintSection({
                 </td>
                 <td className="px-5 py-4 font-mono text-[11px]">
                   {r.validator_permit ? (
-                    <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-500">
-                      validator
-                    </span>
+                    <ValidatorPermitBadge ss58={ss58} />
                   ) : (
                     <span className="text-ink-muted">—</span>
                   )}
@@ -2060,7 +2064,78 @@ function AccountFootprintSection({
           </tbody>
         </table>
       </DataPanel>
+
+      <ul className="space-y-2 md:hidden">
+        {rows.map((r) => (
+          <li key={`${r.netuid}-${r.uid}`} className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                {r.netuid != null ? (
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: r.netuid }}
+                    className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-mono text-[12px] font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
+                  >
+                    SN{r.netuid}
+                  </Link>
+                ) : (
+                  <span className="font-mono text-[12px] text-ink-muted">—</span>
+                )}
+                {r.validator_permit ? <ValidatorPermitBadge ss58={ss58} /> : null}
+              </div>
+              {r.active ? (
+                <span className="inline-flex shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] text-emerald-500">
+                  active
+                </span>
+              ) : (
+                <span className="inline-flex shrink-0 rounded-full bg-surface px-2 py-0.5 font-mono text-[11px] text-ink-muted">
+                  idle
+                </span>
+              )}
+            </div>
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
+              <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                UID
+              </dt>
+              <dd className="text-right font-mono tabular-nums text-ink">
+                {r.uid != null ? formatNumber(r.uid) : "—"}
+              </dd>
+              <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                Stake
+              </dt>
+              <dd className="text-right font-mono tabular-nums text-ink">
+                {fmtStake(r.stake_tao)}
+              </dd>
+            </dl>
+          </li>
+        ))}
+      </ul>
     </SectionAnchor>
+  );
+}
+
+/**
+ * The "validator" permit badge (#6428) — links to this account's own validator
+ * profile, the page carrying its stake, nominators, APY, and cross-subnet
+ * performance. Shared by the desktop table and the mobile cards so the two can
+ * never drift.
+ *
+ * `validator_permit` is a per-UID metagraph property keyed by hotkey, so an
+ * ss58 the subnets feed reports a permit for is registered as that subnet's
+ * validator hotkey and `/validators/{ss58}` resolves. A coldkey-only address
+ * never carries a permit, so the caller's existing `validator_permit` gate is
+ * also what keeps this link off those pages.
+ */
+function ValidatorPermitBadge({ ss58 }: { ss58: string }) {
+  return (
+    <Link
+      to="/validators/$hotkey"
+      params={{ hotkey: ss58 }}
+      title={`Validator profile for ${ss58}`}
+      className="inline-flex shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] text-emerald-500 transition-colors hover:bg-emerald-500/20"
+    >
+      validator
+    </Link>
   );
 }
 
