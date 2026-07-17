@@ -9,7 +9,7 @@ import type { Subnet } from "@/lib/metagraphed/types";
 
 const UP = healthColorVar("ok");
 const DOWN = healthColorVar("down");
-const FLAT = "var(--ink-muted, #616b6c)";
+const FLAT = "var(--ink-muted)";
 
 function priceStr(v?: number) {
   if (v == null || !Number.isFinite(v)) return "—";
