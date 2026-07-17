@@ -29,7 +29,7 @@
 import postgres from "postgres";
 import { readFile } from "node:fs/promises";
 import { stableStringify } from "./lib.mjs";
-import { initSentry } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.mjs";
 
 initSentry("reconcile-neurons");
 
@@ -174,3 +174,4 @@ async function sendAlert(summary, examples) {
 }
 
 await main();
+await endSessionAndFlush();

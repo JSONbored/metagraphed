@@ -37,7 +37,7 @@ import { html } from "satori-html";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.mjs";
 import { buildStatParts, renderMarkup } from "../src/og-image.mjs";
 import { repoRoot, stableStringify } from "./lib.mjs";
-import { initSentry } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.mjs";
 import * as Sentry from "@sentry/node";
 
 initSentry("refresh-og-image");
@@ -84,6 +84,7 @@ try {
   );
 }
 
+await endSessionAndFlush();
 process.exit(0);
 
 async function loadStatParts() {

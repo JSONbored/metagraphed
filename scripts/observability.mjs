@@ -11,7 +11,42 @@
 // `metagraphed` Sentry project with a consistent `component` tag --
 // matching scripts/observability.py's own Python-side convention for the
 // chain-fetch scripts.
+import { closeSession } from "@sentry/core";
 import * as Sentry from "@sentry/node";
+
+// Release-health session tracking (Sentry's "Crash Free Sessions/Users"
+// widgets). @sentry/node's own default OnUncaughtException/
+// OnUnhandledRejection integrations do NOT mark the active session as
+// crashed before exiting -- confirmed by reading their actual source
+// (node_modules/@sentry/node-core/build/*/integrations/onuncaughtexception.js
+// touches no session state at all), despite Sentry's own docs implying a
+// crash marks the session automatically. Rather than ship a metric that's
+// silently wrong (always "healthy" even on a real crash), this module owns
+// the crash path itself end-to-end: registers its own handlers BEFORE
+// Sentry.init() runs (Node calls uncaughtException/unhandledRejection
+// listeners in registration order, so this one must fire first), and
+// filters Sentry's own two crash-handling integrations out of the default
+// set so there's no race between two competing exit paths.
+//
+// Session model here is per SCRIPT RUN (start in initSentry, end via
+// endSessionAndFlush on the clean-exit path) -- these are one-shot
+// processes, not request-serving services, so "session" == "did this run
+// complete without an unhandled error," not a user session.
+let sentryInitialized = false;
+
+async function handleFatal(error, exitCode) {
+  console.error("[observability] fatal:", error);
+  if (sentryInitialized) {
+    Sentry.captureException(error);
+    const session = Sentry.getIsolationScope().getSession();
+    if (session) {
+      closeSession(session, "crashed");
+      Sentry.captureSession();
+    }
+    await Sentry.flush(2000);
+  }
+  process.exit(exitCode);
+}
 
 // No-ops silently if SENTRY_DSN is unset, matching every other
 // instrumented process in this rollout (SENTRY_DSN is not a secret in the
@@ -22,6 +57,19 @@ import * as Sentry from "@sentry/node";
 export function initSentry(component) {
   const dsn = process.env.SENTRY_DSN;
   if (!dsn) return;
+
+  // Registered before Sentry.init() -- see this module's own header for why
+  // ordering matters here.
+  process.on("uncaughtException", (error) => {
+    handleFatal(error, 1);
+  });
+  process.on("unhandledRejection", (reason) => {
+    handleFatal(
+      reason instanceof Error ? reason : new Error(String(reason)),
+      1,
+    );
+  });
+
   Sentry.init({
     dsn,
     environment: process.env.SENTRY_ENVIRONMENT || "production",
@@ -29,24 +77,33 @@ export function initSentry(component) {
     // Error tracking only -- these are short-lived batch scripts run on a
     // 3min/daily/weekly cron, not request-serving services.
     tracesSampleRate: 0,
+    integrations: (integrations) =>
+      integrations.filter(
+        (integration) =>
+          integration.name !== "OnUncaughtException" &&
+          integration.name !== "OnUnhandledRejection",
+      ),
   });
   Sentry.setTag("component", component);
-  // Every script this module is used by is a ONE-SHOT process, not a
-  // long-running poll loop like chain-firehose-relay.mjs -- an error that
-  // propagates uncaught (the common case: most of these scripts have no
-  // top-level try/catch at all, relying on Node's own default "print and
-  // exit 1" behavior) is automatically captured, flushed, and reported by
-  // @sentry/node's own default OnUncaughtException/OnUnhandledRejection
-  // integrations, installed as a side effect of Sentry.init() above -- no
-  // manual process.on() wiring needed here. The one exception is a script
-  // with its OWN explicit top-level `.catch()` (discover-testnet-
-  // surfaces.mjs): Node stops considering a promise "unhandled" once
-  // something calls .catch() on it, so that one script calls
-  // captureFatalAndExit() below directly instead of relying on the default.
+  sentryInitialized = true;
+  Sentry.startSession();
 }
 
-export async function captureFatalAndExit(error, exitCode = 1) {
-  Sentry.captureException(error);
+// Call on the clean-exit path (end of a successful run) so the session
+// reports "exited" (healthy) rather than being left open indefinitely.
+// Safe to call even if initSentry() no-op'd (no DSN) -- Sentry's own
+// endSession()/flush() are documented no-ops before init.
+export async function endSessionAndFlush() {
+  if (!sentryInitialized) return;
+  Sentry.endSession();
   await Sentry.flush(2000);
-  process.exit(exitCode);
+}
+
+// For the one script with its own explicit top-level `.catch()`
+// (discover-testnet-surfaces.mjs): Node stops considering a promise
+// "unhandled" once something calls .catch() on it, so that script calls
+// this directly instead of relying on the uncaughtException/
+// unhandledRejection handlers above.
+export async function captureFatalAndExit(error, exitCode = 1) {
+  await handleFatal(error, exitCode);
 }

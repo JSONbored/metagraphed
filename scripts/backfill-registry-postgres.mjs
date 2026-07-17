@@ -41,7 +41,7 @@ import {
 } from "./lib.mjs";
 import { generateBaselineOverlaySet } from "./generated-overlays.mjs";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
-import { initSentry } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.mjs";
 
 initSentry("backfill-registry-postgres");
 
@@ -220,3 +220,4 @@ async function currentCommitSha() {
 }
 
 await main();
+await endSessionAndFlush();

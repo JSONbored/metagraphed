@@ -23,7 +23,11 @@ import {
   repoRoot,
   buildTimestamp,
 } from "./lib.mjs";
-import { initSentry, captureFatalAndExit } from "./observability.mjs";
+import {
+  initSentry,
+  endSessionAndFlush,
+  captureFatalAndExit,
+} from "./observability.mjs";
 
 const SNAPSHOT = path.join(repoRoot, "registry/native/test-subnets.json");
 const PROBE_TIMEOUT_MS = 8000;
@@ -267,13 +271,17 @@ if (
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   initSentry("discover-testnet-surfaces");
-  main().catch(async (error) => {
-    console.error(`testnet discovery failed: ${error?.message || error}`);
-    // Explicit capture required here (not left to @sentry/node's default
-    // OnUnhandledRejection integration, see observability.mjs's own
-    // comment): Node stops considering a promise "unhandled" once
-    // something calls .catch() on it, which this script already did
-    // before Sentry instrumentation existed.
-    await captureFatalAndExit(error);
-  });
+  main()
+    .then(async () => {
+      await endSessionAndFlush();
+    })
+    .catch(async (error) => {
+      console.error(`testnet discovery failed: ${error?.message || error}`);
+      // Explicit capture required here (not left to @sentry/node's default
+      // OnUnhandledRejection integration, see observability.mjs's own
+      // comment): Node stops considering a promise "unhandled" once
+      // something calls .catch() on it, which this script already did
+      // before Sentry instrumentation existed.
+      await captureFatalAndExit(error);
+    });
 }

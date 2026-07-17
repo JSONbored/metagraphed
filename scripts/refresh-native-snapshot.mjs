@@ -14,7 +14,7 @@
 // using the committed snapshot (this step is production-only).
 import { spawnSync } from "node:child_process";
 import { stableStringify } from "./lib.mjs";
-import { initSentry } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.mjs";
 
 initSentry("refresh-native-snapshot");
 
@@ -50,4 +50,5 @@ if (result.status === 0) {
   );
 }
 
+await endSessionAndFlush();
 process.exit(0);

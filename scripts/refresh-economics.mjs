@@ -26,7 +26,7 @@ import {
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
 import { shouldPublishEconomics } from "./economics-floor.mjs";
-import { initSentry } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.mjs";
 
 initSentry("refresh-economics");
 
@@ -59,6 +59,7 @@ const summary = {
 
 if (!write) {
   console.log(stableStringify({ mode: "dry-run", ...summary }));
+  await endSessionAndFlush();
   process.exit(0);
 }
 
@@ -80,6 +81,7 @@ if (!floor.publish) {
       ...summary,
     }),
   );
+  await endSessionAndFlush();
   process.exit(0);
 }
 
@@ -128,3 +130,4 @@ if (process.env.METAGRAPH_ALLOW_KV_WRITE === "1") {
 }
 
 console.log(stableStringify({ mode: "write", kv: kvStatus, ...summary }));
+await endSessionAndFlush();

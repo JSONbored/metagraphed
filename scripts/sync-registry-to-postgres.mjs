@@ -49,7 +49,7 @@ import {
   subnetSurfaceKey,
 } from "./lib.mjs";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
-import { initSentry } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.mjs";
 
 initSentry("sync-registry-to-postgres");
 
@@ -284,3 +284,4 @@ function parseArgs(argv) {
 }
 
 await main();
+await endSessionAndFlush();

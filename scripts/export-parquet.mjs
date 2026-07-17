@@ -34,7 +34,7 @@ import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { sha256Hex, stableStringify } from "./lib.mjs";
-import { initSentry } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.mjs";
 
 initSentry("export-parquet");
 
@@ -245,3 +245,4 @@ function summarize(manifest) {
 }
 
 await main();
+await endSessionAndFlush();
