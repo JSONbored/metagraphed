@@ -4,8 +4,10 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
 
 export interface ApiSource {
@@ -34,6 +36,14 @@ interface Ctx {
   isOpen: boolean;
   setOpen: (v: boolean) => void;
   open: () => void;
+  /**
+   * The element focused when the drawer was opened, for ApiDrawer to restore on
+   * close (#6418). The drawer's <Sheet> has no <SheetTrigger> in its own tree
+   * (the trigger is a separate component, and ⌘J can open it from anywhere), so
+   * Radix cannot return focus on its own — it drops to <body>. `open()` records
+   * document.activeElement here; ApiDrawer's onCloseAutoFocus restores it.
+   */
+  restoreFocusRef: RefObject<HTMLElement | null>;
 }
 
 const ApiSourceCtx = createContext<Ctx | null>(null);
@@ -41,6 +51,14 @@ const ApiSourceCtx = createContext<Ctx | null>(null);
 export function ApiSourceProvider({ children }: { children: ReactNode }) {
   const [registry, setRegistry] = useState<Map<symbol, ApiSource[]>>(new Map());
   const [isOpen, setOpen] = useState(false);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+
+  // Record the element to return focus to before opening — the header button,
+  // or whatever had focus when ⌘J fired (#6418).
+  const open = useCallback(() => {
+    restoreFocusRef.current = (document.activeElement as HTMLElement | null) ?? null;
+    setOpen(true);
+  }, []);
 
   const register = useCallback((items: ApiSource[]) => {
     const key = Symbol();
@@ -61,8 +79,8 @@ export function ApiSourceProvider({ children }: { children: ReactNode }) {
   const sources = useMemo(() => dedupeApiSources(registry.values()), [registry]);
 
   const value = useMemo<Ctx>(
-    () => ({ sources, register, isOpen, setOpen, open: () => setOpen(true) }),
-    [sources, register, isOpen],
+    () => ({ sources, register, isOpen, setOpen, open, restoreFocusRef }),
+    [sources, register, isOpen, open],
   );
 
   return <ApiSourceCtx.Provider value={value}>{children}</ApiSourceCtx.Provider>;

@@ -59,7 +59,7 @@ export function ApiDrawerTrigger() {
 }
 
 export function ApiDrawer() {
-  const { sources, isOpen, setOpen } = useApiSourceCtx();
+  const { sources, isOpen, setOpen, restoreFocusRef } = useApiSourceCtx();
   const [activePath, setActivePath] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,6 +74,15 @@ export function ApiDrawer() {
       <SheetContent
         side="right"
         className="w-full sm:max-w-2xl p-0 bg-paper text-ink border-l border-border flex flex-col"
+        onCloseAutoFocus={(event) => {
+          // #6418: this Sheet has no in-tree <SheetTrigger>, so Radix would drop
+          // focus to <body> on close. Restore it to whatever open() recorded.
+          const el = restoreFocusRef.current;
+          if (el && el.isConnected) {
+            event.preventDefault();
+            el.focus();
+          }
+        }}
       >
         <SheetHeader className="px-5 py-4 border-b border-border space-y-1">
           <SheetTitle className="font-display text-base font-semibold text-ink-strong inline-flex items-center gap-2">
