@@ -122,7 +122,8 @@ const EMPTY_TURNOVER_CHANGES = {
 // Compare a subnet's start-of-window vs end-of-window neuron_daily snapshots into a
 // turnover scorecard. `rows` carries both dates' rows (the handler reads exactly
 // the two boundary snapshot_dates); `startDate`/`endDate` name them. Null-safe: no
-// data, or no resolvable boundary dates, yields the schema-stable empty block.
+// data, no resolvable boundary dates, or a single snapshot date, yields the
+// schema-stable empty block.
 export function buildTurnover(
   rows,
   netuid,
@@ -136,7 +137,18 @@ export function buildTurnover(
     start_date: startDate ?? null,
     end_date: endDate ?? null,
   };
-  if (startDate == null || endDate == null || list.length === 0) {
+  // A single snapshot (start === end) can't show change: comparing it to itself
+  // would report a flawless retention/stability_score of 100 for a populated
+  // subnet while comparable is false (#6352). The handler resolves the bounds
+  // via MIN/MAX(snapshot_date), so a subnet with one stored day in the window --
+  // a newly-registered one, say -- lands here with non-null equal dates and
+  // non-empty rows. Mirrors buildChainTurnover's guard.
+  if (
+    startDate == null ||
+    endDate == null ||
+    startDate === endDate ||
+    list.length === 0
+  ) {
     return { ...base, ...EMPTY_TURNOVER };
   }
 
@@ -220,7 +232,15 @@ export function buildTurnoverChanges(
     start_date: startDate ?? null,
     end_date: endDate ?? null,
   };
-  if (startDate == null || endDate == null || list.length === 0) {
+  // Mirror buildTurnover's single-snapshot guard (#6352): comparing a snapshot
+  // to itself yields zero entered/exited/reassigned, which reads as "no churn
+  // observed" rather than "not comparable".
+  if (
+    startDate == null ||
+    endDate == null ||
+    startDate === endDate ||
+    list.length === 0
+  ) {
     return { ...base, ...EMPTY_TURNOVER_CHANGES };
   }
 

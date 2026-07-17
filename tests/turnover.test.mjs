@@ -7,6 +7,21 @@ import {
 } from "../src/turnover.mjs";
 
 describe("buildTurnover", () => {
+  test("two distinct snapshot dates still compute a real score (the #6352 guard is not over-broad)", () => {
+    const rows = [
+      { snapshot_date: "2026-06-01", hotkey: "A", uid: 1, validator_permit: 1 },
+      { snapshot_date: "2026-06-30", hotkey: "A", uid: 1, validator_permit: 1 },
+    ];
+    const data = buildTurnover(rows, 7, {
+      window: "30d",
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+    });
+    assert.equal(data.comparable, true);
+    assert.equal(data.validator_retention, 1);
+    assert.equal(data.stability_score, 100);
+  });
+
   test("cold / empty / non-array / no-window inputs yield a schema-stable empty block", () => {
     const cases = [
       { rows: [], opts: { window: "30d" } },
@@ -141,7 +156,11 @@ describe("buildTurnover", () => {
     assert.equal(data.stability_score, 42); // round((0.3333 + 0.5)/2 * 100)
   });
 
-  test("a single snapshot (start === end) is flagged not comparable but trivially stable", () => {
+  // #6352: this case previously asserted the fabricated scores the guard now
+  // prevents (validator_retention 1 / neuron_retention 1 / stability_score 100
+  // from scoring a snapshot against itself). comparable:false was already set,
+  // but a caller not checking that flag read a flawless subnet.
+  test("a single snapshot (start === end) is not comparable and scores null, not a trivial 100", () => {
     const rows = [
       {
         snapshot_date: "2026-06-30",
@@ -164,10 +183,10 @@ describe("buildTurnover", () => {
     assert.equal(data.comparable, false);
     assert.equal(data.validators_entered, 0);
     assert.equal(data.validators_exited, 0);
-    assert.equal(data.validator_retention, 1);
+    assert.equal(data.validator_retention, null);
     assert.equal(data.uids_deregistered, 0);
-    assert.equal(data.neuron_retention, 1);
-    assert.equal(data.stability_score, 100);
+    assert.equal(data.neuron_retention, null);
+    assert.equal(data.stability_score, null);
   });
 
   test("blank uid cells are skipped (not counted as uid 0)", () => {
@@ -277,6 +296,29 @@ describe("buildTurnover", () => {
 });
 
 describe("buildTurnoverChanges", () => {
+  // #6352: same missing guard. Comparing a snapshot to itself yields zero
+  // entered/exited/reassigned, which reads as "no churn observed" rather than
+  // "not comparable".
+  test("a single snapshot (start === end) with rows yields the empty changes block", () => {
+    const day = "2026-06-30";
+    const rows = [
+      { snapshot_date: day, hotkey: "A", uid: 1, validator_permit: 1 },
+      { snapshot_date: day, hotkey: "B", uid: 2, validator_permit: 1 },
+    ];
+    const data = buildTurnoverChanges(rows, 7, {
+      window: "30d",
+      startDate: day,
+      endDate: day,
+    });
+    assert.equal(data.comparable, false);
+    assert.deepEqual(data.validators_entered, []);
+    assert.deepEqual(data.validators_exited, []);
+    assert.deepEqual(data.uid_reassignments, []);
+    assert.equal(data.validators_entered_count, 0);
+    assert.equal(data.validators_exited_count, 0);
+    assert.equal(data.uid_reassignment_count, 0);
+  });
+
   test("cold / empty / non-array inputs yield schema-stable empty detail", () => {
     for (const rows of [[], null, undefined]) {
       const data = buildTurnoverChanges(rows, 7, { window: "30d" });
