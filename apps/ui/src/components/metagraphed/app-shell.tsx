@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
@@ -94,6 +94,35 @@ export function AppShell({
   // hamburger is this Sheet's only opener, so a direct ref is enough.)
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // #6417: the ⌘K palette (a Radix Dialog) has no <Dialog.Trigger> -- it opens
+  // from a global keydown, the omnibox, and the mobile search icon -- so Radix
+  // can't return focus on close and drops it to <body>. Capture what was focused
+  // when it opened, restore it on close for the discrete triggers (a keyboard-
+  // opened palette has no trigger, so restoring to wherever focus was is the
+  // correct fallback). paletteOpenRef lets the []-dep keydown handler tell an
+  // opening ⌘K from a closing one without re-subscribing.
+  const paletteReturnRef = useRef<HTMLElement | null>(null);
+  const paletteOpenRef = useRef(paletteOpen);
+  paletteOpenRef.current = paletteOpen;
+
+  const openPalette = useCallback(() => {
+    paletteReturnRef.current = (document.activeElement as HTMLElement | null) ?? null;
+    setPaletteOpen(true);
+  }, []);
+
+  const handlePaletteOpenChange = useCallback((next: boolean) => {
+    setPaletteOpen(next);
+    if (!next) {
+      const el = paletteReturnRef.current;
+      // Defer past Radix's own close-autofocus (which targets the absent trigger,
+      // i.e. <body>) -- a synchronous focus here would be overridden.
+      if (el && el.isConnected) {
+        requestAnimationFrame(() => {
+          if (el.isConnected) el.focus();
+        });
+      }
+    }
+  }, []);
   const [scrolled, setScrolled] = useState(false);
   const crumbs = useMemo(() => buildCrumbs(pathname), [pathname]);
   const parent = useMemo(() => parentCrumb(crumbs), [crumbs]);
@@ -125,17 +154,22 @@ export function AppShell({
         tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable);
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
+        // Capture only when opening, so a ⌘K that closes doesn't overwrite the
+        // pre-open element with something inside the dialog.
+        if (!paletteOpenRef.current) {
+          paletteReturnRef.current = (document.activeElement as HTMLElement | null) ?? null;
+        }
         setPaletteOpen((v) => !v);
         return;
       }
       if (e.key === "/" && !inField) {
         e.preventDefault();
-        setPaletteOpen(true);
+        openPalette();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [openPalette]);
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -166,7 +200,7 @@ export function AppShell({
               <span aria-hidden className="hidden lg:inline-block h-5 w-px bg-border mx-1" />
               <NavMegaMenu />
               <div className="flex-1 min-w-0 flex justify-end">
-                <NavOmnibox onOpenPalette={() => setPaletteOpen(true)} />
+                <NavOmnibox onOpenPalette={openPalette} />
                 {/* Below md the omnibox is hidden (#5034), which left the palette
                     reachable only via ⌘K / Ctrl+K / "/" — none of which exist on a
                     touch device, so mobile had no way into global search at all.
@@ -175,7 +209,7 @@ export function AppShell({
                     (#5319). */}
                 <button
                   type="button"
-                  onClick={() => setPaletteOpen(true)}
+                  onClick={openPalette}
                   aria-label="Open search"
                   title="Search"
                   className="md:hidden inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
@@ -327,7 +361,7 @@ export function AppShell({
 
           <SiteFooter />
           <ApiDrawer />
-          <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+          <CommandPalette open={paletteOpen} onOpenChange={handlePaletteOpenChange} />
           <ShortcutsPopover />
           <BackToTop />
         </div>
