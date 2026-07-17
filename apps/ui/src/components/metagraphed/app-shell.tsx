@@ -21,6 +21,7 @@ import {
 } from "@/lib/metagraphed/config";
 import { useApiBase } from "@/hooks/use-api-base";
 import { useEndpointHealth, type EndpointHealth } from "@/hooks/use-endpoint-health";
+import { useRestoreFocus } from "@/hooks/use-restore-focus";
 import { NetworkSwitcher } from "./network-switcher";
 import {
   Tooltip,
@@ -94,6 +95,21 @@ export function AppShell({
   // hamburger is this Sheet's only opener, so a direct ref is enough.)
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // #6417: the command palette opens from discrete buttons (mobile search icon,
+  // the omnibox "Full search" entry) that aren't in-tree Radix triggers, so on
+  // close Radix drops focus to <body>. Capture the opener on those paths and
+  // restore it when the palette closes. The global ⌘K / "/" keydown paths
+  // intentionally don't capture — there's no single trigger element, so leaving
+  // focus wherever it was is the correct fallback.
+  const paletteFocus = useRestoreFocus();
+  const openPaletteFromButton = () => {
+    paletteFocus.capture();
+    setPaletteOpen(true);
+  };
+  const onPaletteOpenChange = (next: boolean) => {
+    setPaletteOpen(next);
+    if (!next) paletteFocus.restore();
+  };
   const [scrolled, setScrolled] = useState(false);
   const crumbs = useMemo(() => buildCrumbs(pathname), [pathname]);
   const parent = useMemo(() => parentCrumb(crumbs), [crumbs]);
@@ -166,7 +182,7 @@ export function AppShell({
               <span aria-hidden className="hidden lg:inline-block h-5 w-px bg-border mx-1" />
               <NavMegaMenu />
               <div className="flex-1 min-w-0 flex justify-end">
-                <NavOmnibox onOpenPalette={() => setPaletteOpen(true)} />
+                <NavOmnibox onOpenPalette={openPaletteFromButton} />
                 {/* Below md the omnibox is hidden (#5034), which left the palette
                     reachable only via ⌘K / Ctrl+K / "/" — none of which exist on a
                     touch device, so mobile had no way into global search at all.
@@ -175,7 +191,7 @@ export function AppShell({
                     (#5319). */}
                 <button
                   type="button"
-                  onClick={() => setPaletteOpen(true)}
+                  onClick={openPaletteFromButton}
                   aria-label="Open search"
                   title="Search"
                   className="md:hidden inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
@@ -327,7 +343,7 @@ export function AppShell({
 
           <SiteFooter />
           <ApiDrawer />
-          <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+          <CommandPalette open={paletteOpen} onOpenChange={onPaletteOpenChange} />
           <ShortcutsPopover />
           <BackToTop />
         </div>
