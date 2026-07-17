@@ -17,6 +17,23 @@ function withFetchStub(stub, fn) {
   });
 }
 
+// A SCALE-encoded AccountInfo blob (#6506): nonce/consumers/providers/sufficients
+// (u32 LE each), then AccountData's free + reserved (u128 LE each).
+function accountInfoHex(freeRao, reservedRao = 0n) {
+  const u128 = (value) => {
+    let hex = "";
+    let rest = BigInt(value);
+    for (let index = 0; index < 16; index += 1) {
+      hex += Number(rest & 0xffn)
+        .toString(16)
+        .padStart(2, "0");
+      rest >>= 8n;
+    }
+    return hex;
+  };
+  return `0x${"00000000".repeat(4)}${u128(freeRao)}${u128(reservedRao)}`;
+}
+
 test("GET /accounts/{ss58}/balance returns balance_tao for a valid address", async () => {
   await withFetchStub(
     async (_url, _init) => ({
@@ -24,7 +41,13 @@ test("GET /accounts/{ss58}/balance returns balance_tao for a valid address", asy
       json: async () => ({
         jsonrpc: "2.0",
         id: 1,
-        result: { data: { free: 2_000_000_000, reserved: 500_000_000 } },
+        // SCALE AccountInfo (#6506): nonce/consumers/providers/sufficients
+        // (u32 LE each), then free = 2_000_000_000 and reserved = 500_000_000
+        // (u128 LE each) = 2_500_000_000 rao = 2.5 TAO.
+        result:
+          `0x${"00000000".repeat(4)}` +
+          "00943577000000000000000000000000" +
+          "0065cd1d000000000000000000000000",
       }),
     }),
     async () => {
@@ -105,17 +128,13 @@ test("GET /accounts/{ss58}/balance rejects overlong base58 before rate limiting 
 });
 
 test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC failure", async () => {
-  // No fetch mock — the Worker's global fetch will fail or env has no fetch.
-  // Simulate by providing an env whose fetch throws.
-  const env = {
-    fetch: async () => {
+  // The loader calls globalThis.fetch, so stub that to throw (#6506: this used to
+  // pass only because the real RPC rejected the bogus system_account method).
+  const res = await withFetchStub(
+    async () => {
       throw new Error("network error");
     },
-  };
-  const res = await handleRequest(
-    req(`/api/v1/accounts/${SS58}/balance`),
-    env,
-    {},
+    () => handleRequest(req(`/api/v1/accounts/${SS58}/balance`), {}, {}),
   );
   assert.equal(res.status, 200);
   const body = await res.json();
@@ -208,12 +227,8 @@ test("GET /accounts/{ss58}/balance decodes hex-encoded rao balances", async () =
       json: async () => ({
         jsonrpc: "2.0",
         id: 1,
-        result: {
-          data: {
-            free: "0x77359400", // 2_000_000_000 rao in hex
-            reserved: "0x1DCD6500", // 500_000_000 rao in hex
-          },
-        },
+        // free 2_000_000_000 + reserved 500_000_000 rao = 2.5 TAO
+        result: accountInfoHex(2_000_000_000n, 500_000_000n),
       }),
     }),
     async () => {
@@ -248,7 +263,7 @@ test("GET /accounts/{ss58}/balance keeps u128 rao precision above 2^53 (#2070)",
       json: async () => ({
         jsonrpc: "2.0",
         id: 1,
-        result: { data: { free: `0x${freeRao.toString(16)}` } },
+        result: accountInfoHex(freeRao),
       }),
     }),
     async () => {
@@ -285,7 +300,7 @@ test("GET /accounts/{ss58}/balance returns null when RPC data.free is absent", a
   await withFetchStub(
     async () => ({
       ok: true,
-      json: async () => ({ jsonrpc: "2.0", id: 1, result: { data: {} } }),
+      json: async () => ({ jsonrpc: "2.0", id: 1, result: "0xdeadbeef" }),
     }),
     async () => {
       const res = await handleRequest(
@@ -317,7 +332,7 @@ test("GET /accounts/{ss58}/balance writes to KV on successful RPC fetch", async 
       json: async () => ({
         jsonrpc: "2.0",
         id: 1,
-        result: { data: { free: 1_000_000_000, reserved: 0 } },
+        result: accountInfoHex(1_000_000_000n),
       }),
     }),
     async () => {
@@ -348,7 +363,7 @@ test("GET /accounts/{ss58}/balance tolerates KV write failure", async () => {
       json: async () => ({
         jsonrpc: "2.0",
         id: 1,
-        result: { data: { free: 1_000_000_000, reserved: 0 } },
+        result: accountInfoHex(1_000_000_000n),
       }),
     }),
     async () => {

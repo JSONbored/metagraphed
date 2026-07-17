@@ -11648,7 +11648,13 @@ describe("MCP account tools (get_account + events + subnets)", () => {
       json: async () => ({
         jsonrpc: "2.0",
         id: 1,
-        result: { data: { free: 2_000_000_000, reserved: 500_000_000 } },
+        // SCALE AccountInfo (#6506): u32 nonce/consumers/providers/sufficients,
+        // then free 2_000_000_000 + reserved 500_000_000 rao (u128 LE) = 2.5 TAO.
+        result:
+          "0x" +
+          "00000000".repeat(4) +
+          "00943577000000000000000000000000" +
+          "0065cd1d000000000000000000000000",
       }),
     });
     try {

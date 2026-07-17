@@ -27,6 +27,24 @@ export const BALANCE_NEGATIVE_KV_TTL = 10; // seconds
 export const BALANCE_RPC_TIMEOUT_MS = 5000;
 const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
+// System::Account(AccountId) storage prefix = twox128("System") ++ twox128("Account").
+// Hard-coded: both halves are fixed runtime constants (the pallet/storage names
+// never change), and computing them would need an xxhash dependency this repo
+// doesn't carry — whereas blake2_128Concat below reuses the @noble/hashes blake2b
+// already imported for the SS58 checksum. Verified against a live finney
+// state_getStorage response.
+const SYSTEM_ACCOUNT_STORAGE_PREFIX =
+  "26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9";
+const ACCOUNT_ID_LENGTH = 32;
+// SCALE AccountInfo: nonce/consumers/providers/sufficients (u32 LE each = 16
+// bytes), then AccountData whose first two fields are free + reserved (u128 LE
+// each). Only free+reserved are read; the trailing frozen/flags (or legacy
+// misc_frozen/fee_frozen) fields are ignored, so both AccountData layouts decode.
+const ACCOUNT_DATA_FREE_OFFSET = 16;
+const ACCOUNT_DATA_RESERVED_OFFSET = 32;
+const U128_BYTES = 16;
+const RAO_PER_TAO = 1_000_000_000n;
+
 function decodeBase58(value) {
   const bytes = [0];
   for (const char of value) {
@@ -82,6 +100,67 @@ export function isFinneySs58Address(value) {
   );
 }
 
+function toHex(bytes) {
+  let out = "";
+  for (const byte of bytes) out += byte.toString(16).padStart(2, "0");
+  return out;
+}
+
+function hexToBytes(hex) {
+  const body = hex.startsWith("0x") ? hex.slice(2) : hex;
+  if (body.length === 0 || body.length % 2 !== 0) return null;
+  const bytes = new Uint8Array(body.length / 2);
+  for (let index = 0; index < bytes.length; index += 1) {
+    const byte = Number.parseInt(body.slice(index * 2, index * 2 + 2), 16);
+    if (Number.isNaN(byte)) return null;
+    bytes[index] = byte;
+  }
+  return bytes;
+}
+
+function readU128Le(bytes, offset) {
+  let value = 0n;
+  for (let index = U128_BYTES - 1; index >= 0; index -= 1) {
+    value = (value << 8n) | BigInt(bytes[offset + index]);
+  }
+  return value;
+}
+
+// The 32-byte AccountId inside a finney SS58 (prefix byte, then AccountId32, then
+// the 2-byte checksum). Callers shape-check the address with isFinneySs58Address.
+function accountIdFromSs58(ss58) {
+  const decoded = decodeBase58(ss58);
+  if (decoded?.length !== FINNEY_SS58_DECODED_LENGTH) return null;
+  return decoded.subarray(1, 1 + ACCOUNT_ID_LENGTH);
+}
+
+// System::Account(accountId) = twox128("System") ++ twox128("Account")
+// ++ blake2_128Concat(accountId), where blake2_128Concat(x) = blake2b-128(x) ++ x.
+export function systemAccountStorageKey(accountId) {
+  return `0x${SYSTEM_ACCOUNT_STORAGE_PREFIX}${toHex(
+    blake2b(accountId, { dkLen: 16 }),
+  )}${toHex(accountId)}`;
+}
+
+// free + reserved (in rao) from a state_getStorage AccountInfo response, or null
+// when the node reported an error or returned an undecodable blob.
+export function accountInfoTotalRao(rpcBody) {
+  if (!rpcBody || rpcBody.error) return null;
+  const result = rpcBody.result;
+  // A never-seen account has no System::Account entry at all — that is a
+  // successful read of a zero balance, not an RPC failure.
+  if (result == null) return 0n;
+  if (typeof result !== "string") return null;
+  const bytes = hexToBytes(result);
+  if (!bytes || bytes.length < ACCOUNT_DATA_RESERVED_OFFSET + U128_BYTES) {
+    return null;
+  }
+  return (
+    readU128Le(bytes, ACCOUNT_DATA_FREE_OFFSET) +
+    readU128Le(bytes, ACCOUNT_DATA_RESERVED_OFFSET)
+  );
+}
+
 // Query live balance for one finney ss58. Uses METAGRAPH_CONTROL KV (60s TTL) when
 // present; balance_tao is null on RPC failure (schema-stable, never throws).
 export async function loadAccountBalance(env, ss58) {
@@ -102,6 +181,10 @@ export async function loadAccountBalance(env, ss58) {
   let rpcOk = false;
 
   try {
+    // `system_account` is NOT a real RPC method (finney answers -32601 "Method
+    // not found"), so this route returned null for every address (#6506). Read
+    // the System::Account storage entry directly instead — the same thing the
+    // absent method would have wrapped.
     const rpcResp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -109,24 +192,17 @@ export async function loadAccountBalance(env, ss58) {
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
-        method: "system_account",
-        params: [ss58],
+        method: "state_getStorage",
+        params: [systemAccountStorageKey(accountIdFromSs58(ss58))],
       }),
     });
     if (rpcResp.ok) {
-      const rpcBody = await rpcResp.json();
-      const data = rpcBody?.result?.data;
-      if (data && typeof data.free !== "undefined") {
+      const totalRao = accountInfoTotalRao(await rpcResp.json());
+      if (totalRao != null) {
         // Sum in BigInt rao space, then divide once — avoids float precision loss
         // on large on-chain balances before converting the remainder to TAO.
-        const toRao = (v) =>
-          typeof v === "string"
-            ? BigInt(v)
-            : BigInt(Math.trunc(Number(v ?? 0)));
-        const totalRao = toRao(data.free) + toRao(data.reserved);
         balanceTao =
-          Number(totalRao / 1_000_000_000n) +
-          Number(totalRao % 1_000_000_000n) / 1e9;
+          Number(totalRao / RAO_PER_TAO) + Number(totalRao % RAO_PER_TAO) / 1e9;
         rpcOk = true;
       }
     }
