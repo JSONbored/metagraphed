@@ -7,6 +7,7 @@ import { Boxes, Coins, Gauge, Percent, TriangleAlert, Users, Zap } from "lucide-
 import { useWallet } from "@/hooks/use-wallet";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -290,6 +291,27 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             </span>
             <span className="inline-flex max-w-full min-w-0 rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
               <CopyableCode value={hotkey} truncate={false} className="max-w-full" />
+            </span>
+            {/* #6427: the payload already carries the owning coldkey -- it was
+                only ever read for the owner check that gates the take modal, so
+                a visitor had no way to see which account operates this hotkey.
+                Public and unconditional, beside the hotkey it belongs to.
+                AccountAddress is the app's shared ss58 treatment (accounts link
+                + hover preview + copy) and covers a coldkey as readily as a
+                hotkey; its `fallback` handles the null the API normalizes an
+                absent coldkey to. `break-all` so the full 48-char address wraps
+                on a 375px viewport instead of escaping it. */}
+            <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[11px]">
+              <span className="shrink-0 font-mono uppercase tracking-widest text-ink-muted">
+                Coldkey
+              </span>
+              <span className="min-w-0 break-all font-mono text-ink-strong">
+                <AccountAddress
+                  ss58={detail.coldkey}
+                  truncate={false}
+                  fallback={<span className="text-ink-muted">Not reported</span>}
+                />
+              </span>
             </span>
           </span>
         }
