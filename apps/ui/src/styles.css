@@ -15,3 +15,18 @@
 
 @import "@jsonbored/ui-kit/styles.css";
 @import "./styles/fumadocs-theme.css";
+
+/* #6421: on-brand focus ring for a hash-nav target (the heading/section
+   useHashScroll focuses). Replaces the browser's boxy default outline with the
+   app's soft accent ring + offset, matching the `focus-visible:ring-2 ring-ring`
+   treatment interactive elements use. Programmatic focus fires `:focus` but not
+   `:focus-visible`, so this targets `:focus`; the `mg-hash-focus` class persists
+   harmlessly and only paints while the element is actually focused. */
+.mg-hash-focus:focus-visible,
+.mg-hash-focus:focus {
+  outline: none;
+  border-radius: 0.5rem;
+  box-shadow:
+    0 0 0 2px var(--background, var(--paper, #fff)),
+    0 0 0 4px var(--ring);
+}
