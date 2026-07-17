@@ -23,7 +23,7 @@ import {
 } from "../src/graphql.mjs";
 import { LEADERBOARD_BOARDS } from "../src/health-serving.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { resolveClientIp } from "../workers/config.mjs";
+import { DAY_MS, resolveClientIp } from "../workers/config.mjs";
 import {
   KV_ECONOMICS_CURRENT,
   KV_HEALTH_CURRENT,
@@ -6985,11 +6985,19 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 
   test("no Postgres tier flag: aggregates surface_uptime_daily rows straight off D1", async () => {
+    // loadBulkHealthTrends buckets rows by real Date.now() (no fake-clock
+    // override threaded through this resolver, matching the REST/MCP
+    // callers) -- a hardcoded absolute date here would silently fall out of
+    // the 7d window as real time passes. Two days ago is safely inside both
+    // the 7d and 30d windows regardless of when this test actually runs.
+    const twoDaysAgo = new Date(Date.now() - 2 * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
     const env = {
       METAGRAPH_HEALTH_DB: bulkTrendsD1([
         {
           netuid: 7,
-          date: "2026-07-09",
+          date: twoDaysAgo,
           total: 10,
           ok_count: 9,
           avg_latency_ms: 50,
