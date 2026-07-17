@@ -100,7 +100,8 @@ test("GET /accounts/{ss58}/history rejects malformed ?from / ?to", async () => {
   assert.equal(bad.status, 400);
   const body = await bad.json();
   assert.equal(body.ok, false);
-  assert.equal(body.error.code, "invalid_param");
+  assert.equal(body.error.code, "invalid_query");
+  assert.equal(body.meta.parameter, "from");
 });
 
 test("GET /accounts/{ss58}/history rejects an unsupported query param", async () => {

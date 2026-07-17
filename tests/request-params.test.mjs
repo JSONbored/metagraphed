@@ -212,13 +212,19 @@ describe("parseDateRange", () => {
 
   test("errors on a malformed from bound", () => {
     const result = parseDateRange(url("from=June"));
-    assert.equal(result.error, "from/to must be YYYY-MM-DD dates.");
+    assert.deepEqual(result.error, {
+      parameter: "from",
+      message: "from must be a YYYY-MM-DD date.",
+    });
     assert.equal(result.from, undefined);
   });
 
   test("errors on a malformed to bound even when from is valid", () => {
     const result = parseDateRange(url("from=2026-06-01&to=nope"));
-    assert.equal(result.error, "from/to must be YYYY-MM-DD dates.");
+    assert.deepEqual(result.error, {
+      parameter: "to",
+      message: "to must be a YYYY-MM-DD date.",
+    });
   });
 
   test("is format-only — accepts a present but out-of-range date", () => {

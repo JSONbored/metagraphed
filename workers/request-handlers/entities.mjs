@@ -2931,7 +2931,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const range = parseDateRange(url);
-  if (range.error) return errorResponse("invalid_param", range.error, 400);
+  if (range.error) return analyticsQueryError(range.error);
   const { from, to } = range;
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const netuid = url.searchParams.get("netuid");
@@ -2939,11 +2939,10 @@ export async function handleAccountHistory(request, env, ss58, url) {
     netuid != null &&
     (!/^\d+$/.test(netuid) || !Number.isSafeInteger(Number(netuid)))
   ) {
-    return errorResponse(
-      "invalid_param",
-      "netuid must be a non-negative integer.",
-      400,
-    );
+    return analyticsQueryError({
+      parameter: "netuid",
+      message: "netuid must be a non-negative integer.",
+    });
   }
   // Inverted YYYY-MM-DD bounds are a deterministic no-match. Short-circuit before
   // D1 so callers cannot force a scan to prove an impossible empty page.

@@ -116,8 +116,15 @@ export function parseNonNegativeIntParam(raw, parameter) {
 export function parseDateRange(url) {
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
-  if ((from && !DAY_PATTERN.test(from)) || (to && !DAY_PATTERN.test(to))) {
-    return { error: "from/to must be YYYY-MM-DD dates." };
+  if (from && !DAY_PATTERN.test(from)) {
+    return {
+      error: { parameter: "from", message: "from must be a YYYY-MM-DD date." },
+    };
+  }
+  if (to && !DAY_PATTERN.test(to)) {
+    return {
+      error: { parameter: "to", message: "to must be a YYYY-MM-DD date." },
+    };
   }
   return { from: from || null, to: to || null };
 }

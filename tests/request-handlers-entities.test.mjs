@@ -2750,7 +2750,8 @@ describe("handleAccountHistory", () => {
       url(`/api/v1/accounts/${SS58}/history?from=June`),
     );
     const body = await errorJson(res);
-    assert.equal(body.error.code, "invalid_param");
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "from");
   });
 
   test("rejects malformed netuid filters with 400", async () => {
@@ -2764,7 +2765,8 @@ describe("handleAccountHistory", () => {
         url(`/api/v1/accounts/${SS58}/history?netuid=${netuid}`),
       );
       const body = await errorJson(res);
-      assert.equal(body.error.code, "invalid_param");
+      assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "netuid");
     }
   });
 
