@@ -43,6 +43,7 @@ import { searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { isCompositeExtrinsicRef } from "@/lib/metagraphed/extrinsics";
 import { isCopySelectedKey } from "@/lib/metagraphed/command-palette-keys";
 import { getDocsNav } from "@/lib/docs-nav.functions";
 import {
@@ -461,6 +462,19 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
         target: { to: "/blocks/$ref", params: { ref: q } },
         kind: "block",
         icon: Hash,
+      });
+    }
+    // Parity with nav-omnibox (#6578): a composite extrinsic ref like "123#4"
+    // (block-number#index) is a direct-nav target there but fell through to
+    // keyword search here. It can't collide with the decimal-block or 0x-hash
+    // branches above -- the "#index" segment excludes it from both.
+    if (isCompositeExtrinsicRef(q)) {
+      targets.push({
+        label: `Extrinsic ${q}`,
+        hint: "jump to extrinsic by block#index",
+        target: { to: "/extrinsics/$hash", params: { hash: q } },
+        kind: "extrinsic",
+        icon: ArrowRightLeft,
       });
     }
     const netuidMatch = /^(?:sn\s*(\d+)|netuid\s*(\d+))$/i.exec(q);
