@@ -45,8 +45,8 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
         <SheetHeader>
           <SheetTitle className="font-display text-lg">Compare with another subnet</SheetTitle>
           <SheetDescription>
-            Pick any active netuid (0–1024). Differences in pool ratio, top providers, and
-            endpoint health are highlighted.
+            Pick any active netuid (0–1024). Differences in pool ratio, top providers, and endpoint
+            health are highlighted.
           </SheetDescription>
         </SheetHeader>
 
