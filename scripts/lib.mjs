@@ -171,6 +171,34 @@ export function netuidFromEvidenceSubject(subject) {
   return null;
 }
 
+/**
+ * Read a CLI flag's value, accepting both `--flag=value` and `--flag value`.
+ *
+ * `scripts/` grew both conventions independently: some parsers match `--flag=`
+ * only (r2-download.mjs), while others take the next argv entry (subnet-new.mjs,
+ * curation-brief.mjs, and endpoint-ops-brief.mjs's own `valueAfter`). A parser
+ * that accepts only one form silently ignores the other -- no error, no warning,
+ * the flag is simply dropped and the default applies instead. That is exactly
+ * how endpoint-ops-brief.mjs came to document `--prefix latest/` for a script
+ * that only reads `--prefix=` (#6365).
+ *
+ * Accepting both is what enrichment-issues.mjs's `getOpt` already does; this is
+ * that behaviour, shared and unit-tested.
+ *
+ * A following token starting with `--` is treated as the next flag rather than
+ * this one's value, so `--prefix --write` falls back instead of silently
+ * downloading a prefix literally named "--write".
+ */
+export function flagValue(argv, flag, fallback = undefined) {
+  const equals = argv.find((arg) => arg.startsWith(`${flag}=`));
+  if (equals !== undefined) return equals.slice(flag.length + 1);
+  const index = argv.indexOf(flag);
+  if (index < 0) return fallback;
+  const next = argv[index + 1];
+  if (next === undefined || next.startsWith("--")) return fallback;
+  return next;
+}
+
 export async function readJson(filePath) {
   const raw = await fs.readFile(filePath, "utf8");
   return JSON.parse(raw);
