@@ -273,6 +273,17 @@ export const API_QUERY_COLLECTIONS = {
     sort: ["eligible_count", "endpoint_count", "id", "kind"],
     rangeFilters: ["eligible_count", "endpoint_count"],
   }),
+  // rpc/pools is the RPC-specific sibling of endpoint-pools; the artifact is the
+  // same pool shape (pools[].{id,kind,eligible_count,endpoint_count}), so it
+  // takes the identical list-query surface (#6570).
+  "rpc-pools": queryCollection("pools", {
+    filters: {
+      id: filterTextSchema,
+      kind: enumSchema(["subtensor-rpc", "subtensor-wss", "archive"]),
+    },
+    sort: ["eligible_count", "endpoint_count", "id", "kind"],
+    rangeFilters: ["eligible_count", "endpoint_count"],
+  }),
   "endpoint-incidents": queryCollection("incidents", {
     filters: {
       netuid: integerSchema,
@@ -3885,6 +3896,7 @@ export const API_ROUTES = [
     "Fetch endpoint pool scores.",
     "short",
     ["rpc"],
+    listQuery("rpc-pools"),
   ),
   route(
     "endpoint-pools",
