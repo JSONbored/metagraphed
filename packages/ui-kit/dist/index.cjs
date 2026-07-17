@@ -3098,6 +3098,8 @@ function synthesizeDonutAriaLabel(segments) {
   if (total <= 0) return "Donut chart with no data";
   return chartSegmentsAriaLabel(segments);
 }
+var SPARKLINE_EMPTY_ARIA_LABEL = "Sparkline chart with no data";
+var CANDLESTICK_MINI_EMPTY_ARIA_LABEL = "Candlestick chart with no data";
 function BarMini({
   data,
   max,
@@ -3168,7 +3170,8 @@ function CandlestickMini({
         preserveAspectRatio: "none",
         className: `block max-w-full ${className ?? ""}`,
         style: { maxWidth: width },
-        "aria-label": ariaLabel,
+        role: "img",
+        "aria-label": ariaLabel ?? CANDLESTICK_MINI_EMPTY_ARIA_LABEL,
         children: /* @__PURE__ */ jsxRuntime.jsx(
           "line",
           {
@@ -3518,7 +3521,8 @@ function Sparkline({
         preserveAspectRatio: "none",
         className: `block max-w-full ${className ?? ""}`,
         style: { maxWidth: width },
-        "aria-label": ariaLabel,
+        role: "img",
+        "aria-label": ariaLabel ?? SPARKLINE_EMPTY_ARIA_LABEL,
         children: /* @__PURE__ */ jsxRuntime.jsx(
           "line",
           {

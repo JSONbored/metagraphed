@@ -4,6 +4,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { CANDLESTICK_MINI_EMPTY_ARIA_LABEL } from "./chart-aria";
 
 export interface CandlestickDatum {
   /** Timestamp label, e.g. an ISO string or a formatted "12:00 UTC". */
@@ -76,7 +77,10 @@ export function CandlestickMini({
         preserveAspectRatio="none"
         className={`block max-w-full ${className ?? ""}`}
         style={{ maxWidth: width }}
-        aria-label={ariaLabel}
+        // #6375: same gap as Sparkline's empty branch -- no role, and no name
+        // at all when ariaLabel is omitted.
+        role="img"
+        aria-label={ariaLabel ?? CANDLESTICK_MINI_EMPTY_ARIA_LABEL}
       >
         <line
           x1={0}

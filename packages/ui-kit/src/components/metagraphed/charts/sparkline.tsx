@@ -4,6 +4,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { SPARKLINE_EMPTY_ARIA_LABEL } from "./chart-aria";
 
 export interface SparklinePoint {
   /** Timestamp label, e.g. "12:40 UTC" */
@@ -63,7 +64,11 @@ export function Sparkline({
         preserveAspectRatio="none"
         className={`block max-w-full ${className ?? ""}`}
         style={{ maxWidth: width }}
-        aria-label={ariaLabel}
+        // #6375: without role="img" the aria-label here was not reliably
+        // exposed, and an omitted ariaLabel left the placeholder an unnamed
+        // graphic -- the populated branch below has always set both.
+        role="img"
+        aria-label={ariaLabel ?? SPARKLINE_EMPTY_ARIA_LABEL}
       >
         <line
           x1={0}
