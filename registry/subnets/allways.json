@@ -194,7 +194,8 @@
       },
       "provider": "allways",
       "public_safe": true,
-      "url": "https://api.all-ways.io/miners/leaderboard"
+      "url": "https://api.all-ways.io/miners/leaderboard",
+      "source_urls": ["https://api.all-ways.io/swagger-json"]
     },
     {
       "auth_required": false,
@@ -272,28 +273,6 @@
       "provider": "allways",
       "public_safe": true,
       "url": "https://api.all-ways.io/sse"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "id": "sn-7-allways-data-artifact",
-      "kind": "data-artifact",
-      "name": "Allways community data-artifact",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "allways",
-      "public_safe": true,
-      "review": {
-        "confidence": "medium",
-        "state": "community-submitted",
-        "submitted_by": "kiannidev"
-      },
-      "source_urls": ["https://api.all-ways.io/swagger-json"],
-      "url": "https://api.all-ways.io/miners/leaderboard"
     },
     {
       "auth_required": false,
