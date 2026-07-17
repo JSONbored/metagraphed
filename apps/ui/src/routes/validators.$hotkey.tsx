@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -35,6 +35,7 @@ import {
 } from "@/lib/metagraphed/validator-apy";
 import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
 import { subnetPositionSearch } from "@/lib/metagraphed/subnet-position-link";
+import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
 
 const validatorDetailSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d", "90d"]), "30d").default("30d"),
@@ -48,7 +49,25 @@ const validatorDetailSearchSchema = z.object({
 
 export const Route = createFileRoute("/validators/$hotkey")({
   validateSearch: zodValidator(validatorDetailSearchSchema),
+  // #6429: validate the hotkey at the router level, matching blocks.$ref.tsx
+  // (#3422) and subnets.$netuid.tsx. parseParams runs before head()/the loader,
+  // so an invalid hotkey renders the real not-found boundary instead of a
+  // fully-formed page whose metadata interpolates the bad param.
+  parseParams: ({ hotkey }) => {
+    if (!isValidSs58(hotkey)) throw notFound();
+    return { hotkey };
+  },
   head: ({ params }) => {
+    // See accounts.$ss58.tsx: parseParams rejects a malformed hotkey, but head()
+    // still runs with the raw param (the already-validating /blocks and /subnets
+    // routes title invalid ids the same way today), so the not-found metadata is
+    // guarded here too (#6429).
+    if (!isValidSs58(params.hotkey)) {
+      return entityNotFoundMeta(
+        "Validator",
+        "This validator identifier is not a valid Bittensor ss58 hotkey.",
+      );
+    }
     const label = shortHash(params.hotkey) ?? params.hotkey;
     return {
       meta: [
@@ -65,6 +84,20 @@ export const Route = createFileRoute("/validators/$hotkey")({
       ],
     };
   },
+  notFoundComponent: () => (
+    <AppShell>
+      <PageHeading
+        eyebrow="Explorer"
+        title="Invalid hotkey"
+        description="Validator hotkeys must be a valid ss58 (base58) string."
+      />
+      <EmptyState
+        title="Invalid hotkey"
+        description="Use a valid validator hotkey ss58 address."
+        action={{ label: "Back to validators", href: "/validators" }}
+      />
+    </AppShell>
+  ),
   component: ValidatorDetailPage,
 });
 
@@ -81,23 +114,9 @@ function ValidatorDetailPage() {
   );
 }
 
+// The router's parseParams guarantees a well-formed hotkey here (#6429), so this
+// no longer re-checks it -- same shape as blocks.$ref.tsx's BlockDetailPage.
 function ValidatorDetailGate({ hotkey }: { hotkey: string }) {
-  if (!isValidSs58(hotkey)) {
-    return (
-      <>
-        <PageHeading
-          eyebrow="Explorer"
-          title="Invalid hotkey"
-          description="Validator hotkeys must be a valid ss58 (base58) string."
-        />
-        <EmptyState
-          title="Invalid hotkey"
-          description="Use a valid validator hotkey ss58 address."
-          action={{ label: "Back to validators", href: "/validators" }}
-        />
-      </>
-    );
-  }
   return <ValidatorDetail hotkey={hotkey} />;
 }
 
