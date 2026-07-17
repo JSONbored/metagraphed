@@ -33,6 +33,7 @@ import {
   formatTakePct,
 } from "@/lib/metagraphed/validator-apy";
 import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
+import { subnetPositionSearch } from "@/lib/metagraphed/subnet-position-link";
 
 const validatorDetailSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d", "90d"]), "30d").default("30d"),
@@ -141,6 +142,10 @@ function SubnetPerformanceTable({
                 <Link
                   to="/subnets/$netuid"
                   params={{ netuid: s.netuid }}
+                  // Deep-link straight to this row's neuron card rather than the
+                  // subnet overview -- the uid is right here in the next cell, and
+                  // subnets.$netuid.tsx already reads `tab`/`uid` to render it.
+                  search={subnetPositionSearch(s.uid)}
                   className="text-ink-strong hover:text-accent hover:underline"
                 >
                   SN{s.netuid}
