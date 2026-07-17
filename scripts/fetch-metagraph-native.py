@@ -109,24 +109,39 @@ def main():
         if mechid == 0 or nu not in by_netuid:
             by_netuid[nu] = info
 
+    errors = []
+
     def storage_vec(netuid, name):
         try:
             r = s.substrate.query("SubtensorModule", name, [netuid])
             return list(getattr(r, "value", r) or [])
-        except Exception:
+        except Exception as exc:
+            # A per-netuid storage read failing must not silently null out
+            # that subnet's data with no signal (metagraphed-infra#62) --
+            # record it and keep going (matching fetch-subnet-hyperparams.py's
+            # accumulate-and-fail-at-the-end pattern) rather than either
+            # crashing the whole run on one flaky call while every other
+            # subnet is fine, or silently emitting validator_trust=None for
+            # this subnet as if that were valid data.
+            errors.append(f"netuid={netuid}: {name} storage read failed: {exc}")
             return []
 
     def delegate_takes():
         """SubtensorModule::Delegates: hotkey (SS58) -> take (u16 raw), a flat
-        StorageMap with no netuid key — fetched once for the whole network."""
-        try:
-            takes = {}
-            for key, value in s.substrate.query_map("SubtensorModule", "Delegates"):
-                hotkey = getattr(key, "value", key)
-                takes[hotkey] = u16_ratio(getattr(value, "value", value))
-            return takes
-        except Exception:
-            return {}
+        StorageMap with no netuid key — fetched once for the whole network.
+        Deliberately NOT wrapped in try/except (metagraphed-infra#62): this is
+        a single global read, not a per-netuid one, so there's no "keep going
+        for the other subnets" case to preserve here -- a failure means every
+        row's `take` would be wrong, so the run must fail outright (an
+        uncaught exception here crashes the script with a non-zero exit,
+        which is what should happen) rather than silently emit take=None for
+        every neuron network-wide.
+        """
+        takes = {}
+        for key, value in s.substrate.query_map("SubtensorModule", "Delegates"):
+            hotkey = getattr(key, "value", key)
+            takes[hotkey] = u16_ratio(getattr(value, "value", value))
+        return takes
 
     takes = delegate_takes()
     captured_at = int(time.time() * 1000)
@@ -198,8 +213,17 @@ def main():
     with open(OUT, "w") as fh:
         json.dump(valid, fh)
     sys.stderr.write(
-        f"wrote {len(valid)} neurons across {len(by_netuid)} subnets -> {OUT}\n"
+        f"wrote {len(valid)} neurons across {len(by_netuid)} subnets "
+        f"({len(errors)} error(s)) -> {OUT}\n"
     )
+    for err in errors:
+        sys.stderr.write(f"  {err}\n")
+    # This feeds a full-snapshot loader -- a partial ValidatorTrust read for
+    # even one subnet must fail the run instead of authenticating a
+    # degraded snapshot as complete (metagraphed-infra#62), matching
+    # fetch-subnet-hyperparams.py's own exit-on-any-error convention.
+    if errors:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
