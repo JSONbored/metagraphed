@@ -14,6 +14,18 @@ import {
   readJson,
   repoRoot,
 } from "./lib.mjs";
+import { buildBlockFeed } from "../src/blocks.mjs";
+import { buildExtrinsicFeed } from "../src/extrinsics.mjs";
+import { buildAccountEvents } from "../src/account-events.mjs";
+import { buildSubnetMetagraph } from "../src/metagraph-neurons.mjs";
+import { buildSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
+import { buildAccountIdentity } from "../src/account-identity.mjs";
+import { buildSubnetIdentityHistory } from "../src/subnet-identity-history.mjs";
+import { formatRpcUsage } from "../src/health-serving.mjs";
+import {
+  BLOCK_PAGINATION,
+  FEED_PAGINATION,
+} from "../workers/request-params.mjs";
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
@@ -1622,6 +1634,266 @@ for (const [route, assertion] of checks) {
   assert.equal(body.schema_version, 1, `${route}: expected schema_version 1`);
   validateWorkerResponse(route, body);
   assertion(body);
+}
+
+// #6359: production wrangler.jsonc flips eight METAGRAPH_*_SOURCE flags to
+// "postgres", so the live Worker serves these routes via tryPostgresTier →
+// DATA_API. The cold harness above never sets those flags, so AJV only saw the
+// D1/empty fallback. Validate one representative route per flag with a DATA_API
+// mock whose body is built by the same src/* builders workers/data-api.mjs uses.
+{
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const OBSERVED_AT_MS = 1_750_009_000_000;
+  const BLOCK_NUM = 1_000_000;
+  const HASH = `0x${"a".repeat(64)}`;
+  const IDENTITY_HASH = "a".repeat(64);
+
+  const blockRow = {
+    block_number: BLOCK_NUM,
+    block_hash: HASH,
+    parent_hash: `0x${"b".repeat(64)}`,
+    author: "5AuthorExample12345678901234567890123456789012",
+    extrinsic_count: 5,
+    event_count: 20,
+    spec_version: 201,
+    observed_at: OBSERVED_AT_MS,
+  };
+  const extrinsicRow = {
+    block_number: BLOCK_NUM,
+    extrinsic_index: 2,
+    extrinsic_hash: HASH,
+    signer: SS58,
+    call_module: "SubtensorModule",
+    call_function: "add_stake",
+    call_args: null,
+    fee_tao: 0.0125,
+    tip_tao: 0,
+    success: 1,
+    observed_at: OBSERVED_AT_MS,
+  };
+  const accountEventRow = {
+    block_number: BLOCK_NUM,
+    event_index: 1,
+    event_kind: "StakeAdded",
+    hotkey: SS58,
+    coldkey: null,
+    netuid: 7,
+    uid: 3,
+    amount_tao: 1.5,
+    alpha_amount: null,
+    observed_at: OBSERVED_AT_MS,
+    extrinsic_index: 2,
+  };
+  const neuronRow = {
+    uid: 3,
+    hotkey: SS58,
+    coldkey: "5ColdkeyExample123456789012345678901234567890",
+    active: 1,
+    validator_permit: 1,
+    rank: 0.5,
+    trust: 0.9,
+    validator_trust: 0.8,
+    consensus: 0.7,
+    incentive: 0.6,
+    dividends: 0.4,
+    emission_tao: 1.23,
+    stake_tao: 456.7,
+    registered_at_block: 100,
+    is_immunity_period: 0,
+    axon: "1.2.3.4:9000",
+    take: null,
+    block_number: BLOCK_NUM,
+    captured_at: OBSERVED_AT_MS,
+  };
+  const hyperparamsRow = {
+    netuid: 7,
+    tempo: 360,
+    registration_allowed: 1,
+    commit_reveal_enabled: 0,
+    liquid_alpha_enabled: 0,
+    subnet_is_active: 1,
+    transfers_enabled: 1,
+    bonds_reset_enabled: 0,
+    user_liquidity_enabled: 0,
+    owner_cut_enabled: 0,
+    owner_cut_auto_lock_enabled: 0,
+    block_number: BLOCK_NUM,
+    captured_at: OBSERVED_AT_MS,
+  };
+  const identityRow = {
+    account: SS58,
+    name: "Example Operator",
+    url: "https://example.com",
+    github: null,
+    image: null,
+    discord: null,
+    description: null,
+    additional: null,
+    captured_at: OBSERVED_AT_MS,
+  };
+  const identityHistoryRow = {
+    block_number: BLOCK_NUM,
+    observed_at: OBSERVED_AT_MS,
+    subnet_name: "Example Subnet",
+    symbol: null,
+    description: null,
+    github_repo: null,
+    subnet_url: null,
+    discord: null,
+    logo_url: null,
+    identity_hash: IDENTITY_HASH,
+  };
+
+  const postgresTierChecks = [
+    {
+      flag: "METAGRAPH_BLOCKS_SOURCE",
+      route: "/api/v1/blocks",
+      upstreamPath: "/api/v1/blocks",
+      data: buildBlockFeed([blockRow], {
+        limit: BLOCK_PAGINATION.defaultLimit,
+        offset: 0,
+        nextCursor: null,
+      }),
+      assertion: (body) =>
+        assert.equal(body.data.blocks[0].block_number, BLOCK_NUM),
+    },
+    {
+      flag: "METAGRAPH_EXTRINSICS_SOURCE",
+      route: "/api/v1/extrinsics",
+      upstreamPath: "/api/v1/extrinsics",
+      data: buildExtrinsicFeed([extrinsicRow], {
+        limit: BLOCK_PAGINATION.defaultLimit,
+        offset: 0,
+        nextCursor: null,
+      }),
+      assertion: (body) => assert.equal(body.data.extrinsics[0].signer, SS58),
+    },
+    {
+      flag: "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      route: `/api/v1/accounts/${SS58}/events`,
+      upstreamPath: `/api/v1/accounts/${SS58}/events`,
+      data: buildAccountEvents([accountEventRow], SS58, {
+        limit: FEED_PAGINATION.defaultLimit,
+        offset: 0,
+        nextCursor: null,
+      }),
+      assertion: (body) => assert.equal(body.data.events[0].netuid, 7),
+    },
+    {
+      flag: "METAGRAPH_NEURONS_SOURCE",
+      route: "/api/v1/subnets/7/metagraph",
+      upstreamPath: "/api/v1/subnets/7/metagraph",
+      data: buildSubnetMetagraph([neuronRow], 7),
+      assertion: (body) => assert.equal(body.data.neurons[0].uid, 3),
+    },
+    {
+      flag: "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+      route: "/api/v1/subnets/7/hyperparameters",
+      upstreamPath: "/api/v1/subnets/7/hyperparameters",
+      data: buildSubnetHyperparams(hyperparamsRow, 7),
+      assertion: (body) => assert.equal(body.data.hyperparameters.tempo, 360),
+    },
+    {
+      flag: "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+      route: `/api/v1/accounts/${SS58}/identity`,
+      upstreamPath: `/api/v1/accounts/${SS58}/identity`,
+      data: buildAccountIdentity(identityRow, SS58),
+      assertion: (body) => assert.equal(body.data.name, "Example Operator"),
+    },
+    {
+      flag: "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+      route: "/api/v1/subnets/7/identity-history?limit=5",
+      upstreamPath: "/api/v1/subnets/7/identity-history?limit=5",
+      data: buildSubnetIdentityHistory([identityHistoryRow], 7, {
+        limit: 5,
+        offset: 0,
+        nextCursor: null,
+      }),
+      assertion: (body) =>
+        assert.equal(body.data.entries[0].identity_hash, IDENTITY_HASH),
+    },
+    {
+      flag: "METAGRAPH_RPC_USAGE_SOURCE",
+      route: "/api/v1/rpc/usage",
+      upstreamPath: "/api/v1/rpc/usage",
+      data: formatRpcUsage({
+        window: "7d",
+        observedAt: new Date(OBSERVED_AT_MS).toISOString(),
+        totals: {
+          total: 10,
+          ok_count: 9,
+          failover_count: 1,
+          cache_hits: 2,
+          avg_latency_ms: 25,
+        },
+        latency: { p50: 20, p95: 40 },
+        endpointRows: [
+          {
+            endpoint_id: "finney-primary",
+            provider: "example",
+            requests: 10,
+            ok_count: 9,
+            avg_latency_ms: 25,
+          },
+        ],
+        networkRows: [{ network: "finney", requests: 10, ok_count: 9 }],
+        bucketRows: [
+          { ts: OBSERVED_AT_MS, requests: 10, errors: 1, avg_latency_ms: 25 },
+        ],
+        bucketGranularity: "1h",
+      }),
+      assertion: (body) => assert.equal(body.data.summary.total_requests, 10),
+    },
+  ];
+
+  assert.equal(
+    postgresTierChecks.length,
+    8,
+    "postgres-tier AJV coverage must include all 8 production SOURCE flags",
+  );
+
+  for (const {
+    flag,
+    route,
+    upstreamPath,
+    data,
+    assertion,
+  } of postgresTierChecks) {
+    let capturedPath = null;
+    const postgresEnv = createLocalArtifactEnv({
+      [flag]: "postgres",
+      DATA_API: {
+        async fetch(request) {
+          const url = new URL(request.url);
+          capturedPath = `${url.pathname}${url.search}`;
+          return new Response(JSON.stringify(data), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      },
+    });
+    const response = await handleRequest(
+      new Request(`https://metagraph.sh${route}`),
+      postgresEnv,
+      {},
+    );
+    assert.equal(response.status, 200, `${flag} ${route}: expected 200`);
+    assert.equal(
+      capturedPath,
+      upstreamPath,
+      `${flag}: DATA_API must receive the forwarded path`,
+    );
+    const body = await response.json();
+    assert.equal(body.ok, true, `${flag} ${route}: expected ok envelope`);
+    assert.equal(body.schema_version, 1, `${flag} ${route}: schema_version`);
+    validateWorkerResponse(route, body);
+    assertion(body);
+  }
+
+  console.log(
+    `Validated ${postgresTierChecks.length} Postgres-tier Worker API route(s).`,
+  );
 }
 
 const paginated = await handleRequest(
