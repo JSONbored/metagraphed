@@ -85,10 +85,7 @@ export {
   type Density,
   DensityToggle,
 } from "@/components/metagraphed/density-toggle";
-export {
-  buildCsvDownloadUrl,
-  DownloadCsvButton,
-} from "@/components/metagraphed/download-csv-button";
+export { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 export {
   type PoolEligibility,
   EligibilityChip,
@@ -135,10 +132,7 @@ export { SectionHeading } from "@/components/metagraphed/section-heading";
 export { ShareButton } from "@/components/metagraphed/share-button";
 export { ActionBar } from "@/components/metagraphed/action-bar";
 export { TableState } from "@/components/metagraphed/table-state";
-export {
-  timeAgoAbsoluteTitle,
-  TimeAgo,
-} from "@/components/metagraphed/time-ago";
+export { TimeAgo } from "@/components/metagraphed/time-ago";
 export {
   type ViewMode,
   ViewModeToggle,
@@ -150,10 +144,7 @@ export {
   type SearchScope,
   SearchScopeChip,
 } from "@/components/metagraphed/search-scope";
-export {
-  visibleTools,
-  McpToolsList,
-} from "@/components/metagraphed/mcp-tools-list";
+export { McpToolsList } from "@/components/metagraphed/mcp-tools-list";
 export { fmtYield } from "@/components/metagraphed/yield-format";
 export {
   type YieldPercentileStripProps,
