@@ -11,16 +11,19 @@
 //
 // INTEGRATION-PENDING: the live ws-piping is verified on deploy; the pure
 // upstream selection is unit-tested (test/select.test.mjs). Public behind
-// Cloudflare DNS for TLS/DDoS. Env: METAGRAPHED_API, PORT, REFRESH_MS,
-// MAX_BLOCK_LAG, NETWORKS, HANDSHAKE_TIMEOUT_MS. Optionally SENTRY_DSN/
-// SENTRY_ENVIRONMENT/SENTRY_RELEASE (silently no-ops if SENTRY_DSN is unset
-// -- see src/observability.mjs).
+// Cloudflare DNS for TLS/DDoS, with per-IP abuse control (rate-limit.mjs).
+// Env: METAGRAPHED_API, PORT, REFRESH_MS, MAX_BLOCK_LAG, NETWORKS,
+// HANDSHAKE_TIMEOUT_MS, MAX_CONNECTIONS_PER_IP, CONNECT_RATE_LIMIT,
+// CONNECT_RATE_WINDOW_MS. Optionally SENTRY_DSN/SENTRY_ENVIRONMENT/
+// SENTRY_RELEASE (silently no-ops if SENTRY_DSN is unset -- see
+// src/observability.mjs).
 import http from "node:http";
 
 import { WebSocketServer } from "ws";
 
 import { MAX_RPC_BODY_BYTES } from "./rpc-policy.mjs";
 import { proxy } from "./proxy.mjs";
+import { createConnectionLimiter, resolveClientIp } from "./rate-limit.mjs";
 import { selectWssUpstreams } from "./select.mjs";
 import {
   initSentry,
@@ -48,6 +51,11 @@ const NETWORKS = (process.env.NETWORKS || "finney,test")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+// #6444: per-IP abuse control, see rate-limit.mjs for the reasoning behind
+// both budgets and their defaults.
+const MAX_CONNECTIONS_PER_IP = envInt("MAX_CONNECTIONS_PER_IP", 20);
+const CONNECT_RATE_LIMIT = envInt("CONNECT_RATE_LIMIT", 30);
+const CONNECT_RATE_WINDOW_MS = envInt("CONNECT_RATE_WINDOW_MS", 60000);
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
@@ -147,18 +155,43 @@ const heartbeat = setInterval(() => {
 }, HEARTBEAT_MS);
 heartbeat.unref?.();
 
+const connectionLimiter = createConnectionLimiter({
+  maxConcurrent: MAX_CONNECTIONS_PER_IP,
+  maxAttemptsPerWindow: CONNECT_RATE_LIMIT,
+  windowMs: CONNECT_RATE_WINDOW_MS,
+});
+const rateLimitPrune = setInterval(
+  () => connectionLimiter.prune(),
+  CONNECT_RATE_WINDOW_MS,
+);
+rateLimitPrune.unref?.();
+
 server.on("upgrade", (req, socket, head) => {
+  // Cheapest possible rejection point: before any network-name/pool lookup,
+  // let alone an upstream dial.
+  const clientIp = resolveClientIp(req);
+  const limit = connectionLimiter.checkAndTrack(clientIp);
+  if (!limit.ok) {
+    log(`rate-limited: ${clientIp} (${limit.reason})`);
+    socket.write(
+      `HTTP/1.1 429 Too Many Requests\r\nRetry-After: ${limit.retryAfterSeconds}\r\n\r\n`,
+    );
+    socket.destroy();
+    return;
+  }
   const network = (req.url || "/")
     .replace(/^\/+/, "")
     .split("?")[0]
     .split("/")[0];
   if (!NETWORKS.includes(network)) {
+    connectionLimiter.release(clientIp);
     socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
     socket.destroy();
     return;
   }
   const upstreams = poolFor(network);
   if (!upstreams.length) {
+    connectionLimiter.release(clientIp);
     socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
     socket.destroy();
     noteNoUpstream(network);
@@ -166,9 +199,17 @@ server.on("upgrade", (req, socket, head) => {
   }
   wss.handleUpgrade(req, socket, head, (client) => {
     client.isAlive = true;
+    let released = false;
+    const releaseOnce = () => {
+      if (released) return;
+      released = true;
+      connectionLimiter.release(clientIp);
+    };
     client.on("pong", () => {
       client.isAlive = true;
     });
+    client.on("close", releaseOnce);
+    client.on("error", releaseOnce);
     proxy(client, upstreams, {
       handshakeTimeout: HANDSHAKE_TIMEOUT_MS,
       onNoUpstream: () => noteNoUpstream(network),

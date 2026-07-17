@@ -64,13 +64,22 @@ project so it shares one dashboard/bill and can later use private DNS.
 
 Env: `METAGRAPHED_API` (default `https://api.metagraph.sh`), `PORT` (8080),
 `REFRESH_MS` (30000), `MAX_BLOCK_LAG` (50), `NETWORKS` (`finney,test`),
-`HANDSHAKE_TIMEOUT_MS` (10000).
+`HANDSHAKE_TIMEOUT_MS` (10000), `MAX_CONNECTIONS_PER_IP` (20),
+`CONNECT_RATE_LIMIT` (30), `CONNECT_RATE_WINDOW_MS` (60000).
+
+## Abuse control (#6444)
+
+Per-IP connection cap + rolling connect-rate limit, checked at CONNECT time
+before any upstream dial (`src/rate-limit.mjs`). Client IP is
+`cf-connecting-ip` (Cloudflare terminates in front of this service), falling
+back to `x-forwarded-for` then the raw socket address. A rejected upgrade
+gets `429 Too Many Requests` with `Retry-After`. In-memory, single-instance —
+matches this service's own single-container deploy model.
 
 ## Integration-pending + follow-ups
 
 - The live ws-piping is verified on deploy; only the pure selection is unit-tested.
-- **Before public exposure:** per-IP connection rate-limiting / abuse caps (a
-  public wss proxy is a DoS amplifier), and optional API-key tiering.
+- Optional API-key tiering (higher budgets for known/trusted callers).
 - gRPC is intentionally **not** offered — Bittensor is Substrate (JSON-RPC + wss),
   not Cosmos-SDK gRPC.
 - Optional next: an SSE fan-out for subnet streaming surfaces; per-upstream usage
