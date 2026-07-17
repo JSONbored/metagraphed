@@ -170,7 +170,6 @@ jobs:
       contents: read
     env:
       METAGRAPH_PRODUCTION_BUILD: "1"
-      METAGRAPH_REQUIRE_PROBE_HEALTH: "1"
       # $GITHUB_ENV is job-local; carry the refresh job's unique publish stamp
       # into the publish job so the final r2:manifest restamp cannot fall back to
       # the deterministic generated_at epoch and reuse runs/1970.../.

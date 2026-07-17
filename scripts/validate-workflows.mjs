@@ -210,11 +210,6 @@ for (const workflow of workflows) {
       "publish workflow refresh job must explicitly use the production build path",
     );
     check(
-      publishJob.includes('METAGRAPH_REQUIRE_PROBE_HEALTH: "1"'),
-      workflow,
-      "publish workflow publish job must explicitly require probe-derived health",
-    );
-    check(
       content.includes("steps.cloudflare-secrets.outputs.dry_run != 'true'"),
       workflow,
       "publish workflow must skip deploy/upload steps only in explicit dry-run mode",

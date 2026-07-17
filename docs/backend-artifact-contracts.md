@@ -389,12 +389,14 @@ artifacts.
 Production publish validation can enforce operational freshness with:
 
 ```bash
-METAGRAPH_REQUIRE_PROBE_HEALTH=1 METAGRAPH_REQUIRE_FRESHNESS=1 npm run validate
+METAGRAPH_REQUIRE_FRESHNESS=1 npm run validate
 ```
 
-Those gates require fresh native subnet data, candidate discovery, candidate
-verification, probe-derived health, and adapter snapshots. Schema drift remains
-warning-only until more subnets expose machine-readable schemas.
+That gate requires fresh native subnet data, candidate discovery, candidate
+verification, and adapter snapshots. Probe-derived health is warning-only —
+operational health is served live from the 15-minute cron prober (ADR 0002),
+not gated at publish time — as is schema drift, until more subnets expose
+machine-readable schemas.
 
 ## Cloudflare Runtime
 
