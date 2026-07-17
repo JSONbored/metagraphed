@@ -9,6 +9,7 @@ import {
   Hash,
   Layers,
   Network,
+  Rss,
   Search,
   User,
   Wifi,
@@ -81,6 +82,12 @@ const NAV_LINKS = [
     label: "Blocks",
     hint: "Chain block explorer",
     Icon: Hash,
+  },
+  {
+    to: "/events",
+    label: "Events",
+    hint: "Chain event feed",
+    Icon: Rss,
   },
   {
     to: "/accounts",

@@ -460,6 +460,7 @@ function BlocksTable() {
                 >
                   <AccountAddress
                     ss58={b.author}
+                    compact
                     fallback={
                       b.author ? <CopyableCode value={b.author} className="max-w-full" /> : "—"
                     }

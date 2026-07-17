@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useInfiniteQuery, useQuery, useSuspenseQueries } from "@tanstack/react-query";
+import { useQuery, useSuspenseQueries } from "@tanstack/react-query";
 import { Suspense, useMemo, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -13,7 +13,6 @@ import {
   ShareButton,
   ActionBar,
   ListShell,
-  LoadMore,
   TimeAgo,
   StatTile,
   Sparkline,
@@ -23,12 +22,11 @@ import {
 } from "@jsonbored/ui-kit";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
-import { SearchInput } from "@/components/metagraphed/table-controls";
+import { ChainEventsFeed } from "@/components/metagraphed/chain-events-feed";
 import {
   blocksQuery,
   chainActivityQuery,
   chainCallsQuery,
-  chainEventsInfiniteQuery,
   chainEventsStatsQuery,
   chainFeesQuery,
   chainSignersQuery,
@@ -47,10 +45,8 @@ import {
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import type {
   ChainCalls,
-  ChainEvent,
   ChainEventsStats,
   ChainStakeFlow,
   ChainStakeMoves,
@@ -1911,128 +1907,12 @@ function ChainEventsFeedSection() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
-  const baseParams = useMemo(
-    () => ({
-      pallet: search.pallet.trim() || undefined,
-      method: search.pallet.trim() && search.method.trim() ? search.method.trim() : undefined,
-      limit: 50,
-    }),
-    [search.pallet, search.method],
-  );
-
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isFetchNextPageError,
-    error,
-    isPending,
-    isFetching,
-    refetch,
-  } = useInfiniteQuery(chainEventsInfiniteQuery(baseParams, search.events_cursor));
-
-  const setSearch = (patch: Record<string, unknown>) =>
+  const onFilter = (patch: { pallet?: string; method?: string }) =>
     navigate({
       search: (prev: Record<string, unknown>) =>
         ({ ...prev, ...patch, events_cursor: "" }) as never,
       resetScroll: false,
     });
-
-  const pages = data?.pages ?? [];
-  const lastPage = pages[pages.length - 1];
-  const cursorInvalid = !!(lastPage as { cursorInvalid?: boolean } | undefined)?.cursorInvalid;
-  const events = pages.flatMap((p) => (p.data ?? []) as ChainEvent[]);
-  const filtersActive = !!(search.pallet.trim() || search.method.trim());
-
-  const filters = (
-    <>
-      <SearchInput
-        value={search.pallet}
-        onChange={(v) => setSearch({ pallet: v, method: v.trim() ? search.method : "" })}
-        placeholder="Filter by pallet"
-        className="min-w-[140px] flex-none font-mono text-[11px]"
-      />
-      <SearchInput
-        value={search.method}
-        onChange={(v) => setSearch({ method: v })}
-        placeholder={search.pallet.trim() ? "Filter by method" : "Method (requires pallet)"}
-        className="min-w-[140px] flex-none font-mono text-[11px]"
-      />
-    </>
-  );
-
-  const emptyNode = (
-    <EmptyState
-      title={
-        filtersActive
-          ? "No chain events match these filters."
-          : "No chain events indexed yet — the all-events backfill fills this feed."
-      }
-    />
-  );
-
-  const table = (
-    <table className="w-full text-left text-sm">
-      <thead className="bg-surface/40">
-        <tr>
-          <th className={TH}>Pallet.method</th>
-          <th className={TH}>Block</th>
-          <th className={`${TH} text-right`}>Observed</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-border">
-        {events.map((event) => (
-          <tr key={`${event.block_number}-${event.event_index}`} className="hover:bg-surface/40">
-            <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
-              {extrinsicCall(event.pallet, event.method)}
-            </td>
-            <td className="px-4 py-2.5 font-mono text-[11px]">
-              {event.block_number != null ? (
-                <Link
-                  to="/blocks/$ref"
-                  params={{ ref: String(event.block_number) }}
-                  className="text-ink-strong hover:text-accent hover:underline"
-                >
-                  #{formatNumber(event.block_number)}
-                </Link>
-              ) : (
-                "—"
-              )}
-            </td>
-            <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
-              <TimeAgo at={event.observed_at} />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-
-  const cards = events.map((event) => (
-    <div
-      key={`${event.block_number}-${event.event_index}-card`}
-      className="rounded border border-border bg-card p-3 min-h-11"
-    >
-      <div className="font-mono text-[11px] text-ink-strong">
-        {extrinsicCall(event.pallet, event.method)}
-      </div>
-      <div className="mt-1 flex items-center justify-between gap-2 font-mono text-[10px] text-ink-muted">
-        {event.block_number != null ? (
-          <Link
-            to="/blocks/$ref"
-            params={{ ref: String(event.block_number) }}
-            className="hover:text-accent hover:underline"
-          >
-            #{formatNumber(event.block_number)}
-          </Link>
-        ) : (
-          <span>—</span>
-        )}
-        <TimeAgo at={event.observed_at} />
-      </div>
-    </div>
-  ));
 
   return (
     <section className="mt-10 rounded-lg border border-border bg-card p-5">
@@ -2044,41 +1924,12 @@ function ChainEventsFeedSection() {
           Browse individual pallet events newest-first — distinct from aggregate activity stats.
         </p>
       </div>
-
-      {isPending ? (
-        <Skeleton className="h-56 w-full" />
-      ) : error && !data ? (
-        <ErrorState
-          error={error}
-          context="chain events feed"
-          onRetry={() => {
-            void refetch();
-          }}
-        />
-      ) : (
-        <ListShell
-          filters={filters}
-          table={table}
-          cards={cards}
-          isEmpty={events.length === 0 && !isFetching}
-          empty={emptyNode}
-          isStale={isFetching && !isPending && !isFetchingNextPage}
-          footer={
-            events.length > 0 ? (
-              <LoadMore
-                hasMore={!!hasNextPage}
-                isLoading={isFetchingNextPage}
-                onLoadMore={() => {
-                  void fetchNextPage();
-                }}
-                shown={events.length}
-                error={isFetchNextPageError ? error : null}
-                cursorInvalid={cursorInvalid}
-              />
-            ) : undefined
-          }
-        />
-      )}
+      <ChainEventsFeed
+        pallet={search.pallet}
+        method={search.method}
+        cursor={search.events_cursor}
+        onFilter={onFilter}
+      />
     </section>
   );
 }

@@ -139,7 +139,10 @@ function SubnetsPage() {
     !!search.readiness ||
     !!search.kind ||
     !!search.stale ||
-    !!search.cursor;
+    !!search.cursor ||
+    // #6270: defaults to true, so hiding the root is what makes it "active" —
+    // without this the Reset button stays disabled while a filter is applied.
+    !search.includeRoot;
   const onReset = () =>
     navigate({
       search: { limit: search.limit, view: search.view } as never,
@@ -261,6 +264,45 @@ function SubnetsStatStrip() {
   );
 }
 
+/**
+ * Exclude-a-slice toggle for the /subnets list (#6270). Mirrors the /endpoints
+ * "Callable only" toggle's shape and accent convention: the accent is lit only
+ * while the toggle is NARROWING the list, so the default (everything included)
+ * stays visually quiet. `hidden` is the pressed state — the slice is excluded.
+ */
+function ExcludeToggle({
+  hidden,
+  onToggle,
+  label,
+  count,
+  title,
+}: {
+  hidden: boolean;
+  onToggle: () => void;
+  label: string;
+  count: number;
+  title: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={hidden}
+      title={title}
+      className={classNames(
+        "inline-flex min-h-9 items-center gap-1.5 rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+        hidden
+          ? "border-accent/40 bg-accent/10 text-accent"
+          : "border-border bg-card text-ink-muted hover:text-ink-strong",
+      )}
+    >
+      <span className={classNames("size-1.5 rounded-full", hidden && "bg-accent")} />
+      {label}
+      {count > 0 ? <span className="text-ink-muted">· {count}</span> : null}
+    </button>
+  );
+}
+
 function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; density?: Density }) {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -329,6 +371,15 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
       ),
     [pages, healthMap, catalogMap, economicsMap],
   );
+
+  // #6270: how many rows each inclusion toggle would drop, surfaced on the
+  // toggle itself so it answers "what am I hiding?" before you press it — the
+  // same affordance /endpoints' callable toggle gives with directoryCount.
+  // Counted over the full joined set, independent of the other filters.
+  const rootCount = useMemo(
+    () => all.filter((s) => s.subnet_type === "root" || s.netuid === 0).length,
+    [all],
+  );
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
 
   // Treat the URL cursor as the immutable starting point for this infinite query.
@@ -361,7 +412,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     search.readiness ||
     search.kind ||
     search.stale ||
-    search.sort
+    search.sort ||
+    // #6270: defaults to true (include everything), so it only counts as an
+    // active filter once the user has switched it OFF.
+    !search.includeRoot
   );
 
   // Client-side filter + sort (the list API only honors q + cursor/limit).
@@ -391,6 +445,11 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         // doesn't emit a `freshness` field on these rows — `updated_at` is what's
         // actually populated (confirmed against the live response).
         if (search.stale && !isStaleFreshness(s.updated_at, 24 * 60 * 60_000)) return false;
+        // #6270: root inclusion. Defaults to true, so the unfiltered list is
+        // unchanged; switching it off drops the root netuid. Identified by the
+        // wire `subnet_type` (netuid 0 is the root subnet by definition, so
+        // it's accepted either way).
+        if (!search.includeRoot && (s.subnet_type === "root" || s.netuid === 0)) return false;
         return true;
       }),
     [
@@ -402,6 +461,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
       search.readiness,
       search.kind,
       search.stale,
+      search.includeRoot,
     ],
   );
   const rows = useMemo(
@@ -491,6 +551,17 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           { value: "identity-only", label: "identity-only" },
           { value: "dormant", label: "dormant" },
         ]}
+      />
+      <ExcludeToggle
+        hidden={!search.includeRoot}
+        onToggle={() => setSearch({ includeRoot: !search.includeRoot })}
+        label="Hide root"
+        count={rootCount}
+        title={
+          search.includeRoot
+            ? `Showing the root subnet — click to hide ${rootCount} root netuid${rootCount === 1 ? "" : "s"}`
+            : "Root subnet hidden — click to show it again"
+        }
       />
       <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
     </>

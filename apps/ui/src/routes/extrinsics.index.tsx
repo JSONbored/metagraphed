@@ -377,6 +377,7 @@ function ExtrinsicsTable() {
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
                   <AccountAddress
                     ss58={x.signer}
+                    compact
                     fallback={
                       x.signer ? <CopyableCode value={x.signer} className="max-w-full" /> : "—"
                     }
