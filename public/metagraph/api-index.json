@@ -1052,6 +1052,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "compare-validators",
+      "path": "/metagraph/compare/validators.json",
+      "schema_ref": "#/components/schemas/CompareValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "rpc-usage",
       "path": "/metagraph/rpc/usage.json",
       "schema_ref": "#/components/schemas/RpcUsageArtifact",
@@ -8404,6 +8411,34 @@
           "name": "dimensions",
           "schema": {
             "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/compare/validators.json",
+      "cache": "standard",
+      "description": "Place several validators side by side for a stake/delegate decision: each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates. `hotkeys` is a required comma-separated list of 1-16 distinct SS58 validator addresses. `netuid` is an optional subnet context — when set, each validator also carries its membership row in that subnet (or null with no permit there). Composed live (no static file); the validator equivalent of /api/v1/compare.",
+      "id": "compare-validators",
+      "method": "GET",
+      "path": "/api/v1/compare/validators",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "hotkeys",
+          "schema": {
+            "maxLength": 783,
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
           }
         }
       ]

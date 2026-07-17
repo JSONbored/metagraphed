@@ -507,3 +507,48 @@ describe("GET /api/v1/compare", () => {
     assert.deepEqual(queries[0].params, [7, 1]);
   });
 });
+
+// #6325: exercises the actual workers/api.mjs dispatch (uncached, unlike
+// /api/v1/compare above) rather than calling handleCompareValidators
+// directly, so the route-matching branch itself is covered too.
+describe("GET /api/v1/compare/validators", () => {
+  const env = createLocalArtifactEnv();
+  const get = async (path) => {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      env,
+      {},
+    );
+    return { status: res.status, body: await res.json() };
+  };
+  const HOTKEY_A = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const HOTKEY_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  test("returns one entry per requested hotkey in order, zeroed on cold store", async () => {
+    const { status, body } = await get(
+      `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B}`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.ok, true);
+    assert.equal(body.data.netuid, null);
+    assert.deepEqual(
+      body.data.validators.map((v) => v.hotkey),
+      [HOTKEY_A, HOTKEY_B],
+    );
+    assert.equal(body.meta.artifact_path, "/metagraph/compare/validators.json");
+  });
+
+  test("requires hotkeys", async () => {
+    const { status, body } = await get("/api/v1/compare/validators");
+    assert.equal(status, 400);
+    assert.equal(body.meta.parameter, "hotkeys");
+  });
+
+  test("rejects a malformed netuid", async () => {
+    const { status, body } = await get(
+      `/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=bogus`,
+    );
+    assert.equal(status, 400);
+    assert.equal(body.meta.parameter, "netuid");
+  });
+});

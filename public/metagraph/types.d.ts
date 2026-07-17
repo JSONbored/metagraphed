@@ -1041,6 +1041,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/compare/validators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Place several validators side by side for a stake/delegate decision: each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates. `hotkeys` is a required comma-separated list of 1-16 distinct SS58 validator addresses. `netuid` is an optional subnet context — when set, each validator also carries its membership row in that subnet (or null with no permit there). Composed live (no static file); the validator equivalent of /api/v1/compare. */
+        get: operations["compareValidators"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contracts": {
         parameters: {
             query?: never;
@@ -4443,6 +4460,33 @@ export interface components {
                 operational_interface_count?: number;
                 surface_count?: number;
             } | null;
+        };
+        /** @description One validator's side-by-side entry in GET /api/v1/compare/validators (composeValidatorComparison) -- a decision-relevant projection of ValidatorDetailArtifact for one hotkey, with fields copied verbatim from the already-loaded detail. */
+        CompareValidatorEntry: {
+            apy_estimate: number | null;
+            apy_estimate_eligible_subnet_count: number;
+            avg_validator_trust: number | null;
+            coldkey: string | null;
+            coldkey_identity: components["schemas"]["ColdkeyIdentity"] | null;
+            hotkey: string;
+            max_validator_trust: number | null;
+            nominator_count: number | null;
+            /** @description This validator's membership row in the ?netuid= subnet context, or null when netuid wasn't requested or the validator holds no permit there. */
+            subnet_context: components["schemas"]["ValidatorDetailSubnet"] | null;
+            subnet_count: number;
+            take: number | null;
+            total_emission_tao: number;
+            total_stake_tao: number;
+        };
+        /** @description Several validators placed side by side for a stake/delegate decision (#6035/#6325): each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates -- the decision-relevant projection of ValidatorDetailArtifact for every requested hotkey (composeValidatorComparison), computed live from the neurons tier at /api/v1/compare/validators (no static file). Mirrors the compare_validators MCP tool. */
+        CompareValidatorsArtifact: {
+            /** @description Optional subnet context requested via ?netuid=; null when not requested. When set, each validator entry's subnet_context carries its membership row in this subnet. */
+            netuid: number | null;
+            schema_version: number;
+            validator_count: number;
+            validators: components["schemas"]["CompareValidatorEntry"][];
+        } & {
+            [key: string]: unknown;
         };
         /** @description One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column). */
         ConcentrationMetrics: ({
@@ -15823,6 +15867,136 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["CompareArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    compareValidators: {
+        parameters: {
+            query?: {
+                hotkeys?: string;
+                netuid?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "netuid": 7,
+                     *         "schema_version": 1,
+                     *         "validator_count": 1,
+                     *         "validators": [
+                     *           {
+                     *             "apy_estimate": 0.5,
+                     *             "apy_estimate_eligible_subnet_count": 1,
+                     *             "avg_validator_trust": 0.5,
+                     *             "coldkey": "example",
+                     *             "coldkey_identity": {
+                     *               "has_identity": false
+                     *             },
+                     *             "hotkey": "example",
+                     *             "max_validator_trust": 0.5,
+                     *             "nominator_count": 1,
+                     *             "subnet_context": {
+                     *               "active": false,
+                     *               "coldkey": "example",
+                     *               "hotkey": "example",
+                     *               "netuid": 7,
+                     *               "uid": 1,
+                     *               "validator_permit": false
+                     *             },
+                     *             "subnet_count": 1,
+                     *             "take": 0.5,
+                     *             "total_emission_tao": 0.5,
+                     *             "total_stake_tao": 0.5
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["CompareValidatorsArtifact"];
                     };
                 };
             };

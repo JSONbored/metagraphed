@@ -182,6 +182,7 @@ import {
   canonicalUptimeCachePath,
   configureAnalyticsRoutes,
   handleCompare,
+  handleCompareValidators,
   handleEconomicsTrends,
   handleLeaderboards,
   handleTrajectory,
@@ -1646,6 +1647,15 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
   }
 
+  // Validator-side compare (#6325): places several validators side by side,
+  // the same live neurons-tier read handleValidatorDetail does, fanned out
+  // per hotkey -- no registry/economics/health composition, so unlike
+  // /api/v1/compare above this isn't edge-cached on the cron snapshot's
+  // last_run_at, matching handleValidatorDetail's own uncached dispatch.
+  if (url.pathname === "/api/v1/compare/validators") {
+    return handleCompareValidators(request, env, url);
+  }
+
   // Global validator/operator leaderboard from the current neurons snapshot. Exact path,
   // dispatched before subnet routing so the top-level collection stays unambiguous.
   // Busts on the shared health-cron last_run_at stamp like every other Postgres-tier
@@ -2820,6 +2830,7 @@ function isMainnetOnlyApiPath(pathname) {
     VALIDATOR_HISTORY_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
+    pathname === "/api/v1/compare/validators" ||
     pathname === "/api/v1/subnets/movers" ||
     pathname === "/api/v1/health" ||
     pathname === "/api/v1/incidents" ||

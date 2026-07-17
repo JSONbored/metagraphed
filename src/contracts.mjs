@@ -1547,6 +1547,12 @@ export const PUBLIC_ARTIFACTS = [
     "CompareArtifact",
   ),
   artifact(
+    "compare-validators",
+    "/metagraph/compare/validators.json",
+    "Several validators placed side by side for a stake/delegate decision (#6035/#6325): each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates, plus an optional single-subnet membership context — the validator equivalent of /api/v1/compare, computed live from the neurons tier at /api/v1/compare/validators (no static file). Mirrors the compare_validators MCP tool.",
+    "CompareValidatorsArtifact",
+  ),
+  artifact(
     "rpc-usage",
     "/metagraph/rpc/usage.json",
     "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
@@ -3717,6 +3723,28 @@ export const API_ROUTES = [
         },
       },
       { name: "dimensions", schema: { type: "string" } },
+    ],
+    [],
+  ),
+  route(
+    "compare-validators",
+    "GET",
+    "/api/v1/compare/validators",
+    "/metagraph/compare/validators.json",
+    "Place several validators side by side for a stake/delegate decision: each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates. `hotkeys` is a required comma-separated list of 1-16 distinct SS58 validator addresses. `netuid` is an optional subnet context — when set, each validator also carries its membership row in that subnet (or null with no permit there). Composed live (no static file); the validator equivalent of /api/v1/compare.",
+    "standard",
+    ["validators", "analytics"],
+    [
+      {
+        name: "hotkeys",
+        schema: {
+          type: "string",
+          maxLength: 783,
+          pattern:
+            "^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$",
+        },
+      },
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
     ],
     [],
   ),

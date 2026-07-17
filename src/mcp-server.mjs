@@ -341,10 +341,12 @@ import {
   loadSubnetUptime,
   parseAnalyticsWindow,
   parseCompareDimensionList,
+  parseCompareHotkeyList,
   parseCompareNetuidList,
   parseUptimeWindow,
   composeCompareData,
   profilesProjectionFromRows,
+  COMPARE_VALIDATORS_MAX,
 } from "./analytics-live.mjs";
 import {
   loadChainRegistrations,
@@ -1799,28 +1801,12 @@ function requireHotkey(args) {
   return value;
 }
 
-// Upper bound on compare_validators' hotkey list: each hotkey is one detail
-// load, so the fan-out is capped to keep a single compare call bounded (a
-// side-by-side view of more than this many validators isn't a comparison
-// anyone reads anyway). Mirrors parseCompareNetuidList's own cap-and-dedupe
-// shape, but validates SS58 hotkeys instead of netuids.
-const COMPARE_VALIDATORS_MAX = 16;
-
-function parseHotkeyList(hotkeys) {
-  if (!Array.isArray(hotkeys) || hotkeys.length === 0) return null;
-  const result = [];
-  const seen = new Set();
-  for (const value of hotkeys) {
-    if (typeof value !== "string" || !SS58_ADDRESS_PATTERN.test(value)) {
-      return null;
-    }
-    if (seen.has(value)) continue;
-    seen.add(value);
-    result.push(value);
-  }
-  if (result.length > COMPARE_VALIDATORS_MAX) return null;
-  return result;
-}
+// compare_validators' hotkey-list cap + validation (COMPARE_VALIDATORS_MAX,
+// parseCompareHotkeyList) now live in analytics-live.mjs (#6325), shared with
+// the GET /api/v1/compare/validators REST route's own query-string parser --
+// one hotkey-list contract for both surfaces, mirroring how
+// parseCompareNetuidList/parseCompareNetuids are already shared for
+// compare_subnets/GET /api/v1/compare.
 
 // The optional `blocks` window for get_chain_activity: a missing value defaults
 // to 1000; a provided value must be a positive integer and is clamped to the
@@ -5145,7 +5131,7 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args, ctx) {
-      const hotkeys = parseHotkeyList(args?.hotkeys);
+      const hotkeys = parseCompareHotkeyList(args?.hotkeys);
       if (!hotkeys) {
         throw toolError(
           "invalid_params",
