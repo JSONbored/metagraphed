@@ -162,8 +162,11 @@ import {
   LIST_ENDPOINT_POOLS_INSTRUCTIONS,
   LIST_ENDPOINT_POOLS_MCP_TOOL,
   LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
+  endpointPoolsMcpError,
+  endpointPoolsQueryUrl,
   loadEndpointPoolsList,
 } from "./endpoint-pools-mcp.mjs";
+import { applyQueryFilters } from "../workers/list-query.mjs";
 import {
   LIST_ENDPOINT_INCIDENTS_INSTRUCTIONS,
   LIST_ENDPOINT_INCIDENTS_MCP_TOOL,
@@ -8854,10 +8857,13 @@ export const MCP_TOOLS = [
       "GET /api/v1/rpc/pools.",
     inputSchema: {
       type: "object",
-      properties: {},
+      // rpc/pools is the same pool shape as endpoint-pools, so it takes the
+      // identical list-query surface (id/kind filter, count thresholds, sort,
+      // limit/cursor). Reuse that tool's argument schema (#6570).
+      properties: { ...LIST_ENDPOINT_POOLS_MCP_TOOL.inputSchema.properties },
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(args, ctx) {
       const staticData = await loadArtifactData(
         ctx,
         "/metagraph/rpc/pools.json",
@@ -8865,12 +8871,13 @@ export const MCP_TOOLS = [
       const livePool = ctx.readHealthKv
         ? await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL)
         : null;
+      let blob = staticData;
       if (
         livePool &&
         Array.isArray(livePool.endpoints) &&
         Array.isArray(staticData?.pools)
       ) {
-        return {
+        blob = {
           ...staticData,
           source: "live-cron-prober",
           operational_observed_at: livePool.last_run_at || null,
@@ -8879,7 +8886,37 @@ export const MCP_TOOLS = [
           ),
         };
       }
-      return staticData;
+      // Page/filter/sort the (possibly live-overlaid) pools with the same
+      // machinery the REST route now uses. Overlay first so eligibility fields
+      // are present before filtering. The arg surface matches
+      // list_endpoint_pools, so its query-url builder is reused (#6570).
+      if (!blob || !Array.isArray(blob.pools)) return blob;
+      const transformed = applyQueryFilters(
+        blob,
+        endpointPoolsQueryUrl(args),
+        "rpc-pools",
+        [],
+      );
+      if (transformed.error) {
+        throw endpointPoolsMcpError(
+          "invalid_params",
+          transformed.error.message,
+        );
+      }
+      const { data, meta } = transformed;
+      const page = meta.pagination || {};
+      const rows = Array.isArray(data.pools) ? data.pools : [];
+      const rowLen = rows.length;
+      return {
+        ...data,
+        total: page.total ?? rowLen,
+        returned: page.returned ?? rowLen,
+        limit: page.limit ?? rowLen,
+        cursor: page.cursor ?? 0,
+        next_cursor: page.next_cursor ?? null,
+        sort: page.sort ?? null,
+        order: page.order ?? null,
+      };
     },
   },
   {
@@ -13483,6 +13520,13 @@ const TOOL_OUTPUT_SCHEMAS = {
       pools: { type: "array", items: { type: "object" } },
       generated_at: NULLABLE_STRING,
       schema_version: { type: ["string", "integer", "null"] },
+      total: { type: "integer" },
+      returned: { type: "integer" },
+      limit: { type: "integer" },
+      cursor: { type: "integer" },
+      next_cursor: NULLABLE_INT,
+      sort: NULLABLE_STRING,
+      order: NULLABLE_STRING,
     },
   },
   list_profile_completeness: {
