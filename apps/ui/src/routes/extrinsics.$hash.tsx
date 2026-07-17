@@ -15,6 +15,7 @@ import {
   ActionBar,
   SectionAnchor,
   StatTile,
+  TableState,
 } from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
@@ -313,6 +314,18 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         >
           {relatedQuery.isLoading ? (
             <Skeleton className="h-16 w-full" />
+          ) : relatedQuery.isError ? (
+            // Without this branch a failed lookup left `data` undefined, so
+            // `relatedCalls` fell through to [] and rendered the same "no other
+            // extrinsics" copy as a genuinely empty result -- the one case where
+            // this page asserted something it hadn't actually learned (#6426).
+            <TableState
+              variant="error"
+              title="Couldn't load related Multisig calls"
+              description="The related-calls lookup is optional enrichment — the rest of this extrinsic's detail is unaffected."
+              error={relatedQuery.error}
+              onRetry={() => relatedQuery.refetch()}
+            />
           ) : relatedCalls.length > 0 ? (
             <ul className="flex flex-col gap-2">
               {relatedCalls.map((e) => (
