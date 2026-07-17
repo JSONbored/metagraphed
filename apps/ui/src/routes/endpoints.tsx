@@ -179,7 +179,7 @@ function EndpointsPage() {
               onClick={() => setTab(t.id)}
               className={
                 tab === t.id
-                  ? "rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-accent"
+                  ? "rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-accent-text"
                   : "rounded-full border border-border bg-card px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30 hover:text-ink-strong"
               }
             >
