@@ -1732,79 +1732,6 @@ function ExternalLink({
     }
   );
 }
-function freshnessTierLabel(tier) {
-  return tier === "realtime" ? "Live" : "Daily rollup";
-}
-function freshnessDotClass(at, thresholdMs) {
-  const missing = at == null;
-  const stale = !missing && isStaleFreshness(at, thresholdMs);
-  return missing ? "bg-health-unknown" : stale ? "bg-health-warn" : "bg-health-ok";
-}
-function freshnessBadgeTimeCopy(at, mounted = true) {
-  if (!mounted) return { absolutePhrase: null, relative: "" };
-  const absolute = formatFreshnessAbsolute(at);
-  return {
-    absolutePhrase: absolute ? `as of ${absolute}` : null,
-    relative: formatRelative(at)
-  };
-}
-function tierChipClass(tier) {
-  return tier === "realtime" ? "border-accent/35 bg-accent/10 text-accent" : "border-border bg-surface/50 text-ink-muted";
-}
-function FreshnessBadge({ at, tier, thresholdMs, className }) {
-  const [mounted, setMounted] = React3.useState(false);
-  React3.useEffect(() => setMounted(true), []);
-  const missing = at == null;
-  const stale = !missing && isStaleFreshness(at, thresholdMs);
-  const dotCls = freshnessDotClass(at, thresholdMs);
-  const { absolutePhrase, relative: relative2 } = freshnessBadgeTimeCopy(at, mounted);
-  const title = missing ? "No freshness data" : !mounted ? void 0 : stale ? `Stale \u2014 ${absolutePhrase ?? "unknown time"} (${relative2})` : `Fresh \u2014 ${absolutePhrase ?? "unknown time"} (${relative2})`;
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    "span",
-    {
-      className: classNames(
-        "inline-flex flex-wrap items-center gap-1.5",
-        className
-      ),
-      title,
-      suppressHydrationWarning: true,
-      children: [
-        /* @__PURE__ */ jsxRuntime.jsx(
-          "span",
-          {
-            className: classNames(
-              "inline-flex items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em]",
-              tierChipClass(tier)
-            ),
-            children: freshnessTierLabel(tier)
-          }
-        ),
-        /* @__PURE__ */ jsxRuntime.jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
-          /* @__PURE__ */ jsxRuntime.jsx(
-            "span",
-            {
-              className: classNames("size-1.5 shrink-0 rounded-full", dotCls)
-            }
-          ),
-          /* @__PURE__ */ jsxRuntime.jsxs(
-            "span",
-            {
-              className: "font-mono text-[10px] text-ink-muted",
-              suppressHydrationWarning: true,
-              children: [
-                absolutePhrase ? /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-                  /* @__PURE__ */ jsxRuntime.jsx("span", { children: absolutePhrase }),
-                  /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink-muted/70", children: " \xB7 " })
-                ] }) : null,
-                /* @__PURE__ */ jsxRuntime.jsx("span", { children: relative2 })
-              ]
-            }
-          )
-        ] })
-      ]
-    }
-  );
-}
 function InfoTooltip({
   label,
   className
@@ -4085,7 +4012,6 @@ exports.DownloadCsvButton = DownloadCsvButton;
 exports.EligibilityChip = EligibilityChip;
 exports.EntityHero = EntityHero;
 exports.ExternalLink = ExternalLink;
-exports.FreshnessBadge = FreshnessBadge;
 exports.FreshnessIndicator = FreshnessIndicator;
 exports.HealthDot = HealthDot;
 exports.HealthPill = HealthPill;
@@ -4145,9 +4071,6 @@ exports.ViewModeToggle = ViewModeToggle;
 exports.Wordmark = Wordmark;
 exports.YieldPercentileStrip = YieldPercentileStrip;
 exports.fmtYield = fmtYield;
-exports.freshnessBadgeTimeCopy = freshnessBadgeTimeCopy;
-exports.freshnessDotClass = freshnessDotClass;
-exports.freshnessTierLabel = freshnessTierLabel;
 exports.prefetchBrandIcon = prefetchBrandIcon;
 exports.safeExternalUrl = safeExternalUrl;
 exports.tierFreshnessLabel = tierFreshnessLabel;

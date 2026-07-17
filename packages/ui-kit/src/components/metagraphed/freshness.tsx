@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { classNames, formatRelative, isStaleFreshness } from "@/lib/format";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
-import type { FreshnessTier } from "./freshness-badge";
+/**
+ * Which cadence a freshness stamp came from: a live chain read vs the daily
+ * rollup snapshot. Re-homed here from the deleted freshness-badge.tsx (#6377) --
+ * this family (FreshnessIndicator/DailyRollupFreshness/RealtimeFreshness and the
+ * barrel-exported tierFreshnessLabel below) is its only consumer, and the type is
+ * part of tierFreshnessLabel's public signature.
+ */
+export type FreshnessTier = "realtime" | "daily";
 
 interface Props {
   at?: string | null;

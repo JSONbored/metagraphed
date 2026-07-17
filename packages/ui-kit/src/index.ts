@@ -94,12 +94,6 @@ export {
 } from "@/components/metagraphed/external-link";
 export {
   type FreshnessTier,
-  freshnessTierLabel,
-  freshnessDotClass,
-  freshnessBadgeTimeCopy,
-  FreshnessBadge,
-} from "@/components/metagraphed/freshness-badge";
-export {
   FreshnessIndicator,
   DailyRollupFreshness,
   RealtimeFreshness,

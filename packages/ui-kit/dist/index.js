@@ -1703,79 +1703,6 @@ function ExternalLink({
     }
   );
 }
-function freshnessTierLabel(tier) {
-  return tier === "realtime" ? "Live" : "Daily rollup";
-}
-function freshnessDotClass(at, thresholdMs) {
-  const missing = at == null;
-  const stale = !missing && isStaleFreshness(at, thresholdMs);
-  return missing ? "bg-health-unknown" : stale ? "bg-health-warn" : "bg-health-ok";
-}
-function freshnessBadgeTimeCopy(at, mounted = true) {
-  if (!mounted) return { absolutePhrase: null, relative: "" };
-  const absolute = formatFreshnessAbsolute(at);
-  return {
-    absolutePhrase: absolute ? `as of ${absolute}` : null,
-    relative: formatRelative(at)
-  };
-}
-function tierChipClass(tier) {
-  return tier === "realtime" ? "border-accent/35 bg-accent/10 text-accent" : "border-border bg-surface/50 text-ink-muted";
-}
-function FreshnessBadge({ at, tier, thresholdMs, className }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const missing = at == null;
-  const stale = !missing && isStaleFreshness(at, thresholdMs);
-  const dotCls = freshnessDotClass(at, thresholdMs);
-  const { absolutePhrase, relative: relative2 } = freshnessBadgeTimeCopy(at, mounted);
-  const title = missing ? "No freshness data" : !mounted ? void 0 : stale ? `Stale \u2014 ${absolutePhrase ?? "unknown time"} (${relative2})` : `Fresh \u2014 ${absolutePhrase ?? "unknown time"} (${relative2})`;
-  return /* @__PURE__ */ jsxs(
-    "span",
-    {
-      className: classNames(
-        "inline-flex flex-wrap items-center gap-1.5",
-        className
-      ),
-      title,
-      suppressHydrationWarning: true,
-      children: [
-        /* @__PURE__ */ jsx(
-          "span",
-          {
-            className: classNames(
-              "inline-flex items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em]",
-              tierChipClass(tier)
-            ),
-            children: freshnessTierLabel(tier)
-          }
-        ),
-        /* @__PURE__ */ jsxs("span", { className: "inline-flex items-center gap-1.5", children: [
-          /* @__PURE__ */ jsx(
-            "span",
-            {
-              className: classNames("size-1.5 shrink-0 rounded-full", dotCls)
-            }
-          ),
-          /* @__PURE__ */ jsxs(
-            "span",
-            {
-              className: "font-mono text-[10px] text-ink-muted",
-              suppressHydrationWarning: true,
-              children: [
-                absolutePhrase ? /* @__PURE__ */ jsxs(Fragment, { children: [
-                  /* @__PURE__ */ jsx("span", { children: absolutePhrase }),
-                  /* @__PURE__ */ jsx("span", { className: "text-ink-muted/70", children: " \xB7 " })
-                ] }) : null,
-                /* @__PURE__ */ jsx("span", { children: relative2 })
-              ]
-            }
-          )
-        ] })
-      ]
-    }
-  );
-}
 function InfoTooltip({
   label,
   className
@@ -4011,4 +3938,4 @@ function TreemapMini({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EntityHero, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EntityHero, ExternalLink, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, fmtYield, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel };
