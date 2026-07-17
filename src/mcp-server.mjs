@@ -142,6 +142,12 @@ import {
   loadSearchIndexList,
 } from "./search-index-mcp.mjs";
 import {
+  LIST_SEARCH_INSTRUCTIONS,
+  LIST_SEARCH_MCP_TOOL,
+  LIST_SEARCH_OUTPUT_SCHEMA,
+  loadSearchList,
+} from "./search-mcp.mjs";
+import {
   LIST_SOURCE_SNAPSHOTS_INSTRUCTIONS,
   LIST_SOURCE_SNAPSHOTS_MCP_TOOL,
   LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
@@ -756,6 +762,7 @@ export const MCP_INSTRUCTIONS =
   LIST_REVIEW_GAPS_INSTRUCTIONS +
   LIST_REVIEW_ENRICHMENT_TARGETS_INSTRUCTIONS +
   LIST_SEARCH_INDEX_INSTRUCTIONS +
+  LIST_SEARCH_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
   "get_subnet_gaps for one subnet's interface gap priorities and contributor " +
@@ -9087,6 +9094,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_SEARCH_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadSearchList(ctx, args);
+    },
+  },
+  {
     ...LIST_CURATION_MCP_TOOL,
     async handler(args, ctx) {
       return loadCurationList(ctx, args);
@@ -13573,6 +13586,7 @@ const TOOL_OUTPUT_SCHEMAS = {
     },
   },
   list_search_index: LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
+  list_search: LIST_SEARCH_OUTPUT_SCHEMA,
   list_curation: LIST_CURATION_OUTPUT_SCHEMA,
   list_gaps: LIST_GAPS_OUTPUT_SCHEMA,
   list_enrichment_queue: LIST_ENRICHMENT_QUEUE_OUTPUT_SCHEMA,

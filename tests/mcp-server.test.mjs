@@ -13964,6 +13964,59 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_search returns document rows across all types", async () => {
+    const deps = makeDeps({
+      "/metagraph/search.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        documents: [
+          {
+            id: "subnet-7",
+            type: "subnet",
+            netuid: 7,
+            slug: "sn-7",
+            title: "Subnet Seven",
+            tokens: ["seven"],
+          },
+          {
+            id: "provider-datura",
+            type: "provider",
+            slug: "datura",
+            title: "Datura",
+            tokens: ["datura", "gpu"],
+          },
+        ],
+      },
+    });
+    const res = await callTool("list_search", { q: "gpu", limit: 5 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.documents[0].type, "provider");
+    assert.deepEqual(out.documents[0].tokens, ["datura", "gpu"]);
+  });
+
+  test("list_search reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_search", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Search snapshot unavailable/,
+    );
+  });
+
+  test("list_search payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_search",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/search.json": {
+        documents: [{ id: "subnet-7", title: "Subnet Seven" }],
+      },
+    });
+    const res = await callTool("list_search", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_providers returns filtered provider rows", async () => {
     const deps = makeDeps({
       "/metagraph/providers.json": {
