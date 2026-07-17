@@ -105,12 +105,16 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
     contractVersion,
     source: "live-smoke-probe",
   });
+  // Current-state health is local-cache-only now. build-artifacts.mjs
+  // intentionally stopped publishing health/latest.json, health/summary.json,
+  // and health/subnets/*.json (the live /api/v1/health routes serve from KV/D1),
+  // and the Worker unconditionally 410s those static paths. We only seed the
+  // local fallback cache that build-artifacts.mjs still reads — the retired
+  // static writes below are gone.
   await writeJson(
     path.join(repoRoot, ".cache/metagraphed/health/latest.json"),
     artifact.latest,
   );
-  await writeJson(artifactOutputPath("health/latest.json"), artifact.latest);
-  await writeJson(artifactOutputPath("health/summary.json"), artifact.summary);
   await writeJson(
     artifactOutputPath("rpc-endpoints.json"),
     rpcEndpointArtifact,
@@ -192,25 +196,12 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
     buildHealthHistoryArtifact(artifact.latest, day),
   );
   await fs.rm(
-    artifactOutputPath("health/subnets/0.json").replace(/\/0\.json$/, ""),
-    {
-      recursive: true,
-      force: true,
-    },
-  );
-  await fs.rm(
     artifactOutputPath("health/badges/0.json").replace(/\/0\.json$/, ""),
     {
       recursive: true,
       force: true,
     },
   );
-  for (const [netuid, subnetHealth] of artifact.subnets) {
-    await writeJson(
-      artifactOutputPath(`health/subnets/${netuid}.json`),
-      subnetHealth,
-    );
-  }
   for (const [netuid, badge] of artifact.badges) {
     await writeJson(artifactOutputPath(`health/badges/${netuid}.json`), badge);
   }

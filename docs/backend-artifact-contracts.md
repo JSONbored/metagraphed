@@ -361,7 +361,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run schemas:snapshot`: fetch machine-readable OpenAPI/Swagger JSON snapshots and update schema drift.
 - `npm run schemas:bundle`: bundle canonical modular JSON Schema components into `schemas/api-components.schema.json`.
 - `npm run adapters:snapshot`: capture safe Allways/Gittensor public adapter summaries.
-- `METAGRAPH_WRITE_PROBE_RESULTS=1 npm run probes:smoke`: run live read-only probes and persist health/RPC history.
+- `METAGRAPH_WRITE_PROBE_RESULTS=1 npm run probes:smoke`: run live read-only probes and persist the RPC/endpoint artifacts, per-subnet badge data, and the daily `health/history` snapshot. Current-state health now persists to the local fallback cache only (`.cache/metagraphed/health/latest.json`, which `build-artifacts.mjs` reads) — it no longer writes the retired static `health/latest.json`, `health/summary.json`, or `health/subnets/*.json` paths the live API serves from KV/D1 and unconditionally 410s.
 - `npm run r2:manifest`: regenerate the Cloudflare R2 manifest from current public artifacts.
 - `npm run r2:download:dry-run`: summarize an R2 restore/download without writing local files.
 - `npm run kv:publish:dry-run`: summarize KV latest pointer, feature flags, endpoint pool, and freshness control records.
