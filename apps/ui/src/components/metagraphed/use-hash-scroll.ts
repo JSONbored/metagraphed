@@ -31,10 +31,23 @@ export function useHashScroll(activeTab: string, sectionToTab: Record<string, st
       return;
     }
 
-    // After tab switch / on initial mount, scroll the section into view.
+    // After tab switch / on initial mount, scroll the section into view AND
+    // move focus (the screen-reader cursor) to it — scrollIntoView alone moves
+    // the viewport but strands assistive tech, so a deep link / SectionAnchor
+    // "copy link" announced nothing. Mirrors BackToTop's technique: a temporary
+    // tabindex="-1" lets a non-focusable section receive focus, and
+    // preventScroll keeps .focus() from fighting the smooth scroll above.
     const scroll = () => {
       const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      const hadTabIndex = el.hasAttribute("tabindex");
+      if (!hadTabIndex) el.setAttribute("tabindex", "-1");
+      el.focus({ preventScroll: true });
+      if (!hadTabIndex) {
+        // Clean up so we don't pollute the tab order.
+        window.setTimeout(() => el.removeAttribute("tabindex"), 0);
+      }
     };
     // Defer so the panel for the new tab has time to mount.
     const t = window.setTimeout(scroll, 80);
