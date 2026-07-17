@@ -140,7 +140,6 @@ export { DiscordIcon } from "@/components/metagraphed/discord-icon";
 export {
   SCOPES,
   type SearchScope,
-  SearchScopeChip,
 } from "@/components/metagraphed/search-scope";
 export { McpToolsList } from "@/components/metagraphed/mcp-tools-list";
 export { fmtYield } from "@/components/metagraphed/yield-format";

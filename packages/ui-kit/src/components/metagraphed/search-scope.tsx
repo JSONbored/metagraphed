@@ -1,11 +1,10 @@
-import { ChevronDown } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { classNames } from "@/lib/format";
-
+// The search-scope vocabulary shared by the command palette. The popover-based
+// SearchScopeChip that used to live here was removed as dead code (#6378): it
+// had zero call sites, and its one plausible home -- command-palette-body.tsx's
+// scope row -- deliberately renders every scope as a one-click button instead,
+// which is the right affordance inside an already-overlaid palette (a popover
+// there would hide the options behind an extra click). Only the vocabulary is
+// shared; each surface owns its own presentation.
 export const SCOPES = [
   { key: "all", label: "All" },
   { key: "subnet", label: "Subnets" },
@@ -16,47 +15,3 @@ export const SCOPES = [
 ] as const;
 
 export type SearchScope = (typeof SCOPES)[number]["key"];
-
-export function SearchScopeChip({
-  value,
-  onChange,
-}: {
-  value: SearchScope;
-  onChange: (v: SearchScope) => void;
-}) {
-  const current = SCOPES.find((s) => s.key === value) ?? SCOPES[0];
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Search scope: ${current.label}`}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2.5 py-1 text-[11px] font-mono uppercase tracking-widest text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors shrink-0"
-        >
-          {current.label}
-          <ChevronDown className="size-3 opacity-70" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-44 p-1">
-        <ul>
-          {SCOPES.map((s) => (
-            <li key={s.key}>
-              <button
-                type="button"
-                onClick={() => onChange(s.key)}
-                className={classNames(
-                  "w-full text-left px-2 py-1.5 rounded text-[12px] transition-colors",
-                  s.key === value
-                    ? "bg-surface text-ink-strong"
-                    : "text-ink hover:bg-surface/60",
-                )}
-              >
-                {s.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </PopoverContent>
-    </Popover>
-  );
-}

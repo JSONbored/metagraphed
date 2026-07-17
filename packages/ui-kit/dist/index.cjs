@@ -2805,6 +2805,8 @@ function DiscordIcon({ className, ...props }) {
     }
   );
 }
+
+// src/components/metagraphed/search-scope.tsx
 var SCOPES = [
   { key: "all", label: "All" },
   { key: "subnet", label: "Subnets" },
@@ -2813,38 +2815,6 @@ var SCOPES = [
   { key: "provider", label: "Providers" },
   { key: "schema", label: "Schemas" }
 ];
-function SearchScopeChip({
-  value,
-  onChange
-}) {
-  const current = SCOPES.find((s) => s.key === value) ?? SCOPES[0];
-  return /* @__PURE__ */ jsxRuntime.jsxs(Popover, { children: [
-    /* @__PURE__ */ jsxRuntime.jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsxRuntime.jsxs(
-      "button",
-      {
-        type: "button",
-        "aria-label": `Search scope: ${current.label}`,
-        className: "inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2.5 py-1 text-[11px] font-mono uppercase tracking-widest text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors shrink-0",
-        children: [
-          current.label,
-          /* @__PURE__ */ jsxRuntime.jsx(lucideReact.ChevronDown, { className: "size-3 opacity-70" })
-        ]
-      }
-    ) }),
-    /* @__PURE__ */ jsxRuntime.jsx(PopoverContent, { align: "start", className: "w-44 p-1", children: /* @__PURE__ */ jsxRuntime.jsx("ul", { children: SCOPES.map((s) => /* @__PURE__ */ jsxRuntime.jsx("li", { children: /* @__PURE__ */ jsxRuntime.jsx(
-      "button",
-      {
-        type: "button",
-        onClick: () => onChange(s.key),
-        className: classNames(
-          "w-full text-left px-2 py-1.5 rounded text-[12px] transition-colors",
-          s.key === value ? "bg-surface text-ink-strong" : "text-ink hover:bg-surface/60"
-        ),
-        children: s.label
-      }
-    ) }, s.key)) }) })
-  ] });
-}
 var PREVIEW_COUNT = 24;
 function visibleTools(tools, open) {
   return open ? tools : tools.slice(0, PREVIEW_COUNT);
@@ -4145,7 +4115,6 @@ exports.RealtimeFreshness = RealtimeFreshness;
 exports.ReviewChip = ReviewChip;
 exports.SCOPES = SCOPES;
 exports.ScrollReveal = ScrollReveal;
-exports.SearchScopeChip = SearchScopeChip;
 exports.SectionAnchor = SectionAnchor;
 exports.SectionHeading = SectionHeading;
 exports.ShareButton = ShareButton;
