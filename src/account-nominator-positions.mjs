@@ -142,6 +142,64 @@ export function distinctHotkeys(positionRows) {
   return [...seen];
 }
 
+// #6507: nominator_positions (the box-side Alpha-scan sync, outside this
+// repo) systematically misses a coldkey's own self-stake on a hotkey it
+// owns -- confirmed against real SN1 validator coldkeys showing
+// position_count: 0 despite 100K+ TAO of self-stake, while correctly
+// capturing THIRD-PARTY delegations on other hotkeys. The actual scan/sync
+// script can't be fixed from this repo, so this compensates at the read
+// layer instead: for every (hotkey, netuid) the queried coldkey is the
+// REGISTERING owner of (neurons.coldkey) but has no captured position row
+// for, synthesize one holding the residual share -- 1 minus every OTHER
+// coldkey's already-captured share_fraction for that same hotkey+netuid
+// (the correctly-synced third-party rows).
+//
+// Approximation, not a real ledger row: if some OTHER coldkey's delegation
+// on that hotkey is ALSO missing from the sync (not just self-stake), this
+// overcounts by that amount. But self-stake is virtually always a hotkey's
+// largest position, so this closes the dominant, confirmed gap without
+// waiting on an out-of-repo fix. `captured_at` is left null (there is no
+// real capture timestamp for a synthesized row); buildAccountPositions
+// already treats a null captured_at as "excluded from latestCapturedAt",
+// same as any other row with a blank/absent timestamp.
+export function ownedHotkeySelfStakeRows(
+  ownedRows,
+  positionRows,
+  otherCapturedFractionByKey,
+  ss58,
+) {
+  const covered = new Set(
+    (Array.isArray(positionRows) ? positionRows : []).map(
+      (row) => `${row?.hotkey}|${row?.netuid}`,
+    ),
+  );
+  const fractionByKey =
+    otherCapturedFractionByKey instanceof Map
+      ? otherCapturedFractionByKey
+      : new Map();
+  const seenOwned = new Set();
+  const out = [];
+  for (const row of Array.isArray(ownedRows) ? ownedRows : []) {
+    const hotkey = typeof row?.hotkey === "string" ? row.hotkey : null;
+    const netuid = nonNegativeInt(row?.netuid);
+    if (!hotkey || netuid == null) continue;
+    const key = `${hotkey}|${netuid}`;
+    if (covered.has(key) || seenOwned.has(key)) continue;
+    seenOwned.add(key);
+    const otherFraction = fractionByKey.get(key) ?? 0;
+    const residual = 1 - otherFraction;
+    if (!(residual > 0)) continue;
+    out.push({
+      coldkey: ss58,
+      hotkey,
+      netuid,
+      share_fraction: residual,
+      captured_at: null,
+    });
+  }
+  return out;
+}
+
 // Postgres neurons rows (hotkey, netuid, stake_tao) -> a "hotkey|netuid" ->
 // stake_tao Map, for buildAccountPositions' join above.
 export function stakeByHotkeyNetuid(neuronRows) {

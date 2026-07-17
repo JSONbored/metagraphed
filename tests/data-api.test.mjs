@@ -116,6 +116,17 @@ const nominatorPositionsSyncFailure = vi.hoisted(() => ({ error: null }));
 // isolation purpose as subnetTemposQueryFailure above, but for
 // loadNominatorPositions' own SELECT.
 const nominatorPositionsQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for loadOtherCapturedFractionByHotkeys' own SELECT (#6507's
+// self-stake fallback) -- dispatched by its own distinctive text match (the
+// SUM(share_fraction) aggregate, unique to this query) rather than the
+// shared mockRows.current, since loadNeuronStakeByHotkeys is ALSO an
+// sql.unsafe call in the same route and would otherwise collide on it.
+const otherCapturedFractionRows = vi.hoisted(() => ({ current: [] }));
+const otherCapturedFractionQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for loadOwnedHotkeyPositions' own SELECT (#6507) -- same isolation
+// purpose as nominatorPositionsQueryFailure above, but for the
+// `FROM neurons WHERE coldkey` query specifically.
+const ownedHotkeyPositionsQueryFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -201,6 +212,12 @@ vi.mock("postgres", () => ({
         /FROM nominator_positions\b/.test(text)
       ) {
         return Promise.reject(nominatorPositionsQueryFailure.error);
+      }
+      if (
+        ownedHotkeyPositionsQueryFailure.error &&
+        /FROM neurons WHERE coldkey\b/.test(text)
+      ) {
+        return Promise.reject(ownedHotkeyPositionsQueryFailure.error);
       }
       if (
         subnetSnapshotSyncFailure.error &&
@@ -296,6 +313,12 @@ vi.mock("postgres", () => ({
           return Promise.reject(accountIdentityJoinQueryFailure.error);
         }
         return Promise.resolve(accountIdentityJoinRows.current);
+      }
+      if (/SUM\(share_fraction\) AS other_fraction/.test(text)) {
+        if (otherCapturedFractionQueryFailure.error) {
+          return Promise.reject(otherCapturedFractionQueryFailure.error);
+        }
+        return Promise.resolve(otherCapturedFractionRows.current);
       }
       return Promise.resolve(mockRows.current);
     };
@@ -397,6 +420,9 @@ beforeEach(() => {
   featuredValidatorsQueryFailure.error = null;
   accountIdentityJoinRows.current = [];
   accountIdentityJoinQueryFailure.error = null;
+  otherCapturedFractionRows.current = [];
+  otherCapturedFractionQueryFailure.error = null;
+  ownedHotkeyPositionsQueryFailure.error = null;
   mockRows.current = [
     {
       block_number: "123",
@@ -4837,11 +4863,13 @@ test("nominator-positions-sync issues a single INSERT for a payload at or under 
 });
 
 test("GET /api/v1/accounts/:ss58/positions joins share_fraction against live neurons stake_tao (#5233)", async () => {
-  // loadNominatorPositions is a plain tagged-template call -- consumes
-  // mockQueue. loadNeuronStakeByHotkeys goes through sql.unsafe (an IN-list
-  // query), which this mock always answers from mockRows.current regardless
-  // of mockQueue (see the sql.unsafe branch's own fallback), so the two rows
-  // are primed separately rather than both queued.
+  // loadNominatorPositions and loadOwnedHotkeyPositions (#6507) are both
+  // plain tagged-template calls -- consume mockQueue in order.
+  // loadOtherCapturedFractionByHotkeys short-circuits without a query since
+  // loadOwnedHotkeyPositions returns no rows (distinctHotkeys is empty).
+  // loadNeuronStakeByHotkeys goes through sql.unsafe (an IN-list query),
+  // which this mock always answers from mockRows.current regardless of
+  // mockQueue, so that one row is primed separately rather than queued.
   mockQueue.current = [
     [], // sql.begin's leading `SET statement_timeout`
     [
@@ -4853,12 +4881,14 @@ test("GET /api/v1/accounts/:ss58/positions joins share_fraction against live neu
         captured_at: "1780000000000",
       },
     ], // loadNominatorPositions
+    [], // loadOwnedHotkeyPositions -- this coldkey owns no hotkeys
   ];
   mockRows.current = [{ hotkey: "5Hk1", netuid: 3, stake_tao: "1000" }]; // loadNeuronStakeByHotkeys
   const res = await req("/api/v1/accounts/5Cold1/positions");
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(queryText()).toMatch(/FROM nominator_positions WHERE coldkey/);
+  expect(queryText()).toMatch(/FROM neurons WHERE coldkey/);
   expect(queryText()).toMatch(/FROM neurons WHERE hotkey IN/);
   expect(body.ss58).toBe("5Cold1");
   expect(body.position_count).toBe(1);
@@ -4869,7 +4899,8 @@ test("GET /api/v1/accounts/:ss58/positions joins share_fraction against live neu
 test("GET /api/v1/accounts/:ss58/positions returns an empty card for a coldkey with no positions", async () => {
   mockQueue.current = [
     [], // sql.begin's leading `SET statement_timeout`
-    [], // loadNominatorPositions -- no rows, so distinctHotkeys is empty and loadNeuronStakeByHotkeys short-circuits without a query
+    [], // loadNominatorPositions -- no rows
+    [], // loadOwnedHotkeyPositions -- owns no hotkeys either, so distinctHotkeys is empty and both loadOtherCapturedFractionByHotkeys and loadNeuronStakeByHotkeys short-circuit without a query
   ];
   const res = await req("/api/v1/accounts/5NoPositions/positions");
   expect(res.status).toBe(200);
@@ -4877,6 +4908,128 @@ test("GET /api/v1/accounts/:ss58/positions returns an empty card for a coldkey w
   expect(body.position_count).toBe(0);
   expect(body.total_stake_tao).toBe(0);
   expect(body.positions).toEqual([]);
+});
+
+test("GET /api/v1/accounts/:ss58/positions fills in the owning coldkey's missing self-stake (#6507)", async () => {
+  // This coldkey has no captured nominator_positions row at all, but owns
+  // (registered) hotkey 5Validator in netuid 1 -- the exact real-world shape
+  // the issue reports (e.g. position_count: 0 despite 100K+ TAO self-stake).
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [], // loadNominatorPositions -- no captured rows for this coldkey
+    [{ hotkey: "5Validator", netuid: 1 }], // loadOwnedHotkeyPositions
+  ];
+  // Two other coldkeys already correctly hold 15% combined -- matches the
+  // issue's own repro where third-party delegations DO show up correctly.
+  otherCapturedFractionRows.current = [
+    { hotkey: "5Validator", netuid: 1, other_fraction: "0.15" },
+  ];
+  mockRows.current = [{ hotkey: "5Validator", netuid: 1, stake_tao: "166000" }]; // loadNeuronStakeByHotkeys
+  const res = await req("/api/v1/accounts/5Owner/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(queryText()).toMatch(/SUM\(share_fraction\) AS other_fraction/);
+  expect(body.position_count).toBe(1);
+  expect(body.positions[0].hotkey).toBe("5Validator");
+  expect(body.positions[0].share_fraction).toBeCloseTo(0.85);
+  expect(body.positions[0].stake_tao).toBeCloseTo(141100);
+  expect(body.total_stake_tao).toBeCloseTo(141100);
+});
+
+test("GET /api/v1/accounts/:ss58/positions does not duplicate an owned hotkey's already-captured position row", async () => {
+  // This coldkey already HAS a real nominator_positions row for the hotkey
+  // it owns -- the sync isn't broken for this specific (hotkey, netuid), so
+  // no synthesized row should be added on top of it.
+  mockQueue.current = [
+    [],
+    [
+      {
+        coldkey: "5Owner",
+        hotkey: "5Validator",
+        netuid: 1,
+        share_fraction: 0.9,
+        captured_at: "1780000000000",
+      },
+    ], // loadNominatorPositions
+    [{ hotkey: "5Validator", netuid: 1 }], // loadOwnedHotkeyPositions
+  ];
+  mockRows.current = [{ hotkey: "5Validator", netuid: 1, stake_tao: "1000" }];
+  const res = await req("/api/v1/accounts/5Owner/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.position_count).toBe(1);
+  expect(body.positions[0].share_fraction).toBeCloseTo(0.9);
+});
+
+test("GET /api/v1/accounts/:ss58/positions treats a missing other_fraction cell as zero already-captured (full self-stake residual)", async () => {
+  mockQueue.current = [
+    [],
+    [], // loadNominatorPositions -- no captured rows
+    [{ hotkey: "5Validator", netuid: 1 }], // loadOwnedHotkeyPositions
+  ];
+  // A row with no other_fraction cell at all (not even null) -- Number(undefined)
+  // is NaN, exercising the `|| 0` fallback rather than a real captured amount.
+  otherCapturedFractionRows.current = [{ hotkey: "5Validator", netuid: 1 }];
+  mockRows.current = [{ hotkey: "5Validator", netuid: 1, stake_tao: "1000" }];
+  const res = await req("/api/v1/accounts/5Owner/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.position_count).toBe(1);
+  expect(body.positions[0].share_fraction).toBeCloseTo(1);
+  expect(body.positions[0].stake_tao).toBeCloseTo(1000);
+});
+
+test("GET /api/v1/accounts/:ss58/positions still serves the real positions when the owned-hotkey lookup fails", async () => {
+  // #6507's fallback is a compensating read, not a hard dependency -- a
+  // failure in the new owned-hotkey lookup must not break the route's
+  // existing, already-captured positions.
+  ownedHotkeyPositionsQueryFailure.error = new Error(
+    'relation "neurons" does not exist',
+  );
+  mockQueue.current = [
+    [],
+    [
+      {
+        coldkey: "5Cold1",
+        hotkey: "5Hk1",
+        netuid: 3,
+        share_fraction: 0.25,
+        captured_at: "1780000000000",
+      },
+    ], // loadNominatorPositions
+  ];
+  mockRows.current = [{ hotkey: "5Hk1", netuid: 3, stake_tao: "1000" }];
+  const res = await req("/api/v1/accounts/5Cold1/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.position_count).toBe(1);
+  expect(body.positions[0].stake_tao).toBe(250);
+});
+
+test("GET /api/v1/accounts/:ss58/positions still serves the real positions when the other-captured-fraction lookup fails", async () => {
+  otherCapturedFractionQueryFailure.error = new Error("connection reset");
+  mockQueue.current = [
+    [],
+    [
+      {
+        coldkey: "5Cold1",
+        hotkey: "5Hk1",
+        netuid: 3,
+        share_fraction: 0.25,
+        captured_at: "1780000000000",
+      },
+    ], // loadNominatorPositions
+    [{ hotkey: "5Owned", netuid: 9 }], // loadOwnedHotkeyPositions -- a different owned hotkey, so the failing lookup actually gets exercised
+  ];
+  mockRows.current = [{ hotkey: "5Hk1", netuid: 3, stake_tao: "1000" }];
+  const res = await req("/api/v1/accounts/5Cold1/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  // The owned-but-unresolvable hotkey contributes nothing (the fallback
+  // degrades to skipping it), but the real captured position is unaffected.
+  expect(body.position_count).toBe(1);
+  expect(body.positions[0].hotkey).toBe("5Hk1");
+  expect(body.positions[0].stake_tao).toBe(250);
 });
 
 test("GET /api/v1/accounts/:ss58/positions still serves an empty card when the nominator_positions read fails", async () => {

@@ -5,6 +5,7 @@ import {
   NOMINATOR_POSITION_INSERT_COLUMNS,
   buildAccountPositions,
   distinctHotkeys,
+  ownedHotkeySelfStakeRows,
   stakeByHotkeyNetuid,
 } from "../src/account-nominator-positions.mjs";
 import { handleRequest } from "../workers/api.mjs";
@@ -131,6 +132,131 @@ describe("distinctHotkeys", () => {
   test("is cold-safe and skips blank hotkeys", () => {
     assert.deepEqual(distinctHotkeys(null), []);
     assert.deepEqual(distinctHotkeys([{ hotkey: "" }, { hotkey: null }]), []);
+  });
+});
+
+describe("ownedHotkeySelfStakeRows (#6507)", () => {
+  test("synthesizes the residual share for an owned hotkey with no captured position row", () => {
+    const rows = ownedHotkeySelfStakeRows(
+      [{ hotkey: "5Validator", netuid: 1 }],
+      [], // no existing nominator_positions rows for this coldkey at all
+      new Map([["5Validator|1", 0.15]]), // other coldkeys already hold 15%
+      "5Owner",
+    );
+    assert.deepEqual(rows, [
+      {
+        coldkey: "5Owner",
+        hotkey: "5Validator",
+        netuid: 1,
+        share_fraction: 0.85,
+        captured_at: null,
+      },
+    ]);
+  });
+
+  test("assumes 100% self-stake when no other coldkey has captured anything", () => {
+    const rows = ownedHotkeySelfStakeRows(
+      [{ hotkey: "5Validator", netuid: 1 }],
+      [],
+      new Map(), // empty -- no other coldkey has any captured share
+      "5Owner",
+    );
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].share_fraction, 1);
+  });
+
+  test("does not synthesize a row for an owned (hotkey, netuid) already covered by a real position row", () => {
+    const rows = ownedHotkeySelfStakeRows(
+      [{ hotkey: "5Validator", netuid: 1 }],
+      [
+        {
+          coldkey: "5Owner",
+          hotkey: "5Validator",
+          netuid: 1,
+          share_fraction: 0.9,
+          captured_at: 123,
+        },
+      ],
+      new Map([["5Validator|1", 0.1]]),
+      "5Owner",
+    );
+    assert.deepEqual(rows, []);
+  });
+
+  test("only fills the specific missing (hotkey, netuid) pair -- a covered netuid on the same owned hotkey is left alone", () => {
+    const rows = ownedHotkeySelfStakeRows(
+      [
+        { hotkey: "5Validator", netuid: 1 },
+        { hotkey: "5Validator", netuid: 2 },
+      ],
+      [
+        {
+          coldkey: "5Owner",
+          hotkey: "5Validator",
+          netuid: 1,
+          share_fraction: 0.9,
+          captured_at: 123,
+        },
+      ],
+      new Map([["5Validator|2", 0.2]]),
+      "5Owner",
+    );
+    assert.deepEqual(rows, [
+      {
+        coldkey: "5Owner",
+        hotkey: "5Validator",
+        netuid: 2,
+        share_fraction: 0.8,
+        captured_at: null,
+      },
+    ]);
+  });
+
+  test("skips a would-be-zero-or-negative residual (every other coldkey already accounts for the full share)", () => {
+    const rows = ownedHotkeySelfStakeRows(
+      [{ hotkey: "5Validator", netuid: 1 }],
+      [],
+      new Map([["5Validator|1", 1]]),
+      "5Owner",
+    );
+    assert.deepEqual(rows, []);
+  });
+
+  test("dedupes a duplicated owned-row entry for the same (hotkey, netuid)", () => {
+    const rows = ownedHotkeySelfStakeRows(
+      [
+        { hotkey: "5Validator", netuid: 1 },
+        { hotkey: "5Validator", netuid: 1 },
+      ],
+      [],
+      new Map(),
+      "5Owner",
+    );
+    assert.equal(rows.length, 1);
+  });
+
+  test("is cold-safe: null/blank owned rows, a null positionRows, and a non-Map fraction lookup never throw", () => {
+    assert.deepEqual(ownedHotkeySelfStakeRows(null, [], null, "5Owner"), []);
+    assert.deepEqual(
+      ownedHotkeySelfStakeRows(
+        [{ hotkey: "", netuid: 1 }, { hotkey: "5Validator", netuid: -1 }, {}],
+        [],
+        new Map(),
+        "5Owner",
+      ),
+      [],
+    );
+    // positionRows itself (not just ownedRows) is null-safe -- the "covered"
+    // set falls back to empty rather than throwing on Array.isArray(null).
+    assert.equal(
+      ownedHotkeySelfStakeRows(
+        [{ hotkey: "5Validator", netuid: 1 }],
+        null,
+        new Map(),
+        "5Owner",
+      ).length,
+      1,
+    );
   });
 });
 

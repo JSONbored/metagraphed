@@ -322,6 +322,7 @@ import {
   NOMINATOR_POSITION_INSERT_COLUMNS,
   buildAccountPositions,
   distinctHotkeys,
+  ownedHotkeySelfStakeRows,
   stakeByHotkeyNetuid,
 } from "../src/account-nominator-positions.mjs";
 import {
@@ -2820,6 +2821,52 @@ async function loadNominatorPositions(sql, ss58) {
   } catch (err) {
     console.error("nominator_positions query failed:", err);
     return [];
+  }
+}
+
+// hotkeys this coldkey is the REGISTERING owner of (neurons.coldkey), across
+// every subnet it's registered in -- the candidate set for #6507's
+// self-stake fallback (see ownedHotkeySelfStakeRows). Savepoint-isolated
+// like the sibling loaders above.
+async function loadOwnedHotkeyPositions(sql, ss58) {
+  try {
+    return await sql.savepoint(
+      (sql) => sql`
+        SELECT hotkey, netuid FROM neurons WHERE coldkey = ${ss58}`,
+    );
+  } catch (err) {
+    console.error("owned-hotkey neurons query failed:", err);
+    return [];
+  }
+}
+
+// SUM of every OTHER coldkey's captured share_fraction, grouped by
+// (hotkey, netuid), for the hotkeys this coldkey appears to own (#6507) --
+// the residual (1 minus this sum) is that hotkey's still-uncaptured share,
+// which ownedHotkeySelfStakeRows attributes back to the owning coldkey.
+// Same scalar-placeholder IN-list shape as loadNeuronStakeByHotkeys above.
+async function loadOtherCapturedFractionByHotkeys(sql, hotkeys, ss58) {
+  if (hotkeys.length === 0) return new Map();
+  try {
+    const placeholders = hotkeys.map((_, i) => `$${i + 1}::text`).join(", ");
+    const rows = await sql.savepoint((sql) =>
+      sql.unsafe(
+        `SELECT hotkey, netuid, SUM(share_fraction) AS other_fraction
+         FROM nominator_positions
+         WHERE hotkey IN (${placeholders}) AND coldkey != $${hotkeys.length + 1}::text
+         GROUP BY hotkey, netuid`,
+        [...hotkeys, ss58],
+      ),
+    );
+    return new Map(
+      rows.map((row) => [
+        `${row.hotkey}|${row.netuid}`,
+        Number(row.other_fraction) || 0,
+      ]),
+    );
+  } catch (err) {
+    console.error("other-coldkey captured-fraction query failed:", err);
+    return new Map();
   }
 }
 
@@ -6705,12 +6752,30 @@ export default {
         if (acctPositions) {
           const ss58 = decodeURIComponent(acctPositions[1]);
           const positionRows = await loadNominatorPositions(sql, ss58);
+          // #6507: fill in this coldkey's own missing self-stake on any
+          // hotkey it owns but has no captured position row for -- see
+          // ownedHotkeySelfStakeRows's header comment for the full rationale.
+          const ownedRows = await loadOwnedHotkeyPositions(sql, ss58);
+          const otherFractionByKey = await loadOtherCapturedFractionByHotkeys(
+            sql,
+            distinctHotkeys(ownedRows),
+            ss58,
+          );
+          const allPositionRows = [
+            ...positionRows,
+            ...ownedHotkeySelfStakeRows(
+              ownedRows,
+              positionRows,
+              otherFractionByKey,
+              ss58,
+            ),
+          ];
           const hotkeyNetuidStake = await loadNeuronStakeByHotkeys(
             sql,
-            distinctHotkeys(positionRows),
+            distinctHotkeys(allPositionRows),
           );
           return json(
-            buildAccountPositions(positionRows, hotkeyNetuidStake, ss58),
+            buildAccountPositions(allPositionRows, hotkeyNetuidStake, ss58),
           );
         }
 
