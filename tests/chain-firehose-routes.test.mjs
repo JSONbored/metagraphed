@@ -211,7 +211,7 @@ test("ingest: an over-limit request 429s with the rate-limit header family and n
   );
   assert.equal(res.status, 429);
   assert.equal(res.headers.get("retry-after"), "60");
-  assert.equal(res.headers.get("x-ratelimit-limit"), "120");
+  assert.equal(res.headers.get("x-ratelimit-limit"), "1200");
   assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
   assert.ok(res.headers.get("x-ratelimit-policy"));
   assert.equal(

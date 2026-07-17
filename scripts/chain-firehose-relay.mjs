@@ -34,6 +34,86 @@
 //      CHAIN_FIREHOSE_SYNC_SECRET=... node scripts/chain-firehose-relay.mjs
 
 import postgres from "postgres";
+import * as Sentry from "@sentry/node";
+
+// Reports to the consolidated `metagraphed` Sentry project. Silently no-ops
+// if SENTRY_DSN is unset, matching this relay's own best-effort design.
+//
+// Deliberately NOT one captureMessage per dropped payload -- a real 2026-07
+// incident (a rate-limit thundering-herd loop this same fix addresses) hit
+// millions of drops over ~40 hours; naive per-drop capture would have blown
+// through the free-tier event quota in minutes and then been silently
+// SAMPLED AWAY by Sentry itself, hiding the incident rather than surfacing
+// it -- the opposite of the point. computeDropWindowUpdate() below (called
+// from main()'s poll loop, which owns the actual Sentry.captureMessage call)
+// aggregates instead: one event per CHAIN_FIREHOSE_DROP_REPORT_THRESHOLD
+// drops accumulated, or after CHAIN_FIREHOSE_DROP_REPORT_INTERVAL_MS of any
+// nonzero drop rate, whichever comes first (so a persistent-but-low-volume
+// problem is never silent forever either) -- the same "escalate
+// periodically, don't spam" shape as roles/validator-ops/watchdog.py's own
+// re-alert logic in metagraphed-infra. Exported for direct testing rather
+// than only indirectly via main()'s own /* v8 ignore */ boundary.
+export function initSentry() {
+  const dsn = process.env.SENTRY_DSN;
+  if (!dsn) return;
+  Sentry.init({
+    dsn,
+    environment: process.env.SENTRY_ENVIRONMENT || "production",
+    release: process.env.SENTRY_RELEASE, // deployed git SHA
+    tracesSampleRate: 0,
+  });
+  Sentry.setTag("component", "chain-firehose-relay");
+}
+
+export const CHAIN_FIREHOSE_DROP_REPORT_THRESHOLD = 500;
+export const CHAIN_FIREHOSE_DROP_REPORT_INTERVAL_MS = 5 * 60 * 1000;
+
+// Pure state-transition function: given the current drop-reporting window
+// (or null, before any drops this run) and a new batch's drop count, returns
+// whether the window's count/time threshold is now crossed and what the next
+// window state should be. Deliberately holds NO module-level mutable state
+// itself (unlike an earlier draft of this function) -- main()'s poll loop
+// owns the actual `dropWindow` variable in its own closure (the same
+// pattern it already uses for `lastCleanupAt`/`shuttingDown`), and is the
+// only caller that actually invokes Sentry.captureMessage when `report` is
+// true. That split is what makes this fully pure and testable with plain
+// input/output assertions, no Sentry mocking or test-order dependence
+// needed -- module-level mutable state here would leak between unit tests
+// unless every test carefully reset it first, which is exactly the bug this
+// design avoids.
+export function computeDropWindowUpdate(
+  window,
+  count,
+  lastStatus,
+  now = Date.now(),
+) {
+  const startedAt = window?.startedAt ?? now;
+  const totalCount = (window?.count ?? 0) + count;
+  const elapsedMs = now - startedAt;
+  const report =
+    totalCount >= CHAIN_FIREHOSE_DROP_REPORT_THRESHOLD ||
+    elapsedMs >= CHAIN_FIREHOSE_DROP_REPORT_INTERVAL_MS;
+  return {
+    report,
+    count: totalCount,
+    elapsedMs,
+    lastStatus,
+    // null (not a zeroed window) once reported -- the NEXT drop starts a
+    // fresh window from scratch, matching "resets after reporting."
+    nextWindow: report ? null : { startedAt, count: totalCount },
+  };
+}
+
+// A rate-limit pause is naturally low-frequency (each pause is itself at
+// least tens of seconds long -- see CHAIN_FIREHOSE_DEFAULT_RATE_LIMIT_PAUSE_MS),
+// so unlike drops this is safe to capture directly, one event per pause,
+// with no separate aggregation window needed.
+export function reportRateLimitPause(pauseMs) {
+  Sentry.captureMessage(
+    `chain-firehose-relay: rate limited by the ingest endpoint, pausing ${pauseMs}ms`,
+    { level: "warning", extra: { pauseMs } },
+  );
+}
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 export const DEFAULT_CHAIN_FIREHOSE_INGEST_URL =
@@ -139,11 +219,44 @@ export function computeBackoffDelayMs(
   return Math.min(baseMs * 2 ** attempt, maxMs);
 }
 
+// Ceiling on how long a single retry-after value can pause the relay for --
+// protects against a pathological/misconfigured server value stalling the
+// relay indefinitely (a real incident's own root cause was the OPPOSITE
+// problem -- not respecting retry-after at all -- but an unbounded value
+// would just trade one outage shape for another).
+export const CHAIN_FIREHOSE_MAX_RATE_LIMIT_PAUSE_MS = 5 * 60 * 1000;
+// Used when a 429 response has no (or an unparseable) retry-after header --
+// generous over the ingest endpoint's own 60s rate-limit window
+// (CHAIN_FIREHOSE_INGEST_RATE_LIMIT in workers/api.mjs) so a fallback pause
+// still clears the window rather than immediately re-triggering it.
+export const CHAIN_FIREHOSE_DEFAULT_RATE_LIMIT_PAUSE_MS = 65 * 1000;
+
+// Parses a standard `retry-after` header (either an integer number of
+// seconds, or an HTTP-date) into a millisecond delay from now. Returns null
+// if absent or unparseable -- callers fall back to
+// CHAIN_FIREHOSE_DEFAULT_RATE_LIMIT_PAUSE_MS in that case, never to zero
+// (silently not backing off at all was the actual root cause of a real
+// 2026-07 incident: 429s were retried with the same short generic backoff
+// as any other failure, so the relay kept re-triggering the same rate limit
+// indefinitely instead of ever recovering).
+export function parseRetryAfterMs(headerValue) {
+  if (!headerValue) return null;
+  const seconds = Number(headerValue);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  const dateMs = Date.parse(headerValue);
+  if (Number.isFinite(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+  return null;
+}
+
 // Forwards one payload to the hub's ingest endpoint. `fetchImpl` is injected
 // so this is testable without a real network call -- the poll loop below is
 // the only caller in production. `payload` is the JSON-serialized string
 // body, not the parsed object (the caller stringifies chain_firehose_outbox's
-// already-parsed JSONB column once, up front).
+// already-parsed JSONB column once, up front). retryAfterMs is only present
+// on the result when the response actually carried a retry-after header
+// (i.e. never on a 2xx) -- keeps the common-case return shape unchanged.
 export async function forwardChainFirehoseNotification(
   payload,
   { ingestUrl, syncSecret },
@@ -164,7 +277,14 @@ export async function forwardChainFirehoseNotification(
       body: payload,
       signal: abortController.signal,
     });
-    const result = { ok: response.ok, status: response.status };
+    const retryAfterMs = parseRetryAfterMs(
+      response.headers?.get?.("retry-after"),
+    );
+    const result = {
+      ok: response.ok,
+      status: response.status,
+      ...(retryAfterMs !== null && { retryAfterMs }),
+    };
     await response.body?.cancel();
     return result;
   } finally {
@@ -175,7 +295,12 @@ export async function forwardChainFirehoseNotification(
 // Forwards one payload with bounded retry/backoff. Returns true if the
 // payload was forwarded successfully, false if it was dropped after
 // exhausting CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS -- never throws (a
-// forwarding failure must never crash the relay's poll loop).
+// forwarding failure must never crash the relay's poll loop). onRateLimited
+// (new) fires with the pause duration whenever a 429 is seen, independent of
+// whether this particular payload eventually succeeds or gets dropped --
+// forwardBatch uses it to pause the WHOLE poll loop, not just this one row's
+// own retries, which is the actual fix for the thundering-herd failure mode
+// (see forwardBatch's own comment).
 export async function forwardWithRetry(
   payload,
   config,
@@ -183,15 +308,18 @@ export async function forwardWithRetry(
     fetchImpl = fetch,
     sleepImpl = (ms) => new Promise((r) => setTimeout(r, ms)),
     onDrop,
+    onRateLimited,
   } = {},
 ) {
+  let result;
   for (
     let attempt = 0;
     attempt < CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS;
     attempt += 1
   ) {
+    result = undefined; // reset per attempt -- a thrown network error must not let a PRIOR attempt's stale status leak into this one's 429 check below
     try {
-      const result = await forwardChainFirehoseNotification(
+      result = await forwardChainFirehoseNotification(
         payload,
         config,
         fetchImpl,
@@ -200,11 +328,32 @@ export async function forwardWithRetry(
     } catch {
       // network error -- fall through to retry/backoff below
     }
+    if (result?.status === 429) {
+      const pauseMs = Math.min(
+        result.retryAfterMs ?? CHAIN_FIREHOSE_DEFAULT_RATE_LIMIT_PAUSE_MS,
+        CHAIN_FIREHOSE_MAX_RATE_LIMIT_PAUSE_MS,
+      );
+      onRateLimited?.(pauseMs);
+      // Do NOT also apply the generic exponential backoff below -- a 429
+      // means "you are over the limit right now," not "this one request
+      // had a transient blip." Retrying again within the same rate-limit
+      // window (which the generic 500ms/1s backoff would do) just adds
+      // another rejected request, never recovers anything.
+      if (attempt < CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS - 1) {
+        await sleepImpl(pauseMs);
+      }
+      continue;
+    }
     if (attempt < CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS - 1) {
       await sleepImpl(computeBackoffDelayMs(attempt));
     }
   }
-  onDrop?.(payload);
+  // lastStatus is the last-observed HTTP status across all attempts (undefined
+  // if every attempt threw a network error rather than getting a response) --
+  // extra context for onDrop's aggregate reporting, not part of the original
+  // (payload)-only contract, so existing callers that ignore the second
+  // argument are unaffected.
+  onDrop?.(payload, result?.status);
   return false;
 }
 
@@ -214,14 +363,37 @@ export async function forwardWithRetry(
 // caller's UPDATE ... RETURNING before this runs -- forwarding failure after
 // exhausting retries still counts as "handled" (best-effort, not
 // at-least-once, same as the old design), not re-queued.
+//
+// rateLimitedForMs (new): the MAX pause duration reported by any row in this
+// batch, if any hit a 429 -- the caller (main()'s poll loop) sleeps this long
+// before its NEXT poll rather than immediately re-claiming a fresh batch and
+// firing CHAIN_FIREHOSE_FORWARD_CONCURRENCY more requests straight into the
+// same rate limit. This is the actual fix for the real 2026-07 incident: 16
+// concurrent requests times however many batches per second the old
+// immediate-reloop behavior fired is trivially over the ingest endpoint's
+// own 120-req/60s limit the moment there's any real backlog, and every prior
+// design only backed off PER ROW, never paused the batch/poll level that was
+// the true source of the overload.
 export async function forwardBatch(rows, config, options = {}) {
+  let rateLimitedForMs = 0;
   const results = await mapBounded(
     rows,
     CHAIN_FIREHOSE_FORWARD_CONCURRENCY,
-    (row) => forwardWithRetry(JSON.stringify(row.payload), config, options),
+    (row) =>
+      forwardWithRetry(JSON.stringify(row.payload), config, {
+        ...options,
+        onRateLimited: (pauseMs) => {
+          rateLimitedForMs = Math.max(rateLimitedForMs, pauseMs);
+          options.onRateLimited?.(pauseMs);
+        },
+      }),
   );
   const forwarded = results.filter(Boolean).length;
-  return { forwarded, dropped: results.length - forwarded };
+  return {
+    forwarded,
+    dropped: results.length - forwarded,
+    ...(rateLimitedForMs > 0 && { rateLimitedForMs }),
+  };
 }
 
 /* v8 ignore start -- the long-running poll/cleanup loop needs a real
@@ -234,9 +406,11 @@ export async function forwardBatch(rows, config, options = {}) {
    tested via `node --test` instead) -- see that config's own comment for the
    convention. */
 async function main() {
+  initSentry();
   const config = parseRelayConfig(process.env);
   const sql = postgres(config.databaseUrl);
   let shuttingDown = false;
+  let dropWindow = null; // owned here, not module-level -- see computeDropWindowUpdate's own comment
 
   const shutdown = async () => {
     shuttingDown = true;
@@ -248,7 +422,10 @@ async function main() {
   // UPDATE ... RETURNING (SKIP LOCKED so a concurrently-running second relay
   // instance -- a brief overlap during a redeploy -- claims disjoint rows
   // instead of racing on the same ones), stamping delivered_at as the claim
-  // marker before any HTTP forwarding happens.
+  // marker before any HTTP forwarding happens. Returns the pause duration
+  // (ms) the caller should sleep before the NEXT poll if this batch hit the
+  // ingest endpoint's rate limit -- see forwardBatch's own comment for why
+  // this is the actual fix, not just per-row retry backoff.
   async function pollOnce() {
     const rows = await sql`
       UPDATE chain_firehose_outbox
@@ -261,14 +438,43 @@ async function main() {
         FOR UPDATE SKIP LOCKED
       )
       RETURNING id, payload`;
-    if (rows.length === 0) return 0;
-    await forwardBatch(rows, config, {
-      onDrop: () =>
-        console.error(
-          `[chain-firehose-relay] dropped a payload after ${CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS} attempts`,
-        ),
+    if (rows.length === 0) return { claimed: 0, rateLimitedForMs: 0 };
+    let droppedInBatch = 0;
+    let lastDropStatus;
+    const result = await forwardBatch(rows, config, {
+      onDrop: (_payload, status) => {
+        droppedInBatch += 1;
+        lastDropStatus = status;
+      },
     });
-    return rows.length;
+    if (droppedInBatch > 0) {
+      console.error(
+        `[chain-firehose-relay] dropped ${droppedInBatch}/${rows.length} payloads this batch after ${CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS} attempts each (last status: ${lastDropStatus ?? "network error"})`,
+      );
+      const update = computeDropWindowUpdate(
+        dropWindow,
+        droppedInBatch,
+        lastDropStatus,
+      );
+      dropWindow = update.nextWindow;
+      if (update.report) {
+        Sentry.captureMessage(
+          `chain-firehose-relay: ${update.count} payload(s) dropped in the last ${Math.round(update.elapsedMs / 1000)}s (last status: ${update.lastStatus ?? "network error"})`,
+          {
+            level: "warning",
+            extra: {
+              count: update.count,
+              lastStatus: update.lastStatus,
+              windowMs: update.elapsedMs,
+            },
+          },
+        );
+      }
+    }
+    return {
+      claimed: rows.length,
+      rateLimitedForMs: result.rateLimitedForMs ?? 0,
+    };
   }
 
   async function cleanupOnce() {
@@ -284,26 +490,45 @@ async function main() {
     `[chain-firehose-relay] polling chain_firehose_outbox every ${CHAIN_FIREHOSE_POLL_INTERVAL_MS}ms, forwarding to ${config.ingestUrl}`,
   );
   while (!shuttingDown) {
-    const claimed = await pollOnce();
+    const { claimed, rateLimitedForMs } = await pollOnce();
     if (Date.now() - lastCleanupAt >= CHAIN_FIREHOSE_CLEANUP_INTERVAL_MS) {
       await cleanupOnce();
       lastCleanupAt = Date.now();
     }
-    if (claimed === 0) {
+    if (rateLimitedForMs > 0) {
+      // The actual fix for the real 2026-07 incident: pause the WHOLE poll
+      // loop for the ingest endpoint's own stated recovery window instead of
+      // immediately claiming and firing another CHAIN_FIREHOSE_FORWARD_CONCURRENCY
+      // batch straight into the same rate limit. Reported once per pause
+      // (not per dropped row -- see reportRateLimitPause's own comment) so
+      // this is visible without becoming its own flood.
+      console.error(
+        `[chain-firehose-relay] rate limited by the ingest endpoint -- pausing ${rateLimitedForMs}ms before the next poll`,
+      );
+      reportRateLimitPause(rateLimitedForMs);
+      await new Promise((resolve) => setTimeout(resolve, rateLimitedForMs));
+    } else if (claimed === 0) {
       await new Promise((resolve) =>
         setTimeout(resolve, CHAIN_FIREHOSE_POLL_INTERVAL_MS),
       );
     }
-    // claimed > 0: loop again immediately to drain a backlog faster than
-    // one CHAIN_FIREHOSE_POLL_INTERVAL_MS per batch would.
+    // claimed > 0 and not rate limited: loop again immediately to drain a
+    // backlog faster than one CHAIN_FIREHOSE_POLL_INTERVAL_MS per batch would.
   }
   await sql.end({ timeout: 5 });
   process.exit(0);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
+  main().catch(async (error) => {
     console.error("[chain-firehose-relay] fatal:", error);
+    // Explicitly caught here, so @sentry/node's default
+    // OnUnhandledRejection integration never sees this -- Node does not
+    // consider a promise "unhandled" once something calls .catch() on it.
+    // flush() before process.exit(1) is required: process.exit() is
+    // synchronous and does not wait for Sentry's background network send.
+    Sentry.captureException(error);
+    await Sentry.flush(2000);
     process.exit(1);
   });
 }

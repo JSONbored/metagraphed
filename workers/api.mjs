@@ -1054,11 +1054,29 @@ async function internalSyncRateLimited(request, env) {
 // SSE/WS/GraphQL-subscription subscriber -- so a leaked CHAIN_FIREHOSE_SYNC_SECRET
 // could flood every connected client with unbounded forged events, a distinct
 // amplification angle from the one-record-per-request internal-sync routes.
-// Generous cap: the #4981 box relay POSTs at most per-block (~5/min at ~12s
-// blocks); 120/60s leaves >20x headroom for multi-event NOTIFY bursts while
-// still firmly bounding abuse. Keyed per client IP; optional-chained so it's a
-// no-op when the binding is absent (local dev/CI).
-const CHAIN_FIREHOSE_INGEST_RATE_LIMIT = { limit: 120, windowSeconds: 60 };
+// Keyed per client IP; optional-chained so it's a no-op when the binding is
+// absent (local dev/CI).
+//
+// CORRECTED 2026-07 (real incident): the original 120/60s cap was sized for
+// the box relay's OLD LISTEN/NOTIFY design (one notification per BLOCK,
+// ~5/min at ~12s blocks). #5027 replaced that with an outbox-table poll,
+// forwarding one row per BLOCKS/EXTRINSICS/CHAIN_EVENTS/ACCOUNT_EVENTS row
+// (chain_events alone can be many per block) at up to
+// CHAIN_FIREHOSE_FORWARD_CONCURRENCY=16 concurrent requests -- a genuinely
+// different, much higher-volume traffic shape this limit was never
+// recalibrated for. The mismatch caused a real, confirmed incident: every
+// legitimate backlog-drain burst immediately 429'd, the relay's own retry
+// logic didn't back off on 429 any differently than any other failure, and
+// the resulting thundering-herd loop meant the backlog never actually
+// drained -- millions of rows accumulated over ~40h. Raised to a cap sized
+// for the CURRENT architecture's real legitimate throughput with meaningful
+// headroom, not "no real limit" -- still authenticated + per-IP, so this
+// isn't opening the endpoint to anonymous abuse, just no longer rate-limiting
+// the one legitimate caller into a permanent failure loop. The relay's own
+// forwardWithRetry now also properly respects retry-after and pauses its
+// whole poll loop on a 429 (scripts/chain-firehose-relay.mjs), so a real
+// spike still degrades gracefully instead of repeating this failure mode.
+const CHAIN_FIREHOSE_INGEST_RATE_LIMIT = { limit: 1200, windowSeconds: 60 };
 
 async function chainFirehoseIngestRateLimited(request, env) {
   if (!env.CHAIN_FIREHOSE_INGEST_RATE_LIMITER?.limit) return null;

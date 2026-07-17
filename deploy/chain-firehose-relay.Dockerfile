@@ -20,10 +20,11 @@ FROM node:22.23.1-alpine
 RUN adduser -D -u 10001 relay
 WORKDIR /app
 
-# Single pinned dependency (matches the root package.json's own postgres.js
-# pin, the same driver workers/data-api.mjs uses) -- never auto-pull a future
-# release independently of the rest of the repo.
-RUN npm install --no-audit --no-fund postgres@3.4.9
+# Pinned dependencies (postgres.js matches the root package.json's own pin,
+# the same driver workers/data-api.mjs uses) -- never auto-pull a future
+# release independently of the rest of the repo. @sentry/node also matches
+# the root package.json pin.
+RUN npm install --no-audit --no-fund postgres@3.4.9 @sentry/node@10.66.0
 
 COPY scripts/chain-firehose-relay.mjs ./scripts/chain-firehose-relay.mjs
 

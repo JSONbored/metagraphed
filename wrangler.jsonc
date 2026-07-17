@@ -547,10 +547,14 @@
       },
     },
     {
+      // Raised from 120 -- see CHAIN_FIREHOSE_INGEST_RATE_LIMIT's own comment
+      // in workers/api.mjs for the full real-incident rationale (must match
+      // this binding exactly, or the header values workers/api.mjs reports
+      // lie about what's actually enforced).
       "name": "CHAIN_FIREHOSE_INGEST_RATE_LIMITER",
       "namespace_id": "1008",
       "simple": {
-        "limit": 120,
+        "limit": 1200,
         "period": 60,
       },
     },
