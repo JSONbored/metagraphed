@@ -469,6 +469,11 @@ assert.ok(
   Array.isArray(searchIndexPage.documents),
   "list_search_index must return documents[]",
 );
+const searchPage = await callOk("list_search", { limit: 3 });
+assert.ok(
+  Array.isArray(searchPage.documents),
+  "list_search must return documents[]",
+);
 const sourceSnapshotsPage = await callOk("list_source_snapshots", {
   limit: 3,
   q: "native",
