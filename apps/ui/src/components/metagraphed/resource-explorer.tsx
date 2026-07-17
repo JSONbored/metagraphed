@@ -137,7 +137,7 @@ function FiltersTrigger({ filter }: { filter: ReturnType<typeof useSubnetFilter>
           <Filter className="size-3" />
           <span className="hidden sm:inline">Filters</span>
           {activeCount > 0 ? (
-            <span className="rounded-full bg-accent/15 px-1.5 font-mono text-[10px] text-accent">
+            <span className="rounded-full bg-accent/15 px-1.5 font-mono text-[10px] text-accent-text">
               {activeCount}
             </span>
           ) : null}

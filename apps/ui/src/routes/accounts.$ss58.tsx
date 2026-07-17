@@ -243,7 +243,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             </ActionBar>
             <a
               href="#history"
-              className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition-colors hover:bg-accent/15"
+              className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent-text transition-colors hover:bg-accent/15"
             >
               View activity
             </a>

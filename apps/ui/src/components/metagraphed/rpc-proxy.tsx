@@ -70,7 +70,7 @@ export function ProxyHero() {
           Live
         </span>
         <span className="mg-label">Load-balanced reverse proxy</span>
-        <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-accent">
+        <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-accent-text">
           {label}
         </span>
       </div>

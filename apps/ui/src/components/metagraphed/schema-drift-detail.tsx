@@ -103,7 +103,7 @@ function DriftBody({
               onOpenInExplorer(schema.id);
               onClose();
             }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-primary-soft px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-accent hover:bg-primary-soft/80"
+            className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-primary-soft px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-accent-text hover:bg-primary-soft/80"
           >
             open in explorer
           </button>
