@@ -73,6 +73,7 @@ import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
+import { subnetPositionSearch } from "@/lib/metagraphed/subnet-position-link";
 import type {
   AccountCounterparty,
   AccountStakeFlowSubnet,
@@ -2017,6 +2018,9 @@ function AccountFootprintSection({
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: r.netuid }}
+                      // Same deep-link as SubnetPerformanceTable: this row already
+                      // knows its uid, so land on the neuron card, not the overview.
+                      search={subnetPositionSearch(r.uid)}
                       className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
                     >
                       SN{r.netuid}
