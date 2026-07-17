@@ -191,6 +191,10 @@ export function NetworkSwitcher() {
                   value={custom}
                   onChange={(e) => setCustom(e.target.value)}
                   placeholder="http://localhost:8787"
+                  // #6422: a placeholder is not an accessible name for AT, so
+                  // the field needs its own aria-label -- matching SearchInput's
+                  // convention in table-controls.tsx.
+                  aria-label="Custom API origin"
                   className="flex-1 rounded border border-border bg-card px-2 py-1 font-mono text-[11px] focus:outline-none focus:border-ink/30"
                 />
                 <button
