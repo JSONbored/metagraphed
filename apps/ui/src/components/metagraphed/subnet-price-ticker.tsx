@@ -126,16 +126,20 @@ export function SubnetPriceTicker({ limit = 12 }: { limit?: number }) {
                 <span className="font-display font-semibold tabular-nums text-ink-strong">
                   {priceStr(it.price)}
                 </span>
-                <span className="inline-block w-[44px] align-middle">
-                  <Sparkline
-                    values={t.values}
-                    width={44}
-                    height={14}
-                    interactive={false}
-                    fill={false}
-                    color={t.color}
-                  />
-                </span>
+                {/* A single-point series paints nothing (#6038) -- collapse the 44px slot
+                    instead of reserving dead space until trajectory history backfills. */}
+                {t.values.length >= 2 ? (
+                  <span className="inline-block w-[44px] align-middle">
+                    <Sparkline
+                      values={t.values}
+                      width={44}
+                      height={14}
+                      interactive={false}
+                      fill={false}
+                      color={t.color}
+                    />
+                  </span>
+                ) : null}
                 {t.changePct != null ? (
                   <span className="font-mono tabular-nums text-[10px]" style={{ color: t.color }}>
                     {arrow} {t.changePct >= 0 ? "+" : ""}
