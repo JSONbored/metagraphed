@@ -187,10 +187,41 @@ export function isHeartbeatFresh(
 export const CHAIN_FIREHOSE_POLL_BATCH_SIZE = 200;
 
 // Idle poll interval -- how long to wait before re-polling after a batch came
-// back empty. When a poll DOES claim rows, the loop re-polls immediately
-// (no sleep) to drain a backlog quickly rather than waiting out this
-// interval between every batch.
+// back empty. When a poll DOES claim rows, the loop paces itself (see
+// computeBatchPaceDelayMs below) instead of either waiting out this idle
+// interval or re-polling with no delay at all.
 export const CHAIN_FIREHOSE_POLL_INTERVAL_MS = 250;
+
+// Server-side cap this relay must stay under (CHAIN_FIREHOSE_INGEST_RATE_LIMIT
+// in workers/api.mjs: 1200 req/60s, per-IP). Targets 80% of it, not the full
+// 1200, so ordinary jitter (network latency variance, GC pauses, the
+// window's own boundary behavior) doesn't tip a batch over the edge even
+// when this pacing is working correctly.
+export const CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S = 960;
+
+// Pure: how long to additionally sleep after a non-rate-limited batch of
+// `claimed` rows took `elapsedMs` wall-clock time to forward, so the
+// SUSTAINED rate across batches never organically bursts past the ingest
+// endpoint's own rate limit. This is the fix for a real 2026-07-17 incident,
+// distinct from the retry-after fix above (that one handles a single 429
+// correctly; this one prevents the NEXT batch from re-triggering one at all).
+// The prior design re-polled immediately whenever a batch wasn't rate
+// limited, so any real backlog fired CHAIN_FIREHOSE_POLL_BATCH_SIZE (200)
+// requests in a couple of seconds -- roughly 8x the sustained rate the limit
+// allows -- guaranteeing the VERY NEXT batch re-triggered the same 429. The
+// relay then correctly paused for retry-after, resumed, immediately
+// re-burst, and repeated forever: a livelock reactive backoff alone can
+// never recover from, because every retry attempt is already over the limit
+// before the first response even comes back. Confirmed live: a real backlog
+// sat at ~230k pending with a 100% 429 rate for over an hour until this fix.
+// Proactive pacing keeps the relay's own request rate under the cap in the
+// first place, so backlog draining converges instead of oscillating forever.
+export function computeBatchPaceDelayMs(claimed, elapsedMs) {
+  if (claimed <= 0) return 0;
+  const targetMs =
+    (claimed / CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S) * 60_000;
+  return Math.max(0, targetMs - elapsedMs);
+}
 
 // How long a row stays in the outbox before cleanup deletes it. Delivered
 // rows are only retained for observability, while pending rows older than
@@ -550,6 +581,7 @@ async function main() {
     `[chain-firehose-relay] polling chain_firehose_outbox every ${CHAIN_FIREHOSE_POLL_INTERVAL_MS}ms, forwarding to ${config.ingestUrl}`,
   );
   while (!shuttingDown) {
+    const pollStartedAt = Date.now();
     const { claimed, rateLimitedForMs } = await pollOnce();
     touchHeartbeat(); // tracks poll-loop liveness, independent of claim/forward outcome -- see HEARTBEAT_FILE's own comment
     if (Date.now() - lastCleanupAt >= CHAIN_FIREHOSE_CLEANUP_INTERVAL_MS) {
@@ -557,12 +589,12 @@ async function main() {
       lastCleanupAt = Date.now();
     }
     if (rateLimitedForMs > 0) {
-      // The actual fix for the real 2026-07 incident: pause the WHOLE poll
-      // loop for the ingest endpoint's own stated recovery window instead of
-      // immediately claiming and firing another CHAIN_FIREHOSE_FORWARD_CONCURRENCY
-      // batch straight into the same rate limit. Reported once per pause
-      // (not per dropped row -- see reportRateLimitPause's own comment) so
-      // this is visible without becoming its own flood.
+      // Pause the WHOLE poll loop for the ingest endpoint's own stated
+      // recovery window instead of immediately claiming and firing another
+      // CHAIN_FIREHOSE_FORWARD_CONCURRENCY batch straight into the same rate
+      // limit. Reported once per pause (not per dropped row -- see
+      // reportRateLimitPause's own comment) so this is visible without
+      // becoming its own flood.
       console.error(
         `[chain-firehose-relay] rate limited by the ingest endpoint -- pausing ${rateLimitedForMs}ms before the next poll`,
       );
@@ -572,9 +604,19 @@ async function main() {
       await new Promise((resolve) =>
         setTimeout(resolve, CHAIN_FIREHOSE_POLL_INTERVAL_MS),
       );
+    } else {
+      // claimed > 0 and not rate limited: pace the next poll instead of
+      // looping immediately -- see computeBatchPaceDelayMs's own comment for
+      // why an unpaced immediate reloop reliably re-triggers the same 429
+      // this batch just avoided.
+      const paceDelayMs = computeBatchPaceDelayMs(
+        claimed,
+        Date.now() - pollStartedAt,
+      );
+      if (paceDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, paceDelayMs));
+      }
     }
-    // claimed > 0 and not rate limited: loop again immediately to drain a
-    // backlog faster than one CHAIN_FIREHOSE_POLL_INTERVAL_MS per batch would.
   }
   await sql.end({ timeout: 5 });
   process.exit(0);

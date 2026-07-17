@@ -41,7 +41,10 @@ import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS,
   CHAIN_FIREHOSE_MAX_RATE_LIMIT_PAUSE_MS,
+  CHAIN_FIREHOSE_POLL_BATCH_SIZE,
+  CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S,
   computeBackoffDelayMs,
+  computeBatchPaceDelayMs,
   computeDropWindowUpdate,
   forwardBatch,
   forwardChainFirehoseNotification,
@@ -137,6 +140,68 @@ test("computeBackoffDelayMs: doubles per attempt, capped at maxMs", () => {
 test("computeBackoffDelayMs: honors custom baseMs/maxMs", () => {
   assert.equal(computeBackoffDelayMs(1, { baseMs: 100, maxMs: 1000 }), 200);
   assert.equal(computeBackoffDelayMs(10, { baseMs: 100, maxMs: 1000 }), 1000);
+});
+
+// --- computeBatchPaceDelayMs -------------------------------------------------
+
+test("computeBatchPaceDelayMs: a full batch that forwarded instantly gets the full target delay", () => {
+  // 200 rows at the safe rate takes (200/960)*60_000 = 12_500ms; if forwarding
+  // itself took ~0ms, the full 12_500ms must still be slept.
+  const delay = computeBatchPaceDelayMs(CHAIN_FIREHOSE_POLL_BATCH_SIZE, 0);
+  assert.equal(delay, 12_500);
+});
+
+test("computeBatchPaceDelayMs: subtracts wall-clock time the batch already spent forwarding", () => {
+  const delay = computeBatchPaceDelayMs(CHAIN_FIREHOSE_POLL_BATCH_SIZE, 5_000);
+  assert.equal(delay, 12_500 - 5_000);
+});
+
+test("computeBatchPaceDelayMs: never negative -- a batch that took longer than its target needs no extra pause", () => {
+  assert.equal(
+    computeBatchPaceDelayMs(CHAIN_FIREHOSE_POLL_BATCH_SIZE, 99_999),
+    0,
+  );
+});
+
+test("computeBatchPaceDelayMs: zero or negative claimed count needs no pause", () => {
+  assert.equal(computeBatchPaceDelayMs(0, 0), 0);
+  assert.equal(computeBatchPaceDelayMs(-1, 0), 0);
+});
+
+test("computeBatchPaceDelayMs: scales proportionally with a partial batch, not just full ones", () => {
+  // A partial batch of 50 rows only needs to pace to (50/960)*60_000 ≈ 3_125ms,
+  // not the full-batch target -- pacing scales with actual claimed rows so a
+  // relay that's nearly caught up isn't throttled as hard as one draining a
+  // real backlog.
+  const delay = computeBatchPaceDelayMs(50, 0);
+  assert.equal(delay, (50 / CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S) * 60_000);
+  assert.ok(delay < 12_500);
+});
+
+test("computeBatchPaceDelayMs: sustained full-batch pacing stays at/under the safe rate, not the raw 1200 limit", () => {
+  // Simulate draining a large backlog: every batch forwards CHAIN_FIREHOSE_POLL_BATCH_SIZE
+  // rows in negligible wall-clock time, so the loop is paced entirely by this
+  // function. Over N batches the total elapsed time must be at least
+  // N * batchSize / CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S seconds --
+  // i.e. the achieved rate never exceeds the safe target, which itself sits
+  // comfortably under the server's real 1200/60s cap (see this function's
+  // own header comment for why 100% of the raw limit is deliberately not
+  // the target).
+  const batches = 12;
+  let totalDelayMs = 0;
+  for (let i = 0; i < batches; i += 1) {
+    totalDelayMs += computeBatchPaceDelayMs(CHAIN_FIREHOSE_POLL_BATCH_SIZE, 0);
+  }
+  const achievedRatePer60s =
+    (batches * CHAIN_FIREHOSE_POLL_BATCH_SIZE * 60_000) / totalDelayMs;
+  assert.ok(
+    achievedRatePer60s <= CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S + 0.01,
+    `achieved rate ${achievedRatePer60s}/60s exceeded the safe target ${CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S}/60s`,
+  );
+  assert.ok(
+    achievedRatePer60s < 1200,
+    "achieved rate must stay under the raw server limit too",
+  );
 });
 
 // --- forwardChainFirehoseNotification ----------------------------------------
