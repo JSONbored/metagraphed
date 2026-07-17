@@ -44,6 +44,7 @@ import {
   economicsTrendsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { rovingTabIndex, useRovingTablist } from "@/hooks/use-roving-tablist";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import type {
   ChainCalls,
@@ -1293,6 +1294,15 @@ function ExplorerDashboard() {
   // longer one ~24,000px vertical feed. Only the active tab's panels mount; the
   // queries above are batched once, so switching tabs never re-suspends.
   const [tab, setTab] = useState<ExplorerTab>("activity");
+  // #6391: arrow-key navigation for the role="tablist" section switcher.
+  const tabActiveIndex = Math.max(
+    0,
+    EXPLORER_TABS.findIndex((t) => t.id === tab),
+  );
+  const { tabRef: explorerTabRef, onKeyDown: explorerTabKeyDown } = useRovingTablist(
+    EXPLORER_TABS.length,
+    (i) => setTab(EXPLORER_TABS[i].id),
+  );
   return (
     <div className="space-y-10">
       {/* window toggle */}
@@ -1355,13 +1365,16 @@ function ExplorerDashboard() {
         role="tablist"
         aria-label="Explorer sections"
       >
-        {EXPLORER_TABS.map((t) => (
+        {EXPLORER_TABS.map((t, i) => (
           <button
             key={t.id}
+            ref={explorerTabRef(i)}
             type="button"
             role="tab"
             aria-selected={tab === t.id}
+            tabIndex={rovingTabIndex(i, tabActiveIndex)}
             onClick={() => setTab(t.id)}
+            onKeyDown={explorerTabKeyDown(i)}
             className={
               tab === t.id
                 ? "rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-accent-text"

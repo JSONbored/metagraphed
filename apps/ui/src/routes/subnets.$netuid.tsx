@@ -83,6 +83,7 @@ import {
   subnetStakeQuoteQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
+import { rovingTabIndex, useRovingTablist } from "@/hooks/use-roving-tablist";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import {
   eventKindCategory,
@@ -801,6 +802,12 @@ function fmtQuotePrice(v: number): string {
 function StakeQuoteCalculator({ netuid }: { netuid: number }) {
   const [amountInput, setAmountInput] = useState("");
   const [direction, setDirection] = useState<(typeof STAKE_QUOTE_DIRECTIONS)[number]>("stake");
+  // #6391: arrow-key navigation for the role="tablist" direction toggle.
+  const directionIndex = Math.max(0, STAKE_QUOTE_DIRECTIONS.indexOf(direction));
+  const { tabRef: directionTabRef, onKeyDown: directionKeyDown } = useRovingTablist(
+    STAKE_QUOTE_DIRECTIONS.length,
+    (i) => setDirection(STAKE_QUOTE_DIRECTIONS[i]),
+  );
   const amount = Number(amountInput);
   const hasValidAmount = amountInput.trim() !== "" && Number.isFinite(amount) && amount > 0;
   const result = useQuery(subnetStakeQuoteQuery(netuid, hasValidAmount ? amount : 0, direction));
@@ -837,15 +844,18 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
             aria-label="Stake or unstake"
             className="inline-flex items-center rounded-md border border-border bg-card p-0.5"
           >
-            {STAKE_QUOTE_DIRECTIONS.map((d) => {
+            {STAKE_QUOTE_DIRECTIONS.map((d, i) => {
               const active = d === direction;
               return (
                 <button
                   key={d}
+                  ref={directionTabRef(i)}
                   type="button"
                   role="tab"
                   aria-selected={active}
+                  tabIndex={rovingTabIndex(i, directionIndex)}
                   onClick={() => setDirection(d)}
+                  onKeyDown={directionKeyDown(i)}
                   className={classNames(
                     "min-h-8 rounded px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest transition-colors",
                     active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
