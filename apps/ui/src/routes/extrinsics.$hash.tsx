@@ -257,11 +257,14 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             </span>
           </FieldRow>
           <FieldRow label="Signer">
-            {extrinsic.signer ? (
-              <CopyableCode value={extrinsic.signer} truncate={false} className="max-w-full" />
-            ) : (
-              <span className="text-ink-muted">—</span>
-            )}
+            {/* #6424: linked like every other ss58 on this page (see the events
+                table below) -- untruncated, so the full value stays readable and
+                copyable exactly as it was. */}
+            <AccountAddress
+              ss58={extrinsic.signer}
+              truncate={false}
+              fallback={<span className="text-ink-muted">—</span>}
+            />
           </FieldRow>
           <FieldRow label="Result">
             <span className="font-mono text-sm text-ink">{result}</span>

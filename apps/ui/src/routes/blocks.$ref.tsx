@@ -266,11 +266,14 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
             )}
           </FieldRow>
           <FieldRow label="Author">
-            {block.author ? (
-              <CopyableCode value={block.author} truncate={false} className="max-w-full" />
-            ) : (
-              <span className="text-ink-muted">—</span>
-            )}
+            {/* #6424: linked like every other ss58 on this page (see the events
+                table below) -- untruncated, so the full value stays readable and
+                copyable exactly as it was. */}
+            <AccountAddress
+              ss58={block.author}
+              truncate={false}
+              fallback={<span className="text-ink-muted">—</span>}
+            />
           </FieldRow>
           <FieldRow label="Extrinsics">
             <span className="font-mono text-sm text-ink tabular-nums">

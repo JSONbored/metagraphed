@@ -21,11 +21,19 @@ export function AccountAddress({
   keep,
   copyButtonClassName,
   compact,
+  truncate = true,
 }: {
   ss58?: string | null;
   fallback: ReactNode;
   /** Chars kept at each end before the ellipsis (passed to shortHash). Defaults to 6. */
   keep?: number;
+  /**
+   * Render the whole ss58 instead of shortHash's ellipsis form (#6424). Mirrors
+   * CopyableCode's own `truncate` prop, for the detail-page FieldRows that show
+   * the full value today -- a table cell wants the short form, a wide field row
+   * does not.
+   */
+  truncate?: boolean;
   copyButtonClassName?: string;
   /** Forwarded to the inner CopyButton — pass true inside a dense table/list row. See CopyButton's `compact` doc. */
   compact?: boolean;
@@ -35,7 +43,7 @@ export function AccountAddress({
       <span className="inline-flex items-center gap-1 min-w-0">
         <EntityHoverCard kind="account" ss58={ss58}>
           <Link to="/accounts/$ss58" params={{ ss58 }} className="hover:underline" title={ss58}>
-            {shortHash(ss58, keep)}
+            {truncate ? shortHash(ss58, keep) : ss58}
           </Link>
         </EntityHoverCard>
         <CopyButton
