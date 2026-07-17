@@ -284,6 +284,43 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(surface.schema_url, "https://api.example.com/openapi.json")
         self.assertEqual(surface.raw["authority"], "official")
 
+    async def test_providers_returns_typed_models(self):
+        # The providers API exposes the slug as `id` (Provider aliases id -> slug).
+        client = self._client(
+            httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "providers": [
+                            {
+                                "id": "macrocosmos",
+                                "name": "Macrocosmos",
+                                "authority": "official",
+                                "surface_count": 12,
+                            }
+                        ]
+                    },
+                    "meta": {
+                        "pagination": {
+                            "collection": "providers",
+                            "next_cursor": None,
+                        }
+                    },
+                },
+            )
+        )
+        providers = await client.providers(authority="official")
+        self.assertEqual(len(providers), 1)
+        provider = providers[0]
+        self.assertIsInstance(provider, Provider)
+        self.assertEqual(provider.slug, "macrocosmos")
+        self.assertEqual(provider.name, "Macrocosmos")
+        self.assertEqual(provider.authority, "official")
+        self.assertEqual(provider.surface_count, 12)
+        self.assertEqual(provider.raw["id"], "macrocosmos")
+        # Query kwargs reach fetch_all's request query.
+        self.assertEqual(client._client.calls[0][2], {"authority": "official"})
+
     async def test_endpoints_returns_typed_models(self):
         client = self._client(
             httpx.Response(

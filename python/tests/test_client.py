@@ -753,6 +753,49 @@ class FetchAllAndModelsTest(unittest.TestCase):
         self.assertEqual(surface.schema_url, "https://api.example.com/openapi.json")
         self.assertEqual(surface.raw["authority"], "official")
 
+    def test_providers_convenience_returns_typed_models(self):
+        # The providers API exposes the slug as `id` (Provider aliases id -> slug),
+        # so the typed model must surface `.slug` from the `id` key.
+        captured_urls = []
+        pages = [
+            {
+                "data": {
+                    "providers": [
+                        {
+                            "id": "macrocosmos",
+                            "name": "Macrocosmos",
+                            "authority": "official",
+                            "surface_count": 12,
+                        }
+                    ]
+                },
+                "meta": {
+                    "pagination": {
+                        "collection": "providers",
+                        "next_cursor": None,
+                    }
+                },
+            }
+        ]
+        responses = iter(_FakeResponse(page) for page in pages)
+
+        def fake_urlopen(request, timeout=None):
+            captured_urls.append(request.full_url)
+            return next(responses)
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            providers = MetagraphedClient().providers(authority="official")
+        self.assertEqual(len(providers), 1)
+        provider = providers[0]
+        self.assertIsInstance(provider, Provider)
+        self.assertEqual(provider.slug, "macrocosmos")
+        self.assertEqual(provider.name, "Macrocosmos")
+        self.assertEqual(provider.authority, "official")
+        self.assertEqual(provider.surface_count, 12)
+        self.assertEqual(provider.raw["id"], "macrocosmos")
+        # Query kwargs reach fetch_all's request URL.
+        self.assertIn("authority=official", captured_urls[0])
+
     def test_endpoints_convenience_returns_typed_models(self):
         # Realistic EndpointResource shape (schemas/api-components.schema.json):
         # the backend exposes `url`, not `base_url`.
