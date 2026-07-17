@@ -4,6 +4,7 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/state
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo, ListShell, LoadMore } from "@jsonbored/ui-kit";
 import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
+import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import type { ChainEvent } from "@/lib/metagraphed/types";
@@ -92,6 +93,15 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
         filtersActive
           ? "No chain events match these filters."
           : "No chain events indexed yet — the all-events backfill fills this feed."
+      }
+      action={
+        filtersActive
+          ? undefined
+          : {
+              label: "Open /api/v1/chain-events",
+              href: `${API_BASE}/api/v1/chain-events`,
+              external: true,
+            }
       }
     />
   );
