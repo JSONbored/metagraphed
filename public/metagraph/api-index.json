@@ -1004,6 +1004,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "network-parameters",
+      "path": "/metagraph/network/parameters.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/NetworkParametersArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-recycled",
       "path": "/metagraph/subnets/{netuid}/recycled.json",
       "retirement": null,
@@ -7194,6 +7203,18 @@
       "id": "sudo-key",
       "method": "GET",
       "path": "/api/v1/sudo/key",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/network/parameters.json",
+      "cache": "short",
+      "description": "Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure.",
+      "id": "network-parameters",
+      "method": "GET",
+      "path": "/api/v1/network/parameters",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

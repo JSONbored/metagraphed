@@ -132,6 +132,7 @@ import { buildChainYield } from "./chain-yield.mjs";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
+import { loadNetworkParameters } from "./network-parameters.mjs";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -476,6 +477,8 @@ export const SDL = `
     account_balance(ss58: String!): AccountBalance
     "The network's on-chain sudo (superuser) key hotkey, read live from chain via RPC (not the Postgres tier). hotkey is null on RPC failure or a renounced sudo, schema-stable, never a GraphQL error. Mirrors GET /api/v1/sudo/key."
     sudo_key: SudoKey
+    "Live global Subtensor protocol/governance parameters (TaoWeight, StakeThreshold, PendingChildKeyCooldown), read directly from chain via RPC (not the Postgres tier). Each field is independently null on its own RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/network/parameters."
+    network_parameters: NetworkParameters
     "Recent Sudo-pallet extrinsic feed (newest first): the chain's superuser governance calls, the same shape as the extrinsics feed with call_module fixed to Sudo (so no signer/call_module args). Mirrors GET /api/v1/sudo."
     sudo(limit: Int, offset: Int, cursor: String, block: Int, call_function: String, success: Boolean): ExtrinsicList!
   }
@@ -2017,6 +2020,15 @@ export const SDL = `
     queried_at: String!
   }
 
+  "Live global Subtensor protocol/governance parameters, read live from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/parameters's data envelope."
+  type NetworkParameters {
+    schema_version: Int!
+    tao_weight: Float
+    stake_threshold_tao: Float
+    pending_childkey_cooldown_blocks: Int
+    queried_at: String!
+  }
+
   "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary."
   type BlocksSummary {
     schema_version: Int!
@@ -2943,6 +2955,7 @@ export const FIELD_COMPLEXITY = {
   subnet_recycled: LIVE_RPC_FIELD_COMPLEXITY,
   account_balance: LIVE_RPC_FIELD_COMPLEXITY,
   sudo_key: LIVE_RPC_FIELD_COMPLEXITY,
+  network_parameters: LIVE_RPC_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -6883,6 +6896,16 @@ const rootValue = {
     // error. loadSudoKey always sets schema_version/queried_at
     // unconditionally, so no `??` fallback is needed for those.
     return loadSudoKey(context.env);
+  },
+
+  async network_parameters(_args, context) {
+    // Live chain RPC, not the Postgres tier -- reuses loadNetworkParameters'
+    // own KV cache/TTL, matching REST's /network/parameters handler exactly.
+    // Each field stays independently null on its own RPC failure
+    // (schema-stable), never a GraphQL error. loadNetworkParameters always
+    // sets schema_version/queried_at unconditionally, so no `??` fallback is
+    // needed for those.
+    return loadNetworkParameters(context.env);
   },
 };
 

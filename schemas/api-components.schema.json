@@ -11413,6 +11413,44 @@
           }
         ]
       },
+      "NetworkParametersArtifact": {
+        "additionalProperties": true,
+        "description": "Live global Subtensor protocol/governance parameters (#6343) -- TaoWeight, StakeThreshold, PendingChildKeyCooldown -- queried from the finney RPC at request time and cached for 300s. Each field is independently null on its own RPC failure.",
+        "properties": {
+          "pending_childkey_cooldown_blocks": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stake_threshold_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tao_weight": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version"
+        ],
+        "type": "object"
+      },
       "Neuron": {
         "additionalProperties": false,
         "description": "One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null. `featured` (#5166) is only populated on the validators-list artifacts (SubnetValidatorsArtifact) -- a DB-toggled pin (featured_validators, keyed by hotkey) that surfaces a maintainer-highlighted validator; omitted (not false) on the metagraph/neuron-detail artifacts, which don't compute it.",

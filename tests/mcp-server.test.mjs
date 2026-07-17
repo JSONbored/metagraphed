@@ -16211,6 +16211,59 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     assert.equal(res.body.result.isError, true);
   });
 
+  test("get_network_parameters resolves all three fields from live RPC hits", async () => {
+    const TAO_WEIGHT_KEY =
+      "0x658faa385070e074c85bf6b568cf05556b2684762c3b1e22ffb4a92939298741";
+    const STAKE_THRESHOLD_KEY =
+      "0x658faa385070e074c85bf6b568cf0555782d99ebaa64a1ba18b3e8cda1047327";
+    const COOLDOWN_KEY =
+      "0x658faa385070e074c85bf6b568cf0555503e4fe5f139cae8b9d045e82e1c83a2";
+    const orig = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      const key = JSON.parse(init.body).params[0];
+      const byKey = {
+        [TAO_WEIGHT_KEY]: "0x7a14ae47e17a142e",
+        [STAKE_THRESHOLD_KEY]: "0x0010a5d4e8000000",
+        [COOLDOWN_KEY]: "0x201c000000000000",
+      };
+      return {
+        ok: true,
+        json: async () => ({ jsonrpc: "2.0", id: 1, result: byKey[key] }),
+      };
+    };
+    try {
+      const res = await callTool("get_network_parameters", {}, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.tao_weight, 0.18);
+      assert.equal(out.stake_threshold_tao, 1000);
+      assert.equal(out.pending_childkey_cooldown_blocks, 7200);
+      assert.ok(out.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_network_parameters returns all-null fields on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("rpc down");
+    };
+    try {
+      const res = await callTool("get_network_parameters", {}, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.tao_weight, null);
+      assert.equal(out.stake_threshold_tao, null);
+      assert.equal(out.pending_childkey_cooldown_blocks, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_network_parameters rejects an unexpected argument", async () => {
+    const res = await callTool("get_network_parameters", { netuid: 7 }, {});
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("get_runtime returns a schema-stable empty transition timeline (D1 write path retired)", async () => {
     const res = await callTool("get_runtime", {}, {});
     const out = res.body.result.structuredContent;

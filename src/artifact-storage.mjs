@@ -151,6 +151,9 @@ export const R2_ONLY_PATTERNS = [
   // Current Sudo::Key holder (#4310/2.4): computed from RPC at request time,
   // never a static file.
   /^sudo\/key\.json$/,
+  // Live global Subtensor protocol/governance parameters (#6343): computed
+  // from RPC at request time, never a static file.
+  /^network\/parameters\.json$/,
   // Live cumulative TAO recycled for registration on one subnet (#4339/8.4):
   // computed from RPC at request time, never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/recycled\.json$/,

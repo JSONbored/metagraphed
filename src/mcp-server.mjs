@@ -615,6 +615,7 @@ import { buildAccountIdentity } from "./account-identity.mjs";
 import { buildAccountIdentityHistory } from "./account-identity-history.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
+import { loadNetworkParameters } from "./network-parameters.mjs";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import {
   buildValidatorNominators,
@@ -7592,6 +7593,24 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_network_parameters",
+    title: "Get live global Subtensor protocol/governance parameters",
+    description:
+      "Fetch live global Subtensor protocol/governance parameters -- " +
+      "TaoWeight, StakeThreshold, PendingChildKeyCooldown -- queried live " +
+      "from finney RPC at request time (300s KV cache). Each field is " +
+      "independently null on its own RPC failure. Mirrors GET " +
+      "/api/v1/network/parameters.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadNetworkParameters(ctx.env);
+    },
+  },
+  {
     name: "get_governance_config_changes",
     title: "Get the root-origin network-config change feed",
     description:
@@ -12891,6 +12910,23 @@ const TOOL_OUTPUT_SCHEMAS = {
     properties: {
       schema_version: { type: "integer" },
       hotkey: NULLABLE_STRING,
+      queried_at: NULLABLE_STRING,
+    },
+  },
+  get_network_parameters: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "tao_weight",
+      "stake_threshold_tao",
+      "pending_childkey_cooldown_blocks",
+      "queried_at",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      tao_weight: { type: ["number", "null"] },
+      stake_threshold_tao: { type: ["number", "null"] },
+      pending_childkey_cooldown_blocks: { type: ["integer", "null"] },
       queried_at: NULLABLE_STRING,
     },
   },

@@ -795,6 +795,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/network/parameters",
+    (body) => {
+      assert.equal("tao_weight" in body.data, true);
+      assert.equal("stake_threshold_tao" in body.data, true);
+      assert.equal("pending_childkey_cooldown_blocks" in body.data, true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/recycled",
     (body) => {
       assert.equal(body.data.netuid, 7);

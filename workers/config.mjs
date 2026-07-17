@@ -269,6 +269,11 @@ export const SUDO_CALLS_PATH_PATTERN = /^\/api\/v1\/sudo$/;
 // Council membership framing — see #4310's audit): a live finney RPC read,
 // not a D1 tier — distinct from SUDO_CALLS_PATH_PATTERN's extrinsic feed.
 export const SUDO_KEY_PATH_PATTERN = /^\/api\/v1\/sudo\/key$/;
+// Live global Subtensor protocol/governance parameters (#6343) -- TaoWeight,
+// StakeThreshold, PendingChildKeyCooldown -- a live finney RPC read, same
+// shape as SUDO_KEY_PATH_PATTERN just above (no path params, no D1 tier).
+export const NETWORK_PARAMETERS_PATH_PATTERN =
+  /^\/api\/v1\/network\/parameters$/;
 // AdminUtils config-change feed (#4310/2.3, re-scoped from the original
 // Council/Senate framing — see #4310's audit): the extrinsics feed hardcoded
 // to call_module='AdminUtils', subtensor's own root-origin hyperparameter/

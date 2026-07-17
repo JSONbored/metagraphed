@@ -97,6 +97,7 @@ import {
   loadAccountBalance,
 } from "../../src/account-balance.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
+import { loadNetworkParameters } from "../../src/network-parameters.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { computeStakeQuote } from "../../src/stake-quote.mjs";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
@@ -4164,6 +4165,22 @@ export async function handleRuntime(request, env, url) {
 // key (schema-stable, never throws).
 export async function handleSudoKey(request, env) {
   const data = await loadSudoKey(env);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/network/parameters (#6343): live global Subtensor protocol/
+// governance parameters (TaoWeight, StakeThreshold,
+// PendingChildKeyCooldown) -- three parallel finney RPC reads, batched into
+// one KV-cached response. Same shape as handleSudoKey just above (no path
+// params, no dedicated rate limiter -- neither is a per-caller-scoped
+// resource). Every field is independently null on RPC failure
+// (schema-stable, never throws).
+export async function handleNetworkParameters(request, env) {
+  const data = await loadNetworkParameters(env);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

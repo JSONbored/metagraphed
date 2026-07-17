@@ -12114,6 +12114,84 @@ describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.mjs)", () => 
   });
 });
 
+describe("graphql — network_parameters (#6343, live chain RPC via network-parameters.mjs)", () => {
+  // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
+  // in tests/network-parameters.test.mjs.
+  function withFetchStub(stub, fn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  const TAO_WEIGHT_KEY =
+    "0x658faa385070e074c85bf6b568cf05556b2684762c3b1e22ffb4a92939298741";
+  const STAKE_THRESHOLD_KEY =
+    "0x658faa385070e074c85bf6b568cf0555782d99ebaa64a1ba18b3e8cda1047327";
+  const COOLDOWN_KEY =
+    "0x658faa385070e074c85bf6b568cf0555503e4fe5f139cae8b9d045e82e1c83a2";
+
+  function goldenFetchStub() {
+    return async (_url, init) => {
+      const key = JSON.parse(init.body).params[0];
+      const byKey = {
+        [TAO_WEIGHT_KEY]: "0x7a14ae47e17a142e",
+        [STAKE_THRESHOLD_KEY]: "0x0010a5d4e8000000", // 1e12 rao = 1000 TAO
+        [COOLDOWN_KEY]: "0x201c000000000000", // 7200 blocks
+      };
+      return {
+        ok: true,
+        json: async () => ({ jsonrpc: "2.0", id: 1, result: byKey[key] }),
+      };
+    };
+  }
+
+  test("resolves all three fields from live RPC hits", async () => {
+    await withFetchStub(goldenFetchStub(), async () => {
+      const { status, body } = await gql(
+        "{ network_parameters { schema_version tao_weight stake_threshold_tao pending_childkey_cooldown_blocks queried_at } }",
+      );
+      assert.equal(status, 200);
+      assert.equal(body.errors, undefined);
+      const r = body.data.network_parameters;
+      assert.equal(r.schema_version, 1);
+      assert.equal(r.tao_weight, 0.18);
+      assert.equal(r.stake_threshold_tao, 1000);
+      assert.equal(r.pending_childkey_cooldown_blocks, 7200);
+      assert.ok(r.queried_at);
+    });
+  });
+
+  test("RPC failure degrades every field to null, never a GraphQL error", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("network unreachable");
+      },
+      async () => {
+        const { status, body } = await gql(
+          "{ network_parameters { schema_version tao_weight stake_threshold_tao pending_childkey_cooldown_blocks queried_at } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.network_parameters;
+        assert.equal(r.schema_version, 1);
+        assert.equal(r.tao_weight, null);
+        assert.equal(r.stake_threshold_tao, null);
+        assert.equal(r.pending_childkey_cooldown_blocks, null);
+        assert.ok(r.queried_at);
+      },
+    );
+  });
+
+  test("network_parameters is weighted heavier than a Postgres-tier relationship field, since it hits live chain RPC", () => {
+    assert.equal(FIELD_COMPLEXITY.network_parameters, 10);
+    assert.ok(
+      FIELD_COMPLEXITY.network_parameters > FIELD_COMPLEXITY.chain_weights,
+    );
+  });
+});
+
 describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.mjs)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/subnet-recycled.test.mjs.

@@ -3861,6 +3861,19 @@
           "queried_at": { "type": ["string", "null"], "format": "date-time" }
         }
       },
+      "NetworkParametersArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Live global Subtensor protocol/governance parameters (#6343) -- TaoWeight, StakeThreshold, PendingChildKeyCooldown -- queried from the finney RPC at request time and cached for 300s. Each field is independently null on its own RPC failure.",
+        "required": ["schema_version"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "tao_weight": { "type": ["number", "null"] },
+          "stake_threshold_tao": { "type": ["number", "null"] },
+          "pending_childkey_cooldown_blocks": { "type": ["integer", "null"] },
+          "queried_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
       "SubnetRecycledArtifact": {
         "type": "object",
         "additionalProperties": true,
