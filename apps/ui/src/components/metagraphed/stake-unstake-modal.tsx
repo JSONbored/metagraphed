@@ -8,6 +8,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@jsonbored/ui-kit";
 import { WalletConnectPanel } from "@/components/metagraphed/wallet-connect";
 import { StakeAmountInput } from "@/components/metagraphed/stake-amount-input";
@@ -116,35 +117,39 @@ export function StakeUnstakeModal({
   };
 
   return (
-    <>
-      {trigger(() => setOpen(true))}
-      <Sheet open={open} onOpenChange={handleOpenChange}>
-        <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle className="font-display text-lg">
-              {ACTION_VERB[flow.action]} · {validatorName ?? shortHash(hotkey, 6)}
-            </SheetTitle>
-            <SheetDescription>
-              {subnetName ? `${subnetName} (SN${netuid})` : `Subnet ${netuid}`}
-              {!flow.canClose ? " — this can't be closed while a signature is in flight." : ""}
-            </SheetDescription>
-          </SheetHeader>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      {/* #6415: the trigger was a plain sibling of <Sheet>, not its trigger, so
+          Radix had no trigger node to restore focus to on close -- closing the
+          modal dropped focus to <body>. Wrapping the caller's render-prop element
+          in <SheetTrigger asChild> inside <Sheet> is the same fix landed for
+          SubnetCompareDrawer (#6527) and TakeManagementModal (#6531): Radix
+          tracks it and returns focus. */}
+      <SheetTrigger asChild>{trigger(() => setOpen(true))}</SheetTrigger>
+      <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle className="font-display text-lg">
+            {ACTION_VERB[flow.action]} · {validatorName ?? shortHash(hotkey, 6)}
+          </SheetTitle>
+          <SheetDescription>
+            {subnetName ? `${subnetName} (SN${netuid})` : `Subnet ${netuid}`}
+            {!flow.canClose ? " — this can't be closed while a signature is in flight." : ""}
+          </SheetDescription>
+        </SheetHeader>
 
-          <div className="mt-4 flex-1">
-            <StakeFlowBody
-              hotkey={hotkey}
-              netuid={netuid}
-              subnetName={subnetName}
-              validatorName={validatorName}
-              flow={flow}
-              submitting={submitting}
-              onConfirm={handleConfirm}
-              onClose={() => handleOpenChange(false)}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
+        <div className="mt-4 flex-1">
+          <StakeFlowBody
+            hotkey={hotkey}
+            netuid={netuid}
+            subnetName={subnetName}
+            validatorName={validatorName}
+            flow={flow}
+            submitting={submitting}
+            onConfirm={handleConfirm}
+            onClose={() => handleOpenChange(false)}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
