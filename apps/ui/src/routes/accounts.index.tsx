@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { TopActiveAccounts } from "@/components/metagraphed/top-active-accounts";
 import { TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS } from "@/components/metagraphed/top-active-accounts-ranking";
-import { PageHero } from "@jsonbored/ui-kit";
+import { PageHero, ActionBar, ShareButton } from "@jsonbored/ui-kit";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 
 export const Route = createFileRoute("/accounts/")({
@@ -50,6 +50,11 @@ function AccountsPage() {
         live
         title="Accounts"
         description="Look up a Bittensor account by ss58 address (hotkey or coldkey) — its cross-subnet activity, current registrations, and first-party chain-event history."
+        actions={
+          <ActionBar>
+            <ShareButton bare />
+          </ActionBar>
+        }
       />
       <form onSubmit={submit} className="mx-auto w-full max-w-2xl">
         <label
