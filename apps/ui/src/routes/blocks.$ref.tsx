@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Boxes, FileText, Zap } from "lucide-react";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import {
   CopyableCode,
@@ -16,6 +16,7 @@ import {
   ActionBar,
   SectionAnchor,
   StatTile,
+  TableState,
 } from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
@@ -300,15 +301,15 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         {extrinsicsQuery.isPending ? (
           <Skeleton className="h-44" />
         ) : extrinsicsQuery.error ? (
-          <div className="p-4">
-            <ErrorState
-              error={extrinsicsQuery.error}
-              context="block extrinsics"
-              onRetry={() => {
-                void extrinsicsQuery.refetch();
-              }}
-            />
-          </div>
+          <TableState
+            variant="error"
+            title="Couldn't load block extrinsics"
+            description="This section is optional — the rest of the block detail is unaffected."
+            error={extrinsicsQuery.error}
+            onRetry={() => {
+              void extrinsicsQuery.refetch();
+            }}
+          />
         ) : extrinsics.length === 0 ? (
           <EmptyState
             title="No block extrinsics"
@@ -381,15 +382,15 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         {eventsQuery.isPending ? (
           <Skeleton className="h-44" />
         ) : eventsQuery.error ? (
-          <div className="p-4">
-            <ErrorState
-              error={eventsQuery.error}
-              context="block events"
-              onRetry={() => {
-                void eventsQuery.refetch();
-              }}
-            />
-          </div>
+          <TableState
+            variant="error"
+            title="Couldn't load block events"
+            description="This section is optional — the rest of the block detail is unaffected."
+            error={eventsQuery.error}
+            onRetry={() => {
+              void eventsQuery.refetch();
+            }}
+          />
         ) : events.length === 0 ? (
           <EmptyState
             title="No block events"
@@ -444,15 +445,15 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         {chainEventsQuery.isPending ? (
           <Skeleton className="h-44" />
         ) : chainEventsQuery.error ? (
-          <div className="p-4">
-            <ErrorState
-              error={chainEventsQuery.error}
-              context="block chain events"
-              onRetry={() => {
-                void chainEventsQuery.refetch();
-              }}
-            />
-          </div>
+          <TableState
+            variant="error"
+            title="Couldn't load block chain events"
+            description="This section is optional — the rest of the block detail is unaffected."
+            error={chainEventsQuery.error}
+            onRetry={() => {
+              void chainEventsQuery.refetch();
+            }}
+          />
         ) : chainEvents.length === 0 ? (
           <EmptyState
             title="No chain events"
