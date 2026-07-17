@@ -28,14 +28,25 @@ describe("reportError", () => {
     expect(reportLovableError).toHaveBeenCalledWith(err, { boundary: "panel_shell" });
   });
 
-  it("does NOT touch Sentry when no DSN is configured", async () => {
+  it("does NOT touch Sentry when no DSN is configured and it's not a production build", async () => {
     vi.stubEnv("VITE_SENTRY_DSN", "");
+    vi.stubEnv("PROD", false);
     const { reportError } = await import("./error-reporting");
     reportError(new Error("boom"), {});
     // allow any (non-existent) microtasks to flush
     await Promise.resolve();
     expect(captureException).not.toHaveBeenCalled();
     expect(init).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the real project DSN on a production build with no explicit override", async () => {
+    vi.stubEnv("VITE_SENTRY_DSN", "");
+    vi.stubEnv("PROD", true);
+    const { reportError } = await import("./error-reporting");
+    reportError(new Error("boom"), {});
+    await vi.waitFor(() => expect(init).toHaveBeenCalled());
+    expect(init.mock.calls[0][0].dsn).toMatch(/^https:\/\/.+@.+\.ingest\..+\.sentry\.io\/\d+$/);
+    expect(captureException).toHaveBeenCalled();
   });
 
   it("captures the exception via Sentry when a DSN is configured", async () => {
