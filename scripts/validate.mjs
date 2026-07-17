@@ -1606,7 +1606,7 @@ for (const subnet of subnets) {
 // curation.level, which is a maintainer-only action (a contributor PR touching
 // registry curation is gate-blocked), so this can't be a hard assert without
 // coupling the check to a maintainer registry edit. A maintainer resolves it with
-// `npm run promote-reviewed -- --write`.
+// `npm run review:promote`.
 const subnetsByNetuidForReview = new Map(subnets.map((s) => [s.netuid, s]));
 const unmaterializedReviews = findUnmaterializedMaintainerReviews(
   reviewDecisionsDocument.decisions || [],
@@ -1614,7 +1614,7 @@ const unmaterializedReviews = findUnmaterializedMaintainerReviews(
 );
 if (unmaterializedReviews.length > 0) {
   console.warn(
-    `advisory: maintainer-reviewed decision(s) recorded in registry/reviews/maintainer-reviewed.json but not yet materialized on the subnet overlay — run 'npm run promote-reviewed -- --write' (maintainer-only): ${unmaterializedReviews
+    `advisory: maintainer-reviewed decision(s) recorded in registry/reviews/maintainer-reviewed.json but not yet materialized on the subnet overlay — run 'npm run review:promote' (maintainer-only): ${unmaterializedReviews
       .map((v) => `${v.slug} (netuid ${v.netuid}, level "${v.level}")`)
       .join(", ")}`,
   );
