@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Boxes, Coins, Gauge, Percent, Users, Zap } from "lucide-react";
+import { Boxes, Coins, Gauge, Percent, TriangleAlert, Users, Zap } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -27,6 +27,7 @@ import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { hasValidatorIdentity } from "@/lib/metagraphed/validator-identity";
+import { isUnrecognizedValidator } from "@/lib/metagraphed/validator-recognition";
 import {
   annualizedDelegatorApyPct,
   formatApyPct,
@@ -323,6 +324,32 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
         }
         caption="explorer / v1"
       />
+
+      {/* #6430: the endpoint is schema-stable, so a mistyped or never-registered
+          hotkey resolves to a zeroed aggregate and renders a page of zeros that
+          looks exactly like a real validator holding nothing. Say so up front,
+          above the tiles it explains. Deliberately a notice and not an
+          EmptyState swap (the blocks/extrinsics treatment): the payload really
+          is valid and the rest of the page stays useful for confirming the
+          address you looked up. */}
+      {isUnrecognizedValidator(detail) ? (
+        <div
+          role="status"
+          className="mb-8 flex items-start gap-3 rounded-2xl border border-health-warn/40 bg-health-warn/5 px-4 py-3"
+        >
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-health-warn" aria-hidden />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-ink-strong">
+              This hotkey isn&apos;t a registered validator
+            </p>
+            <p className="mt-1 max-w-2xl text-[13px] text-ink-muted">
+              The address is a valid ss58, but it has never been seen validating on any subnet —
+              every figure below reads zero for that reason, not because the validator is idle. It
+              may be mistyped, or a coldkey rather than a hotkey.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mb-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <StatTile
