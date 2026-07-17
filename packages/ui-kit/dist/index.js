@@ -1892,41 +1892,44 @@ function KeyChip({
 }) {
   const { copied, copy } = useCopy({ label });
   const short = value.length > head + tail + 1 ? `${value.slice(0, head)}\u2026${value.slice(-tail)}` : value;
-  return /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 120, children: [
-    /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: () => copy(value),
-        "aria-label": copied ? `${label} copied` : `Copy ${label}: ${value}`,
-        className: classNames(
-          "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left font-mono text-[11px] text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
-          className
-        ),
-        children: [
-          /* @__PURE__ */ jsx("span", { className: "truncate tabular-nums", children: short }),
-          /* @__PURE__ */ jsx(
-            CopyIconToggle,
-            {
-              copied,
-              className: "text-ink-muted group-hover:text-ink"
-            }
-          )
-        ]
-      }
-    ) }),
-    /* @__PURE__ */ jsxs(
-      TooltipContent,
-      {
-        side: "top",
-        className: "max-w-[90vw] break-all font-mono text-[11px]",
-        children: [
-          /* @__PURE__ */ jsx("span", { className: "mr-1 uppercase tracking-widest text-[9px] opacity-70", children: label }),
-          value
-        ]
-      }
-    )
-  ] });
+  return (
+    // Self-wrapped so KeyChip works outside AppShell's global provider.
+    /* @__PURE__ */ jsx(TooltipProvider, { children: /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 120, children: [
+      /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
+        "button",
+        {
+          type: "button",
+          onClick: () => copy(value),
+          "aria-label": copied ? `${label} copied` : `Copy ${label}: ${value}`,
+          className: classNames(
+            "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left font-mono text-[11px] text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
+            className
+          ),
+          children: [
+            /* @__PURE__ */ jsx("span", { className: "truncate tabular-nums", children: short }),
+            /* @__PURE__ */ jsx(
+              CopyIconToggle,
+              {
+                copied,
+                className: "text-ink-muted group-hover:text-ink"
+              }
+            )
+          ]
+        }
+      ) }),
+      /* @__PURE__ */ jsxs(
+        TooltipContent,
+        {
+          side: "top",
+          className: "max-w-[90vw] break-all font-mono text-[11px]",
+          children: [
+            /* @__PURE__ */ jsx("span", { className: "mr-1 uppercase tracking-widest text-[9px] opacity-70", children: label }),
+            value
+          ]
+        }
+      )
+    ] }) })
+  );
 }
 function ListShell({
   filters,
@@ -3392,50 +3395,53 @@ function SparkLegend({
 }) {
   const fresh = formatFreshness(updatedAt, windowLabel);
   const freshAbs = formatFreshnessAbsolute(updatedAt);
-  return /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 200, children: [
-    /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsx(
-      "span",
-      {
-        tabIndex: 0,
-        className: "inline-flex max-w-full items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded",
-        children
-      }
-    ) }),
-    /* @__PURE__ */ jsxs(
-      TooltipContent,
-      {
-        side,
-        sideOffset: 6,
-        collisionPadding: 8,
-        avoidCollisions: true,
-        className: "max-w-xs text-[11px] leading-relaxed",
-        children: [
-          /* @__PURE__ */ jsxs("div", { className: "font-mono text-[10px] uppercase tracking-widest mb-1", children: [
-            metric,
-            windowLabel ? ` \xB7 ${windowLabel}` : ""
-          ] }),
-          /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
-            /* @__PURE__ */ jsxs("span", { className: "font-mono text-[9.5px] uppercase tracking-widest opacity-70", children: [
-              "source \xB7",
-              " "
+  return (
+    // Self-wrapped so SparkLegend works outside AppShell's global provider.
+    /* @__PURE__ */ jsx(TooltipProvider, { children: /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 200, children: [
+      /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsx(
+        "span",
+        {
+          tabIndex: 0,
+          className: "inline-flex max-w-full items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded",
+          children
+        }
+      ) }),
+      /* @__PURE__ */ jsxs(
+        TooltipContent,
+        {
+          side,
+          sideOffset: 6,
+          collisionPadding: 8,
+          avoidCollisions: true,
+          className: "max-w-xs text-[11px] leading-relaxed",
+          children: [
+            /* @__PURE__ */ jsxs("div", { className: "font-mono text-[10px] uppercase tracking-widest mb-1", children: [
+              metric,
+              windowLabel ? ` \xB7 ${windowLabel}` : ""
             ] }),
-            source
-          ] }),
-          staleness ? /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
-            /* @__PURE__ */ jsxs("span", { className: "font-mono text-[9.5px] uppercase tracking-widest opacity-70", children: [
-              "staleness \xB7",
-              " "
+            /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
+              /* @__PURE__ */ jsxs("span", { className: "font-mono text-[9.5px] uppercase tracking-widest opacity-70", children: [
+                "source \xB7",
+                " "
+              ] }),
+              source
             ] }),
-            staleness
-          ] }) : null,
-          fresh || freshAbs ? /* @__PURE__ */ jsxs("div", { className: "mt-1 font-mono text-[10px] opacity-80", children: [
-            fresh ?? "",
-            freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""
-          ] }) : null
-        ]
-      }
-    )
-  ] });
+            staleness ? /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
+              /* @__PURE__ */ jsxs("span", { className: "font-mono text-[9.5px] uppercase tracking-widest opacity-70", children: [
+                "staleness \xB7",
+                " "
+              ] }),
+              staleness
+            ] }) : null,
+            fresh || freshAbs ? /* @__PURE__ */ jsxs("div", { className: "mt-1 font-mono text-[10px] opacity-80", children: [
+              fresh ?? "",
+              freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""
+            ] }) : null
+          ]
+        }
+      )
+    ] }) })
+  );
 }
 function Sparkline({
   values,
@@ -3681,56 +3687,59 @@ function StatWithSpark({
 }) {
   const freshLine = formatFreshness(updatedAt, windowLabel);
   const freshAbs = formatFreshnessAbsolute(updatedAt);
-  return /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 200, children: [
-    /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
-      "div",
-      {
-        tabIndex: 0,
-        className: classNames(
-          "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface/40 transition-colors",
-          className
-        ),
-        children: [
-          /* @__PURE__ */ jsx("div", { className: "font-mono text-[9.5px] uppercase tracking-widest text-ink-muted truncate", children: label }),
-          /* @__PURE__ */ jsxs("div", { className: "flex items-baseline gap-1.5 min-w-0", children: [
-            /* @__PURE__ */ jsx(
-              "span",
-              {
-                className: classNames(
-                  "font-display text-lg font-semibold tabular-nums leading-none truncate",
-                  tone === "ok" && "text-health-ok",
-                  tone === "warn" && "text-health-warn",
-                  tone === "down" && "text-health-down",
-                  tone === "default" && "text-ink-strong"
-                ),
-                children: value
-              }
-            ),
-            unit ? /* @__PURE__ */ jsx("span", { className: "shrink-0 font-mono text-[9px] uppercase tracking-widest text-ink-muted", children: unit }) : null,
-            delta
-          ] }),
-          viz ? /* @__PURE__ */ jsx("div", { className: "mt-0.5 min-h-[18px]", children: viz }) : null,
-          hint ? /* @__PURE__ */ jsx("div", { className: "font-mono text-[9.5px] text-ink-muted/80 truncate", children: hint }) : null,
-          freshLine ? /* @__PURE__ */ jsx("div", { className: "font-mono text-[9px] tracking-wide text-ink-muted/70 truncate", children: freshLine }) : null
-        ]
-      }
-    ) }),
-    /* @__PURE__ */ jsxs(
-      TooltipContent,
-      {
-        side: "bottom",
-        className: "max-w-xs text-[11px] leading-relaxed",
-        children: [
-          /* @__PURE__ */ jsx("div", { children: full ?? hint ?? label }),
-          freshAbs || windowLabel ? /* @__PURE__ */ jsxs("div", { className: "mt-1 font-mono text-[10px] text-primary-foreground/70", children: [
-            freshAbs ? `Last checked ${freshAbs}` : null,
-            freshAbs && windowLabel ? " \xB7 " : "",
-            windowLabel ? `${windowLabel} window` : null
-          ] }) : null
-        ]
-      }
-    )
-  ] });
+  return (
+    // Self-wrapped so StatWithSpark works outside AppShell's global provider.
+    /* @__PURE__ */ jsx(TooltipProvider, { children: /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 200, children: [
+      /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
+        "div",
+        {
+          tabIndex: 0,
+          className: classNames(
+            "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface/40 transition-colors",
+            className
+          ),
+          children: [
+            /* @__PURE__ */ jsx("div", { className: "font-mono text-[9.5px] uppercase tracking-widest text-ink-muted truncate", children: label }),
+            /* @__PURE__ */ jsxs("div", { className: "flex items-baseline gap-1.5 min-w-0", children: [
+              /* @__PURE__ */ jsx(
+                "span",
+                {
+                  className: classNames(
+                    "font-display text-lg font-semibold tabular-nums leading-none truncate",
+                    tone === "ok" && "text-health-ok",
+                    tone === "warn" && "text-health-warn",
+                    tone === "down" && "text-health-down",
+                    tone === "default" && "text-ink-strong"
+                  ),
+                  children: value
+                }
+              ),
+              unit ? /* @__PURE__ */ jsx("span", { className: "shrink-0 font-mono text-[9px] uppercase tracking-widest text-ink-muted", children: unit }) : null,
+              delta
+            ] }),
+            viz ? /* @__PURE__ */ jsx("div", { className: "mt-0.5 min-h-[18px]", children: viz }) : null,
+            hint ? /* @__PURE__ */ jsx("div", { className: "font-mono text-[9.5px] text-ink-muted/80 truncate", children: hint }) : null,
+            freshLine ? /* @__PURE__ */ jsx("div", { className: "font-mono text-[9px] tracking-wide text-ink-muted/70 truncate", children: freshLine }) : null
+          ]
+        }
+      ) }),
+      /* @__PURE__ */ jsxs(
+        TooltipContent,
+        {
+          side: "bottom",
+          className: "max-w-xs text-[11px] leading-relaxed",
+          children: [
+            /* @__PURE__ */ jsx("div", { children: full ?? hint ?? label }),
+            freshAbs || windowLabel ? /* @__PURE__ */ jsxs("div", { className: "mt-1 font-mono text-[10px] text-primary-foreground/70", children: [
+              freshAbs ? `Last checked ${freshAbs}` : null,
+              freshAbs && windowLabel ? " \xB7 " : "",
+              windowLabel ? `${windowLabel} window` : null
+            ] }) : null
+          ]
+        }
+      )
+    ] }) })
+  );
 }
 function MiniStack({
   segments,
@@ -3821,29 +3830,33 @@ function MiniRadial({
 function DotRow({
   dots
 }) {
-  return /* @__PURE__ */ jsx(
-    "div",
-    {
-      className: "flex items-center gap-1",
-      role: "img",
-      "aria-label": "Source coverage",
-      children: dots.map((d) => /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 150, children: [
-        /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsx(
-          "span",
-          {
-            className: classNames(
-              "size-1.5 rounded-full",
-              d.on ? "bg-accent" : "bg-border"
-            )
-          }
-        ) }),
-        /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "font-mono text-[10px]", children: [
-          d.label,
-          " ",
-          d.on ? "\u2713" : "\u2014"
-        ] })
-      ] }, d.label))
-    }
+  return (
+    // One provider for the row rather than one per dot -- self-wrapped so DotRow
+    // works outside AppShell's global provider.
+    /* @__PURE__ */ jsx(TooltipProvider, { children: /* @__PURE__ */ jsx(
+      "div",
+      {
+        className: "flex items-center gap-1",
+        role: "img",
+        "aria-label": "Source coverage",
+        children: dots.map((d) => /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 150, children: [
+          /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsx(
+            "span",
+            {
+              className: classNames(
+                "size-1.5 rounded-full",
+                d.on ? "bg-accent" : "bg-border"
+              )
+            }
+          ) }),
+          /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "font-mono text-[10px]", children: [
+            d.label,
+            " ",
+            d.on ? "\u2713" : "\u2014"
+          ] })
+        ] }, d.label))
+      }
+    ) })
   );
 }
 function NoDataSpark({
@@ -3854,41 +3867,44 @@ function NoDataSpark({
 }) {
   const freshAbs = formatFreshnessAbsolute(updatedAt);
   const freshLine = formatFreshness(updatedAt, windowLabel);
-  return /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 150, children: [
-    /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
-      "div",
-      {
-        tabIndex: 0,
-        role: "img",
-        "aria-label": `${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`,
-        className: "flex w-full items-center gap-1.5 rounded-sm border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-        style: { height },
-        children: [
-          /* @__PURE__ */ jsx(
-            "span",
-            {
-              "aria-hidden": true,
-              className: "inline-block size-1 rounded-full bg-ink-muted/60"
-            }
-          ),
-          /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[9px] uppercase tracking-widest text-ink-muted/80", children: freshLine ?? reason })
-        ]
-      }
-    ) }),
-    /* @__PURE__ */ jsxs(
-      TooltipContent,
-      {
-        side: "top",
-        className: "max-w-xs text-[11px] leading-relaxed",
-        children: [
-          reason,
-          ".",
-          " ",
-          freshAbs ? `Last checked ${freshAbs}${windowLabel ? ` \xB7 ${windowLabel} window` : ""}.` : "No probe samples recorded yet."
-        ]
-      }
-    )
-  ] });
+  return (
+    // Self-wrapped so NoDataSpark works outside AppShell's global provider.
+    /* @__PURE__ */ jsx(TooltipProvider, { children: /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 150, children: [
+      /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
+        "div",
+        {
+          tabIndex: 0,
+          role: "img",
+          "aria-label": `${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`,
+          className: "flex w-full items-center gap-1.5 rounded-sm border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          style: { height },
+          children: [
+            /* @__PURE__ */ jsx(
+              "span",
+              {
+                "aria-hidden": true,
+                className: "inline-block size-1 rounded-full bg-ink-muted/60"
+              }
+            ),
+            /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[9px] uppercase tracking-widest text-ink-muted/80", children: freshLine ?? reason })
+          ]
+        }
+      ) }),
+      /* @__PURE__ */ jsxs(
+        TooltipContent,
+        {
+          side: "top",
+          className: "max-w-xs text-[11px] leading-relaxed",
+          children: [
+            reason,
+            ".",
+            " ",
+            freshAbs ? `Last checked ${freshAbs}${windowLabel ? ` \xB7 ${windowLabel} window` : ""}.` : "No probe samples recorded yet."
+          ]
+        }
+      )
+    ] }) })
+  );
 }
 var sum = (ns) => ns.reduce((a, b) => a + b, 0);
 var MIN_TILE_W_FOR_LABEL = 16;
