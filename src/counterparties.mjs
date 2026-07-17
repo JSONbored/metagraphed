@@ -1,23 +1,9 @@
 // Account counterparty / fund-flow analytics: who one account transacts with,
 // aggregated from the account_events Transfer tier (hotkey = from, coldkey = to,
-// amount_tao). Pure + exported for unit tests; the Worker does the D1 read +
-// envelope. Null-safe: no transfers → a schema-stable empty list (never throws),
-// matching the live account tiers the entity handlers already own.
-
-// The account_events columns the counterparties handler reads — its D1 read
-// contract (mirrors BLOCK_READ_COLUMNS / TURNOVER_READ_COLUMNS). A bare coldkey
-// column name is public metagraph vocabulary, not a secret; kept in src/ next to
-// its consumer so the Worker handler stays a thin SELECT.
-export const COUNTERPARTIES_READ_COLUMNS =
-  "hotkey, coldkey, amount_tao, block_number";
-
-// The columns the inner scan must expose so the bounded newest-first read can
-// tie-break same-block rows on event_index (the output still projects only
-// COUNTERPARTIES_READ_COLUMNS — event_index is needed for ORDER BY, not the body).
-export const COUNTERPARTIES_SCAN_COLUMNS = `${COUNTERPARTIES_READ_COLUMNS}, event_index`;
-
-export const COUNTERPARTY_RELATIONSHIP_READ_COLUMNS =
-  "block_number, event_index, hotkey, coldkey, netuid, amount_tao, observed_at";
+// amount_tao). Pure + exported for unit tests; workers/data-api.mjs does the
+// Postgres read + envelope. Null-safe: no transfers → a schema-stable empty
+// list (never throws), matching the live account tiers the entity handlers
+// already own.
 
 // Bound the transfer scan so a hot wallet can't force an unbounded read. Rows are
 // read newest-first; the summary flags when the cap truncated older history.
@@ -252,71 +238,9 @@ export function buildCounterpartyRelationship(
   };
 }
 
-// ---- Shared D1 loaders (REST + MCP parity) --------------------------------
-// The Worker's account-counterparties handler and the get_account_counterparties
-// MCP tool both read the same account_events Transfer tier; these loaders own the
-// bounded newest-first scan plus the pure builders so the SQL + envelope shape
-// live in exactly one place (mirrors loadChainSigners for the chain tools).
-// `d1` is a (sql, params) => rows runner — d1Runner(env) in the Worker,
-// mcpD1Runner(ctx) in the MCP server.
-
-// Top counterparties for one account by transfer volume. Bounded newest-first
-// scan over the hotkey/coldkey Transfer union (two indexed side seeks, never a
-// hotkey/coldkey OR); buildCounterparties does the per-party rollup. Null-safe.
-export async function loadCounterparties(d1, ss58, { limit } = {}) {
-  const rows = await d1(
-    `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM (SELECT ${COUNTERPARTIES_SCAN_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ? UNION ALL SELECT ${COUNTERPARTIES_SCAN_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?) ORDER BY block_number DESC, event_index DESC LIMIT ?`,
-    [ss58, ss58, ss58, COUNTERPARTIES_SCAN_CAP],
-  );
-  return buildCounterparties(rows, ss58, { limit });
-}
-
-// Drill into ONE account/counterparty relationship: the focused fund-flow
-// summary plus the bounded transfer evidence. Returns the SAME envelope shape as
-// loadCounterparties — a single-element `counterparties` row — with the per-pair
-// detail nested under `relationship`, so REST and MCP return one consistent
-// object. Callers validate `counterparty` (SS58, differs from ss58) first.
-export async function loadCounterpartyRelationship(
-  d1,
-  ss58,
-  counterparty,
-  { limit } = {},
-) {
-  const rows = await d1(
-    `SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM (SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND hotkey = ? AND coldkey = ? UNION ALL SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND hotkey = ? AND coldkey = ?) ORDER BY block_number DESC, event_index DESC LIMIT ?`,
-    [
-      ss58,
-      counterparty,
-      counterparty,
-      ss58,
-      COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
-    ],
-  );
-  const relationship = buildCounterpartyRelationship(rows, ss58, counterparty, {
-    limit,
-  });
-  const counterparties =
-    relationship.transfer_count === 0
-      ? []
-      : [
-          {
-            address: counterparty,
-            sent_tao: relationship.total_sent_tao,
-            received_tao: relationship.total_received_tao,
-            net_tao: relationship.net_tao,
-            transfer_count: relationship.transfer_count,
-            last_block: relationship.last_block,
-          },
-        ];
-  return {
-    schema_version: 1,
-    ss58,
-    counterparty_count: counterparties.length,
-    transfers_scanned: relationship.transfers_scanned,
-    scan_capped: relationship.scan_capped,
-    total_sent_tao: relationship.total_sent_tao,
-    total_received_tao: relationship.total_received_tao,
-    counterparties,
-    relationship,
-  };
-}
+// loadCounterparties/loadCounterpartyRelationship (the D1-querying
+// account_events readers) were deleted (2026-07-17, D1 fully eliminated) --
+// account_events was already dropped from D1 production (#4772), so they had
+// zero live callers; every real route (workers/data-api.mjs with real
+// Postgres rows, the REST/GraphQL/MCP cold paths with []) calls
+// buildCounterparties/buildCounterpartyRelationship directly.

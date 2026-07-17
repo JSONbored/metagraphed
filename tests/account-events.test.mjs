@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
-  ACCOUNT_EVENT_COLUMNS,
   INDEXED_EVENT_KINDS,
   INGESTED_EVENT_KINDS,
   formatAccountEvent,
@@ -15,9 +14,7 @@ import {
   loadAccountHistory,
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   buildAccountTransfers,
-  loadAccountTransfers,
 } from "../src/account-events.mjs";
-import { encodeCursor } from "../src/cursor.mjs";
 
 test("INDEXED_EVENT_KINDS covers the core entity events", () => {
   for (const k of [
@@ -343,18 +340,6 @@ test("formatAccountEvent rounds amount_tao and alpha_amount to rao precision", (
   });
   assert.equal(out.amount_tao, 1.12345679);
   assert.equal(out.alpha_amount, 2.987654321);
-});
-
-test("ACCOUNT_EVENT_COLUMNS lists the served event columns", () => {
-  for (const c of [
-    "block_number",
-    "event_kind",
-    "hotkey",
-    "coldkey",
-    "amount_tao",
-  ]) {
-    assert.ok(ACCOUNT_EVENT_COLUMNS.includes(c), `missing ${c}`);
-  }
 });
 
 test("formatRegistration coerces flags + is null-safe (#1347)", () => {
@@ -709,99 +694,11 @@ test("buildAccountTransfers explicit side never flips a normal row (#2362)", () 
   assert.equal(out.transfers[0].to, "5ME");
 });
 
-test("loadAccountTransfers threads the requested direction into the label (#2362)", async () => {
-  // End-to-end through the shared MCP/REST loader: the received-side query yields
-  // the self-transfer row, and the loader must hand the requested direction to
-  // buildAccountTransfers so the row is labeled "received", not "sent".
-  const selfRow = {
-    block_number: 5,
-    event_index: 0,
-    hotkey: "5SELF",
-    coldkey: "5SELF",
-    amount_tao: 1,
-    observed_at: null,
-  };
-  const d1 = async (sql) =>
-    /coldkey = \?/.test(sql) && !/hotkey <>/.test(sql) ? [selfRow] : [];
-  const out = await loadAccountTransfers(d1, "5SELF", {
-    direction: "received",
-  });
-  assert.equal(out.transfers.length, 1);
-  assert.equal(out.transfers[0].direction, "received");
-});
-
-test("loadAccountTransfers applies the block_start/block_end range to both sides", async () => {
-  let captured;
-  await loadAccountTransfers(
-    async (sql, params) => {
-      captured = { sql, params };
-      return [];
-    },
-    "5Hk",
-    { blockStart: 100, blockEnd: 900 },
-  );
-  assert.equal((captured.sql.match(/block_number >= \?/g) || []).length, 2);
-  assert.equal((captured.sql.match(/block_number <= \?/g) || []).length, 2);
-  assert.deepEqual(captured.params, [
-    "5Hk",
-    100,
-    900,
-    "5Hk",
-    "5Hk",
-    100,
-    900,
-    100,
-    0,
-  ]);
-});
-
-test("loadAccountTransfers short-circuits an inverted block range before D1", async () => {
-  let called = false;
-  const out = await loadAccountTransfers(
-    async () => {
-      called = true;
-      return [];
-    },
-    "5Hk",
-    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
-  );
-  assert.equal(out.transfer_count, 0);
-  assert.deepEqual(out.transfers, []);
-  assert.equal(out.next_cursor, null);
-  assert.equal(called, false);
-});
-
-test("loadAccountTransfers uses cursor keyset pagination over offset", async () => {
-  let captured;
-  const out = await loadAccountTransfers(
-    async (sql, params) => {
-      captured = { sql, params };
-      return [
-        {
-          block_number: 150,
-          event_index: 4,
-          hotkey: "5Hk",
-          coldkey: "5Other",
-          amount_tao: 1,
-          observed_at: 1,
-        },
-      ];
-    },
-    "5Hk",
-    {
-      blockStart: 100,
-      blockEnd: 900,
-      cursor: encodeCursor([200, 2]),
-      limit: 1,
-      offset: 99,
-      direction: "sent",
-    },
-  );
-  assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(captured.sql));
-  assert.ok(!/OFFSET/.test(captured.sql));
-  assert.deepEqual(captured.params, ["5Hk", 100, 900, 200, 2, 1]);
-  assert.equal(out.next_cursor, encodeCursor([150, 4]));
-});
+// loadAccountTransfers (the D1-querying account_events reader) was deleted
+// (2026-07-17, D1 fully eliminated) -- see src/account-events.mjs's own
+// comment. Coverage for buildAccountTransfers direction-labeling / cursor
+// shaping lives in the tests above this block (calling buildAccountTransfers
+// directly with hand-built rows).
 
 test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {
   // A registration row with NONE of the optional fields must still produce a

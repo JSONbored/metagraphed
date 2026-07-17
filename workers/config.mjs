@@ -410,25 +410,12 @@ export const MAX_WEBHOOK_BODY_BYTES = 8192;
 export const MAX_ASK_BODY_BYTES = 4096;
 export const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
   "x-metagraph-webhook-subscription-token";
-// Realtime chain-event ingest (#1360): the header carrying the shared secret the
-// finalized-head streamer (#1361) used to present to POST /api/v1/internal/events.
-// The streamer + that route are retired (#4772 D1 chain-data retirement); this
-// header is still shared by the surviving neuron/economics backfill ingest routes.
-export const EVENTS_INGEST_TOKEN_HEADER = "x-metagraph-events-token";
 // account_events_daily rollup trigger (#4832 gap-closure). Shared by
 // data-api.mjs's handler (validates it) and api.mjs's Worker-native cron
 // dispatch (sets it on the synthetic internal request — the former
 // rollup-account-events-daily.yml GitHub Actions workflow used to set it on
 // its public curl call instead).
 export const ROLLUP_TOKEN_HEADER = "x-rollup-sync-token";
-// Internal historical backfill ingest (#1345 Phase 1): batched subnet_snapshots
-// upserts from the chain-direct backfill script (scripts/backfill-economics-history.py).
-// Auth via the dedicated METAGRAPH_BACKFILL_SECRET (falls back to the events-ingest
-// secret) over the shared EVENTS_INGEST_TOKEN_HEADER. Caps are wider than the old
-// event ingest because a snapshot row is wider; the script chunks well under these
-// and the PK upsert makes any re-POST idempotent.
-export const MAX_BACKFILL_INGEST_BODY_BYTES = 1_048_576; // 1 MiB
-export const MAX_BACKFILL_INGEST_ROWS = 2_000;
 // Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
 // refreshes the TTL on each successful delivery.
 export const WEBHOOK_TTL_SECONDS = 180 * 24 * 60 * 60;

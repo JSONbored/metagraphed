@@ -4,6 +4,18 @@
 // invalid `kind`, with no indication of what those values actually are.
 // Both scripts now append the allowed-values list (and the offending value)
 // to enum-keyword error messages.
+//
+// The "validate-schemas.mjs enum error messages" describe block below
+// mutates a REAL registry/subnets/*.json file in place (validate-schemas.mjs
+// takes no file argument, unlike validate-surface.mjs, so there's no way to
+// point it at an isolated fixture) and restores it in afterEach. That
+// transient window raced other tests scanning the same directory under
+// vitest's default parallel file execution -- this file is pinned to serial
+// execution in package.json's test:ci exclude list (see
+// public-safety.test.mjs's header comment for the original incident
+// writeup). Do not remove it from that list without either fixing
+// validate-schemas.mjs to accept a file argument or re-verifying there's no
+// concurrent full-registry scan left to race.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";

@@ -245,12 +245,22 @@ jobs:
 
       # The suite runs in two non-overlapping passes (see vitest.config.mjs's
       # fileParallelism note). `test:ci` runs the parallelizable bulk — every
-      # file EXCEPT the two filesystem-mutating artifact writers — concurrently
-      # WITH coverage; `test:ci:artifacts` (the last step below) then runs those
-      # two writers serially, after coverage is already captured + uploaded. The
-      # writers drive their work via execFileSync child processes and add zero
-      # in-process coverage, so coverage comes only from `test:ci` and CI still
-      # makes a single Codecov upload.
+      # file EXCEPT five that race each other (or the shared R2 staging tree)
+      # under parallel execution — concurrently WITH coverage;
+      # `test:ci:artifacts` (the last step below) then runs those five
+      # serially, after coverage is already captured + uploaded. Two
+      # (artifacts.test.mjs, discovery-artifacts.test.mjs) are
+      # filesystem-mutating artifact writers; two more (public-safety.test.mjs,
+      # validate-error-messages.test.mjs) each transiently write/mutate a real
+      # file validate-schemas.mjs's own full-registry scan reads, which raced
+      # a concurrent registry scan in another test file (see
+      # public-safety.test.mjs's header comment for the original incident
+      # writeup); refresh-build-summary.test.mjs rewrites the real
+      # build-summary.json at the R2 staging root in place, racing the same
+      # staging tree the artifact writers above touch. All five drive their
+      # work via execFileSync child processes and add zero in-process
+      # coverage, so coverage comes only from `test:ci` and CI still makes a
+      # single Codecov upload.
       #
       # NOTE: the `test` job intentionally does NOT participate in the docs
       # fast lane above. Coverage is a repo-wide delta gate (codecov.yml), not

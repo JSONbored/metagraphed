@@ -8,21 +8,7 @@ import {
   formatAccountDay,
   buildAccountHistory,
   buildAccountTransfers,
-  loadAccountTransfers,
 } from "../src/account-events.mjs";
-
-// Local D1 (sql, params) => rows runner factory — captures every call so a test
-// can assert the WHERE clause + bound params it produced. Mirrors the loader
-// runner contract: a cold store yields [].
-function makeD1(rowsBySql = []) {
-  const calls = [];
-  const d1 = async (sql, params) => {
-    calls.push({ sql, params });
-    return rowsBySql.shift() ?? [];
-  };
-  d1.calls = calls;
-  return d1;
-}
 
 describe("formatAccountEvent block_number fallback", () => {
   test("formatAccountEvent falls back block_number to null when nullish", () => {
@@ -174,49 +160,7 @@ describe("buildAccountTransfers", () => {
   });
 });
 
-describe("loadAccountTransfers direction clauses", () => {
-  test("loadAccountTransfers narrows to hotkey for direction=sent", async () => {
-    const d1 = makeD1([[]]);
-    await loadAccountTransfers(d1, "5Hk", { direction: "sent" });
-    const { sql, params } = d1.calls[0];
-    assert.ok(/INDEXED BY idx_account_events_hotkey/.test(sql));
-    assert.ok(/hotkey = \?/.test(sql));
-    assert.ok(!/coldkey = \?/.test(sql)); // only the sent (hotkey) side clause
-    // sideParams=[ss58] then lim, off bound.
-    assert.deepEqual(params, ["5Hk", 100, 0]);
-  });
-
-  test("loadAccountTransfers unions both sides when direction is absent", async () => {
-    const d1 = makeD1([[{ block_number: 1, hotkey: "5Hk", observed_at: 1 }]]);
-    const out = await loadAccountTransfers(d1, "5Hk", {});
-    const { sql, params } = d1.calls[0];
-    assert.ok(/UNION ALL/.test(sql));
-    assert.ok(/INDEXED BY idx_account_events_hotkey/.test(sql));
-    assert.ok(/INDEXED BY idx_account_events_coldkey/.test(sql));
-    assert.ok(/coldkey = \? AND hotkey <> \?/.test(sql));
-    assert.equal(sql.includes(" OR "), false);
-    assert.deepEqual(params, ["5Hk", "5Hk", "5Hk", 100, 0]);
-    assert.equal(out.transfer_count, 1);
-  });
-
-  test("loadAccountTransfers received-side query labels a self-transfer 'received' (#2362)", async () => {
-    // Tie the requested-side labeling to the REAL query shape: the received-side
-    // read selects on coldkey only (no hotkey union), so a self-transfer
-    // (hotkey === coldkey === ss58) IS returned by it — and must be labeled
-    // 'received' to match the requested filter, not 'sent' from the hotkey-first
-    // per-row derivation.
-    const d1 = makeD1([
-      [{ block_number: 5, event_index: 0, hotkey: "5Self", coldkey: "5Self" }],
-    ]);
-    const out = await loadAccountTransfers(d1, "5Self", {
-      direction: "received",
-    });
-    const { sql, params } = d1.calls[0];
-    assert.ok(/INDEXED BY idx_account_events_coldkey/.test(sql));
-    assert.ok(/coldkey = \?/.test(sql));
-    assert.ok(!/hotkey = \?/.test(sql)); // only the received (coldkey) side clause
-    assert.ok(!/UNION ALL/.test(sql));
-    assert.deepEqual(params, ["5Self", 100, 0]);
-    assert.equal(out.transfers[0].direction, "received");
-  });
-});
+// loadAccountTransfers (the D1-querying account_events reader) was deleted
+// (2026-07-17, D1 fully eliminated) -- see src/account-events.mjs's own
+// comment. The direction-labeling logic it drove is still covered by the
+// buildAccountTransfers tests above (hand-built rows, no D1 involved).

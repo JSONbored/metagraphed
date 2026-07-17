@@ -1015,16 +1015,12 @@ async function resolveArtifactSurfaceId(ctx, surfaceId) {
   return surface?.surface_id ?? surfaceId;
 }
 
-// Freshest live operational snapshot (KV health:current → D1 surface_status),
-// so MCP tools serve live health like the REST routes do — never a build-time
-// value. Returns null when no live source is available (caller renders
-// `unknown`). Mirrors workers/api.mjs liveHealthOverlay.
+// Freshest live operational snapshot (KV health:current → Postgres tier
+// surface_status), so MCP tools serve live health like the REST routes do —
+// never a build-time value. Returns null when no live source is available
+// (caller renders `unknown`). Mirrors workers/api.mjs liveHealthOverlay.
 function mcpLiveHealth(ctx) {
-  return resolveLiveHealth({
-    readHealthKv: ctx.readHealthKv,
-    env: ctx.env,
-    db: ctx.env?.METAGRAPH_HEALTH_DB,
-  });
+  return resolveLiveHealth({ readHealthKv: ctx.readHealthKv, env: ctx.env });
 }
 
 // Live contract version (env override → default), matching the REST resolver so
@@ -2541,11 +2537,7 @@ export const MCP_TOOLS = [
     ...GET_NETWORK_HEALTH_MCP_TOOL,
     async handler(_args, ctx) {
       return loadGlobalOperationalHealth(
-        {
-          env: ctx.env,
-          readHealthKv: ctx.readHealthKv,
-          db: ctx.env?.METAGRAPH_HEALTH_DB,
-        },
+        { env: ctx.env, readHealthKv: ctx.readHealthKv },
         { contractVersion: () => mcpContractVersion(ctx) },
       );
     },
@@ -9182,8 +9174,8 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       return loadFeedItems(ctx, args, {
         // Same cross-subnet incident ledger + wiring get_global_incidents uses
-        // (mcpD1Runner + mcpObservedAt), widest window (30d) -- get_feed's own
-        // since/until narrow further from there.
+        // (mcpObservedAt), widest window (30d) -- get_feed's own since/until
+        // narrow further from there.
         async loadIncidents() {
           return loadGlobalIncidents({
             windowLabel: "30d",

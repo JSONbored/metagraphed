@@ -1,26 +1,18 @@
-// D1-backed analytics handlers + the edge-cache guard that protects them.
+// Analytics handlers + the edge-cache guard that protects them.
 //
-// This module co-locates three things that form ONE indivisible state contract
-// (extracted from workers/api.mjs per #1763, extraction 1 of N):
+// D1 fully eliminated (2026-07-17): every handler in this file now goes
+// straight to a schema-stable empty payload on a Postgres-tier miss, never a
+// live D1 read -- the D1 read path (`d1All`) and its fallback-row bookkeeping
+// (`markD1FallbackRows`/`hasD1FallbackRows`/the `d1FallbackGeneration`
+// counter) were deleted once they had zero remaining callers.
 //
-//   1. The D1 read path (`d1All`) — the single place a D1 failure is caught
-//      and degraded to an empty result. D1 fully eliminated (2026-07-17): no
-//      route in this file calls it anymore (every handler now goes straight
-//      to the schema-stable empty shape on a Postgres-tier miss); `d1All` is
-//      kept only because it's still directly unit-tested for its
-//      dark-serve-log behavior.
-//   2. The fallback-generation machinery (`d1FallbackGeneration` counter + the two
-//      WeakSets + the mark/has helpers) — the bookkeeping that lets the cache guard
-//      tell a real result from a degraded one.
-//   3. `withEdgeCache` — which reads that counter + the response WeakSet to decide
-//      whether a 200 may be persisted into the edge cache.
-//
-// They MUST live together: the counter is mutated inside `d1All` (where the D1
-// error is caught) and read inside `withEdgeCache`. If those two referenced
-// different module-level state, a degraded payload could poison the edge cache
-// (the #1760 bug class). Keeping them in one file makes the await/WeakSet contract
-// reviewable in a single place — `markD1FallbackResponse` must tag an *awaited*
-// Response, and `withEdgeCache` must inspect that same object.
+// What's left is `markD1FallbackResponse` + the `D1_FALLBACK_RESPONSES`
+// WeakSet (the name is legacy -- it now just means "this response used the
+// degraded/empty-fallback path, not a real tier hit") and `withEdgeCache`,
+// which reads that WeakSet to decide whether a 200 may be persisted into the
+// edge cache: `markD1FallbackResponse` must tag an *awaited* Response, and
+// `withEdgeCache` must inspect that same object, or a degraded payload could
+// poison the edge cache (the #1760 bug class).
 //
 // The handlers depend on one api.mjs-local helper (`readHealthMetaKv`, an
 // in-isolate memoized KV read that stays in api.mjs because the deferred clusters
@@ -44,7 +36,6 @@ import {
   envelopeResponse,
   publishedAt,
 } from "../responses.mjs";
-import { d1TimeoutMs, withTimeout } from "../storage.mjs";
 import {
   currentPostgresTierFallbackGeneration,
   tryPostgresTier,
@@ -276,49 +267,11 @@ function validateMaxLength(url, parameter, max) {
   return null;
 }
 
-let d1FallbackGeneration = 0;
-const D1_FALLBACK_ROWS = new WeakSet();
 const D1_FALLBACK_RESPONSES = new WeakSet();
-
-function markD1FallbackRows(rows = []) {
-  d1FallbackGeneration += 1;
-  D1_FALLBACK_ROWS.add(rows);
-  return rows;
-}
-
-function hasD1FallbackRows(...rowSets) {
-  return rowSets.some((rows) => D1_FALLBACK_ROWS.has(rows));
-}
 
 function markD1FallbackResponse(response) {
   D1_FALLBACK_RESPONSES.add(response);
   return response;
-}
-
-async function d1All(env, sql, params) {
-  const db = env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) return markD1FallbackRows([]);
-  try {
-    const result = await withTimeout(
-      db
-        .prepare(sql)
-        .bind(...params)
-        .all(),
-      d1TimeoutMs(env),
-    );
-    return result?.results || [];
-  } catch (error) {
-    // Surface the failure instead of silently degrading to []. A swallowed
-    // "no such column" here (prod schema drift) dark-served the uptime tier for
-    // days before anyone noticed — log it so the next failure is diagnosable.
-    console.error(
-      "[d1All]",
-      String(error?.message ?? error),
-      "·",
-      String(sql).slice(0, 120),
-    );
-    return markD1FallbackRows([]);
-  }
 }
 
 async function analyticsMeta(env, artifactPath, observedAt) {
@@ -407,16 +360,14 @@ export async function withEdgeCache(
         : hit;
     }
   }
-  const fallbackGeneration = d1FallbackGeneration;
   const pgFallbackGeneration = currentPostgresTierFallbackGeneration();
   const response = await buildResponse(cacheRequest);
-  // Never cache errors / non-200s (cold-D1 still returns a 200 empty envelope;
-  // a 400 bad-window or 5xx must not be persisted).
+  // Never cache errors / non-200s (a cold Postgres tier still returns a 200
+  // empty envelope; a 400 bad-window or 5xx must not be persisted).
   if (
     cacheKey &&
     response.status === 200 &&
     !D1_FALLBACK_RESPONSES.has(response) &&
-    d1FallbackGeneration === fallbackGeneration &&
     currentPostgresTierFallbackGeneration() === pgFallbackGeneration
   ) {
     ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
@@ -2120,8 +2071,6 @@ export {
   analyticsQueryError,
   canonicalAnalyticsCacheRoute,
   analyticsWindow,
-  d1All,
-  hasD1FallbackRows,
   markD1FallbackResponse,
   validateQueryParams,
 };

@@ -254,10 +254,6 @@ import {
   overlayPreviouslyKnownAs,
 } from "../src/subnet-identity-history.mjs";
 import { tryPostgresTier } from "./postgres-tier.mjs";
-import {
-  economicsSnapshotUpsertStatements,
-  validEconomicsBackfillRows,
-} from "../src/economics-backfill.mjs";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.mjs";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
@@ -310,14 +306,11 @@ import {
   ACCOUNT_EVENTS_ROLLUP_CRON,
   BULK_TRENDS_PATH_PATTERN,
   EMBEDDING_SYNC_CRON,
-  EVENTS_INGEST_TOKEN_HEADER,
   GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
   HEALTH_PRUNE_CRON,
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
-  MAX_BACKFILL_INGEST_BODY_BYTES,
-  MAX_BACKFILL_INGEST_ROWS,
   MAX_WEBHOOK_BODY_BYTES,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
@@ -623,101 +616,6 @@ export {
 };
 
 export { composeCompareData } from "./request-handlers/analytics-routes.mjs";
-
-// Byte length of a UTF-8 string.
-// bound request bodies before parsing. (The staging loaders carry their own copy;
-// it is a pure stdlib one-liner, so a tiny duplicate beats a cross-module import
-// for a leaf used on both sides of the extraction.)
-function utf8Bytes(value) {
-  return new TextEncoder().encode(value);
-}
-
-// POST /api/v1/internal/backfill-economics (#1307, epic #1302): the per-SUBNET
-// alpha-price history backfill ingest for scripts/backfill-economics-history.py.
-// Disabled (503) until METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET)
-// is configured,
-// then a constant-time token compare over the shared EVENTS_INGEST_TOKEN_HEADER.
-// The body is an array of {netuid, snapshot_date, captured_at, alpha_price_tao}
-// rows (or {rows:[...]}), upserted into subnet_snapshots on (netuid,snapshot_date)
-// with the SAME COALESCE semantics as the forward prober — only alpha_price_tao +
-// the key/captured_at columns are touched, so a backfilled value fills a NULL but
-// never clobbers a forward fire or any other column, and any re-POST is idempotent.
-// NOT in the public contract.
-export async function handleEconomicsBackfill(request, env) {
-  if (request.method !== "POST") {
-    return errorResponse("method_not_allowed", "POST only.", 405);
-  }
-  const configured =
-    env.METAGRAPH_BACKFILL_SECRET || env.METAGRAPH_EVENTS_INGEST_SECRET;
-  if (!configured) {
-    return errorResponse(
-      "backfill_disabled",
-      "Historical backfill requires METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET) to be configured.",
-      503,
-    );
-  }
-  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, configured)) {
-    return errorResponse(
-      "unauthorized",
-      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
-      401,
-    );
-  }
-  const db = env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) {
-    return errorResponse("unavailable", "History store unavailable.", 503);
-  }
-  const raw = await request.text();
-  if (utf8Bytes(raw).length > MAX_BACKFILL_INGEST_BODY_BYTES) {
-    return errorResponse(
-      "payload_too_large",
-      `Body exceeds ${MAX_BACKFILL_INGEST_BODY_BYTES} bytes.`,
-      413,
-    );
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return errorResponse(
-      "invalid_body",
-      "Body must be a JSON array of economics rows (or {rows:[...]}).",
-      400,
-    );
-  }
-  const incoming = Array.isArray(parsed)
-    ? parsed
-    : Array.isArray(parsed?.rows)
-      ? parsed.rows
-      : null;
-  if (!incoming) {
-    return errorResponse(
-      "invalid_body",
-      "Body must be a JSON array of economics rows (or {rows:[...]}).",
-      400,
-    );
-  }
-  if (incoming.length > MAX_BACKFILL_INGEST_ROWS) {
-    return errorResponse(
-      "too_many_rows",
-      `At most ${MAX_BACKFILL_INGEST_ROWS} rows per request.`,
-      413,
-    );
-  }
-  const rows = validEconomicsBackfillRows(incoming);
-  if (rows.length) {
-    await db.batch(economicsSnapshotUpsertStatements(db, rows));
-  }
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      received: incoming.length,
-      inserted: rows.length,
-    }),
-    { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
-  );
-}
 
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other
@@ -1396,9 +1294,6 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleAskRequest(request, env);
   }
 
-  if (url.pathname === "/api/v1/internal/backfill-economics") {
-    return handleEconomicsBackfill(request, env);
-  }
   // The only write path into the registry Postgres instance (a dedicated,
   // separate database from the chain-indexer's) -- GitHub Actions calls this
   // over HTTPS from the registry-sync workflows, never touches Postgres
@@ -3973,7 +3868,6 @@ async function handleHealthRequest(request, env) {
     assets: Boolean(env.ASSETS?.fetch),
     r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
     kv: Boolean(env.METAGRAPH_CONTROL?.get),
-    health_db: Boolean(env.METAGRAPH_HEALTH_DB?.prepare),
     data_api: Boolean(env.DATA_API?.fetch),
   };
 

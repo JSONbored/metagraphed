@@ -1,14 +1,13 @@
-// Chain-event index (#1346, epic #1345): the D1 `account_events` tier — first-party
-// per-entity activity decoded DIRECTLY from finney by scripts/fetch-events.py
-// (substrate System.Events), NOT Taostats. This module holds the load contract,
-// the daily rollup, the prune, and the row→API shaping (#1347). Pure + exported
-// for tests; the Worker runs the D1 I/O.
+// Chain-event index (#1346, epic #1345): row->API shaping for the
+// account_events family (#1347), decoded DIRECTLY from finney by
+// scripts/fetch-events.py (substrate System.Events), NOT Taostats. D1 fully
+// eliminated (2026-07-17): account_events/account_events_daily are
+// Postgres-only now; this module is pure formatting only, no D1 I/O left.
 import {
   FEED_PAGINATION,
   clampLimit,
   clampOffset,
 } from "../workers/request-params.mjs";
-import { decodeCursor, encodeCursor } from "./cursor.mjs";
 
 // The SubtensorModule events the poller indexes — entity-relevant only, which
 // keeps volume ~1 MB/day (not ~100 MB/day). Kept in sync with fetch-events.py
@@ -202,9 +201,6 @@ export function formatAccountEvent(row) {
 }
 
 // ---- Entity API builders (#1347) -------------------------------------------
-// The columns the account handlers SELECT for an event row.
-export const ACCOUNT_EVENT_COLUMNS =
-  "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index";
 
 // Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
 // must not pass through Boolean(), which treats any non-empty string as true.
@@ -625,75 +621,7 @@ export async function loadAccountHistory(ss58, { limit, offset } = {}) {
   });
 }
 
-// Native-TAO transfer feed for this account, from account_events where
-// event_kind='Transfer' (hotkey=from, coldkey=to). direction: 'sent' | 'received'
-// | null (both). Newest first. Clamps limit to 1-1000 (default 100).
-export async function loadAccountTransfers(
-  d1,
-  ss58,
-  { direction, limit, offset, cursor, blockStart, blockEnd } = {},
-) {
-  const lim = clampLimit(limit, FEED_PAGINATION);
-  const off = clampOffset(offset);
-  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
-  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
-  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
-    return buildAccountTransfers([], ss58, {
-      limit: lim,
-      offset: off,
-      nextCursor: null,
-      direction,
-    });
-  }
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  const blockRangeClause = `${blockStart != null ? " AND block_number >= ?" : ""}${blockEnd != null ? " AND block_number <= ?" : ""}`;
-  const cursorClause = useCursor
-    ? " AND (block_number, event_index) < (?, ?)"
-    : "";
-  const pushBlockRangeParams = (params) => {
-    if (blockStart != null) params.push(blockStart);
-    if (blockEnd != null) params.push(blockEnd);
-  };
-  const pushCursorParams = (params) => {
-    if (useCursor) params.push(cur[0], cur[1]);
-  };
-  let sql;
-  let params;
-  if (direction === "sent") {
-    params = [ss58];
-    pushBlockRangeParams(params);
-    pushCursorParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${blockRangeClause}${cursorClause}`;
-  } else if (direction === "received") {
-    params = [ss58];
-    pushBlockRangeParams(params);
-    pushCursorParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?${blockRangeClause}${cursorClause}`;
-  } else {
-    params = [ss58];
-    pushBlockRangeParams(params);
-    pushCursorParams(params);
-    params.push(ss58, ss58);
-    pushBlockRangeParams(params);
-    pushCursorParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${blockRangeClause}${cursorClause} UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?${blockRangeClause}${cursorClause})`;
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(lim);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(off);
-  }
-  const rows = await d1(sql, params);
-  const last = rows.length === lim ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  return buildAccountTransfers(rows, ss58, {
-    limit: lim,
-    offset: off,
-    nextCursor,
-    direction,
-  });
-}
+// loadAccountTransfers (the D1-querying account_events reader) was deleted
+// (2026-07-17, D1 fully eliminated) -- account_events was already dropped
+// from D1 production (#4772), so it had zero live callers; every real route
+// calls buildAccountTransfers([], ...) directly.

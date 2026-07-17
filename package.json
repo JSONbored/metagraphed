@@ -112,8 +112,8 @@
     "check": "npm run lint && npm run format:check && npm run pipeline:check && npm run validate:docs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:ci": "vitest run --coverage --fileParallelism --testTimeout=30000 --exclude '**/artifacts.test.mjs' --exclude '**/discovery-artifacts.test.mjs' --exclude '**/public-safety.test.mjs'",
-    "test:ci:artifacts": "vitest run tests/artifacts.test.mjs tests/discovery-artifacts.test.mjs tests/public-safety.test.mjs",
+    "test:ci": "vitest run --coverage --fileParallelism --testTimeout=30000 --exclude '**/artifacts.test.mjs' --exclude '**/discovery-artifacts.test.mjs' --exclude '**/public-safety.test.mjs' --exclude '**/validate-error-messages.test.mjs' --exclude '**/refresh-build-summary.test.mjs'",
+    "test:ci:artifacts": "vitest run tests/artifacts.test.mjs tests/discovery-artifacts.test.mjs tests/public-safety.test.mjs tests/validate-error-messages.test.mjs tests/refresh-build-summary.test.mjs",
     "curation:brief": "node scripts/curation-brief.mjs",
     "curation:stale-notes": "node scripts/stale-gap-notes.mjs",
     "endpoint:brief": "node scripts/endpoint-ops-brief.mjs"

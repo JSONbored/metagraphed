@@ -15,10 +15,6 @@ import {
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
-import {
-  d1All,
-  hasD1FallbackRows,
-} from "../workers/request-handlers/analytics.mjs";
 
 // --- Pure format helpers ----------------------------------------------------
 
@@ -1528,45 +1524,9 @@ describe("hourly cron writes a daily snapshot", () => {
   });
 });
 
-describe("d1All graceful degradation (#1715)", () => {
-  test("a D1 read failure degrades to an empty response and is logged, not silent", async () => {
-    // A throwing D1 read used to be swallowed to [] with no signal (this is what
-    // dark-served the uptime tier for days). D1 fully eliminated (2026-07-17):
-    // no live route reaches d1All anymore (every analytics route tries the
-    // Postgres tier first and a miss falls through to a pure empty-shape
-    // builder, never a live D1 query) -- e.g. /api/v1/rpc/usage now serves
-    // loadRpcUsage's schema-stable stub unconditionally. d1All itself is still
-    // exported and still the dark-serve logging contract for any future/direct
-    // caller, so it's exercised directly here rather than through a route.
-    const throwingDb = {
-      prepare: () => ({
-        bind: () => ({
-          async all() {
-            throw new Error("D1 read failed");
-          },
-        }),
-      }),
-    };
-    const env = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: throwingDb,
-    };
-    const errors = [];
-    const originalError = console.error;
-    console.error = (...args) => errors.push(args.map(String).join(" "));
-    let rows;
-    try {
-      rows = await d1All(env, "SELECT 1", []);
-    } finally {
-      console.error = originalError;
-    }
-    // d1All caught the throw → [] fallback, marked so a caller can tell a real
-    // empty result from a degraded one.
-    assert.deepEqual(rows, []);
-    assert.equal(hasD1FallbackRows(rows), true);
-    assert.ok(
-      errors.some((line) => line.includes("[d1All]")),
-      "d1All should log the swallowed read failure",
-    );
-  });
-});
+// d1All / hasD1FallbackRows / markD1FallbackRows / d1FallbackGeneration were
+// deleted (2026-07-17, D1 fully eliminated) -- every analytics route now
+// tries the Postgres tier first and a miss falls through to a pure
+// empty-shape builder directly, never a live D1 query, so the D1 read path
+// + its fallback-row bookkeeping had zero remaining callers. See
+// workers/request-handlers/analytics.mjs's own header comment.

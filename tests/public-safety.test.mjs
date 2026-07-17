@@ -22,7 +22,13 @@ import {
 // write/cleanup raced validate-error-messages.test.mjs's own (concurrent)
 // validate-schemas.mjs invocation scanning the same directory, an
 // intermittent ENOENT once this test's afterEach deleted the fixture before
-// the other process finished reading it.
+// the other process finished reading it. validate-error-messages.test.mjs
+// itself is now ALSO pinned to serial execution (2026-07-17) -- it mutates a
+// real registry/subnets/*.json file in place for its validate-schemas.mjs
+// enum-error-message test, which was still racing OTHER parallel full-
+// registry scans (e.g. validate-surface-duplicate-url.test.mjs) even after
+// this fix landed for the public-safety-vs-validate-error-messages pair
+// specifically.
 const FIXTURE_DIR = path.join(repoRoot, "dist/metagraph-r2/metagraph/fixtures");
 const TEST_FIXTURE = "__public_safety_test__.json";
 const TEST_FIXTURE_PATH = path.join(FIXTURE_DIR, TEST_FIXTURE);

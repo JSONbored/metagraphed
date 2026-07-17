@@ -16,9 +16,9 @@
 // with the cache guard. Tests still inject their own map via the `healthMap`
 // option, so the module-default is only the production singleton.
 //
-// Dependency wiring: the analytics read path + query guards (`d1All`,
-// `analyticsWindow`, `analyticsQueryError`, `analyticsMeta`) come from the sibling
-// analytics.mjs (no cycle — analytics imports nothing from here). The one
+// Dependency wiring: the query guards (`analyticsWindow`, `analyticsQueryError`,
+// `analyticsMeta`) come from the sibling analytics.mjs (no cycle — analytics
+// imports nothing from here). The one
 // api.mjs-local helper, `readHealthMetaKv` (the in-isolate snapshot-meta memo that
 // stays in api.mjs because other clusters + a test import it from there), is
 // injected once via `configureRpcProxy({ readHealthMetaKv })` at api.mjs load

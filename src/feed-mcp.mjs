@@ -7,10 +7,10 @@
 //
 // The incidents source is injected as `deps.loadIncidents(ctx)` rather than
 // read here directly -- get_global_incidents already sources the identical
-// cross-subnet incident ledger via the MCP module's own D1 runner +
-// deps-injected observed_at (mcp-server.mjs's mcpD1Runner/mcpObservedAt), and
-// this reuses that exact wiring instead of a second path that would bypass
-// the module's injected-KV convention (see mcp-server.mjs's header comment).
+// cross-subnet incident ledger via the MCP module's own deps-injected
+// observed_at (mcp-server.mjs's mcpObservedAt), and this reuses that exact
+// wiring instead of a second path that would bypass the module's
+// injected-KV convention (see mcp-server.mjs's header comment).
 
 import {
   FEED_MAX_ITEMS,

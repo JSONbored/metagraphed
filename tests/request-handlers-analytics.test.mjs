@@ -1,7 +1,7 @@
 // Direct unit tests for workers/request-handlers/analytics.mjs (#1925).
-// Imports every exported handler/helper and exercises the D1 read path,
-// query-param guards, edge-cache contract, and schema-stable cold-store
-// payloads without routing through workers/api.mjs.
+// Imports every exported handler/helper and exercises the query-param
+// guards, edge-cache contract, and schema-stable cold-store payloads
+// without routing through workers/api.mjs.
 
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
@@ -19,8 +19,6 @@ import {
   handleChainFees,
   validateQueryParams,
   analyticsWindow,
-  d1All,
-  hasD1FallbackRows,
   markD1FallbackResponse,
   analyticsQueryError,
   canonicalAnalyticsCacheRoute,
@@ -717,88 +715,16 @@ describe("analyticsQueryError", () => {
   });
 });
 
-// ---- B) d1All / fallback bookkeeping -----------------------------
+// d1All / hasD1FallbackRows / d1Runner were deleted (2026-07-17, D1 fully
+// eliminated) -- every handler now goes straight to a schema-stable empty
+// payload on a Postgres-tier miss, never a live D1 read, so the D1 read
+// path + its fallback-row bookkeeping had zero remaining callers.
 
-describe("d1All", () => {
-  test("returns empty array when METAGRAPH_HEALTH_DB is unbound", async () => {
-    const rows = await d1All(emptyEnv(), "SELECT 1", []);
-    assert.deepEqual(rows, []);
-  });
-
-  test("returns empty array when db.prepare is missing", async () => {
-    const rows = await d1All({ METAGRAPH_HEALTH_DB: {} }, "SELECT 1", []);
-    assert.deepEqual(rows, []);
-  });
-
-  test("marks fallback rows when env is cold", async () => {
-    const rows = await d1All(emptyEnv(), "SELECT 1", []);
-    assert.equal(hasD1FallbackRows(rows), true);
-  });
-
-  test("returns query results on happy path", async () => {
-    const { env } = dbWith();
-    const rows = await d1All(
-      env,
-      "SELECT netuid FROM surface_uptime_daily WHERE day >= ?",
-      ["2026-01-01"],
-    );
-    assert.ok(rows.length > 0);
-    assert.equal(hasD1FallbackRows(rows), false);
-  });
-
-  test("marks fallback rows when D1 throws", async () => {
-    const { env } = dbWith({ d1Error: new Error("D1 unavailable") });
-    const rows = await d1All(env, "SELECT 1", []);
-    assert.deepEqual(rows, []);
-    assert.equal(hasD1FallbackRows(rows), true);
-  });
-
-  test("binds params to the prepared statement", async () => {
-    const cap = { sql: [], params: [] };
-    const { env } = dbWith({ captures: cap });
-    await d1All(env, "SELECT ? AS x", [NETUID]);
-    assert.equal(cap.params[0][0], NETUID);
-  });
-
-  test("handles null results from D1 driver", async () => {
-    const env = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return {
-            bind() {
-              return { all: () => Promise.resolve(null) };
-            },
-          };
-        },
-      },
-    };
-    const rows = await d1All(env, "SELECT 1", []);
-    assert.deepEqual(rows, []);
-    assert.equal(hasD1FallbackRows(rows), false);
-  });
-});
-
-// d1Runner was deleted (2026-07-17, D1 fully eliminated) -- it had zero
-// remaining callers once every handler stopped reading D1.
-
-describe("markD1FallbackResponse / hasD1FallbackRows", () => {
+describe("markD1FallbackResponse", () => {
   test("markD1FallbackResponse tags a Response object", () => {
     const response = new Response("{}");
     const tagged = markD1FallbackResponse(response);
     assert.equal(tagged, response);
-  });
-
-  test("hasD1FallbackRows detects any marked row set", async () => {
-    const good = [{ x: 1 }];
-    const bad = await d1All(emptyEnv(), "SELECT 1", []);
-    assert.equal(hasD1FallbackRows(good), false);
-    assert.equal(hasD1FallbackRows(good, bad), true);
-    assert.equal(hasD1FallbackRows(bad), true);
-  });
-
-  test("hasD1FallbackRows returns false for unmarked empty arrays", () => {
-    assert.equal(hasD1FallbackRows([]), false);
   });
 });
 
@@ -957,25 +883,10 @@ describe("withEdgeCache", () => {
     assert.deepEqual(cache.putKeys, []);
   });
 
-  test("does not cache when d1FallbackGeneration changes during buildResponse", async () => {
-    originalCaches = globalThis.caches;
-    const cache = mockCaches();
-    cache.install();
-    const env = analyticsEnv([]);
-    const res = await withEdgeCache(
-      req("/api/v1/health/trends"),
-      ctx,
-      env,
-      "bulk-trends",
-      async () => {
-        await d1All(emptyEnv(), "SELECT 1", []);
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      },
-    );
-    assert.equal(res.status, 200);
-    assert.deepEqual(cache.putKeys, []);
-  });
-
+  // The d1FallbackGeneration-based sibling of this test was deleted
+  // (2026-07-17, D1 fully eliminated) -- the same "a fallback fired mid-
+  // buildResponse -> never cache" property is now covered below via the
+  // still-active Postgres-tier generation counter.
   test("does not cache when Postgres-tier fallback generation changes during buildResponse", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();

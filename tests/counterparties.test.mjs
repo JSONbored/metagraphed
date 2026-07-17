@@ -5,23 +5,9 @@ import {
   buildCounterpartyRelationship,
   COUNTERPARTIES_SCAN_CAP,
   COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
-  loadCounterparties,
-  loadCounterpartyRelationship,
 } from "../src/counterparties.mjs";
 
 const ME = "ME";
-
-// A (sql, params) => rows runner that records its calls, mirroring d1Runner(env)
-// / mcpD1Runner(ctx). Returns the canned rows for every call.
-function fakeD1(rows = []) {
-  const calls = [];
-  const runner = async (sql, params) => {
-    calls.push({ sql, params });
-    return rows;
-  };
-  runner.calls = calls;
-  return runner;
-}
 
 describe("buildCounterparties", () => {
   test("cold / empty / non-array rows yield a schema-stable empty rollup", () => {
@@ -844,93 +830,8 @@ describe("buildCounterparties — regressions", () => {
   });
 });
 
-describe("loadCounterparties", () => {
-  test("runs the bounded two-side Transfer union and rolls up by party", async () => {
-    const d1 = fakeD1([
-      { hotkey: "ME", coldkey: "A", amount_tao: 100, block_number: 10 },
-      { hotkey: "C", coldkey: "ME", amount_tao: 200, block_number: 7 },
-    ]);
-    const data = await loadCounterparties(d1, ME, { limit: 10 });
-    assert.equal(d1.calls.length, 1);
-    const { sql, params } = d1.calls[0];
-    // Two indexed side seeks unioned, never a hotkey/coldkey OR.
-    assert.match(sql, /UNION ALL/);
-    assert.match(sql, /coldkey = \? AND hotkey <> \?/);
-    assert.equal(sql.includes(" OR "), false);
-    // The bounded scan must tie-break same-block rows on event_index so the row
-    // cap truncates deterministically (newest-first), matching the relationship
-    // drill-down and the transfer feed (#2413).
-    assert.match(sql, /ORDER BY block_number DESC, event_index DESC/);
-    assert.match(sql, /event_index FROM account_events/);
-    assert.deepEqual(params, [ME, ME, ME, COUNTERPARTIES_SCAN_CAP]);
-    assert.equal(data.ss58, ME);
-    assert.equal(data.counterparty_count, 2);
-    assert.equal(data.counterparties[0].address, "C"); // highest volume (200)
-  });
-
-  test("a cold runner yields a schema-stable empty rollup", async () => {
-    const data = await loadCounterparties(fakeD1([]), ME, {});
-    assert.equal(data.counterparty_count, 0);
-    assert.deepEqual(data.counterparties, []);
-  });
-});
-
-describe("loadCounterpartyRelationship", () => {
-  test("runs the pair seek and returns the single-row + nested-detail envelope", async () => {
-    const d1 = fakeD1([
-      {
-        block_number: 20,
-        event_index: 2,
-        hotkey: "ME",
-        coldkey: "CP",
-        netuid: 1,
-        amount_tao: 40,
-        observed_at: 1700,
-      },
-      {
-        block_number: 18,
-        event_index: 1,
-        hotkey: "CP",
-        coldkey: "ME",
-        netuid: 1,
-        amount_tao: 10,
-        observed_at: 1600,
-      },
-    ]);
-    const data = await loadCounterpartyRelationship(d1, ME, "CP", {
-      limit: 50,
-    });
-    assert.equal(d1.calls.length, 1);
-    const { sql, params } = d1.calls[0];
-    assert.match(sql, /hotkey = \? AND coldkey = \?/);
-    assert.match(sql, /UNION ALL/);
-    assert.deepEqual(params, [
-      ME,
-      "CP",
-      "CP",
-      ME,
-      COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
-    ]);
-    // The list envelope carries exactly the one drilled counterparty…
-    assert.equal(data.ss58, ME);
-    assert.equal(data.counterparty_count, 1);
-    assert.equal(data.counterparties.length, 1);
-    assert.equal(data.counterparties[0].address, "CP");
-    assert.equal(data.total_sent_tao, 40);
-    assert.equal(data.total_received_tao, 10);
-    // …with the per-pair detail (totals + evidence) nested under `relationship`.
-    assert.equal(data.relationship.counterparty, "CP");
-    assert.equal(data.relationship.net_tao, -30); // 10 received - 40 sent
-    assert.equal(data.relationship.transfer_count, 2);
-    assert.equal(data.relationship.transfers[0].direction, "sent");
-  });
-
-  test("a cold runner yields an empty pair envelope (no counterparties row)", async () => {
-    const data = await loadCounterpartyRelationship(fakeD1([]), ME, "CP", {});
-    assert.equal(data.counterparty_count, 0);
-    assert.deepEqual(data.counterparties, []);
-    assert.equal(data.relationship.counterparty, "CP");
-    assert.equal(data.relationship.transfer_count, 0);
-    assert.deepEqual(data.relationship.transfers, []);
-  });
-});
+// loadCounterparties/loadCounterpartyRelationship (the D1-querying
+// account_events readers) were deleted (2026-07-17, D1 fully eliminated) --
+// see src/counterparties.mjs's own comment. buildCounterparties/
+// buildCounterpartyRelationship coverage above already exercises the same
+// rollup/relationship logic directly against hand-built rows.

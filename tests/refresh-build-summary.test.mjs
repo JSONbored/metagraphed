@@ -10,6 +10,14 @@ import { r2StagingRoot, repoRoot } from "../scripts/lib.mjs";
 // and r2-manifest.mjs — it must exclude build-summary.json (and r2-manifest.json)
 // from its own artifact inventory. A stale self-entry would inflate
 // artifact_count / artifact_size_bytes and embed a hash of the pre-rewrite file.
+//
+// This test rewrites the REAL build-summary.json at the R2 staging root in
+// place (refresh-build-summary.mjs re-scans the whole staging tree to
+// compute the count/size fields, so there's no isolated-fixture equivalent),
+// which raced other tests concurrently reading/writing that same tree under
+// vitest's default parallel file execution -- pinned to serial execution in
+// package.json's test:ci exclude list (see public-safety.test.mjs's header
+// comment for the original incident writeup this pattern follows).
 test("refresh-build-summary excludes build-summary.json from its own inventory", () => {
   const summaryPath = path.join(r2StagingRoot, "build-summary.json");
   if (!existsSync(summaryPath)) {

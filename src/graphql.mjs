@@ -3198,16 +3198,12 @@ async function loadRows(context, path, key, netuid) {
   return netuid == null ? rows : rows.filter((row) => row?.netuid === netuid);
 }
 
-// Live operational health (KV health:current → D1) — the build no longer
-// publishes static health, so this mirrors the REST /api/v1/health source.
-// Null when the live store is cold.
+// Live operational health (KV health:current → Postgres tier) — the build no
+// longer publishes static health, so this mirrors the REST /api/v1/health
+// source. Null when the live store is cold.
 function loadLiveHealth(context) {
   return once(context, LIVE_HEALTH_KEY, () =>
-    resolveLiveHealth({
-      readHealthKv,
-      env: context.env,
-      db: context.env?.METAGRAPH_HEALTH_DB,
-    }),
+    resolveLiveHealth({ readHealthKv, env: context.env }),
   );
 }
 
