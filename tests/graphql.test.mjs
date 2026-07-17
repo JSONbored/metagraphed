@@ -8629,6 +8629,91 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     } }`;
   }
 
+  // #6353: from/to were declared as plain String and forwarded unvalidated. On
+  // a Postgres-tier miss loadAccountHistory binds them straight into
+  // `day >= ?` / `day <= ?` against a TEXT column, so a malformed bound
+  // silently produced an empty series instead of an error -- while REST
+  // (parseDateRange) and MCP (optionalDayArg) both rejected it.
+  test("a malformed from is BAD_USER_INPUT, not a silently empty series", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", from: "not-a-date")`),
+      env,
+    );
+    assert.equal(status, 200);
+    const err = body.errors.find(
+      (e) => e.extensions?.code === "BAD_USER_INPUT",
+    );
+    assert.ok(err, "expected a BAD_USER_INPUT error");
+    // The same message REST's parseDateRange and MCP's optionalDayArg emit.
+    assert.equal(err.message, "from/to must be YYYY-MM-DD dates.");
+    assert.equal(body.data, null);
+    assert.equal(called, false, "must not reach the tier");
+  });
+
+  test("a malformed to is BAD_USER_INPUT even when from is valid", async () => {
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", from: "2026-07-01", to: "07/16/2026")`),
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+  });
+
+  test("a date-shaped but non-YYYY-MM-DD bound is still rejected", async () => {
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", from: "2026-7-1")`),
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("well-formed from/to bounds are accepted and forwarded to the tier", async () => {
+    const capture = {};
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({ days: [] }), capture),
+    };
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", from: "2026-07-01", to: "2026-07-16")`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capture.url.searchParams.get("from"), "2026-07-01");
+    assert.equal(capture.url.searchParams.get("to"), "2026-07-16");
+  });
+
+  test("the D1 fallback path rejects a malformed bound before it reaches the query", async () => {
+    // The regression the issue describes: with a D1 tier available, a bad bound
+    // used to reach `day >= ?` and return days: [] rather than erroring.
+    let prepared = false;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => {
+          prepared = true;
+          return { bind: () => ({ all: async () => ({ results: [] }) }) };
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", to: "not-a-date")`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(prepared, false, "must not reach D1");
+  });
+
   // loadAccountHistory issues exactly one SELECT per call, so the mock ignores
   // the SQL text and always returns the given rows.
   function accountHistoryD1(rows = []) {

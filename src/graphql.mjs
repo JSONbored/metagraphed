@@ -94,6 +94,7 @@ import {
 } from "../workers/request-handlers/analytics.mjs";
 import {
   BLOCK_PAGINATION,
+  DAY_PATTERN,
   FEED_PAGINATION,
   clampLimit,
   clampOffset,
@@ -5713,9 +5714,23 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    // Same DAY_PATTERN guard REST's parseDateRange and MCP's optionalDayArg
+    // apply to this capability (#6353). Without it a malformed bound is passed
+    // straight through: the Postgres tier re-parses and rejects it, but the D1
+    // fallback binds it into `day >= ?` / `day <= ?` against a TEXT column,
+    // which silently yields a wrong (typically empty) series instead of an
+    // error. The message is REST's and MCP's verbatim, so all three agree.
+    if (
+      (from != null && !DAY_PATTERN.test(from)) ||
+      (to != null && !DAY_PATTERN.test(to))
+    ) {
+      throw new GraphQLError("from/to must be YYYY-MM-DD dates.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
     // Same FEED_PAGINATION bounds the /history route's clamp applies, so a
     // GraphQL caller cannot request a wider page than REST allows;
-    // netuid/from/to/cursor are forwarded verbatim for the route to re-parse,
+    // netuid/cursor are forwarded verbatim for the route to re-parse,
     // matching account_events and the sibling feed resolvers.
     const safeLimit = clampLimit(limit, FEED_PAGINATION);
     const safeOffset = clampOffset(offset);
