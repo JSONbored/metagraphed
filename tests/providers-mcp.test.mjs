@@ -120,14 +120,18 @@ describe("providers-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "id,name");
   });
 
-  test("providersQueryUrl clamps a non-numeric limit to the default", () => {
-    const url = providersQueryUrl({ limit: "lots" });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("providersQueryUrl rejects a non-numeric limit", () => {
+    assert.throws(
+      () => providersQueryUrl({ limit: "lots" }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("providersQueryUrl clamps a sub-minimum numeric limit to the default", () => {
-    const url = providersQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("providersQueryUrl rejects a sub-minimum limit", () => {
+    assert.throws(
+      () => providersQueryUrl({ limit: 0 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("providersQueryUrl rejects a fractional cursor", () => {
@@ -144,9 +148,11 @@ describe("providers-mcp", () => {
     );
   });
 
-  test("providersQueryUrl clamps limit above the MCP maximum", () => {
-    const url = providersQueryUrl({ limit: 500 });
-    assert.equal(url.searchParams.get("limit"), "100");
+  test("providersQueryUrl rejects a limit above the MCP maximum", () => {
+    assert.throws(
+      () => providersQueryUrl({ limit: 500 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("loadProvidersList returns filtered rows with pagination meta", async () => {

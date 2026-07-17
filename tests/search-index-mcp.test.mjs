@@ -102,20 +102,24 @@ describe("search-index-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "id,title");
   });
 
-  test("searchIndexQueryUrl clamps a non-numeric limit to the default", () => {
-    const url = searchIndexQueryUrl({ limit: "lots" });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("searchIndexQueryUrl rejects a non-numeric limit", () => {
+    assert.throws(
+      () => searchIndexQueryUrl({ limit: "lots" }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("searchIndexQueryUrl clamps a sub-minimum numeric limit to the default", () => {
-    const url = searchIndexQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("searchIndexQueryUrl rejects a sub-minimum limit", () => {
+    assert.throws(
+      () => searchIndexQueryUrl({ limit: 0 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("searchIndexQueryUrl clamps limit and rejects negative cursor", () => {
-    assert.equal(
-      searchIndexQueryUrl({ limit: 500 }).searchParams.get("limit"),
-      "100",
+  test("searchIndexQueryUrl rejects an out-of-range limit and negative cursor", () => {
+    assert.throws(
+      () => searchIndexQueryUrl({ limit: 500 }),
+      (err) => err.code === "invalid_params",
     );
     assert.throws(
       () => searchIndexQueryUrl({ cursor: -1 }),

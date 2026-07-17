@@ -102,19 +102,25 @@ describe("curation-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "netuid,name");
   });
 
-  test("curationQueryUrl clamps a non-numeric limit to the default", () => {
-    const url = curationQueryUrl({ limit: "lots" });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("curationQueryUrl rejects a non-numeric limit", () => {
+    assert.throws(
+      () => curationQueryUrl({ limit: "lots" }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("curationQueryUrl clamps a sub-minimum numeric limit to the default", () => {
-    const url = curationQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("curationQueryUrl rejects a sub-minimum limit", () => {
+    assert.throws(
+      () => curationQueryUrl({ limit: 0 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("curationQueryUrl clamps limit above the MCP maximum", () => {
-    const url = curationQueryUrl({ limit: 500 });
-    assert.equal(url.searchParams.get("limit"), "100");
+  test("curationQueryUrl rejects a limit above the MCP maximum", () => {
+    assert.throws(
+      () => curationQueryUrl({ limit: 500 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("curationQueryUrl rejects a fractional netuid", () => {

@@ -161,19 +161,25 @@ describe("endpoint-incidents-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "netuid,severity");
   });
 
-  test("endpointIncidentsQueryUrl clamps a non-numeric limit to the default", () => {
-    const url = endpointIncidentsQueryUrl({ limit: "lots" });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("endpointIncidentsQueryUrl rejects a non-numeric limit", () => {
+    assert.throws(
+      () => endpointIncidentsQueryUrl({ limit: "lots" }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("endpointIncidentsQueryUrl clamps a sub-minimum numeric limit to the default", () => {
-    const url = endpointIncidentsQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("endpointIncidentsQueryUrl rejects a sub-minimum limit", () => {
+    assert.throws(
+      () => endpointIncidentsQueryUrl({ limit: 0 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("endpointIncidentsQueryUrl clamps limit above the MCP maximum", () => {
-    const url = endpointIncidentsQueryUrl({ limit: 500 });
-    assert.equal(url.searchParams.get("limit"), "100");
+  test("endpointIncidentsQueryUrl rejects a limit above the MCP maximum", () => {
+    assert.throws(
+      () => endpointIncidentsQueryUrl({ limit: 500 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("loadEndpointIncidentsList returns filtered rows with pagination meta", async () => {

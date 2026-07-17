@@ -40,12 +40,6 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function clampLimit(value, fallback, max) {
-  if (typeof value !== "number") return fallback;
-  if (!Number.isFinite(value) || value < 1) return fallback;
-  return Math.min(max, Math.floor(value));
-}
-
 export function evidenceQueryUrl(args) {
   const url = new URL("https://mcp.internal/evidence");
   const q = optionalString(args, "q");
@@ -57,7 +51,13 @@ export function evidenceQueryUrl(args) {
   const fields = optionalString(args, "fields");
   if (fields) url.searchParams.set("fields", fields);
   if (args?.limit !== undefined) {
-    url.searchParams.set("limit", String(clampLimit(args.limit, 50, 100)));
+    if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 100) {
+      throw evidenceMcpError(
+        "invalid_params",
+        "limit must be an integer between 1 and 100.",
+      );
+    }
+    url.searchParams.set("limit", String(args.limit));
   }
   if (args?.cursor !== undefined) {
     if (!Number.isInteger(args.cursor) || args.cursor < 0) {

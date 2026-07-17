@@ -118,14 +118,18 @@ describe("surfaces-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "id,kind");
   });
 
-  test("surfacesQueryUrl clamps a non-numeric limit to the default", () => {
-    const url = surfacesQueryUrl({ limit: "lots" });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("surfacesQueryUrl rejects a non-numeric limit", () => {
+    assert.throws(
+      () => surfacesQueryUrl({ limit: "lots" }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("surfacesQueryUrl clamps a sub-minimum numeric limit to the default", () => {
-    const url = surfacesQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("surfacesQueryUrl rejects a sub-minimum limit", () => {
+    assert.throws(
+      () => surfacesQueryUrl({ limit: 0 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("surfacesQueryUrl rejects a fractional netuid", () => {
@@ -149,9 +153,11 @@ describe("surfaces-mcp", () => {
     );
   });
 
-  test("surfacesQueryUrl clamps limit above the MCP maximum", () => {
-    const url = surfacesQueryUrl({ limit: 500 });
-    assert.equal(url.searchParams.get("limit"), "100");
+  test("surfacesQueryUrl rejects a limit above the MCP maximum", () => {
+    assert.throws(
+      () => surfacesQueryUrl({ limit: 500 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("loadSurfacesList returns filtered rows with pagination meta", async () => {

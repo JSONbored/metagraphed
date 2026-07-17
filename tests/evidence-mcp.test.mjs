@@ -102,14 +102,18 @@ describe("evidence-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "subject,claim");
   });
 
-  test("evidenceQueryUrl clamps a non-numeric limit to the default", () => {
-    const url = evidenceQueryUrl({ limit: "lots" });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("evidenceQueryUrl rejects a non-numeric limit", () => {
+    assert.throws(
+      () => evidenceQueryUrl({ limit: "lots" }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("evidenceQueryUrl clamps a sub-minimum numeric limit to the default", () => {
-    const url = evidenceQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("evidenceQueryUrl rejects a sub-minimum limit", () => {
+    assert.throws(
+      () => evidenceQueryUrl({ limit: 0 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("evidenceQueryUrl rejects a fractional cursor", () => {
@@ -126,9 +130,11 @@ describe("evidence-mcp", () => {
     );
   });
 
-  test("evidenceQueryUrl clamps limit above the MCP maximum", () => {
-    const url = evidenceQueryUrl({ limit: 500 });
-    assert.equal(url.searchParams.get("limit"), "100");
+  test("evidenceQueryUrl rejects a limit above the MCP maximum", () => {
+    assert.throws(
+      () => evidenceQueryUrl({ limit: 500 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("loadEvidenceList returns filtered rows with pagination meta", async () => {

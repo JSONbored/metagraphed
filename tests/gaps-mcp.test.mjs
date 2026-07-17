@@ -113,19 +113,25 @@ describe("gaps-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "netuid,gap_count");
   });
 
-  test("gapsQueryUrl clamps a non-numeric limit to the default", () => {
-    const url = gapsQueryUrl({ limit: "lots" });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("gapsQueryUrl rejects a non-numeric limit", () => {
+    assert.throws(
+      () => gapsQueryUrl({ limit: "lots" }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("gapsQueryUrl clamps a sub-minimum numeric limit to the default", () => {
-    const url = gapsQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("gapsQueryUrl rejects a sub-minimum limit", () => {
+    assert.throws(
+      () => gapsQueryUrl({ limit: 0 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("gapsQueryUrl clamps limit above the MCP maximum", () => {
-    const url = gapsQueryUrl({ limit: 500 });
-    assert.equal(url.searchParams.get("limit"), "100");
+  test("gapsQueryUrl rejects a limit above the MCP maximum", () => {
+    assert.throws(
+      () => gapsQueryUrl({ limit: 500 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("gapsQueryUrl rejects a fractional netuid", () => {

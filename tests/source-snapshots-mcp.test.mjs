@@ -104,20 +104,24 @@ describe("source-snapshots-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "id,kind");
   });
 
-  test("sourceSnapshotsQueryUrl clamps a non-numeric limit to the default", () => {
-    const url = sourceSnapshotsQueryUrl({ limit: "lots" });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("sourceSnapshotsQueryUrl rejects a non-numeric limit", () => {
+    assert.throws(
+      () => sourceSnapshotsQueryUrl({ limit: "lots" }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("sourceSnapshotsQueryUrl clamps a sub-minimum numeric limit to the default", () => {
-    const url = sourceSnapshotsQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("sourceSnapshotsQueryUrl rejects a sub-minimum limit", () => {
+    assert.throws(
+      () => sourceSnapshotsQueryUrl({ limit: 0 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("sourceSnapshotsQueryUrl clamps limit and rejects negative cursor", () => {
-    assert.equal(
-      sourceSnapshotsQueryUrl({ limit: 500 }).searchParams.get("limit"),
-      "100",
+  test("sourceSnapshotsQueryUrl rejects an out-of-range limit and negative cursor", () => {
+    assert.throws(
+      () => sourceSnapshotsQueryUrl({ limit: 500 }),
+      (err) => err.code === "invalid_params",
     );
     assert.throws(
       () => sourceSnapshotsQueryUrl({ cursor: -1 }),

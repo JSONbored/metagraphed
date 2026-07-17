@@ -123,14 +123,18 @@ describe("endpoint-pools-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "id,kind");
   });
 
-  test("endpointPoolsQueryUrl clamps a non-numeric limit to the default", () => {
-    const url = endpointPoolsQueryUrl({ limit: "lots" });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("endpointPoolsQueryUrl rejects a non-numeric limit", () => {
+    assert.throws(
+      () => endpointPoolsQueryUrl({ limit: "lots" }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
-  test("endpointPoolsQueryUrl clamps a sub-minimum numeric limit to the default", () => {
-    const url = endpointPoolsQueryUrl({ limit: 0 });
-    assert.equal(url.searchParams.get("limit"), "50");
+  test("endpointPoolsQueryUrl rejects a sub-minimum limit", () => {
+    assert.throws(
+      () => endpointPoolsQueryUrl({ limit: 0 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("endpointPoolsQueryUrl rejects non-string fields", () => {
@@ -140,9 +144,11 @@ describe("endpoint-pools-mcp", () => {
     );
   });
 
-  test("endpointPoolsQueryUrl clamps limit above the MCP maximum", () => {
-    const url = endpointPoolsQueryUrl({ limit: 500 });
-    assert.equal(url.searchParams.get("limit"), "100");
+  test("endpointPoolsQueryUrl rejects a limit above the MCP maximum", () => {
+    assert.throws(
+      () => endpointPoolsQueryUrl({ limit: 500 }),
+      (err) => err.code === "invalid_params",
+    );
   });
 
   test("loadEndpointPoolsList returns filtered rows with pagination meta", async () => {
