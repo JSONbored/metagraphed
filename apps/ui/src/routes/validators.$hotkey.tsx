@@ -8,6 +8,7 @@ import { useWallet } from "@/hooks/use-wallet";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { PageHero, ShareButton, SectionAnchor, CopyableCode, StatTile } from "@jsonbored/ui-kit";
@@ -309,6 +310,16 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             </span>
             <span className="inline-flex max-w-full min-w-0 rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
               <CopyableCode value={hotkey} truncate={false} className="max-w-full" />
+            </span>
+            {/* Surface the controlling coldkey for every visitor (#6427) — it was
+                previously read only for the owner check, never shown or linked. */}
+            <span className="inline-flex items-center gap-2 font-mono text-[11px] text-ink-muted">
+              <span className="uppercase tracking-widest text-[10px]">Coldkey</span>
+              <AccountAddress
+                ss58={detail.coldkey}
+                compact
+                fallback={<span className="text-ink-subtle">—</span>}
+              />
             </span>
           </span>
         }
