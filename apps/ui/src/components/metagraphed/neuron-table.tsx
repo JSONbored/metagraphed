@@ -7,7 +7,13 @@ import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
-import { taoCompact, scoreStr, SponsoredBadge } from "@/components/metagraphed/neuron-format";
+import { NeuronCardList } from "@/components/metagraphed/neuron-card-list";
+import {
+  taoCompact,
+  scoreStr,
+  SponsoredBadge,
+  validatorTrustValue,
+} from "@/components/metagraphed/neuron-format";
 import {
   annualizedDelegatorApyPct,
   formatApyPct,
@@ -46,14 +52,6 @@ export const NUMERIC_FIELDS = new Set<SortField>([
   "validator_trust",
   "take",
 ]);
-
-/**
- * Validator scoring lives in validator_trust, but the chain only populates it
- * for permitted neurons — fall back to plain `trust` when the payload omits it.
- */
-function validatorTrustValue(n: MetagraphNeuron): number | null | undefined {
-  return n.validator_trust ?? n.trust;
-}
 
 function sortValue(n: MetagraphNeuron, field: SortField): number {
   const v = field === "validator_trust" ? validatorTrustValue(n) : n[field];
@@ -136,7 +134,7 @@ export function NeuronTable({
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
             <tr>
@@ -298,6 +296,13 @@ export function NeuronTable({
           </tbody>
         </table>
       </div>
+      <NeuronCardList
+        netuid={netuid}
+        rows={sorted}
+        isValidator={isValidator}
+        onSelect={onSelect}
+        selectedUid={selectedUid}
+      />
       <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
         <span>
           {sorted.length} {sorted.length === 1 ? "neuron" : "neurons"} · subnet {netuid}

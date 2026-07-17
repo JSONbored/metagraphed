@@ -7,6 +7,7 @@
  * gzip budget. Anything that only needs a formatter should import from
  * here, not from `neuron-table.tsx`.
  */
+import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 
 /** Format a TAO value compactly. Stake can run into the millions; emission and
  * incentive are sub-unit. Null/non-finite collapses to an em-dash. */
@@ -23,6 +24,16 @@ export function taoCompact(v?: number | null): string {
 export function scoreStr(v?: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return v.toFixed(3);
+}
+
+/**
+ * Validator scoring lives in `validator_trust`, but the chain only populates it
+ * for permitted neurons — fall back to plain `trust` when the payload omits it.
+ * Lives here (not `neuron-table.tsx`) so both the table and its mobile card
+ * fallback can share it without a circular import.
+ */
+export function validatorTrustValue(n: MetagraphNeuron): number | null | undefined {
+  return n.validator_trust ?? n.trust;
 }
 
 /**
