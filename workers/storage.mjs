@@ -194,24 +194,46 @@ export async function readR2Object(env, artifactPath, storageTier) {
   };
 }
 
-// health/history/{date}.json is the one artifact every publish writes a
-// NEW, distinct, write-once key for (today's date), never overwriting a
-// prior date's key -- unlike every other artifact, which the versioned
-// run-prefix pointer exists specifically to read atomically (see
-// kv-publish-pointer.mjs's own comment: pointing latest_prefix at the
-// immutable run prefix, not the mutable literal "latest/" prefix, avoids
-// ever serving a mix of stale + fresh artifacts from a partially-uploaded
-// publish). That atomicity concern doesn't apply here because a past
-// date's file is never touched by a later publish, so reading it via the
-// literal "latest/" prefix instead of the current run's prefix is safe --
-// and necessary, since r2-upload.mjs uploads every artifact to BOTH keys
-// (METAGRAPH_R2_UPLOAD_HISTORY=1 in production), but only the literal
-// "latest/" prefix accumulates one file per date across every past
-// publish; the run-prefix tree only ever contains THAT run's single date
-// (#6508 -- every date but today was unreachable through the normal
-// pointer-resolved prefix).
+// Artifacts that read through the literal "latest/" prefix instead of the
+// versioned run-prefix the KV pointer names. Every OTHER artifact resolves
+// through that run-prefix pointer deliberately (see kv-publish-pointer.mjs's
+// own comment: pointing latest_prefix at the immutable run prefix, not the
+// mutable literal "latest/" prefix, avoids ever serving a mix of stale +
+// fresh artifacts from a partially-uploaded publish). That atomicity
+// guarantee only matters for artifacts a publish is expected to refresh
+// WHOLESALE every run; it actively hurts two different classes of artifact
+// that don't fit that shape, both fixed here (#6508, #6509):
+//
+//   - health/history/{date}.json: a write-once key per date, never
+//     overwritten by a later publish. The run-prefix tree only ever
+//     contains THAT run's single date, so every prior date became
+//     unreachable the moment a new run's publish flipped the pointer, even
+//     though the write side faithfully writes one dated snapshot every day.
+//   - schemas/{surface_id}.json and fixtures/{surface_id}.json: mutable,
+//     but populated by a BEST-EFFORT per-item live capture (a third-party
+//     host being briefly unreachable skips writing that one item for this
+//     run, without failing the whole publish). The run-prefix tree only
+//     ever contains what THIS run's capture actually produced, so a single
+//     transient per-item failure makes that item vanish from the current
+//     run-prefix entirely -- even though a perfectly good prior capture is
+//     still sitting untouched under the literal "latest/" key.
+//
+// r2-upload.mjs already uploads every artifact to BOTH keys
+// (METAGRAPH_R2_UPLOAD_HISTORY=1 in production); the literal "latest/"
+// prefix is only ever updated on a SUCCESSFUL capture for these artifacts
+// (never deleted on failure), so reading it directly is strictly safer than
+// the run-prefix for this shape -- confirmed live for both classes: 30/30
+// recent health/history dates and a known schemas/{surface_id}.json (whose
+// pointer-resolved path 404'd) were both readable at their literal
+// "latest/" key.
 const STABLE_LATEST_ARTIFACT_PATTERNS = [
   /^\/metagraph\/health\/history\/\d{4}-\d{2}-\d{2}\.json$/,
+  /^\/metagraph\/schemas\/(?!index\.json$)[A-Za-z0-9._:-]+\.json$/,
+  // Excludes _capture-report.json (a whole-run summary, not a per-item
+  // capture) -- the surface_id charset (see get_api_schema's own validation
+  // in src/mcp-server.mjs) includes "_", so this needs the same explicit
+  // exclusion as schemas/index.json above, not just relying on the charset.
+  /^\/metagraph\/fixtures\/(?!_capture-report\.json$)[A-Za-z0-9._:-]+\.json$/,
 ];
 
 export async function latestR2Key(artifactPath, env) {
