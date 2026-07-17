@@ -43,6 +43,7 @@ import { searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { isCopySelectedKey } from "@/lib/metagraphed/command-palette-keys";
 import { getDocsNav } from "@/lib/docs-nav.functions";
 import {
   CommandDialog,
@@ -585,6 +586,21 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
         value={q}
         onValueChange={setQ}
         placeholder="Search subnets, surfaces, endpoints, providers, docs…"
+        // #6414: the per-row Copy button was mouse-only -- cmdk keeps focus on
+        // this input, so a keyboard user could never reach it. ⌘/Ctrl+C now
+        // copies the highlighted row's link by triggering that row's own Copy
+        // button (Open-in-new-tab already has ⌘+Enter via onSelect's modifier).
+        onKeyDown={(e) => {
+          const input = e.currentTarget;
+          const hasTextSelection = input.selectionStart !== input.selectionEnd;
+          if (!isCopySelectedKey(e, hasTextSelection)) return;
+          const selected = document.querySelector("[cmdk-item][aria-selected='true']");
+          const copyBtn = selected?.querySelector<HTMLButtonElement>('[data-action="copy"]');
+          if (copyBtn) {
+            e.preventDefault();
+            copyBtn.click();
+          }
+        }}
       />
 
       {/* Scope filter row */}
@@ -907,7 +923,8 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
         <span className="inline-flex items-center gap-2 flex-wrap">
           <Kbd>↑</Kbd>
           <Kbd>↓</Kbd> move <Kbd>⏎</Kbd> open <Kbd>⌘</Kbd>
-          <Kbd>⏎</Kbd> new tab <Kbd>Esc</Kbd> close
+          <Kbd>⏎</Kbd> new tab <Kbd>⌘</Kbd>
+          <Kbd>C</Kbd> copy <Kbd>Esc</Kbd> close
         </span>
         <span className="inline-flex items-center gap-1">
           <Star className="size-2.5" />
@@ -931,6 +948,10 @@ function ItemActions({ onCopy, onNewTab }: { onCopy: () => void; onNewTab: () =>
     >
       <button
         type="button"
+        // #6414: the keyboard ⌘/Ctrl+C handler on CommandInput finds the
+        // selected row's button by this attribute and clicks it, so the copy
+        // path stays in one place (this onClick) for both mouse and keyboard.
+        data-action="copy"
         onClick={(e) => {
           stop(e);
           onCopy();
