@@ -19,6 +19,7 @@ import {
   MiniRadial,
 } from "@jsonbored/ui-kit";
 import { Skeleton } from "@/components/metagraphed/states";
+import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import { X, Search } from "lucide-react";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { IntegrabilityBoard } from "@/components/metagraphed/integrability-board";
@@ -586,15 +587,10 @@ function OpenGapsSection() {
         onChange={(v) => setSearch({ sort: v as typeof search.sort })}
         options={SORT_OPTIONS as readonly string[]}
       />
-      {hasFilters ? (
-        <button
-          type="button"
-          onClick={() => navigate({ search: {} as never, replace: true })}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-ink-muted hover:text-ink-strong"
-        >
-          <X className="size-3" /> Clear
-        </button>
-      ) : null}
+      <ResetFiltersButton
+        active={hasFilters}
+        onReset={() => navigate({ search: {} as never, replace: true })}
+      />
       <span className="ml-auto font-mono text-[10px] text-ink-muted">
         {sorted.length} of {rows.length}
       </span>
@@ -657,7 +653,7 @@ function OpenGapsSection() {
             onClick={() => setSearch({ missing: "" })}
             className="ml-auto inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
           >
-            <X className="size-3" /> clear filter
+            <X className="size-3" /> clear
           </button>
         </div>
       ) : null}
