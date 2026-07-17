@@ -98,6 +98,7 @@ import {
 } from "../../src/account-balance.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
+import { loadSubnetBurn } from "../../src/subnet-burn.mjs";
 import { computeStakeQuote } from "../../src/stake-quote.mjs";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.mjs";
@@ -3667,6 +3668,48 @@ export async function handleSubnetRecycled(request, env, netuid) {
   }
 
   const data = await loadSubnetRecycled(env, netuid);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/burn (#6321): the live current registration/
+// burn cost — the dynamic price between min_burn_tao/max_burn_tao's static
+// bounds (subnet-hyperparams.mjs). Same live-RPC + KV-cache + rate-limit
+// shape as handleSubnetRecycled just above (a sibling storage-map read, not
+// the same underlying value).
+export async function handleSubnetBurn(request, env, netuid) {
+  if (!isU16Netuid(netuid)) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: `burn:${resolveClientIp(request)}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "burn_rate_limited",
+        "Too many live burn-cost requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(BALANCE_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(BALANCE_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${BALANCE_RATE_LIMIT.limit};w=${BALANCE_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
+  }
+
+  const data = await loadSubnetBurn(env, netuid);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

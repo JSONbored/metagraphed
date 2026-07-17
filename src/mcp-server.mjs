@@ -614,6 +614,7 @@ import { buildAccountPositionHistory } from "./account-position-history.mjs";
 import { buildAccountIdentity } from "./account-identity.mjs";
 import { buildAccountIdentityHistory } from "./account-identity-history.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";
+import { loadSubnetBurn } from "./subnet-burn.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import {
@@ -5813,6 +5814,45 @@ export const MCP_TOOLS = [
         }
       }
       return loadSubnetRecycled(ctx.env, netuid);
+    },
+  },
+  {
+    name: "get_subnet_burn",
+    title: "Get a subnet's live current registration/burn cost",
+    description:
+      "Fetch the live current registration/burn cost for one subnet (#6321) -- " +
+      "the dynamic price between the static min_burn_tao/max_burn_tao bounds, " +
+      "queried directly from the chain's Burn storage at request time (not a " +
+      "rollup). burn_tao is null on an RPC failure. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/burn.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      if (!isU16Netuid(netuid)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `netuid` must be an integer in the u16 range 0..65535.",
+        );
+      }
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `burn:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live burn-cost requests from this client; slow down.",
+          );
+        }
+      }
+      return loadSubnetBurn(ctx.env, netuid);
     },
   },
   {
@@ -12203,6 +12243,17 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: "integer" },
       netuid: { type: "integer" },
       recycled_tao: { type: ["number", "null"] },
+      queried_at: NULLABLE_STRING,
+    },
+  },
+  get_subnet_burn: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "queried_at"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      burn_tao: { type: ["number", "null"] },
       queried_at: NULLABLE_STRING,
     },
   },

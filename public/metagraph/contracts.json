@@ -1236,6 +1236,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache (moves within minutes during registration bursts). burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0.",
+      "id": "subnet-burn",
+      "path": "/metagraph/subnets/{netuid}/burn.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetBurnArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",

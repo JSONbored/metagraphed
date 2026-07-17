@@ -1013,6 +1013,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-burn",
+      "path": "/metagraph/subnets/{netuid}/burn.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetBurnArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",
       "retirement": null,
@@ -7206,6 +7215,18 @@
       "id": "subnet-recycled",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/recycled",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/burn.json",
+      "cache": "short",
+      "description": "Fetch the live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache. burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0.",
+      "id": "subnet-burn",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/burn",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

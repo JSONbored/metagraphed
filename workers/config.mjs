@@ -81,6 +81,12 @@ export const SUBNET_STAKE_QUOTE_PATH_PATTERN =
 // request time — not a D1/account_events tier, no static file.
 export const SUBNET_RECYCLED_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/recycled$/;
+// Live current registration/burn cost for one subnet (#6321) — the dynamic
+// price between min_burn_tao/max_burn_tao's static bounds, queried from the
+// chain's own Burn storage map at request time — not a D1/account_events
+// tier, no static file. Dispatched separately from SUBNET_RECYCLED (a
+// different storage item, different route).
+export const SUBNET_BURN_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/burn$/;
 // Validator weight-setting activity over the window, live from account_events, no static file.
 export const SUBNET_WEIGHTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/weights$/;

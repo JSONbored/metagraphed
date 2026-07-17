@@ -3873,6 +3873,18 @@
           "queried_at": { "type": ["string", "null"], "format": "date-time" }
         }
       },
+      "SubnetBurnArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Live current registration/burn cost for one subnet (#6321) — the dynamic price between min_burn_tao/max_burn_tao's static bounds, queried from the chain's own Burn storage map at request time and cached for 120s (moves within minutes during registration bursts). burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0, not null.",
+        "required": ["schema_version", "netuid"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0, "maximum": 65535 },
+          "burn_tao": { "type": ["number", "null"] },
+          "queried_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
       "Block": {
         "type": "object",
         "additionalProperties": false,

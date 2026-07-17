@@ -1364,6 +1364,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetRecycledArtifact",
   ),
   artifact(
+    "subnet-burn",
+    "/metagraph/subnets/{netuid}/burn.json",
+    "Live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache (moves within minutes during registration bursts). burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0.",
+    "SubnetBurnArtifact",
+  ),
+  artifact(
     "blocks-feed",
     "/metagraph/blocks.json",
     "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
@@ -3105,6 +3111,22 @@ export const API_ROUTES = [
     "/api/v1/subnets/{netuid}/recycled",
     "/metagraph/subnets/{netuid}/recycled.json",
     "Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0.",
+    "short",
+    ["subnets"],
+    [],
+    [
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
+    "subnet-burn",
+    "GET",
+    "/api/v1/subnets/{netuid}/burn",
+    "/metagraph/subnets/{netuid}/burn.json",
+    "Fetch the live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache. burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0.",
     "short",
     ["subnets"],
     [],

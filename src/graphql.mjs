@@ -130,6 +130,7 @@ import { buildBlocksSummary } from "./blocks-summary.mjs";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import { buildChainYield } from "./chain-yield.mjs";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
+import { loadSubnetBurn } from "./subnet-burn.mjs";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
 import {
@@ -470,6 +471,8 @@ export const SDL = `
     chain_alpha_volume(limit: Int): ChainAlphaVolume!
     "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC (not the Postgres tier). recycled_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/recycled."
     subnet_recycled(netuid: Int!): SubnetRecycled
+    "Live current registration/burn cost for one subnet -- the dynamic price between the static min_burn_tao/max_burn_tao bounds, read directly from chain via RPC (not the Postgres tier). burn_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/burn."
+    subnet_burn(netuid: Int!): SubnetBurn
     "One subnet's validator/neuron-set turnover (entered/exited/retention/0-100 stability) between the boundary snapshots of a 7d/30d/90d/1y/all window (default 30d), from neuron_daily. comparable is false and the churn metrics zeroed on a single-snapshot or cold store, never null. Mirrors GET /api/v1/subnets/{netuid}/turnover."
     subnet_turnover(netuid: Int!, window: String): SubnetTurnover!
     "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached, not the Postgres tier). balance_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/accounts/{ss58}/balance."
@@ -1982,6 +1985,14 @@ export const SDL = `
     queried_at: String!
   }
 
+  "Live current registration/burn cost for one subnet, read directly from chain via RPC. burn_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/burn."
+  type SubnetBurn {
+    schema_version: Int!
+    netuid: Int!
+    burn_tao: Float
+    queried_at: String!
+  }
+
   "One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard."
   type SubnetTurnover {
     schema_version: Int!
@@ -2941,6 +2952,7 @@ export const FIELD_COMPLEXITY = {
   // economics tier -- same cost class as the other relationship fields.
   registry_leaderboards: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_recycled: LIVE_RPC_FIELD_COMPLEXITY,
+  subnet_burn: LIVE_RPC_FIELD_COMPLEXITY,
   account_balance: LIVE_RPC_FIELD_COMPLEXITY,
   sudo_key: LIVE_RPC_FIELD_COMPLEXITY,
 };
@@ -6809,6 +6821,21 @@ const rootValue = {
     // loadSubnetRecycled always sets schema_version/netuid/queried_at
     // unconditionally, so no `??` fallback is needed for those.
     return loadSubnetRecycled(context.env, netuid);
+  },
+
+  async subnet_burn({ netuid }, context) {
+    if (!isU16Netuid(netuid)) {
+      throw new GraphQLError(
+        "netuid must be an integer in the u16 range 0..65535.",
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Live chain RPC, not the Postgres tier -- reuses loadSubnetBurn's own
+    // KV cache/TTL, matching REST's handleSubnetBurn exactly. burn_tao
+    // stays null on RPC failure (schema-stable), never a GraphQL error.
+    // loadSubnetBurn always sets schema_version/netuid/queried_at
+    // unconditionally, so no `??` fallback is needed for those.
+    return loadSubnetBurn(context.env, netuid);
   },
 
   async subnet_turnover({ netuid, window }, context) {
