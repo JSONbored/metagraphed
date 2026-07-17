@@ -15,6 +15,12 @@ import {
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.mjs";
 
+// og-image.png (#6502) is the one binary exception to this otherwise
+// JSON/.d.ts-only manifest -- named exactly, not a general ".png" allowance,
+// so a stray image dropped anywhere under these roots is never accidentally
+// picked up.
+const OG_IMAGE_FILE_NAME = "og-image.png";
+
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
 const manifestPath = path.join(repoRoot, "public/metagraph/r2-manifest.json");
@@ -227,12 +233,19 @@ async function listArtifactFiles(dirPath) {
 }
 
 function isManifestedArtifact(fileName) {
-  return fileName.endsWith(".json") || fileName.endsWith(".d.ts");
+  return (
+    fileName.endsWith(".json") ||
+    fileName.endsWith(".d.ts") ||
+    fileName === OG_IMAGE_FILE_NAME
+  );
 }
 
 function contentTypeFor(relativePath) {
   if (relativePath.endsWith(".d.ts")) {
     return "text/plain; charset=utf-8";
+  }
+  if (relativePath === OG_IMAGE_FILE_NAME) {
+    return "image/png";
   }
   return "application/json";
 }

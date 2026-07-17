@@ -400,11 +400,6 @@
       "binding": "REGISTRY_SYNC_API",
       "service": "metagraphed-registry-sync-api",
     },
-    // #6502: the dedicated OG-image Worker (workers/og-image-api.mjs),
-    // split out of this Worker purely for bundle budget -- workers-og's
-    // wasm alone (~545 KiB gzipped) left no headroom for @sentry/cloudflare
-    // in this Worker's own bundle. See handleOgImageProxy's own comment.
-    { "binding": "OG_IMAGE_API", "service": "metagraphed-og-api" },
   ],
   // Realtime chain-event firehose (#4982, ADR 0015): the first Durable Object
   // in this codebase. One global instance (idFromName("global"), see

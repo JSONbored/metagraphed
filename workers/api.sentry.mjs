@@ -21,10 +21,13 @@
 //
 // This wrapper originally didn't fit: adding @sentry/cloudflare pushed
 // this Worker's own bundle 30.9 KiB over Cloudflare's 1024 KiB hard deploy
-// ceiling (#6502). Fixed by splitting the ~545 KiB gzipped workers-og
-// (satori + resvg-wasm) dependency out into its own dedicated Worker
-// (workers/og-image-api.mjs, OG_IMAGE_API service binding) -- freeing
-// comfortable headroom for Sentry here.
+// ceiling (#6502). The ~545 KiB gzipped cost was workers-og (satori +
+// resvg-wasm), imported for the live OG-card render at GET /og.png. Fixed
+// by moving that render out of the request path entirely: it now runs at
+// publish time in Node (scripts/refresh-og-image.mjs) and the result is
+// stored in R2 like every other artifact, so api.mjs never imports
+// workers-og at all -- see src/og-image.mjs's own header. That freed
+// comfortable headroom for Sentry here without a second Worker.
 //
 // withSentry() instruments BOTH the fetch AND scheduled handlers on the
 // object it's given (confirmed by reading @sentry/cloudflare's own

@@ -356,6 +356,11 @@ export const R2_ONLY_PATTERNS = [
   /^search-index\.json$/,
   /^surface-aliases\.json$/,
   /^surfaces\.json$/,
+  // The rendered Open Graph card (#6502): built at publish time
+  // (scripts/refresh-og-image.mjs, Node context) from the same live stats as
+  // registry-summary.json above, so it's R2-only too -- served by the live
+  // Worker's /og.png route via a plain binary R2 read (src/og-image.mjs).
+  /^og-image\.png$/,
 ];
 
 // Committed to git (and mirrored to R2): the low-churn, consumer-facing API

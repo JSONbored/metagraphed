@@ -1,16 +1,26 @@
-// Edge-rendered Open Graph card for the api.metagraph.sh landing page
-// (GET /og.png, alias /og). Renders a branded 1200x630 PNG via workers-og
-// (satori + resvg-wasm) with LIVE registry stats, so link unfurls show a real,
-// data-driven card instead of a frozen hand-made banner. Mirrors the
-// metagraphed-ui /og pattern (loadGoogleFont, no bundled font file).
+// Open Graph card for the api.metagraph.sh landing page (GET /og.png, alias
+// /og), with LIVE registry stats baked in so link unfurls show a real,
+// data-driven card instead of a frozen hand-made banner.
 //
-// workers-og is DYNAMIC-imported inside the handler so its wasm only evaluates
-// when this low-traffic route is actually hit — the agent/API hot path (every
-// other request) never pays the parse/instantiate cost. The whole render is
-// fail-soft: any failure (artifact miss, font fetch, wasm, satori) serves the
-// branded full-size static card on a short cache, so an unfurl always shows
-// something on brand and a transient failure isn't pinned for the hour.
-// workers-og + fonts + caches + fallback asset are injectable for unit tests.
+// The render itself (satori + resvg, via workers-og's dependencies) does NOT
+// happen here or in any live Worker request path — see #6502. workers-og's
+// wasm (satori + resvg-wasm, ~545 KiB gzipped) was originally dynamic-imported
+// inside this route's handler, but Cloudflare's bundler ships every reachable
+// import (static or dynamic) in the one deployed script, so it was still
+// costing this Worker's own bundle budget on every deploy, and eventually
+// left no headroom for @sentry/cloudflare. Since the underlying stats only
+// change once per data publish anyway (this route was re-rendering an
+// unchanged image on every cache miss), the render moved to publish time:
+// scripts/refresh-og-image.mjs runs in plain Node, using the SAME renderMarkup
+// below plus satori + satori-html + @resvg/resvg-js (Node-native bindings,
+// not wasm-import — workers-og itself can't load outside workerd, see that
+// script's own header), and stores the PNG in R2 like every other artifact.
+//
+// handleOgImage below is now just a binary R2 read + the existing edge cache;
+// on any miss/error (cold R2, timeout) it falls back to the branded full-size
+// static card on a short cache, so an unfurl always shows something on brand
+// and a transient failure isn't pinned for the hour. readR2Object/cache/assets
+// are injectable for unit tests.
 
 // Brand palette (brand kit BRAND.md): Mint accent on an Ink surface; Ink-text
 // reads AAA on mint. The landing page currently ships the static mint OG banner,
@@ -33,6 +43,10 @@ const FALLBACK_ASSET_PATH = "/brand/og-fallback.png";
 // new version renders fresh on the next deploy instead of serving the previous
 // design from cache for up to an hour.
 const CARD_VERSION = "2";
+// The R2 artifact scripts/refresh-og-image.mjs publishes the rendered card to,
+// read tier-aware (latest-prefix + timeout guard) via readR2Object -- same
+// convention as every other /metagraph/* artifact.
+export const OG_IMAGE_ARTIFACT_PATH = "/metagraph/og-image.png";
 const WORDMARK = "Metagraphed";
 const TAGLINE = "The Bittensor subnet integration registry";
 // Shown in the stat row only when registry-summary is cold (rare, transient).
@@ -89,30 +103,26 @@ function formatCount(value) {
     : null;
 }
 
-// Pull the live counts off registry-summary.json into an array of stat strings,
-// or null when the artifact is cold/unavailable (the caller then shows a generic
-// fallback line).
-async function loadStatLine(env, readArtifact) {
-  try {
-    if (typeof readArtifact !== "function") return null;
-    const result = await readArtifact(env, "/metagraph/registry-summary.json");
-    if (!result?.ok || !result.data) return null;
-    const data = result.data;
-    const parts = [];
-    const subnets = formatCount(data.subnet_count);
-    if (subnets) parts.push(`${subnets} subnets`);
-    const endpoints = formatCount(data.counts?.endpoints);
-    if (endpoints) parts.push(`${endpoints} endpoints`);
-    const providers = formatCount(data.counts?.providers);
-    if (providers) parts.push(`${providers} providers`);
-    const coverage = data.coverage?.average_score;
-    if (typeof coverage === "number" && Number.isFinite(coverage)) {
-      parts.push(`${coverage}% coverage`);
-    }
-    return parts.length ? parts : null;
-  } catch {
-    return null;
+// Pull the live counts off registry-summary.json's data into an array of stat
+// strings, or null when there are no formattable counts (the caller then shows
+// a generic fallback line). Pure -- scripts/refresh-og-image.mjs is the only
+// caller now (it reads registry-summary.json off disk at publish time); the
+// live route no longer computes stats at all, it just serves the pre-rendered
+// card.
+export function buildStatParts(data) {
+  if (!data) return null;
+  const parts = [];
+  const subnets = formatCount(data.subnet_count);
+  if (subnets) parts.push(`${subnets} subnets`);
+  const endpoints = formatCount(data.counts?.endpoints);
+  if (endpoints) parts.push(`${endpoints} endpoints`);
+  const providers = formatCount(data.counts?.providers);
+  if (providers) parts.push(`${providers} providers`);
+  const coverage = data.coverage?.average_score;
+  if (typeof coverage === "number" && Number.isFinite(coverage)) {
+    parts.push(`${coverage}% coverage`);
   }
+  return parts.length ? parts : null;
 }
 
 // Build the stat row: each stat in its own leaf div, joined by a small ink dot
@@ -137,7 +147,7 @@ export function renderMarkup(statParts) {
       <div style="position:absolute;top:-250px;right:-210px;width:740px;height:740px;background:#5BFFD2;opacity:0.5;transform:rotate(34deg);display:flex;"></div>
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;padding:0 90px;">
         <div style="display:flex;align-items:center;">
-          <img src="${LOGO_DATA_URI}" width="168" height="168" />
+          <img src="${LOGO_DATA_URI}" style="width:168px;height:168px;" />
           <div style="display:flex;font-size:120px;font-weight:700;letter-spacing:-3px;">${WORDMARK}</div>
         </div>
         <div style="display:flex;width:780px;height:3px;background:${INK};opacity:0.82;margin:34px 0 30px 0;"></div>
@@ -148,9 +158,10 @@ export function renderMarkup(statParts) {
 }
 
 // Returns a Response for the OG route, or null when the path doesn't match (so
-// the caller can fall through). deps: { readArtifact, og, cache, assets } — og
-// defaults to a dynamic import of workers-og; cache to the edge cache; assets to
-// env.ASSETS (the binding that serves the branded fallback card on failure).
+// the caller can fall through). deps: { readR2Object, cache, assets } —
+// readR2Object defaults to none (a missing/non-function dep degrades to the
+// fallback, same as a cold R2 read); cache to the edge cache; assets to
+// env.ASSETS (the binding that serves the branded fallback card on a miss).
 export async function handleOgImage(request, env, url, deps = {}) {
   if (!OG_PATHS.has(url.pathname)) return null;
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -180,53 +191,24 @@ export async function handleOgImage(request, env, url, deps = {}) {
     return new Response(null, { headers: imageHeaders() });
   }
 
-  const statParts = await loadStatLine(env, deps.readArtifact);
-
-  let ImageResponse;
-  let loadGoogleFont;
+  const readR2Object = deps.readR2Object;
+  let result;
   try {
-    ({ ImageResponse, loadGoogleFont } =
-      deps.og || (await import("workers-og")));
+    result =
+      typeof readR2Object === "function"
+        ? await readR2Object(env, OG_IMAGE_ARTIFACT_PATH, "r2")
+        : { ok: false };
   } catch (error) {
-    console.error("og: workers-og unavailable", error);
+    console.error("og: r2 read failed", error);
+    result = { ok: false };
+  }
+  if (!result?.ok) {
     return fallbackResponse(assets, url);
   }
 
-  // Subset both weights to only the glyphs we render (faster, smaller fetch).
-  // ASCII-only: loadGoogleFont's Google Fonts subset request drops non-ASCII
-  // glyphs (e.g. U+00B7 "·"), which then render as tofu — so the stat separator
-  // is a styled div, not a character (see renderStatRow).
-  const statText = (statParts ?? [FALLBACK_STAT]).join(" ");
-  const glyphs = `${WORDMARK}${TAGLINE}${statText}0123456789,.% `;
-  let bold;
-  let medium;
-  try {
-    [bold, medium] = await Promise.all([
-      loadGoogleFont({ family: "Space Grotesk", weight: 700, text: glyphs }),
-      loadGoogleFont({ family: "Space Grotesk", weight: 500, text: glyphs }),
-    ]);
-  } catch (error) {
-    console.error("og: font load failed", error);
-    return fallbackResponse(assets, url);
-  }
-
-  try {
-    const image = new ImageResponse(renderMarkup(statParts), {
-      width: 1200,
-      height: 630,
-      fonts: [
-        { name: "Space Grotesk", data: bold, weight: 700, style: "normal" },
-        { name: "Space Grotesk", data: medium, weight: 500, style: "normal" },
-      ],
-    });
-    const response = new Response(image.body, {
-      status: image.status,
-      headers: imageHeaders(image.headers),
-    });
-    if (cache) await cache.put(cacheKey, response.clone());
-    return response;
-  } catch (error) {
-    console.error("og: render failed", error);
-    return fallbackResponse(assets, url);
-  }
+  const response = new Response(result.object.body, {
+    headers: imageHeaders(),
+  });
+  if (cache) await cache.put(cacheKey, response.clone());
+  return response;
 }

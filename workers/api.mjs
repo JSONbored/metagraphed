@@ -29,6 +29,7 @@ import {
   logEvent,
   readArtifact,
   readHealthKv,
+  readR2Object,
 } from "./storage.mjs";
 import {
   contractStaleness,
@@ -265,6 +266,7 @@ import { SubnetStatusHub } from "./subnet-status-hub.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
+import { handleOgImage } from "../src/og-image.mjs";
 import { handleIconProxy } from "../src/icon-proxy.mjs";
 import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
@@ -903,23 +905,6 @@ async function handleRegistrySyncProxy(request, env) {
   });
 }
 
-// Proxies GET/HEAD /og.png (alias /og) to the dedicated OG-image Worker
-// (OG_IMAGE_API service binding, #6502 -- split out purely for Worker
-// bundle budget, see workers/og-image-api.mjs's own header). Unlike
-// handleRegistrySyncProxy above, this forwards the upstream Response
-// VERBATIM (binary PNG body + its own cache-control/content-type headers,
-// already set correctly by src/og-image.mjs) rather than parsing and
-// re-wrapping JSON -- there is nothing to inspect or re-shape here.
-async function handleOgImageProxy(request, env) {
-  if (!env.OG_IMAGE_API) {
-    return new Response("og image tier unavailable", {
-      status: 503,
-      headers: { "cache-control": "no-store" },
-    });
-  }
-  return env.OG_IMAGE_API.fetch(request);
-}
-
 // Per-client abuse control for the six internal sync routes proxied through
 // proxyToDataApi below (neurons-sync, backfill-neuron-daily, rollup-account-
 // events-daily, subnet-hyperparams-sync, account-identity-sync, validator-
@@ -1485,15 +1470,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   }
 
   // Dynamic Open Graph card (/og.png, alias /og) for the landing page's
-  // link-unfurl. Proxied to the dedicated metagraphed-og-api Worker (#6502)
-  // -- workers-og's wasm (satori + resvg) is lazy-IMPORTED inside the
-  // handler, but Cloudflare's bundler still ships it in the same deployed
-  // script regardless of whether the import is static or dynamic (no true
-  // code-splitting for a Workers deploy), so it was still costing this
-  // Worker's own bundle budget every deploy. See handleOgImageProxy's own
-  // comment.
+  // link-unfurl. Rendered at publish time (scripts/refresh-og-image.mjs,
+  // Node context) and stored in R2 like every other artifact -- the live
+  // route here is just a binary R2 read, never a satori/resvg render (#6502:
+  // the workers-og wasm cost ~545 KiB gzipped and pushed this Worker's own
+  // bundle over Cloudflare's deploy ceiling once @sentry/cloudflare was
+  // added; the fix was to stop shipping workers-og in any live Worker at
+  // all, not to relocate the render into a second Worker). See
+  // src/og-image.mjs's own header for the full rationale.
   if (url.pathname === "/og.png" || url.pathname === "/og") {
-    return handleOgImageProxy(request, env);
+    return handleOgImage(request, env, url, { readR2Object });
   }
 
   // Brand-icon favicon proxy (binary, not a JSON contract route). Implements the

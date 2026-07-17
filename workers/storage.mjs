@@ -132,6 +132,23 @@ export async function readAsset(env, artifactPath, storageTier) {
 }
 
 export async function readR2(env, artifactPath, storageTier) {
+  const result = await readR2Object(env, artifactPath, storageTier);
+  if (!result.ok) {
+    return result;
+  }
+  return {
+    ok: true,
+    data: await result.object.json(),
+    source: "r2",
+    storage_tier: storageTier,
+  };
+}
+
+// Same R2 fetch as readR2 (key resolution, timeout guard, not-found handling),
+// but returns the raw R2Object instead of parsing it as JSON -- for binary
+// artifacts (the og-image.png card, see src/og-image.mjs) that readR2's
+// .json() would throw on. readR2 above is implemented in terms of this.
+export async function readR2Object(env, artifactPath, storageTier) {
   if (!env.METAGRAPH_ARCHIVE?.get) {
     return {
       ok: false,
@@ -171,7 +188,7 @@ export async function readR2(env, artifactPath, storageTier) {
 
   return {
     ok: true,
-    data: await object.json(),
+    object,
     source: "r2",
     storage_tier: storageTier,
   };

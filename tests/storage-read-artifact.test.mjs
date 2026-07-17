@@ -4,6 +4,7 @@ import {
   readArtifact,
   readAsset,
   readR2,
+  readR2Object,
   latestR2Key,
 } from "../workers/storage.mjs";
 
@@ -97,6 +98,75 @@ test("readR2 returns r2_binding_missing when no archive binding is configured", 
   assert.equal(result.ok, false);
   assert.equal(result.status, 404);
   assert.equal(result.code, "r2_binding_missing");
+});
+
+// ---- readR2Object: the binary-safe sibling of readR2, used by the og-image
+// live route (src/og-image.mjs) so a PNG body never gets run through .json().
+
+test("readR2Object returns r2_binding_missing when no archive binding is configured", async () => {
+  const result = await readR2Object({}, "/metagraph/og-image.png", "r2");
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 404);
+  assert.equal(result.code, "r2_binding_missing");
+});
+
+test("readR2Object returns artifact_not_found when the R2 object is cold", async () => {
+  const env = {
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        return null;
+      },
+    },
+  };
+  const result = await readR2Object(env, "/metagraph/og-image.png", "r2");
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 404);
+  assert.equal(result.code, "artifact_not_found");
+});
+
+test("readR2Object returns r2_timeout when the R2 read hangs", async () => {
+  const env = {
+    METAGRAPH_R2_TIMEOUT_MS: "5",
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        return new Promise(() => {});
+      },
+    },
+  };
+  const result = await readR2Object(env, "/metagraph/og-image.png", "r2");
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 504);
+  assert.equal(result.code, "r2_timeout");
+});
+
+test("readR2Object returns the raw R2Object unparsed on a hit", async () => {
+  const rawObject = { body: "BINARY-PNG-BYTES", httpMetadata: {} };
+  const env = {
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        return rawObject;
+      },
+    },
+  };
+  const result = await readR2Object(env, "/metagraph/og-image.png", "r2");
+  assert.equal(result.ok, true);
+  assert.equal(result.object, rawObject);
+  assert.equal(result.source, "r2");
+  assert.equal(result.storage_tier, "r2");
+});
+
+test("readR2 delegates to readR2Object and JSON-parses its object on a hit", async () => {
+  const env = {
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        return r2Object({ parsed: true });
+      },
+    },
+  };
+  const result = await readR2(env, "/metagraph/unknown-file.json", "git");
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.data, { parsed: true });
+  assert.equal(result.source, "r2");
 });
 
 // ---- health/history stable-latest key (#6508) ------------------------------

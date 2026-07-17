@@ -2,14 +2,15 @@
 // metagraphed-infra's data-refresh-economics/data-refresh-node Ansible
 // roles (scripts/economics-refresh-entrypoint.sh /
 // data-refresh-node-entrypoint.sh, both of which clone this repo at
-// container runtime -- see those entrypoints' own headers). Used by
-// refresh-economics.mjs, refresh-native-snapshot.mjs,
+// container runtime -- see those entrypoints' own headers), plus a couple of
+// Cloudflare-publish-side build steps that fit the same "short-lived batch
+// script" shape. Used by refresh-economics.mjs, refresh-native-snapshot.mjs,
 // backfill-registry-postgres.mjs, discover-testnet-surfaces.mjs,
-// export-parquet.mjs, reconcile-neurons.mjs, and
-// sync-registry-to-postgres.mjs so all seven report to the same
-// consolidated `metagraphed` Sentry project with a consistent `component`
-// tag -- matching scripts/observability.py's own Python-side convention
-// for the chain-fetch scripts.
+// export-parquet.mjs, reconcile-neurons.mjs, sync-registry-to-postgres.mjs,
+// and refresh-og-image.mjs so all eight report to the same consolidated
+// `metagraphed` Sentry project with a consistent `component` tag --
+// matching scripts/observability.py's own Python-side convention for the
+// chain-fetch scripts.
 import * as Sentry from "@sentry/node";
 
 // No-ops silently if SENTRY_DSN is unset, matching every other

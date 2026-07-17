@@ -182,6 +182,12 @@ function productionSteps() {
     nodeStep("build-network-registries", "scripts/build-network-registry.mjs"),
     nodeStep("generate-types", "scripts/generate-types.mjs"),
     nodeStep("generate-client", "scripts/generate-client.mjs", "--write"),
+    // Reads registry-summary.json (just rewritten by build-artifacts above)
+    // for live stats and renders the /og.png card into the same R2 staging
+    // tree, so r2-manifest below picks it up like any other artifact (#6502).
+    // Tolerant like native-snapshot/refresh-candidates -- never fails the
+    // build; see that script's own header.
+    nodeStep("refresh-og-image", "scripts/refresh-og-image.mjs"),
     nodeStep("r2-manifest", "scripts/r2-manifest.mjs", "--write"),
   ];
 }
