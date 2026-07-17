@@ -198,7 +198,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. */
+        /** Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
         get: operations["accountIdentityHistory"];
         put?: never;
         post?: never;
@@ -2119,7 +2119,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. */
+        /** Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
         get: operations["subnetIdentityHistory"];
         put?: never;
         post?: never;
@@ -9414,6 +9414,8 @@ export interface operations {
                 limit?: number;
                 offset?: number;
                 cursor?: string;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path: {
@@ -9423,7 +9425,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -9477,6 +9479,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountIdentityHistoryArtifact"];
                     };
+                    /**
+                     * @example observed_at,name,url,github,image,discord,description,additional,identity_hash
+                     *     2026-06-27T00:00:00.000Z,Alice,https://alice.example,https://github.com/alice,https://alice.example/avatar.png,https://discord.gg/alice,Sample account,extra,hash_sample
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -24920,6 +24927,8 @@ export interface operations {
                 limit?: number;
                 offset?: number;
                 cursor?: string;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path: {
@@ -24929,7 +24938,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -24983,6 +24992,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetIdentityHistoryArtifact"];
                     };
+                    /**
+                     * @example block_number,observed_at,subnet_name,symbol,description,github_repo,subnet_url,discord,logo_url,identity_hash
+                     *     8454388,2026-06-27T00:00:00.000Z,Apex,APEX,Sample subnet,https://github.com/example/apex,https://apex.example,https://discord.gg/apex,https://apex.example/logo.png,hash_sample
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

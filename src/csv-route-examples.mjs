@@ -29,6 +29,19 @@ export const ROUTE_CSV_EXAMPLES = {
     "block_number,observed_at,hyperparameters,hyperparams_hash",
     '8454388,2026-06-27T00:00:00.000Z,"{""kappa"":0.5}",hash_sample',
   ].join("\r\n"),
+  // The formatIdentityHistoryEntry row shape (src/subnet-identity-history.mjs):
+  // one SubnetIdentitiesV3 snapshot per row.
+  "subnet-identity-history": [
+    "block_number,observed_at,subnet_name,symbol,description,github_repo,subnet_url,discord,logo_url,identity_hash",
+    "8454388,2026-06-27T00:00:00.000Z,Apex,APEX,Sample subnet,https://github.com/example/apex,https://apex.example,https://discord.gg/apex,https://apex.example/logo.png,hash_sample",
+  ].join("\r\n"),
+  // The formatAccountIdentityHistoryEntry row shape
+  // (src/account-identity-history.mjs): keyed by account, so no block_number and
+  // the account_identity field names (name/url/github/image/additional).
+  "account-identity-history": [
+    "observed_at,name,url,github,image,discord,description,additional,identity_hash",
+    "2026-06-27T00:00:00.000Z,Alice,https://alice.example,https://github.com/alice,https://alice.example/avatar.png,https://discord.gg/alice,Sample account,extra,hash_sample",
+  ].join("\r\n"),
   "subnet-events": EVENTS_CSV_EXAMPLE,
   "account-events": EVENTS_CSV_EXAMPLE,
   // The Postgres all-events feed: flat scalar columns of each raw pallet.method

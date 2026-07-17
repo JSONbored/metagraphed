@@ -491,6 +491,37 @@ const EVENTS_CSV_COLUMNS = [
   "observed_at",
   "extrinsic_index",
 ];
+// The formatIdentityHistoryEntry row shape (src/subnet-identity-history.mjs):
+// one SubnetIdentitiesV3 snapshot per row, stable so a CSV consumer's columns
+// never shift.
+const SUBNET_IDENTITY_HISTORY_CSV_COLUMNS = [
+  "block_number",
+  "observed_at",
+  "subnet_name",
+  "symbol",
+  "description",
+  "github_repo",
+  "subnet_url",
+  "discord",
+  "logo_url",
+  "identity_hash",
+];
+// The formatAccountIdentityHistoryEntry row shape
+// (src/account-identity-history.mjs): keyed by account, so it carries no
+// block_number (account_identity has no chain block height, only captured_at)
+// and uses the account_identity field names rather than the subnet identity
+// fields.
+const ACCOUNT_IDENTITY_HISTORY_CSV_COLUMNS = [
+  "observed_at",
+  "name",
+  "url",
+  "github",
+  "image",
+  "discord",
+  "description",
+  "additional",
+  "identity_hash",
+];
 
 function validateResponseFormat(url) {
   const raw = url.searchParams.get("format");
@@ -1155,10 +1186,11 @@ export async function handleSubnetHistory(request, env, netuid, url) {
 // GET /api/v1/subnets/{netuid}/identity-history (#1647): append-only on-chain
 // identity timeline, newest first. Cold/absent store → schema-stable zero.
 export async function handleSubnetIdentityHistory(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, [
+  const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
     "cursor",
+    "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
@@ -1172,6 +1204,18 @@ export async function handleSubnetIdentityHistory(request, env, netuid, url) {
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_SUBNET_IDENTITY_SOURCE")) ??
     (await fromD1());
+  // CSV mirrors handleSubnetHyperparamsHistory: the page is already
+  // limit/offset/cursor-bounded, so the CSV path carries the identical page the
+  // JSON path would. Cold store -> empty entries -> header-only CSV.
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.entries,
+      `subnet-${netuid}-identity-history`,
+      "short",
+      request,
+      SUBNET_IDENTITY_HISTORY_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -3426,10 +3470,11 @@ export async function handleAccountIdentity(request, env, ss58, url) {
 // exactly, keyed by ss58 instead of netuid. Cold/absent store → schema-stable
 // zero entries, never 404.
 export async function handleAccountIdentityHistory(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, [
+  const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
     "cursor",
+    "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
@@ -3446,6 +3491,18 @@ export async function handleAccountIdentityHistory(request, env, ss58, url) {
       request,
       "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
     )) ?? (await fromD1());
+  // CSV mirrors handleSubnetHyperparamsHistory: the page is already
+  // limit/offset/cursor-bounded, so the CSV path carries the identical page the
+  // JSON path would. Cold store -> empty entries -> header-only CSV.
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.entries,
+      "account-identity-history",
+      "short",
+      request,
+      ACCOUNT_IDENTITY_HISTORY_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {

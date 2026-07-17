@@ -6142,7 +6142,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/identity-history.json",
       "cache": "short",
-      "description": "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+      "description": "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
       "id": "subnet-identity-history",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/identity-history",
@@ -6168,6 +6168,17 @@
         {
           "name": "cursor",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
             "type": "string"
           }
         }
@@ -6755,7 +6766,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/identity-history.json",
       "cache": "short",
-      "description": "Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+      "description": "Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
       "id": "account-identity-history",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/identity-history",
@@ -6781,6 +6792,17 @@
         {
           "name": "cursor",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
             "type": "string"
           }
         }

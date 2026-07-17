@@ -23986,6 +23986,19 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -24047,9 +24060,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "observed_at,name,url,github,image,discord,description,additional,identity_hash\r\n2026-06-27T00:00:00.000Z,Alice,https://alice.example,https://github.com/alice,https://alice.example/avatar.png,https://discord.gg/alice,Sample account,extra,hash_sample",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -24106,7 +24125,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+        "summary": "Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
         "tags": [
           "accounts",
           "analytics"
@@ -47334,6 +47353,19 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -47395,9 +47427,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "block_number,observed_at,subnet_name,symbol,description,github_repo,subnet_url,discord,logo_url,identity_hash\r\n8454388,2026-06-27T00:00:00.000Z,Apex,APEX,Sample subnet,https://github.com/example/apex,https://apex.example,https://discord.gg/apex,https://apex.example/logo.png,hash_sample",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -47454,7 +47492,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+        "summary": "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
         "tags": [
           "subnets",
           "analytics"

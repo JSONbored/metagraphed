@@ -2684,14 +2684,14 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/identity-history",
     "/metagraph/subnets/{netuid}/identity-history.json",
-    "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+    "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
     "short",
     ["subnets", "analytics"],
-    [
+    csvRouteQuery([
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "cursor", schema: { type: "string" } },
-    ],
+    ]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3010,14 +3010,14 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/identity-history",
     "/metagraph/accounts/{ss58}/identity-history.json",
-    "Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+    "Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
     "short",
     ["accounts", "analytics"],
-    [
+    csvRouteQuery([
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "cursor", schema: { type: "string" } },
-    ],
+    ]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
