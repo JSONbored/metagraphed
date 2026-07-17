@@ -770,6 +770,9 @@ function EndpointsTable() {
     region: search.region,
     eligibility: search.eligibility,
     callable: search.callable,
+    sort: search.sort,
+    order: search.order,
+    page: search.page,
   });
 
   // The table filters client-side over the full fetched list; the CSV export
