@@ -1,0 +1,104 @@
+{
+  "ok": true,
+  "schema_version": 1,
+  "data": {
+    "schema_version": 1,
+    "ref": "0x25a23bcd160f1403ed130b1cd594302b8fc949f99802e7aee15e8a5670238564",
+    "extrinsic": {
+      "block_number": 8636169,
+      "extrinsic_index": 9,
+      "extrinsic_hash": "0x25a23bcd160f1403ed130b1cd594302b8fc949f99802e7aee15e8a5670238564",
+      "signer": "5E7RCRrPVS8TckCDjr92B5ciGziwz2kfvxe4URy3L7AgirGJ",
+      "call_module": "Multisig",
+      "call_function": "approve_as_multi",
+      "call_args": [
+        { "name": "threshold", "type": "u16", "value": 2 },
+        {
+          "name": "other_signatories",
+          "type": "Vec<AccountId32>",
+          "value": [
+            "5FevFjov8435t5XC2MUSRpFYxtthE8pZy1toHpgAAia3ZphG",
+            "5GRCukV2rZmSVfJhAXoLjcrU1pMVCf2Ra1ydbiCFZdaQXDXo"
+          ]
+        },
+        { "name": "maybe_timepoint", "type": "Option<Timepoint<u32>>", "value": null },
+        {
+          "name": "call_hash",
+          "type": "[u8; 32]",
+          "value": "0xa13d2fea4527d2f98e486b1bb7ad669dd9b5fab52dfd03b832ceb115c5423cbf"
+        },
+        {
+          "name": "max_weight",
+          "type": "Weight",
+          "value": { "ref_time": 225661257015, "proof_size": 1112109 }
+        }
+      ],
+      "success": true,
+      "fee_tao": 0.000131929,
+      "tip_tao": 0,
+      "observed_at": "2026-07-16T19:26:00.000Z"
+    },
+    "events": [
+      {
+        "block_number": 8636169,
+        "event_index": 153,
+        "event_kind": "Withdraw",
+        "hotkey": null,
+        "coldkey": "5E7RCRrPVS8TckCDjr92B5ciGziwz2kfvxe4URy3L7AgirGJ",
+        "netuid": null,
+        "uid": null,
+        "amount_tao": 0.112995087,
+        "alpha_amount": null,
+        "observed_at": "2026-07-16T19:26:00.000Z",
+        "extrinsic_index": 9
+      },
+      {
+        "block_number": 8636169,
+        "event_index": 154,
+        "event_kind": "Reserved",
+        "hotkey": null,
+        "coldkey": "5E7RCRrPVS8TckCDjr92B5ciGziwz2kfvxe4URy3L7AgirGJ",
+        "netuid": null,
+        "uid": null,
+        "amount_tao": 0.196,
+        "alpha_amount": null,
+        "observed_at": "2026-07-16T19:26:00.000Z",
+        "extrinsic_index": 9
+      },
+      {
+        "block_number": 8636169,
+        "event_index": 156,
+        "event_kind": "Deposit",
+        "hotkey": null,
+        "coldkey": "5E7RCRrPVS8TckCDjr92B5ciGziwz2kfvxe4URy3L7AgirGJ",
+        "netuid": null,
+        "uid": null,
+        "amount_tao": 0.112863158,
+        "alpha_amount": null,
+        "observed_at": "2026-07-16T19:26:00.000Z",
+        "extrinsic_index": 9
+      },
+      {
+        "block_number": 8636169,
+        "event_index": 157,
+        "event_kind": "Deposit",
+        "hotkey": null,
+        "coldkey": "5HjhkCMa89QJbFULs8WPZBgVg8kMq5qdX1nx7CnQpZgoyKAN",
+        "netuid": null,
+        "uid": null,
+        "amount_tao": 0.000131929,
+        "alpha_amount": null,
+        "observed_at": "2026-07-16T19:26:00.000Z",
+        "extrinsic_index": 9
+      }
+    ]
+  },
+  "meta": {
+    "artifact_path": "/metagraph/extrinsics/0x25a23bcd160f1403ed130b1cd594302b8fc949f99802e7aee15e8a5670238564.json",
+    "cache": "short",
+    "contract_version": "2026-06-06.1",
+    "generated_at": "2026-07-16T19:26:00.000Z",
+    "published_at": "2026-07-17T11:21:50.971Z",
+    "source": "chain-events"
+  }
+}
