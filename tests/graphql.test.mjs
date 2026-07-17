@@ -28,7 +28,7 @@ import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.mjs"
 import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.mjs";
 import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { resolveClientIp } from "../workers/config.mjs";
+import { resolveClientIp, DAY_MS } from "../workers/config.mjs";
 import {
   KV_ECONOMICS_CURRENT,
   KV_HEALTH_CURRENT,
@@ -10667,11 +10667,25 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 
   test("no Postgres tier flag: aggregates surface_uptime_daily rows straight off D1", async () => {
+    // Relative to Date.now(), not a hardcoded literal -- a fixed past date
+    // drifts outside the resolver's real "7d" window as wall-clock time
+    // moves on, making this fail independent of any code change once it
+    // does (it just did: the literal was "2026-07-09", fixed for real in
+    // #6319 against main). loadBulkHealthTrends (src/bulk-health-trends.mjs)
+    // computes the window cutoff from the real Date.now() by default, so the
+    // fixture must track it the same way
+    // tests/request-handlers-analytics.test.mjs's `recentDay` already does
+    // for the identical surface_uptime_daily shape. Carried here too so this
+    // PR's own CI isn't blocked waiting on #6319 to merge separately --
+    // collapses to a no-op once this branch rebases onto that fix.
+    const recentDay = new Date(Date.now() - 2 * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
     const env = {
       METAGRAPH_HEALTH_DB: bulkTrendsD1([
         {
           netuid: 7,
-          date: "2026-07-09",
+          date: recentDay,
           total: 10,
           ok_count: 9,
           avg_latency_ms: 50,
