@@ -5,7 +5,7 @@ import { subnetNeuronQuery } from "@/lib/metagraphed/queries";
 import { RealtimeFreshness, StatTile } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import { formatNumber } from "@/lib/metagraphed/format";
 
 function scoreStr(v?: number | null): string {
@@ -145,14 +145,13 @@ function KeyRow({ label, value }: { label: string; value?: string }) {
         {label}
       </span>
       {value ? (
-        <Link
-          to="/accounts/$ss58"
-          params={{ ss58: value }}
-          className="font-mono text-[12px] text-ink hover:text-accent hover:underline"
-          title={value}
-        >
-          {shortHash(value) ?? value}
-        </Link>
+        <span className="font-mono text-[12px] text-ink">
+          <AccountAddress
+            ss58={value}
+            compact
+            fallback={<span className="text-ink-muted">{value}</span>}
+          />
+        </span>
       ) : (
         <span className="font-mono text-[12px] text-ink-muted">—</span>
       )}
