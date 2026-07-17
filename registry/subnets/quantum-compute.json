@@ -73,7 +73,7 @@
       "id": "sn-48-quantum-compute-health-api",
       "kind": "subnet-api",
       "name": "Quantum Compute health API",
-      "notes": "Public no-auth GET /api/health on www.qbittensorlabs.com returning JSON liveness (observed: {\"status\":\"ok\"}). Served on the official qBittensor Labs website host alongside the existing website and source-repo surfaces for SN48.",
+      "notes": "Public no-auth GET /api/health on www.openquantum.com returning JSON liveness (observed: {\"status\":\"ok\"}). Open Quantum is SN48's own market-facing product per the subnet README's \"What is Open Quantum?\" section, and its documentation host (docs.openquantum.com) is already registered as this subnet's docs surface. Replaces the previous www.qbittensorlabs.com/api/health value: that is the shared qBittensor Labs corporate-site liveness route, registered identically by SN63 Enigma, whose repository -- not this one -- is what references the qbittensorlabs.com domain (#6328).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -87,10 +87,10 @@
         "submitted_by": "kiannidev"
       },
       "source_urls": [
-        "https://github.com/qbittensor-labs/quantum-compute",
-        "https://www.qbittensorlabs.com/"
+        "https://github.com/qbittensor-labs/quantum-compute/blob/main/README.md",
+        "https://www.qbittensorlabs.com/quantum"
       ],
-      "url": "https://www.qbittensorlabs.com/api/health"
+      "url": "https://www.openquantum.com/api/health"
     },
     {
       "auth_required": false,

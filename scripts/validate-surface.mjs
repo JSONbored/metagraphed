@@ -46,6 +46,16 @@ const GRANDFATHERED_DUPLICATE_URLS = new Set([
   "8-ball.json|https://github.com/Barbariandev/8Ball_miner",
 ]);
 
+// Kinds whose URL answers "where does THIS subnet expose its own mechanism".
+// The identical endpoint under two different netuids is a contradiction rather
+// than a style choice — one file was copy-pasted from the other's template and
+// never repointed (#6328: SN48 Quantum Compute and SN63 Enigma both registered
+// their operator's corporate-site health route). Org-level identity kinds are
+// deliberately absent: one operator legitimately fronts several subnets from a
+// single website or doc host, which is why those two subnets correctly keep the
+// shared www.qbittensorlabs.com website surface on both files.
+const PER_SUBNET_ENDPOINT_KINDS = new Set(["subnet-api", "openapi", "sse"]);
+
 // Reviewed-tier authorship convention + its acknowledged exemptions (#5739).
 // Files at the `maintainer-reviewed` / `adapter-backed` curation tier normally
 // pair a non-null `curation.verified_at` with their `reviewed_at` and carry a
@@ -112,6 +122,43 @@ const files =
   fileArgs.length > 0
     ? fileArgs.map((arg) => path.resolve(arg))
     : await listJsonFiles(path.join(repoRoot, "registry/subnets"));
+
+// Cross-file endpoint registrations (#6328). The within-file duplicate check
+// below only ever sees one document at a time, so an endpoint copy-pasted from
+// another subnet's file slips past it. Index every registry file plus whatever
+// is under validation (deduped by resolved path) so the documented single-file
+// lane — `npm run validate:surface -- registry/subnets/<slug>.json` — still
+// catches a collision with a subnet the contributor never opened, rather than
+// deferring it to CI, where the gate closes the PR instead of coaching it.
+// Mirrors the native-chain index above: built once, up front, best-effort.
+const validatedPaths = new Set(files.map((file) => path.resolve(file)));
+const endpointRegistrationsByUrl = new Map();
+try {
+  const indexPaths = new Set(
+    (await listJsonFiles(path.join(repoRoot, "registry/subnets"))).map((file) =>
+      path.resolve(file),
+    ),
+  );
+  for (const file of validatedPaths) indexPaths.add(file);
+  for (const file of indexPaths) {
+    let document;
+    try {
+      document = await readJson(file);
+    } catch {
+      continue; // Unreadable files are reported by the per-file loop below.
+    }
+    for (const surface of document.surfaces || []) {
+      if (!PER_SUBNET_ENDPOINT_KINDS.has(surface.kind)) continue;
+      const normalized = normalizePublicUrl(surface.url);
+      if (!normalized) continue;
+      const registrations = endpointRegistrationsByUrl.get(normalized) || [];
+      registrations.push({ file, id: surface.id, netuid: document.netuid });
+      endpointRegistrationsByUrl.set(normalized, registrations);
+    }
+  }
+} catch {
+  // Registry unreadable — skip the cross-file endpoint dedup check.
+}
 
 const errors = [];
 const conventionAdvisories = [];
@@ -242,6 +289,28 @@ for (const file of files) {
       }
     }
   }
+}
+
+// Only report a collision that actually involves a file under validation — the
+// index spans the whole registry, but a contributor validating their own file
+// must not be handed someone else's pre-existing debt as their failure.
+for (const [normalizedUrl, registrations] of endpointRegistrationsByUrl) {
+  const netuids = new Set(registrations.map((r) => r.netuid));
+  if (netuids.size < 2) continue;
+  if (!registrations.some((r) => validatedPaths.has(r.file))) continue;
+  const fileList = [
+    ...new Set(registrations.map((r) => path.basename(r.file))),
+  ].join(" + ");
+  const registrationList = registrations
+    .map((r) => `SN${r.netuid} ${r.id}`)
+    .join(", ");
+  errors.push(
+    `${fileList}: "${normalizedUrl}" is registered as a per-subnet endpoint by ` +
+      `${netuids.size} different subnets (${registrationList}) — one endpoint cannot ` +
+      "serve two subnets' mechanisms, so one of these was copied from the other's " +
+      "template and never repointed. Point each subnet at the endpoint it actually " +
+      "owns, or drop the surface from the subnet that does not own it.",
+  );
 }
 
 if (errors.length > 0) {
