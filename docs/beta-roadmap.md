@@ -101,8 +101,8 @@ subnets and demonstrate the product to the broader ecosystem.
    _Remaining verification:_ dispatch the scheduled data-refresh once
    (`workflow_dispatch publish_mode=publish`) to confirm the real `r2:upload`/
    `kv:publish`/`smoke` path end-to-end.
-4. **Ship a frontend integration handoff.** `generated/metagraphed-client.ts`,
-   `generated/metagraphed-api.d.ts`, and `openapi.json` exist but are not packaged
+4. **Ship a frontend integration handoff.** `generated/metagraphed-client.ts`
+   and `openapi.json` exist but are not packaged
    or documented for the UI team: envelope shape (`ok`/`schema_version`/`data`/
    `meta`/`error`), pagination/sort/filter semantics (already implemented in
    `workers/api.mjs`), cache profiles, error codes, `x-metagraph-*` headers, and

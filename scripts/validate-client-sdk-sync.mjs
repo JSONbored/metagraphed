@@ -2,8 +2,9 @@
 //
 // The published `@jsonbored/metagraphed` client is a thin re-export of the
 // repo's generated contract (`packages/client/scripts/sync-generated.mjs` copies
-// `generated/metagraphed-api.d.ts` + `generated/metagraphed-client.ts` into the
-// package on build, and the package tracks `public/metagraph/openapi.json`). But
+// `generated/metagraphed-client.ts` into the package on build; the contract types
+// come from the `metagraphed-contract` package / `packages/contract/index.d.ts`,
+// and the package tracks `public/metagraph/openapi.json`). But
 // release-please versions the `client` component ONLY from changes under
 // `packages/client/**` — a contract-only PR (schemas → generated → openapi.json)
 // touches none of those, so it opens a `platform`/`python` release PR while the
