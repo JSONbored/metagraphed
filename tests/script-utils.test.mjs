@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, test } from "vitest";
 import {
+  ARTIFACT_SIZE_BUDGETS,
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
 } from "../scripts/artifact-budgets.mjs";
@@ -2356,6 +2357,47 @@ describe("script utility contracts", () => {
     assert.deepEqual(
       results.map((result) => result.status),
       ["ok", "ok", "warn", "warn"],
+    );
+  });
+
+  test("every artifact size budget maps to a real build-artifacts write", async () => {
+    // Guard against dead budget rules (issue #6364): a `budget(path, ...)` entry
+    // is only ever evaluated against artifacts build-artifacts.mjs actually
+    // emits, so an entry with no corresponding `artifactFile(...)` write is inert
+    // and silently rots. Statically collect every literal/template path passed to
+    // `artifactFile(...)` and assert each budget pattern matches at least one.
+    const source = await readFile(
+      path.join(repoRoot, "scripts/build-artifacts.mjs"),
+      "utf8",
+    );
+    const writtenPatterns = new Set();
+    const callRe = /artifactFile\(\s*(?:"([^"]+)"|`([^`]+)`)/g;
+    for (let match = callRe.exec(source); match; match = callRe.exec(source)) {
+      // Collapse each `${…}` interpolation to a single path-segment glob, then to
+      // a representative concrete segment, mirroring how the runtime resolves a
+      // templated write to a real relative path.
+      const concrete = (match[1] ?? match[2])
+        .replace(/\$\{[^}]*\}/g, "*")
+        .replace(/\*/g, "seg");
+      writtenPatterns.add(concrete);
+    }
+
+    const budgetToRegExp = (pattern) =>
+      new RegExp(
+        `^${pattern
+          .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+          .replace(/\*/g, "[^/]*")}$`,
+      );
+
+    const orphaned = ARTIFACT_SIZE_BUDGETS.filter((entry) => {
+      const regex = budgetToRegExp(entry.path);
+      return ![...writtenPatterns].some((written) => regex.test(written));
+    }).map((entry) => entry.path);
+
+    assert.deepEqual(
+      orphaned,
+      [],
+      `budget entries with no matching build-artifacts write: ${orphaned.join(", ")}`,
     );
   });
 
