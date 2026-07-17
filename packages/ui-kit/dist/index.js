@@ -2006,7 +2006,7 @@ function ListCard({
 }) {
   const cls = "block rounded border border-border bg-card p-3 min-h-11 hover:border-ink/30 active:bg-surface transition-colors";
   if (to) {
-    return /* @__PURE__ */ jsx("a", { href: to, className: cls, children });
+    return /* @__PURE__ */ jsx("a", { href: to, onClick, className: cls, children });
   }
   return /* @__PURE__ */ jsx(
     "button",
