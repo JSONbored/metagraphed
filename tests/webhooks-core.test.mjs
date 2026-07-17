@@ -128,6 +128,18 @@ describe("isPublicWebhookUrl", () => {
     assert.equal(isPublicWebhookUrl("https://router/x"), false);
   });
 
+  test("rejects a trailing-dot FQDN that would bypass the name blocklist", () => {
+    // The URL parser keeps the trailing dot (localhost. → "localhost."), so an
+    // un-normalized host slips past the "=== localhost" / ".internal" / ".local"
+    // checks. Every trailing dot must be stripped, including the multi-dot form.
+    assert.equal(isPublicWebhookUrl("https://localhost./x"), false);
+    assert.equal(isPublicWebhookUrl("https://localhost../x"), false);
+    assert.equal(isPublicWebhookUrl("https://svc.internal./x"), false);
+    assert.equal(isPublicWebhookUrl("https://printer.local./x"), false);
+    // A public FQDN with a trailing dot normalizes to its dotless form (still ok).
+    assert.equal(isPublicWebhookUrl("https://hooks.example.com./mg"), true);
+  });
+
   test("rejects a private IPv4 literal host", () => {
     assert.equal(isPublicWebhookUrl("https://169.254.169.254/x"), false);
   });

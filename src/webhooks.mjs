@@ -74,9 +74,18 @@ const PRIVATE_IPV4_PATTERNS = [
 ];
 
 function normalizedHostname(value) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/^\[|\]$/g, "");
+  return (
+    String(value || "")
+      .toLowerCase()
+      .replace(/^\[|\]$/g, "")
+      // Strip trailing FQDN dot(s). The URL parser keeps them (localhost. →
+      // "localhost.", localhost.. → "localhost.."), so without this the name
+      // blocklist below (=== "localhost", .endsWith(".internal"/".local")) misses
+      // "localhost.", "x.internal.", "y.local." and they pass as public. The prober
+      // + probe-core guards already normalize this; strip every trailing dot so the
+      // multi-dot form can't slip through either.
+      .replace(/\.+$/, "")
+  );
 }
 
 function isIpv4Literal(host) {
