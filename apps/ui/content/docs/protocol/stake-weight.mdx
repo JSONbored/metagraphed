@@ -1,0 +1,80 @@
+---
+title: Understanding stake-weight
+description: How Bittensor actually weighs stake per subnet — the two-component stake_weight formula, why root TAO counts differently than subnet Alpha, and what that means practically for anyone staking or validating.
+---
+
+Bittensor's dynamic-TAO upgrade (February 2025) split every subnet's economy into its own Alpha
+token with a constant-product AMM against TAO. A natural question follows: if each subnet's Alpha
+is its own siloed market, does staking TAO to one subnet do anything for your position on any
+other subnet? The answer is yes, but through a specific, discounted mechanism — not by staking the
+same TAO twice.
+
+## The two components
+
+For a given hotkey on a given subnet, the chain computes a single `stake_weight` value that drives
+everything else — validator permit eligibility, incentive/dividend distribution, all of it. It has
+two parts:
+
+```
+stake_weight = alpha_stake + tao_weight × root_tao_stake
+```
+
+- **`alpha_stake`** — Alpha tokens this hotkey holds staked directly on _this_ subnet, at full 1.0×
+  weight. Fully siloed: staking Alpha on subnet A contributes nothing to subnet B's calculation.
+- **`root_tao_stake`** — this hotkey's stake on the **root network** (netuid 0), read fresh
+  regardless of which subnet's `stake_weight` is being computed. Root stake isn't subnet-specific,
+  so the same root position feeds into every subnet's calculation independently.
+- **`tao_weight`** — a network-wide discount multiplier applied to the root-stake contribution.
+  Currently **0.18** (governance-adjustable — see below).
+
+Source: `pallets/subtensor/src/staking/stake_utils.rs`,
+`get_stake_weights_for_hotkey_on_subnet`.
+
+## Why the discount exists
+
+Public documentation describes `tao_weight` as intended to decay from parity toward a lower
+steady-state over roughly 100 days following the Feb 2025 dTAO launch, gradually shifting
+influence toward directly-staked Alpha as each subnet's own market matures. In practice, live
+on-chain state shows the value still sitting at 0.18 well over a year past that original schedule —
+some sources point to a further reversion planned for a different emissions model. Treat 0.18 as
+**current reality, not a fixed constant**: it's a live storage value (`SubtensorModule::TaoWeight`),
+set by governance, and worth re-querying before relying on it for anything beyond rough intuition.
+
+<Callout title="Query it live, don't hardcode it">
+  `tao_weight` can change via governance at any time. Query `SubtensorModule::TaoWeight` directly
+  (via `btcli` or a raw storage query against a subtensor RPC endpoint) immediately before using it
+  in any calculation — this page's value is a point-in-time snapshot, not a protocol guarantee.
+</Callout>
+
+## What this means practically
+
+The two components trade off differently:
+
+|                 | Alpha stake (direct)      | Root TAO stake              |
+| --------------- | ------------------------- | --------------------------- |
+| Weight          | 1.0×                      | 0.18×                       |
+| Scope           | One subnet only           | Every subnet simultaneously |
+| Market exposure | That subnet's Alpha price | TAO                         |
+
+Directly staking Alpha on a subnet is the stronger per-subnet lever — full weight, no discount —
+but the position only counts there. Root TAO stake is weaker per-subnet (0.18× that of an
+equivalent direct stake) but counts on **every** subnet at once, since each subnet's `stake_weight`
+formula reads the same root position independently, with no cross-subnet accounting that "spends
+down" a fixed pool as it's counted on more subnets.
+
+This is also the mechanism that makes [childkey delegation](/docs/protocol/root-delegation) work:
+a child hotkey on a given subnet inherits a proportional share of its _parent's root stake_
+specifically — not the parent's stake on that subnet — which is exactly the `root_tao_stake` term
+in the formula above, evaluated for the parent instead of the child directly.
+
+## Where stake-weight actually gets used
+
+`stake_weight` isn't just an internal number — it's the input to two separate, consequential
+mechanisms covered on other pages here:
+
+- **[Validator permits](/docs/protocol/registration-and-permits)** are assigned each epoch to
+  whichever registered UIDs on a subnet rank highest by `stake_weight`, up to that subnet's
+  `max_validators` cap.
+- **[Weight-setting and rewards](/docs/protocol/weight-setting-and-rewards)** feed `stake_weight`
+  (as `active_stake`) directly into the Yuma Consensus dividends calculation — it's not just
+  permit-eligibility, it determines how much of a validator's emission is actually earned.

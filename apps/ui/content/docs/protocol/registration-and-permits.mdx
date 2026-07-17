@@ -1,0 +1,87 @@
+---
+title: Registration and validator permits
+description: What it actually costs to get a UID on a Bittensor subnet, why that's a completely different thing from holding a validator permit, and why some subnets encrypt weight submissions.
+---
+
+Getting a slot on a subnet and being able to validate on it are two separate, independently-gated
+things. Conflating them is one of the most common sources of confusion for anyone new to running
+infrastructure on Bittensor.
+
+## Registering a UID: the recycle-burn auction
+
+Every subnet has a fixed capacity — `max_uids` (256 on most active subnets today) — and a
+registration cost paid in TAO, burned (not staked, not transferred to anyone) to claim one of those
+slots. This cost isn't fixed: it behaves like a continuous auction.
+
+- **Rises with demand.** Each successful registration nudges the cost up, governed by
+  `target_regs_per_interval` (how many registrations per block-window the subnet "expects") and
+  `burn_increase_mult`.
+- **Decays toward a floor over time.** Absent new registrations, cost drifts back down on a
+  `burn_half_life`, bounded between `min_burn_tao` and `max_burn_tao`.
+
+Practically: a subnet with heavy recent registration activity can cost orders of magnitude more to
+enter than one that's quiet, and the same subnet's cost can swing significantly week to week. There
+is no fixed "price list" — always query a subnet's _current_ registration cost before registering,
+never rely on a cached or previously-seen figure.
+
+Registering gets you a UID — a slot, nothing more. It doesn't grant weight-setting ability, doesn't
+guarantee emissions, and doesn't require any minimum stake by itself.
+
+## A full subnet prunes on every new registration
+
+Once a subnet is at `max_uids` capacity (very common on active subnets), every new registration
+immediately prunes an existing low-priority UID to make room — there's no "subnet full, try again
+later" state, registration always succeeds if paid for and a slot always opens up for it. Freshly
+registered UIDs are shielded for `immunity_period` blocks, but once that window closes, a UID with a
+weak pruning score (low incentive for miners, low stake for validators) is the most exposed to being
+replaced by the _next_ registration. This is a live, ongoing risk on any subnet sitting at capacity,
+not a one-time concern at registration time.
+
+## Validator permits: a completely separate, stake-based mechanism
+
+A **validator permit** is not purchased and not requested — it's computed automatically, every
+epoch, purely from [stake-weight](/docs/protocol/stake-weight):
+
+> Each epoch, the top `max_validators` registered UIDs on a subnet, ranked by `stake_weight`,
+> receive `validator_permit = true`. Everyone else does not.
+
+`max_validators` is itself a per-subnet hyperparameter (commonly, but not universally, 64 — always
+check the specific subnet, never assume) — a separate cap from `max_uids`, the total registration
+capacity. A subnet can easily have far more registered UIDs than it has validator seats; most of
+those UIDs are miners, competing on incentive rather than stake rank.
+
+Two consequences worth being explicit about, since they're easy to conflate:
+
+- **Losing a permit and losing a UID are different events.** Falling out of the top-`max_validators`
+  by stake costs you the permit at the next epoch — no fee, no re-registration, it comes back
+  automatically the moment your stake rank recovers. Losing the UID entirely (deregistration/pruning,
+  see above) is a separate, pruning-driven mechanism tied to subnet capacity, and does require
+  re-registering (re-paying the recycle cost) to get back in.
+- **Holding a permit isn't the same as earning anything from it.** A permitted validator that never
+  submits fresh weights contributes nothing to consensus and earns nothing from the seat — see
+  [weight-setting and rewards](/docs/protocol/weight-setting-and-rewards) for why.
+
+Source: hyperparameter fields (`max_uids`, `max_validators`, `immunity_period`,
+`min_burn_tao`/`max_burn_tao`/`burn_half_life`/`target_regs_per_interval`) queried live per subnet;
+permit computation in `pallets/subtensor/src/staking/stake_utils.rs`.
+
+## Commit-reveal weight submission
+
+Some subnets encrypt weight submissions for a window before they take effect, rather than accepting
+plaintext weights directly. This exists specifically to blunt **weight-copying**: if weights are
+visible the instant they're submitted, another validator can simply mirror the highest-stake
+validator's vector without doing any independent evaluation work, at zero cost to themselves.
+Commit-reveal breaks that by hiding the content of a submission until after the window it would have
+been copyable in has passed.
+
+Three distinct complexity tiers exist in practice, controlled by a subnet's `commit_reveal_enabled`
+flag and its reveal period:
+
+| Tier       | `commit_reveal_enabled` | Behavior                                                                                                                                      |
+| ---------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Off        | `false`                 | Weights submitted and take effect directly, no encryption.                                                                                    |
+| Period = 1 | `true`                  | Commit this epoch, reveal takes effect the same or next epoch — one round-trip.                                                               |
+| Period > 1 | `true`                  | Reveal is delayed across multiple epochs, requiring the submitter to track and persist reveal state across that whole window before it lands. |
+
+A subnet can flip `commit_reveal_enabled` at any time via governance — anything built against a
+subnet's weight-submission behavior needs to detect and handle that change, not assume it's static.

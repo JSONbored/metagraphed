@@ -1,0 +1,10 @@
+{
+  "title": "Protocol",
+  "pages": [
+    "stake-weight",
+    "registration-and-permits",
+    "weight-setting-and-rewards",
+    "proxies",
+    "root-delegation"
+  ]
+}

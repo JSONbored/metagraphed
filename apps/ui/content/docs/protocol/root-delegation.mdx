@@ -1,0 +1,74 @@
+---
+title: Root stake and childkey delegation
+description: How set_children lets a parent hotkey's root-network stake back child hotkeys across many subnets at once — the mechanics, the thresholds, and what delegation does not replace.
+---
+
+Root network (netuid 0) stake is what makes a single position count on more than one subnet at
+once — see [stake-weight](/docs/protocol/stake-weight) for the underlying formula. Childkey
+delegation is the mechanism that actually routes a share of that root position outward to specific
+hotkeys on specific subnets.
+
+## What `set_children` does
+
+A parent hotkey calls `set_children(netuid, children)`, where `children` is a list of
+`(proportion, child_hotkey)` pairs — up to 5 children per call, scoped to that one subnet
+(`ensure_childkey_count` enforces the per-call limit). This creates a `ChildKeys` entry for
+`(parent, netuid)`, naming which child hotkeys get a cut of that parent's inherited weight on that
+specific subnet, and how large a cut each gets.
+
+Critically, what a child inherits is **the parent's root stake specifically** — the same
+`root_tao_stake` term from the [stake-weight formula](/docs/protocol/stake-weight), read fresh at
+computation time — not whatever the parent happens to hold directly on that subnet. A parent with
+zero Alpha stake on a given subnet can still back a child there, purely off its root position.
+
+Source: `pallets/subtensor/src/staking/set_children.rs`, `stake_utils.rs`.
+
+## The gate: `StakeThreshold`
+
+`set_children` isn't available to just any hotkey — the parent must clear
+`get_total_stake_for_hotkey(parent) >= StakeThreshold`. Two things worth being precise about here:
+
+- **`StakeThreshold` is live-queryable and currently 1000 TAO** — governance-adjustable, always
+  re-check rather than assuming this figure holds indefinitely.
+- **The threshold check sums the parent's stake across every subnet it holds any stake on at all**
+  (root included), each converted to a TAO-equivalent value at that subnet's current Alpha price —
+  not just root stake in isolation. A parent could in principle clear the threshold through Alpha
+  stake spread across several subnets, though only the root-stake component actually gets inherited
+  by children (per the formula above).
+
+There is no requirement that the parent be registered on the target subnet at all — `set_children`
+has no `is_hotkey_registered_on_network(parent, netuid)` check anywhere in the extrinsic. A parent
+can back children on subnets it has never registered a UID on itself.
+
+## The cooldown
+
+`set_children` doesn't take effect immediately. `PendingChildKeyCooldown` — currently **~7200
+blocks, roughly 24 hours** — delays when a new or changed `ChildKeys` entry actually starts
+affecting stake-weight calculations. Budget this into any rollout timeline: a child isn't earning
+from the inherited pool the moment the `set_children` transaction lands, only after the cooldown
+clears.
+
+## No cap on how many subnets one root position can back
+
+Each `(parent, netuid)` `ChildKeys` entry is independent, and every subnet's `stake_weight`
+calculation reads the _same_ root position fresh, on its own. There's no cross-subnet ledger that
+depletes the parent's root stake as it gets allocated to more children across more subnets — the
+same 1000 TAO root position (as a concrete example) can back a child on ten different subnets
+simultaneously, each computing its own inherited share independently, with no accounting mechanism
+that treats the pool as "spent" by being counted more than once. This is the core reason root
+delegation scales more efficiently than splitting a fixed pool of capital N ways across N subnets:
+each subnet's calculation gets the (discounted) full root value, not a shrinking 1/N fraction of it.
+
+## What delegation does not replace
+
+**A child hotkey still needs its own [UID registration](/docs/protocol/registration-and-permits) on
+the target subnet.** Delegation shares stake-weight; it does not substitute for having a
+registered neuron in the first place. The sequence is always: register the child hotkey on the
+subnet (paying that subnet's own recycle-burn cost), _then_ `set_children` on the parent to route it
+a share of root stake, _then_ wait out the cooldown before the inherited weight actually counts. Skip
+the registration step and there's no UID for the inherited stake-weight to attach to at all.
+
+The inherited stake-weight is also not merely a permit-eligibility bump — it flows into
+`active_stake` and from there directly into the Yuma Consensus dividends calculation covered on
+[weight-setting and rewards](/docs/protocol/weight-setting-and-rewards). A child earning inherited
+weight earns real, proportional emissions from it, the same as if it held that stake directly.

@@ -1,0 +1,67 @@
+---
+title: Weight-setting, tempos, and rewards
+description: What validators actually submit, when a subnet's consensus run happens relative to chain blocks, and how incentive and dividends get computed from it.
+---
+
+Weight-setting is the core act a validator performs on Bittensor: periodically scoring every miner
+on a subnet and submitting that scoring as an on-chain vector. Everything downstream — who earns
+what, whose stake actually matters — runs off the aggregate of those submissions.
+
+## Block production vs. subnet epochs
+
+These are two different clocks, easy to conflate:
+
+- **Chain block production** — the whole Bittensor chain produces a new block on a fixed, short
+  cadence (seconds). This is global, shared by every subnet.
+- **Subnet epoch** — each subnet has its own `tempo` hyperparameter, measured in blocks (360 is a
+  common default, but it's per-subnet and governance-adjustable). When a subnet's block count since
+  its last epoch reaches `tempo`, that subnet runs its own **Yuma Consensus epoch** — the point
+  where accumulated weight submissions actually get turned into emissions.
+
+Weights can be submitted at any point between epochs, but they don't do anything on their own until
+the epoch boundary triggers the consensus run that consumes them. A validator that only submits
+right before the boundary and one that submits steadily throughout the tempo window can end up
+contributing identically, as long as both submissions are fresh enough — see `weights_rate_limit`
+below for the constraint on how often submission is even allowed.
+
+## What happens at an epoch boundary
+
+Source: `pallets/subtensor/src/epoch/run_epoch.rs`.
+
+1. **Bonds update.** Each validator holds a "bond" toward each miner, which moves toward alignment
+   with the _consensus-weighted_ view across all validators — not toward any single validator's own
+   opinion. A validator whose weights consistently agree with where other high-stake validators land
+   builds bonds that track consensus; one that diverges builds weaker bonds. This is the mechanism
+   that rewards genuine independent evaluation converging with the group, rather than either pure
+   copying or pure divergence.
+2. **Incentive is computed per miner** from the consensus-weighted score across all validators'
+   submitted weights — a rank/softmax-style computation, not a simple average, tuned by the `kappa`
+   hyperparameter.
+3. **Dividends are computed per validator** from that validator's bonds combined with its
+   [stake-weight](/docs/protocol/stake-weight) (used here as `active_stake`) — not from weights
+   submitted alone. A validator with strong bonds but negligible stake-weight, or strong stake-weight
+   but no meaningful bonds (never submitted fresh weights), earns correspondingly little.
+4. **`combined_emission = incentive + dividends`, computed per neuron, not as a fixed split of one
+   pool.** These aren't two halves of a subnet's emission divided by role — a UID's incentive and
+   dividend components are each independently derived from that UID's own miner-side and
+   validator-side activity respectively. A UID that's both a miner and a validator on subnets that
+   allow it earns from both terms; a pure-miner UID's dividend term is simply zero, and vice versa.
+
+## Why staleness matters
+
+A validator's `last_update` — the block of its most recent successful weight submission — factoring
+against the subnet's `weights_rate_limit` determines whether that validator's submission is
+considered current for a given epoch run. Weights that have gone stale (not resubmitted within the
+subnet's rate-limit window) don't meaningfully contribute at the next epoch boundary — a permitted
+validator sitting on old weights is, from the reward mechanism's perspective, functionally similar
+to one that never submits at all. Holding a [validator permit](/docs/protocol/registration-and-permits)
+is necessary but not sufficient — the dividend term only materializes from genuinely current,
+regularly-refreshed weight submissions.
+
+<Callout title="Permit ≠ earning">
+  A validator can hold a permit indefinitely without submitting weights — nothing revokes the permit
+  for inactivity by itself, since permit assignment is purely stake-rank based (see [registration
+  and permits](/docs/protocol/registration-and-permits)). But an inactive permit holder's dividend
+  term stays at or near zero the entire time, since dividends are earned from bonds built by
+  actually submitting current weights, not from holding the seat.
+</Callout>

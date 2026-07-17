@@ -1,0 +1,76 @@
+---
+title: Proxy accounts
+description: How pallet_proxy lets an account delegate scoped, revocable authority to another key without a multisig ceremony per action — proxy types, transfer safety, and pure proxies.
+---
+
+Bittensor runs on Substrate, and inherits `pallet_proxy` from it — a general delegation mechanism
+that solves a problem multisig alone doesn't: letting an account authorize routine, narrowly-scoped
+actions on its behalf without requiring a fresh multi-party signing ceremony every single time.
+
+## The basic mechanism
+
+An account grants a proxy once: `add_proxy(delegate, proxy_type, delay)`. From that point on, the
+delegate submits `Proxy.proxy(real, inner_call)`, signed with **its own key**, and the chain checks
+`inner_call` against `proxy_type`'s allow-list before executing it as if `real` had submitted it
+directly. No further approval from `real` is needed per call — the authorization already happened
+once, at grant time.
+
+This is a different mechanism from multisig (`pallet_multisig`), not a variant of it. Multisig
+requires N-of-M live signatures for every single call; proxy requires one grant, then arbitrarily
+many delegate-signed calls against that grant's scope. The two compose naturally: a multisig can
+grant a proxy via one multisig-approved call, after which the proxy's day-to-day use needs no
+further multisig involvement at all.
+
+## Proxy types scope what the delegate can do
+
+`ProxyType` is an enum, and the delegate's calls are filtered against whichever variant was granted.
+Common variants relevant to running infrastructure on Bittensor:
+
+| `ProxyType`     | Scope                                                                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Registration`  | Subnet/neuron registration calls only.                                                                                                                         |
+| `ChildKeys`     | `set_children` and related delegation calls only.                                                                                                              |
+| `Staking`       | Stake/unstake calls only — cannot register, cannot move funds via transfer.                                                                                    |
+| `Transfer`      | Unrestricted transfers — the highest-risk grant, since a compromised delegate key can move everything.                                                         |
+| `SmallTransfer` | Transfers capped at **0.5 TAO / 0.5 Alpha per transaction** — meaningfully safer than unrestricted `Transfer` while still allowing small operational payments. |
+| `NonTransfer`   | Everything except calls that move funds out — a broad "do anything operational" grant that structurally can't drain the account.                               |
+| `RootClaim`     | Root-network-specific claim calls.                                                                                                                             |
+
+Source: the `ProxyType` enum and its call-filtering logic, `common/src/proxy.rs` and
+`runtime/src/proxy_filters/`.
+
+Multiple narrow grants can be layered — e.g. `Registration` + `ChildKeys` + `Staking` together give
+a delegate everything needed to run day-to-day validator operations, while structurally being unable
+to ever move funds out, since none of those three variants' allow-lists include a transfer call.
+
+## The delay/announce safety net for transfer-capable proxies
+
+For proxy types that _can_ move funds (`Transfer`, `SmallTransfer`), `add_proxy`'s `delay` parameter
+matters. A non-zero delay requires the delegate to first `announce` an intended call, then wait
+`delay` blocks before it can actually execute — during which the real account owner can inspect the
+pending announcement and `reject_announcement` it if it's wrong or malicious. This turns a single
+compromised or buggy delegate key from an instant-loss scenario into a bounded, reviewable window.
+
+For non-transfer-capable proxy types (`Registration`, `ChildKeys`, `Staking`, `NonTransfer`), a
+zero delay is safe by construction — there's nothing in their allow-list that could unilaterally
+remove value from the account, so there's nothing an announce window would meaningfully protect
+against.
+
+## Standard proxies vs. pure proxies
+
+Everything above describes a **standard proxy**: `real` is an ordinary, already-existing account —
+a normal keypair or a multisig address — and the proxy grant is layered on top of it.
+
+A **pure proxy** is different: `create_pure` derives a brand-new account address deterministically
+from `(creator, proxy_type, index, creation_block, extrinsic_index)` — an address with **no private
+key at all**. It exists purely as a proxy-controlled account; the only way to act as it is through a
+proxy grant, from the start.
+
+This solves a specific, real operational problem: **a raw multisig's address is itself derived from
+its exact signatory set and threshold.** Add, remove, or replace even one signer, and you get a
+_different_ multisig address — meaning any membership change requires migrating every asset and
+position to the new address, with all the cost and disruption that implies. A pure proxy's address
+depends on none of that: the _set of accounts currently proxying for it_ can be swapped freely (grant
+a proxy to the new controller, revoke the old one) without the pure proxy's own address — and
+everything staked or registered under it — ever changing. Membership rotation becomes a proxy
+grant/revoke, not an asset migration.
