@@ -2032,10 +2032,21 @@ function AccountFootprintSection({
                   {fmtStake(r.stake_tao)}
                 </td>
                 <td className="px-5 py-4 font-mono text-[11px]">
+                  {/* #6428: a validator permit is a per-UID metagraph property keyed by
+                      hotkey, so an ss58 holding one is registered as this subnet's
+                      validator hotkey and /validators/{ss58} resolves -- a coldkey-only
+                      address never carries a permit, so the existing gate is also what
+                      keeps this link off those pages. Rest styling is unchanged; only
+                      the hover affordance is new, matching the SN pill above. */}
                   {r.validator_permit ? (
-                    <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-500">
+                    <Link
+                      to="/validators/$hotkey"
+                      params={{ hotkey: ss58 }}
+                      title={`Validator profile for ${ss58}`}
+                      className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-500 transition-colors hover:bg-emerald-500/20"
+                    >
                       validator
-                    </span>
+                    </Link>
                   ) : (
                     <span className="text-ink-muted">—</span>
                   )}
