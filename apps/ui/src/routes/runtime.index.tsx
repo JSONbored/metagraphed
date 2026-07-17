@@ -6,6 +6,10 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
 import { PageHero, ShareButton, ActionBar, TableState, TimeAgo } from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import {
+  RuntimeUpgradeCardList,
+  orderRuntimeUpgradesNewestFirst,
+} from "@/components/metagraphed/runtime-upgrade-card-list";
 import { runtimeVersionHistoryQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { RuntimeVersionHistory } from "@/lib/metagraphed/types";
@@ -57,9 +61,7 @@ function RuntimePage() {
 function RuntimeContent() {
   const { data: res } = useSuspenseQuery(runtimeVersionHistoryQuery());
   const history = res.data;
-  // Backend orders transitions ascending by block_number (earliest first);
-  // display newest first, matching every other timeline view on this site.
-  const rows = [...history.transitions].reverse();
+  const rows = orderRuntimeUpgradesNewestFirst(history.transitions);
 
   return (
     <>
@@ -72,9 +74,10 @@ function RuntimeContent() {
           generatedAt={history.coverage_from_at ?? undefined}
         />
       ) : (
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        <>
+          <div className="hidden md:block rounded-xl border border-border bg-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
               <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
                 <tr>
                   <th className="px-3 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest">
@@ -117,8 +120,13 @@ function RuntimeContent() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
-        </div>
+          <RuntimeUpgradeCardList
+            rows={rows}
+            className="grid gap-3 sm:grid-cols-2 md:hidden"
+          />
+        </>
       )}
     </>
   );
