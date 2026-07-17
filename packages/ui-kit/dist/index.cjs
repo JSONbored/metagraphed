@@ -1,10 +1,10 @@
 'use strict';
 
-var clsx = require('clsx');
-var tailwindMerge = require('tailwind-merge');
 var React3 = require('react');
 var AccordionPrimitive = require('@radix-ui/react-accordion');
 var lucideReact = require('lucide-react');
+var clsx = require('clsx');
+var tailwindMerge = require('tailwind-merge');
 var jsxRuntime = require('react/jsx-runtime');
 var cmdk = require('cmdk');
 var DialogPrimitive = require('@radix-ui/react-dialog');
@@ -34,15 +34,15 @@ function _interopNamespace(e) {
   return Object.freeze(n);
 }
 
-var clsx__default = /*#__PURE__*/_interopDefault(clsx);
 var React3__namespace = /*#__PURE__*/_interopNamespace(React3);
 var AccordionPrimitive__namespace = /*#__PURE__*/_interopNamespace(AccordionPrimitive);
+var clsx__default = /*#__PURE__*/_interopDefault(clsx);
 var DialogPrimitive__namespace = /*#__PURE__*/_interopNamespace(DialogPrimitive);
 var HoverCardPrimitive__namespace = /*#__PURE__*/_interopNamespace(HoverCardPrimitive);
 var PopoverPrimitive__namespace = /*#__PURE__*/_interopNamespace(PopoverPrimitive);
 var TooltipPrimitive__namespace = /*#__PURE__*/_interopNamespace(TooltipPrimitive);
 
-// src/lib/utils.ts
+// src/components/ui/accordion.tsx
 function cn(...inputs) {
   return tailwindMerge.twMerge(clsx__default.default(...inputs));
 }
@@ -4134,7 +4134,6 @@ exports.TreemapMini = TreemapMini;
 exports.ViewModeToggle = ViewModeToggle;
 exports.Wordmark = Wordmark;
 exports.YieldPercentileStrip = YieldPercentileStrip;
-exports.cn = cn;
 exports.fmtYield = fmtYield;
 exports.freshnessBadgeTimeCopy = freshnessBadgeTimeCopy;
 exports.freshnessDotClass = freshnessDotClass;

@@ -1,7 +1,5 @@
 import "./styles.css";
 
-export { cn } from "@/lib/utils";
-
 export {
   Accordion,
   AccordionItem,
