@@ -257,6 +257,10 @@ export const R2_ONLY_PATTERNS = [
   // like its sibling live routes so the contract maps a schema to the route
   // without the build expecting a committed/staged artifact.
   /^compare\.json$/,
+  // Validator-side comparison (#6325), composed live from the neurons tier at
+  // /api/v1/compare/validators — never written as a file. Same R2-only
+  // reasoning as its subnet-side sibling above.
+  /^compare\/validators\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.
   /^rpc\/usage\.json$/,
