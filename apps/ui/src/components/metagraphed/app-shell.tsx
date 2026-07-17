@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
@@ -87,6 +87,12 @@ export function AppShell({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
+  // #6416: the hamburger sits in the header, not inside the mobile-nav <Sheet>,
+  // so it can't be a <SheetTrigger> and Radix has no trigger node to return focus
+  // to on close -- it drops to <body>. Keep a ref to the hamburger and restore
+  // it in the Sheet's onCloseAutoFocus. (Same shape as ApiDrawer's #6418 fix; the
+  // hamburger is this Sheet's only opener, so a direct ref is enough.)
+  const hamburgerRef = useRef<HTMLButtonElement | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const crumbs = useMemo(() => buildCrumbs(pathname), [pathname]);
@@ -149,6 +155,7 @@ export function AppShell({
           >
             <div className="max-w-shell-max mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
               <button
+                ref={hamburgerRef}
                 className="lg:hidden rounded-md p-2 text-ink hover:bg-surface min-h-11 min-w-11 inline-flex items-center justify-center"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open menu"
@@ -266,6 +273,15 @@ export function AppShell({
             <SheetContent
               side="left"
               className="flex w-72 max-w-[82vw] flex-col gap-4 border-r border-border bg-paper p-4"
+              onCloseAutoFocus={(event) => {
+                // #6416: restore focus to the hamburger, which Radix can't do on
+                // its own here (no in-tree SheetTrigger).
+                const el = hamburgerRef.current;
+                if (el && el.isConnected) {
+                  event.preventDefault();
+                  el.focus();
+                }
+              }}
             >
               <SheetTitle className="sr-only">Site navigation</SheetTitle>
               <Brand onNavigate={() => setMobileOpen(false)} />
