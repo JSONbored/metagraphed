@@ -210,7 +210,11 @@ const SECTION_TO_TAB: Record<string, string> = {
   "stake-quote": "overview",
   reliability: "overview",
   lineage: "overview",
-  evidence: "overview",
+  // #6434: the Overview embed is a preview and owns `evidence-preview`; the
+  // bare `evidence` id belongs to the dedicated Evidence tab below, like every
+  // other tab-owning section. Mirrors the preview-vs-full id split in
+  // providers.$slug.tsx (`subnets-served-preview` vs `subnets-served`).
+  "evidence-preview": "overview",
   metagraph: "metagraph",
   neuron: "metagraph",
   concentration: "metagraph",
@@ -228,6 +232,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   "schema-drift": "schemas",
   candidates: "candidates",
   gaps: "gaps",
+  evidence: "evidence",
   api: "api",
 };
 
@@ -332,8 +337,8 @@ function ProfileShell({ netuid }: { netuid: number }) {
             <SectionAnchor
               id="evidence"
               title="Evidence & sources"
-              subtitle="Every claim should be traceable."
-              info="Source URLs and timestamps for verified registry entries."
+              subtitle="Primary links and recorded evidence backing this profile."
+              info="GET /api/v1/evidence — source URLs and timestamps for verified registry entries."
             >
               <EvidencePanel netuid={netuid} />
             </SectionAnchor>
@@ -493,12 +498,14 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
       {/* 7 — Cross-network lineage (#1113): renders only when paired. */}
       <SubnetLineageSection netuid={netuid} />
 
-      {/* 8 — Sources & evidence — UI's wired EvidencePanel (NOT evidence-clusters). */}
+      {/* 8 — Evidence & sources — UI's wired EvidencePanel (NOT evidence-clusters).
+          Preview embed of the dedicated Evidence tab: same copy, own
+          `evidence-preview` id, muted rail marking it as lower-density context. */}
       <SectionAnchor
-        id="evidence"
-        title="Sources & evidence"
+        id="evidence-preview"
+        title="Evidence & sources"
         subtitle="Primary links and recorded evidence backing this profile."
-        info="GET /api/v1/evidence"
+        info="GET /api/v1/evidence — source URLs and timestamps for verified registry entries."
         tone="muted"
       >
         <EvidencePanel netuid={netuid} />
