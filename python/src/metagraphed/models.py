@@ -87,6 +87,37 @@ class Subnet(_Model):
 
 
 @dataclass
+class SubnetDetail(_Model):
+    """The ``data.subnet`` entity from ``GET /api/v1/subnets/{netuid}``.
+
+    The route's compound artifact also includes related surfaces, candidates,
+    and gaps; callers that need those can use the raw :meth:`client.fetch`
+    method. This model follows the OpenAPI ``SubnetDetail`` entity itself.
+    """
+
+    netuid: Optional[int] = None
+    slug: Optional[str] = None
+    name: Optional[str] = None
+    status: Optional[str] = None
+    subnet_type: Optional[str] = None
+    categories: Optional[List[str]] = None
+    derived_categories: Optional[List[str]] = None
+    coverage_level: Optional[str] = None
+    curation_level: Optional[str] = None
+    description: Optional[str] = None
+    symbol: Optional[str] = None
+    website_url: Optional[str] = None
+    docs_url: Optional[str] = None
+    source_repo: Optional[str] = None
+    logo_url: Optional[str] = None
+    tempo: Optional[int] = None
+    surface_count: Optional[int] = None
+    candidate_count: Optional[int] = None
+    gap_count: Optional[int] = None
+    raw: Mapping[str, Any] = field(default_factory=dict, repr=False)
+
+
+@dataclass
 class Surface(_Model):
     id: Optional[str] = None
     netuid: Optional[int] = None
@@ -122,6 +153,65 @@ class Provider(_Model):
     authority: Optional[str] = None
     surface_count: Optional[int] = None
     raw: Mapping[str, Any] = field(default_factory=dict, repr=False)
+
+
+@dataclass
+class CandidateSurface(_Model):
+    """One row from ``GET /api/v1/candidates``."""
+
+    id: Optional[str] = None
+    netuid: Optional[int] = None
+    state: Optional[str] = None
+    kind: Optional[str] = None
+    name: Optional[str] = None
+    url: Optional[str] = None
+    provider: Optional[str] = None
+    confidence: Optional[str] = None
+    auth_required: Optional[bool] = None
+    public_safe: Optional[bool] = None
+    source_urls: Optional[List[str]] = None
+    raw: Mapping[str, Any] = field(default_factory=dict, repr=False)
+
+
+@dataclass
+class SubnetProfile(_Model):
+    """One row from ``GET /api/v1/profiles``."""
+
+    netuid: Optional[int] = None
+    slug: Optional[str] = None
+    name: Optional[str] = None
+    project_name: Optional[str] = None
+    subnet_type: Optional[str] = None
+    status: Optional[str] = None
+    categories: Optional[List[str]] = None
+    derived_categories: Optional[List[str]] = None
+    curation_level: Optional[str] = None
+    review_state: Optional[str] = None
+    confidence: Optional[str] = None
+    profile_level: Optional[str] = None
+    completeness_score: Optional[int] = None
+    integration_readiness: Optional[int] = None
+    surface_count: Optional[int] = None
+    endpoint_count: Optional[int] = None
+    raw: Mapping[str, Any] = field(default_factory=dict, repr=False)
+
+
+@dataclass
+class HealthSummary(_Model):
+    """Global operational summary from ``GET /api/v1/health``."""
+
+    schema_version: Optional[int] = None
+    contract_version: Optional[str] = None
+    generated_at: Optional[str] = None
+    operational_observed_at: Optional[str] = None
+    scope: Optional[str] = None
+    source: Optional[str] = None
+    health_source: Optional[str] = None
+    global_: Optional[Mapping[str, Any]] = None
+    subnets: Optional[List[Mapping[str, Any]]] = None
+    raw: Mapping[str, Any] = field(default_factory=dict, repr=False)
+
+    _aliases: ClassVar[Mapping[str, str]] = {"global": "global_"}
 
 
 @dataclass

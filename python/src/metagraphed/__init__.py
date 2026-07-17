@@ -13,9 +13,13 @@ from .client import (
 )
 from .models import (
     AgentCatalogSubnet,
+    CandidateSurface,
     Endpoint,
+    HealthSummary,
     Provider,
     Subnet,
+    SubnetDetail,
+    SubnetProfile,
     Surface,
 )
 
@@ -27,13 +31,17 @@ from .aio import AsyncMetagraphedClient
 __all__ = [
     "AgentCatalogSubnet",
     "AsyncMetagraphedClient",
+    "CandidateSurface",
     "DEFAULT_BASE_URL",
     "DEFAULT_USER_AGENT",
     "Endpoint",
+    "HealthSummary",
     "MetagraphedClient",
     "MetagraphedError",
     "Provider",
     "Subnet",
+    "SubnetDetail",
+    "SubnetProfile",
     "Surface",
     "metagraphed_fetch",
     "metagraphed_fetch_all",

@@ -12,9 +12,14 @@ except ImportError:  # pragma: no cover - exercised only without the extra
 from metagraphed import (
     AgentCatalogSubnet,
     AsyncMetagraphedClient,
+    CandidateSurface,
     Endpoint,
+    HealthSummary,
     MetagraphedError,
+    Provider,
     Subnet,
+    SubnetDetail,
+    SubnetProfile,
     Surface,
 )
 
@@ -149,6 +154,33 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(subnets[0].integration_readiness, 72)
         self.assertIsNone(subnets[0].completeness_score)
         self.assertNotIn("completeness_score", subnets[0].raw)
+
+    async def test_get_subnet_returns_typed_detail(self):
+        client = self._client(
+            httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "data": {
+                        "subnet": {
+                            "netuid": 7,
+                            "name": "Allways",
+                            "slug": "allways",
+                            "coverage_level": "verified",
+                        },
+                        "surfaces": [{"id": "sn-7-openapi"}],
+                        "candidate_surfaces": [],
+                        "gaps": {"missing_kinds": ["docs"]},
+                    },
+                },
+            )
+        )
+        detail = await client.get_subnet(7)
+        self.assertIsInstance(detail, SubnetDetail)
+        self.assertEqual(detail.netuid, 7)
+        self.assertEqual(detail.slug, "allways")
+        self.assertEqual(detail.coverage_level, "verified")
+        self.assertTrue(client._client.calls[0][1].endswith("/api/v1/subnets/7"))
 
     async def test_paginate_follows_next_cursor_with_nested_collection(self):
         # Mirrors README async usage of paginate via fetch_all / typed helpers:
@@ -305,6 +337,114 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(endpoint.monitoring_status, "monitored")
         self.assertEqual(endpoint.raw["id"], "ep-sn-7-subnet-api")
         self.assertFalse(hasattr(endpoint, "base_url"))
+
+    async def test_get_provider_returns_typed_provider(self):
+        client = self._client(
+            httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "data": {
+                        "provider": {
+                            "id": "macrocosmos",
+                            "name": "Macrocosmos",
+                            "authority": "official",
+                            "surface_count": 12,
+                        }
+                    },
+                },
+            )
+        )
+        provider = await client.get_provider("macrocosmos")
+        self.assertIsInstance(provider, Provider)
+        self.assertEqual(provider.slug, "macrocosmos")
+        self.assertEqual(provider.surface_count, 12)
+        self.assertTrue(
+            client._client.calls[0][1].endswith("/api/v1/providers/macrocosmos")
+        )
+
+    async def test_candidates_returns_typed_models(self):
+        client = self._client(
+            httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "candidates": [
+                            {
+                                "id": "candidate-7-openapi",
+                                "netuid": 7,
+                                "kind": "openapi",
+                                "state": "schema-valid",
+                                "confidence": "high",
+                            }
+                        ]
+                    },
+                    "meta": {
+                        "pagination": {
+                            "collection": "candidates",
+                            "next_cursor": None,
+                        }
+                    },
+                },
+            )
+        )
+        candidates = await client.candidates(confidence="high")
+        self.assertIsInstance(candidates[0], CandidateSurface)
+        self.assertEqual(candidates[0].id, "candidate-7-openapi")
+        self.assertEqual(client._client.calls[0][2], {"confidence": "high"})
+
+    async def test_profiles_returns_typed_models(self):
+        client = self._client(
+            httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "profiles": [
+                            {
+                                "netuid": 7,
+                                "slug": "allways",
+                                "name": "Allways",
+                                "profile_level": "operational",
+                                "completeness_score": 82,
+                            }
+                        ]
+                    },
+                    "meta": {
+                        "pagination": {
+                            "collection": "profiles",
+                            "next_cursor": None,
+                        }
+                    },
+                },
+            )
+        )
+        profiles = await client.profiles(profile_level="operational")
+        self.assertIsInstance(profiles[0], SubnetProfile)
+        self.assertEqual(profiles[0].completeness_score, 82)
+        self.assertEqual(
+            client._client.calls[0][2], {"profile_level": "operational"}
+        )
+
+    async def test_health_returns_typed_summary(self):
+        client = self._client(
+            httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "data": {
+                        "schema_version": 1,
+                        "global": {"status": "ok", "surface_count": 4},
+                        "subnets": [{"netuid": 7, "status": "ok"}],
+                        "health_source": "probe-derived",
+                    },
+                },
+            )
+        )
+        health = await client.health()
+        self.assertIsInstance(health, HealthSummary)
+        self.assertEqual(health.global_["status"], "ok")
+        self.assertEqual(health.subnets[0]["netuid"], 7)
+        self.assertTrue(client._client.calls[0][1].endswith("/api/v1/health"))
 
     async def test_agent_catalog_returns_typed_model(self):
         client = self._client(

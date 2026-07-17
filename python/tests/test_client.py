@@ -10,11 +10,15 @@ import metagraphed.client as client
 
 from metagraphed import (
     AgentCatalogSubnet,
+    CandidateSurface,
     Endpoint,
+    HealthSummary,
     MetagraphedClient,
     MetagraphedError,
     Provider,
     Subnet,
+    SubnetDetail,
+    SubnetProfile,
     Surface,
     metagraphed_fetch,
     metagraphed_fetch_all,
@@ -579,6 +583,35 @@ class FetchAllAndModelsTest(unittest.TestCase):
         self.assertIsNone(subnets[0].completeness_score)
         self.assertNotIn("completeness_score", subnets[0].raw)
 
+    def test_get_subnet_returns_typed_detail(self):
+        def fake_urlopen(request, timeout=None):
+            self.assertIn("/api/v1/subnets/7", request.full_url)
+            return _FakeResponse(
+                {
+                    "ok": True,
+                    "data": {
+                        "subnet": {
+                            "netuid": 7,
+                            "name": "Allways",
+                            "slug": "allways",
+                            "coverage_level": "verified",
+                        },
+                        "surfaces": [{"id": "sn-7-openapi"}],
+                        "candidate_surfaces": [],
+                        "gaps": {"missing_kinds": ["docs"]},
+                    },
+                }
+            )
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            detail = MetagraphedClient().get_subnet(7)
+
+        self.assertIsInstance(detail, SubnetDetail)
+        self.assertEqual(detail.netuid, 7)
+        self.assertEqual(detail.slug, "allways")
+        self.assertEqual(detail.coverage_level, "verified")
+        self.assertEqual(detail.raw["name"], "Allways")
+
     def test_model_from_dict_ignores_unknown_and_keeps_raw(self):
         surface = Surface.from_dict(
             {"id": "x", "kind": "openapi", "unknown_field": 1}
@@ -800,6 +833,112 @@ class FetchAllAndModelsTest(unittest.TestCase):
             "https://should-not-become-a-typed-field.example",
         )
         self.assertIs(endpoint.raw["unknown_extra"], True)
+
+    def test_get_provider_returns_typed_provider(self):
+        def fake_urlopen(request, timeout=None):
+            self.assertIn("/api/v1/providers/macrocosmos", request.full_url)
+            return _FakeResponse(
+                {
+                    "ok": True,
+                    "data": {
+                        "provider": {
+                            "id": "macrocosmos",
+                            "name": "Macrocosmos",
+                            "authority": "official",
+                            "surface_count": 12,
+                        }
+                    },
+                }
+            )
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            provider = MetagraphedClient().get_provider("macrocosmos")
+
+        self.assertIsInstance(provider, Provider)
+        self.assertEqual(provider.slug, "macrocosmos")
+        self.assertEqual(provider.surface_count, 12)
+
+    def test_candidates_convenience_returns_typed_models(self):
+        pages = [
+            {
+                "data": {
+                    "candidates": [
+                        {
+                            "id": "candidate-7-openapi",
+                            "netuid": 7,
+                            "kind": "openapi",
+                            "state": "schema-valid",
+                            "confidence": "high",
+                            "url": "https://api.example.com/openapi.json",
+                        }
+                    ]
+                },
+                "meta": {
+                    "pagination": {
+                        "collection": "candidates",
+                        "next_cursor": None,
+                    }
+                },
+            }
+        ]
+        with self._patch_pages(pages):
+            candidates = MetagraphedClient().candidates(confidence="high")
+
+        self.assertIsInstance(candidates[0], CandidateSurface)
+        self.assertEqual(candidates[0].id, "candidate-7-openapi")
+        self.assertEqual(candidates[0].confidence, "high")
+
+    def test_profiles_convenience_returns_typed_models(self):
+        pages = [
+            {
+                "data": {
+                    "profiles": [
+                        {
+                            "netuid": 7,
+                            "slug": "allways",
+                            "name": "Allways",
+                            "profile_level": "operational",
+                            "completeness_score": 82,
+                        }
+                    ]
+                },
+                "meta": {
+                    "pagination": {
+                        "collection": "profiles",
+                        "next_cursor": None,
+                    }
+                },
+            }
+        ]
+        with self._patch_pages(pages):
+            profiles = MetagraphedClient().profiles(profile_level="operational")
+
+        self.assertIsInstance(profiles[0], SubnetProfile)
+        self.assertEqual(profiles[0].netuid, 7)
+        self.assertEqual(profiles[0].completeness_score, 82)
+
+    def test_health_returns_typed_summary(self):
+        def fake_urlopen(request, timeout=None):
+            self.assertIn("/api/v1/health", request.full_url)
+            return _FakeResponse(
+                {
+                    "ok": True,
+                    "data": {
+                        "schema_version": 1,
+                        "global": {"status": "ok", "surface_count": 4},
+                        "subnets": [{"netuid": 7, "status": "ok"}],
+                        "health_source": "probe-derived",
+                    },
+                }
+            )
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            health = MetagraphedClient().health()
+
+        self.assertIsInstance(health, HealthSummary)
+        self.assertEqual(health.global_["status"], "ok")
+        self.assertEqual(health.subnets[0]["netuid"], 7)
+        self.assertEqual(health.raw["health_source"], "probe-derived")
 
     def test_agent_catalog_returns_typed_model(self):
         # Realistic AgentCatalogSubnetArtifact data envelope

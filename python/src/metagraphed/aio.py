@@ -30,7 +30,17 @@ from .client import (
     _query_pairs,
     _url_origin,
 )
-from .models import AgentCatalogSubnet, Endpoint, Provider, Subnet, Surface
+from .models import (
+    AgentCatalogSubnet,
+    CandidateSurface,
+    Endpoint,
+    HealthSummary,
+    Provider,
+    Subnet,
+    SubnetDetail,
+    SubnetProfile,
+    Surface,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - type-checking only
     import httpx
@@ -298,22 +308,67 @@ class AsyncMetagraphedClient:
             await self.fetch_all("/api/v1/subnets", query=query or None)
         )
 
+    async def get_subnet(self, netuid: Any) -> SubnetDetail:
+        """One subnet detail artifact as a typed
+        :class:`~metagraphed.models.SubnetDetail`."""
+        envelope = await self.fetch(
+            "/api/v1/subnets/{netuid}", path_params={"netuid": netuid}
+        )
+        data = envelope.get("data") if isinstance(envelope, dict) else None
+        subnet = data.get("subnet") if isinstance(data, dict) else None
+        return SubnetDetail.from_dict(subnet)
+
     async def surfaces(self, **query: Any) -> List[Surface]:
+        """Every surface as a typed :class:`~metagraphed.models.Surface`."""
         return Surface.list_from(
             await self.fetch_all("/api/v1/surfaces", query=query or None)
         )
 
     async def endpoints(self, **query: Any) -> List[Endpoint]:
+        """Every endpoint as a typed :class:`~metagraphed.models.Endpoint`."""
         return Endpoint.list_from(
             await self.fetch_all("/api/v1/endpoints", query=query or None)
         )
 
     async def providers(self, **query: Any) -> List[Provider]:
+        """Every provider as a typed :class:`~metagraphed.models.Provider`."""
         return Provider.list_from(
             await self.fetch_all("/api/v1/providers", query=query or None)
         )
 
+    async def get_provider(self, slug: Any) -> Provider:
+        """One provider as a typed :class:`~metagraphed.models.Provider`."""
+        envelope = await self.fetch(
+            "/api/v1/providers/{slug}", path_params={"slug": slug}
+        )
+        data = envelope.get("data") if isinstance(envelope, dict) else None
+        provider = data.get("provider") if isinstance(data, dict) else None
+        return Provider.from_dict(provider)
+
+    async def candidates(self, **query: Any) -> List[CandidateSurface]:
+        """Every candidate as a typed
+        :class:`~metagraphed.models.CandidateSurface`."""
+        return CandidateSurface.list_from(
+            await self.fetch_all("/api/v1/candidates", query=query or None)
+        )
+
+    async def profiles(self, **query: Any) -> List[SubnetProfile]:
+        """Every subnet profile as a typed
+        :class:`~metagraphed.models.SubnetProfile`."""
+        return SubnetProfile.list_from(
+            await self.fetch_all("/api/v1/profiles", query=query or None)
+        )
+
+    async def health(self) -> HealthSummary:
+        """Global operational health as a typed
+        :class:`~metagraphed.models.HealthSummary`."""
+        envelope = await self.fetch("/api/v1/health")
+        data = envelope.get("data") if isinstance(envelope, dict) else None
+        return HealthSummary.from_dict(data)
+
     async def agent_catalog(self, netuid: Any) -> AgentCatalogSubnet:
+        """One subnet's agent catalog as a typed
+        :class:`~metagraphed.models.AgentCatalogSubnet`."""
         envelope = await self.fetch(
             "/api/v1/agent-catalog/{netuid}", path_params={"netuid": netuid}
         )

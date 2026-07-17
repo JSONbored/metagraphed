@@ -16,7 +16,17 @@ import urllib.request
 from importlib.metadata import PackageNotFoundError, version as _package_version
 from typing import Any, Iterator, List, Mapping, Optional, Sequence, Tuple
 
-from .models import AgentCatalogSubnet, Endpoint, Provider, Subnet, Surface
+from .models import (
+    AgentCatalogSubnet,
+    CandidateSurface,
+    Endpoint,
+    HealthSummary,
+    Provider,
+    Subnet,
+    SubnetDetail,
+    SubnetProfile,
+    Surface,
+)
 
 # Single source of truth = the package metadata (pyproject.toml `version`, which
 # release-please bumps); read it at runtime so the User-Agent can never disagree
@@ -548,6 +558,16 @@ class MetagraphedClient:
             self.fetch_all("/api/v1/subnets", query=query or None)
         )
 
+    def get_subnet(self, netuid: Any) -> SubnetDetail:
+        """One subnet detail artifact as a typed
+        :class:`~metagraphed.models.SubnetDetail`."""
+        envelope = self.fetch(
+            "/api/v1/subnets/{netuid}", path_params={"netuid": netuid}
+        )
+        data = envelope.get("data") if isinstance(envelope, dict) else None
+        subnet = data.get("subnet") if isinstance(data, dict) else None
+        return SubnetDetail.from_dict(subnet)
+
     def surfaces(self, **query: Any) -> List[Surface]:
         """Every surface as a typed :class:`~metagraphed.models.Surface`."""
         return Surface.list_from(
@@ -565,6 +585,36 @@ class MetagraphedClient:
         return Provider.list_from(
             self.fetch_all("/api/v1/providers", query=query or None)
         )
+
+    def get_provider(self, slug: Any) -> Provider:
+        """One provider as a typed :class:`~metagraphed.models.Provider`."""
+        envelope = self.fetch(
+            "/api/v1/providers/{slug}", path_params={"slug": slug}
+        )
+        data = envelope.get("data") if isinstance(envelope, dict) else None
+        provider = data.get("provider") if isinstance(data, dict) else None
+        return Provider.from_dict(provider)
+
+    def candidates(self, **query: Any) -> List[CandidateSurface]:
+        """Every candidate as a typed
+        :class:`~metagraphed.models.CandidateSurface`."""
+        return CandidateSurface.list_from(
+            self.fetch_all("/api/v1/candidates", query=query or None)
+        )
+
+    def profiles(self, **query: Any) -> List[SubnetProfile]:
+        """Every subnet profile as a typed
+        :class:`~metagraphed.models.SubnetProfile`."""
+        return SubnetProfile.list_from(
+            self.fetch_all("/api/v1/profiles", query=query or None)
+        )
+
+    def health(self) -> HealthSummary:
+        """Global operational health as a typed
+        :class:`~metagraphed.models.HealthSummary`."""
+        envelope = self.fetch("/api/v1/health")
+        data = envelope.get("data") if isinstance(envelope, dict) else None
+        return HealthSummary.from_dict(data)
 
     def agent_catalog(self, netuid: Any) -> AgentCatalogSubnet:
         """One subnet's agent catalog as a typed
