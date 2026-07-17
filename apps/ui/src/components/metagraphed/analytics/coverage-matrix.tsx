@@ -96,7 +96,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             Coverage matrix
           </div>
-          <h3 className="mt-0.5 font-display text-base font-semibold text-ink-strong">
+          <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
             What each subnet is missing
           </h3>
         </div>
