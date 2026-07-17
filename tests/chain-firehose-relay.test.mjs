@@ -23,12 +23,17 @@ const captureMessage = vi.hoisted(() => vi.fn());
 const captureException = vi.hoisted(() => vi.fn());
 const sentryInit = vi.hoisted(() => vi.fn());
 const setTag = vi.hoisted(() => vi.fn());
+const startSession = vi.hoisted(() => vi.fn());
+const endSession = vi.hoisted(() => vi.fn());
+const flush = vi.hoisted(() => vi.fn(async () => true));
 vi.mock("@sentry/node", () => ({
   init: sentryInit,
   setTag,
   captureMessage,
   captureException,
-  flush: vi.fn(async () => true),
+  startSession,
+  endSession,
+  flush,
 }));
 
 import {
@@ -46,6 +51,7 @@ import {
   computeBackoffDelayMs,
   computeBatchPaceDelayMs,
   computeDropWindowUpdate,
+  endSessionAndFlush,
   forwardBatch,
   forwardChainFirehoseNotification,
   forwardWithRetry,
@@ -755,28 +761,46 @@ test("reportRateLimitPause: calls Sentry.captureMessage directly, once per call 
 test("initSentry: no-ops (never calls Sentry.init) when SENTRY_DSN is unset", () => {
   sentryInit.mockClear();
   setTag.mockClear();
+  startSession.mockClear();
   vi.stubEnv("SENTRY_DSN", "");
   initSentry();
   assert.equal(sentryInit.mock.calls.length, 0);
   assert.equal(setTag.mock.calls.length, 0);
+  assert.equal(startSession.mock.calls.length, 0);
   vi.unstubAllEnvs();
 });
 
-test("initSentry: calls Sentry.init with dsn/environment/release and tags the component when SENTRY_DSN is set", () => {
+test("initSentry: calls Sentry.init with dsn/environment/release, tags the component, and starts a release-health session when SENTRY_DSN is set", () => {
   sentryInit.mockClear();
   setTag.mockClear();
+  startSession.mockClear();
   vi.stubEnv("SENTRY_DSN", "https://abc@o0.ingest.sentry.io/0");
   vi.stubEnv("SENTRY_ENVIRONMENT", "staging");
   vi.stubEnv("SENTRY_RELEASE", "deadbeef");
   initSentry();
   assert.equal(sentryInit.mock.calls.length, 1);
-  assert.deepEqual(sentryInit.mock.calls[0][0], {
-    dsn: "https://abc@o0.ingest.sentry.io/0",
-    environment: "staging",
-    release: "deadbeef",
-    tracesSampleRate: 0,
-  });
+  const initArgs = sentryInit.mock.calls[0][0];
+  assert.equal(initArgs.dsn, "https://abc@o0.ingest.sentry.io/0");
+  assert.equal(initArgs.environment, "staging");
+  assert.equal(initArgs.release, "deadbeef");
+  assert.equal(initArgs.tracesSampleRate, 0);
   assert.deepEqual(setTag.mock.calls[0], ["component", "chain-firehose-relay"]);
+  assert.equal(startSession.mock.calls.length, 1);
+  vi.unstubAllEnvs();
+});
+
+test("initSentry: filters the default ProcessSession integration out (it would otherwise auto-start a second, spurious session)", () => {
+  sentryInit.mockClear();
+  vi.stubEnv("SENTRY_DSN", "https://abc@o0.ingest.sentry.io/0");
+  initSentry();
+
+  const { integrations } = sentryInit.mock.calls[0][0];
+  const filtered = integrations([{ name: "ProcessSession" }, { name: "Http" }]);
+  assert.deepEqual(
+    filtered.map((i) => i.name),
+    ["Http"],
+  );
+
   vi.unstubAllEnvs();
 });
 
@@ -787,6 +811,17 @@ test("initSentry: SENTRY_ENVIRONMENT defaults to 'production' when unset", () =>
   initSentry();
   assert.equal(sentryInit.mock.calls[0][0].environment, "production");
   vi.unstubAllEnvs();
+});
+
+// --- endSessionAndFlush -------------------------------------------------------
+
+test("endSessionAndFlush: ends the session and flushes", async () => {
+  endSession.mockClear();
+  flush.mockClear();
+  await endSessionAndFlush();
+  assert.equal(endSession.mock.calls.length, 1);
+  assert.equal(flush.mock.calls.length, 1);
+  assert.equal(flush.mock.calls[0][0], 2000);
 });
 
 // --- touchHeartbeat / isHeartbeatFresh -----------------------------------------

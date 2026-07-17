@@ -27,6 +27,7 @@ import { createConnectionLimiter, resolveClientIp } from "./rate-limit.mjs";
 import { selectWssUpstreams } from "./select.mjs";
 import {
   initSentry,
+  endSessionAndFlush,
   computeNoUpstreamWindowUpdate,
   reportNoUpstreamWindow,
   reportPoolStale,
@@ -224,3 +225,16 @@ server.listen(PORT, () =>
     `wss-lb listening :${PORT} · networks=${NETWORKS.join(",")} · api=${API}`,
   ),
 );
+
+// Railway sends SIGTERM on every redeploy -- without this, the process
+// simply dies mid-"ok" and its Sentry release-health session is never
+// closed, reporting neither healthy nor crashed. Scoped to just the Sentry
+// session (not draining in-flight WS connections/the HTTP server): the
+// process manager already restarts on exit, and existing client sockets
+// close on their own once the process actually exits either way.
+async function shutdown() {
+  await endSessionAndFlush();
+  process.exit(0);
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

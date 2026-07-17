@@ -37,6 +37,7 @@
 
 import { writeFileSync, statSync } from "node:fs";
 import postgres from "postgres";
+import { closeSession } from "@sentry/core";
 import * as Sentry from "@sentry/node";
 
 // Reports to the consolidated `metagraphed` Sentry project. Silently no-ops
@@ -64,8 +65,36 @@ export function initSentry() {
     environment: process.env.SENTRY_ENVIRONMENT || "production",
     release: process.env.SENTRY_RELEASE, // deployed git SHA
     tracesSampleRate: 0,
+    // The default ProcessSession integration auto-starts its own session
+    // during Sentry.init() -- left unfiltered, our own startSession() call
+    // below would immediately end that one (a spurious extra "exited"
+    // session on every process boot) and replace it, instead of there being
+    // exactly one session per boot. Confirmed empirically against a real
+    // local Sentry-envelope-receiving HTTP server (see scripts/
+    // observability.mjs's own comment on this same integration for the
+    // canonical writeup).
+    integrations: (integrations) =>
+      integrations.filter(
+        (integration) => integration.name !== "ProcessSession",
+      ),
   });
   Sentry.setTag("component", "chain-firehose-relay");
+  // Release-health session tracking (Crash Free Sessions/Users), process-
+  // lifetime model: this is an always-on relay, not a one-shot batch script
+  // (contrast scripts/observability.mjs's per-run sessions) -- one session
+  // per process boot, closed healthy on the existing graceful SIGTERM/SIGINT
+  // shutdown path below, or marked crashed in main()'s own top-level .catch()
+  // (see that catch block's comment for why no separate uncaughtException/
+  // unhandledRejection wiring is needed here, unlike scripts/observability.mjs).
+  Sentry.startSession();
+}
+
+// Closes the process-lifetime session as a healthy exit. Called from the
+// graceful SIGTERM/SIGINT shutdown path once the poll loop has actually
+// stopped -- see main()'s own shutdown() closure.
+export async function endSessionAndFlush() {
+  Sentry.endSession();
+  await Sentry.flush(2000);
 }
 
 export const CHAIN_FIREHOSE_DROP_REPORT_THRESHOLD = 500;
@@ -619,6 +648,7 @@ async function main() {
     }
   }
   await sql.end({ timeout: 5 });
+  await endSessionAndFlush();
   process.exit(0);
 }
 
@@ -636,9 +666,20 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       // Explicitly caught here, so @sentry/node's default
       // OnUnhandledRejection integration never sees this -- Node does not
       // consider a promise "unhandled" once something calls .catch() on it.
+      // This is also main()'s ONLY path to the process actually exiting non-
+      // zero (every await inside its poll loop funnels errors up through
+      // this same chain, there's no other unguarded top-level code), so
+      // marking the session crashed here -- rather than a separate
+      // uncaughtException/unhandledRejection handler like
+      // scripts/observability.mjs needs -- covers every real crash.
+      Sentry.captureException(error);
+      const session = Sentry.getIsolationScope().getSession();
+      if (session) {
+        closeSession(session, "crashed");
+        Sentry.captureSession();
+      }
       // flush() before process.exit(1) is required: process.exit() is
       // synchronous and does not wait for Sentry's background network send.
-      Sentry.captureException(error);
       await Sentry.flush(2000);
       process.exit(1);
     });

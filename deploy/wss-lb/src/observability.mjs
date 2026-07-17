@@ -8,11 +8,59 @@
 // that file runs its HTTP server + refresh loop as an unconditional
 // top-level side effect on import, so it can't be required by a test file
 // directly (see server.mjs's own header).
+import { closeSession } from "@sentry/core";
 import * as Sentry from "@sentry/node";
+
+// Release-health session tracking (Crash Free Sessions/Users), process-
+// lifetime model: this is an always-on server, not a one-shot batch script
+// (contrast the canonical metagraphed repo's scripts/observability.mjs,
+// which sessions per script run) -- one session per process boot, closed
+// healthy on graceful SIGTERM/SIGINT shutdown (see server.mjs's own
+// shutdown handler) or marked crashed here on a genuinely uncaught
+// exception. @sentry/node's default OnUncaughtException/OnUnhandledRejection
+// integrations don't mark the active session crashed before exiting
+// (confirmed by reading node_modules/@sentry/node-core's actual source --
+// same finding scripts/observability.mjs's own header documents), and unlike
+// scripts/chain-firehose-relay.mjs this server has no single top-level
+// main().catch() boundary every crash funnels through (any of its event
+// handlers -- the HTTP server, the WS upgrade handler, the refresh/heartbeat
+// intervals -- could throw directly to the process level), so this module
+// owns the crash path itself: handlers registered before Sentry.init() runs
+// (Node calls uncaughtException/unhandledRejection listeners in registration
+// order), with those two default integrations filtered out so there's no
+// race between two competing exit paths.
+let sentryInitialized = false;
+
+async function handleFatal(error, exitCode) {
+  console.error("[wss-lb] fatal:", error);
+  if (sentryInitialized) {
+    Sentry.captureException(error);
+    const session = Sentry.getIsolationScope().getSession();
+    if (session) {
+      closeSession(session, "crashed");
+      Sentry.captureSession();
+    }
+    await Sentry.flush(2000);
+  }
+  process.exit(exitCode);
+}
 
 export function initSentry() {
   const dsn = process.env.SENTRY_DSN;
   if (!dsn) return;
+
+  // Registered before Sentry.init() -- see this module's own header for why
+  // ordering matters here.
+  process.on("uncaughtException", (error) => {
+    handleFatal(error, 1);
+  });
+  process.on("unhandledRejection", (reason) => {
+    handleFatal(
+      reason instanceof Error ? reason : new Error(String(reason)),
+      1,
+    );
+  });
+
   Sentry.init({
     dsn,
     environment: process.env.SENTRY_ENVIRONMENT || "production",
@@ -23,8 +71,33 @@ export function initSentry() {
     // SENTRY_RELEASE still wins if one is somehow already set.
     release: process.env.SENTRY_RELEASE || process.env.RAILWAY_GIT_COMMIT_SHA,
     tracesSampleRate: 0,
+    // Also filters out the default ProcessSession integration -- it calls
+    // startSession() itself during Sentry.init(), which our own
+    // Sentry.startSession() call below would otherwise immediately end
+    // (reporting a spurious extra "exited" session on every single process
+    // boot) and replace, rather than there being exactly one session per
+    // boot as intended. Confirmed empirically: without this, every boot
+    // sent two session envelopes (one "exited", one for this boot's real
+    // outcome) instead of one.
+    integrations: (integrations) =>
+      integrations.filter(
+        (integration) =>
+          integration.name !== "OnUncaughtException" &&
+          integration.name !== "OnUnhandledRejection" &&
+          integration.name !== "ProcessSession",
+      ),
   });
   Sentry.setTag("component", "wss-lb");
+  sentryInitialized = true;
+  Sentry.startSession();
+}
+
+// Closes the process-lifetime session as a healthy exit. Called from
+// server.mjs's own graceful SIGTERM/SIGINT handler.
+export async function endSessionAndFlush() {
+  if (!sentryInitialized) return;
+  Sentry.endSession();
+  await Sentry.flush(2000);
 }
 
 export const NO_UPSTREAM_REPORT_THRESHOLD = 50;
