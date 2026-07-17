@@ -1055,7 +1055,7 @@
       "id": "compare-validators",
       "path": "/metagraph/compare/validators.json",
       "schema_ref": "#/components/schemas/CompareValidatorsArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-07-03.2",

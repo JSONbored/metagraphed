@@ -1357,7 +1357,7 @@
       "id": "compare-validators",
       "path": "/metagraph/compare/validators.json",
       "schema_ref": "#/components/schemas/CompareValidatorsArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
