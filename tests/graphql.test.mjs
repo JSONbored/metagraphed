@@ -28,7 +28,7 @@ import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.mjs"
 import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.mjs";
 import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { resolveClientIp } from "../workers/config.mjs";
+import { DAY_MS, resolveClientIp } from "../workers/config.mjs";
 import {
   KV_ECONOMICS_CURRENT,
   KV_HEALTH_CURRENT,
@@ -10667,11 +10667,14 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 
   test("no Postgres tier flag: aggregates surface_uptime_daily rows straight off D1", async () => {
+    // Relative to now — a hardcoded day falls out of the 7d window and the
+    // assertion rots (same class as the chain-fees median date-rot fix).
+    const recentDay = new Date(Date.now() - DAY_MS).toISOString().slice(0, 10);
     const env = {
       METAGRAPH_HEALTH_DB: bulkTrendsD1([
         {
           netuid: 7,
-          date: "2026-07-09",
+          date: recentDay,
           total: 10,
           ok_count: 9,
           avg_latency_ms: 50,
