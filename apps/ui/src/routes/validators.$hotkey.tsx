@@ -14,6 +14,7 @@ import { PageHero, ShareButton, SectionAnchor, CopyableCode, StatTile } from "@j
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
 import { ValidatorApyPanel } from "@/components/metagraphed/validator-apy-panel";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import { WatchValidatorAlert } from "@/components/metagraphed/watch-validator-alert";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import { TakeManagementModal } from "@/components/metagraphed/take-management-modal";
@@ -310,6 +311,22 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             <span className="inline-flex max-w-full min-w-0 rounded-2xl border border-border/80 bg-card/80 px-3 py-2 mg-card-glow">
               <CopyableCode value={hotkey} truncate={false} className="max-w-full" />
             </span>
+            {/* #6427: the owning coldkey is fetched for the owner-only take
+                controls but was never shown to a regular visitor. Surface it as
+                a public /accounts/$ss58 link (not gated on isOwner) so anyone
+                can discover which account controls this hotkey. */}
+            {detail.coldkey ? (
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                  Coldkey
+                </span>
+                <AccountAddress
+                  ss58={detail.coldkey}
+                  truncate={false}
+                  fallback={<span className="text-sm text-ink-muted">—</span>}
+                />
+              </span>
+            ) : null}
           </span>
         }
         actions={
