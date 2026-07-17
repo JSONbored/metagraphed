@@ -177,11 +177,39 @@ export async function readR2(env, artifactPath, storageTier) {
   };
 }
 
+// health/history/{date}.json is the one artifact every publish writes a
+// NEW, distinct, write-once key for (today's date), never overwriting a
+// prior date's key -- unlike every other artifact, which the versioned
+// run-prefix pointer exists specifically to read atomically (see
+// kv-publish-pointer.mjs's own comment: pointing latest_prefix at the
+// immutable run prefix, not the mutable literal "latest/" prefix, avoids
+// ever serving a mix of stale + fresh artifacts from a partially-uploaded
+// publish). That atomicity concern doesn't apply here because a past
+// date's file is never touched by a later publish, so reading it via the
+// literal "latest/" prefix instead of the current run's prefix is safe --
+// and necessary, since r2-upload.mjs uploads every artifact to BOTH keys
+// (METAGRAPH_R2_UPLOAD_HISTORY=1 in production), but only the literal
+// "latest/" prefix accumulates one file per date across every past
+// publish; the run-prefix tree only ever contains THAT run's single date
+// (#6508 -- every date but today was unreachable through the normal
+// pointer-resolved prefix).
+const STABLE_LATEST_ARTIFACT_PATTERNS = [
+  /^\/metagraph\/health\/history\/\d{4}-\d{2}-\d{2}\.json$/,
+];
+
 export async function latestR2Key(artifactPath, env) {
+  const relativePath = artifactPath.replace(/^\/metagraph\//, "");
+  if (
+    STABLE_LATEST_ARTIFACT_PATTERNS.some((pattern) =>
+      pattern.test(artifactPath),
+    )
+  ) {
+    return `latest/${relativePath}`;
+  }
   const pointer = await latestPointer(env);
   const prefix =
     pointer?.latest_prefix || env.METAGRAPH_R2_LATEST_PREFIX || "latest/";
-  return `${prefix}${artifactPath.replace(/^\/metagraph\//, "")}`;
+  return `${prefix}${relativePath}`;
 }
 
 // In-isolate memo for the publish pointer (#367). Cloudflare reuses Worker
