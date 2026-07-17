@@ -463,6 +463,19 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
         <WatchValidatorAlert hotkey={hotkey} />
       </SectionAnchor>
 
+      {/* #6432: same placement blocks.$ref.tsx and extrinsics.$hash.tsx use --
+          after the content sections, ahead of the endpoint snippet -- so the
+          way back sits where a reader who has scrolled the whole profile is
+          already looking, rather than only in the masthead breadcrumb. */}
+      <div className="mt-6">
+        <Link
+          to="/validators"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
+        >
+          ← All validators
+        </Link>
+      </div>
+
       <SectionAnchor
         id="call"
         title="Call this endpoint"

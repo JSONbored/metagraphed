@@ -345,6 +345,19 @@ function ProfileShell({ netuid }: { netuid: number }) {
           ) : null}
           {tab === "api" ? <ApiPanel netuid={netuid} /> : null}
         </div>
+
+        {/* #6432: outside the tab switch, so the way back is there whichever
+            tab a reader ends on -- this profile is the longest page in the app
+            and the masthead breadcrumb is far behind by the time they finish.
+            Same placement/styling as blocks.$ref.tsx and extrinsics.$hash.tsx. */}
+        <div className="mt-6">
+          <Link
+            to="/subnets"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
+          >
+            ← All subnets
+          </Link>
+        </div>
       </SubnetFilterProvider>
     </TimeRangeProvider>
   );

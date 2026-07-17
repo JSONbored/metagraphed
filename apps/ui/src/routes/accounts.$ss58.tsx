@@ -378,6 +378,11 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       {/* #3340: the aggregated fund-flow view over the same transfer data. */}
       <AccountCounterpartiesSection ss58={ss58} />
 
+      {/* #6432: deliberately NOT "← All accounts" like the other detail pages'
+          back-links. /accounts is a lookup form, not an index -- there is no
+          list of every chain account to go back to -- so the label names what
+          the destination actually is. Sibling pages (blocks, extrinsics,
+          validators, subnets) do point at real directories and use "← All X". */}
       <div className="mt-6">
         <Link
           to="/accounts"
