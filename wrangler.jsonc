@@ -1,10 +1,26 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "metagraphed",
-  "main": "workers/api.mjs",
+  // Sentry deploy-entry wrapper (metagraphed#6479/#6502/#6485), not the raw
+  // handler -- see workers/api.sentry.mjs's own header for why this can't
+  // be wrapped inline (breaks its ~90 existing tests, which import
+  // workers/api.mjs directly and are unaffected by this).
+  "main": "workers/api.sentry.mjs",
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
   "minify": true,
+  // Auto-detected release for @sentry/cloudflare (workers/api.sentry.mjs's
+  // own CF_VERSION_METADATA?.id read) -- Cloudflare's own per-deploy
+  // version UUID, present on every deploy with no extra CI/build step
+  // needed. upload_source_maps makes Wrangler generate + upload sourcemaps
+  // for this Worker's own deploy (Cloudflare's Sourcemap Uploads product,
+  // separate from -- and simpler than -- @sentry/vite-plugin's own upload
+  // mechanism used for apps/ui, since Workers deploys go through `wrangler
+  // deploy`/Workers Builds, not a Vite build).
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA",
+  },
+  "upload_source_maps": true,
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
@@ -384,6 +400,11 @@
       "binding": "REGISTRY_SYNC_API",
       "service": "metagraphed-registry-sync-api",
     },
+    // #6502: the dedicated OG-image Worker (workers/og-image-api.mjs),
+    // split out of this Worker purely for bundle budget -- workers-og's
+    // wasm alone (~545 KiB gzipped) left no headroom for @sentry/cloudflare
+    // in this Worker's own bundle. See handleOgImageProxy's own comment.
+    { "binding": "OG_IMAGE_API", "service": "metagraphed-og-api" },
   ],
   // Realtime chain-event firehose (#4982, ADR 0015): the first Durable Object
   // in this codebase. One global instance (idFromName("global"), see

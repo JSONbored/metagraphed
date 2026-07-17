@@ -1,0 +1,54 @@
+{
+  // Dedicated Open Graph card Worker (#6502) -- split out of the main api.mjs
+  // Worker purely for bundle budget: workers-og (satori + resvg-wasm) is
+  // ~545 KiB gzipped on its own (resvg-wasm 517.1 KiB + yoga-wasm 27.6 KiB),
+  // and the main Worker had no headroom left for @sentry/cloudflare with
+  // that weight still in its own bundle -- confirmed via
+  // `npm run worker:bundle:budget`: 999.2 KiB gzipped before Sentry, already
+  // within 24.8 KiB of Cloudflare's 1024 KiB hard deploy ceiling. Reached
+  // only via the main Worker's OG_IMAGE_API service binding (no public
+  // routes of its own) -- see workers/api.mjs's handleOgImageProxy.
+  // Deploy: wrangler deploy -c wrangler.og.jsonc
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "metagraphed-og-api",
+  // Sentry deploy-entry wrapper (metagraphed#6502/#6485), not the raw
+  // handler -- see workers/og-image-api.sentry.mjs's own header for why.
+  "main": "workers/og-image-api.sentry.mjs",
+  // Reached only through the main Worker's OG_IMAGE_API service binding.
+  "workers_dev": false,
+  "preview_urls": false,
+  "compatibility_date": "2026-06-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA",
+  },
+  "upload_source_maps": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+    },
+  },
+  // Both bindings moved here from wrangler.jsonc's own copies (which stay --
+  // still used by many of the main Worker's other, unrelated routes): R2 for
+  // readArtifact's live registry-summary.json stats read, ASSETS for the
+  // branded fallback card src/og-image.mjs's own fallbackResponse serves on
+  // any render failure.
+  "r2_buckets": [
+    {
+      "binding": "METAGRAPH_ARCHIVE",
+      "bucket_name": "metagraphed-artifacts",
+    },
+  ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+  },
+}
