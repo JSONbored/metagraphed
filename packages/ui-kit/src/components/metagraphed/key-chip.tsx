@@ -1,6 +1,7 @@
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCopy } from "@/hooks/use-copy";
@@ -39,33 +40,36 @@ export function KeyChip({
       : value;
 
   return (
-    <Tooltip delayDuration={120}>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={() => copy(value)}
-          aria-label={copied ? `${label} copied` : `Copy ${label}: ${value}`}
-          className={classNames(
-            "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left font-mono text-[11px] text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
-            className,
-          )}
+    // Self-wrapped so KeyChip works outside AppShell's global provider.
+    <TooltipProvider>
+      <Tooltip delayDuration={120}>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => copy(value)}
+            aria-label={copied ? `${label} copied` : `Copy ${label}: ${value}`}
+            className={classNames(
+              "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left font-mono text-[11px] text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
+              className,
+            )}
+          >
+            <span className="truncate tabular-nums">{short}</span>
+            <CopyIconToggle
+              copied={copied}
+              className="text-ink-muted group-hover:text-ink"
+            />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className="max-w-[90vw] break-all font-mono text-[11px]"
         >
-          <span className="truncate tabular-nums">{short}</span>
-          <CopyIconToggle
-            copied={copied}
-            className="text-ink-muted group-hover:text-ink"
-          />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="max-w-[90vw] break-all font-mono text-[11px]"
-      >
-        <span className="mr-1 uppercase tracking-widest text-[9px] opacity-70">
-          {label}
-        </span>
-        {value}
-      </TooltipContent>
-    </Tooltip>
+          <span className="mr-1 uppercase tracking-widest text-[9px] opacity-70">
+            {label}
+          </span>
+          {value}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

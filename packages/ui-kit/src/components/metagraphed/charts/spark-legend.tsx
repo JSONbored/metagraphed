@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { formatFreshness, formatFreshnessAbsolute } from "@/lib/format";
@@ -36,47 +37,50 @@ export function SparkLegend({
   const fresh = formatFreshness(updatedAt, windowLabel);
   const freshAbs = formatFreshnessAbsolute(updatedAt);
   return (
-    <Tooltip delayDuration={200}>
-      <TooltipTrigger asChild>
-        <span
-          tabIndex={0}
-          className="inline-flex max-w-full items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
-        >
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent
-        side={side}
-        sideOffset={6}
-        collisionPadding={8}
-        avoidCollisions
-        className="max-w-xs text-[11px] leading-relaxed"
-      >
-        <div className="font-mono text-[10px] uppercase tracking-widest mb-1">
-          {metric}
-          {windowLabel ? ` · ${windowLabel}` : ""}
-        </div>
-        <div className="mb-1">
-          <span className="font-mono text-[9.5px] uppercase tracking-widest opacity-70">
-            source ·{" "}
+    // Self-wrapped so SparkLegend works outside AppShell's global provider.
+    <TooltipProvider>
+      <Tooltip delayDuration={200}>
+        <TooltipTrigger asChild>
+          <span
+            tabIndex={0}
+            className="inline-flex max-w-full items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+          >
+            {children}
           </span>
-          {source}
-        </div>
-        {staleness ? (
+        </TooltipTrigger>
+        <TooltipContent
+          side={side}
+          sideOffset={6}
+          collisionPadding={8}
+          avoidCollisions
+          className="max-w-xs text-[11px] leading-relaxed"
+        >
+          <div className="font-mono text-[10px] uppercase tracking-widest mb-1">
+            {metric}
+            {windowLabel ? ` · ${windowLabel}` : ""}
+          </div>
           <div className="mb-1">
             <span className="font-mono text-[9.5px] uppercase tracking-widest opacity-70">
-              staleness ·{" "}
+              source ·{" "}
             </span>
-            {staleness}
+            {source}
           </div>
-        ) : null}
-        {fresh || freshAbs ? (
-          <div className="mt-1 font-mono text-[10px] opacity-80">
-            {fresh ?? ""}
-            {freshAbs ? `${fresh ? " · " : ""}last checked ${freshAbs}` : ""}
-          </div>
-        ) : null}
-      </TooltipContent>
-    </Tooltip>
+          {staleness ? (
+            <div className="mb-1">
+              <span className="font-mono text-[9.5px] uppercase tracking-widest opacity-70">
+                staleness ·{" "}
+              </span>
+              {staleness}
+            </div>
+          ) : null}
+          {fresh || freshAbs ? (
+            <div className="mt-1 font-mono text-[10px] opacity-80">
+              {fresh ?? ""}
+              {freshAbs ? `${fresh ? " · " : ""}last checked ${freshAbs}` : ""}
+            </div>
+          ) : null}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

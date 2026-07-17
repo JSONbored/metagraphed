@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
@@ -48,64 +49,67 @@ export function StatWithSpark({
   const freshLine = formatFreshness(updatedAt, windowLabel);
   const freshAbs = formatFreshnessAbsolute(updatedAt);
   return (
-    <Tooltip delayDuration={200}>
-      <TooltipTrigger asChild>
-        <div
-          tabIndex={0}
-          className={classNames(
-            "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface/40 transition-colors",
-            className,
-          )}
-        >
-          <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted truncate">
-            {label}
-          </div>
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <span
-              className={classNames(
-                "font-display text-lg font-semibold tabular-nums leading-none truncate",
-                tone === "ok" && "text-health-ok",
-                tone === "warn" && "text-health-warn",
-                tone === "down" && "text-health-down",
-                tone === "default" && "text-ink-strong",
-              )}
-            >
-              {value}
-            </span>
-            {unit ? (
-              <span className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-ink-muted">
-                {unit}
+    // Self-wrapped so StatWithSpark works outside AppShell's global provider.
+    <TooltipProvider>
+      <Tooltip delayDuration={200}>
+        <TooltipTrigger asChild>
+          <div
+            tabIndex={0}
+            className={classNames(
+              "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface/40 transition-colors",
+              className,
+            )}
+          >
+            <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted truncate">
+              {label}
+            </div>
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <span
+                className={classNames(
+                  "font-display text-lg font-semibold tabular-nums leading-none truncate",
+                  tone === "ok" && "text-health-ok",
+                  tone === "warn" && "text-health-warn",
+                  tone === "down" && "text-health-down",
+                  tone === "default" && "text-ink-strong",
+                )}
+              >
+                {value}
               </span>
+              {unit ? (
+                <span className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-ink-muted">
+                  {unit}
+                </span>
+              ) : null}
+              {delta}
+            </div>
+            {viz ? <div className="mt-0.5 min-h-[18px]">{viz}</div> : null}
+            {hint ? (
+              <div className="font-mono text-[9.5px] text-ink-muted/80 truncate">
+                {hint}
+              </div>
             ) : null}
-            {delta}
+            {freshLine ? (
+              <div className="font-mono text-[9px] tracking-wide text-ink-muted/70 truncate">
+                {freshLine}
+              </div>
+            ) : null}
           </div>
-          {viz ? <div className="mt-0.5 min-h-[18px]">{viz}</div> : null}
-          {hint ? (
-            <div className="font-mono text-[9.5px] text-ink-muted/80 truncate">
-              {hint}
+        </TooltipTrigger>
+        <TooltipContent
+          side="bottom"
+          className="max-w-xs text-[11px] leading-relaxed"
+        >
+          <div>{full ?? hint ?? label}</div>
+          {freshAbs || windowLabel ? (
+            <div className="mt-1 font-mono text-[10px] text-primary-foreground/70">
+              {freshAbs ? `Last checked ${freshAbs}` : null}
+              {freshAbs && windowLabel ? " · " : ""}
+              {windowLabel ? `${windowLabel} window` : null}
             </div>
           ) : null}
-          {freshLine ? (
-            <div className="font-mono text-[9px] tracking-wide text-ink-muted/70 truncate">
-              {freshLine}
-            </div>
-          ) : null}
-        </div>
-      </TooltipTrigger>
-      <TooltipContent
-        side="bottom"
-        className="max-w-xs text-[11px] leading-relaxed"
-      >
-        <div>{full ?? hint ?? label}</div>
-        {freshAbs || windowLabel ? (
-          <div className="mt-1 font-mono text-[10px] text-primary-foreground/70">
-            {freshAbs ? `Last checked ${freshAbs}` : null}
-            {freshAbs && windowLabel ? " · " : ""}
-            {windowLabel ? `${windowLabel} window` : null}
-          </div>
-        ) : null}
-      </TooltipContent>
-    </Tooltip>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -204,27 +208,31 @@ export function DotRow({
   dots: Array<{ label: string; on: boolean }>;
 }) {
   return (
-    <div
-      className="flex items-center gap-1"
-      role="img"
-      aria-label="Source coverage"
-    >
-      {dots.map((d) => (
-        <Tooltip key={d.label} delayDuration={150}>
-          <TooltipTrigger asChild>
-            <span
-              className={classNames(
-                "size-1.5 rounded-full",
-                d.on ? "bg-accent" : "bg-border",
-              )}
-            />
-          </TooltipTrigger>
-          <TooltipContent side="top" className="font-mono text-[10px]">
-            {d.label} {d.on ? "✓" : "—"}
-          </TooltipContent>
-        </Tooltip>
-      ))}
-    </div>
+    // One provider for the row rather than one per dot -- self-wrapped so DotRow
+    // works outside AppShell's global provider.
+    <TooltipProvider>
+      <div
+        className="flex items-center gap-1"
+        role="img"
+        aria-label="Source coverage"
+      >
+        {dots.map((d) => (
+          <Tooltip key={d.label} delayDuration={150}>
+            <TooltipTrigger asChild>
+              <span
+                className={classNames(
+                  "size-1.5 rounded-full",
+                  d.on ? "bg-accent" : "bg-border",
+                )}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="font-mono text-[10px]">
+              {d.label} {d.on ? "✓" : "—"}
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </TooltipProvider>
   );
 }
 
@@ -247,33 +255,36 @@ export function NoDataSpark({
   const freshAbs = formatFreshnessAbsolute(updatedAt);
   const freshLine = formatFreshness(updatedAt, windowLabel);
   return (
-    <Tooltip delayDuration={150}>
-      <TooltipTrigger asChild>
-        <div
-          tabIndex={0}
-          role="img"
-          aria-label={`${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`}
-          className="flex w-full items-center gap-1.5 rounded-sm border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          style={{ height }}
+    // Self-wrapped so NoDataSpark works outside AppShell's global provider.
+    <TooltipProvider>
+      <Tooltip delayDuration={150}>
+        <TooltipTrigger asChild>
+          <div
+            tabIndex={0}
+            role="img"
+            aria-label={`${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`}
+            className="flex w-full items-center gap-1.5 rounded-sm border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            style={{ height }}
+          >
+            <span
+              aria-hidden
+              className="inline-block size-1 rounded-full bg-ink-muted/60"
+            />
+            <span className="truncate font-mono text-[9px] uppercase tracking-widest text-ink-muted/80">
+              {freshLine ?? reason}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className="max-w-xs text-[11px] leading-relaxed"
         >
-          <span
-            aria-hidden
-            className="inline-block size-1 rounded-full bg-ink-muted/60"
-          />
-          <span className="truncate font-mono text-[9px] uppercase tracking-widest text-ink-muted/80">
-            {freshLine ?? reason}
-          </span>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="max-w-xs text-[11px] leading-relaxed"
-      >
-        {reason}.{" "}
-        {freshAbs
-          ? `Last checked ${freshAbs}${windowLabel ? ` · ${windowLabel} window` : ""}.`
-          : "No probe samples recorded yet."}
-      </TooltipContent>
-    </Tooltip>
+          {reason}.{" "}
+          {freshAbs
+            ? `Last checked ${freshAbs}${windowLabel ? ` · ${windowLabel} window` : ""}.`
+            : "No probe samples recorded yet."}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
