@@ -128,6 +128,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "economics-trends",
   "registry-leaderboards",
   "compare",
+  "compare-validators",
   "rpc-usage",
   "global-incidents",
   // Live-only operational health (served from KV/D1, no static file on disk).

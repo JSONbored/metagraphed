@@ -1202,6 +1202,21 @@ const checks = [
     },
   ],
   [
+    "/api/v1/compare/validators?hotkeys=5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    (body) => {
+      assert.equal(Array.isArray(body.data.validators), true);
+      assert.equal(body.data.validators.length, 1);
+      assert.equal(
+        body.data.validators[0].hotkey,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      // Cold harness (no D1/Postgres) → zeroed detail, never 404.
+      assert.equal(body.data.validators[0].subnet_count, 0);
+      assert.equal(body.data.netuid, null);
+      assert.equal(typeof body.data.validator_count, "number");
+    },
+  ],
+  [
     "/api/v1/rpc/usage",
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");

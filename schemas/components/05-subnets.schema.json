@@ -69,6 +69,79 @@
           }
         }
       },
+      "CompareValidatorsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Several validators placed side by side for a stake/delegate decision (#6035/#6325): each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates -- the decision-relevant projection of ValidatorDetailArtifact for every requested hotkey (composeValidatorComparison), computed live from the neurons tier at /api/v1/compare/validators (no static file). Mirrors the compare_validators MCP tool.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "validator_count",
+          "validators"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Optional subnet context requested via ?netuid=; null when not requested. When set, each validator entry's subnet_context carries its membership row in this subnet."
+          },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "validators": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CompareValidatorEntry" }
+          }
+        }
+      },
+      "CompareValidatorEntry": {
+        "type": "object",
+        "description": "One validator's side-by-side entry in GET /api/v1/compare/validators (composeValidatorComparison) -- a decision-relevant projection of ValidatorDetailArtifact for one hotkey, with fields copied verbatim from the already-loaded detail.",
+        "required": [
+          "hotkey",
+          "coldkey",
+          "coldkey_identity",
+          "take",
+          "apy_estimate",
+          "apy_estimate_eligible_subnet_count",
+          "nominator_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "avg_validator_trust",
+          "max_validator_trust",
+          "subnet_count",
+          "subnet_context"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "hotkey": { "type": "string" },
+          "coldkey": { "type": ["string", "null"] },
+          "coldkey_identity": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/ColdkeyIdentity" },
+              { "type": "null" }
+            ]
+          },
+          "take": { "type": ["number", "null"] },
+          "apy_estimate": { "type": ["number", "null"] },
+          "apy_estimate_eligible_subnet_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "nominator_count": { "type": ["integer", "null"], "minimum": 0 },
+          "total_stake_tao": { "type": "number", "minimum": 0 },
+          "total_emission_tao": { "type": "number", "minimum": 0 },
+          "avg_validator_trust": { "type": ["number", "null"] },
+          "max_validator_trust": { "type": ["number", "null"] },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "subnet_context": {
+            "description": "This validator's membership row in the ?netuid= subnet context, or null when netuid wasn't requested or the validator holds no permit there.",
+            "oneOf": [
+              { "$ref": "#/components/schemas/ValidatorDetailSubnet" },
+              { "type": "null" }
+            ]
+          }
+        }
+      },
       "CurationMetadata": {
         "type": "object",
         "required": ["level", "review_state"],

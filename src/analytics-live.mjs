@@ -27,6 +27,7 @@ import {
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_UPTIME_ROWS,
+  SS58_ADDRESS_PATTERN,
   UPTIME_WINDOWS,
 } from "../workers/config.mjs";
 import {
@@ -131,6 +132,41 @@ export function parseCompareNetuidList(netuids) {
   }
   if (requestedNetuids.length > 128) return null;
   return requestedNetuids;
+}
+
+// compare_validators/compare-validators (#6035/#6325) share this same cap and
+// SS58 validation with parseCompareNetuids/parseCompareNetuidList above --
+// one hotkey-list contract for both the REST query string and the MCP array.
+export const COMPARE_VALIDATORS_MAX = 16;
+const COMPARE_HOTKEYS_PATTERN =
+  /^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$/;
+
+export function parseCompareHotkeys(hotkeysRaw) {
+  if (!hotkeysRaw || !COMPARE_HOTKEYS_PATTERN.test(hotkeysRaw)) return null;
+  const hotkeys = [];
+  const seen = new Set();
+  for (const part of hotkeysRaw.split(",")) {
+    if (seen.has(part)) continue;
+    seen.add(part);
+    hotkeys.push(part);
+  }
+  return hotkeys;
+}
+
+export function parseCompareHotkeyList(hotkeys) {
+  if (!Array.isArray(hotkeys) || hotkeys.length === 0) return null;
+  const result = [];
+  const seen = new Set();
+  for (const value of hotkeys) {
+    if (typeof value !== "string" || !SS58_ADDRESS_PATTERN.test(value)) {
+      return null;
+    }
+    if (seen.has(value)) continue;
+    seen.add(value);
+    result.push(value);
+  }
+  if (result.length > COMPARE_VALIDATORS_MAX) return null;
+  return result;
 }
 
 export function parseCompareDimensions(dimensionsRaw) {

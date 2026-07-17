@@ -7335,6 +7335,139 @@
         ],
         "type": "object"
       },
+      "CompareValidatorEntry": {
+        "additionalProperties": false,
+        "description": "One validator's side-by-side entry in GET /api/v1/compare/validators (composeValidatorComparison) -- a decision-relevant projection of ValidatorDetailArtifact for one hotkey, with fields copied verbatim from the already-loaded detail.",
+        "properties": {
+          "apy_estimate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "apy_estimate_eligible_subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "avg_validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey_identity": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ColdkeyIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hotkey": {
+            "type": "string"
+          },
+          "max_validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "nominator_count": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "subnet_context": {
+            "description": "This validator's membership row in the ?netuid= subnet context, or null when netuid wasn't requested or the validator holds no permit there.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ValidatorDetailSubnet"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "take": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "hotkey",
+          "coldkey",
+          "coldkey_identity",
+          "take",
+          "apy_estimate",
+          "apy_estimate_eligible_subnet_count",
+          "nominator_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "avg_validator_trust",
+          "max_validator_trust",
+          "subnet_count",
+          "subnet_context"
+        ],
+        "type": "object"
+      },
+      "CompareValidatorsArtifact": {
+        "additionalProperties": true,
+        "description": "Several validators placed side by side for a stake/delegate decision (#6035/#6325): each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates -- the decision-relevant projection of ValidatorDetailArtifact for every requested hotkey (composeValidatorComparison), computed live from the neurons tier at /api/v1/compare/validators (no static file). Mirrors the compare_validators MCP tool.",
+        "properties": {
+          "netuid": {
+            "description": "Optional subnet context requested via ?netuid=; null when not requested. When set, each validator entry's subnet_context carries its membership row in this subnet.",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators": {
+            "items": {
+              "$ref": "#/components/schemas/CompareValidatorEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "validator_count",
+          "validators"
+        ],
+        "type": "object"
+      },
       "ConcentrationMetrics": {
         "additionalProperties": true,
         "description": "One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column).",

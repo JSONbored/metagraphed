@@ -37,10 +37,16 @@ import {
 import { loadEconomicsTrends } from "../../src/economics-trends.mjs";
 import {
   COMPARE_DIMENSIONS,
+  COMPARE_VALIDATORS_MAX,
   growthRowsFromSamples,
   parseCompareDimensions,
+  parseCompareHotkeys,
   parseCompareNetuids,
 } from "../../src/analytics-live.mjs";
+import {
+  buildValidatorDetail,
+  composeValidatorComparison,
+} from "../../src/metagraph-neurons.mjs";
 import {
   formatLeaderboards,
   formatTrajectory,
@@ -844,4 +850,85 @@ export async function handleCompare(request, env, url) {
     "standard",
   );
   return healthIsFallback ? markD1FallbackResponse(response) : response;
+}
+
+// A per-hotkey internal request pointed at /api/v1/validators/{hotkey},
+// synthesized from the incoming /api/v1/compare/validators request the same
+// way handleCompare's own health branch above builds its internal request --
+// tryPostgresTier just forwards whatever Request it's given.
+function validatorDetailRequest(request, hotkey) {
+  const pgUrl = new URL(request.url);
+  pgUrl.pathname = `/api/v1/validators/${encodeURIComponent(hotkey)}`;
+  pgUrl.search = "";
+  return new Request(pgUrl);
+}
+
+// GET /api/v1/compare/validators?hotkeys=...&netuid= (#6325): place several
+// validators side by side for a stake/delegate decision, mirroring the
+// compare_validators MCP tool one-for-one -- same hotkey-list contract
+// (parseCompareHotkeys/COMPARE_VALIDATORS_MAX, shared with the MCP tool's own
+// parseCompareHotkeyList in src/analytics-live.mjs), same per-hotkey
+// tryPostgresTier(METAGRAPH_NEURONS_SOURCE) ?? buildValidatorDetail([], hotkey)
+// fallback contract handleValidatorDetail uses, and the identical
+// composeValidatorComparison projection so REST and MCP never drift. netuid is
+// optional subnet context, same as the MCP tool's own netuid arg.
+export async function handleCompareValidators(request, env, url) {
+  const validationError = validateQueryParams(url, ["hotkeys", "netuid"]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const hotkeysRaw = url.searchParams.get("hotkeys");
+  const hotkeys = parseCompareHotkeys(hotkeysRaw);
+  if (!hotkeys) {
+    return errorResponse(
+      "invalid_query",
+      `hotkeys is required: a comma-separated list of 1-${COMPARE_VALIDATORS_MAX} distinct SS58 validator addresses.`,
+      400,
+      { parameter: "hotkeys" },
+    );
+  }
+
+  const netuidResult = parseNonNegativeIntParam(
+    url.searchParams.get("netuid"),
+    "netuid",
+  );
+  if (netuidResult.error) return analyticsQueryError(netuidResult.error);
+
+  // Sequential, not parallel -- matches compare_validators' own fan-out
+  // pattern exactly (N individual get_validator_detail-shaped loads), rather
+  // than diverging into a REST-only concurrency strategy.
+  const details = [];
+  let latestCapturedAt = null;
+  for (const hotkey of hotkeys) {
+    const detail =
+      (await tryPostgresTier(
+        env,
+        validatorDetailRequest(request, hotkey),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildValidatorDetail([], hotkey);
+    details.push(detail);
+    if (
+      detail?.captured_at &&
+      (latestCapturedAt == null || detail.captured_at > latestCapturedAt)
+    ) {
+      latestCapturedAt = detail.captured_at;
+    }
+  }
+
+  const data = composeValidatorComparison(details, {
+    netuid: netuidResult.value,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: {
+        artifact_path: "/metagraph/compare/validators.json",
+        cache: "standard",
+        contract_version: contractVersion(env),
+        generated_at: latestCapturedAt,
+        source: "neurons",
+      },
+    },
+    "standard",
+  );
 }

@@ -14,11 +14,13 @@ import {
   composeCompareData,
   configureAnalyticsRoutes,
   handleCompare,
+  handleCompareValidators,
   handleEconomicsTrends,
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
 } from "../workers/request-handlers/analytics-routes.mjs";
+import { MCP_TOOLS } from "../src/mcp-server.mjs";
 import {
   unsupportedWindowMessage,
   HISTORY_WINDOWS,
@@ -1054,6 +1056,140 @@ describe("handleCompare", () => {
     );
     assert.equal(body.data.subnets[0].netuid, 7);
     assert.equal(d1Called, true);
+  });
+});
+
+describe("handleCompareValidators", () => {
+  const HOTKEY_A = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const HOTKEY_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  test("requires hotkeys", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleCompareValidators(
+      req("/"),
+      env,
+      url("/api/v1/compare/validators"),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "hotkeys");
+  });
+
+  test("rejects a malformed hotkeys list", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleCompareValidators(
+      req("/"),
+      env,
+      url("/api/v1/compare/validators?hotkeys=not-a-valid-address"),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "hotkeys");
+  });
+
+  test("rejects a malformed netuid", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleCompareValidators(
+      req("/"),
+      env,
+      url(`/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=bogus`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "netuid");
+  });
+
+  test("cold store: composes a zeroed comparison, never 404, in request order", async () => {
+    const env = createLocalArtifactEnv();
+    const body = await json(
+      await handleCompareValidators(
+        req("/"),
+        env,
+        url(`/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B}`),
+      ),
+    );
+    assert.equal(body.data.netuid, null);
+    assert.equal(body.data.validator_count, 2);
+    assert.deepEqual(
+      body.data.validators.map((v) => v.hotkey),
+      [HOTKEY_A, HOTKEY_B],
+    );
+    for (const validator of body.data.validators) {
+      assert.equal(validator.subnet_count, 0);
+      assert.equal(validator.subnet_context, null);
+    }
+  });
+
+  test("deduplicates repeated hotkeys in request order", async () => {
+    const env = createLocalArtifactEnv();
+    const body = await json(
+      await handleCompareValidators(
+        req("/"),
+        env,
+        url(
+          `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B},${HOTKEY_A}`,
+        ),
+      ),
+    );
+    assert.deepEqual(
+      body.data.validators.map((v) => v.hotkey),
+      [HOTKEY_A, HOTKEY_B],
+    );
+  });
+
+  test("netuid context: flag=postgres carries subnet_context from the per-hotkey Postgres response", async () => {
+    const env = createLocalArtifactEnv();
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    const requestedPaths = [];
+    env.DATA_API = {
+      fetch: async (request) => {
+        const reqUrl = new URL(request.url);
+        requestedPaths.push(reqUrl.pathname);
+        return Response.json({
+          schema_version: 1,
+          hotkey: reqUrl.pathname.split("/").pop(),
+          coldkey: "coldkey-1",
+          subnet_count: 1,
+          subnets: [{ netuid: 7, uid: 3, stake_tao: 100 }],
+        });
+      },
+    };
+    const body = await json(
+      await handleCompareValidators(
+        req("/"),
+        env,
+        url(`/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=7`),
+      ),
+    );
+    assert.deepEqual(requestedPaths, [`/api/v1/validators/${HOTKEY_A}`]);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.validators[0].subnet_context.netuid, 7);
+    assert.equal(body.data.validators[0].subnet_context.uid, 3);
+  });
+
+  // #6325: REST and MCP share the identical composeValidatorComparison
+  // projection and the identical tryPostgresTier(METAGRAPH_NEURONS_SOURCE)
+  // per-hotkey fallback contract -- this proves it directly rather than only
+  // via each surface's own mirrored-but-separate test suite.
+  test("REST/MCP parity: identical hotkeys+netuid inputs produce identical data", async () => {
+    const restEnv = createLocalArtifactEnv();
+    const restBody = await json(
+      await handleCompareValidators(
+        req("/"),
+        restEnv,
+        url(
+          `/api/v1/compare/validators?hotkeys=${HOTKEY_A},${HOTKEY_B}&netuid=7`,
+        ),
+      ),
+    );
+
+    const compareValidatorsTool = MCP_TOOLS.find(
+      (tool) => tool.name === "compare_validators",
+    );
+    assert.ok(compareValidatorsTool, "compare_validators tool must exist");
+    const mcpData = await compareValidatorsTool.handler(
+      { hotkeys: [HOTKEY_A, HOTKEY_B], netuid: 7 },
+      { env: createLocalArtifactEnv() },
+    );
+
+    assert.deepEqual(mcpData, restBody.data);
   });
 });
 
