@@ -75,17 +75,50 @@ const RAO_PER_TAO = 1_000_000_000n;
 // quantity (matches the schema's own `minimum: 0`), so a negative sum is
 // unreachable -- unlike a real negative-capable delta, branching on a sign
 // that can never occur here would just be untestable dead code.
+function taoNumberToRao(value) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? BigInt(Math.round(value * 1e9))
+    : 0n;
+}
+
+function raoToTaoString(rao) {
+  const whole = rao / RAO_PER_TAO;
+  const frac = rao % RAO_PER_TAO;
+  return `${whole}.${frac.toString().padStart(9, "0")}`;
+}
+
 function sumFieldTaoString(rows, field) {
   let sumRao = 0n;
   for (const row of rows) {
-    const value = row[field];
-    if (typeof value === "number" && Number.isFinite(value)) {
-      sumRao += BigInt(Math.round(value * 1e9));
+    sumRao += taoNumberToRao(row[field]);
+  }
+  return raoToTaoString(sumRao);
+}
+
+// #6641: Backprop's "Total Network Value" split -- root (netuid 0) stake is
+// TAO-denominated with no AMM/price exposure, exactly like
+// buildGlobalValidatorEntry's root_stake_tao/alpha_stake_tao split in
+// src/metagraph-neurons.mjs and the root-has-no-AMM carve-out stake-quote.mjs
+// documents -- just applied to the network-wide rollup instead of a
+// per-entity one. Root's own alpha_market_cap_tao (its ~1.0 moving_price
+// times its TAO stake) is deliberately excluded from the alpha rollup so its
+// stake isn't counted as both "root value" and "alpha value"; total_network
+// is the rao-exact sum of the two, not a re-parsed string addition.
+export function computeNetworkValueSummary(rows) {
+  let rootRao = 0n;
+  let alphaRao = 0n;
+  for (const row of rows) {
+    if (row.netuid === 0) {
+      rootRao += taoNumberToRao(row.total_stake_tao);
+    } else {
+      alphaRao += taoNumberToRao(row.alpha_market_cap_tao);
     }
   }
-  const whole = sumRao / RAO_PER_TAO;
-  const frac = sumRao % RAO_PER_TAO;
-  return `${whole}.${frac.toString().padStart(9, "0")}`;
+  return {
+    total_root_value_tao: raoToTaoString(rootRao),
+    total_alpha_value_tao: raoToTaoString(alphaRao),
+    total_network_value_tao: raoToTaoString(rootRao + alphaRao),
+  };
 }
 
 export function buildEconomicsArtifact({
@@ -168,6 +201,7 @@ export function buildEconomicsArtifact({
       total_miners: sumField("miner_count"),
       registration_open_count: rows.filter((row) => row.registration_allowed)
         .length,
+      ...computeNetworkValueSummary(rows),
     },
     subnets: rows,
   };

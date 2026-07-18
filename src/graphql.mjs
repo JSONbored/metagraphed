@@ -553,6 +553,22 @@ export const SDL = `
     subnets: [SubnetEconomics!]!
     total: Int!
     next_cursor: String
+    summary: EconomicsSummary
+  }
+
+  type EconomicsSummary {
+    subnet_count: Int!
+    with_economics_count: Int!
+    total_stake_tao: String!
+    total_validators: Int!
+    total_miners: Int!
+    registration_open_count: Int!
+    "Root (netuid 0) TAO-denominated stake -- rao-precision decimal string (#6641)."
+    total_root_value_tao: String!
+    "Sum of every non-root subnet's alpha_market_cap_tao -- rao-precision decimal string (#6641)."
+    total_alpha_value_tao: String!
+    "total_root_value_tao + total_alpha_value_tao -- Backprop's Total Network Value (#6641)."
+    total_network_value_tao: String!
   }
 
   type SubnetEconomics {
@@ -4226,7 +4242,12 @@ const rootValue = {
       cursor,
       (s) => s.netuid,
     );
-    return { subnets: page, total, next_cursor: nextCursor };
+    return {
+      subnets: page,
+      total,
+      next_cursor: nextCursor,
+      summary: data?.summary ?? null,
+    };
   },
 
   surfaces({ netuid, limit, cursor }, context) {

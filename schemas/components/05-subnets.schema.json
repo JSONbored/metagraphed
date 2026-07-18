@@ -1445,7 +1445,10 @@
                   "total_stake_tao",
                   "total_validators",
                   "total_miners",
-                  "registration_open_count"
+                  "registration_open_count",
+                  "total_root_value_tao",
+                  "total_alpha_value_tao",
+                  "total_network_value_tao"
                 ],
                 "properties": {
                   "subnet_count": { "type": "integer", "minimum": 0 },
@@ -1457,7 +1460,25 @@
                   },
                   "total_validators": { "type": "integer", "minimum": 0 },
                   "total_miners": { "type": "integer", "minimum": 0 },
-                  "registration_open_count": { "type": "integer", "minimum": 0 }
+                  "registration_open_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "total_root_value_tao": {
+                    "type": "string",
+                    "pattern": "^\\d+\\.\\d{9}$",
+                    "description": "Root (netuid 0) TAO-denominated stake, lossless fixed 9-decimal rao-precision string (#6641). Root has no AMM/alpha token, so this is total_stake_tao read directly, not price-multiplied."
+                  },
+                  "total_alpha_value_tao": {
+                    "type": "string",
+                    "pattern": "^\\d+\\.\\d{9}$",
+                    "description": "Sum of every non-root subnet's alpha_market_cap_tao (alpha_price_tao times the total_stake_tao circulating-alpha proxy), lossless fixed 9-decimal rao-precision string (#6641). Excludes netuid 0 so root stake isn't double-counted as alpha value."
+                  },
+                  "total_network_value_tao": {
+                    "type": "string",
+                    "pattern": "^\\d+\\.\\d{9}$",
+                    "description": "total_root_value_tao plus total_alpha_value_tao, summed in exact rao-integer space (#6641) -- Backprop's \"Total Network Value\" (TNV): the network's single top-line economic figure."
+                  }
                 },
                 "additionalProperties": false
               },

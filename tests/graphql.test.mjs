@@ -745,6 +745,53 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     assert.equal(body.data.economics.subnets[0].netuid, 1);
     assert.equal(body.data.economics.subnets[0].emission_share, 0.05);
   });
+
+  test("economics exposes the network-value summary rollup (#6641)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/economics.json": {
+        subnets: [{ netuid: 1, name: "Alpha", emission_share: 1 }],
+        summary: {
+          subnet_count: 1,
+          with_economics_count: 1,
+          total_stake_tao: "1000.000000000",
+          total_validators: 9,
+          total_miners: 200,
+          registration_open_count: 1,
+          total_root_value_tao: "500.000000000",
+          total_alpha_value_tao: "40.000000000",
+          total_network_value_tao: "540.000000000",
+        },
+      },
+    });
+    const { status, body } = await gql(
+      `{ economics { summary {
+          total_root_value_tao total_alpha_value_tao total_network_value_tao
+          subnet_count
+        } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.economics.summary, {
+      total_root_value_tao: "500.000000000",
+      total_alpha_value_tao: "40.000000000",
+      total_network_value_tao: "540.000000000",
+      subnet_count: 1,
+    });
+  });
+
+  test("economics.summary is null when the source artifact has none", async () => {
+    const env = fixtureEnv({
+      "/metagraph/economics.json": {
+        subnets: [{ netuid: 1, name: "Alpha" }],
+      },
+    });
+    const { status, body } = await gql(
+      "{ economics { summary { subnet_count } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.economics.summary, null);
+  });
 });
 
 describe("handleGraphQLRequest — error envelope is never cacheable", () => {

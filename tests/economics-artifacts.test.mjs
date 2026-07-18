@@ -5,6 +5,7 @@ import {
   computeAlphaFdvTao,
   computeAlphaMarketCapTao,
   computeMinerReadiness,
+  computeNetworkValueSummary,
   buildEconomicsArtifact,
 } from "../scripts/lib/economics-artifacts.mjs";
 
@@ -168,6 +169,69 @@ describe("computeAlphaFdvTao", () => {
   });
 });
 
+// --- computeNetworkValueSummary (#6641) --------------------------------------
+
+describe("computeNetworkValueSummary", () => {
+  test("empty rows yield all-zero rao-precision strings", () => {
+    assert.deepEqual(computeNetworkValueSummary([]), {
+      total_root_value_tao: "0.000000000",
+      total_alpha_value_tao: "0.000000000",
+      total_network_value_tao: "0.000000000",
+    });
+  });
+
+  test("root (netuid 0) contributes total_stake_tao directly, not price-multiplied", () => {
+    // Root's own alpha_market_cap_tao would be huge (price ~1.0 x its TAO
+    // stake) if it were ever included in the alpha sum -- it must not be.
+    const result = computeNetworkValueSummary([
+      { netuid: 0, total_stake_tao: 500, alpha_market_cap_tao: 499.5 },
+    ]);
+    assert.deepEqual(result, {
+      total_root_value_tao: "500.000000000",
+      total_alpha_value_tao: "0.000000000",
+      total_network_value_tao: "500.000000000",
+    });
+  });
+
+  test("non-root rows sum alpha_market_cap_tao, ignoring their total_stake_tao", () => {
+    const result = computeNetworkValueSummary([
+      { netuid: 1, total_stake_tao: 1000, alpha_market_cap_tao: 40 },
+      { netuid: 2, total_stake_tao: 2000, alpha_market_cap_tao: 60 },
+    ]);
+    assert.deepEqual(result, {
+      total_root_value_tao: "0.000000000",
+      total_alpha_value_tao: "100.000000000",
+      total_network_value_tao: "100.000000000",
+    });
+  });
+
+  test("root + alpha rows sum into a single network total", () => {
+    const result = computeNetworkValueSummary([
+      { netuid: 0, total_stake_tao: 500 },
+      { netuid: 1, alpha_market_cap_tao: 40 },
+      { netuid: 2, alpha_market_cap_tao: 60 },
+    ]);
+    assert.deepEqual(result, {
+      total_root_value_tao: "500.000000000",
+      total_alpha_value_tao: "100.000000000",
+      total_network_value_tao: "600.000000000",
+    });
+  });
+
+  test("null/non-finite values contribute zero, not NaN or a thrown error", () => {
+    const result = computeNetworkValueSummary([
+      { netuid: 0, total_stake_tao: null },
+      { netuid: 1, alpha_market_cap_tao: null },
+      { netuid: 2, alpha_market_cap_tao: Number.NaN },
+    ]);
+    assert.deepEqual(result, {
+      total_root_value_tao: "0.000000000",
+      total_alpha_value_tao: "0.000000000",
+      total_network_value_tao: "0.000000000",
+    });
+  });
+});
+
 // --- buildEconomicsArtifact -------------------------------------------------
 
 function econSubnet(netuid, overrides = {}) {
@@ -198,6 +262,9 @@ describe("buildEconomicsArtifact", () => {
       total_validators: 0,
       total_miners: 0,
       registration_open_count: 0,
+      total_root_value_tao: "0.000000000",
+      total_alpha_value_tao: "0.000000000",
+      total_network_value_tao: "0.000000000",
     });
   });
 
@@ -236,6 +303,33 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(artifact.summary.total_validators, 9);
     assert.equal(artifact.summary.total_miners, 200);
     assert.equal(artifact.summary.registration_open_count, 1);
+    // No netuid-0 row -- entirely alpha value, no root value.
+    assert.equal(artifact.summary.total_root_value_tao, "0.000000000");
+    assert.equal(artifact.summary.total_alpha_value_tao, "40.000000000");
+    assert.equal(artifact.summary.total_network_value_tao, "40.000000000");
+  });
+
+  test("root's own chain-derived alpha_market_cap_tao is excluded from the network-value alpha rollup (#6641)", () => {
+    // Root (netuid 0) reports a moving_price near 1.0 on-chain even though it
+    // has no AMM/alpha token (#2550) -- buildEconomicsArtifact still computes
+    // a row-level alpha_market_cap_tao for it like any other row. The summary
+    // rollup must carve root out by netuid, not by that row happening to have
+    // no price, or root's TAO stake would double-count as alpha value too.
+    const artifact = buildEconomicsArtifact({
+      subnets: [econSubnet(0), econSubnet(1)],
+      economicsByNetuid: new Map([
+        [0, { alpha_price_tao: 1.0, total_stake_tao: 500 }],
+        [1, { alpha_price_tao: 0.04, total_stake_tao: 1000 }],
+      ]),
+      generatedAt: "2026-06-25T00:00:00.000Z",
+    });
+    const root = artifact.subnets.find((row) => row.netuid === 0);
+    // Root's own row still gets its ordinary alpha_market_cap_tao (500) --
+    // untouched, only the network-value rollup treats it specially.
+    assert.equal(root.alpha_market_cap_tao, 500);
+    assert.equal(artifact.summary.total_root_value_tao, "500.000000000");
+    assert.equal(artifact.summary.total_alpha_value_tao, "40.000000000");
+    assert.equal(artifact.summary.total_network_value_tao, "540.000000000");
   });
 
   test("subnets with no economics entry are omitted but still counted", () => {
