@@ -14,8 +14,11 @@ import {
   handleChainIdleStake,
   handleSubnetIdleStake,
 } from "../workers/request-handlers/entities.mjs";
+import { handleRequest } from "../workers/api.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 const NETUID = 7;
+const ctx = { waitUntil: (promise) => promise };
 
 function req(path) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -113,5 +116,27 @@ describe("handleChainIdleStake", () => {
     assert.equal(body.data.total_idle_stake_tao, 0);
     assert.deepEqual(body.data.subnets, []);
     await assertValidComponent("ChainIdleStakeArtifact", body.data);
+  });
+});
+
+describe("workers/api.mjs dispatch", () => {
+  test("GET /api/v1/subnets/{netuid}/idle-stake reaches handleSubnetIdleStake via SUBNET_IDLE_STAKE_PATH_PATTERN", async () => {
+    const res = await handleRequest(
+      req(`/api/v1/subnets/${NETUID}/idle-stake`),
+      createLocalArtifactEnv(),
+      ctx,
+    );
+    const body = await json(res);
+    assert.equal(body.data.netuid, NETUID);
+  });
+
+  test("GET /api/v1/chain/idle-stake reaches handleChainIdleStake", async () => {
+    const res = await handleRequest(
+      req("/api/v1/chain/idle-stake"),
+      createLocalArtifactEnv(),
+      ctx,
+    );
+    const body = await json(res);
+    assert.equal(body.data.subnet_count, 0);
   });
 });
