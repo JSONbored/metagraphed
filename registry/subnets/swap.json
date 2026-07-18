@@ -19,7 +19,7 @@
   ],
   "curation": {
     "gap_notes": [
-      "Official TaoFi pool page, docs, and Swap source repository are verified live.",
+      "Official TaoFi pool page (www.taofi.com/pool) currently returns HTTP 402 with header x-vercel-error: DEPLOYMENT_DISABLED -- the team's Vercel deployment appears disabled, and should appear degraded until it recovers. Docs (docs.taofi.com) and the Swap source repository remain verified live.",
       "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
       "No verified SSE/event stream yet."
     ],
