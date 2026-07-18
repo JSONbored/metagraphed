@@ -257,6 +257,8 @@ import {
   buildConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "./concentration.mjs";
+import { DOMAIN_TAGS } from "./domain-tags.mjs";
+import { buildDomainOverview, buildDomainSummary } from "./domain-summary.mjs";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.mjs";
 import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
 import { loadRpcUsage } from "./rpc-usage-loader.mjs";
@@ -4988,6 +4990,43 @@ export const MCP_TOOLS = [
         limit,
         observedAt: await mcpObservedAt(ctx),
       });
+    },
+  },
+  {
+    name: "get_domain_summary",
+    title: "Get per-domain rollup(s)",
+    description:
+      "Fetch the DefiLlama-style aggregation layer over the existing 14-tag " +
+      "domain/capability taxonomy already exposed read-only via ?domain= on " +
+      "list_subnets: member subnet count, total stake, total emission share, " +
+      "and within-domain emission concentration, per domain tag. Pass `domain` " +
+      "for one tag's own rollup (mirrors GET /api/v1/domains/{tag}/summary); " +
+      "omit it for every tag's rollup in one call (mirrors GET /api/v1/domains).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        domain: {
+          type: "string",
+          enum: DOMAIN_TAGS,
+          description:
+            "Optional single domain tag. Omit to return every tag's rollup.",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const domain = optionalEnum(args, "domain", DOMAIN_TAGS);
+      // A cold/missing subnets index degrades to an empty rollup (like
+      // loadEconomicsSubnetRows' own graceful fallback below), not a thrown
+      // not_found -- this is a live composition over two independently
+      // optional tiers, matching compare_subnets/get_subnet_snapshot's own
+      // degrade-never-throw contract.
+      const index = await loadOptionalArtifact(ctx, "/metagraph/subnets.json");
+      const subnetRows = Array.isArray(index?.subnets) ? index.subnets : [];
+      const economicsRows = await loadEconomicsSubnetRows(ctx);
+      return domain
+        ? buildDomainSummary(domain, subnetRows, economicsRows)
+        : buildDomainOverview(subnetRows, economicsRows);
     },
   },
   {
@@ -12457,6 +12496,28 @@ const TOOL_OUTPUT_SCHEMAS = {
       board: NULLABLE_STRING,
       observed_at: NULLABLE_STRING,
       boards: { type: "object" },
+    },
+  },
+  get_domain_summary: {
+    type: "object",
+    additionalProperties: true,
+    // Two possible shapes depending on whether `domain` was passed -- a single
+    // DomainSummaryArtifact (domain/subnet_count/netuids/...) or the
+    // DomainsArtifact overview (domain_count/domains). Only schema_version is
+    // common to both, so this schema stays loose rather than forcing one
+    // shape's required fields onto the other (the established convention for
+    // composite/nested sections, per get_subnet_snapshot's own precedent).
+    required: ["schema_version"],
+    properties: {
+      schema_version: { type: "integer" },
+      domain: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      netuids: { type: "array", items: { type: "integer" } },
+      total_stake_tao: { type: ["number", "null"] },
+      total_emission_share: { type: ["number", "null"] },
+      emission_concentration: { type: ["object", "null"] },
+      domain_count: { type: "integer" },
+      domains: { type: "array", items: { type: "object" } },
     },
   },
   compare_subnets: {

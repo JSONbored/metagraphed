@@ -1318,6 +1318,22 @@ const checks = [
     },
   ],
   [
+    "/api/v1/domains",
+    (body) => {
+      assert.equal(typeof body.data.domain_count, "number");
+      assert.equal(Array.isArray(body.data.domains), true);
+      assert.equal(body.data.domains.length, body.data.domain_count);
+    },
+  ],
+  [
+    "/api/v1/domains/inference/summary",
+    (body) => {
+      assert.equal(body.data.domain, "inference");
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(Array.isArray(body.data.netuids), true);
+    },
+  ],
+  [
     "/api/v1/rpc/usage",
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");

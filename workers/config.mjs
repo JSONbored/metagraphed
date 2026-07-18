@@ -304,6 +304,13 @@ export const RUNTIME_VERSIONS_PATH_PATTERN = /^\/api\/v1\/runtime$/;
 // the hash is best-effort/nullable). Single capture group; the handler branches.
 export const EXTRINSIC_DETAIL_PATH_PATTERN =
   /^\/api\/v1\/extrinsics\/(0x[0-9a-fA-F]{64}|\d+-\d+)$/;
+// Per-domain rollup (#6749/#6750): total stake/emission-share/concentration
+// across one domain/capability tag's member subnets. `tag` is captured loosely
+// (any lowercase-hyphen token) -- the handler validates it against the real
+// fixed DOMAIN_TAGS enum, matching how other enum-shaped path segments in this
+// file defer their real validation to the handler rather than the regex.
+export const DOMAIN_SUMMARY_PATH_PATTERN =
+  /^\/api\/v1\/domains\/([a-z-]+)\/summary$/;
 export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const MAX_BULK_TREND_ROWS = 10000;

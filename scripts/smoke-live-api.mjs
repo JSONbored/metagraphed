@@ -484,7 +484,8 @@ export function apiRouteUrl(routePath, date, options = {}) {
     .replace("{ref}", "0")
     .replace("{surface_id}", options.surfaceId || "7:subnet-api:new_v2")
     .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
-    .replace("{hotkey}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM");
+    .replace("{hotkey}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
+    .replace("{tag}", "inference");
   // Guard against the recurring #1682 class: any leftover `{` means a route
   // placeholder was never substituted, which silently 404s against a live URL
   // that matches no route. Fail fast with the offending path.

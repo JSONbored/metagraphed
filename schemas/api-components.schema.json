@@ -8378,6 +8378,83 @@
         ],
         "type": "object"
       },
+      "DomainsArtifact": {
+        "additionalProperties": false,
+        "description": "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share, and within-domain emission concentration -- computed live from the subnets index + economics tier at GET /api/v1/domains (buildDomainOverview, no static file).",
+        "properties": {
+          "domain_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/DomainSummaryArtifact"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "domain_count",
+          "domains"
+        ],
+        "type": "object"
+      },
+      "DomainSummaryArtifact": {
+        "additionalProperties": false,
+        "description": "One domain/capability tag's own rollup at GET /api/v1/domains/{tag}/summary (buildDomainSummary, no static file). emission_concentration is computeConcentration over the domain's own member subnets' emission_share values -- null when the domain has no subnet with a positive emission share.",
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "emission_concentration": {
+            "additionalProperties": true,
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "netuids": {
+            "items": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_emission_share": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "domain",
+          "subnet_count",
+          "netuids",
+          "total_stake_tao",
+          "total_emission_share",
+          "emission_concentration"
+        ],
+        "type": "object"
+      },
       "EconomicsArtifact": {
         "allOf": [
           {

@@ -69,6 +69,49 @@
           }
         }
       },
+      "DomainsArtifact": {
+        "type": "object",
+        "description": "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share, and within-domain emission concentration -- computed live from the subnets index + economics tier at GET /api/v1/domains (buildDomainOverview, no static file).",
+        "required": ["schema_version", "domain_count", "domains"],
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "domain_count": { "type": "integer", "minimum": 0 },
+          "domains": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DomainSummaryArtifact" }
+          }
+        }
+      },
+      "DomainSummaryArtifact": {
+        "type": "object",
+        "description": "One domain/capability tag's own rollup at GET /api/v1/domains/{tag}/summary (buildDomainSummary, no static file). emission_concentration is computeConcentration over the domain's own member subnets' emission_share values -- null when the domain has no subnet with a positive emission share.",
+        "required": [
+          "schema_version",
+          "domain",
+          "subnet_count",
+          "netuids",
+          "total_stake_tao",
+          "total_emission_share",
+          "emission_concentration"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "domain": { "type": "string" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "netuids": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 }
+          },
+          "total_stake_tao": { "type": ["number", "null"] },
+          "total_emission_share": { "type": ["number", "null"] },
+          "emission_concentration": {
+            "type": ["object", "null"],
+            "additionalProperties": true
+          }
+        }
+      },
       "CompareValidatorsArtifact": {
         "type": "object",
         "additionalProperties": true,

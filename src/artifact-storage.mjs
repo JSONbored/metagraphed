@@ -279,6 +279,15 @@ export const R2_ONLY_PATTERNS = [
   // /api/v1/compare/validators — never written as a file. Same R2-only
   // reasoning as its subnet-side sibling above.
   /^compare\/validators\.json$/,
+  // Per-domain rollup overview (#6749), composed live from the subnets index
+  // + economics tier at /api/v1/domains — never written as a file. Same
+  // R2-only reasoning as /api/v1/compare above.
+  /^domains\.json$/,
+  // Per-domain rollup for one tag (#6749), composed live at
+  // /api/v1/domains/{tag}/summary — never written as a file. Matches both a
+  // resolved tag and the literal `{tag}` template, mirroring the
+  // `(?:\d+|\{netuid\})` dual-pattern convention used throughout this list.
+  /^domains\/(?:[a-z-]+|\{tag\})\/summary\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.
   /^rpc\/usage\.json$/,

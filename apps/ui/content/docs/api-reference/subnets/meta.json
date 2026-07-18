@@ -1,6 +1,8 @@
 {
   "title": "Subnets",
   "pages": [
+    "domain-summary",
+    "domains",
     "economics",
     "economics-trends",
     "subnet-alpha-volume",

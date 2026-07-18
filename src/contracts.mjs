@@ -1640,6 +1640,18 @@ export const PUBLIC_ARTIFACTS = [
     "CompareValidatorsArtifact",
   ),
   artifact(
+    "domains",
+    "/metagraph/domains.json",
+    "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy (src/domain-tags.mjs), each with its member subnet count, total stake, total emission share, and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains (no static file). The aggregation layer over ?domain=, not a new taxonomy.",
+    "DomainsArtifact",
+  ),
+  artifact(
+    "domain-summary",
+    "/metagraph/domains/{tag}/summary.json",
+    "One domain/capability tag's own rollup: member subnet count, total stake, total emission share, and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains/{tag}/summary (no static file). Single-tag drill-down from /api/v1/domains.",
+    "DomainSummaryArtifact",
+  ),
+  artifact(
     "rpc-usage",
     "/metagraph/rpc/usage.json",
     "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
@@ -3937,6 +3949,33 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "domains",
+    "GET",
+    "/api/v1/domains",
+    "/metagraph/domains.json",
+    "Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier (no static file). The aggregation layer over the existing ?domain= filter on /api/v1/subnets.",
+    "standard",
+    ["subnets", "analytics"],
+    [],
+    [],
+  ),
+  route(
+    "domain-summary",
+    "GET",
+    "/api/v1/domains/{tag}/summary",
+    "/metagraph/domains/{tag}/summary.json",
+    "Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share, and within-domain emission concentration. `tag` must be one of the 14 fixed domain tags (the same enum ?domain= validates on /api/v1/subnets). Computed live from the subnets index + economics tier (no static file).",
+    "standard",
+    ["subnets", "analytics"],
+    [],
+    [
+      {
+        name: "tag",
+        schema: enumSchema(DOMAIN_TAGS),
+      },
+    ],
+  ),
+  route(
     "rpc-usage",
     "GET",
     "/api/v1/rpc/usage",
@@ -4424,6 +4463,7 @@ export function artifactPathFromTemplate(template, params = {}) {
       .replace("{surface_id}", String(params.surface_id ?? ""))
       .replace("{ref}", String(params.ref ?? ""))
       .replace("{hash}", String(params.hash ?? ""))
+      .replace("{tag}", String(params.tag ?? ""))
   );
 }
 
@@ -4443,7 +4483,11 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/\{ref\}/g, "__METAGRAPH_REF__")
     // Block-explorer {hash} (#1345/#1848): a 0x extrinsic_hash OR
     // composite <block_number>-<extrinsic_index> ref.
-    .replace(/\{hash\}/g, "__METAGRAPH_HASH__");
+    .replace(/\{hash\}/g, "__METAGRAPH_HASH__")
+    // Domain rollup {tag} (#6749/#6750): one of the fixed 14 domain/capability
+    // tags (src/domain-tags.mjs) — same lowercase-hyphen shape as {slug}, kept
+    // as its own token since it's a distinct, unrelated enum.
+    .replace(/\{tag\}/g, "__METAGRAPH_TAG__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
@@ -4456,7 +4500,8 @@ export function compileRoutePattern(pathTemplate) {
       "(?<surface_id>[A-Za-z0-9][A-Za-z0-9:._-]*)",
     )
     .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})")
-    .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64}|\\d+-\\d+)");
+    .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64}|\\d+-\\d+)")
+    .replace(/__METAGRAPH_TAG__/g, "(?<tag>[a-z-]+)");
   return new RegExp(`^${pattern}\\/?$`);
 }
 

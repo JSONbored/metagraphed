@@ -31,6 +31,7 @@ import { buildChainWeights } from "../src/chain-weights.mjs";
 import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
 import { buildChainTransfers } from "../src/chain-transfers.mjs";
 import { buildChainCalls } from "../src/chain-analytics.mjs";
+import { DOMAIN_TAGS } from "../src/domain-tags.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -11590,6 +11591,94 @@ describe("MCP economics + metagraph data tools", () => {
     const out = res.body.result.structuredContent;
     assert.ok(typeof out.boards === "object");
     assert.ok(Object.keys(out.boards).length > 0);
+  });
+
+  describe("MCP get_domain_summary", () => {
+    const domainDeps = makeDeps({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, categories: ["inference"], derived_categories: [] },
+          {
+            netuid: 2,
+            categories: [],
+            derived_categories: ["inference", "agents"],
+          },
+        ],
+      },
+      "/metagraph/economics.json": {
+        subnets: [
+          { netuid: 1, total_stake_tao: 100, emission_share: 0.4 },
+          { netuid: 2, total_stake_tao: 50, emission_share: 0.1 },
+        ],
+      },
+    });
+
+    test("with domain returns that tag's own rollup", async () => {
+      const res = await callTool(
+        "get_domain_summary",
+        { domain: "inference" },
+        { deps: domainDeps },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.domain, "inference");
+      assert.deepEqual(out.netuids, [1, 2]);
+      assert.equal(out.subnet_count, 2);
+      assert.equal(out.total_stake_tao, 150);
+      assert.equal(out.total_emission_share, 0.5);
+    });
+
+    test("a domain tag with no member subnets returns a schema-stable empty rollup", async () => {
+      const res = await callTool(
+        "get_domain_summary",
+        { domain: "security" },
+        { deps: domainDeps },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.subnet_count, 0);
+      assert.deepEqual(out.netuids, []);
+      assert.equal(out.emission_concentration, null);
+    });
+
+    test("without domain returns every tag's rollup", async () => {
+      const res = await callTool(
+        "get_domain_summary",
+        {},
+        { deps: domainDeps },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.domain_count, DOMAIN_TAGS.length);
+      assert.equal(out.domains.length, DOMAIN_TAGS.length);
+      const inference = out.domains.find((d) => d.domain === "inference");
+      assert.equal(inference.subnet_count, 2);
+    });
+
+    test("rejects an unknown domain tag", async () => {
+      const res = await callTool(
+        "get_domain_summary",
+        { domain: "not-a-real-tag" },
+        { deps: domainDeps },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /domain/);
+    });
+
+    // A genuinely absent subnets index degrades via loadOptionalArtifact
+    // (never throws); economics.json still needs to be *present but empty*
+    // here since loadEconomicsSubnetRows' own R2 fallback uses
+    // loadArtifactData (throws not_found on a truly missing artifact) --
+    // mirrors find_subnet_opportunities' own cold-economics fixture shape.
+    test("degrades to an empty overview when the subnets index is missing and economics is empty", async () => {
+      const res = await callTool(
+        "get_domain_summary",
+        {},
+        { deps: makeDeps({ "/metagraph/economics.json": {} }) },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.domain_count, DOMAIN_TAGS.length);
+      for (const entry of out.domains) {
+        assert.equal(entry.subnet_count, 0);
+      }
+    });
   });
 
   test("compare_subnets composes health-only dimensions", async () => {

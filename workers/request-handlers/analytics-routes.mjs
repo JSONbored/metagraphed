@@ -50,6 +50,11 @@ import {
   LEADERBOARD_BOARDS,
   resolveLiveEconomics,
 } from "../../src/health-serving.mjs";
+import { DOMAIN_TAGS } from "../../src/domain-tags.mjs";
+import {
+  buildDomainOverview,
+  buildDomainSummary,
+} from "../../src/domain-summary.mjs";
 
 let readHealthMetaKv = () => {
   throw new Error("analytics routes used before configureAnalyticsRoutes()");
@@ -727,6 +732,111 @@ export async function handleCompare(request, env, url) {
     "standard",
   );
   return healthIsFallback ? markD1FallbackResponse(response) : response;
+}
+
+// Shared input for both domain-rollup routes below: the subnets index (netuid
+// -> categories/derived_categories) joined against the live economics tier
+// (netuid -> total_stake_tao/emission_share), mirroring resolveEconomicsRows'
+// own live-KV-first/R2-fallback precedence. `captured_at` comes from whichever
+// tier actually supplied economicsRows, matching network-economics.mjs's own
+// `data.captured_at` convention -- the domain rollup is only as fresh as the
+// economics side (subnets.json's own domain tags change far less often).
+async function domainSummaryInputs(env) {
+  const live = await resolveLiveEconomics({
+    readHealthKv: (e) => readEconomicsCurrentKv(e),
+    env,
+    contractVersion: contractVersion(env),
+  });
+  let economicsRows = [];
+  let capturedAt = null;
+  if (Array.isArray(live?.data?.subnets)) {
+    economicsRows = live.data.subnets;
+    // No `?? null` needed here: resolveLiveEconomics only ever returns a blob
+    // whose captured_at already parsed as a valid date (its own freshness
+    // gate), so this is always a real string, never null/undefined.
+    capturedAt = live.data.captured_at;
+  } else {
+    const artifact = await readArtifact(env, "/metagraph/economics.json");
+    if (artifact.ok && Array.isArray(artifact.data?.subnets)) {
+      economicsRows = artifact.data.subnets;
+      capturedAt = artifact.data.captured_at ?? null;
+    }
+  }
+  const subnetsArtifact = await readArtifact(env, "/metagraph/subnets.json");
+  const subnetRows =
+    subnetsArtifact.ok && Array.isArray(subnetsArtifact.data?.subnets)
+      ? subnetsArtifact.data.subnets
+      : [];
+  return { subnetRows, economicsRows, capturedAt };
+}
+
+// GET /api/v1/domains (#6749/#6750): every domain tag's rollup in one call --
+// the DefiLlama-style aggregation layer over the existing 14-tag domain/
+// capability taxonomy (src/domain-tags.mjs), already exposed read-only via
+// ?domain= on /api/v1/subnets. No new capture: pure composition of the
+// subnets index + economics tier, same registry+economics pattern
+// handleCompare uses above.
+export async function handleDomains(request, env) {
+  const url = new URL(request.url);
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const { subnetRows, economicsRows, capturedAt } =
+    await domainSummaryInputs(env);
+  const data = buildDomainOverview(subnetRows, economicsRows);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: {
+        artifact_path: "/metagraph/domains.json",
+        cache: "standard",
+        contract_version: contractVersion(env),
+        generated_at: capturedAt,
+        source: "registry+economics",
+      },
+    },
+    "standard",
+  );
+}
+
+// GET /api/v1/domains/{tag}/summary (#6749/#6750): one domain tag's own
+// rollup -- subnet_count, total_stake_tao, total_emission_share, and
+// emission_concentration across just that tag's member subnets. `tag` is a
+// path segment against the SAME fixed 14-tag enum ?domain= already validates
+// (src/contracts.mjs's `enumSchema(DOMAIN_TAGS)`), so an unknown tag is a
+// 400, not a 404 -- it's a malformed identifier against a known enum, not a
+// resource lookup miss.
+export async function handleDomainSummary(request, env, tag) {
+  const url = new URL(request.url);
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  if (!DOMAIN_TAGS.includes(tag)) {
+    return errorResponse(
+      "invalid_request",
+      `Unknown domain tag "${tag}". Valid tags: ${DOMAIN_TAGS.join(", ")}.`,
+      400,
+      { parameter: "tag" },
+    );
+  }
+
+  const { subnetRows, economicsRows, capturedAt } =
+    await domainSummaryInputs(env);
+  const data = buildDomainSummary(tag, subnetRows, economicsRows);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: {
+        artifact_path: `/metagraph/domains/${tag}/summary.json`,
+        cache: "standard",
+        contract_version: contractVersion(env),
+        generated_at: capturedAt,
+        source: "registry+economics",
+      },
+    },
+    "standard",
+  );
 }
 
 // A per-hotkey internal request pointed at /api/v1/validators/{hotkey},

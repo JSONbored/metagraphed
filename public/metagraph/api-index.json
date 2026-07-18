@@ -1427,6 +1427,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "domains",
+      "path": "/metagraph/domains.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/DomainsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "domain-summary",
+      "path": "/metagraph/domains/{tag}/summary.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/DomainSummaryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "rpc-usage",
       "path": "/metagraph/rpc/usage.json",
       "retirement": null,
@@ -8940,6 +8958,30 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/domains.json",
+      "cache": "standard",
+      "description": "Fetch the per-domain rollup overview: every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier (no static file). The aggregation layer over the existing ?domain= filter on /api/v1/subnets.",
+      "id": "domains",
+      "method": "GET",
+      "path": "/api/v1/domains",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/domains/{tag}/summary.json",
+      "cache": "standard",
+      "description": "Fetch one domain/capability tag's own rollup: member subnet count, total stake, total emission share, and within-domain emission concentration. `tag` must be one of the 14 fixed domain tags (the same enum ?domain= validates on /api/v1/subnets). Computed live from the subnets index + economics tier (no static file).",
+      "id": "domain-summary",
+      "method": "GET",
+      "path": "/api/v1/domains/{tag}/summary",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/rpc/usage.json",

@@ -185,6 +185,8 @@ import {
   configureAnalyticsRoutes,
   handleCompare,
   handleCompareValidators,
+  handleDomains,
+  handleDomainSummary,
   handleEconomicsTrends,
   handleLeaderboards,
   handleTrajectory,
@@ -358,6 +360,7 @@ import {
   SUBNET_DEREGISTRATIONS_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
   SUBNET_PERFORMANCE_PATH_PATTERN,
+  DOMAIN_SUMMARY_PATH_PATTERN,
   SUDO_CALLS_PATH_PATTERN,
   SUDO_KEY_PATH_PATTERN,
   NETWORK_PARAMETERS_PATH_PATTERN,
@@ -1667,6 +1670,24 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleCompareValidators(request, env, url);
   }
 
+  // Per-domain rollup overview (#6749/#6750): every domain/capability tag's
+  // stake/emission-share/concentration rollup in one call, composed live from
+  // the subnets index + economics tier -- same registry+economics shape as
+  // /api/v1/compare above, but uncached (like handleCompareValidators) since
+  // this is a first cut and the underlying tiers already have their own
+  // ~3h/cron-refresh cadence.
+  if (url.pathname === "/api/v1/domains") {
+    return handleDomains(request, env);
+  }
+
+  // Per-domain rollup for one tag. Dispatched before subnet routing (like the
+  // global /api/v1/validators leaderboard above) so this top-level collection
+  // never collides with a subnet-scoped path.
+  const domainSummaryMatch = DOMAIN_SUMMARY_PATH_PATTERN.exec(url.pathname);
+  if (domainSummaryMatch) {
+    return handleDomainSummary(request, env, domainSummaryMatch[1]);
+  }
+
   // Global validator/operator leaderboard from the current neurons snapshot. Exact path,
   // dispatched before subnet routing so the top-level collection stays unambiguous.
   // Busts on the shared health-cron last_run_at stamp like every other Postgres-tier
@@ -2861,6 +2882,8 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
     pathname === "/api/v1/compare/validators" ||
+    pathname === "/api/v1/domains" ||
+    DOMAIN_SUMMARY_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/subnets/movers" ||
     pathname === "/api/v1/health" ||
     pathname === "/api/v1/incidents" ||
