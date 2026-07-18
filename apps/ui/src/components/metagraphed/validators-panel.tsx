@@ -11,6 +11,7 @@ import {
 import { NeuronTable } from "@/components/metagraphed/neuron-table";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { SponsoredValidatorCallout } from "@/components/metagraphed/sponsored-validator-callout";
+import { TopShareCaption } from "@/components/metagraphed/top-share-caption";
 
 const TOP_N = 10;
 
@@ -89,9 +90,7 @@ export function ValidatorsTableLoader({
             <div className="mt-4 border-t border-border pt-3">
               <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
                 Stake dominance
-                <span className="ml-2 normal-case tracking-normal text-ink-subtle">
-                  share within the top {stakeTiles.length}
-                </span>
+                <TopShareCaption n={stakeTiles.length} />
               </div>
               <TreemapMini
                 data={stakeTiles}
