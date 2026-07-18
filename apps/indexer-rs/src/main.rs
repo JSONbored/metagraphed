@@ -901,6 +901,51 @@ fn extract(kind: &str, f: &[&Value<()>]) -> Option<Ext> {
                 ..none
             })
         }
+        // --- child-hotkey delegation graph (#6722, part of epic #6721,
+        // pallet_subtensor::staking::set_children, verified against live
+        // opentensor/subtensor source 2026-07-18). We already serve the
+        // BOUNDS (take-ratio limits, cooldown as hyperparameters); this
+        // captures the lifecycle events for the live graph itself
+        // (#6723 reads the CURRENT state live from chain, not from this
+        // history). The pallet's own `SetChildren` event (fired when a
+        // scheduled change is actually APPLIED after cooldown, or applied
+        // immediately) is deliberately NOT curated here -- it carries no
+        // new information beyond what SetChildrenScheduled already
+        // recorded (the children list was fixed at schedule time; cooldown
+        // is a mechanical delay, not a new decision), so it would only be a
+        // duplicate history row.
+
+        // SetChildrenScheduled(hotkey, netuid, cooldown_block, children) —
+        //   a plain tuple event (not a named struct): a0=hotkey, a1=netuid.
+        //   cooldown_block (a2) and children (a3, Vec<(u64, AccountId)>) not
+        //   curated -- no dedicated columns for a variable-length list; the
+        //   live delegation graph itself is served by #6723, not derived
+        //   from this history.
+        "SetChildrenScheduled" => {
+            if f.len() < 2 {
+                return None;
+            }
+            Some(Ext {
+                hotkey: acct(f[0]),
+                netuid: nth(f, 1).and_then(idx_of),
+                ..none
+            })
+        }
+        // ChildKeyTakeSet(hotkey, take) — a plain tuple event: a0=hotkey.
+        // No netuid on this event at all (a real chain-level omission, not
+        // a decode gap -- the underlying storage write IS per-(hotkey,
+        // netuid), per ChildkeyTake::<T>::insert(hotkey, netuid, take), but
+        // the event itself only carries the hotkey). take (a1) not curated
+        // (no dedicated column for a PerU16 ratio).
+        "ChildKeyTakeSet" => {
+            if f.is_empty() {
+                return None;
+            }
+            Some(Ext {
+                hotkey: acct(f[0]),
+                ..none
+            })
+        }
         _ => None,
     }
 }
@@ -2340,5 +2385,74 @@ mod subnet_leasing_and_crowdloan_tests {
         assert!(extract("SubnetLeaseDividendsDistributed", &fields).is_none());
         assert!(extract("Contributed", &fields).is_none());
         assert!(extract("Withdrew", &fields).is_none());
+    }
+}
+
+#[cfg(test)]
+mod child_hotkey_delegation_tests {
+    use super::*;
+
+    fn prim_u128(n: u128) -> Value<()> {
+        Value {
+            value: ValueDef::Primitive(Primitive::U128(n)),
+            context: (),
+        }
+    }
+
+    // AccountId32 = newtype over [u8;32] -> Unnamed([ Unnamed([u8;32]) ]),
+    // matching subnet_leasing_and_crowdloan_tests' own account_value helper.
+    fn account_value(byte0: u8) -> Value<()> {
+        let mut bytes = vec![prim_u128(byte0 as u128)];
+        bytes.extend((1..32).map(|_| prim_u128(0)));
+        Value {
+            value: ValueDef::Composite(Composite::Unnamed(vec![Value {
+                value: ValueDef::Composite(Composite::Unnamed(bytes)),
+                context: (),
+            }])),
+            context: (),
+        }
+    }
+
+    #[test]
+    fn set_children_scheduled_curates_hotkey_and_netuid_not_cooldown_or_children() {
+        let hotkey = account_value(0x11);
+        let netuid = prim_u128(9);
+        let cooldown_block = prim_u128(1_234_567);
+        // children: Vec<(u64, AccountId)> -- shape irrelevant, never read.
+        let children = prim_u128(0);
+        let fields: Vec<&Value<()>> = vec![&hotkey, &netuid, &cooldown_block, &children];
+        let ext = extract("SetChildrenScheduled", &fields)
+            .expect("SetChildrenScheduled always decodes with >= 2 fields");
+        assert!(ext.hotkey.is_some());
+        assert_eq!(ext.netuid, Some(9));
+        assert_eq!(ext.coldkey, None);
+        assert_eq!(ext.amount_tao, None);
+    }
+
+    #[test]
+    fn child_key_take_set_curates_hotkey_only_no_netuid_on_the_event_itself() {
+        // ChildKeyTakeSet(hotkey, take) genuinely has no netuid field, even
+        // though the underlying storage write (ChildkeyTake::insert(hotkey,
+        // netuid, take)) is per-subnet -- a real chain-level event omission,
+        // not a decode gap. Confirms the extract() arm doesn't invent one.
+        let hotkey = account_value(0x22);
+        let take = prim_u128(6_553); // PerU16 take ratio
+        let fields: Vec<&Value<()>> = vec![&hotkey, &take];
+        let ext = extract("ChildKeyTakeSet", &fields)
+            .expect("ChildKeyTakeSet always decodes with >= 1 field");
+        assert!(ext.hotkey.is_some());
+        assert_eq!(ext.netuid, None);
+    }
+
+    #[test]
+    fn underfilled_fields_return_none_not_a_panic() {
+        let empty: Vec<&Value<()>> = vec![];
+        assert!(extract("SetChildrenScheduled", &empty).is_none());
+        assert!(extract("ChildKeyTakeSet", &empty).is_none());
+        let one = account_value(0x33);
+        let one_field: Vec<&Value<()>> = vec![&one];
+        assert!(extract("SetChildrenScheduled", &one_field).is_none());
+        // ChildKeyTakeSet needs only 1 field, so a single hotkey IS enough.
+        assert!(extract("ChildKeyTakeSet", &one_field).is_some());
     }
 }

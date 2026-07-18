@@ -96,6 +96,12 @@ test("INGESTED_EVENT_KINDS accepts subnet leasing + crowdloan kinds (#6718)", ()
   }
 });
 
+test("INGESTED_EVENT_KINDS accepts child-hotkey delegation kinds (#6722)", () => {
+  for (const kind of ["SetChildrenScheduled", "ChildKeyTakeSet"]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
 test("buildSubnetEventSummary categorizes subnet leasing + crowdloan kinds as governance, not other (#6718)", () => {
   const out = buildSubnetEventSummary(
     [
@@ -119,6 +125,26 @@ test("buildSubnetEventSummary categorizes subnet leasing + crowdloan kinds as go
   assert.ok(
     !out.categories.some((row) => row.category === "other"),
     "none of these kinds should fall into the other category",
+  );
+});
+
+test("buildSubnetEventSummary categorizes child-hotkey delegation kinds as delegation, not other (#6722)", () => {
+  const out = buildSubnetEventSummary(
+    [
+      { event_kind: "SetChildrenScheduled", event_count: 3 },
+      { event_kind: "ChildKeyTakeSet", event_count: 1 },
+    ],
+    [],
+    7,
+  );
+  const byKind = Object.fromEntries(
+    out.event_kinds.map((row) => [row.event_kind, row.category]),
+  );
+  assert.equal(byKind.SetChildrenScheduled, "delegation");
+  assert.equal(byKind.ChildKeyTakeSet, "delegation");
+  assert.ok(
+    !out.categories.some((row) => row.category === "other"),
+    "neither kind should fall into the other category",
   );
 });
 

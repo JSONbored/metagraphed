@@ -12383,6 +12383,211 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     }
   });
 
+  test("get_account_children returns subnets:[] when the account has no children", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      const body = JSON.parse(init.body);
+      if (body.method === "state_getKeysPaged") {
+        return { ok: true, json: async () => ({ result: [] }) };
+      }
+      return { ok: true, json: async () => ({ result: null }) };
+    };
+    try {
+      const res = await callTool("get_account_children", { ss58: SS58 }, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.account, SS58);
+      assert.deepEqual(out.subnets, []);
+      assert.ok(out.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_account_children rejects a non-finney ss58 prefix", async () => {
+    const res = await callTool(
+      "get_account_children",
+      { ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXc6TYeyZ1km1" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /finney/i);
+  });
+
+  test("get_account_children returns subnets:null on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: false });
+    try {
+      const res = await callTool("get_account_children", { ss58: SS58 }, {});
+      assert.equal(res.body.result.structuredContent.subnets, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_account_children applies the RPC rate limiter before finney fetch", async () => {
+    let limiterKey;
+    let fetchCalled = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      fetchCalled = true;
+      throw new Error("should not fetch");
+    };
+    const env = {
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: false };
+        },
+      },
+    };
+    try {
+      const res = await callTool(
+        "get_account_children",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rate_limited/);
+      assert.equal(limiterKey, "children:mcp:anonymous");
+      assert.equal(fetchCalled, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_account_parents returns subnets:[] when the account has no parents", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      const body = JSON.parse(init.body);
+      if (body.method === "state_getKeysPaged") {
+        return { ok: true, json: async () => ({ result: [] }) };
+      }
+      return { ok: true, json: async () => ({ result: null }) };
+    };
+    try {
+      const res = await callTool("get_account_parents", { ss58: SS58 }, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.account, SS58);
+      assert.deepEqual(out.subnets, []);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_account_parents rejects a non-finney ss58 prefix", async () => {
+    const res = await callTool(
+      "get_account_parents",
+      { ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXc6TYeyZ1km1" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /finney/i);
+  });
+
+  test("get_account_parents returns subnets:null on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: false });
+    try {
+      const res = await callTool("get_account_parents", { ss58: SS58 }, {});
+      assert.equal(res.body.result.structuredContent.subnets, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_account_parents applies the RPC rate limiter before finney fetch", async () => {
+    let limiterKey;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("should not fetch");
+    };
+    const env = {
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: false };
+        },
+      },
+    };
+    try {
+      const res = await callTool(
+        "get_account_parents",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.equal(limiterKey, "parents:mcp:anonymous");
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_account_children proceeds to the live RPC when the rate limiter allows the request", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      const body = JSON.parse(init.body);
+      if (body.method === "state_getKeysPaged") {
+        return { ok: true, json: async () => ({ result: [] }) };
+      }
+      return { ok: true, json: async () => ({ result: null }) };
+    };
+    const env = {
+      RPC_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+    };
+    try {
+      const res = await callTool(
+        "get_account_children",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.deepEqual(res.body.result.structuredContent.subnets, []);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_account_parents proceeds to the live RPC when the rate limiter allows the request", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      const body = JSON.parse(init.body);
+      if (body.method === "state_getKeysPaged") {
+        return { ok: true, json: async () => ({ result: [] }) };
+      }
+      return { ok: true, json: async () => ({ result: null }) };
+    };
+    const env = {
+      RPC_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+    };
+    try {
+      const res = await callTool(
+        "get_account_parents",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.deepEqual(res.body.result.structuredContent.subnets, []);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
   // account_events' D1 write path is retired (#4772) and the table is dropped
   // in production, so get_account_events always returns the schema-stable
   // empty feed (buildAccountEvents([], ss58, {limit, offset, nextCursor:

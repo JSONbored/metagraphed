@@ -995,6 +995,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-children",
+      "path": "/metagraph/accounts/{ss58}/children.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountChildrenArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "account-parents",
+      "path": "/metagraph/accounts/{ss58}/parents.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountParentsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "sudo-key",
       "path": "/metagraph/sudo/key.json",
       "retirement": null,
@@ -7254,6 +7272,30 @@
       "id": "account-balance",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/balance",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/children.json",
+      "cache": "short",
+      "description": "Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
+      "id": "account-children",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/children",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/parents.json",
+      "cache": "short",
+      "description": "Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
+      "id": "account-parents",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/parents",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

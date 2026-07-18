@@ -3,6 +3,7 @@
   "pages": [
     "account-axon-removals",
     "account-balance",
+    "account-children",
     "account-counterparties",
     "account-deregistrations",
     "account-events",
@@ -10,6 +11,7 @@
     "account-history",
     "account-identity",
     "account-identity-history",
+    "account-parents",
     "account-portfolio",
     "account-positions",
     "account-prometheus",

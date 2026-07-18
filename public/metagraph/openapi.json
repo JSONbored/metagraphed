@@ -198,6 +198,43 @@
         ],
         "type": "object"
       },
+      "AccountChildrenArtifact": {
+        "additionalProperties": true,
+        "description": "Live child-hotkey delegation graph for one account (#6723, part of epic #6721) -- every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts.",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnets": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChildDelegationSubnet"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "account"
+        ],
+        "type": "object"
+      },
       "AccountCounterpartiesArtifact": {
         "additionalProperties": true,
         "description": "Per-counterparty fund-flow rollup for one account, aggregated from the account_events Transfer tier — its transfers grouped by counterparty into sent/received/net + count, ranked by total volume (the address relationship view). Served live at /api/v1/accounts/{ss58}/counterparties (no static file).",
@@ -970,6 +1007,43 @@
         "required": [
           "observed_at",
           "identity_hash"
+        ],
+        "type": "object"
+      },
+      "AccountParentsArtifact": {
+        "additionalProperties": true,
+        "description": "Live parent-hotkey delegation graph for one account (#6723, part of epic #6721) -- every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts.",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnets": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ParentDelegationSubnet"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "account"
         ],
         "type": "object"
       },
@@ -7125,6 +7199,52 @@
           }
         ]
       },
+      "ChildDelegationEntry": {
+        "additionalProperties": false,
+        "description": "One child hotkey a parent has delegated a share of stake-weight to, on one subnet (#6723, part of epic #6721). proportion is the raw on-chain u64 (out of u64::MAX = 100%, per the pallet's own invariant), returned as a string to avoid JS Number precision loss; proportion_fraction is the same value pre-divided to a plain 0..1 float for convenience.",
+        "properties": {
+          "child": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proportion": {
+            "type": "string"
+          },
+          "proportion_fraction": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "child",
+          "proportion",
+          "proportion_fraction"
+        ],
+        "type": "object"
+      },
+      "ChildDelegationSubnet": {
+        "additionalProperties": false,
+        "description": "One subnet's children for an account (#6723) -- only subnets where the account actually has at least one child are included.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ChildDelegationEntry"
+            },
+            "type": "array"
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "netuid",
+          "entries"
+        ],
+        "type": "object"
+      },
       "Classification": {
         "enum": [
           "live",
@@ -12010,6 +12130,52 @@
           "limit",
           "cursor",
           "next_cursor"
+        ],
+        "type": "object"
+      },
+      "ParentDelegationEntry": {
+        "additionalProperties": false,
+        "description": "One parent hotkey currently delegating a share of stake-weight to this account, on one subnet (#6723, part of epic #6721). Same proportion/proportion_fraction shape as ChildDelegationEntry.",
+        "properties": {
+          "parent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proportion": {
+            "type": "string"
+          },
+          "proportion_fraction": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "parent",
+          "proportion",
+          "proportion_fraction"
+        ],
+        "type": "object"
+      },
+      "ParentDelegationSubnet": {
+        "additionalProperties": false,
+        "description": "One subnet's parents for an account (#6723) -- only subnets where the account actually has at least one parent are included.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ParentDelegationEntry"
+            },
+            "type": "array"
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "netuid",
+          "entries"
         ],
         "type": "object"
       },
@@ -23540,6 +23706,146 @@
         ]
       }
     },
+    "/api/v1/accounts/{ss58}/children": {
+      "get": {
+        "operationId": "accountChildren",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ss58",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "account": "example",
+                    "queried_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "subnets": [
+                      {
+                        "entries": [
+                          {
+                            "child": "example",
+                            "proportion": "example",
+                            "proportion_fraction": 0.5
+                          }
+                        ],
+                        "netuid": 7
+                      }
+                    ]
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AccountChildrenArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
     "/api/v1/accounts/{ss58}/counterparties": {
       "get": {
         "operationId": "accountCounterparties",
@@ -24826,6 +25132,146 @@
         "tags": [
           "accounts",
           "analytics"
+        ]
+      }
+    },
+    "/api/v1/accounts/{ss58}/parents": {
+      "get": {
+        "operationId": "accountParents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ss58",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "account": "example",
+                    "queried_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "subnets": [
+                      {
+                        "entries": [
+                          {
+                            "parent": "example",
+                            "proportion": "example",
+                            "proportion_fraction": 0.5
+                          }
+                        ],
+                        "netuid": 7
+                      }
+                    ]
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AccountParentsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
+        "tags": [
+          "accounts"
         ]
       }
     },

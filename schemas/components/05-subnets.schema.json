@@ -3943,6 +3943,98 @@
           "queried_at": { "type": ["string", "null"], "format": "date-time" }
         }
       },
+      "ChildDelegationEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One child hotkey a parent has delegated a share of stake-weight to, on one subnet (#6723, part of epic #6721). proportion is the raw on-chain u64 (out of u64::MAX = 100%, per the pallet's own invariant), returned as a string to avoid JS Number precision loss; proportion_fraction is the same value pre-divided to a plain 0..1 float for convenience.",
+        "required": ["child", "proportion", "proportion_fraction"],
+        "properties": {
+          "child": { "type": ["string", "null"] },
+          "proportion": { "type": "string" },
+          "proportion_fraction": { "type": "number" }
+        }
+      },
+      "ChildDelegationSubnet": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One subnet's children for an account (#6723) -- only subnets where the account actually has at least one child are included.",
+        "required": ["netuid", "entries"],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0, "maximum": 65535 },
+          "entries": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChildDelegationEntry" }
+          }
+        }
+      },
+      "AccountChildrenArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Live child-hotkey delegation graph for one account (#6723, part of epic #6721) -- every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts.",
+        "required": ["schema_version", "account"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "account": { "type": "string" },
+          "subnets": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ChildDelegationSubnet"
+                }
+              },
+              { "type": "null" }
+            ]
+          },
+          "queried_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "ParentDelegationEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One parent hotkey currently delegating a share of stake-weight to this account, on one subnet (#6723, part of epic #6721). Same proportion/proportion_fraction shape as ChildDelegationEntry.",
+        "required": ["parent", "proportion", "proportion_fraction"],
+        "properties": {
+          "parent": { "type": ["string", "null"] },
+          "proportion": { "type": "string" },
+          "proportion_fraction": { "type": "number" }
+        }
+      },
+      "ParentDelegationSubnet": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One subnet's parents for an account (#6723) -- only subnets where the account actually has at least one parent are included.",
+        "required": ["netuid", "entries"],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0, "maximum": 65535 },
+          "entries": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ParentDelegationEntry" }
+          }
+        }
+      },
+      "AccountParentsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Live parent-hotkey delegation graph for one account (#6723, part of epic #6721) -- every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts.",
+        "required": ["schema_version", "account"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "account": { "type": "string" },
+          "subnets": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ParentDelegationSubnet"
+                }
+              },
+              { "type": "null" }
+            ]
+          },
+          "queried_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
       "SudoKeyArtifact": {
         "type": "object",
         "additionalProperties": true,

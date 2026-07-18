@@ -256,6 +256,15 @@ export const ACCOUNT_IDENTITY_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/identity$/;
 export const ACCOUNT_IDENTITY_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/identity-history$/;
+// Live child-hotkey delegation graph (#6723, part of epic #6721): who this
+// hotkey delegates stake-weight to (children) / who delegates to it
+// (parents), per subnet — queried from the chain's own ChildKeys/ParentKeys
+// storage maps at request time, not a D1/account_events tier, no static
+// file. Mirrors ACCOUNT_IDENTITY_PATH_PATTERN's ss58-keyed shape.
+export const ACCOUNT_CHILDREN_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/children$/;
+export const ACCOUNT_PARENTS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/parents$/;
 // Block-explorer routes (#1345): recent feed + per-block detail, computed live
 // from the `blocks` D1 tier. {ref} is a numeric block_number OR a 0x block_hash
 // (32-byte hex = 64 chars).

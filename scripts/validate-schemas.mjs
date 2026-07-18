@@ -87,6 +87,8 @@ const COMPUTED_ARTIFACTS = new Set([
   "account-positions",
   "account-subnet-position-history",
   "account-balance",
+  "account-children",
+  "account-parents",
   "account-identity",
   "account-identity-history",
   "sudo-key",

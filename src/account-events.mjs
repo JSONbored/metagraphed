@@ -87,6 +87,16 @@ export const INGESTED_EVENT_KINDS = [
   // declares a cap/end with no tao moved yet, so there's no account amount to curate).
   "Contributed",
   "Withdrew",
+  // Child-hotkey delegation graph (#6722, part of epic #6721,
+  // pallet_subtensor::staking::set_children) -- the lifecycle event log,
+  // companion to the live-state routes (#6723) which read current
+  // ChildKeys/ParentKeys storage directly rather than deriving from this
+  // history. SetChildren (fired when a scheduled change is actually
+  // APPLIED, vs SetChildrenScheduled's "a change was requested") is
+  // deliberately excluded -- matches indexer-rs's extract() reasoning: it
+  // carries no new information the Scheduled event didn't already record.
+  "SetChildrenScheduled",
+  "ChildKeyTakeSet",
 ];
 
 export const SUBNET_EVENT_SUMMARY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
@@ -140,6 +150,11 @@ const EVENT_KIND_CATEGORIES = {
   SubnetLeaseDividendsDistributed: "governance",
   Contributed: "governance",
   Withdrew: "governance",
+  // Child-hotkey delegation graph (#6722) -- same bucket as TakeDecreased/
+  // TakeIncreased above: a delegation-relationship change, not a stake
+  // movement itself.
+  SetChildrenScheduled: "delegation",
+  ChildKeyTakeSet: "delegation",
 };
 
 function toIso(ms) {

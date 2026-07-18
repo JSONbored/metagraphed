@@ -96,6 +96,10 @@ import {
   isFinneySs58Address,
   loadAccountBalance,
 } from "../../src/account-balance.mjs";
+import {
+  loadAccountChildren,
+  loadAccountParents,
+} from "../../src/child-hotkey-delegation.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { loadNetworkParameters } from "../../src/network-parameters.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
@@ -3625,6 +3629,89 @@ export async function handleAccountBalance(request, env, ss58) {
   }
 
   const data = await loadAccountBalance(env, ss58);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/children (#6723, part of the child-hotkey
+// delegation graph epic #6721): every child hotkey this account currently
+// delegates stake-weight to, per subnet, with the proportion charged. Live
+// RPC + KV-cache route, same shape as handleAccountBalance just above —
+// see src/child-hotkey-delegation.mjs's header for the on-chain storage
+// details.
+export async function handleAccountChildren(request, env, ss58) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: `children:${resolveClientIp(request)}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "children_rate_limited",
+        "Too many live delegation-graph requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(BALANCE_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(BALANCE_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${BALANCE_RATE_LIMIT.limit};w=${BALANCE_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
+  }
+
+  const data = await loadAccountChildren(env, ss58);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/parents (#6723): every hotkey currently
+// delegating stake-weight to this account, per subnet. Same shape as
+// handleAccountChildren just above, reading ParentKeys instead.
+export async function handleAccountParents(request, env, ss58) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: `parents:${resolveClientIp(request)}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "parents_rate_limited",
+        "Too many live delegation-graph requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(BALANCE_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(BALANCE_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${BALANCE_RATE_LIMIT.limit};w=${BALANCE_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
+  }
+
+  const data = await loadAccountParents(env, ss58);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

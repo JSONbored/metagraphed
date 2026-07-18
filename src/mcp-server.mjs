@@ -574,6 +574,10 @@ import {
   MOVERS_LIMIT_MAX,
 } from "./movers.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
+import {
+  loadAccountChildren,
+  loadAccountParents,
+} from "./child-hotkey-delegation.mjs";
 import { buildBlockFeed, buildBlock } from "./blocks.mjs";
 import {
   buildExtrinsic,
@@ -6373,6 +6377,98 @@ export const MCP_TOOLS = [
         }
       }
       return loadAccountBalance(ctx.env, ss58);
+    },
+  },
+  {
+    name: "get_account_children",
+    title: "Get an account's live child-hotkey delegation graph",
+    description:
+      "Fetch every child hotkey one account currently delegates stake-weight " +
+      "to, per subnet, with the proportion charged (#6723, part of the " +
+      "child-hotkey delegation epic #6721) -- queried directly from the " +
+      "chain's ChildKeys storage at request time (not a rollup). Companion " +
+      "to get_account_parents (that's who delegates TO this account; this " +
+      "is who it delegates to). subnets is null on an RPC failure, distinct " +
+      "from a confirmed empty graph (the common case for most accounts). " +
+      "Mirrors GET /api/v1/accounts/{ss58}/children.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 address (finney network), base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      if (!isFinneySs58Address(ss58)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `ss58` must be a valid finney SS58 account address.",
+        );
+      }
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `children:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live delegation-graph requests from this client; slow down.",
+          );
+        }
+      }
+      return loadAccountChildren(ctx.env, ss58);
+    },
+  },
+  {
+    name: "get_account_parents",
+    title: "Get an account's live parent-hotkey delegation graph",
+    description:
+      "Fetch every hotkey currently delegating stake-weight to one account, " +
+      "per subnet (#6723, part of epic #6721) -- queried directly from the " +
+      "chain's ParentKeys storage at request time (not a rollup). Companion " +
+      "to get_account_children. subnets is null on an RPC failure, distinct " +
+      "from a confirmed empty graph. Mirrors GET " +
+      "/api/v1/accounts/{ss58}/parents.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 address (finney network), base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      if (!isFinneySs58Address(ss58)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `ss58` must be a valid finney SS58 account address.",
+        );
+      }
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `parents:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live delegation-graph requests from this client; slow down.",
+          );
+        }
+      }
+      return loadAccountParents(ctx.env, ss58);
     },
   },
   {
@@ -13036,6 +13132,70 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: "integer" },
       ss58: { type: "string" },
       balance_tao: { type: ["number", "null"] },
+      queried_at: NULLABLE_STRING,
+    },
+  },
+  get_account_children: {
+    type: "object",
+    additionalProperties: true,
+    required: ["account"],
+    properties: {
+      schema_version: { type: "integer" },
+      account: { type: "string" },
+      subnets: {
+        type: ["array", "null"],
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            netuid: { type: "integer" },
+            entries: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  child: { type: ["string", "null"] },
+                  proportion: { type: "string" },
+                  proportion_fraction: { type: "number" },
+                },
+              },
+            },
+          },
+        },
+      },
+      queried_at: NULLABLE_STRING,
+    },
+  },
+  get_account_parents: {
+    type: "object",
+    additionalProperties: true,
+    required: ["account"],
+    properties: {
+      schema_version: { type: "integer" },
+      account: { type: "string" },
+      subnets: {
+        type: ["array", "null"],
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            netuid: { type: "integer" },
+            entries: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  parent: { type: ["string", "null"] },
+                  proportion: { type: "string" },
+                  proportion_fraction: { type: "number" },
+                },
+              },
+            },
+          },
+        },
+      },
       queried_at: NULLABLE_STRING,
     },
   },

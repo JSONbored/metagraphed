@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/children": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. */
+        get: operations["accountChildren"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/counterparties": {
         parameters: {
             query?: never;
@@ -200,6 +217,23 @@ export interface paths {
         };
         /** Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. */
         get: operations["accountIdentityHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/accounts/{ss58}/parents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph. */
+        get: operations["accountParents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2905,6 +2939,16 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Live child-hotkey delegation graph for one account (#6723, part of epic #6721) -- every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts. */
+        AccountChildrenArtifact: {
+            account: string;
+            /** Format: date-time */
+            queried_at?: string | null;
+            schema_version: number;
+            subnets?: components["schemas"]["ChildDelegationSubnet"][] | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** @description Per-counterparty fund-flow rollup for one account, aggregated from the account_events Transfer tier — its transfers grouped by counterparty into sent/received/net + count, ranked by total volume (the address relationship view). Served live at /api/v1/accounts/{ss58}/counterparties (no static file). */
         AccountCounterpartiesArtifact: {
             counterparties: ({
@@ -3092,6 +3136,16 @@ export interface components {
             observed_at: string | null;
             /** Format: uri */
             url?: string | null;
+        };
+        /** @description Live parent-hotkey delegation graph for one account (#6723, part of epic #6721) -- every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph (subnets: []) -- the common case for most accounts. */
+        AccountParentsArtifact: {
+            account: string;
+            /** Format: date-time */
+            queried_at?: string | null;
+            schema_version: number;
+            subnets?: components["schemas"]["ParentDelegationSubnet"][] | null;
+        } & {
+            [key: string]: unknown;
         };
         /** @description A wallet's cross-subnet neuron portfolio from the neurons D1 tier: every position registered under the hotkey with its economics + yield, plus wallet-level aggregates (totals, subnet/validator counts, overall return, and how concentrated the wallet's stake is across its subnets). Richer than AccountSubnetsArtifact. Served live at /api/v1/accounts/{ss58}/portfolio (no static file). */
         AccountPortfolioArtifact: {
@@ -4553,6 +4607,17 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description One child hotkey a parent has delegated a share of stake-weight to, on one subnet (#6723, part of epic #6721). proportion is the raw on-chain u64 (out of u64::MAX = 100%, per the pallet's own invariant), returned as a string to avoid JS Number precision loss; proportion_fraction is the same value pre-divided to a plain 0..1 float for convenience. */
+        ChildDelegationEntry: {
+            child: string | null;
+            proportion: string;
+            proportion_fraction: number;
+        };
+        /** @description One subnet's children for an account (#6723) -- only subnets where the account actually has at least one child are included. */
+        ChildDelegationSubnet: {
+            entries: components["schemas"]["ChildDelegationEntry"][];
+            netuid: number;
+        };
         /** @enum {unknown} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
         /** @description Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data. */
@@ -5752,6 +5817,17 @@ export interface components {
             returned: number;
             sort?: string | null;
             total: number;
+        };
+        /** @description One parent hotkey currently delegating a share of stake-weight to this account, on one subnet (#6723, part of epic #6721). Same proportion/proportion_fraction shape as ChildDelegationEntry. */
+        ParentDelegationEntry: {
+            parent: string | null;
+            proportion: string;
+            proportion_fraction: number;
+        };
+        /** @description One subnet's parents for an account (#6723) -- only subnets where the account actually has at least one parent are included. */
+        ParentDelegationSubnet: {
+            entries: components["schemas"]["ParentDelegationEntry"][];
+            netuid: number;
         };
         /** @description Display/placement metadata — e.g. a featured-pilot homepage slot. Distinct from `curation` and `authority`, which are trust signals only and never drive placement (docs/adr/0008-subnet-data-model.md). */
         PartnershipMetadata: {
@@ -9002,6 +9078,121 @@ export interface operations {
             };
         };
     };
+    accountChildren: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "account": "example",
+                     *         "queried_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "entries": [
+                     *               {
+                     *                 "child": "example",
+                     *                 "proportion": "example",
+                     *                 "proportion_fraction": 0.5
+                     *               }
+                     *             ],
+                     *             "netuid": 7
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountChildrenArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     accountCounterparties: {
         parameters: {
             query?: {
@@ -9830,6 +10021,121 @@ export interface operations {
                      *     2026-06-27T00:00:00.000Z,Alice,https://alice.example,https://github.com/alice,https://alice.example/avatar.png,https://discord.gg/alice,Sample account,extra,hash_sample
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountParents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "account": "example",
+                     *         "queried_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "entries": [
+                     *               {
+                     *                 "parent": "example",
+                     *                 "proportion": "example",
+                     *                 "proportion_fraction": 0.5
+                     *               }
+                     *             ],
+                     *             "netuid": 7
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountParentsArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
