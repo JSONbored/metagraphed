@@ -3215,6 +3215,57 @@ test("GET /api/v1/subnets/:netuid/ohlc clamps an out-of-range ?days= to the max 
   expect(res.status).toBe(200);
 });
 
+test("GET /api/v1/subnets/:netuid/ownership-history shapes raw chain_events rows into decoded transfers", async () => {
+  mockRows.current = [
+    {
+      block_number: "8587754",
+      pallet: "SubtensorModule",
+      method: "SubnetOwnerChanged",
+      args: {
+        netuid: 7,
+        old_coldkey: [
+          [
+            230, 177, 94, 10, 88, 222, 149, 217, 176, 218, 228, 3, 237, 17, 117,
+            251, 19, 70, 95, 132, 123, 114, 171, 235, 189, 66, 130, 2, 183, 175,
+            143, 88,
+          ],
+        ],
+        new_coldkey: [
+          [
+            109, 111, 100, 108, 115, 117, 98, 116, 101, 110, 115, 114, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          ],
+        ],
+      },
+      observed_at: "1783600000000",
+    },
+  ];
+  const res = await req("/api/v1/subnets/7/ownership-history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.count).toBe(1);
+  expect(body.ownership_changes[0].old_coldkey).toBe(
+    "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
+  );
+  expect(body.ownership_changes[0].new_coldkey).toBe(
+    "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+  );
+  const text = queryText();
+  expect(text).toContain("FROM chain_events");
+  expect(text).toContain("pallet = 'SubtensorModule'");
+  expect(text).toContain("(args->>'netuid')::int =");
+});
+
+test("GET /api/v1/subnets/:netuid/ownership-history with no rows returns an empty list, not a throw", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/7/ownership-history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.count).toBe(0);
+  expect(body.ownership_changes).toEqual([]);
+});
+
 test("GET /api/v1/subnets/:netuid/events returns the per-subnet feed and applies filters", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
   const res = await req(

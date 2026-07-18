@@ -3332,6 +3332,145 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
   });
 });
 
+// get_subnet_ownership_history reaches the same Postgres-backed all-events
+// tier as get_chain_activity above (#6637), so its tests mock DATA_API the
+// same way.
+describe("MCP get_subnet_ownership_history (DATA_API binding)", () => {
+  function makeDataApi({ payload, status = 200 } = {}) {
+    const calls = [];
+    return {
+      calls,
+      fetch(request) {
+        calls.push(new URL(request.url));
+        return Promise.resolve(
+          new Response(status === 200 ? JSON.stringify(payload) : "err", {
+            status,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      },
+    };
+  }
+
+  test("returns the decoded ownership-change list from the data Worker", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        schema_version: 1,
+        netuid: 7,
+        count: 1,
+        ownership_changes: [
+          {
+            netuid: 7,
+            old_coldkey: "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
+            new_coldkey: "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+            block_number: 8587754,
+            observed_at: "2026-07-09T12:26:40.000Z",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_subnet_ownership_history",
+      { netuid: 7 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.netuid, 7);
+    assert.equal(out.count, 1);
+    assert.equal(
+      out.ownership_changes[0].old_coldkey,
+      "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
+    );
+    assert.equal(
+      dataApi.calls[0].pathname,
+      "/api/v1/subnets/7/ownership-history",
+    );
+  });
+
+  test("a subnet with no ownership changes returns an empty list, not an error", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        schema_version: 1,
+        netuid: 4,
+        count: 0,
+        ownership_changes: [],
+      },
+    });
+    const res = await callTool(
+      "get_subnet_ownership_history",
+      { netuid: 4 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.ownership_changes, []);
+  });
+
+  test("rejects a missing/invalid netuid argument", async () => {
+    const res = await callTool(
+      "get_subnet_ownership_history",
+      {},
+      { env: { DATA_API: makeDataApi() } },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("errors cleanly when the DATA_API binding is absent", async () => {
+    const res = await callTool(
+      "get_subnet_ownership_history",
+      { netuid: 7 },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(
+      res.body.result.content[0].text.includes("all-events data Worker"),
+      "must surface a clear tier-unavailable message",
+    );
+  });
+
+  test("errors cleanly when the data Worker returns a non-OK response", async () => {
+    const dataApi = makeDataApi({ status: 502 });
+    const res = await callTool(
+      "get_subnet_ownership_history",
+      { netuid: 7 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("502"));
+  });
+
+  test("applies the data API limiter before fetching ownership history", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        schema_version: 1,
+        netuid: 7,
+        count: 0,
+        ownership_changes: [],
+      },
+    });
+    const limiterKeys = [];
+    const res = await callTool(
+      "get_subnet_ownership_history",
+      { netuid: 7 },
+      {
+        env: {
+          DATA_API: dataApi,
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: true };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+  });
+});
+
 describe("MCP get_subnet_performance", () => {
   // neurons' D1 write path is retired (#4772) and the table is dropped in
   // production, so this tool always returns the schema-stable zeroed card

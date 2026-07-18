@@ -1031,6 +1031,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-ownership-history",
+      "path": "/metagraph/subnets/{netuid}/ownership-history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetOwnershipHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",
       "retirement": null,
@@ -7248,6 +7257,18 @@
       "id": "subnet-burn",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/burn",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/ownership-history.json",
+      "cache": "short",
+      "description": "Fetch every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case.",
+      "id": "subnet-ownership-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/ownership-history",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

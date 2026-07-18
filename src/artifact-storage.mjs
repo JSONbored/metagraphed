@@ -160,6 +160,9 @@ export const R2_ONLY_PATTERNS = [
   // Live current registration/burn cost for one subnet (#6321): computed
   // from RPC at request time, never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/burn\.json$/,
+  // Subnet ownership-change history (#6637): served live from the
+  // Postgres-backed all-events tier (ADR 0013), never a static file.
+  /^subnets\/(?:\d+|\{netuid\})\/ownership-history\.json$/,
   // Block-explorer tiers (#1345): computed live from the blocks D1 tier at
   // /api/v1/blocks (recent feed) + /api/v1/blocks/{ref} (numeric block_number or
   // 0x block_hash) — never written as files.

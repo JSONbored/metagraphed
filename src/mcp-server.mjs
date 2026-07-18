@@ -1318,6 +1318,49 @@ async function loadChainEventsFeed(
   };
 }
 
+// Mirrors loadChainEventsFeed's own DATA_API-direct call (#6637): the
+// all-events tier has no per-table tryPostgresTier flag (unlike
+// account_events-backed routes such as get_subnet_ohlc), so this reaches
+// DATA_API unconditionally, same as list_chain_events above.
+async function loadSubnetOwnershipHistory(ctx, netuid) {
+  await requireDataTierRateLimit(ctx);
+  const dataApi = ctx.env?.DATA_API;
+  if (!dataApi?.fetch) {
+    throw toolError(
+      "tier_unavailable",
+      "The chain-events tier is unavailable (the all-events data Worker is " +
+        "not bound to this deployment). Try again against the production endpoint.",
+    );
+  }
+  let response;
+  try {
+    response = await dataApi.fetch(
+      new Request(`https://d/api/v1/subnets/${netuid}/ownership-history`),
+    );
+  } catch {
+    throw toolError(
+      "tier_unavailable",
+      "The chain-events tier could not be reached. Try again shortly.",
+    );
+  }
+  if (!response.ok) {
+    throw toolError(
+      "tier_unavailable",
+      `The chain-events tier returned an error (status ${response.status}). ` +
+        "Try again shortly.",
+    );
+  }
+  const data = await response.json();
+  return {
+    schema_version: data?.schema_version ?? 1,
+    netuid,
+    count: data?.count ?? 0,
+    ownership_changes: Array.isArray(data?.ownership_changes)
+      ? data.ownership_changes
+      : [],
+  };
+}
+
 async function requireDataTierRateLimit(ctx) {
   if (!ctx.env?.DATA_RATE_LIMITER?.limit) return;
   const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
@@ -5822,6 +5865,33 @@ export const MCP_TOOLS = [
           )
         )?.data ?? buildSubnetOhlc([], netuid, { interval })
       );
+    },
+  },
+  {
+    name: "get_subnet_ownership_history",
+    title: "Get a subnet's ownership-change history",
+    description:
+      "Fetch every automatic ownership transfer one subnet has undergone " +
+      "(#6637, part of the conviction/ownership-contest tracker epic #4302), " +
+      "decoded from the chain_events SubnetOwnerChanged stream. Bittensor " +
+      "subnet ownership is a permissionless, conviction-weighted contest " +
+      "that runs continuously — any account can lock alpha to a hotkey to " +
+      "build conviction, and once a challenger's conviction overtakes the " +
+      "incumbent owner's, ownership transfers automatically (no vote, no " +
+      "owner cooperation required). A subnet that has never changed hands " +
+      "returns an empty list, not an error. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/ownership-history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetOwnershipHistory(ctx, netuid);
     },
   },
   {
@@ -12307,6 +12377,30 @@ const TOOL_OUTPUT_SCHEMAS = {
         },
       },
       root_excluded: { type: "boolean" },
+    },
+  },
+  get_subnet_ownership_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "count", "ownership_changes"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      count: { type: "integer" },
+      ownership_changes: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: true,
+          properties: {
+            netuid: { type: ["integer", "null"] },
+            old_coldkey: { type: ["string", "null"] },
+            new_coldkey: { type: ["string", "null"] },
+            block_number: { type: ["integer", "null"] },
+            observed_at: NULLABLE_STRING,
+          },
+        },
+      },
     },
   },
   get_subnet_recycled: {

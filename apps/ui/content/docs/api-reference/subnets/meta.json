@@ -22,6 +22,7 @@
     "subnet-neuron-history",
     "subnet-ohlc",
     "subnet-overview",
+    "subnet-ownership-history",
     "subnet-performance",
     "subnet-performance-history",
     "subnet-prometheus",

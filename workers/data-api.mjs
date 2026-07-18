@@ -53,6 +53,10 @@ import {
   MAX_OHLC_WINDOW_DAYS,
 } from "../src/subnet-ohlc.mjs";
 import {
+  buildSubnetOwnershipHistory,
+  OWNERSHIP_CHANGE_EVENT_METHOD,
+} from "../src/subnet-ownership-history.mjs";
+import {
   buildBlocksSummary,
   BLOCKS_SUMMARY_SCAN_CAP,
 } from "../src/blocks-summary.mjs";
@@ -4373,6 +4377,32 @@ export default {
             data: buildSubnetOhlc(rows, netuid, { interval }),
             generatedAt: latestObservedIso(rows, "observed_at"),
           });
+        }
+
+        // GET /api/v1/subnets/:netuid/ownership-history (#6637, part of the
+        // conviction/ownership-contest tracker epic #4302): every automatic
+        // ownership transfer this subnet has undergone, decoded from the
+        // chain_events SubnetOwnerChanged stream -- see
+        // docs/conviction-lock-mechanism.md for the on-chain mechanism this
+        // reads. Netuid lives inside the JSONB args column (chain_events has
+        // no netuid column of its own, unlike account_events), so the filter
+        // is an args->>'netuid' cast rather than a plain column match --
+        // this is the all-events tier (ADR 0013), same idx_ce_pallet_method
+        // index /blocks/:n/chain-events and /chain-events already rely on.
+        // Cold/absent store -> the schema-stable empty-list shape (never a
+        // 404): a subnet that has never changed hands is the common case.
+        const subnetOwnershipHistory = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/ownership-history$/,
+        );
+        if (subnetOwnershipHistory) {
+          const netuid = Number(subnetOwnershipHistory[1]);
+          const rows = await sql`
+          SELECT block_number, pallet, method, args, observed_at
+          FROM chain_events
+          WHERE pallet = 'SubtensorModule' AND method = ${OWNERSHIP_CHANGE_EVENT_METHOD}
+            AND (args->>'netuid')::int = ${netuid}
+          ORDER BY block_number ASC`;
+          return json(buildSubnetOwnershipHistory(rows, netuid));
         }
 
         // GET /api/v1/subnets/:netuid/weights/setters

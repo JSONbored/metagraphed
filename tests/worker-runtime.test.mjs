@@ -99,6 +99,40 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.source, "data-worker-postgres");
   });
 
+  test("routes /api/v1/subnets/:netuid/ownership-history through the same DATA_API chain-events proxy (#6637)", async () => {
+    let requestedPath = null;
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/subnets/7/ownership-history"),
+      {
+        ...env,
+        DATA_API: {
+          fetch(request) {
+            requestedPath = new URL(request.url).pathname;
+            // The data Worker returns a BARE body (no envelope), same as
+            // every other chain-events-tier route.
+            return new Response(
+              JSON.stringify({
+                schema_version: 1,
+                netuid: 7,
+                count: 0,
+                ownership_changes: [],
+              }),
+              { status: 200, headers: { "content-type": "application/json" } },
+            );
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(requestedPath, "/api/v1/subnets/7/ownership-history");
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.data.netuid, 7);
+    assert.deepEqual(body.data.ownership_changes, []);
+    assert.equal(body.meta.source, "data-worker-postgres");
+  });
+
   const CHAIN_EVENTS_CSV_HEADER =
     "block_number,event_index,pallet,method,phase,extrinsic_index,observed_at";
 

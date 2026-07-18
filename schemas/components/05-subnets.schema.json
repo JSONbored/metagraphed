@@ -3898,6 +3898,39 @@
           "queried_at": { "type": ["string", "null"], "format": "date-time" }
         }
       },
+      "SubnetOwnershipChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One automatic ownership transfer, decoded from a chain_events SubnetOwnerChanged row (#6637). old_coldkey/new_coldkey are SS58-encoded.",
+        "properties": {
+          "netuid": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 65535
+          },
+          "old_coldkey": { "type": ["string", "null"] },
+          "new_coldkey": { "type": ["string", "null"] },
+          "block_number": { "type": ["integer", "null"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "SubnetOwnershipHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream -- see docs/conviction-lock-mechanism.md for the on-chain mechanism (a permissionless, conviction-weighted contest that runs continuously; ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's, no vote required). A subnet that has never changed hands returns an empty list, not an error -- that's the common case.",
+        "required": ["schema_version", "netuid", "count", "ownership_changes"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0, "maximum": 65535 },
+          "event_pallet": { "type": "string" },
+          "event_method": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 },
+          "ownership_changes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SubnetOwnershipChange" }
+          }
+        }
+      },
       "Block": {
         "type": "object",
         "additionalProperties": false,

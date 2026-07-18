@@ -18577,6 +18577,83 @@
           }
         ]
       },
+      "SubnetOwnershipChange": {
+        "additionalProperties": false,
+        "description": "One automatic ownership transfer, decoded from a chain_events SubnetOwnerChanged row (#6637). old_coldkey/new_coldkey are SS58-encoded.",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "new_coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "old_coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "SubnetOwnershipHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream -- see docs/conviction-lock-mechanism.md for the on-chain mechanism (a permissionless, conviction-weighted contest that runs continuously; ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's, no vote required). A subnet that has never changed hands returns an empty list, not an error -- that's the common case.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_method": {
+            "type": "string"
+          },
+          "event_pallet": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ownership_changes": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetOwnershipChange"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "count",
+          "ownership_changes"
+        ],
+        "type": "object"
+      },
       "SubnetPerformanceArtifact": {
         "additionalProperties": true,
         "description": "Reward-distribution & score-spread metrics for one subnet, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. The reward-flow companion to SubnetConcentrationArtifact.",
