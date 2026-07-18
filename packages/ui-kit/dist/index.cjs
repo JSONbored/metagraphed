@@ -2454,6 +2454,46 @@ function ActionBar({
     }
   );
 }
+function PagerBar({
+  hasPrev,
+  hasNext,
+  onPrev,
+  onNext,
+  prevLabel = "Newer",
+  nextLabel = "Older"
+}) {
+  const itemCls = "inline-flex items-center gap-1 rounded px-2.5 py-1.5 min-h-9 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-muted";
+  return /* @__PURE__ */ jsxRuntime.jsxs(ActionBar, { children: [
+    /* @__PURE__ */ jsxRuntime.jsxs(
+      "button",
+      {
+        type: "button",
+        onClick: onPrev,
+        disabled: !hasPrev,
+        className: itemCls,
+        children: [
+          /* @__PURE__ */ jsxRuntime.jsx(lucideReact.ChevronLeft, { className: "size-3" }),
+          " ",
+          prevLabel
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntime.jsxs(
+      "button",
+      {
+        type: "button",
+        onClick: onNext,
+        disabled: !hasNext,
+        className: itemCls,
+        children: [
+          nextLabel,
+          " ",
+          /* @__PURE__ */ jsxRuntime.jsx(lucideReact.ChevronRight, { className: "size-3" })
+        ]
+      }
+    )
+  ] });
+}
 function timeAgoAbsoluteTitle(at) {
   if (!isUsableTimestamp(at)) return void 0;
   return formatFreshnessAbsolute(at) ?? void 0;
@@ -4016,6 +4056,7 @@ exports.MiniStack = MiniStack;
 exports.NoDataSpark = NoDataSpark;
 exports.PageHero = PageHero;
 exports.PageSection = PageSection;
+exports.PagerBar = PagerBar;
 exports.Popover = Popover;
 exports.PopoverAnchor = PopoverAnchor;
 exports.PopoverContent = PopoverContent;

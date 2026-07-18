@@ -210,36 +210,38 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
       </div>
 
       <SectionAnchor id="chain" title="Chain walk" tone="accent">
-        <div className="flex flex-wrap gap-2 px-4 py-3">
-          {block.prev_block_number == null ? (
-            <span className="inline-flex cursor-not-allowed items-center gap-1 rounded border border-dashed border-ink-subtle bg-surface/30 px-2.5 py-1 text-[11px] text-ink-muted">
-              <ChevronLeft className="size-3" /> Previous block
-            </span>
-          ) : (
-            <Link
-              to="/blocks/$ref"
-              params={{ ref: String(block.prev_block_number) }}
-              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-[11px] hover:text-ink-strong"
-            >
-              <ChevronLeft className="size-3" />
-              Previous block #{formatNumber(block.prev_block_number)}
-            </Link>
-          )}
+        <div className="px-4 py-3">
+          <ActionBar>
+            {block.prev_block_number == null ? (
+              <span className="inline-flex cursor-not-allowed items-center gap-1 rounded px-2.5 py-1 text-[11px] text-ink-muted opacity-40">
+                <ChevronLeft className="size-3" /> Previous block
+              </span>
+            ) : (
+              <Link
+                to="/blocks/$ref"
+                params={{ ref: String(block.prev_block_number) }}
+                className="inline-flex items-center gap-1 rounded px-2.5 py-1 text-[11px] text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+              >
+                <ChevronLeft className="size-3" />
+                Previous block #{formatNumber(block.prev_block_number)}
+              </Link>
+            )}
 
-          {block.next_block_number == null ? (
-            <span className="inline-flex cursor-not-allowed items-center gap-1 rounded border border-dashed border-ink-subtle bg-surface/30 px-2.5 py-1 text-[11px] text-ink-muted">
-              Next block <ChevronRight className="size-3" />
-            </span>
-          ) : (
-            <Link
-              to="/blocks/$ref"
-              params={{ ref: String(block.next_block_number) }}
-              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-[11px] hover:text-ink-strong"
-            >
-              Next block #{formatNumber(block.next_block_number)}
-              <ChevronRight className="size-3" />
-            </Link>
-          )}
+            {block.next_block_number == null ? (
+              <span className="inline-flex cursor-not-allowed items-center gap-1 rounded px-2.5 py-1 text-[11px] text-ink-muted opacity-40">
+                Next block <ChevronRight className="size-3" />
+              </span>
+            ) : (
+              <Link
+                to="/blocks/$ref"
+                params={{ ref: String(block.next_block_number) }}
+                className="inline-flex items-center gap-1 rounded px-2.5 py-1 text-[11px] text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+              >
+                Next block #{formatNumber(block.next_block_number)}
+                <ChevronRight className="size-3" />
+              </Link>
+            )}
+          </ActionBar>
         </div>
       </SectionAnchor>
 

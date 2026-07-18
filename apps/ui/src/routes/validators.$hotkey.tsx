@@ -10,7 +10,7 @@ import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/met
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { PageHero, ShareButton, SectionAnchor, StatTile } from "@jsonbored/ui-kit";
+import { PageHero, ShareButton, SectionAnchor, StatTile, ActionBar } from "@jsonbored/ui-kit";
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
 import { ValidatorApyPanel } from "@/components/metagraphed/validator-apy-panel";
 import { AccountAddress } from "@/components/metagraphed/account-address";
@@ -329,24 +329,26 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {isOwner ? (
-              <TakeManagementModal
-                hotkey={hotkey}
-                ownerColdkey={detail.coldkey}
-                validatorName={hasIdentity ? displayName : undefined}
-                trigger={(open) => (
-                  <button
-                    type="button"
-                    onClick={open}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
-                  >
-                    <Percent className="size-3 text-ink-muted" aria-hidden />
-                    Manage take
-                  </button>
-                )}
-              />
-            ) : null}
-            <ShareButton />
+            <ActionBar>
+              {isOwner ? (
+                <TakeManagementModal
+                  hotkey={hotkey}
+                  ownerColdkey={detail.coldkey}
+                  validatorName={hasIdentity ? displayName : undefined}
+                  trigger={(open) => (
+                    <button
+                      type="button"
+                      onClick={open}
+                      className="inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Percent className="size-3" aria-hidden />
+                      Manage take
+                    </button>
+                  )}
+                />
+              ) : null}
+              <ShareButton bare />
+            </ActionBar>
             {isStaleFreshness(generatedAt) ? (
               <StaleBanner
                 compact

@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { TimeAgo, ListShell, CopyableCode, CopyButton } from "@jsonbored/ui-kit";
+import { TimeAgo, ListShell, CopyableCode, CopyButton, PagerBar } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
 import { SuccessBadge } from "@/components/metagraphed/success-badge";
 import {
@@ -105,24 +104,7 @@ export function CallModuleExtrinsicsTable({
           ? `${formatNumber(search.offset + 1)}–${formatNumber(search.offset + rows.length)}`
           : "0"}
       </span>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={goPrev}
-          disabled={!hasPrev}
-          className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 font-medium hover:border-ink/30 disabled:opacity-40 disabled:cursor-not-allowed min-h-9"
-        >
-          <ChevronLeft className="size-3" /> Newer
-        </button>
-        <button
-          type="button"
-          onClick={goNext}
-          disabled={!hasNext}
-          className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 font-medium hover:border-ink/30 disabled:opacity-40 disabled:cursor-not-allowed min-h-9"
-        >
-          Older <ChevronRight className="size-3" />
-        </button>
-      </div>
+      <PagerBar hasPrev={hasPrev} hasNext={hasNext} onPrev={goPrev} onNext={goNext} />
     </div>
   );
 

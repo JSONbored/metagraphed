@@ -122,6 +122,10 @@ export {
 export { SectionHeading } from "@/components/metagraphed/section-heading";
 export { ShareButton } from "@/components/metagraphed/share-button";
 export { ActionBar } from "@/components/metagraphed/action-bar";
+export {
+  PagerBar,
+  type PagerBarProps,
+} from "@/components/metagraphed/pager-bar";
 export { TableState } from "@/components/metagraphed/table-state";
 export { TimeAgo } from "@/components/metagraphed/time-ago";
 export {
