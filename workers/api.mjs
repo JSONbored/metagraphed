@@ -128,6 +128,8 @@ import {
   canonicalSubnetDeregistrationsCachePath,
   handleSubnetYield,
   handleSubnetPerformance,
+  handleSubnetIdleStake,
+  handleChainIdleStake,
   handleSubnetMovers,
   canonicalSubnetMoversCachePath,
   handleChainTurnover,
@@ -360,6 +362,7 @@ import {
   SUBNET_DEREGISTRATIONS_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
   SUBNET_PERFORMANCE_PATH_PATTERN,
+  SUBNET_IDLE_STAKE_PATH_PATTERN,
   DOMAIN_SUMMARY_PATH_PATTERN,
   SUDO_CALLS_PATH_PATTERN,
   SUDO_KEY_PATH_PATTERN,
@@ -2274,6 +2277,23 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         ),
       );
     }
+    // Stake sitting on a currently-zero-dividends hotkey (#6789) — per-UID
+    // read of the neurons tier, edge-cache busts on the shared health-cron
+    // stamp like every sibling Postgres-tier route (like /concentration
+    // and /performance above).
+    const idleStakeMatch = SUBNET_IDLE_STAKE_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (idleStakeMatch) {
+      return withEdgeCache(request, ctx, env, "subnet-idle-stake", () =>
+        handleSubnetIdleStake(
+          request,
+          env,
+          Number(idleStakeMatch[1]),
+          resolved.url,
+        ),
+      );
+    }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
     const neuronHistoryMatch = SUBNET_NEURON_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -2787,6 +2807,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         handleChainPerformance(request, env, resolved.url),
       );
     }
+    // GET /api/v1/chain/idle-stake (#6789): network-wide idle-stake rollup —
+    // edge-cache busts on the shared health-cron stamp like every sibling
+    // Postgres-tier route (like chain/performance, but the idle-delegation lens).
+    if (resolved.url.pathname === "/api/v1/chain/idle-stake") {
+      return withEdgeCache(request, ctx, env, "chain-idle-stake", () =>
+        handleChainIdleStake(request, env, resolved.url),
+      );
+    }
     // GET /api/v1/chain/identity-history: network-wide recent subnet-identity-change
     // feed across ALL subnets (newest first); ?limit rides the canonical cache
     // path so a bare request and an explicit-default request share one slot
@@ -2907,6 +2935,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/stake-transfers" ||
     pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/chain/performance" ||
+    pathname === "/api/v1/chain/idle-stake" ||
     pathname === "/api/v1/chain/identity-history" ||
     pathname === "/api/v1/chain/yield" ||
     pathname === "/api/v1/chain/turnover" ||
@@ -2943,6 +2972,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_LEASE_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
     SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
+    SUBNET_IDLE_STAKE_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EVENTS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_HISTORY_PATH_PATTERN.test(pathname) ||

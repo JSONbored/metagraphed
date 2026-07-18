@@ -9588,6 +9588,23 @@ describe("MCP economics + metagraph data tools", () => {
   // still covered directly against the pure builder in
   // tests/chain-performance.test.mjs.
 
+  test("get_subnet_idle_stake returns a schema-stable zero scorecard on cold D1", async () => {
+    const res = await callTool("get_subnet_idle_stake", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.idle_neuron_count, 0);
+    assert.equal(out.idle_stake_tao, 0);
+  });
+
+  test("get_chain_idle_stake returns a schema-stable empty ranking on cold D1", async () => {
+    const res = await callTool("get_chain_idle_stake", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.total_idle_stake_tao, 0);
+    assert.deepEqual(out.subnets, []);
+  });
+
   test("get_chain_identity_history returns a schema-stable empty feed on cold D1", async () => {
     const res = await callTool("get_chain_identity_history", {});
     const out = res.body.result.structuredContent;
@@ -17591,6 +17608,16 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
       tool: "get_subnet_performance",
       args: { netuid: 7 },
       path: "/api/v1/subnets/7/performance",
+    },
+    {
+      tool: "get_subnet_idle_stake",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/idle-stake",
+    },
+    {
+      tool: "get_chain_idle_stake",
+      args: {},
+      path: "/api/v1/chain/idle-stake",
     },
     {
       tool: "get_chain_concentration",

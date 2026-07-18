@@ -2013,6 +2013,32 @@ test("GET /api/v1/chain/performance shapes the network-wide reward-flow distribu
   expect(body.subnet_count).toBe(1);
 });
 
+test("GET /api/v1/subnets/:netuid/idle-stake shapes the live idle-stake scorecard", async () => {
+  mockRows.current = [
+    { ...NEURON_ROW, dividends: "0" },
+    { ...NEURON_ROW, uid: 5, dividends: "0.4" },
+  ];
+  const res = await req("/api/v1/subnets/4/idle-stake");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(4);
+  expect(body.neuron_count).toBe(2);
+  expect(body.idle_neuron_count).toBe(1);
+  expect(body.idle_stake_tao).toBe(456.7);
+  expect(queryText()).toContain("FROM neurons WHERE netuid =");
+});
+
+test("GET /api/v1/chain/idle-stake shapes the network-wide idle-stake rollup", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 4, dividends: "0" }];
+  const res = await req("/api/v1/chain/idle-stake");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+  expect(body.total_idle_stake_tao).toBe(456.7);
+  expect(queryText()).toContain("FROM neurons");
+  expect(queryText()).not.toContain("WHERE netuid");
+});
+
 test("GET /api/v1/chain/yield shapes the network-wide emission-yield distribution", async () => {
   mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
   const res = await req("/api/v1/chain/yield");

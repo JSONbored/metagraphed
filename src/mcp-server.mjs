@@ -515,6 +515,10 @@ import {
 } from "./subnet-performance.mjs";
 import { buildChainPerformance } from "./chain-performance.mjs";
 import { buildChainYield } from "./chain-yield.mjs";
+import {
+  buildChainIdleStake,
+  buildSubnetIdleStake,
+} from "./subnet-idle-stake.mjs";
 import { buildBlocksSummary } from "./blocks-summary.mjs";
 import {
   buildChainIdentityHistory,
@@ -3350,6 +3354,35 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_idle_stake",
+    title: "Get subnet idle stake",
+    description:
+      "Fetch one subnet's live idle-stake scorecard: stake delegated to a hotkey " +
+      "currently earning zero dividends. Dividends are the only stream delegated " +
+      "stake ever receives in dTAO (incentive goes to the hotkey owner alone), so " +
+      "this covers both a hotkey with no validator permit and a permitted hotkey " +
+      "whose weight-setting output is currently zero — both pay every delegator " +
+      "nothing right now. Mirrors GET /api/v1/subnets/{netuid}/idle-stake.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/idle-stake`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildSubnetIdleStake([], netuid)
+      );
+    },
+  },
+  {
     name: "get_chain_concentration",
     title: "Get network-wide stake/emission concentration",
     description:
@@ -3399,6 +3432,30 @@ export const MCP_TOOLS = [
           mcpNeuronsTierRequest("/api/v1/chain/performance"),
           "METAGRAPH_NEURONS_SOURCE",
         )) ?? buildChainPerformance([])
+      );
+    },
+  },
+  {
+    name: "get_chain_idle_stake",
+    title: "Get network-wide idle stake",
+    description:
+      "Fetch the network-wide idle-stake rollup: every subnet's own idle-stake " +
+      "scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by " +
+      "idle_stake_tao descending, plus the network total. The network-level " +
+      "companion of get_subnet_idle_stake and the idle-delegation companion of " +
+      "get_chain_performance. Mirrors GET /api/v1/chain/idle-stake.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/idle-stake"),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildChainIdleStake([])
       );
     },
   },
@@ -11239,6 +11296,19 @@ const TOOL_OUTPUT_SCHEMAS = {
       validator_trust: { type: ["object", "null"] },
     },
   },
+  get_subnet_idle_stake: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "neuron_count", "idle_neuron_count", "idle_stake_tao"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      neuron_count: { type: "integer" },
+      idle_neuron_count: { type: "integer" },
+      idle_stake_tao: { type: "number" },
+    },
+  },
   get_chain_concentration: {
     type: "object",
     additionalProperties: true,
@@ -11273,6 +11343,36 @@ const TOOL_OUTPUT_SCHEMAS = {
       trust: { type: ["object", "null"] },
       consensus: { type: ["object", "null"] },
       validator_trust: { type: ["object", "null"] },
+    },
+  },
+  get_chain_idle_stake: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "total_idle_stake_tao", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      total_idle_stake_tao: { type: "number" },
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: true,
+          required: [
+            "netuid",
+            "neuron_count",
+            "idle_neuron_count",
+            "idle_stake_tao",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            neuron_count: { type: "integer" },
+            idle_neuron_count: { type: "integer" },
+            idle_stake_tao: { type: "number" },
+          },
+        },
+      },
     },
   },
   get_chain_identity_history: {

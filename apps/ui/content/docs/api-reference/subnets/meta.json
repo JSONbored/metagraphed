@@ -19,6 +19,7 @@
     "subnet-hyperparameters",
     "subnet-hyperparameters-history",
     "subnet-identity-history",
+    "subnet-idle-stake",
     "subnet-lease",
     "subnet-lease-history",
     "subnet-metagraph",

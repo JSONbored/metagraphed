@@ -5126,6 +5126,67 @@
         ],
         "type": "object"
       },
+      "ChainIdleStakeArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total, computed live from the neurons D1 tier. The idle-delegation companion to ChainPerformanceArtifact.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "idle_neuron_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "idle_stake_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "neuron_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "neuron_count",
+                "idle_neuron_count",
+                "idle_stake_tao"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_idle_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "total_idle_stake_tao",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainPerformanceArtifact": {
         "additionalProperties": true,
         "description": "Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. subnet_count reports how many subnets the snapshot spans. The network-wide reward-flow companion to ChainConcentrationArtifact.",
@@ -17996,6 +18057,45 @@
         "required": [
           "observed_at",
           "identity_hash"
+        ],
+        "type": "object"
+      },
+      "SubnetIdleStakeArtifact": {
+        "additionalProperties": true,
+        "description": "Stake delegated to a hotkey currently earning zero dividends for one subnet, computed live from the neurons D1 tier — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idle_neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "idle_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "neuron_count",
+          "idle_neuron_count",
+          "idle_stake_tao"
         ],
         "type": "object"
       },

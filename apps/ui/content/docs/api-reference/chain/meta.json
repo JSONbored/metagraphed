@@ -11,6 +11,7 @@
     "chain-events-stats",
     "chain-fees",
     "chain-identity-history",
+    "chain-idle-stake",
     "chain-performance",
     "chain-prometheus",
     "chain-registrations",

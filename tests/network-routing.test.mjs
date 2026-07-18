@@ -339,6 +339,9 @@ describe("multi-network routing prefix (Phase 1)", () => {
       // to a testnet R2 read that leaks the internal artifact key.
       "/api/v1/testnet/subnets/7/concentration",
       "/api/v1/testnet/subnets/7/concentration/history",
+      // Idle-stake rollup (#6789) reads the same mainnet-only neurons D1 tier
+      // as concentration/performance above.
+      "/api/v1/testnet/subnets/7/idle-stake",
       "/api/v1/testnet/subnets/7/turnover",
       "/api/v1/testnet/subnets/7/stake-flow",
       // Rolling 24h alpha volume reads the same mainnet-only account_events
@@ -366,6 +369,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/chain/transfers",
       "/api/v1/testnet/chain/concentration",
       "/api/v1/testnet/chain/performance",
+      "/api/v1/testnet/chain/idle-stake",
       "/api/v1/testnet/chain/identity-history",
       "/api/v1/testnet/chain/yield",
     ]) {

@@ -500,6 +500,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-idle-stake",
+      "path": "/metagraph/subnets/{netuid}/idle-stake.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetIdleStakeArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-performance-history",
       "path": "/metagraph/subnets/{netuid}/performance/history.json",
       "retirement": null,
@@ -1350,6 +1359,15 @@
       "path": "/metagraph/chain/performance.json",
       "retirement": null,
       "schema_ref": "#/components/schemas/ChainPerformanceArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "chain-idle-stake",
+      "path": "/metagraph/chain/idle-stake.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainIdleStakeArtifact",
       "status": "live",
       "storage_tier": "r2"
     },
@@ -5588,6 +5606,18 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/idle-stake.json",
+      "cache": "short",
+      "description": "Fetch stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike (computed live from the neurons D1 tier).",
+      "id": "subnet-idle-stake",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/idle-stake",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/performance/history.json",
       "cache": "short",
       "description": "Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily D1 rollup). The reward-flow twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV.",
@@ -8754,6 +8784,18 @@
       "id": "chain-performance",
       "method": "GET",
       "path": "/api/v1/chain/performance",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/idle-stake.json",
+      "cache": "short",
+      "description": "Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold.",
+      "id": "chain-idle-stake",
+      "method": "GET",
+      "path": "/api/v1/chain/idle-stake",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

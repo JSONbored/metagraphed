@@ -609,6 +609,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so a hotkey with no validator permit or a permit whose weight-setting output is currently zero pays every delegator nothing right now — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/idle-stake (no static file).",
+      "id": "subnet-idle-stake",
+      "path": "/metagraph/subnets/{netuid}/idle-stake.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetIdleStakeArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Per-day reward-flow & trust trend (incentive/dividends Gini, Nakamoto coefficient, top-10% share, plus trust/consensus/validator_trust mean & median) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/performance/history; pass ?format=csv to download the per-day series as CSV (no static file). The reward-flow twin of /concentration/history.",
       "id": "subnet-performance-history",
       "path": "/metagraph/subnets/{netuid}/performance/history.json",
@@ -1648,6 +1659,17 @@
       "path": "/metagraph/chain/performance.json",
       "retirement": null,
       "schema_ref": "#/components/schemas/ChainPerformanceArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total — the idle-delegation companion to chain-performance, computed live from the neurons D1 tier at /api/v1/chain/idle-stake (no static file).",
+      "id": "chain-idle-stake",
+      "path": "/metagraph/chain/idle-stake.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainIdleStakeArtifact",
       "status": "live",
       "storage_tier": "r2"
     },

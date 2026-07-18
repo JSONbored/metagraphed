@@ -267,6 +267,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/idle-stake",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(typeof body.data.neuron_count, "number");
+      assert.equal(typeof body.data.idle_neuron_count, "number");
+      assert.equal(typeof body.data.idle_stake_tao, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/concentration/history?window=7d",
     (body) => {
       assert.equal(body.data.netuid, 7);
@@ -1211,6 +1220,15 @@ const checks = [
         body.data.trust === null || typeof body.data.trust === "object",
         true,
       );
+    },
+  ],
+  [
+    "/api/v1/chain/idle-stake",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.total_idle_stake_tao, "number");
+      assert.equal(Array.isArray(body.data.subnets), true);
     },
   ],
   [

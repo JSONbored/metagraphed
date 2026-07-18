@@ -5140,6 +5140,67 @@
         ],
         "type": "object"
       },
+      "ChainIdleStakeArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total, computed live from the neurons D1 tier. The idle-delegation companion to ChainPerformanceArtifact.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "idle_neuron_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "idle_stake_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "neuron_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "neuron_count",
+                "idle_neuron_count",
+                "idle_stake_tao"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_idle_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "total_idle_stake_tao",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainPerformanceArtifact": {
         "additionalProperties": true,
         "description": "Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. subnet_count reports how many subnets the snapshot spans. The network-wide reward-flow companion to ChainConcentrationArtifact.",
@@ -18021,6 +18082,45 @@
         ],
         "type": "object"
       },
+      "SubnetIdleStakeArtifact": {
+        "additionalProperties": true,
+        "description": "Stake delegated to a hotkey currently earning zero dividends for one subnet, computed live from the neurons D1 tier — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idle_neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "idle_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "neuron_count",
+          "idle_neuron_count",
+          "idle_stake_tao"
+        ],
+        "type": "object"
+      },
       "SubnetIndexEntry": {
         "additionalProperties": false,
         "properties": {
@@ -30429,6 +30529,135 @@
           }
         },
         "summary": "Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier; schema-stable empty feed when cold.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/idle-stake": {
+      "get": {
+        "operationId": "chainIdleStake",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "subnet_count": 1,
+                    "subnets": [
+                      {
+                        "idle_neuron_count": 1,
+                        "idle_stake_tao": 0.5,
+                        "netuid": 7,
+                        "neuron_count": 1
+                      }
+                    ],
+                    "total_idle_stake_tao": 0.5
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainIdleStakeArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total, computed live from the neurons D1 tier; schema-stable empty ranking when cold.",
         "tags": [
           "chain",
           "analytics"
@@ -49228,6 +49457,139 @@
           }
         },
         "summary": "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/idle-stake": {
+      "get": {
+        "operationId": "subnetIdleStake",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "idle_neuron_count": 1,
+                    "idle_stake_tao": 0.5,
+                    "netuid": 7,
+                    "neuron_count": 1,
+                    "schema_version": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetIdleStakeArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch stake delegated to a hotkey currently earning zero dividends for one subnet — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike (computed live from the neurons D1 tier).",
         "tags": [
           "subnets",
           "analytics"

@@ -54,6 +54,8 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/performance\.json$/,
   // Per-day performance history: computed live from the neuron_daily rollup.
   /^subnets\/(?:\d+|\{netuid\})\/performance\/history\.json$/,
+  // Idle-stake rollup (#6789): computed live from the neurons D1 tier.
+  /^subnets\/(?:\d+|\{netuid\})\/idle-stake\.json$/,
   // Validator-set / registration turnover: computed live from neuron_daily.
   /^subnets\/(?:\d+|\{netuid\})\/turnover\.json$/,
   // Net stake flow: computed live from account_events.
@@ -249,6 +251,9 @@ export const R2_ONLY_PATTERNS = [
   // Network-wide reward distribution & score spread, computed live from the
   // neurons D1 tier at /api/v1/chain/performance — never a file.
   /^chain\/performance\.json$/,
+  // Network-wide idle-stake rollup (#6789), computed live from the neurons D1
+  // tier at /api/v1/chain/idle-stake — never a file.
+  /^chain\/idle-stake\.json$/,
   // Network-wide recent subnet-identity-change feed, computed live from the
   // subnet_identity_history D1 tier at /api/v1/chain/identity-history — never a file.
   /^chain\/identity-history\.json$/,

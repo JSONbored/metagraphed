@@ -134,6 +134,10 @@ export const SUBNET_YIELD_HISTORY_PATH_PATTERN =
 // (reward concentration + trust/consensus percentiles), no static file.
 export const SUBNET_PERFORMANCE_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/performance$/;
+// Stake sitting on a currently-zero-dividends hotkey (#6789), computed live
+// from the neurons D1/Postgres tier, no static file.
+export const SUBNET_IDLE_STAKE_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/idle-stake$/;
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
 // Per-UID metagraph routes (#1304/#1305): computed live from the neurons D1 tier.
 export const SUBNET_METAGRAPH_PATH_PATTERN =

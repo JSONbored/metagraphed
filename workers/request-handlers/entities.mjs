@@ -122,6 +122,10 @@ import {
 import { buildChainPerformance } from "../../src/chain-performance.mjs";
 import { buildChainYield } from "../../src/chain-yield.mjs";
 import {
+  buildChainIdleStake,
+  buildSubnetIdleStake,
+} from "../../src/subnet-idle-stake.mjs";
+import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
@@ -1320,6 +1324,57 @@ export async function handleChainPerformance(request, env, url) {
       meta: await metagraphMeta(
         env,
         "/metagraph/chain/performance.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/idle-stake (#6789): stake delegated to a
+// hotkey currently earning zero dividends -- the only stream delegated
+// stake ever receives in dTAO (incentive goes to the hotkey owner alone),
+// so a hotkey with no permit or a zero weight-setting output pays every
+// delegator nothing right now. Computed from the neurons D1 tier; a
+// cold/absent store or empty subnet -> 200 with a zeroed scorecard
+// (schema-stable, never 404), mirroring /concentration and /performance.
+export async function handleSubnetIdleStake(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    buildSubnetIdleStake([], netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/idle-stake.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/idle-stake (#6789): the network-wide rollup of the
+// route above -- every subnet's own idle-stake scorecard ranked by
+// idle_stake_tao descending, plus the network total. No params; a
+// cold/absent store -> 200 with an empty ranking.
+export async function handleChainIdleStake(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    buildChainIdleStake([]);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/idle-stake.json",
         data.captured_at,
       ),
     },

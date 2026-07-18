@@ -852,6 +852,26 @@
         },
         "additionalProperties": true
       },
+      "SubnetIdleStakeArtifact": {
+        "type": "object",
+        "description": "Stake delegated to a hotkey currently earning zero dividends for one subnet, computed live from the neurons D1 tier — dividends are the only stream delegated stake ever receives in dTAO, so this covers both no-permit and zero-weight-output hotkeys alike.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "neuron_count",
+          "idle_neuron_count",
+          "idle_stake_tao"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"] },
+          "neuron_count": { "type": "integer", "minimum": 0 },
+          "idle_neuron_count": { "type": "integer", "minimum": 0 },
+          "idle_stake_tao": { "type": "number", "minimum": 0 }
+        },
+        "additionalProperties": true
+      },
       "ScoreDistribution": {
         "type": ["object", "null"],
         "description": "Distribution summary of a 0–1 per-UID score across a subnet's neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty subnet).",
@@ -1069,6 +1089,42 @@
           "consensus": { "$ref": "#/components/schemas/ScoreDistribution" },
           "validator_trust": {
             "$ref": "#/components/schemas/ScoreDistribution"
+          }
+        },
+        "additionalProperties": true
+      },
+      "ChainIdleStakeArtifact": {
+        "type": "object",
+        "description": "Network-wide idle-stake rollup: every subnet's own idle-stake scorecard (stake delegated to a currently-zero-dividends hotkey) ranked by idle_stake_tao descending, plus the network total, computed live from the neurons D1 tier. The idle-delegation companion to ChainPerformanceArtifact.",
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "total_idle_stake_tao",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "captured_at": { "type": ["string", "null"] },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "total_idle_stake_tao": { "type": "number", "minimum": 0 },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "neuron_count",
+                "idle_neuron_count",
+                "idle_stake_tao"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "neuron_count": { "type": "integer", "minimum": 0 },
+                "idle_neuron_count": { "type": "integer", "minimum": 0 },
+                "idle_stake_tao": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": true
+            }
           }
         },
         "additionalProperties": true

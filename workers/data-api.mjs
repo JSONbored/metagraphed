@@ -87,6 +87,10 @@ import {
   DEFAULT_PERFORMANCE_HISTORY_WINDOW,
 } from "../src/subnet-performance.mjs";
 import { buildChainPerformance } from "../src/chain-performance.mjs";
+import {
+  buildChainIdleStake,
+  buildSubnetIdleStake,
+} from "../src/subnet-idle-stake.mjs";
 import { buildChainYield } from "../src/chain-yield.mjs";
 import {
   buildSubnetYield,
@@ -6970,6 +6974,29 @@ export default {
           SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, netuid, captured_at
           FROM neurons`;
           return json(buildChainPerformance(rows));
+        }
+
+        // GET /api/v1/subnets/:netuid/idle-stake (#6789): one subnet's idle-
+        // stake rollup -- stake delegated to a hotkey currently earning zero
+        // dividends, mirroring the concentration/performance handlers' own
+        // inline query (no shared loader).
+        const subnetIdleStake = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/idle-stake$/,
+        );
+        if (subnetIdleStake) {
+          const netuid = Number(subnetIdleStake[1]);
+          const rows = await sql`
+          SELECT stake_tao, dividends, captured_at FROM neurons WHERE netuid = ${netuid}`;
+          return json(buildSubnetIdleStake(rows, netuid));
+        }
+
+        // GET /api/v1/chain/idle-stake (#6789): network-wide idle-stake
+        // rollup, mirroring src/chain-alpha-volume.mjs's own per-subnet-
+        // groupby-then-rollup shape over the per-subnet scorecard above.
+        if (url.pathname === "/api/v1/chain/idle-stake") {
+          const rows = await sql`
+          SELECT stake_tao, dividends, netuid, captured_at FROM neurons`;
+          return json(buildChainIdleStake(rows));
         }
 
         // GET /api/v1/chain/yield (#4832 Tier 2): network-wide emission-yield
