@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Search, X } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -38,6 +38,7 @@ import { EndpointKindTabs } from "@/components/metagraphed/endpoint-kind-tabs";
 import { EndpointCardList } from "@/components/metagraphed/endpoint-card-list";
 import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
+import { activeFilterCount, filterToggleLabel } from "@/lib/metagraphed/filter-disclosure";
 import { rpcEndpointsSummaryLine } from "@/lib/metagraphed/rpc-endpoints-summary";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { useScrolled } from "@/hooks/use-scrolled";
@@ -775,6 +776,20 @@ function EndpointsTable() {
     page: search.page,
   });
 
+  // Mobile filter disclosure (#6580): this toolbar carries more controls than
+  // /blocks or /extrinsics, which already collapse their fields behind a toggle
+  // so an always-visible bar doesn't push the first row down on a 375px
+  // viewport. Count only the six collapsible fields for the toggle badge.
+  const filterFieldCount = activeFilterCount([
+    search.q,
+    search.netuid,
+    search.provider,
+    search.region,
+    search.health,
+    search.eligibility,
+  ]);
+  const [filtersOpen, setFiltersOpen] = useState(filterFieldCount > 0);
+
   // The table filters client-side over the full fetched list; the CSV export
   // hits the backend route directly (full endpoint snapshot, no client filters).
   const endpointsCsvUrl = buildUrl("/api/v1/endpoints");
@@ -832,51 +847,71 @@ function EndpointsTable() {
         data-scrolled={scrolled ? "true" : "false"}
         className="mg-sticky-toolbar sticky top-14 z-20 -mx-1 px-1 py-2 backdrop-blur bg-paper/90 border-b border-border/60 flex flex-wrap items-center gap-2"
       >
-        <div className="relative flex-1 min-w-[180px] max-w-sm">
-          <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-ink-muted" />
-          <input
-            value={search.q}
-            onChange={(e) => setSearch({ q: e.target.value })}
-            placeholder="Search URL, provider, netuid…"
-            className="w-full rounded border border-border bg-card pl-7 pr-2 py-1.5 text-[12px] focus:outline-none focus:border-ink/30"
-            aria-label="Search endpoints"
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((open) => !open)}
+          aria-expanded={filtersOpen}
+          aria-controls="endpoints-filter-fields"
+          className="md:hidden inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-2.5 font-mono text-[11px] text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors"
+        >
+          <SlidersHorizontal className="size-3" aria-hidden="true" />
+          {filterToggleLabel(filterFieldCount)}
+        </button>
+        {/* `md:contents` dissolves this wrapper at md and up, so the fields lay
+            out as direct children of the toolbar exactly as they did before. */}
+        <div
+          id="endpoints-filter-fields"
+          className={classNames(
+            "w-full flex-wrap items-center gap-2 md:contents",
+            filtersOpen ? "flex" : "hidden",
+          )}
+        >
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-ink-muted" />
+            <input
+              value={search.q}
+              onChange={(e) => setSearch({ q: e.target.value })}
+              placeholder="Search URL, provider, netuid…"
+              className="w-full rounded border border-border bg-card pl-7 pr-2 py-1.5 text-[12px] focus:outline-none focus:border-ink/30"
+              aria-label="Search endpoints"
+            />
+          </div>
+          <label className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
+            <span className="font-mono uppercase tracking-widest text-[10px]">Netuid</span>
+            <input
+              value={search.netuid}
+              onChange={(e) => setSearch({ netuid: e.target.value.replace(/[^0-9]/g, "") })}
+              inputMode="numeric"
+              placeholder="any"
+              className="w-16 rounded border border-border bg-card px-1.5 py-1 text-[11px] focus:outline-none focus:border-ink/30"
+              aria-label="Filter by netuid"
+            />
+          </label>
+          <FilterSelect
+            label="Provider"
+            value={search.provider}
+            onChange={(v) => setSearch({ provider: v })}
+            options={providers}
+          />
+          <FilterSelect
+            label="Region"
+            value={search.region}
+            onChange={(v) => setSearch({ region: v })}
+            options={regions}
+          />
+          <FilterSelect
+            label="Health"
+            value={search.health}
+            onChange={(v) => setSearch({ health: v })}
+            options={["ok", "warn", "down", "unknown"]}
+          />
+          <FilterSelect
+            label="Eligibility"
+            value={search.eligibility}
+            onChange={(v) => setSearch({ eligibility: v })}
+            options={["proxy-enabled", "pool-member", "archive-capable", "unassigned"]}
           />
         </div>
-        <label className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
-          <span className="font-mono uppercase tracking-widest text-[10px]">Netuid</span>
-          <input
-            value={search.netuid}
-            onChange={(e) => setSearch({ netuid: e.target.value.replace(/[^0-9]/g, "") })}
-            inputMode="numeric"
-            placeholder="any"
-            className="w-16 rounded border border-border bg-card px-1.5 py-1 text-[11px] focus:outline-none focus:border-ink/30"
-            aria-label="Filter by netuid"
-          />
-        </label>
-        <FilterSelect
-          label="Provider"
-          value={search.provider}
-          onChange={(v) => setSearch({ provider: v })}
-          options={providers}
-        />
-        <FilterSelect
-          label="Region"
-          value={search.region}
-          onChange={(v) => setSearch({ region: v })}
-          options={regions}
-        />
-        <FilterSelect
-          label="Health"
-          value={search.health}
-          onChange={(v) => setSearch({ health: v })}
-          options={["ok", "warn", "down", "unknown"]}
-        />
-        <FilterSelect
-          label="Eligibility"
-          value={search.eligibility}
-          onChange={(v) => setSearch({ eligibility: v })}
-          options={["proxy-enabled", "pool-member", "archive-capable", "unassigned"]}
-        />
         <button
           type="button"
           onClick={resetAll}
