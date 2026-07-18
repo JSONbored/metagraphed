@@ -112,6 +112,7 @@
       "provider": "verathos",
       "public_safe": true,
       "schema_status": "machine-readable",
+      "schema_url": "https://verathos.ai/openapi.json",
       "source_urls": [
         "https://verathos.ai/docs",
         "https://verathos.ai/openapi.json"

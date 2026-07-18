@@ -218,6 +218,7 @@
       "provider": "chutes",
       "public_safe": true,
       "schema_status": "machine-readable",
+      "schema_url": "https://api.chutes.ai/openapi.json",
       "source_urls": [
         "https://api.chutes.ai/openapi.json",
         "https://github.com/chutesai/chutes"

@@ -199,6 +199,18 @@ for (const file of files) {
           "(the /rpc endpoint lane), not per-subnet contributor surfaces.",
       );
     }
+    // #6331: schema_status: "machine-readable" is a claim that a schema is
+    // fetchable somewhere — schema_url is where. Hard error, not advisory:
+    // unlike auth's structured object below (sometimes genuinely undocumented
+    // by the provider), a machine-readable schema is either served at a URL
+    // or the status is simply wrong.
+    if (surface.schema_status === "machine-readable" && !surface.schema_url) {
+      errors.push(
+        `${label}: schema_status "machine-readable" requires a non-empty ` +
+          "schema_url — set it (usually the surface's own url) or downgrade " +
+          'schema_status to "ui-only"/"not-captured" if no machine-readable spec is actually served.',
+      );
+    }
     // #6330: auth_required makes a promise ("this needs a credential") the
     // structured auth{} field is what makes caller-actionable ("...and here's
     // how"). Advisory, not a hard error: the credential mechanism is

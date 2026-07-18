@@ -100,6 +100,7 @@
       "provider": "green-compute",
       "public_safe": true,
       "schema_status": "machine-readable",
+      "schema_url": "https://api.green-compute.com/openapi.json",
       "source_urls": [
         "https://api.green-compute.com/openapi.json",
         "https://www.green-compute.com/"
