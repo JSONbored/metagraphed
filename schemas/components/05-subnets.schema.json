@@ -1445,7 +1445,10 @@
                   "total_stake_tao",
                   "total_validators",
                   "total_miners",
-                  "registration_open_count"
+                  "registration_open_count",
+                  "total_alpha_value_tao",
+                  "total_root_value_tao",
+                  "total_network_value_tao"
                 ],
                 "properties": {
                   "subnet_count": { "type": "integer", "minimum": 0 },
@@ -1457,7 +1460,25 @@
                   },
                   "total_validators": { "type": "integer", "minimum": 0 },
                   "total_miners": { "type": "integer", "minimum": 0 },
-                  "registration_open_count": { "type": "integer", "minimum": 0 }
+                  "registration_open_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "total_alpha_value_tao": {
+                    "type": "string",
+                    "pattern": "^\\d+\\.\\d{9}$",
+                    "description": "Total Network Value -- alpha side (#6641): the sum of every alpha subnet's (netuid > 0) alpha_market_cap_tao (alpha_price_tao x total_stake_tao). Lossless fixed 9-decimal rao-precision TAO string for the same past-2^53 reason as total_stake_tao; parse as an arbitrary-precision decimal if exact fidelity matters."
+                  },
+                  "total_root_value_tao": {
+                    "type": "string",
+                    "pattern": "^\\d+\\.\\d{9}$",
+                    "description": "Total Network Value -- root side (#6641): the root subnet's (netuid 0) staked TAO, valued 1:1 (root has no AMM). 0 when the root subnet has no economics row. Lossless fixed 9-decimal rao-precision TAO string."
+                  },
+                  "total_network_value_tao": {
+                    "type": "string",
+                    "pattern": "^\\d+\\.\\d{9}$",
+                    "description": "Total Network Value (#6641): total_alpha_value_tao + total_root_value_tao -- the network-wide top-line economic figure. Lossless fixed 9-decimal rao-precision TAO string."
+                  }
                 },
                 "additionalProperties": false
               },

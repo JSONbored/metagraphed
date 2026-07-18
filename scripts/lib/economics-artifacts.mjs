@@ -75,6 +75,12 @@ const RAO_PER_TAO = 1_000_000_000n;
 // quantity (matches the schema's own `minimum: 0`), so a negative sum is
 // unreachable -- unlike a real negative-capable delta, branching on a sign
 // that can never occur here would just be untestable dead code.
+function raoToTaoString(sumRao) {
+  const whole = sumRao / RAO_PER_TAO;
+  const frac = sumRao % RAO_PER_TAO;
+  return `${whole}.${frac.toString().padStart(9, "0")}`;
+}
+
 function sumFieldTaoString(rows, field) {
   let sumRao = 0n;
   for (const row of rows) {
@@ -83,9 +89,40 @@ function sumFieldTaoString(rows, field) {
       sumRao += BigInt(Math.round(value * 1e9));
     }
   }
-  const whole = sumRao / RAO_PER_TAO;
-  const frac = sumRao % RAO_PER_TAO;
-  return `${whole}.${frac.toString().padStart(9, "0")}`;
+  return raoToTaoString(sumRao);
+}
+
+// #6641: Total Network Value (TNV) -- the network-wide root-vs-alpha value split
+// none of the existing economics fields roll up. The alpha side is the sum of each
+// alpha subnet's (netuid > 0) already-computed `alpha_market_cap_tao` (alpha_price_tao
+// x total_stake_tao, the same market-cap proxy each row carries); the root side is the
+// root subnet's (netuid 0) staked TAO, which has no AMM and so is valued 1:1 in TAO;
+// the total is the two summed. Summed in exact rao-integer BigInt space and emitted as
+// fixed 9-decimal strings for the same past-2^53 precision reason sumFieldTaoString
+// documents -- confirmed live at ~328M TAO, well over the exact-double ceiling. Root is
+// sourced from the netuid-0 economics row when present, and is 0 (total == alpha) when
+// the root subnet has no economics row, never fabricated.
+function toRao(value) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? BigInt(Math.round(value * 1e9))
+    : 0n;
+}
+
+export function computeNetworkValue(rows) {
+  let alphaRao = 0n;
+  let rootRao = 0n;
+  for (const row of rows) {
+    if (row.netuid === 0) {
+      rootRao += toRao(row.total_stake_tao);
+    } else {
+      alphaRao += toRao(row.alpha_market_cap_tao);
+    }
+  }
+  return {
+    total_alpha_value_tao: raoToTaoString(alphaRao),
+    total_root_value_tao: raoToTaoString(rootRao),
+    total_network_value_tao: raoToTaoString(alphaRao + rootRao),
+  };
 }
 
 export function buildEconomicsArtifact({
@@ -168,6 +205,7 @@ export function buildEconomicsArtifact({
       total_miners: sumField("miner_count"),
       registration_open_count: rows.filter((row) => row.registration_allowed)
         .length,
+      ...computeNetworkValue(rows),
     },
     subnets: rows,
   };

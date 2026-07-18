@@ -5,8 +5,81 @@ import {
   computeAlphaFdvTao,
   computeAlphaMarketCapTao,
   computeMinerReadiness,
+  computeNetworkValue,
   buildEconomicsArtifact,
 } from "../scripts/lib/economics-artifacts.mjs";
+
+// --- computeNetworkValue (#6641) -------------------------------------------
+
+describe("computeNetworkValue", () => {
+  test("alpha value sums alpha_market_cap_tao across netuid > 0 rows", () => {
+    const v = computeNetworkValue([
+      { netuid: 1, alpha_market_cap_tao: 100.5 },
+      { netuid: 2, alpha_market_cap_tao: 50.25 },
+    ]);
+    assert.equal(v.total_alpha_value_tao, "150.750000000");
+    assert.equal(v.total_root_value_tao, "0.000000000");
+    assert.equal(v.total_network_value_tao, "150.750000000");
+  });
+
+  test("root value is the netuid-0 row's total_stake_tao (1:1, no AMM)", () => {
+    const v = computeNetworkValue([
+      { netuid: 0, total_stake_tao: 1000, alpha_market_cap_tao: 999 },
+      { netuid: 1, alpha_market_cap_tao: 200 },
+    ]);
+    // netuid 0 contributes its stake to root, never to alpha (its own
+    // alpha_market_cap_tao is ignored -- root has no AMM value).
+    assert.equal(v.total_root_value_tao, "1000.000000000");
+    assert.equal(v.total_alpha_value_tao, "200.000000000");
+    assert.equal(v.total_network_value_tao, "1200.000000000");
+  });
+
+  test("null/absent/non-finite values contribute 0, never fabricated", () => {
+    const v = computeNetworkValue([
+      { netuid: 1, alpha_market_cap_tao: null },
+      { netuid: 2 },
+      { netuid: 3, alpha_market_cap_tao: Number.NaN },
+      { netuid: 0 },
+    ]);
+    assert.equal(v.total_alpha_value_tao, "0.000000000");
+    assert.equal(v.total_root_value_tao, "0.000000000");
+    assert.equal(v.total_network_value_tao, "0.000000000");
+  });
+
+  test("empty rows yield a zeroed, schema-shaped result", () => {
+    assert.deepEqual(computeNetworkValue([]), {
+      total_alpha_value_tao: "0.000000000",
+      total_root_value_tao: "0.000000000",
+      total_network_value_tao: "0.000000000",
+    });
+  });
+
+  test("exact rao summation: many representable rows never drift", () => {
+    // Each term is exactly representable at rao precision (value * 1e9 < 2^53),
+    // so the BigInt accumulation is exact where a float `+=` would drift.
+    const rows = Array.from({ length: 1000 }, () => ({
+      netuid: 1,
+      alpha_market_cap_tao: 0.000000001, // one rao
+    }));
+    assert.equal(
+      computeNetworkValue(rows).total_alpha_value_tao,
+      "0.000001000",
+    );
+  });
+
+  test("large network-wide totals stay rao-precision strings, not lossy numbers", () => {
+    // ~328M TAO alpha + ~50M TAO root -- well over the ~9,007,199 TAO exact-double
+    // ceiling, so the output must remain a fixed 9-decimal string.
+    const v = computeNetworkValue([
+      { netuid: 1, alpha_market_cap_tao: 328_000_000 },
+      { netuid: 0, total_stake_tao: 50_000_000 },
+    ]);
+    assert.match(v.total_network_value_tao, /^\d+\.\d{9}$/);
+    assert.equal(v.total_network_value_tao.split(".")[0], "378000000");
+    assert.equal(v.total_alpha_value_tao, "328000000.000000000");
+    assert.equal(v.total_root_value_tao, "50000000.000000000");
+  });
+});
 
 // --- computeMinerReadiness --------------------------------------------------
 
@@ -198,6 +271,9 @@ describe("buildEconomicsArtifact", () => {
       total_validators: 0,
       total_miners: 0,
       registration_open_count: 0,
+      total_alpha_value_tao: "0.000000000",
+      total_root_value_tao: "0.000000000",
+      total_network_value_tao: "0.000000000",
     });
   });
 

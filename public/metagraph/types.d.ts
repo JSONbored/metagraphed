@@ -4757,7 +4757,13 @@ export interface components {
             summary: {
                 registration_open_count: number;
                 subnet_count: number;
+                /** @description Total Network Value -- alpha side (#6641): the sum of every alpha subnet's (netuid > 0) alpha_market_cap_tao (alpha_price_tao x total_stake_tao). Lossless fixed 9-decimal rao-precision TAO string for the same past-2^53 reason as total_stake_tao; parse as an arbitrary-precision decimal if exact fidelity matters. */
+                total_alpha_value_tao: string;
                 total_miners: number;
+                /** @description Total Network Value (#6641): total_alpha_value_tao + total_root_value_tao -- the network-wide top-line economic figure. Lossless fixed 9-decimal rao-precision TAO string. */
+                total_network_value_tao: string;
+                /** @description Total Network Value -- root side (#6641): the root subnet's (netuid 0) staked TAO, valued 1:1 (root has no AMM). 0 when the root subnet has no economics row. Lossless fixed 9-decimal rao-precision TAO string. */
+                total_root_value_tao: string;
                 /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. */
                 total_stake_tao: string;
                 total_validators: number;
@@ -16775,7 +16781,10 @@ export interface operations {
                      *         "summary": {
                      *           "registration_open_count": 1,
                      *           "subnet_count": 1,
+                     *           "total_alpha_value_tao": "327838334.635978200",
                      *           "total_miners": 1,
+                     *           "total_network_value_tao": "327838334.635978200",
+                     *           "total_root_value_tao": "327838334.635978200",
                      *           "total_stake_tao": "327838334.635978200",
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
