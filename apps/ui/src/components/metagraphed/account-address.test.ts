@@ -66,6 +66,23 @@ describe("AccountAddress links ss58 values to their account page (#6424)", () =>
     }
   });
 
+  it("valueClassName merges onto the link's own hover:underline class (#6427)", () => {
+    const link = linkIn(
+      AccountAddress({
+        ss58: SS58,
+        fallback: "—",
+        truncate: false,
+        valueClassName: "truncate min-w-0",
+      }),
+    );
+    expect(link?.props.className).toBe("hover:underline truncate min-w-0");
+  });
+
+  it("omits valueClassName from the link's className when not passed", () => {
+    const link = linkIn(AccountAddress({ ss58: SS58, fallback: "—" }));
+    expect(link?.props.className).toBe("hover:underline");
+  });
+
   it("keeps a copy affordance carrying the untruncated value", () => {
     // The issue requires the untruncated copy affordance CopyableCode offered to
     // survive the switch: the copy button must still copy the FULL ss58, even
