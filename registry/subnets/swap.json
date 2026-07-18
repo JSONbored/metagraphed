@@ -142,6 +142,7 @@
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
+      "schema_status": "machine-readable",
       "schema_url": "https://taofi-doc.web.app/openapi.yaml",
       "source_urls": [
         "https://docs.taofi.com/",

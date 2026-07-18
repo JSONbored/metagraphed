@@ -131,6 +131,7 @@
         "state": "community-submitted",
         "submitted_by": "rust-toml"
       },
+      "schema_status": "machine-readable",
       "schema_url": "https://api.synthdata.co/swagger.json",
       "source_urls": [
         "https://api.synthdata.co/swagger.json",

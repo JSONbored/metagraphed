@@ -108,6 +108,7 @@
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
+      "schema_status": "machine-readable",
       "schema_url": "https://lium.io/api/openapi.json",
       "source_urls": [
         "https://lium.io/api/machines",
@@ -134,6 +135,7 @@
         "state": "community-submitted",
         "submitted_by": "jimcody1995"
       },
+      "schema_status": "machine-readable",
       "schema_url": "https://lium.io/api/openapi.json",
       "source_urls": ["https://lium.io/api/openapi.json", "https://lium.io/"],
       "url": "https://lium.io/api/version"
@@ -157,6 +159,7 @@
         "state": "community-submitted",
         "submitted_by": "kiannidev"
       },
+      "schema_status": "machine-readable",
       "schema_url": "https://lium.io/api/openapi.json",
       "source_urls": ["https://lium.io/api/openapi.json", "https://lium.io/"],
       "url": "https://lium.io/api/reclaims"
@@ -205,6 +208,7 @@
         "state": "community-submitted",
         "submitted_by": "ultrahighsuper"
       },
+      "schema_status": "machine-readable",
       "schema_url": "https://lium.io/api/openapi.json",
       "source_urls": [
         "https://lium.io/api/openapi.json",

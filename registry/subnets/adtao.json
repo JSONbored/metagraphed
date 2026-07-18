@@ -112,6 +112,7 @@
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
+      "schema_status": "machine-readable",
       "schema_url": "https://validator.adtao.io/openapi.json",
       "source_urls": [
         "https://github.com/ippcteam/SN21-adtao",
