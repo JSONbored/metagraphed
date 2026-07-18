@@ -24,6 +24,7 @@ import {
   SectionHeading,
 } from "@jsonbored/ui-kit";
 import { AskBox } from "@/components/metagraphed/ask-box";
+import { SearchBox } from "@/components/metagraphed/search-box";
 import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { agentResourcesQuery } from "@/lib/metagraphed/queries";
@@ -89,10 +90,6 @@ const QUICKSTART: { label: string; cmd: string }[] = [
     label: "List every callable service",
     cmd: "curl -s https://api.metagraph.sh/api/v1/agent-catalog",
   },
-  {
-    label: "Semantic search the registry",
-    cmd: "curl -s 'https://api.metagraph.sh/api/v1/search/semantic?q=video+generation'",
-  },
 ];
 
 function AgentsPage() {
@@ -157,6 +154,15 @@ function AgentsBody() {
           intro="Ask a question in plain English and get a grounded answer with citations back to the registry."
         />
         <AskBox />
+      </section>
+
+      {/* Semantic search — vector-similarity ranking over the registry, not a synthesized answer */}
+      <section>
+        <SectionHeading
+          title="Search the registry"
+          intro="Vector-similarity search over subnets and their surfaces — for finding candidates, not a single answer."
+        />
+        <SearchBox />
       </section>
 
       {/* Two calmer alternatives, side by side */}
