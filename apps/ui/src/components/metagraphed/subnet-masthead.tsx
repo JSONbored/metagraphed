@@ -20,6 +20,7 @@ import {
   safeExternalUrl,
   CurationChip,
   HealthPill,
+  ShareButton,
   DailyRollupFreshness,
   StatWithSpark,
   MiniStack,
@@ -395,56 +396,62 @@ export function SubnetMasthead({
               {description}
             </p>
           ) : null}
-          {links.length > 0 ? (
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              {links.map((l) => {
-                const Icon = l.icon;
-                const safeHref = safeExternalUrl(l.href);
-                const className =
-                  "group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors " +
-                  (safeHref
-                    ? "hover:border-accent/50 hover:text-accent"
-                    : "cursor-default opacity-70");
-                const content = (
-                  <>
-                    <Icon
-                      className={
-                        "size-3 text-ink-muted " + (safeHref ? "group-hover:text-accent" : "")
-                      }
-                    />
-                    <span>{l.label}</span>
-                    {safeHref ? (
-                      <ExternalLinkIcon className="size-2.5 text-ink-muted opacity-60" />
-                    ) : null}
-                  </>
-                );
-
-                return (
-                  <Tooltip key={l.label} delayDuration={150}>
-                    <TooltipTrigger asChild>
+          {/* Resource links + the standard ShareButton (#5481) — the masthead's
+              action area, matching every other entity-detail page's "copy a link
+              to what I'm looking at" affordance. Rendered as its own pill so it's
+              always present even when a subnet has no external links. rounded-full
+              matches the link chips beside it. */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {links.length > 0
+              ? links.map((l) => {
+                  const Icon = l.icon;
+                  const safeHref = safeExternalUrl(l.href);
+                  const className =
+                    "group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors " +
+                    (safeHref
+                      ? "hover:border-accent/50 hover:text-accent"
+                      : "cursor-default opacity-70");
+                  const content = (
+                    <>
+                      <Icon
+                        className={
+                          "size-3 text-ink-muted " + (safeHref ? "group-hover:text-accent" : "")
+                        }
+                      />
+                      <span>{l.label}</span>
                       {safeHref ? (
-                        <a
-                          href={safeHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={className}
-                        >
-                          {content}
-                        </a>
-                      ) : (
-                        <span className={className} title="Blocked unsafe external URL">
-                          {content}
-                        </span>
-                      )}
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-mono text-[11px]">
-                      {safeHref ? host(safeHref) : "Blocked unsafe external URL"}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </div>
-          ) : null}
+                        <ExternalLinkIcon className="size-2.5 text-ink-muted opacity-60" />
+                      ) : null}
+                    </>
+                  );
+
+                  return (
+                    <Tooltip key={l.label} delayDuration={150}>
+                      <TooltipTrigger asChild>
+                        {safeHref ? (
+                          <a
+                            href={safeHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={className}
+                          >
+                            {content}
+                          </a>
+                        ) : (
+                          <span className={className} title="Blocked unsafe external URL">
+                            {content}
+                          </span>
+                        )}
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="font-mono text-[11px]">
+                        {safeHref ? host(safeHref) : "Blocked unsafe external URL"}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })
+              : null}
+            <ShareButton className="rounded-full" />
+          </div>
         </div>
         {/* Desktop/tablet: health + curation beside the identity block. Mobile
             counterpart lives in the status row above so the body column stays wide. */}
