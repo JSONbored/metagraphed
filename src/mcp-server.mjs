@@ -2674,6 +2674,107 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_snapshot",
+    title: "Get one subnet's compound snapshot (5 views in one call)",
+    description:
+      "Fan out to five of a subnet's live views in a single round trip: " +
+      "hyperparameters, stake/emission concentration, reward-distribution " +
+      "performance, the top validators by stake (default 10, cap with " +
+      "top_validators_limit), and the most recent chain events (default 10, " +
+      "cap with recent_events_limit). Equivalent to calling get_subnet_hyperparams " +
+      "+ get_subnet_concentration + get_subnet_performance + " +
+      "list_subnet_validators + get_subnet_events separately -- use this instead " +
+      "when an agent needs a broad picture of one subnet's current state rather " +
+      "than drilling into just one facet (which the individual tools remain " +
+      "better suited for, since each carries its own full parameter set this " +
+      "compound view intentionally simplifies).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        top_validators_limit: {
+          type: "integer",
+          description:
+            "Max validators in the top-validators slice. Default 10.",
+          minimum: 1,
+        },
+        recent_events_limit: {
+          type: "integer",
+          description: "Max events in the recent-events slice. Default 10.",
+          minimum: 1,
+          maximum: 1000,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const topValidatorsLimit =
+        optionalPositiveInt(args, "top_validators_limit") ?? 10;
+      const recentEventsLimit = clampLimit(args?.recent_events_limit, 10, 1000);
+      const [hyperparams, concentration, performance, validators, events] =
+        await Promise.all([
+          tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/hyperparameters`),
+            "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+          ).then((data) => data ?? buildSubnetHyperparams(null, netuid)),
+          tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/concentration`),
+            "METAGRAPH_NEURONS_SOURCE",
+          ).then((data) => data ?? buildConcentration([], netuid)),
+          tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/performance`),
+            "METAGRAPH_NEURONS_SOURCE",
+          ).then((data) => data ?? buildSubnetPerformance([], netuid)),
+          tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/validators`),
+            "METAGRAPH_NEURONS_SOURCE",
+          ).then((data) => data ?? buildSubnetValidators([], netuid)),
+          tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/events`, {
+              limit: recentEventsLimit,
+              offset: 0,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          ).then(
+            (data) =>
+              data ??
+              buildSubnetEvents([], netuid, {
+                limit: recentEventsLimit,
+                offset: 0,
+                nextCursor: null,
+              }),
+          ),
+        ]);
+      // list_subnet_validators' own limit post-filter (the loader already
+      // ranks by stake_tao DESC, so slicing after is a no-op re-sort) --
+      // mirrored here rather than exported, since it's three lines.
+      const slicedValidators = (validators?.validators ?? []).slice(
+        0,
+        topValidatorsLimit,
+      );
+      const topValidators = {
+        ...validators,
+        validator_count: slicedValidators.length,
+        validators: slicedValidators,
+      };
+      return {
+        netuid,
+        hyperparameters: hyperparams,
+        concentration,
+        performance,
+        top_validators: topValidators,
+        recent_events: events,
+      };
+    },
+  },
+  {
     ...GET_NETWORK_HEALTH_MCP_TOOL,
     async handler(_args, ctx) {
       return loadGlobalOperationalHealth(
@@ -6331,6 +6432,111 @@ export const MCP_TOOLS = [
           "METAGRAPH_NEURONS_SOURCE",
         )) ?? buildAccountPositions([], new Map(), ss58)
       );
+    },
+  },
+  {
+    name: "get_account_snapshot",
+    title: "Get one account's compound snapshot (5 views in one call)",
+    description:
+      "Fan out to five of an account's live views in a single round trip: " +
+      "live TAO balance, cross-subnet portfolio (hotkey-scoped), cross-subnet " +
+      "footprint (registered subnets), nominator-side positions (coldkey-scoped), " +
+      "and the most recent chain events (default 10, cap with recent_events_limit). " +
+      "The same ss58 is used for every view -- portfolio/subnets are only " +
+      "meaningful if it's a hotkey, positions only if it's a coldkey, so a card " +
+      "for the 'other' role degrades to its own natural empty state rather than " +
+      "erroring. Equivalent to calling get_account_balance + get_account_portfolio " +
+      "+ get_account_subnets + get_account_positions + get_account_events " +
+      "separately -- use this instead when an agent needs a broad picture of one " +
+      "wallet rather than drilling into just one facet.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 address, base58, 47-48 chars. Hotkey or " +
+            "coldkey -- see the role note above.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        recent_events_limit: {
+          type: "integer",
+          description: "Max events in the recent-events slice. Default 10.",
+          minimum: 1,
+          maximum: 1000,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const recentEventsLimit = clampLimit(args?.recent_events_limit, 10, 1000);
+      // balance is a live RPC call (its own rate limiter + address-network
+      // check, mirroring get_account_balance's handler exactly) -- every
+      // other slice is a Postgres-tier read with its own graceful fallback,
+      // so a live RPC/rate-limit failure is the only thing that can make
+      // this whole compound call throw instead of degrading one section.
+      if (!isFinneySs58Address(ss58)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `ss58` must be a valid finney SS58 account address.",
+        );
+      }
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `balance:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live balance requests from this client; slow down.",
+          );
+        }
+      }
+      const [balance, portfolio, subnets, positions, events] =
+        await Promise.all([
+          loadAccountBalance(ctx.env, ss58),
+          tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/portfolio`),
+            "METAGRAPH_NEURONS_SOURCE",
+          ).then((data) => data ?? buildAccountPortfolio([], ss58)),
+          tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/subnets`),
+            "METAGRAPH_NEURONS_SOURCE",
+          ).then((data) => data ?? buildAccountSubnets([], ss58)),
+          tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/positions`),
+            "METAGRAPH_NEURONS_SOURCE",
+          ).then((data) => data ?? buildAccountPositions([], new Map(), ss58)),
+          tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/events`, {
+              limit: recentEventsLimit,
+              offset: 0,
+            }),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          ).then(
+            (data) =>
+              data ??
+              buildAccountEvents([], ss58, {
+                limit: recentEventsLimit,
+                offset: 0,
+                nextCursor: null,
+              }),
+          ),
+        ]);
+      return {
+        ss58,
+        balance,
+        portfolio,
+        subnets,
+        positions,
+        recent_events: events,
+      };
     },
   },
   {
@@ -10651,6 +10857,26 @@ const TOOL_OUTPUT_SCHEMAS = {
       economics: { type: ["object", "null"] },
     },
   },
+  get_subnet_snapshot: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "netuid",
+      "hyperparameters",
+      "concentration",
+      "performance",
+      "top_validators",
+      "recent_events",
+    ],
+    properties: {
+      netuid: { type: "integer" },
+      hyperparameters: { type: "object" },
+      concentration: { type: "object" },
+      performance: { type: "object" },
+      top_validators: { type: "object" },
+      recent_events: { type: "object" },
+    },
+  },
   get_subnet_health: {
     type: "object",
     additionalProperties: true,
@@ -12622,6 +12848,26 @@ const TOOL_OUTPUT_SCHEMAS = {
       position_count: { type: "integer" },
       total_stake_tao: { type: "number" },
       positions: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_account_snapshot: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "ss58",
+      "balance",
+      "portfolio",
+      "subnets",
+      "positions",
+      "recent_events",
+    ],
+    properties: {
+      ss58: { type: "string" },
+      balance: { type: "object" },
+      portfolio: { type: "object" },
+      subnets: { type: "object" },
+      positions: { type: "object" },
+      recent_events: { type: "object" },
     },
   },
   get_account_identity: {

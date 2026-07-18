@@ -3610,6 +3610,169 @@ describe("MCP get_subnet_performance", () => {
   });
 });
 
+describe("MCP get_subnet_snapshot", () => {
+  // No Postgres-tier flags set and no DATA_API bound -- every one of the five
+  // component tryPostgresTier calls degrades to its own schema-stable empty
+  // fallback (get_subnet_performance's own precedent above), and the compound
+  // handler just merges the five cold cards under their named keys.
+  test("degrades to five schema-stable empty cards when every Postgres tier is cold", async () => {
+    const res = await callTool("get_subnet_snapshot", { netuid: 7 }, {});
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.hyperparameters.netuid, 7);
+    assert.equal(out.concentration.netuid, 7);
+    assert.equal(out.concentration.neuron_count, 0);
+    assert.equal(out.performance.netuid, 7);
+    assert.equal(out.performance.neuron_count, 0);
+    assert.equal(out.top_validators.netuid, 7);
+    assert.equal(out.top_validators.validator_count, 0);
+    assert.deepEqual(out.top_validators.validators, []);
+    assert.equal(out.recent_events.netuid, 7);
+    assert.equal(out.recent_events.event_count, 0);
+    assert.deepEqual(out.recent_events.events, []);
+  });
+
+  // A DATA_API stub that dispatches on pathname, mirroring the compare_subnets
+  // multi-path mock pattern above -- one binding standing in for the five
+  // distinct /api/v1/subnets/:netuid/* routes the compound handler fans out to.
+  function subnetSnapshotPostgresEnv() {
+    const calls = [];
+    return {
+      calls,
+      env: {
+        METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+        METAGRAPH_NEURONS_SOURCE: "postgres",
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            const url = new URL(request.url);
+            calls.push(url);
+            if (url.pathname === "/api/v1/subnets/7/hyperparameters") {
+              return Response.json({
+                schema_version: 1,
+                netuid: 7,
+                captured_at: "2026-07-18T00:00:00.000Z",
+                block_number: 1000,
+                hyperparameters: { tempo: 99 },
+              });
+            }
+            if (url.pathname === "/api/v1/subnets/7/concentration") {
+              return Response.json({
+                schema_version: 1,
+                netuid: 7,
+                neuron_count: 3,
+                entity_count: 2,
+              });
+            }
+            if (url.pathname === "/api/v1/subnets/7/performance") {
+              return Response.json({
+                schema_version: 1,
+                netuid: 7,
+                neuron_count: 3,
+                validator_count: 2,
+                incentive: 0.5,
+                trust: 0.6,
+              });
+            }
+            if (url.pathname === "/api/v1/subnets/7/validators") {
+              return Response.json({
+                schema_version: 1,
+                netuid: 7,
+                validator_count: 3,
+                captured_at: "2026-07-18T00:00:00.000Z",
+                block_number: 1000,
+                validators: [
+                  { hotkey: "5A", stake_tao: 300 },
+                  { hotkey: "5B", stake_tao: 200 },
+                  { hotkey: "5C", stake_tao: 100 },
+                ],
+              });
+            }
+            if (url.pathname === "/api/v1/subnets/7/events") {
+              assert.equal(url.searchParams.get("limit"), "10");
+              return Response.json({
+                schema_version: 1,
+                netuid: 7,
+                event_count: 1,
+                limit: 10,
+                offset: 0,
+                next_cursor: null,
+                events: [{ kind: "Transfer" }],
+              });
+            }
+            throw new Error(`unexpected DATA_API path: ${url.pathname}`);
+          },
+        },
+      },
+    };
+  }
+
+  test("composes all five live Postgres-tier views under their named keys", async () => {
+    const { env } = subnetSnapshotPostgresEnv();
+    const res = await callTool("get_subnet_snapshot", { netuid: 7 }, { env });
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.hyperparameters.hyperparameters.tempo, 99);
+    assert.equal(out.concentration.entity_count, 2);
+    assert.equal(out.performance.incentive, 0.5);
+    assert.equal(out.top_validators.validator_count, 3);
+    assert.equal(out.recent_events.events[0].kind, "Transfer");
+  });
+
+  test("top_validators_limit slices the validator list and recomputes validator_count", async () => {
+    const { env } = subnetSnapshotPostgresEnv();
+    const res = await callTool(
+      "get_subnet_snapshot",
+      { netuid: 7, top_validators_limit: 2 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.top_validators.validator_count, 2);
+    assert.equal(out.top_validators.validators.length, 2);
+    assert.equal(out.top_validators.validators[0].hotkey, "5A");
+    assert.equal(out.top_validators.validators[1].hotkey, "5B");
+  });
+
+  test("recent_events_limit is forwarded to the events route", async () => {
+    const { env, calls } = subnetSnapshotPostgresEnv();
+    await callTool(
+      "get_subnet_snapshot",
+      { netuid: 7, recent_events_limit: 25 },
+      {
+        env: {
+          ...env,
+          DATA_API: {
+            fetch: async (request) => {
+              const url = new URL(request.url);
+              calls.push(url);
+              if (url.pathname === "/api/v1/subnets/7/events") {
+                assert.equal(url.searchParams.get("limit"), "25");
+                return Response.json({
+                  schema_version: 1,
+                  netuid: 7,
+                  event_count: 0,
+                  limit: 25,
+                  offset: 0,
+                  next_cursor: null,
+                  events: [],
+                });
+              }
+              return Response.json({ netuid: 7 });
+            },
+          },
+        },
+      },
+    );
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_snapshot", {}, {});
+    assert.equal(res.body.result.isError, true);
+  });
+});
+
 describe("MCP get_chain_signers", () => {
   // #4772 D1 retirement: the `extrinsics` D1 table is dropped in production,
   // so loadMcpChainSigners (src/mcp-server.mjs) never issues a live D1 read
@@ -16453,6 +16616,225 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
     });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /ss58/);
+  });
+});
+
+describe("MCP get_account_snapshot", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  // No Postgres-tier flags/DATA_API bound, and the finney RPC fetch fails --
+  // every one of the five component loads degrades to its own schema-stable
+  // empty/null fallback (balance_tao:null exactly like get_account_balance's
+  // own "returns balance_tao:null on RPC failure" precedent above).
+  test("degrades to five schema-stable empty cards when every tier is cold", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("rpc down");
+    };
+    try {
+      const res = await callTool("get_account_snapshot", { ss58: SS58 }, {});
+      assert.equal(res.body.result.isError, false);
+      const out = res.body.result.structuredContent;
+      assert.equal(out.ss58, SS58);
+      assert.equal(out.balance.balance_tao, null);
+      assert.equal(out.portfolio.ss58, SS58);
+      assert.equal(out.portfolio.position_count, 0);
+      assert.equal(out.subnets.ss58, SS58);
+      assert.equal(out.subnets.subnet_count, 0);
+      assert.equal(out.positions.ss58, SS58);
+      assert.equal(out.positions.position_count, 0);
+      assert.equal(out.recent_events.ss58, SS58);
+      assert.equal(out.recent_events.event_count, 0);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("rejects a malformed ss58", async () => {
+    const res = await callTool(
+      "get_account_snapshot",
+      { ss58: "not-an-address" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /ss58/);
+  });
+
+  // A base58-valid address that isn't finney-prefixed passes the inputSchema
+  // pattern (so it reaches the handler) but must still fail the handler's own
+  // isFinneySs58Address guard -- same well-known non-finney address as
+  // get_account_balance's own "rejects a non-finney ss58 prefix" test above.
+  test("rejects a non-finney ss58 prefix", async () => {
+    const res = await callTool(
+      "get_account_snapshot",
+      { ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXc6TYeyZ1km1" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /finney/i);
+  });
+
+  test("applies the RPC rate limiter before any component fetch", async () => {
+    let dataApiCalled = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("balance RPC should not fire");
+    };
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      // MCP_RATE_LIMITER must succeed so the transport-level limiter (which
+      // falls back to RPC_RATE_LIMITER when MCP_RATE_LIMITER is absent, per
+      // get_account_balance's own "applies the RPC rate limiter" test above)
+      // doesn't consume RPC_RATE_LIMITER's quota before the tool handler runs.
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit() {
+          return { success: false };
+        },
+      },
+      DATA_API: {
+        fetch: async () => {
+          dataApiCalled = true;
+          return Response.json({});
+        },
+      },
+    };
+    try {
+      const res = await callTool(
+        "get_account_snapshot",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rate_limited/);
+      assert.equal(dataApiCalled, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("composes all five live views under their named keys", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        jsonrpc: "2.0",
+        id: 1,
+        // Same SCALE AccountInfo encoding as get_account_balance's own live
+        // test above: free 2_000_000_000 + reserved 500_000_000 rao = 2.5 TAO.
+        result:
+          "0x" +
+          "00000000".repeat(4) +
+          "00943577000000000000000000000000" +
+          "0065cd1d000000000000000000000000",
+      }),
+    });
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      // A passing RPC_RATE_LIMITER here exercises the handler's own
+      // success-path branch, distinct from the no-limiter-bound cold test
+      // above and the failing-limiter test below.
+      RPC_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      DATA_API: {
+        fetch: async (request) => {
+          const url = new URL(request.url);
+          if (url.pathname === `/api/v1/accounts/${SS58}/portfolio`) {
+            return Response.json({
+              schema_version: 1,
+              ss58: SS58,
+              position_count: 2,
+              positions: [],
+            });
+          }
+          if (url.pathname === `/api/v1/accounts/${SS58}/subnets`) {
+            return Response.json({
+              schema_version: 1,
+              ss58: SS58,
+              subnet_count: 3,
+              subnets: [],
+            });
+          }
+          if (url.pathname === `/api/v1/accounts/${SS58}/positions`) {
+            return Response.json({
+              schema_version: 1,
+              ss58: SS58,
+              position_count: 1,
+              total_stake_tao: 42,
+              positions: [],
+            });
+          }
+          if (url.pathname === `/api/v1/accounts/${SS58}/events`) {
+            assert.equal(url.searchParams.get("limit"), "10");
+            return Response.json({
+              schema_version: 1,
+              ss58: SS58,
+              event_count: 1,
+              limit: 10,
+              offset: 0,
+              next_cursor: null,
+              events: [{ kind: "Transfer" }],
+            });
+          }
+          throw new Error(`unexpected DATA_API path: ${url.pathname}`);
+        },
+      },
+    };
+    try {
+      const res = await callTool(
+        "get_account_snapshot",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(res.body.result.isError, false);
+      const out = res.body.result.structuredContent;
+      assert.equal(out.ss58, SS58);
+      assert.equal(out.balance.balance_tao, 2.5);
+      assert.equal(out.portfolio.position_count, 2);
+      assert.equal(out.subnets.subnet_count, 3);
+      assert.equal(out.positions.total_stake_tao, 42);
+      assert.equal(out.recent_events.events[0].kind, "Transfer");
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("recent_events_limit is forwarded to the events route", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (request) => {
+          const url = new URL(request.url);
+          if (url.pathname === `/api/v1/accounts/${SS58}/events`) {
+            assert.equal(url.searchParams.get("limit"), "25");
+            return Response.json({
+              schema_version: 1,
+              ss58: SS58,
+              event_count: 0,
+              limit: 25,
+              offset: 0,
+              next_cursor: null,
+              events: [],
+            });
+          }
+          return Response.json({ ss58: SS58 });
+        },
+      },
+    };
+    await callTool(
+      "get_account_snapshot",
+      { ss58: SS58, recent_events_limit: 25 },
+      { env },
+    );
   });
 });
 
