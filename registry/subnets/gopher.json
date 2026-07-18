@@ -123,7 +123,7 @@
       "id": "sn-42-gopher-ai-subnet-api",
       "kind": "subnet-api",
       "name": "Gopher Data API live search",
-      "notes": "Official SN42 Gopher Data API live search (POST data.gopher-ai.com/api/v1/search/live). gopher-client defines jobEndpoint /v1/search/live on default base https://data.gopher-ai.com/api; gopher-mcp-server posts to /search/live on https://data.gopher-ai.com/api/v1.",
+      "notes": "Official SN42 Gopher Data API live search (POST data.gopher-ai.com/api/v1/search/live). gopher-client defines jobEndpoint /v1/search/live on default base https://data.gopher-ai.com/api; gopher-mcp-server posts to /search/live on https://data.gopher-ai.com/api/v1. Bearer API key required (GOPHER_CLIENT_TOKEN). POST-only credentialed endpoint; recurring read probes are intentionally disabled.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -131,7 +131,6 @@
       },
       "provider": "gopher-ai",
       "public_safe": true,
-      "rate_limit_notes": "Bearer API key required (GOPHER_CLIENT_TOKEN). POST-only credentialed endpoint; recurring read probes are intentionally disabled.",
       "review": {
         "state": "community-submitted",
         "submitted_by": "claytonlin1110"

@@ -108,6 +108,7 @@
       "id": "opentensor-archive-wss",
       "kind": "subtensor-wss",
       "name": "OpenTensor archive WSS",
+      "notes": "Official archive endpoint. Archive support is verified through read-only historical RPC probes.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -116,7 +117,6 @@
       },
       "provider": "opentensor",
       "public_safe": true,
-      "rate_limit_notes": "Official archive endpoint. Archive support is verified through read-only historical RPC probes.",
       "source_urls": [
         "https://docs.learnbittensor.org/concepts/bittensor-networks",
         "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements"
@@ -129,6 +129,7 @@
       "id": "opentensor-lite-wss",
       "kind": "subtensor-wss",
       "name": "OpenTensor lite WSS",
+      "notes": "Official lite endpoint. Lite endpoints are not assumed to support deep historical archive queries.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -137,7 +138,6 @@
       },
       "provider": "opentensor",
       "public_safe": true,
-      "rate_limit_notes": "Official lite endpoint. Lite endpoints are not assumed to support deep historical archive queries.",
       "source_urls": [
         "https://docs.learnbittensor.org/concepts/bittensor-networks",
         "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements"
@@ -186,6 +186,7 @@
       "id": "nodies-finney-rpc",
       "kind": "subtensor-rpc",
       "name": "Nodies Finney HTTPS RPC",
+      "notes": "No longer a free public endpoint: returns HTTP 403 'requires a paid subscription plan' (verified 2026-06-15). Demoted out of the public RPC pool; probe disabled.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -194,7 +195,6 @@
       },
       "provider": "nodies",
       "public_safe": false,
-      "rate_limit_notes": "No longer a free public endpoint: returns HTTP 403 'requires a paid subscription plan' (verified 2026-06-15). Demoted out of the public RPC pool; probe disabled.",
       "review": {
         "state": "maintainer-reviewed"
       },
@@ -230,6 +230,7 @@
       "id": "opentensor-lite-rpc",
       "kind": "subtensor-rpc",
       "name": "OpenTensor lite HTTPS RPC",
+      "notes": "Official lite host also serving HTTPS JSON-RPC. Lite endpoints are not assumed to support deep historical archive queries.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -238,7 +239,6 @@
       },
       "provider": "opentensor",
       "public_safe": true,
-      "rate_limit_notes": "Official lite host also serving HTTPS JSON-RPC. Lite endpoints are not assumed to support deep historical archive queries.",
       "source_urls": [
         "https://docs.learnbittensor.org/concepts/bittensor-networks",
         "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements"
@@ -251,6 +251,7 @@
       "id": "opentensor-archive-rpc",
       "kind": "subtensor-rpc",
       "name": "OpenTensor archive HTTPS RPC",
+      "notes": "Official archive host also serving HTTPS JSON-RPC. Archive support is verified through read-only historical RPC probes.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -259,7 +260,6 @@
       },
       "provider": "opentensor",
       "public_safe": true,
-      "rate_limit_notes": "Official archive host also serving HTTPS JSON-RPC. Archive support is verified through read-only historical RPC probes.",
       "source_urls": [
         "https://docs.learnbittensor.org/concepts/bittensor-networks",
         "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements"

@@ -115,7 +115,7 @@
       "id": "sn-87-taopedia-article",
       "kind": "docs",
       "name": "Luminar Network Taopedia article",
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Candidate only; no recurring probe is configured until maintainer review.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -132,7 +132,6 @@
         "source_tier": "community-docs",
         "transient_failure": false
       },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx"
       ],
@@ -144,7 +143,7 @@
       "id": "sn-87-tensorplex-docs",
       "kind": "docs",
       "name": "Luminar Network Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Candidate only; no recurring probe is configured until maintainer review.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -161,7 +160,6 @@
         "source_tier": "community-docs",
         "transient_failure": false
       },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/87/subnet.json"
       ],
@@ -173,7 +171,7 @@
       "id": "sn-87-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Luminar Network TaoMarketCap dashboard",
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority. Candidate only; no recurring probe is configured until maintainer review.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -190,7 +188,6 @@
         "source_tier": "third-party-index",
         "transient_failure": false
       },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/87"],
       "url": "https://taomarketcap.com/subnets/87"
     },

@@ -60,7 +60,7 @@
       "id": "sn-53-signalplus-mining",
       "kind": "dashboard",
       "name": "EfficientFrontier mining app",
-      "notes": "SignalPlus mining/app surface linked by public SN53 references.",
+      "notes": "SignalPlus mining/app surface linked by public SN53 references. Simple probes currently receive an auth/challenge-style response; endpoint health should be interpreted as access-state, not app correctness.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -69,7 +69,6 @@
       },
       "provider": "signalplus",
       "public_safe": true,
-      "rate_limit_notes": "Simple probes currently receive an auth/challenge-style response; endpoint health should be interpreted as access-state, not app correctness.",
       "source_urls": [
         "https://t.signalplus.com/mining",
         "https://www.signalplus.com/"

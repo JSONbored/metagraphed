@@ -74,10 +74,9 @@
       "id": "sn-110-green-compute-chat-completions-api",
       "kind": "subnet-api",
       "name": "Green Compute chat completions API",
-      "notes": "Official API endpoint advertised by the Green Compute website. The endpoint is POST-only, so recurring read probes are intentionally disabled until a safe health or schema endpoint is confirmed.",
+      "notes": "Official API endpoint advertised by the Green Compute website. The endpoint is POST-only, so recurring read probes are intentionally disabled until a safe health or schema endpoint is confirmed. Auth and request-shape details need maintainer review before monitoring or proxy eligibility.",
       "provider": "green-compute",
       "public_safe": true,
-      "rate_limit_notes": "Auth and request-shape details need maintainer review before monitoring or proxy eligibility.",
       "source_urls": ["https://www.green-compute.com/"],
       "url": "https://api.green-compute.com/v1/chat/completions"
     },

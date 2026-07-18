@@ -150,10 +150,9 @@
       "id": "sn-49-nepher-tournament-api",
       "kind": "subnet-api",
       "name": "Nepher tournament API",
-      "notes": "Public tournament API host with machine-readable OpenAPI. Individual endpoints may require authentication or admin permissions, so proxy eligibility requires separate review.",
+      "notes": "Public tournament API host with machine-readable OpenAPI. Individual endpoints may require authentication or admin permissions, so proxy eligibility requires separate review. Schema is public; method-level auth must be reviewed before enabling health probes beyond schema fetches.",
       "provider": "nepher-robotics",
       "public_safe": true,
-      "rate_limit_notes": "Schema is public; method-level auth must be reviewed before enabling health probes beyond schema fetches.",
       "schema_status": "machine-readable",
       "schema_url": "https://tournament-api.nepher.ai/openapi.json",
       "source_urls": [

@@ -67,10 +67,9 @@
       "id": "sn-106-nodexo-docs",
       "kind": "docs",
       "name": "Nodexo docs",
-      "notes": "Official Nodexo Compute documentation.",
+      "notes": "Official Nodexo Compute documentation. Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
       "provider": "nodexo",
       "public_safe": true,
-      "rate_limit_notes": "Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
       "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
       "url": "https://docs.nodexo.ai/"
     },
@@ -80,10 +79,9 @@
       "id": "sn-106-nodexo-console",
       "kind": "dashboard",
       "name": "Nodexo console",
-      "notes": "Official Nodexo console surface. Authentication may be required for account-specific workflows.",
+      "notes": "Official Nodexo console surface. Authentication may be required for account-specific workflows. Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
       "provider": "nodexo",
       "public_safe": true,
-      "rate_limit_notes": "Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
       "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
       "url": "https://console.nodexo.ai/"
     },

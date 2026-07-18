@@ -49,7 +49,7 @@
       "id": "sn-16-bitads-website",
       "kind": "website",
       "name": "BitAds website",
-      "notes": "Official BitAds website (bitads.ai domain currently unresolvable).",
+      "notes": "Official BitAds website (bitads.ai domain currently unresolvable). Not probe-enabled because bitads.ai currently fails to resolve (DNS lame delegation — the domain's nameservers refuse queries); marked degraded until the domain recovers or a replacement is confirmed.",
       "probe": {
         "enabled": false,
         "expect": "html",
@@ -57,7 +57,6 @@
       },
       "provider": "bitads",
       "public_safe": true,
-      "rate_limit_notes": "Not probe-enabled because bitads.ai currently fails to resolve (DNS lame delegation — the domain's nameservers refuse queries); marked degraded until the domain recovers or a replacement is confirmed.",
       "source_urls": [
         "https://bitads.ai/",
         "https://github.com/FirstTensorLabs/BitAds"
@@ -70,7 +69,7 @@
       "id": "sn-16-bitads-docs",
       "kind": "docs",
       "name": "BitAds docs",
-      "notes": "Official BitAds documentation page (bitads.ai domain currently unresolvable).",
+      "notes": "Official BitAds documentation page (bitads.ai domain currently unresolvable). Not probe-enabled because the bitads.ai domain currently fails to resolve (DNS lame delegation); marked degraded until it recovers or a replacement is confirmed.",
       "probe": {
         "enabled": false,
         "expect": "html",
@@ -78,7 +77,6 @@
       },
       "provider": "bitads",
       "public_safe": true,
-      "rate_limit_notes": "Not probe-enabled because the bitads.ai domain currently fails to resolve (DNS lame delegation); marked degraded until it recovers or a replacement is confirmed.",
       "source_urls": ["https://bitads.ai/docs"],
       "url": "https://bitads.ai/docs"
     },
