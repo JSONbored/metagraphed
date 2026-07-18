@@ -12,6 +12,7 @@ import {
   Minus,
 } from "lucide-react";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { formatSubnetAge, subnetAgeDays } from "@/lib/metagraphed/subnet-age";
 import {
   Tooltip,
   TooltipContent,
@@ -173,6 +174,12 @@ export function SubnetMasthead({
   const name = profile?.name ?? `Subnet ${netuid}`;
   const description = profile?.description;
   const categories = (profile?.categories ?? []).slice(0, 4);
+
+  // Age since registration, derived from the profile's registration block and
+  // the snapshot's current chain height (no registration timestamp is exposed).
+  // Estimated from Finney's ~12s block time, hence the "~N days old" label; null
+  // when the blocks are missing/inconsistent, in which case the chip is hidden.
+  const ageLabel = formatSubnetAge(subnetAgeDays(profile?.registered_at_block, profile?.block));
 
   // Pull supporting series for the spark tiles. All three queries are already
   // primed by other panels on the page — no additional network hits. The live
@@ -389,6 +396,14 @@ export function SubnetMasthead({
                 {c}
               </span>
             ))}
+            {ageLabel ? (
+              <span
+                className="rounded border border-border/60 bg-paper px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-muted"
+                title="Estimated from the registration block and current chain height (~12s per Finney block)"
+              >
+                {ageLabel}
+              </span>
+            ) : null}
           </div>
           {description ? (
             <p className="mt-2 text-sm text-ink-muted max-w-3xl leading-relaxed line-clamp-2">
