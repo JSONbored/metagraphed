@@ -14897,6 +14897,64 @@ function bodyTooLargeResponse() {
   );
 }
 
+function invalidContentLengthResponse() {
+  return jsonResponse(
+    rpcError(null, RPC_INVALID_REQUEST, "Invalid Content-Length header."),
+    400,
+  );
+}
+
+// Stream-read the POST body with a hard byte cap, mirroring GraphQL's
+// `readLimitedJson`. A present Content-Length must be a pure decimal integer
+// (`/^\d+$/`) so Number() coercion cannot accept "", "1.5", "0x10", or "1e3"
+// (the defect that closed #3205). Missing Content-Length still cannot bypass
+// the cap: we cancel mid-read as soon as total exceeds MAX_MCP_BODY_BYTES
+// instead of buffering via request.text() first.
+async function readLimitedMcpBody(request) {
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null) {
+    if (!/^\d+$/.test(declaredLength)) {
+      return { error: invalidContentLengthResponse() };
+    }
+    const length = Number(declaredLength);
+    if (length > MAX_MCP_BODY_BYTES) {
+      return { error: bodyTooLargeResponse() };
+    }
+  }
+
+  if (!request.body) {
+    return { text: "" };
+  }
+
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_MCP_BODY_BYTES) {
+        await reader.cancel();
+        return { error: bodyTooLargeResponse() };
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return { text: new TextDecoder().decode(bytes) };
+}
+
 // MCP-Protocol-Version header (2025-06-18+): every request after the first
 // carries this; the first (`initialize`) negotiates the version in its BODY
 // instead, since the client has nothing to declare in a header yet. Per spec,
@@ -15071,18 +15129,12 @@ export async function handleMcpRequest(request, env = {}, deps = {}) {
     );
   }
 
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > MAX_MCP_BODY_BYTES) {
-    return bodyTooLargeResponse();
-  }
+  const limited = await readLimitedMcpBody(request);
+  if (limited.error) return limited.error;
 
   let body;
   try {
-    const bodyText = await request.text();
-    if (new TextEncoder().encode(bodyText).length > MAX_MCP_BODY_BYTES) {
-      return bodyTooLargeResponse();
-    }
-    body = JSON.parse(bodyText);
+    body = JSON.parse(limited.text);
   } catch {
     return jsonResponse(
       rpcError(null, RPC_PARSE_ERROR, "Request body is not valid JSON."),

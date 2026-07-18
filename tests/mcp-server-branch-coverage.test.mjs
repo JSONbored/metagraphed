@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import {
+  handleMcpRequest,
+  MAX_MCP_BODY_BYTES,
+} from "../src/mcp-server.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -1069,6 +1072,49 @@ describe("handleMcpRequest — rate limiter success + content-length guard", () 
     assert.equal(response.status, 413);
     const body = await response.json();
     assert.equal(body.error.code, -32600);
+  });
+
+  test("malformed Content-Length values are rejected with 400 before any body read", async () => {
+    // Strict decimal-integer grammar — Number() coercion must not accept these.
+    for (const value of ["", " ", "abc", "1.5", "0x10", "1e3", "-1"]) {
+      const request = new Request(MCP_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "content-length": value,
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+      });
+      const response = await handleMcpRequest(request, {}, makeDeps());
+      assert.equal(response.status, 400, `content-length=${JSON.stringify(value)}`);
+      const body = await response.json();
+      assert.equal(body.error.code, -32600);
+      assert.match(body.error.message, /Invalid Content-Length/);
+    }
+  });
+
+  test("an oversized streamed body without Content-Length is rejected mid-read", async () => {
+    // Chunked / stream bodies omit Content-Length; the reader must cancel once
+    // the running byte count exceeds MAX_MCP_BODY_BYTES instead of buffering.
+    const oversized = "x".repeat(MAX_MCP_BODY_BYTES + 1);
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(oversized));
+        controller.close();
+      },
+    });
+    const request = new Request(MCP_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: stream,
+      duplex: "half",
+    });
+    assert.equal(request.headers.get("content-length"), null);
+    const response = await handleMcpRequest(request, {}, makeDeps());
+    assert.equal(response.status, 413);
+    const body = await response.json();
+    assert.equal(body.error.code, -32600);
+    assert.match(body.error.message, /too large/);
   });
 });
 
