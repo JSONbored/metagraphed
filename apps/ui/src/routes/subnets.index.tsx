@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, useMemo } from "react";
 import { z } from "zod";
-import { Network, Radio, Layers, Activity } from "lucide-react";
+import { Network, Radio, Layers, Activity, Coins } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
@@ -49,6 +49,7 @@ import {
   subnetHealthMapQuery,
   agentCatalogMapQuery,
   economicsQuery,
+  economicsTrendsQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
@@ -190,7 +191,8 @@ function SubnetsPage() {
       <QueryErrorBoundary>
         <Suspense
           fallback={
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+              <Skeleton className="h-20" />
               <Skeleton className="h-20" />
               <Skeleton className="h-20" />
               <Skeleton className="h-20" />
@@ -215,6 +217,14 @@ function SubnetsPage() {
 
 function SubnetsStatStrip() {
   const coverage = useSuspenseQuery(coverageQuery()).data.data ?? {};
+  // #6271: the network-wide total-stake series already powers /explorer's trend
+  // chart (GET /api/v1/economics/trends). Surface its latest point as a
+  // headline tile so /subnets carries the same stake context.
+  const trendDays = useSuspenseQuery(economicsTrendsQuery()).data.data?.days ?? [];
+  const latestStake = [...trendDays]
+    .filter((d) => d?.snapshot_date)
+    .sort((a, b) => (a.snapshot_date < b.snapshot_date ? -1 : 1))
+    .at(-1)?.total_stake_tao;
   const health = useSuspenseQuery(healthQuery()).data.data ?? {};
   // Wired to the live /api/v1/coverage shape (same as CoverageFunnel): the older
   // netuids_active/netuids_total/adapter_backed fields are null on the live payload.
@@ -239,7 +249,12 @@ function SubnetsStatStrip() {
   const totalH = health.total;
   const healthyOk = ok != null && totalH != null && totalH > 0 && ok / totalH > 0.9;
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+      <StatTile
+        icon={Coins}
+        eyebrow="Total stake"
+        value={latestStake != null ? formatTao(latestStake) : "—"}
+      />
       <StatTile
         icon={Network}
         eyebrow="Active subnets"
