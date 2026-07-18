@@ -30,6 +30,7 @@ import {
   withSurfaceFreshness,
   formatLlmMarkdownText,
   hashJson,
+  isJsonContentType,
   listJsonFilesRecursive,
   loadCandidates,
   loadNativeSnapshot,
@@ -4190,9 +4191,7 @@ function schemaIndexEntryMatchesSurface(entry, surface, capturedDetails) {
       stableStringify(captured.snapshot) === stableStringify(entry.snapshot));
   return (
     entry.path === `/metagraph/schemas/${surface.id}.json` &&
-    typeof entry.content_type === "string" &&
-    entry.content_type.toLowerCase().split(";")[0].trim() ===
-      "application/json" &&
+    isJsonContentType(entry.content_type) &&
     entry.snapshot &&
     typeof entry.snapshot === "object" &&
     entry.snapshot.surface_id === surface.id &&

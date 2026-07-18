@@ -641,6 +641,54 @@ test("artifact build preserves committed schema index without R2 schema details"
   }
 }, 30_000);
 
+test("artifact build accepts an OpenAPI-vendor JSON content-type for a captured schema entry", () => {
+  const schemaIndexPath = artifactFilePath("schemas/index.json");
+  const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+  const supportArtifacts = snapshotSupportArtifacts();
+  const schemaIndex = JSON.parse(originalSchemaIndex);
+  const indexTarget = schemaIndex.schemas?.find(
+    (schema) => schema.status === "captured",
+  );
+  assert(indexTarget, "expected a captured schema index entry to retype");
+
+  // A real subnet (SN-71 Leadpoet) serves its OpenAPI document as
+  // application/vnd.oai.openapi+json rather than plain application/json -- a
+  // spec-valid, OAI-registered media type. schemaIndexEntryMatchesSurface used
+  // to require an exact "application/json" match, so this one entry failed the
+  // reconciler's forgery/staleness guard and wholesale-discarded the entire
+  // committed index down to an empty placeholder (metagraphed#6411).
+  indexTarget.content_type = "application/vnd.oai.openapi+json; charset=utf-8";
+
+  try {
+    writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+
+    const rebuiltSchemaIndex = JSON.parse(
+      readFileSync(schemaIndexPath, "utf8"),
+    );
+    assert.equal(rebuiltSchemaIndex.source, "openapi-snapshot");
+    const rebuiltTarget = rebuiltSchemaIndex.schemas.find(
+      (schema) => schema.surface_id === indexTarget.surface_id,
+    );
+    assert.equal(rebuiltTarget?.content_type, indexTarget.content_type);
+    assert.equal(rebuiltTarget?.hash, indexTarget.hash);
+  } finally {
+    writeFileSync(schemaIndexPath, originalSchemaIndex);
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    restoreSupportArtifacts(supportArtifacts);
+  }
+}, 30_000);
+
 test("committed R2 manifest does not use fallback history keys", () => {
   // Read the git-committed manifest, not the working-tree copy: the Validate
   // test/checks jobs run `npm run build` before the suite, which regenerates
