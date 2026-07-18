@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { BarMini, TreemapMini, type TreemapMiniDatum } from "@jsonbored/ui-kit";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { EmptyState } from "@/components/metagraphed/states";
+import { TopShareCaption } from "@/components/metagraphed/top-share-caption";
 import {
   VALIDATOR_DOMINANCE_TOP_N,
   buildValidatorDominanceChartData,
@@ -64,9 +65,7 @@ export function ValidatorDominanceChart() {
         <div className="mt-4 border-t border-border pt-3">
           <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             Concentration
-            <span className="ml-2 normal-case tracking-normal text-ink-subtle">
-              share within the top {tiles.length}
-            </span>
+            <TopShareCaption n={tiles.length} />
           </div>
           <TreemapMini
             data={tiles}
