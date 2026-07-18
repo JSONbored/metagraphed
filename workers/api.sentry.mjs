@@ -63,9 +63,17 @@ export default withSentry(
     // documented auto-detection convention. Both undefined is a valid,
     // accepted value (Sentry just omits release tagging), not an error.
     release: env.SENTRY_RELEASE || env.CF_VERSION_METADATA?.id,
-    // Error tracking only, matching every other component in this rollout
-    // -- no performance tracing.
-    tracesSampleRate: 0,
+    // Performance tracing at a conservative 5% sample (metagraphed#6768) --
+    // was 0 ("error tracking only") across this whole rollout, which left
+    // zero visibility into real request volume/latency for anything outside
+    // /mcp (the only route with its own hand-rolled span). 5% is a starting
+    // point chosen without knowing this org's actual Sentry plan/quota
+    // headroom (not visible from the tools available when this was picked);
+    // revisit once real trace volume is observable -- worth moving to a
+    // tracesSampler with per-route weights (e.g. sampling the leaderboard/
+    // chain-events routes higher) once there's real traffic data to
+    // calibrate that against, rather than guessing now.
+    tracesSampleRate: 0.05,
   }),
   handler,
 );

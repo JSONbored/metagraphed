@@ -37,9 +37,10 @@ export default Sentry.withSentry(
     // documented auto-detection convention. Both undefined is a valid,
     // accepted value (Sentry just omits release tagging), not an error.
     release: env.SENTRY_RELEASE || env.CF_VERSION_METADATA?.id,
-    // Error tracking only, matching every other component in this rollout
-    // -- no performance tracing.
-    tracesSampleRate: 0,
+    // Performance tracing at a conservative 5% sample -- see
+    // workers/api.sentry.mjs's own comment (metagraphed#6768) for the full
+    // rationale.
+    tracesSampleRate: 0.05,
   }),
   handler,
 );
