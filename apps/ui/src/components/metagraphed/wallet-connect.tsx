@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   Wallet,
   Check,
@@ -254,6 +255,14 @@ function ConnectedView({
           </button>
         </div>
       </div>
+      {/* #5243: the connected wallet's read-side entry point into its portfolio. */}
+      <Link
+        to="/portfolio"
+        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-[11px] font-medium text-ink-strong hover:bg-primary-soft/80 transition-colors"
+      >
+        <Wallet className="size-3.5" aria-hidden="true" />
+        Your positions
+      </Link>
       <button
         type="button"
         onClick={onDisconnect}
