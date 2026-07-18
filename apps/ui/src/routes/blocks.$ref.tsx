@@ -291,9 +291,6 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           <FieldRow label="Observed at">
             <span className="font-mono text-[12px] text-ink-muted">
               <TimeAgo at={block.observed_at} />
-              {block.observed_at ? (
-                <span className="ml-2 opacity-70">{block.observed_at}</span>
-              ) : null}
             </span>
           </FieldRow>
         </dl>

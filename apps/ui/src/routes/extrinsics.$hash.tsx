@@ -283,9 +283,6 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           <FieldRow label="Observed at">
             <span className="font-mono text-[12px] text-ink-muted">
               <TimeAgo at={extrinsic.observed_at} />
-              {extrinsic.observed_at ? (
-                <span className="ml-2 opacity-70">{extrinsic.observed_at}</span>
-              ) : null}
             </span>
           </FieldRow>
         </dl>
