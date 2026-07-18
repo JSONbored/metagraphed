@@ -23,6 +23,7 @@
     "account-transfers",
     "account-weight-setters",
     "accounts-list",
+    "network-parameters",
     "sudo-key"
   ]
 }

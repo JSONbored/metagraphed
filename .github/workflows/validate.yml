@@ -747,6 +747,23 @@ jobs:
             exit 1
           fi
 
+      # Same drift-check shape as packages/client/packages/ui-kit above
+      # (#1652's docs-freshness acceptance line): content/docs/api-reference/
+      # is entirely generated from public/metagraph/openapi.json (except the
+      # one hand-written index.mdx the generator itself preserves) -- a
+      # contract-changing PR that forgets to re-run the generator ships
+      # stale/missing docs pages silently otherwise (caught live 2026-07-18:
+      # two newly-merged routes had zero corresponding doc pages).
+      - name: Build API reference docs (drift check)
+        if: env.RUN_UI_VALIDATION == 'true'
+        working-directory: apps/ui
+        run: |
+          node scripts/generate-openapi-docs.mjs
+          if ! git diff --exit-code -- content/docs/api-reference; then
+            echo "::error::apps/ui/content/docs/api-reference is stale -- run 'node scripts/generate-openapi-docs.mjs' (from apps/ui) and commit the result."
+            exit 1
+          fi
+
       - name: Typecheck packages/ui-kit
         if: env.RUN_UI_VALIDATION == 'true'
         run: npm run typecheck --workspace=packages/ui-kit

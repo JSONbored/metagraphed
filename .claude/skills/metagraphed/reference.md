@@ -425,7 +425,18 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
 - **New `/api/v1` route or artifact** trips hidden gates depending on whether it's committed
   (DUAL_PATTERNS), live-only D1 (R2_ONLY_PATTERNS + COMPUTED_ARTIFACTS), or `/.well-known`
   worker-computed. Mirror an existing route end-to-end; the build's derived-artifact freshness gate
-  fails if a committed `public/metagraph/*` is stale.
+  fails if a committed `public/metagraph/*` is stale. It also trips gates the "new route" framing
+  above doesn't cover, caught live 2026-07-18 shipping two routes with none of these:
+  `scripts/validate-api.mjs`'s own `checks` array needs a matching `[route, assertion]` entry (it
+  asserts `checks.length === API_ROUTES.length`, a **live RPC call** against real finney, not a
+  stub); codecov/patch (99%, branch-counted) needs GraphQL/MCP test coverage in the _centralized_
+  `tests/graphql.test.mjs`/`tests/mcp-server.test.mjs` files specifically, not just a per-feature
+  test file — a per-feature file alone leaves the GraphQL resolver and MCP tool handler at 0% patch
+  coverage even with 100% coverage on the underlying `src/*.mjs` module; and the `ui` CI job's
+  "Build API reference docs (drift check)" step (added 2026-07-18, mirrors the
+  `packages/client`/`packages/ui-kit` drift checks just above it) fails if `apps/ui/content/docs/
+api-reference/**` wasn't regenerated — run `node scripts/generate-openapi-docs.mjs` from
+  `apps/ui/` and commit the result alongside the contract change.
 - **Reader tests** serve R2-only artifacts that only exist after `npm run build` — build before the
   suite if a test reads served artifacts.
 - **Never commit `public/metagraph/r2-manifest.json` or `public/metagraph/schemas/index.json`.**
