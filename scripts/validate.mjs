@@ -35,6 +35,10 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.mjs";
+import {
+  githubSignalsForSubnet,
+  loadGithubSignals,
+} from "./github-signals.mjs";
 
 const providerKinds = new Set([
   "subnet-team",
@@ -690,7 +694,12 @@ function buildGeneratedArtifactGaps(surfaces, overlay) {
   };
 }
 
-function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
+function buildExpectedGeneratedSubnet(
+  nativeSnapshot,
+  overlay,
+  candidateCount,
+  githubSignals,
+) {
   const surfaceCount = overlay?.surfaces?.length || 0;
   const probedSurfaceCount =
     overlay?.surfaces?.filter((surface) => surface.probe?.enabled).length || 0;
@@ -783,6 +792,8 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
       overlay?.source_repo,
       nativeSubnet.chain_identity?.github_repo,
     ),
+    // #6639: mirrors mergeSubnet's own githubSignalsForSubnet call exactly.
+    ...githubSignalsForSubnet(githubSignals, overlay, nativeSubnet),
     status: nativeSubnet.status,
     subnet_type: nativeSubnet.subnet_type,
     surface_count: surfaceCount,
@@ -946,6 +957,9 @@ async function validateGeneratedArtifacts(
   // reads (#2097). Map.groupBy preserves order, so the byte-equality assertion
   // below holds; the `|| []` fallback covers zero-surface overlays.
   const surfacesByNetuid = Map.groupBy(surfaces, (surface) => surface.netuid);
+  // #6639: mirrors the build's own committed-signals load (mergeSubnet in
+  // build-artifacts.mjs) so the reproducibility check matches.
+  const githubSignals = await loadGithubSignals();
   const expectedSubnetsByNetuid = new Map(
     nativeSnapshot.subnets.map((nativeSubnet) => [
       nativeSubnet.netuid,
@@ -958,6 +972,7 @@ async function validateGeneratedArtifacts(
         },
         overlayByNetuid.get(nativeSubnet.netuid),
         activeCandidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
+        githubSignals,
       ),
     ]),
   );

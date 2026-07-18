@@ -314,6 +314,16 @@
             "type": ["string", "null"],
             "format": "uri"
           },
+          "github_languages": {
+            "type": ["object", "null"],
+            "description": "Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.mjs --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live.",
+            "additionalProperties": { "type": "integer", "minimum": 0 }
+          },
+          "github_last_push_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Last-push timestamp (GitHub API pushed_at) for source_repo (#6639). Null when source_repo isn't a GitHub URL, or signals haven't been captured yet."
+          },
           "logo_url": {
             "type": ["string", "null"],
             "format": "uri"
@@ -516,6 +526,16 @@
           "source_repo": {
             "type": ["string", "null"],
             "format": "uri"
+          },
+          "github_languages": {
+            "type": ["object", "null"],
+            "description": "Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.mjs --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live.",
+            "additionalProperties": { "type": "integer", "minimum": 0 }
+          },
+          "github_last_push_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Last-push timestamp (GitHub API pushed_at) for source_repo (#6639). Null when source_repo isn't a GitHub URL, or signals haven't been captured yet."
           },
           "logo_url": {
             "type": ["string", "null"],

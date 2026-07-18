@@ -16646,6 +16646,25 @@
           "gaps": {
             "$ref": "#/components/schemas/Gaps"
           },
+          "github_languages": {
+            "additionalProperties": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "description": "Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.mjs --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "github_last_push_at": {
+            "description": "Last-push timestamp (GitHub API pushed_at) for source_repo (#6639). Null when source_repo isn't a GitHub URL, or signals haven't been captured yet.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "lifecycle": {
             "enum": [
               "active",
@@ -18016,6 +18035,25 @@
           "gap_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "github_languages": {
+            "additionalProperties": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "description": "Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.mjs --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "github_last_push_at": {
+            "description": "Last-push timestamp (GitHub API pushed_at) for source_repo (#6639). Null when source_repo isn't a GitHub URL, or signals haven't been captured yet.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "integration_readiness": {
             "description": "0–100 score for how ready a subnet is to integrate against: weighs callable surfaces, captured schemas, live health, and curation depth. A display/ranking signal — higher = easier first call. Distinct from internal completeness scoring.",
@@ -44514,6 +44552,8 @@
                           "archive"
                         ]
                       },
+                      "github_languages": {},
+                      "github_last_push_at": "2026-06-01T00:00:00.000Z",
                       "lifecycle": "active",
                       "links": [
                         {}
@@ -50401,6 +50441,8 @@
                           "archive"
                         ]
                       },
+                      "github_languages": {},
+                      "github_last_push_at": "2026-06-01T00:00:00.000Z",
                       "lifecycle": "active",
                       "links": [
                         {}

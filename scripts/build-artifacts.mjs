@@ -9,6 +9,10 @@ import {
 } from "../src/health-probe-core.mjs";
 import { generateServiceSnippets } from "../src/integration-snippets.mjs";
 import {
+  githubSignalsForSubnet,
+  loadGithubSignals,
+} from "./github-signals.mjs";
+import {
   backfilledIdentityUrl,
   socialAccounts,
   subnetContact,
@@ -166,6 +170,12 @@ const detailedVerification = redactCredentialedUrls(await loadVerification());
 const adapterSnapshots = await loadAdapterSnapshots();
 const reviewDecisions = await loadReviewDecisions();
 const nativeSnapshot = await loadNativeSnapshot();
+// #6639: per-subnet GitHub language + last-push signal, from the committed
+// registry/generated/github-signals.json (periodically maintainer-refreshed
+// via `node scripts/github-signals.mjs --write`, mirrors how verification/
+// candidates are loaded above -- a cold/absent file degrades every subnet's
+// github_languages/github_last_push_at to null, never throws).
+const githubSignals = await loadGithubSignals();
 const overlayByNetuid = new Map(
   overlays.map((overlay) => [overlay.netuid, overlay]),
 );
@@ -506,6 +516,10 @@ const subnetIndex = mergedSubnets.map((subnet) => {
     registered_at_block: subnet.registered_at_block,
     slug: subnet.slug,
     source_repo: subnet.source_repo,
+    // #6639: computed once on the canonical merged subnet (mergeSubnet),
+    // passed through so index + detail agree, same convention as social/contact above.
+    github_languages: subnet.github_languages,
+    github_last_push_at: subnet.github_last_push_at,
     status: subnet.status,
     subnet_type: subnet.subnet_type,
     surface_count: subnet.surface_count,
@@ -2760,6 +2774,10 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
       overlay?.source_repo,
       nativeSubnet.chain_identity?.github_repo,
     ),
+    // #6639: dev-activity signal from the resolved source_repo above, keyed
+    // off the same overlay-then-chain-backfill resolution -- null/null when
+    // there's no GitHub source_repo, or signals haven't been captured yet.
+    ...githubSignalsForSubnet(githubSignals, overlay, nativeSubnet),
     status: nativeSubnet.status,
     subnet_type: nativeSubnet.subnet_type,
     surface_count: surfaceCount,

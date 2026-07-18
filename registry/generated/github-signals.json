@@ -1,0 +1,1222 @@
+{
+  "captured_count": 118,
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "repo_count": 119,
+  "schema_version": 1,
+  "signals": [
+    {
+      "languages": {
+        "Python": 109321,
+        "Shell": 6624
+      },
+      "last_push_at": "2026-07-16T14:24:32Z",
+      "owner": "0xsigurd",
+      "repo": "Perturb"
+    },
+    {
+      "languages": {
+        "Dockerfile": 906,
+        "HTML": 15240,
+        "JavaScript": 365026,
+        "Python": 623633,
+        "Shell": 563
+      },
+      "last_push_at": "2026-07-16T22:36:10Z",
+      "owner": "404-Repo",
+      "repo": "404-gen-subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 891,
+        "Python": 2372301,
+        "Shell": 668
+      },
+      "last_push_at": "2026-07-18T09:58:39Z",
+      "owner": "AffineFoundation",
+      "repo": "affine-cortex"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1529,
+        "HCL": 200,
+        "Jinja": 19083,
+        "Python": 697701,
+        "Shell": 15148
+      },
+      "last_push_at": "2026-07-17T17:11:09Z",
+      "owner": "afterpartyai",
+      "repo": "bittensor-conversation-genome-project"
+    },
+    {
+      "languages": {
+        "HCL": 743,
+        "JavaScript": 5137,
+        "Python": 1046762,
+        "Shell": 190820
+      },
+      "last_push_at": "2026-03-14T15:12:54Z",
+      "owner": "AlphaCoreBittensor",
+      "repo": "alphacore"
+    },
+    {
+      "languages": {
+        "Dockerfile": 2548,
+        "Python": 1173981,
+        "Shell": 15048,
+        "Solidity": 8395
+      },
+      "last_push_at": "2026-07-09T18:30:03Z",
+      "owner": "AlveusLabs",
+      "repo": "SN94-BitSota"
+    },
+    {
+      "languages": {
+        "Dockerfile": 653,
+        "JavaScript": 901,
+        "TypeScript": 61323
+      },
+      "last_push_at": "2026-06-27T09:21:44Z",
+      "owner": "astridintelligence",
+      "repo": "sn-127"
+    },
+    {
+      "languages": {
+        "Python": 709141,
+        "Shell": 70571
+      },
+      "last_push_at": "2026-07-17T22:40:11Z",
+      "owner": "Aurelius-Protocol",
+      "repo": "Aurelius-Protocol"
+    },
+    {
+      "languages": {
+        "Dockerfile": 2704,
+        "Python": 751784
+      },
+      "last_push_at": "2026-07-18T09:36:52Z",
+      "owner": "babelbit",
+      "repo": "babelbit_subnet"
+    },
+    {
+      "languages": {
+        "Batchfile": 800,
+        "Dockerfile": 8983,
+        "HCL": 32627,
+        "HTML": 3204,
+        "Makefile": 634,
+        "Python": 2138160,
+        "Shell": 63406
+      },
+      "last_push_at": "2026-05-04T06:10:39Z",
+      "owner": "backend-developers-ltd",
+      "repo": "ComputeHorde"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1575,
+        "HCL": 28000,
+        "Python": 740041,
+        "Shell": 44640
+      },
+      "last_push_at": "2026-03-27T12:38:55Z",
+      "owner": "backend-developers-ltd",
+      "repo": "InfiniteHash"
+    },
+    {
+      "languages": {
+        "Python": 15217
+      },
+      "last_push_at": "2026-02-09T22:30:32Z",
+      "owner": "Barbariandev",
+      "repo": "8Ball_miner"
+    },
+    {
+      "languages": {
+        "Python": 273994,
+        "Shell": 17098
+      },
+      "last_push_at": "2026-07-17T22:22:03Z",
+      "owner": "Barbariandev",
+      "repo": "MANTIS"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1756,
+        "Python": 462606
+      },
+      "last_push_at": "2026-07-17T03:38:38Z",
+      "owner": "Beam-Network",
+      "repo": "beam"
+    },
+    {
+      "languages": {
+        "Dockerfile": 893,
+        "Python": 769207,
+        "Shell": 15016
+      },
+      "last_push_at": "2026-07-17T08:50:57Z",
+      "owner": "bitcast-network",
+      "repo": "bitcast"
+    },
+    {
+      "languages": {
+        "Dockerfile": 3545,
+        "JavaScript": 10976,
+        "Python": 778197,
+        "Shell": 23312
+      },
+      "last_push_at": "2026-07-18T06:30:25Z",
+      "owner": "BitMind-AI",
+      "repo": "bitmind-subnet"
+    },
+    {
+      "languages": {
+        "Python": 724771,
+        "Shell": 21172
+      },
+      "last_push_at": "2026-03-11T00:12:45Z",
+      "owner": "bitrecs",
+      "repo": "bitrecs-subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1378,
+        "Python": 376218,
+        "Shell": 20041
+      },
+      "last_push_at": "2026-07-14T12:39:23Z",
+      "owner": "Bitsec-AI",
+      "repo": "sandbox"
+    },
+    {
+      "languages": {
+        "JavaScript": 1539,
+        "Mako": 509,
+        "Python": 444619,
+        "Shell": 6960
+      },
+      "last_push_at": "2026-01-20T15:14:42Z",
+      "owner": "byteleapai",
+      "repo": "byteleap-Validator"
+    },
+    {
+      "languages": {
+        "CSS": 6686,
+        "JavaScript": 6690,
+        "Python": 5379,
+        "Shell": 1215,
+        "TypeScript": 154502
+      },
+      "last_push_at": "2026-07-10T13:03:28Z",
+      "owner": "byzantiumaitao-arch",
+      "repo": "byzantium"
+    },
+    {
+      "languages": {
+        "Python": 78406,
+        "Shell": 14482
+      },
+      "last_push_at": "2026-07-15T15:34:37Z",
+      "owner": "chronollm",
+      "repo": "sn38"
+    },
+    {
+      "languages": {
+        "C": 12210,
+        "Python": 484202
+      },
+      "last_push_at": "2026-06-10T12:43:42Z",
+      "owner": "chutesai",
+      "repo": "chutes"
+    },
+    {
+      "languages": {
+        "Jupyter Notebook": 4799,
+        "Python": 841658,
+        "Shell": 2871
+      },
+      "last_push_at": "2025-07-11T21:46:06Z",
+      "owner": "coldint",
+      "repo": "coldint_validator"
+    },
+    {
+      "languages": {
+        "Python": 167921,
+        "Shell": 9103
+      },
+      "last_push_at": "2026-07-17T08:48:02Z",
+      "owner": "compelle",
+      "repo": "compelle-validator"
+    },
+    {
+      "languages": {
+        "Dockerfile": 4401,
+        "Jupyter Notebook": 5089531,
+        "Python": 1192759
+      },
+      "last_push_at": "2026-07-12T05:29:44Z",
+      "owner": "Connito-AI",
+      "repo": "Connito"
+    },
+    {
+      "languages": {
+        "JavaScript": 855,
+        "Just": 801,
+        "TypeScript": 111603
+      },
+      "last_push_at": "2026-06-24T19:27:26Z",
+      "owner": "creativebuilds",
+      "repo": "sn77"
+    },
+    {
+      "languages": {
+        "Dockerfile": 4330,
+        "Mako": 2040,
+        "Python": 2813075,
+        "Shell": 117051
+      },
+      "last_push_at": "2026-07-17T16:06:10Z",
+      "owner": "Datura-ai",
+      "repo": "lium-io"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1206,
+        "Python": 1104592,
+        "Shell": 8102
+      },
+      "last_push_at": "2026-07-16T09:55:38Z",
+      "owner": "DendriteHQ",
+      "repo": "SOMA"
+    },
+    {
+      "languages": {
+        "Dockerfile": 312,
+        "Python": 817233,
+        "Shell": 11638
+      },
+      "last_push_at": "2026-07-17T08:00:19Z",
+      "owner": "Desearch-ai",
+      "repo": "subnet-22"
+    },
+    {
+      "languages": {
+        "Dockerfile": 2368,
+        "HTML": 25525,
+        "Python": 13854,
+        "Rust": 159984
+      },
+      "last_push_at": "2026-07-17T22:29:52Z",
+      "owner": "ditto-assistant",
+      "repo": "dittobench-starter-kit"
+    },
+    {
+      "languages": {
+        "CSS": 1855,
+        "Dockerfile": 3882,
+        "JavaScript": 216478,
+        "Python": 6585579,
+        "Rust": 37169,
+        "Shell": 294132,
+        "Solidity": 1203482,
+        "TypeScript": 3068119
+      },
+      "last_push_at": "2026-07-17T05:55:39Z",
+      "owner": "Djinn-Inc",
+      "repo": "djinn"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1205,
+        "Python": 154073
+      },
+      "last_push_at": "2026-06-22T06:50:44Z",
+      "owner": "dogelayer-ai",
+      "repo": "dogelayer"
+    },
+    {
+      "languages": {
+        "Dockerfile": 767,
+        "Python": 1224707,
+        "Rust": 485426,
+        "Shell": 1350,
+        "TypeScript": 428
+      },
+      "last_push_at": "2026-07-17T15:42:00Z",
+      "owner": "entrius",
+      "repo": "allways"
+    },
+    {
+      "languages": {
+        "Dockerfile": 612,
+        "Python": 1088156,
+        "Rust": 110642,
+        "Shell": 776
+      },
+      "last_push_at": "2026-07-16T22:49:48Z",
+      "owner": "entrius",
+      "repo": "gittensor"
+    },
+    {
+      "languages": {},
+      "last_push_at": "2026-04-07T06:01:27Z",
+      "owner": "fx-integral",
+      "repo": "academia"
+    },
+    {
+      "languages": {
+        "JavaScript": 2145,
+        "Makefile": 248,
+        "Python": 288680,
+        "Shell": 27974
+      },
+      "last_push_at": "2026-06-17T01:34:17Z",
+      "owner": "General-Tao-Ventures",
+      "repo": "cartha-validator"
+    },
+    {
+      "languages": {
+        "Python": 135638,
+        "Shell": 17732
+      },
+      "last_push_at": "2026-07-17T18:47:32Z",
+      "owner": "genomesio",
+      "repo": "subnet-niome"
+    },
+    {
+      "languages": {
+        "Dockerfile": 898,
+        "Python": 509031,
+        "Shell": 17445
+      },
+      "last_push_at": "2026-07-18T03:41:52Z",
+      "owner": "glyph-research",
+      "repo": "glyph-subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 956,
+        "Makefile": 430,
+        "Python": 483624,
+        "Shell": 1689
+      },
+      "last_push_at": "2026-04-21T20:17:48Z",
+      "owner": "gopher-lab",
+      "repo": "subnet-42"
+    },
+    {
+      "languages": {
+        "Dockerfile": 13847,
+        "PLpgSQL": 1157,
+        "Python": 2882428,
+        "Shell": 59700
+      },
+      "last_push_at": "2026-07-17T20:46:45Z",
+      "owner": "gradients-ai",
+      "repo": "G.O.D"
+    },
+    {
+      "languages": {
+        "CSS": 535,
+        "Python": 510825,
+        "Shell": 18110
+      },
+      "last_push_at": "2025-10-12T15:50:57Z",
+      "owner": "GraphiteAI",
+      "repo": "Graphite-Subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 642,
+        "Python": 61394,
+        "Shell": 4948
+      },
+      "last_push_at": "2026-06-22T06:13:17Z",
+      "owner": "Handshake58",
+      "repo": "HS58-subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1839,
+        "Python": 4237745,
+        "Shell": 832
+      },
+      "last_push_at": "2026-07-18T05:57:37Z",
+      "owner": "harnyx",
+      "repo": "harnyx"
+    },
+    {
+      "languages": {},
+      "last_push_at": "2025-12-08T07:03:44Z",
+      "owner": "hashi115",
+      "repo": "hashichain"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1066,
+        "Python": 568705,
+        "Shell": 25975
+      },
+      "last_push_at": "2026-07-17T11:32:05Z",
+      "owner": "HeraldMedia",
+      "repo": "herald"
+    },
+    {
+      "languages": {
+        "Dockerfile": 3003,
+        "Makefile": 3965,
+        "Python": 10726,
+        "Rust": 672725,
+        "Shell": 5506
+      },
+      "last_push_at": "2026-07-14T19:50:37Z",
+      "owner": "inference-labs-inc",
+      "repo": "subnet-2"
+    },
+    {
+      "languages": {
+        "Dockerfile": 3332,
+        "Python": 1569156,
+        "Shell": 4760
+      },
+      "last_push_at": "2026-07-17T12:04:30Z",
+      "owner": "ippcteam",
+      "repo": "SN21-adtao"
+    },
+    {
+      "languages": {
+        "Makefile": 8247,
+        "Python": 429883,
+        "Shell": 17714
+      },
+      "last_push_at": "2026-06-22T09:29:25Z",
+      "owner": "It-s-AI",
+      "repo": "llm-detection"
+    },
+    {
+      "languages": {
+        "Dockerfile": 413,
+        "Python": 662543,
+        "Shell": 22994
+      },
+      "last_push_at": "2026-06-15T17:31:11Z",
+      "owner": "latent-to",
+      "repo": "cacheon-old"
+    },
+    {
+      "languages": {
+        "Dockerfile": 3670,
+        "Jupyter Notebook": 44692,
+        "Makefile": 1439,
+        "PLpgSQL": 934041,
+        "Python": 20328364,
+        "Shell": 167565
+      },
+      "last_push_at": "2026-07-18T10:05:07Z",
+      "owner": "leadpoet",
+      "repo": "leadpoet"
+    },
+    {
+      "languages": {
+        "Python": 108137
+      },
+      "last_push_at": "2026-05-03T11:04:23Z",
+      "owner": "Luminar-Network",
+      "repo": "luminar-sn"
+    },
+    {
+      "languages": {
+        "Dockerfile": 4150,
+        "Python": 564429,
+        "Rust": 82463,
+        "Shell": 2939
+      },
+      "last_push_at": "2026-07-17T16:53:33Z",
+      "owner": "macrocosm-os",
+      "repo": "apex"
+    },
+    {
+      "languages": {
+        "Python": 1196622
+      },
+      "last_push_at": "2026-07-16T23:14:18Z",
+      "owner": "macrocosm-os",
+      "repo": "data-universe"
+    },
+    {
+      "languages": {
+        "HTML": 72927,
+        "Makefile": 50,
+        "Python": 987240,
+        "Shell": 4003
+      },
+      "last_push_at": "2026-06-26T21:48:54Z",
+      "owner": "macrocosm-os",
+      "repo": "iota"
+    },
+    {
+      "languages": {
+        "JavaScript": 382,
+        "Python": 435383,
+        "Shell": 22388
+      },
+      "last_push_at": "2025-09-29T14:26:59Z",
+      "owner": "macrocosm-os",
+      "repo": "mainframe"
+    },
+    {
+      "languages": {
+        "Dockerfile": 4225,
+        "Makefile": 5573,
+        "Python": 2776786,
+        "Shell": 20085
+      },
+      "last_push_at": "2026-05-04T03:53:15Z",
+      "owner": "manifold-inc",
+      "repo": "hone"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1380,
+        "Go": 98446,
+        "Makefile": 904,
+        "Python": 2516
+      },
+      "last_push_at": "2026-07-16T22:28:42Z",
+      "owner": "manifold-inc",
+      "repo": "targon"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1724,
+        "Jupyter Notebook": 1987092,
+        "Python": 2960653,
+        "Shell": 6050
+      },
+      "last_push_at": "2026-07-17T02:57:29Z",
+      "owner": "metanova-labs",
+      "repo": "nova"
+    },
+    {
+      "languages": {
+        "JavaScript": 1351,
+        "Python": 552764,
+        "Shell": 186978
+      },
+      "last_push_at": "2026-07-11T09:00:14Z",
+      "owner": "minos-protocol",
+      "repo": "minos_subnet"
+    },
+    {
+      "languages": {
+        "Python": 118180
+      },
+      "last_push_at": "2026-06-25T15:10:45Z",
+      "owner": "mobiusfund",
+      "repo": "investing"
+    },
+    {
+      "languages": {
+        "JavaScript": 547,
+        "Python": 271204,
+        "Shell": 5456
+      },
+      "last_push_at": "2026-05-07T12:26:51Z",
+      "owner": "natixnetwork",
+      "repo": "streetvision-subnet"
+    },
+    {
+      "languages": {
+        "Python": 266774,
+        "Shell": 34156
+      },
+      "last_push_at": "2026-07-13T15:16:31Z",
+      "owner": "nepher-ai",
+      "repo": "nepher-subnet"
+    },
+    {
+      "languages": {
+        "Python": 187732
+      },
+      "last_push_at": "2025-12-17T14:11:31Z",
+      "owner": "neuralinternet",
+      "repo": "SN27-opencompute"
+    },
+    {
+      "languages": {
+        "Python": 130350
+      },
+      "last_push_at": "2026-07-17T20:43:24Z",
+      "owner": "ninja-subnet",
+      "repo": "ninja"
+    },
+    {
+      "languages": {
+        "Dockerfile": 2882,
+        "JavaScript": 46762,
+        "Python": 1675014,
+        "Shell": 87814,
+        "Solidity": 82402
+      },
+      "last_push_at": "2026-07-17T09:46:54Z",
+      "owner": "nodexo-ai",
+      "repo": "nodexo"
+    },
+    {
+      "languages": {
+        "Dockerfile": 2196,
+        "Mako": 564,
+        "Python": 1563314,
+        "Shell": 3840
+      },
+      "last_push_at": "2026-06-30T16:35:51Z",
+      "owner": "numinouslabs",
+      "repo": "numinous"
+    },
+    {
+      "languages": {
+        "Dockerfile": 11176,
+        "HTML": 3637,
+        "Just": 13273,
+        "Python": 621823,
+        "Rust": 3797020,
+        "Shell": 402655
+      },
+      "last_push_at": "2026-07-14T18:38:41Z",
+      "owner": "one-covenant",
+      "repo": "basilica"
+    },
+    {
+      "languages": {
+        "Dockerfile": 4608,
+        "Python": 3512815,
+        "Shell": 35658
+      },
+      "last_push_at": "2026-04-10T03:18:15Z",
+      "owner": "one-covenant",
+      "repo": "grail"
+    },
+    {
+      "languages": {
+        "Dockerfile": 892,
+        "FLUX": 12190,
+        "JavaScript": 2459,
+        "Jinja": 36860,
+        "Just": 696,
+        "Python": 1898776,
+        "Shell": 11184
+      },
+      "last_push_at": "2026-03-31T02:52:51Z",
+      "owner": "one-covenant",
+      "repo": "templar"
+    },
+    {
+      "languages": {
+        "JavaScript": 431112,
+        "Python": 107605,
+        "Shell": 6926
+      },
+      "last_push_at": "2026-06-11T20:49:26Z",
+      "owner": "oneoneone-io",
+      "repo": "subnet-111"
+    },
+    {
+      "languages": {
+        "Python": 703307,
+        "Shell": 7062
+      },
+      "last_push_at": "2026-06-27T05:34:22Z",
+      "owner": "openevolai",
+      "repo": "evolai"
+    },
+    {
+      "languages": {
+        "CSS": 89177,
+        "Dockerfile": 5280,
+        "GLSL": 492,
+        "Handlebars": 5392,
+        "HTML": 12902,
+        "JavaScript": 24076,
+        "Just": 3660,
+        "Python": 2069016,
+        "Rust": 9215655,
+        "Shell": 54858,
+        "Solidity": 57774,
+        "TypeScript": 1788216
+      },
+      "last_push_at": "2026-07-18T04:05:15Z",
+      "owner": "opentensor",
+      "repo": "subtensor"
+    },
+    {
+      "languages": {
+        "Dockerfile": 7063,
+        "JavaScript": 9759,
+        "Python": 680931,
+        "Shell": 2514
+      },
+      "last_push_at": "2026-07-18T06:42:46Z",
+      "owner": "ORO-AI",
+      "repo": "oro"
+    },
+    {
+      "languages": {
+        "Python": 315835,
+        "Shell": 5460
+      },
+      "last_push_at": "2026-07-17T11:40:44Z",
+      "owner": "Orpheus-AI",
+      "repo": "Zeus"
+    },
+    {
+      "languages": {
+        "Python": 161182,
+        "Shell": 9187
+      },
+      "last_push_at": "2025-10-18T12:24:26Z",
+      "owner": "oxylok",
+      "repo": "53-EfficientFrontier"
+    },
+    {
+      "languages": {
+        "Jinja": 40209,
+        "Mako": 681,
+        "Python": 3763700,
+        "Shell": 286506
+      },
+      "last_push_at": "2026-07-16T22:39:44Z",
+      "owner": "PlatformNetwork",
+      "repo": "platform"
+    },
+    {
+      "languages": {
+        "Python": 264825,
+        "Shell": 24771
+      },
+      "last_push_at": "2026-07-08T14:08:59Z",
+      "owner": "Poker44",
+      "repo": "Poker44-subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 5779,
+        "Go": 63,
+        "OpenQASM": 967775,
+        "Python": 1316637,
+        "Shell": 20575,
+        "Solidity": 36552
+      },
+      "last_push_at": "2026-07-17T17:04:06Z",
+      "owner": "qbittensor-labs",
+      "repo": "enigma"
+    },
+    {
+      "languages": {
+        "Python": 330919
+      },
+      "last_push_at": "2026-07-07T00:16:22Z",
+      "owner": "qbittensor-labs",
+      "repo": "quantum-compute"
+    },
+    {
+      "languages": {
+        "Dockerfile": 4565,
+        "Python": 1598813,
+        "Shell": 8994
+      },
+      "last_push_at": "2026-07-03T16:39:25Z",
+      "owner": "RalphLabsAI",
+      "repo": "ralph"
+    },
+    {
+      "languages": {
+        "Makefile": 1080,
+        "Python": 115238,
+        "Shell": 38484
+      },
+      "last_push_at": "2026-07-18T09:58:32Z",
+      "owner": "RedTeamSubnet",
+      "repo": "RedTeam"
+    },
+    {
+      "languages": {
+        "Dockerfile": 647,
+        "Jinja": 656,
+        "Makefile": 282,
+        "Python": 3004003,
+        "Shell": 897
+      },
+      "last_push_at": "2026-07-17T17:03:07Z",
+      "owner": "RendixNetwork",
+      "repo": "eirel-ai"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1270,
+        "JavaScript": 2289,
+        "Python": 702999
+      },
+      "last_push_at": "2026-07-14T15:05:33Z",
+      "owner": "RendixNetwork",
+      "repo": "leoma"
+    },
+    {
+      "languages": {
+        "Python": 303708
+      },
+      "last_push_at": "2026-07-17T16:02:26Z",
+      "owner": "RendixNetwork",
+      "repo": "nexisgen"
+    },
+    {
+      "languages": {
+        "Dockerfile": 315,
+        "Python": 1105604
+      },
+      "last_push_at": "2026-07-07T19:31:38Z",
+      "owner": "resi-labs-ai",
+      "repo": "RESI-models"
+    },
+    {
+      "languages": {
+        "Python": 23891,
+        "Shell": 1718
+      },
+      "last_push_at": "2025-10-06T14:59:04Z",
+      "owner": "Rich-Kids-of-TAO",
+      "repo": "rkt-subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 305,
+        "Makefile": 1831,
+        "Mako": 704,
+        "Python": 1152110,
+        "Shell": 2451
+      },
+      "last_push_at": "2026-07-17T23:40:56Z",
+      "owner": "ridgesai",
+      "repo": "ridges"
+    },
+    {
+      "languages": {
+        "Dockerfile": 3895,
+        "Python": 1046191,
+        "Shell": 2983
+      },
+      "last_push_at": "2026-07-16T21:56:08Z",
+      "owner": "score-technologies",
+      "repo": "turbovision"
+    },
+    {
+      "languages": {
+        "Dockerfile": 782,
+        "HTML": 45438,
+        "Python": 1401324,
+        "Shell": 18546
+      },
+      "last_push_at": "2026-06-26T09:18:31Z",
+      "owner": "SILX-LABS",
+      "repo": "QUASAR-SUBNET"
+    },
+    {
+      "languages": {
+        "Python": 292915,
+        "Shell": 6666
+      },
+      "last_push_at": "2026-05-14T01:26:32Z",
+      "owner": "SN98-ForeverMoney",
+      "repo": "forever-money"
+    },
+    {
+      "languages": {
+        "JavaScript": 24670,
+        "Mako": 1827,
+        "Python": 2733493,
+        "Shell": 18389
+      },
+      "last_push_at": "2026-04-13T18:07:05Z",
+      "owner": "sparket-ai",
+      "repo": "sparket-ai"
+    },
+    {
+      "languages": {
+        "Python": 423679,
+        "Shell": 183
+      },
+      "last_push_at": "2026-07-17T03:20:15Z",
+      "owner": "sportstensor",
+      "repo": "sn41"
+    },
+    {
+      "languages": {
+        "Python": 126959,
+        "Shell": 11440
+      },
+      "last_push_at": "2024-04-19T17:35:20Z",
+      "owner": "study-service",
+      "repo": "BitAds.ai"
+    },
+    {
+      "languages": {
+        "Dockerfile": 21826,
+        "JavaScript": 89805,
+        "Makefile": 9789,
+        "Python": 7739799,
+        "Shell": 46670,
+        "Solidity": 36603
+      },
+      "last_push_at": "2026-07-18T10:01:09Z",
+      "owner": "subnet112",
+      "repo": "minotaur_subnet"
+    },
+    {
+      "languages": {},
+      "last_push_at": "2025-12-08T19:31:42Z",
+      "owner": "sundae-bar",
+      "repo": "bittensor-subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 835,
+        "Python": 78400,
+        "Shell": 837
+      },
+      "last_push_at": "2025-11-05T05:40:17Z",
+      "owner": "Swap-Subnet",
+      "repo": "swap-subnet"
+    },
+    {
+      "languages": {
+        "Cap'n Proto": 437,
+        "Python": 2620147,
+        "Shell": 17538
+      },
+      "last_push_at": "2026-07-17T16:07:55Z",
+      "owner": "swarm-subnet",
+      "repo": "swarm"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1790,
+        "HCL": 5273,
+        "JavaScript": 2101,
+        "Jinja": 454,
+        "Mako": 635,
+        "Python": 596238,
+        "Shell": 4442
+      },
+      "last_push_at": "2026-07-17T17:10:01Z",
+      "owner": "synthdataco",
+      "repo": "synth-subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 679,
+        "Python": 205393
+      },
+      "last_push_at": "2026-07-18T05:44:25Z",
+      "owner": "tag101-ai",
+      "repo": "tag101"
+    },
+    {
+      "languages": {
+        "Python": 154925
+      },
+      "last_push_at": "2026-07-17T00:28:37Z",
+      "owner": "talkheadai",
+      "repo": "talkhead-subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 5061,
+        "JavaScript": 493911,
+        "Python": 121829,
+        "Shell": 63413
+      },
+      "last_push_at": "2026-07-01T08:31:54Z",
+      "owner": "taofu-labs",
+      "repo": "tpn-subnet"
+    },
+    {
+      "languages": {
+        "C++": 1576590,
+        "CMake": 16976,
+        "CSS": 6122,
+        "HTML": 1900,
+        "Python": 2830339,
+        "Shell": 93488
+      },
+      "last_push_at": "2026-07-15T15:09:30Z",
+      "owner": "taos-im",
+      "repo": "sn-79"
+    },
+    {
+      "languages": {
+        "CSS": 1404,
+        "HTML": 368,
+        "JavaScript": 4257,
+        "Python": 6093466,
+        "Shell": 13682,
+        "TypeScript": 70279
+      },
+      "last_push_at": "2026-07-18T00:20:54Z",
+      "owner": "taoshidev",
+      "repo": "vanta-network"
+    },
+    {
+      "languages": {},
+      "last_push_at": "2026-07-09T02:12:03Z",
+      "owner": "taostat",
+      "repo": "blockmachine"
+    },
+    {
+      "languages": {
+        "Dockerfile": 6027,
+        "Rust": 941638,
+        "Shell": 44943
+      },
+      "last_push_at": "2026-07-17T18:33:37Z",
+      "owner": "taostat",
+      "repo": "gm-miner"
+    },
+    {
+      "languages": {
+        "Python": 217494,
+        "Shell": 1926
+      },
+      "last_push_at": "2026-05-05T13:32:48Z",
+      "owner": "TatsuProject",
+      "repo": "ChipForge_SN84"
+    },
+    {
+      "languages": {
+        "Python": 1129687,
+        "Shell": 4316
+      },
+      "last_push_at": "2026-07-12T17:51:23Z",
+      "owner": "Team-Rizzo",
+      "repo": "alpharidge-ai"
+    },
+    {
+      "languages": {
+        "Dockerfile": 157,
+        "Go": 129422,
+        "Makefile": 5953
+      },
+      "last_push_at": "2025-11-03T07:51:15Z",
+      "owner": "tensorplex-labs",
+      "repo": "dojo"
+    },
+    {
+      "languages": {
+        "Mako": 704,
+        "Python": 403059,
+        "Shell": 9187
+      },
+      "last_push_at": "2026-07-17T04:08:59Z",
+      "owner": "TensorUSD",
+      "repo": "subnet"
+    },
+    {
+      "languages": {
+        "Jinja": 2252
+      },
+      "last_push_at": "2025-04-09T12:56:39Z",
+      "owner": "thenervelab",
+      "repo": "hippius-validator"
+    },
+    {
+      "languages": {
+        "Python": 117820,
+        "Shell": 1046
+      },
+      "last_push_at": "2026-05-10T04:29:22Z",
+      "owner": "toptensor",
+      "repo": "CliqueAI"
+    },
+    {
+      "languages": {
+        "Python": 533573,
+        "Shell": 1688
+      },
+      "last_push_at": "2026-07-16T10:15:41Z",
+      "owner": "trajectoryRL",
+      "repo": "trajectoryRL"
+    },
+    {
+      "languages": {
+        "CSS": 143416,
+        "Dockerfile": 7232,
+        "Go": 49611,
+        "HTML": 28096,
+        "JavaScript": 193817,
+        "Kotlin": 541244,
+        "Lean": 4083,
+        "MDX": 22048,
+        "Python": 316218,
+        "Ruby": 3166,
+        "Shell": 276696,
+        "Swift": 3251644,
+        "TypeScript": 26329566
+      },
+      "last_push_at": "2026-07-18T09:24:18Z",
+      "owner": "TrishoolAI",
+      "repo": "trishool-phase2"
+    },
+    {
+      "languages": {
+        "CSS": 39405,
+        "HTML": 7393,
+        "JavaScript": 121499,
+        "Jinja": 7764,
+        "Python": 941545,
+        "Shell": 4433
+      },
+      "last_push_at": "2026-07-16T15:21:51Z",
+      "owner": "unarbos",
+      "repo": "albedo"
+    },
+    {
+      "languages": {
+        "JavaScript": 3715,
+        "Python": 2056797,
+        "Shell": 77785,
+        "Solidity": 123730,
+        "TypeScript": 25224
+      },
+      "last_push_at": "2026-07-17T10:14:44Z",
+      "owner": "verathos-ai",
+      "repo": "verathos"
+    },
+    {
+      "languages": {
+        "Dockerfile": 17379,
+        "Python": 1361084,
+        "Shell": 14970
+      },
+      "last_push_at": "2026-07-17T06:24:03Z",
+      "owner": "vidaio-subnet",
+      "repo": "vidaio-subnet"
+    },
+    {
+      "languages": {
+        "Dockerfile": 1742,
+        "Python": 492326,
+        "Shell": 330
+      },
+      "last_push_at": "2026-07-18T07:06:49Z",
+      "owner": "vocence-78",
+      "repo": "vocence"
+    },
+    {
+      "languages": {
+        "Python": 451633,
+        "Shell": 36495
+      },
+      "last_push_at": "2026-07-17T04:15:52Z",
+      "owner": "yanez-compliance",
+      "repo": "MIID-subnet"
+    }
+  ]
+}

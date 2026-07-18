@@ -6802,6 +6802,15 @@ export interface components {
             docs_url?: string | null;
             gap_count?: number;
             gaps: components["schemas"]["Gaps"];
+            /** @description Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.mjs --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live. */
+            github_languages?: {
+                [key: string]: number;
+            } | null;
+            /**
+             * Format: date-time
+             * @description Last-push timestamp (GitHub API pushed_at) for source_repo (#6639). Null when source_repo isn't a GitHub URL, or signals haven't been captured yet.
+             */
+            github_last_push_at?: string | null;
             /** @enum {string} */
             lifecycle?: "active" | "deprecated" | "parked" | "pending";
             links: {
@@ -7117,6 +7126,15 @@ export interface components {
             /** @description True when the subnet has at least one operator-official (first-party) surface (issue #348). Reporting-only — never feeds completeness. */
             first_party?: boolean;
             gap_count?: number;
+            /** @description Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.mjs --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live. */
+            github_languages?: {
+                [key: string]: number;
+            } | null;
+            /**
+             * Format: date-time
+             * @description Last-push timestamp (GitHub API pushed_at) for source_repo (#6639). Null when source_repo isn't a GitHub URL, or signals haven't been captured yet.
+             */
+            github_last_push_at?: string | null;
             /** @description 0–100 score for how ready a subnet is to integrate against: weighs callable surfaces, captured schemas, live health, and curation depth. A display/ranking signal — higher = easier first call. Distinct from internal completeness scoring. */
             integration_readiness?: number;
             /** @enum {string} */
@@ -22943,6 +22961,8 @@ export interface operations {
                      *               "archive"
                      *             ]
                      *           },
+                     *           "github_languages": {},
+                     *           "github_last_push_at": "2026-06-01T00:00:00.000Z",
                      *           "lifecycle": "active",
                      *           "links": [
                      *             {}
@@ -27149,6 +27169,8 @@ export interface operations {
                      *               "archive"
                      *             ]
                      *           },
+                     *           "github_languages": {},
+                     *           "github_last_push_at": "2026-06-01T00:00:00.000Z",
                      *           "lifecycle": "active",
                      *           "links": [
                      *             {}
