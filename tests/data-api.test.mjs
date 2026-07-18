@@ -6278,12 +6278,20 @@ test("GET /api/v1/chain/fees: call_module filter reuses the same moduleClause ac
 // SQL/routing wiring, matching every other route's test style regardless.
 
 test("GET /api/v1/health/trends: aggregates surface_uptime_daily into 7d/30d windows", async () => {
+  // A date comfortably inside the real 7d window at whenever this test
+  // actually runs -- a hardcoded date rots the moment real wall-clock time
+  // carries it outside handleHealthTrends' own Date.now()-relative window
+  // filter (confirmed live: this test started failing once "now" passed
+  // 2026-07-17, 7 days after the previously-hardcoded 2026-07-10 fixture).
+  const recentDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
   mockQueue.current = [
     [], // session-scoped SET statement_timeout
     [
       {
         netuid: 7,
-        date: "2026-07-10",
+        date: recentDate,
         total: 100,
         ok_count: 98,
         latency_samples: 96,
