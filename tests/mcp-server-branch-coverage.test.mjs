@@ -1117,6 +1117,47 @@ describe("handleMcpRequest — rate limiter success + content-length guard", () 
     assert.equal(body.error.code, -32600);
     assert.match(body.error.message, /too large/);
   });
+
+  test("a POST with Content-Length 0 and no body yields a JSON parse error", async () => {
+    // Covers readLimitedMcpBody's !request.body arm (empty POST, no stream).
+    const request = new Request(MCP_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "content-length": "0",
+      },
+    });
+    assert.equal(request.body, null);
+    const response = await handleMcpRequest(request, {}, makeDeps());
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.error.code, -32700);
+  });
+
+  test("a valid streamed body without Content-Length is accepted", async () => {
+    const payload = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" });
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        // Two chunks so the accumulate loop runs more than once under the cap.
+        const bytes = encoder.encode(payload);
+        controller.enqueue(bytes.slice(0, 8));
+        controller.enqueue(bytes.slice(8));
+        controller.close();
+      },
+    });
+    const request = new Request(MCP_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: stream,
+      duplex: "half",
+    });
+    assert.equal(request.headers.get("content-length"), null);
+    const response = await handleMcpRequest(request, {}, makeDeps());
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body.result, {});
+  });
 });
 
 // ── resolveNetuid index fallback ───────────────────────────────────────
