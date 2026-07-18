@@ -207,6 +207,8 @@ export function StaleBanner({
   refreshQueryKeys,
   refreshLabel = "Refresh now",
   compact = false,
+  hideText = false,
+  bare = false,
 }: {
   generatedAt?: string | null;
   /** When provided, renders a button that invalidates these query keys. */
@@ -217,6 +219,18 @@ export function StaleBanner({
    * shorter copy and an icon-only refresh button whose label moves to a tooltip.
    */
   compact?: boolean;
+  /**
+   * Skip the "Snapshot from Xd ago" text entirely -- for composing just the
+   * refresh button (e.g. inside an ActionBar) while the freshness text
+   * renders separately elsewhere (e.g. next to a page title).
+   */
+  hideText?: boolean;
+  /**
+   * Borderless refresh button (no own border/rounded/bg) meant to sit inside
+   * a shared `ActionBar` alongside other `bare` buttons instead of carrying
+   * its own box.
+   */
+  bare?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<"idle" | "pending" | "ok" | "error">("idle");
@@ -226,6 +240,7 @@ export function StaleBanner({
 
   // Unknown freshness: keep it visible rather than hiding the banner.
   if (!hasTimestamp) {
+    if (hideText) return null;
     return (
       <p className="flex items-center gap-1.5 font-mono text-[10px] text-ink-muted">
         <Clock className="size-3 shrink-0" aria-hidden />
@@ -260,20 +275,22 @@ export function StaleBanner({
         compact ? "gap-2" : "flex-wrap gap-x-3 gap-y-1.5"
       }`}
     >
-      <span className="inline-flex items-center gap-1.5 min-w-0">
-        <Clock className="size-3 shrink-0" aria-hidden />
-        {compact ? (
-          <>
-            Snapshot <TimeAgo at={generatedAt} />
-          </>
-        ) : (
-          <>
-            Snapshot from <TimeAgo at={generatedAt} /> — may be lagging behind live.
-          </>
-        )}
-      </span>
+      {hideText ? null : (
+        <span className="inline-flex items-center gap-1.5 min-w-0">
+          <Clock className="size-3 shrink-0" aria-hidden />
+          {compact ? (
+            <>
+              Snapshot <TimeAgo at={generatedAt} />
+            </>
+          ) : (
+            <>
+              Snapshot from <TimeAgo at={generatedAt} /> — may be lagging behind live.
+            </>
+          )}
+        </span>
+      )}
       {refreshQueryKeys?.length ? (
-        <span className={`flex items-center gap-2 ${compact ? "" : "ml-auto"}`}>
+        <span className={`flex items-center gap-2 ${!compact && !hideText ? "ml-auto" : ""}`}>
           {state === "error" && errorMsg ? (
             <span className="text-health-down truncate max-w-[18rem]" title={errorMsg}>
               {errorMsg}
@@ -291,9 +308,13 @@ export function StaleBanner({
             disabled={state === "pending"}
             title={refreshLabel}
             aria-label={refreshLabel}
-            className={`inline-flex items-center gap-1.5 rounded border border-border bg-card font-medium text-ink-strong hover:border-ink/30 disabled:opacity-60 disabled:cursor-progress ${
-              compact ? "p-1" : "px-2 py-1"
-            }`}
+            className={
+              bare
+                ? "inline-flex items-center gap-1.5 rounded p-1 font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors disabled:opacity-60 disabled:cursor-progress"
+                : `inline-flex items-center gap-1.5 rounded border border-border bg-card font-medium text-ink-strong hover:border-ink/30 disabled:opacity-60 disabled:cursor-progress ${
+                    compact ? "p-1" : "px-2 py-1"
+                  }`
+            }
           >
             <RefreshCw className={`size-3 ${state === "pending" ? "animate-spin" : ""}`} />
             {compact ? null : state === "pending" ? "Refreshing…" : refreshLabel}

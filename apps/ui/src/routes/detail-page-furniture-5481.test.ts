@@ -31,22 +31,36 @@ describe("subnet-masthead ShareButton (#5481)", () => {
     expect(importBlock).toContain("ShareButton");
   });
 
-  it("renders a bare ShareButton in the status row, reachable at every viewport (not md:hidden)", () => {
+  it("keeps the status row to just the breadcrumb -- no separate 'stale' tag duplicating the freshness caption, no actions", () => {
     const statusRow = mastheadSource.slice(
       mastheadSource.indexOf("Status row"),
       mastheadSource.indexOf("{banner ?"),
     );
-    expect(statusRow).toContain("<ShareButton bare");
-    // The ShareButton's own wrapper div must NOT carry md:hidden -- only the
-    // HealthPill/CurationChip pair (moved into a nested div) stays mobile-only.
-    const shareButtonWrapper = statusRow.slice(statusRow.indexOf('<div className="ml-auto'));
-    expect(shareButtonWrapper.split("\n")[0]).not.toContain("md:hidden");
+    expect(statusRow).toContain("Registry");
+    expect(statusRow).not.toContain("<ActionBar");
+    expect(statusRow).not.toContain("<ShareButton");
+    expect(statusRow).not.toContain("<StaleBanner");
+    expect(statusRow).not.toMatch(/>\s*stale\s*</);
   });
 
-  it("renders the Website/Docs/Repo/Dashboard row as one connected icon bar, not separately boxed pills", () => {
+  it("consolidates HealthPill/CurationChip/freshness/Refresh into one identity-row meta strip, not a separate desktop-only side column", () => {
+    expect(mastheadSource).not.toContain("hidden md:flex shrink-0 flex-col items-end");
+    const identityBody = mastheadSource.slice(
+      mastheadSource.indexOf('<div className="min-w-0">'),
+      mastheadSource.indexOf("{description ?"),
+    );
+    expect(identityBody).toContain("<HealthPill");
+    expect(identityBody).toContain("<CurationChip");
+    expect(identityBody).toContain("<StaleBanner");
+    // Refresh only when actually stale -- text (freshness caption) stays
+    // visible unconditionally via StaleBanner's own default hideText=false.
+    expect(identityBody).toContain("refreshQueryKeys={stale ? refreshQueryKeys : undefined}");
+  });
+
+  it("renders the Website/Docs/Repo/Dashboard + Share row as one connected icon bar, not separately boxed pills", () => {
     const linksRow = mastheadSource.slice(
-      mastheadSource.indexOf("{links.length > 0"),
-      mastheadSource.indexOf("{/* Desktop/tablet: health"),
+      mastheadSource.indexOf("{description ?"),
+      mastheadSource.indexOf("Stat spine"),
     );
     // One shared divide-x bar (SegmentedToggle/ViewModeToggle's look), not a
     // flex-wrap row of individually rounded-full-bordered pills.
@@ -54,6 +68,12 @@ describe("subnet-masthead ShareButton (#5481)", () => {
     expect(linksRow).not.toContain("rounded-full border border-border bg-card");
     // Icon-only -- no <span>{l.label}</span> text label alongside the icon.
     expect(linksRow).not.toContain("<span>{l.label}</span>");
+    // Share lives in this same bar (a resource/link action, not a status
+    // readout) -- `connected` matches PrimaryLinksRail's icon segments, and
+    // the bar renders unconditionally so Share is always present even when
+    // the subnet has no external links yet.
+    expect(linksRow).toContain("<ShareButton connected />");
+    expect(mastheadSource).not.toContain("{links.length > 0 ?");
   });
 });
 

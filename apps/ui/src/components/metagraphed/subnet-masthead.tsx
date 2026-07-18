@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryKey } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   BookOpen,
@@ -19,7 +19,6 @@ import {
   safeExternalUrl,
   CurationChip,
   HealthPill,
-  DailyRollupFreshness,
   StatWithSpark,
   MiniStack,
   MiniRadial,
@@ -28,6 +27,7 @@ import {
   ShareButton,
   Sparkline,
 } from "@jsonbored/ui-kit";
+import { StaleBanner } from "@/components/metagraphed/states";
 import {
   subnetEndpointsQuery,
   subnetDeregistrationsQuery,
@@ -50,6 +50,14 @@ interface Props {
   profile?: SubnetProfile;
   generatedAt?: string;
   stale?: boolean;
+  /** When provided (and `stale`), renders a "Refresh health now"-style
+   * button that invalidates these query keys -- same contract as
+   * StaleBanner's own `refreshQueryKeys`. */
+  refreshQueryKeys?: QueryKey[];
+  refreshLabel?: string;
+  /** Rendered above everything else -- e.g. an incident/error banner
+   * unrelated to snapshot freshness (which now has its own dedicated
+   * layout via refreshQueryKeys/refreshLabel above). */
   banner?: ReactNode;
   uptimePct?: number | null;
   evidenceCount?: number;
@@ -166,6 +174,8 @@ export function SubnetMasthead({
   profile,
   generatedAt,
   stale,
+  refreshQueryKeys,
+  refreshLabel,
   banner,
   uptimePct,
   evidenceCount,
@@ -326,9 +336,11 @@ export function SubnetMasthead({
         }}
       />
 
-      {/* Status row — slim, never dominates. On mobile the probe HealthPill lives
-          here (not in the identity grid) so the title/tags/links keep a full-width
-          middle column (#5332) instead of crushing into a 3-col squeeze. */}
+      {/* Status row — breadcrumb only. Health/curation/freshness/stale and
+          the Share/Refresh actions all live in the identity row below now
+          (#5481) -- one consolidated meta strip instead of scattering
+          overlapping status signals (a separate "stale" tag that just
+          repeated what the freshness caption already said) across rows. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-ink-muted mb-3">
         <Link to="/subnets" className="font-mono uppercase tracking-widest hover:text-ink-strong">
           Registry
@@ -337,31 +349,15 @@ export function SubnetMasthead({
         <span className="font-mono uppercase tracking-widest">
           Subnets / {String(netuid).padStart(3, "0")}
         </span>
-        <span aria-hidden className="opacity-50">
-          ·
-        </span>
-        <DailyRollupFreshness at={generatedAt} />
-        {stale ? (
-          <span className="inline-flex items-center gap-1 rounded border border-health-warn/40 bg-health-warn/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-health-warn">
-            stale
-          </span>
-        ) : null}
-        <div className="ml-auto flex items-center gap-1.5">
-          {/* #5481: the subnet-detail masthead was one of only two entity-detail headers with no
-              copy-current-URL affordance. It lives in the status row (not the identity grid's md+ only
-              health column) so it is reachable at every viewport, like every peer detail page's. */}
-          <div className="flex md:hidden items-center gap-1.5">
-            <HealthPill state={probeHealth} />
-            <CurationChip level={profile?.curation_level} />
-          </div>
-          <ShareButton bare />
-        </div>
       </div>
 
       {banner ? <div className="mb-4">{banner}</div> : null}
 
-      {/* Identity row — 2 cols on mobile (icon + body), 3 cols from md with health */}
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] md:grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 md:gap-4">
+      {/* Identity row — icon + body. Health/curation now live inline in the
+          body column's own metadata line (#5481), so this stays a plain
+          2-col grid at every viewport instead of growing a 3rd column on
+          desktop just to hold them. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 md:gap-4">
         <div className="shrink-0 mt-0.5">
           <BrandIcon
             url={profile?.website ?? profile?.homepage}
@@ -396,18 +392,37 @@ export function SubnetMasthead({
               </span>
             ))}
           </div>
+          {/* #5481: one consolidated meta strip -- health, curation,
+              freshness, and (when stale) Refresh -- instead of a separate
+              "stale" status-row tag repeating what the freshness caption
+              already says, plus health/curation split across a mobile
+              status-row block and a desktop-only side column. Reads as part
+              of the title's own metadata line at every viewport. */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <HealthPill state={probeHealth} />
+            <CurationChip level={profile?.curation_level} />
+            <StaleBanner
+              generatedAt={generatedAt}
+              refreshQueryKeys={stale ? refreshQueryKeys : undefined}
+              refreshLabel={refreshLabel}
+              compact
+              bare
+            />
+          </div>
           {description ? (
             <p className="mt-2 text-sm text-ink-muted max-w-3xl leading-relaxed line-clamp-2">
               {description}
             </p>
           ) : null}
-          {links.length > 0 ? (
+          {
             // One connected bar (matching PrimaryLinksRail's icon-button
             // convention) instead of separately spaced, individually-boxed
             // pills -- icon-only since these (globe/docs/repo/dashboard) are
             // universally recognized; the hostname is still one hover away
             // via the tooltip, and label/href reach assistive tech via
-            // aria-label/title on each segment.
+            // aria-label/title on each segment. Share always renders here
+            // too (a resource/link action, not a status readout), so the
+            // bar itself is unconditional even when there are no links yet.
             <div className="mt-3 inline-flex items-center rounded-md border border-border bg-card divide-x divide-border overflow-hidden">
               {links.map((l) => {
                 const Icon = l.icon;
@@ -448,14 +463,9 @@ export function SubnetMasthead({
                   </Tooltip>
                 );
               })}
+              <ShareButton connected />
             </div>
-          ) : null}
-        </div>
-        {/* Desktop/tablet: health + curation beside the identity block. Mobile
-            counterpart lives in the status row above so the body column stays wide. */}
-        <div className="hidden md:flex shrink-0 flex-col items-end gap-1.5">
-          <HealthPill state={probeHealth} />
-          <CurationChip level={profile?.curation_level} />
+          }
         </div>
       </div>
 

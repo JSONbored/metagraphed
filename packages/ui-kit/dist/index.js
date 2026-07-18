@@ -2361,6 +2361,7 @@ function ShareButton({
   iconOnly,
   connected
 }) {
+  const hideText = connected || iconOnly;
   const { copied, copy } = useCopy({ toastOnSuccess: false });
   const [announcement, setAnnouncement] = useState("");
   useEffect(() => {
@@ -2388,22 +2389,22 @@ function ShareButton({
         "aria-label": "Copy link with current filters, sort, and page",
         title: "Copy link with current filters, sort, and page",
         className: classNames(
-          connected ? "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : iconOnly ? "inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          connected ? "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : bare ? iconOnly ? "inline-flex items-center justify-center rounded p-1 min-h-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : iconOnly ? "inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           className
         ),
         children: [
           copied ? /* @__PURE__ */ jsx(
             Check,
             {
-              className: connected || iconOnly ? "size-4 text-health-ok" : "size-3 text-health-ok"
+              className: connected || iconOnly && !bare ? "size-4 text-health-ok" : "size-3 text-health-ok"
             }
           ) : /* @__PURE__ */ jsx(
             Share2,
             {
-              className: connected || iconOnly ? "size-4" : "size-3 text-ink-muted"
+              className: connected || iconOnly && !bare ? "size-4" : "size-3 text-ink-muted"
             }
           ),
-          connected || iconOnly ? null : copied ? "Link copied" : label
+          hideText ? null : copied ? "Link copied" : label
         ]
       }
     ),
