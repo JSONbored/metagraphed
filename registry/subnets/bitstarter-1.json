@@ -35,7 +35,7 @@
     "source_count": 7,
     "verified_at": "2026-07-15T00:00:00.000Z"
   },
-  "dashboard_url": "https://taomarketcap.com/subnets/91",
+  "dashboard_url": "https://app.bitstarter.ai/",
   "name": "Bitstarter #1",
   "netuid": 91,
   "notes": "Reviewed overlay for SN91 using the public Bitstarter website, app surface, how-it-works page, project submission page, AlphaCore source repository, and universal TaoMarketCap dashboard. Common docs/API/OpenAPI paths currently return 404 and no verified machine-readable schema, safe public subnet API endpoint, or SSE surface has been found yet. Re-review pass (2026-07-15): updated the website surface to the canonical www.bitstarter.ai URL after bitstarter.ai started 307-redirecting.",
@@ -192,5 +192,5 @@
       "url": "https://raw.githubusercontent.com/AlphaCoreBittensor/alphacore/main/modules/task_config.yaml"
     }
   ],
-  "website_url": "https://bitstarter.ai/"
+  "website_url": "https://www.bitstarter.ai/"
 }

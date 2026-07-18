@@ -17,7 +17,7 @@
     "source_count": 4,
     "verified_at": "2026-07-16T00:20:00.000Z"
   },
-  "dashboard_url": "https://taomarketcap.com/subnets/32",
+  "dashboard_url": "https://wandb.ai/itsai-dev/subnet32",
   "name": "ItsAI",
   "netuid": 32,
   "notes": "Reviewed overlay for SN32 using the official ItsAI website and LLM-detection source repository. This pass fixed 5 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. All 8 surfaces re-verified live.",

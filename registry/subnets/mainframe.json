@@ -22,7 +22,7 @@
     "source_count": 4,
     "verified_at": "2026-06-08T09:50:00.000Z"
   },
-  "dashboard_url": "https://taomarketcap.com/subnets/25",
+  "dashboard_url": "https://wandb.ai/macrocosmos/folding-openmm",
   "name": "Mainframe",
   "netuid": 25,
   "notes": "Reviewed overlay for SN25 using the official Mainframe source repository. Previously discovered Mainframe docs/API URLs currently return 404 and the old dashboard URL redirects to the general Macrocosmos homepage, so they are not promoted. Re-tested live this pass: also found the registered website_url now redirects to the same generic homepage, so it is not promoted as a website surface either. 1 community-submitted surface (wandb dashboard) had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. All 4 tracked surfaces re-verified live.",

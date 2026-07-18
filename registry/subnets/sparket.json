@@ -21,7 +21,7 @@
     "source_count": 4,
     "verified_at": "2026-07-16T05:00:00.000Z"
   },
-  "dashboard_url": "https://taomarketcap.com/subnets/57",
+  "dashboard_url": "https://dashboard.sparket.ai/leaderboard",
   "name": "Sparket",
   "netuid": 57,
   "notes": "Reviewed overlay for SN57 using the official Sparket website and source repository. No official docs/API/OpenAPI surface is verified yet. This re-review pass re-verified all 5 surfaces live (no missing-probe gap found); confirmed sparket.ai/openapi.json is not a real schema (SPA HTML fallback). Observed the backend health endpoint reporting a real degraded/stale sync state and a single-source on-chain identity discrepancy (\"gaia\") uncorroborated by any live infrastructure -- see gap_notes.",

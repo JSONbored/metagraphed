@@ -197,24 +197,6 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-66-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "ninja TaoMarketCap dashboard",
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/66"],
-      "url": "https://taomarketcap.com/subnets/66"
-    },
-    {
-      "auth_required": false,
       "authority": "community",
       "id": "sn-66-unarbos-data-artifact",
       "kind": "data-artifact",

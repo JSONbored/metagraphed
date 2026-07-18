@@ -122,6 +122,7 @@
     "test:ci:artifacts": "vitest run tests/artifacts.test.mjs tests/discovery-artifacts.test.mjs tests/public-safety.test.mjs tests/validate-error-messages.test.mjs tests/refresh-build-summary.test.mjs",
     "curation:brief": "node scripts/curation-brief.mjs",
     "curation:stale-notes": "node scripts/stale-gap-notes.mjs",
+    "curation:identity-divergence": "node scripts/identity-field-divergence.mjs",
     "endpoint:brief": "node scripts/endpoint-ops-brief.mjs"
   },
   "dependencies": {

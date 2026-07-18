@@ -34,7 +34,7 @@
     "source_count": 6,
     "verified_at": "2026-06-08T20:25:00.000Z"
   },
-  "dashboard_url": "https://taomarketcap.com/subnets/5",
+  "dashboard_url": "https://www.hone.training/network",
   "name": "Hone",
   "netuid": 5,
   "notes": "Reviewed overlay for SN5 Hone using the official Hone website, source repository, and public network pages. Common docs/API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational interfaces.",
