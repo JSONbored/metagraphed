@@ -86,6 +86,7 @@ function LeaderboardsPage() {
               label="Deregistrations CSV"
               bare
             />
+            <DownloadCsvButton url={buildUrl("/api/v1/economics")} label="Emissions CSV" bare />
             <ShareButton bare />
           </ActionBar>
         }
