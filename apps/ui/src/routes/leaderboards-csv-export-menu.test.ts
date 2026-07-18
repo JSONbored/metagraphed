@@ -12,17 +12,11 @@ import { describe, expect, it } from "vitest";
 // Router/Query context a rendered test can't easily stand up, so this suite is
 // node-environment source assertions, mirroring
 // validators-index-empty-action.test.ts's own convention.
-const source = readFileSync(
-  fileURLToPath(new URL("./leaderboards.tsx", import.meta.url)),
-  "utf8",
-);
+const source = readFileSync(fileURLToPath(new URL("./leaderboards.tsx", import.meta.url)), "utf8");
 
 describe("leaderboards ActionBar CSV export (#6577)", () => {
   it("renders exactly one CsvExportMenu trigger in the ActionBar, not a DownloadCsvButton per board", () => {
-    const actionBar = source.slice(
-      source.indexOf("<ActionBar>"),
-      source.indexOf("</ActionBar>"),
-    );
+    const actionBar = source.slice(source.indexOf("<ActionBar>"), source.indexOf("</ActionBar>"));
     expect(actionBar).toContain("<CsvExportMenu");
     expect(actionBar).not.toContain("DownloadCsvButton");
     // Exactly one CsvExportMenu element -- not one per board.
@@ -30,7 +24,7 @@ describe("leaderboards ActionBar CSV export (#6577)", () => {
   });
 
   it("no longer imports DownloadCsvButton -- replaced entirely by the menu", () => {
-    const importBlock = source.slice(0, source.indexOf("} from \"@jsonbored/ui-kit\""));
+    const importBlock = source.slice(0, source.indexOf('} from "@jsonbored/ui-kit"'));
     expect(importBlock).not.toContain("DownloadCsvButton");
   });
 
@@ -49,12 +43,8 @@ describe("leaderboards ActionBar CSV export (#6577)", () => {
       source.indexOf("function CsvExportMenu"),
       source.indexOf("function useSubnetById"),
     );
-    expect(menu).toContain(
-      'buildUrl("/api/v1/chain/weights", { window: win })',
-    );
-    expect(menu).toContain(
-      'buildUrl("/api/v1/chain/deregistrations", { window: win })',
-    );
+    expect(menu).toContain('buildUrl("/api/v1/chain/weights", { window: win })');
+    expect(menu).toContain('buildUrl("/api/v1/chain/deregistrations", { window: win })');
     expect(menu).toContain('buildUrl("/api/v1/economics")');
     expect(menu).not.toContain('buildUrl("/api/v1/economics", { window');
   });
