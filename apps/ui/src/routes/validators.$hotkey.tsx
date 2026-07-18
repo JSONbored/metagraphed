@@ -13,7 +13,6 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { PageHero, ShareButton, SectionAnchor, StatTile } from "@jsonbored/ui-kit";
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
 import { ValidatorApyPanel } from "@/components/metagraphed/validator-apy-panel";
-import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { WatchValidatorAlert } from "@/components/metagraphed/watch-validator-alert";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
@@ -297,25 +296,33 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
               Cross-subnet performance, nominators, and staking history for one Bittensor validator
               hotkey.
             </span>
-            {/* Hotkey + coldkey (#6427) get identical AccountAddress row
-                treatment, mirroring blocks.$ref.tsx/extrinsics.$hash.tsx's
-                FieldRow idiom (#6424). Operator identity renders on the
-                coldkey row, the key it's actually declared on (#5234). */}
+            {/* Hotkey + coldkey (#6427) get identical, symmetric AccountAddress
+                rows -- the operator name is already the page title, so it
+                isn't repeated here. truncate={false} + valueClassName lets
+                the browser ellipsize to whatever width the row actually has
+                (full value on desktop, fewer characters on mobile) instead
+                of a fixed shortHash cutoff that either overflows narrow
+                layouts or wastes wide ones. */}
             <dl className="max-w-2xl divide-y divide-border/80 rounded-2xl border border-border/80 bg-card/80 mg-card-glow-accent">
               <FieldRow label="Hotkey">
-                <AccountAddress ss58={hotkey} truncate={false} fallback="—" />
+                <span className="flex w-full min-w-0 items-center">
+                  <AccountAddress
+                    ss58={hotkey}
+                    truncate={false}
+                    valueClassName="truncate min-w-0"
+                    fallback="—"
+                  />
+                </span>
               </FieldRow>
               <FieldRow label="Coldkey">
-                {detail.coldkey ? (
-                  <span className="flex flex-wrap items-center gap-2">
-                    {hasIdentity ? (
-                      <ValidatorIdentityChip hotkey={hotkey} identity={identity} size={20} />
-                    ) : null}
-                    <AccountAddress ss58={detail.coldkey} truncate={false} fallback="—" />
-                  </span>
-                ) : (
-                  <span className="text-ink-muted">Not reported</span>
-                )}
+                <span className="flex w-full min-w-0 items-center">
+                  <AccountAddress
+                    ss58={detail.coldkey}
+                    truncate={false}
+                    valueClassName="truncate min-w-0"
+                    fallback={<span className="text-ink-muted">Not reported</span>}
+                  />
+                </span>
               </FieldRow>
             </dl>
           </span>
@@ -537,7 +544,7 @@ function FieldRow({ label, children }: { label: string; children: ReactNode }) {
       <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted sm:w-20 sm:shrink-0">
         {label}
       </dt>
-      <dd className="min-w-0">{children}</dd>
+      <dd className="min-w-0 w-full sm:flex-1">{children}</dd>
     </div>
   );
 }

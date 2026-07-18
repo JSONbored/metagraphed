@@ -22,6 +22,7 @@ export function AccountAddress({
   copyButtonClassName,
   compact,
   truncate = true,
+  valueClassName,
 }: {
   ss58?: string | null;
   fallback: ReactNode;
@@ -37,12 +38,25 @@ export function AccountAddress({
   copyButtonClassName?: string;
   /** Forwarded to the inner CopyButton — pass true inside a dense table/list row. See CopyButton's `compact` doc. */
   compact?: boolean;
+  /**
+   * Extra classes on the link itself (#6427). Combine with `truncate={false}`
+   * and e.g. `"truncate min-w-0"` inside a flex row so the browser ellipsizes
+   * to whatever width the row actually has -- full value on a wide desktop
+   * row, fewer characters on mobile -- instead of a fixed shortHash `keep`
+   * count that either overflows narrow layouts or wastes wide ones.
+   */
+  valueClassName?: string;
 }) {
   if (ss58 && isValidSs58(ss58)) {
     return (
       <span className="inline-flex items-center gap-1 min-w-0">
         <EntityHoverCard kind="account" ss58={ss58}>
-          <Link to="/accounts/$ss58" params={{ ss58 }} className="hover:underline" title={ss58}>
+          <Link
+            to="/accounts/$ss58"
+            params={{ ss58 }}
+            className={valueClassName ? `hover:underline ${valueClassName}` : "hover:underline"}
+            title={ss58}
+          >
             {truncate ? shortHash(ss58, keep) : ss58}
           </Link>
         </EntityHoverCard>
