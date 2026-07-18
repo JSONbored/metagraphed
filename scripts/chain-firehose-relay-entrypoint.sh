@@ -4,11 +4,21 @@
 # metagraph-fetch/data-refresh-node/economics-refresh entrypoints, this
 # process is a single always-on daemon, not a periodically re-invoked job,
 # so there's no persistent /repo volume or incremental-refresh branch here:
-# every container start (rare -- a crash-restart, or a deliberate `docker
-# compose up` after the Ansible role rebuilds the image) does one fresh,
-# shallow clone, then execs the relay to run forever. This also means
-# restarting the container (not just rebuilding the image) is enough to pick
-# up whatever is newest on main.
+# every container start does one fresh, shallow clone, then execs the relay
+# to run forever.
+#
+# A `docker run` (a genuinely new container + fresh writable layer) always
+# picks up whatever is newest on main this way. `docker restart` does NOT --
+# it reuses the SAME container and its writable layer, so $REPO_DIR from the
+# PRIOR run is still there; confirmed live (2026-07-17, 2026-07-18) that an
+# earlier version of this script, which cloned straight into $REPO_DIR with
+# no cleanup, hit `fatal: destination path '/tmp/repo' already exists and is
+# not an empty directory` on every restart and crash-looped forever instead
+# of ever reaching the relay process. The `rm -rf "$REPO_DIR"` below exists
+# specifically so a plain `docker restart` is safe too, not just `docker run`
+# -- deploying a merged fix should still prefer `docker stop && docker rm &&
+# docker run` (a cleaner, fully-fresh container), but a restart no longer
+# crash-loops if that's what actually gets reached for.
 set -euo pipefail
 
 GIT_REPO_URL="https://github.com/JSONbored/metagraphed.git"
@@ -22,13 +32,13 @@ GIT_REF="main"
 # runtime entrypoints, the Docker HEALTHCHECK directive (see the Dockerfile)
 # execs `node <path>/scripts/chain-firehose-relay.mjs --healthcheck`
 # directly, baked into the image at build time, so the clone location must
-# be a fixed, known path. Safe to hardcode here specifically because this
-# entrypoint never reuses an existing checkout across container restarts
-# (no persistent volume, see above) -- there is no "was this the leftover of
-# an interrupted clone" ambiguity the other entrypoints' mktemp-then-copy
-# pattern guards against, since the container filesystem itself is fresh
-# every single time this path is written to.
+# be a fixed, known path. The `rm -rf` immediately below (not the other
+# entrypoints' mktemp-then-copy pattern) is what keeps this safe to
+# hardcode: `git clone` itself refuses to write into a non-empty directory,
+# so the wipe has to happen before every clone, not just the first one on a
+# given container.
 REPO_DIR=/tmp/repo
+rm -rf "$REPO_DIR"
 echo "entrypoint: cloning ${GIT_REPO_URL}@${GIT_REF} into ${REPO_DIR}"
 git clone --depth 1 --branch "$GIT_REF" "$GIT_REPO_URL" "$REPO_DIR"
 cd "$REPO_DIR"
