@@ -199,7 +199,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Harnyx](https://metagraph.sh/subnets/67)** `SN67` · [site](https://harnyx.ai/) · [repo](https://github.com/harnyx/harnyx)
 - **[NOVA](https://metagraph.sh/subnets/68)** `SN68` · [site](https://www.metanova-labs.ai/) · [repo](https://github.com/metanova-labs/nova)
 - **[ain](https://metagraph.sh/subnets/69)** `SN69` · [site](https://www.heraldmedia.ai/) · [repo](https://github.com/HeraldMedia/herald)
-- **[NexisGen](https://metagraph.sh/subnets/70)** `SN70` · [site](https://nexisgen.ai/) · [repo](https://github.com/RendixNetwork/nexisgen)
+- **[NexisGen](https://metagraph.sh/subnets/70)** `SN70` · [site](https://www.nexisgen.ai/) · [repo](https://github.com/RendixNetwork/nexisgen)
 - **[Leadpoet](https://metagraph.sh/subnets/71)** `SN71` · [site](https://leadpoet.com/) · [repo](https://github.com/leadpoet/leadpoet)
 - **[StreetVision by NATIX](https://metagraph.sh/subnets/72)** `SN72` — `computer-vision` `data` `depin` · [site](https://www.natix.network/) · [docs](https://docs.natix.network/whitepaper) · [repo](https://github.com/natixnetwork/streetvision-subnet)
 - **[MetaHash](https://metagraph.sh/subnets/73)** `SN73` — `defi` `otc` `treasury`
@@ -220,7 +220,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Investing](https://metagraph.sh/subnets/88)** `SN88` — `data-artifact` `finance` · [site](https://investing88.ai/) · [repo](https://github.com/mobiusfund/investing)
 - **[InfiniteHash](https://metagraph.sh/subnets/89)** `SN89` · [site](https://infinitehash.xyz/) · [docs](https://github.com/backend-developers-ltd/InfiniteHash/blob/master/docs/subnet_auction_incentive_system.md) · [repo](https://github.com/backend-developers-ltd/InfiniteHash)
 - **[DegenBrain](https://metagraph.sh/subnets/90)** `SN90` — `prediction-markets` `verification` · [site](https://subnet90.com/)
-- **[Bitstarter #1](https://metagraph.sh/subnets/91)** `SN91` · [site](https://bitstarter.ai/) · [repo](https://github.com/AlphaCoreBittensor/alphacore)
+- **[Bitstarter #1](https://metagraph.sh/subnets/91)** `SN91` · [site](https://www.bitstarter.ai/) · [repo](https://github.com/AlphaCoreBittensor/alphacore)
 - **[Tensorclaw](https://metagraph.sh/subnets/92)** `SN92` — `inference` `stale-source-restored` · [site](https://www.tensorclaw.ai/) · [repo](https://github.com/tensorclaw/tensorclaw)
 - **[Bitcast](https://metagraph.sh/subnets/93)** `SN93` · [site](https://www.bitcast.network/) · [repo](https://github.com/bitcast-network/bitcast)
 - **[Bitsota](https://metagraph.sh/subnets/94)** `SN94` · [site](https://bitsota.ai/) · [repo](https://github.com/AlveusLabs/SN94-BitSota)
