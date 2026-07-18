@@ -282,7 +282,32 @@ export const CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS = 10_000;
 // after downtime.
 export const CHAIN_FIREHOSE_FORWARD_CONCURRENCY = 16;
 
+// #6672: how many outbox rows go into ONE ingest POST body (a JSON array),
+// instead of one row per request. The ingest rate limit
+// (workers/api.mjs's CHAIN_FIREHOSE_INGEST_RATE_LIMIT, enforced via a
+// Cloudflare Workers Rate Limiting binding) costs by REQUEST, not payload
+// size, so batching multiplies effective row throughput by this factor
+// without touching that limit or CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S's
+// own pacing at all -- the actual lever #6451's two incident rounds
+// established as dangerous to touch carelessly. MUST match (or stay ≤)
+// workers/chain-firehose-hub.mjs's CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE --
+// tests/chain-firehose-relay.test.mjs asserts the two stay in sync, since
+// this script deploys standalone (no runtime import of workers/) and can't
+// enforce that via a shared import.
+export const CHAIN_FIREHOSE_INGEST_BATCH_SIZE = 10;
+
 // --- pure, unit-tested logic ----------------------------------------------------
+
+// Splits `items` into consecutive groups of at most `size`, preserving
+// order. Pure and tiny -- kept separate from forwardBatch below so the
+// grouping itself is directly testable without a fetch mock.
+export function chunkRows(items, size) {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
 
 // Bounded-concurrency map: drains `items` through at most `concurrency`
 // in-flight `fn` calls. Duplicated from src/webhooks.mjs's own mapBounded
@@ -476,41 +501,72 @@ export async function forwardWithRetry(
   return false;
 }
 
-// Forwards every row in a claimed batch with bounded concurrency (see
+// Forwards every row in a claimed batch, grouped into CHAIN_FIREHOSE_INGEST_BATCH_SIZE-sized
+// chunks (#6672) with bounded concurrency across chunks (see
 // CHAIN_FIREHOSE_FORWARD_CONCURRENCY's own comment for why this isn't
 // sequential). `rows` are already claimed (delivered_at stamped) by the
 // caller's UPDATE ... RETURNING before this runs -- forwarding failure after
 // exhausting retries still counts as "handled" (best-effort, not
 // at-least-once, same as the old design), not re-queued.
 //
-// rateLimitedForMs (new): the MAX pause duration reported by any row in this
-// batch, if any hit a 429 -- the caller (main()'s poll loop) sleeps this long
-// before its NEXT poll rather than immediately re-claiming a fresh batch and
-// firing CHAIN_FIREHOSE_FORWARD_CONCURRENCY more requests straight into the
-// same rate limit. This is the actual fix for the real 2026-07 incident: 16
-// concurrent requests times however many batches per second the old
-// immediate-reloop behavior fired is trivially over the ingest endpoint's
-// own 120-req/60s limit the moment there's any real backlog, and every prior
-// design only backed off PER ROW, never paused the batch/poll level that was
-// the true source of the overload.
-export async function forwardBatch(rows, config, options = {}) {
+// A chunk succeeds or fails as ONE unit (a single POST, one response) -- if
+// it's dropped after exhausting retries, every row in that chunk is dropped
+// together (there's no way to know which individual row within a failed
+// batch request might have succeeded alone). This trades a little precision
+// for the whole point of batching: fewer, larger requests under the same
+// rate limit. `rows` already share a best-effort (not at-least-once)
+// contract, so a coarser failure unit doesn't change the delivery guarantee,
+// just its granularity.
+//
+// rateLimitedForMs (unchanged behavior, now per-chunk not per-row): the MAX
+// pause duration reported by any chunk in this batch, if any hit a 429 -- the
+// caller (main()'s poll loop) sleeps this long before its NEXT poll rather
+// than immediately re-claiming a fresh batch and firing more requests
+// straight into the same rate limit. This is the actual fix for the real
+// 2026-07 incident: every prior design only backed off PER ROW/PER CHUNK,
+// never paused the batch/poll level that was the true source of the
+// overload.
+//
+// options.chunkSize defaults to the real CHAIN_FIREHOSE_INGEST_BATCH_SIZE --
+// it's a test seam (isolating "one chunk fails, another succeeds" without a
+// test needing CHAIN_FIREHOSE_INGEST_BATCH_SIZE-many rows), not a knob main()
+// ever overrides in production.
+export async function forwardBatch(
+  rows,
+  config,
+  { chunkSize = CHAIN_FIREHOSE_INGEST_BATCH_SIZE, ...options } = {},
+) {
   let rateLimitedForMs = 0;
-  const results = await mapBounded(
-    rows,
+  const chunks = chunkRows(rows, chunkSize);
+  const chunkResults = await mapBounded(
+    chunks,
     CHAIN_FIREHOSE_FORWARD_CONCURRENCY,
-    (row) =>
-      forwardWithRetry(JSON.stringify(row.payload), config, {
-        ...options,
-        onRateLimited: (pauseMs) => {
-          rateLimitedForMs = Math.max(rateLimitedForMs, pauseMs);
-          options.onRateLimited?.(pauseMs);
+    (chunk) =>
+      forwardWithRetry(
+        JSON.stringify(chunk.map((row) => row.payload)),
+        config,
+        {
+          ...options,
+          // Fires once per DROPPED ROW (not once per dropped chunk), so
+          // callers counting drops (e.g. main()'s droppedInBatch) see the
+          // same per-row granularity they did before batching.
+          onDrop: (_payload, status) => {
+            for (const row of chunk) options.onDrop?.(row.payload, status);
+          },
+          onRateLimited: (pauseMs) => {
+            rateLimitedForMs = Math.max(rateLimitedForMs, pauseMs);
+            options.onRateLimited?.(pauseMs);
+          },
         },
-      }),
+      ),
   );
-  const forwarded = results.filter(Boolean).length;
+  const forwarded = chunks.reduce(
+    (sum, chunk, i) => sum + (chunkResults[i] ? chunk.length : 0),
+    0,
+  );
   return {
     forwarded,
-    dropped: results.length - forwarded,
+    dropped: rows.length - forwarded,
     ...(rateLimitedForMs > 0 && { rateLimitedForMs }),
   };
 }

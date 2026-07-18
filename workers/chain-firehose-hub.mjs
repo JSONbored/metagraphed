@@ -68,6 +68,20 @@ export const CHAIN_FIREHOSE_TABLES = new Set([
 // payload is already far smaller than this -- see the trigger's comment).
 export const CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES = 16_000;
 
+// #6672: the ingest rate limit (workers/api.mjs's CHAIN_FIREHOSE_INGEST_RATE_LIMIT)
+// costs by REQUEST, not payload size -- one POST always consumes exactly one
+// unit of the Workers Rate Limiting binding, regardless of body size. Batching
+// N rows into a single request's array body therefore multiplies effective
+// throughput by N WITHOUT touching that rate limit or chain-firehose-relay's
+// own conservative client-side pacing at all -- the actual lever #6451's two
+// incident rounds established as dangerous to touch carelessly. 10 comfortably
+// closes the ~3.5-4x production/ingest gap #6672 measured (~3,600-3,700
+// rows/min production vs. ~960-1,200 rows/min single-payload-per-request
+// capacity) with headroom for growth, without over-sizing a single request/
+// response cycle. The raw-body byte cap below is sized to this batch size
+// times the existing single-payload cap -- see that constant's own comment.
+export const CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE = 10;
+
 // Found by adversarial review: bounds how long broadcast() will WAIT on the
 // #4984 AlerterHub singleton's own /evaluate call (see below), independent
 // of whatever AlerterHub's own internal timeouts add up to (a worst-case
@@ -185,30 +199,17 @@ export function chainFirehoseMatchesTopics(payload, topics) {
   return topics.has(payload?.table);
 }
 
-// Validates a raw ingest body against the shape notify_chain_firehose()
-// actually emits. Deliberately loose on which optional fields are present
-// (the three tables carry different columns) but strict on: valid JSON, a
-// known `table`, a well-formed `block_number`, and every field being a
-// bounded scalar (never nested JSON) -- an oversized or malformed payload is
-// rejected here as a clean 400 rather than reaching SSE/WS fanout.
-export function validateChainFirehoseIngestPayload(raw) {
-  if (typeof raw !== "string" || raw.length === 0) {
-    return { ok: false, error: "request body must be a non-empty JSON string" };
-  }
-  if (utf8ByteLength(raw) > CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES) {
-    return {
-      ok: false,
-      error: `request body exceeds ${CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES} bytes`,
-    };
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return { ok: false, error: "request body is not valid JSON" };
-  }
+// Validates ONE already-parsed payload object against the shape
+// notify_chain_firehose() actually emits. Deliberately loose on which
+// optional fields are present (the three tables carry different columns) but
+// strict on: a known `table`, a well-formed `block_number`, and every field
+// being a bounded scalar (never nested JSON) -- an oversized or malformed
+// payload is rejected as a clean 400 rather than reaching SSE/WS fanout.
+// Factored out of validateChainFirehoseIngestPayload (#6672) so a batch-array
+// body can run every element through the exact same rules as a lone object.
+function validateSingleChainFirehoseIngestPayload(parsed) {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return { ok: false, error: "request body must be a JSON object" };
+    return { ok: false, error: "each payload must be a JSON object" };
   }
   if (!CHAIN_FIREHOSE_TABLES.has(parsed.table)) {
     return {
@@ -240,6 +241,58 @@ export function validateChainFirehoseIngestPayload(raw) {
     return { ok: false, error: `${key} has an unsupported value type` };
   }
   return { ok: true, payload: parsed };
+}
+
+// Validates a raw ingest body: either ONE JSON object (the original shape --
+// see validateSingleChainFirehoseIngestPayload above) or a JSON array of up
+// to CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE such objects (#6672's batching --
+// see that constant's own comment for why this closes the ingest capacity
+// gap without touching the rate limit). Returns `payload` as a single object
+// for the former (unchanged shape/behavior for every existing single-object
+// caller) or an array for the latter -- handleIngest below dispatches on
+// Array.isArray(payload) to broadcast one or many.
+export function validateChainFirehoseIngestPayload(raw) {
+  if (typeof raw !== "string" || raw.length === 0) {
+    return { ok: false, error: "request body must be a non-empty JSON string" };
+  }
+  // Sized for the batch case (a lone object can't realistically approach
+  // this on its own -- its own per-field caps already bound it far below a
+  // single CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES share of this).
+  const maxBodyBytes =
+    CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES * CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE;
+  if (utf8ByteLength(raw) > maxBodyBytes) {
+    return {
+      ok: false,
+      error: `request body exceeds ${maxBodyBytes} bytes`,
+    };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { ok: false, error: "request body is not valid JSON" };
+  }
+  if (Array.isArray(parsed)) {
+    if (parsed.length === 0) {
+      return { ok: false, error: "batch array must not be empty" };
+    }
+    if (parsed.length > CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE) {
+      return {
+        ok: false,
+        error: `batch array exceeds ${CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE} payloads`,
+      };
+    }
+    const payloads = [];
+    for (const [index, item] of parsed.entries()) {
+      const result = validateSingleChainFirehoseIngestPayload(item);
+      if (!result.ok) {
+        return { ok: false, error: `batch[${index}]: ${result.error}` };
+      }
+      payloads.push(result.payload);
+    }
+    return { ok: true, payload: payloads };
+  }
+  return validateSingleChainFirehoseIngestPayload(parsed);
 }
 
 export function formatChainFirehoseSseFrame(payload) {
@@ -620,7 +673,19 @@ export class ChainFirehoseHub {
         headers: { "content-type": "application/json" },
       });
     }
-    await this.broadcast(result.payload);
+    // #6672: a batch-array payload broadcasts each element in turn, not
+    // concurrently -- broadcast() iterates shared mutable state (sseClients,
+    // mcpSubscribedSessions) and awaits an external AlerterHub call; there's
+    // no established concurrent-broadcast precedent in this class, and a
+    // batch is small (CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE) so the added
+    // latency is bounded. A single-object payload's behavior is unchanged.
+    if (Array.isArray(result.payload)) {
+      for (const payload of result.payload) {
+        await this.broadcast(payload);
+      }
+    } else {
+      await this.broadcast(result.payload);
+    }
     return new Response(JSON.stringify({ ok: true }), {
       status: 202,
       headers: { "content-type": "application/json" },

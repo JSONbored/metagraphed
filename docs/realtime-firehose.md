@@ -48,15 +48,23 @@ re-fetches by primary key. The function inserts that payload into
 `delivered_at IS NULL` view of the table and then forwards them.
 
 Row-level, not statement-level: simpler for a first cut, at the cost of one
-outbox row per source row rather than one per batch insert. If per-block volume
-becomes a real bottleneck, the documented fast-follow is a statement-level
-trigger with a `REFERENCING NEW TABLE AS new_rows` transition table.
+outbox row per source row rather than one per batch insert. Per-block volume
+DID become a real bottleneck (#6672: sustained production outgrew the
+ingest endpoint's rate limit by ~3.5-4x) — the fix taken was downstream
+request-level batching (see the relay section below), not a statement-level
+trigger; the row-level outbox design here is unchanged. A
+`REFERENCING NEW TABLE AS new_rows` transition table remains a possible
+future fast-follow if outbox INSERT volume itself (not ingest-request volume)
+ever becomes the bottleneck instead.
 
 ## The relay (#4981, live)
 
 A new, small, self-hosted process on the indexer box polls and claims pending
-`chain_firehose_outbox` rows, forwards each payload to the Durable Object over
-HTTP, and uses bounded retry/drop-oldest behavior under sustained
+`chain_firehose_outbox` rows, groups them into `CHAIN_FIREHOSE_INGEST_BATCH_SIZE`-sized
+chunks and forwards each chunk as one JSON-array POST body to the Durable
+Object over HTTP (#6672 -- the ingest rate limit costs by request, not
+payload size, so batching multiplies effective throughput without touching
+that limit), and uses bounded retry/drop-oldest behavior under sustained
 Cloudflare-side unavailability. It does **not** `LISTEN` on a Postgres channel:
 PostgreSQL delivers `NOTIFY` at transaction commit and its global notification
 queue can be held back by a listener that remains in a transaction; if that
@@ -90,7 +98,11 @@ One global instance (`idFromName("global")`) owns two endpoints:
   isn't provisioned, 401 if the token is missing/wrong. The auth check lives
   in `workers/api.mjs`, not inside the Durable Object itself — a DO is never
   internet-addressable on its own, so this Worker's binding is the only path
-  in, and the one place a forged request could be rejected.
+  in, and the one place a forged request could be rejected. The body is
+  either one payload object (broadcast once) or a JSON array of up to
+  `CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE` payload objects (#6672, broadcast
+  in order, sequentially) — additive, so older single-object callers are
+  unaffected.
 - `GET /api/v1/chain/stream` — the public read side, no auth (the same
   public data `/api/v1/chain-events` already serves, pushed instead of
   polled). SSE by default (`event: chain` frames, JSON payload matching the

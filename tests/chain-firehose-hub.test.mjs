@@ -20,6 +20,7 @@ import {
   CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
   CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP,
   CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_SOCKET,
+  CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE,
   CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
   CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS,
   CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK,
@@ -367,10 +368,56 @@ test("validateChainFirehoseIngestPayload: rejects invalid JSON", () => {
   assert.match(result.error, /not valid JSON/);
 });
 
-test("validateChainFirehoseIngestPayload: rejects a JSON array", () => {
+// #6672: a JSON array is now a BATCH of payloads (closes the ingest capacity
+// gap without touching the rate limit -- see CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE's
+// own comment), not an automatic reject -- but each element still has to be
+// a well-formed payload object.
+test("validateChainFirehoseIngestPayload: rejects a JSON array of non-object elements", () => {
   const result = validateChainFirehoseIngestPayload("[1,2,3]");
   assert.equal(result.ok, false);
+  assert.match(result.error, /batch\[0\]/);
   assert.match(result.error, /JSON object/);
+});
+
+test("validateChainFirehoseIngestPayload: accepts a batch array of well-formed payloads", () => {
+  const result = validateChainFirehoseIngestPayload(
+    JSON.stringify([
+      { table: "blocks", block_number: 1 },
+      { table: "blocks", block_number: 2 },
+    ]),
+  );
+  assert.equal(result.ok, true);
+  assert.ok(Array.isArray(result.payload));
+  assert.equal(result.payload.length, 2);
+  assert.equal(result.payload[1].block_number, 2);
+});
+
+test("validateChainFirehoseIngestPayload: rejects an empty batch array", () => {
+  const result = validateChainFirehoseIngestPayload("[]");
+  assert.equal(result.ok, false);
+  assert.match(result.error, /must not be empty/);
+});
+
+test("validateChainFirehoseIngestPayload: rejects a batch array over CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE", () => {
+  const oversized = Array.from(
+    { length: CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE + 1 },
+    (_, i) => ({ table: "blocks", block_number: i }),
+  );
+  const result = validateChainFirehoseIngestPayload(JSON.stringify(oversized));
+  assert.equal(result.ok, false);
+  assert.match(result.error, /exceeds/);
+});
+
+test("validateChainFirehoseIngestPayload: a batch stops at the first invalid element and reports its index", () => {
+  const result = validateChainFirehoseIngestPayload(
+    JSON.stringify([
+      { table: "blocks", block_number: 1 },
+      { table: "not-a-real-table", block_number: 2 },
+    ]),
+  );
+  assert.equal(result.ok, false);
+  assert.match(result.error, /batch\[1\]/);
+  assert.match(result.error, /table must be one of/);
 });
 
 test("validateChainFirehoseIngestPayload: rejects an unrecognized table", () => {
@@ -420,7 +467,7 @@ test("validateChainFirehoseIngestPayload: rejects a nested object/array field", 
   assert.match(result.error, /unsupported value type/);
 });
 
-test("validateChainFirehoseIngestPayload: rejects a body over the size cap", () => {
+test("validateChainFirehoseIngestPayload: rejects a body over the size cap (via the per-field cap, well under the #6672 batch-scaled raw-body cap)", () => {
   const result = validateChainFirehoseIngestPayload(
     JSON.stringify({
       table: "blocks",
@@ -429,6 +476,21 @@ test("validateChainFirehoseIngestPayload: rejects a body over the size cap", () 
     }),
   );
   assert.equal(result.ok, false);
+  assert.match(result.error, /exceeds the field size limit/);
+});
+
+// #6672: the raw-body byte cap itself is now sized for a full batch
+// (CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE payloads), not a single payload -- a
+// body genuinely over THAT is rejected before JSON.parse is even attempted.
+test("validateChainFirehoseIngestPayload: rejects a raw body over the batch-scaled byte cap", () => {
+  const oversizedRaw = "x".repeat(
+    CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES *
+      CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE +
+      1,
+  );
+  const result = validateChainFirehoseIngestPayload(oversizedRaw);
+  assert.equal(result.ok, false);
+  assert.match(result.error, /exceeds \d+ bytes/);
 });
 
 test("validateChainFirehoseIngestPayload: null fields are accepted (skipped)", () => {
@@ -533,6 +595,31 @@ test("ChainFirehoseHub.handleIngest: 202s and broadcasts a valid payload", async
   assert.equal(res.status, 202);
   assert.deepEqual(await res.json(), { ok: true });
   assert.equal(broadcast.block_number, 42);
+});
+
+// #6672: a batch-array body broadcasts every element, in order, sequentially.
+test("ChainFirehoseHub.handleIngest: 202s and broadcasts every element of a batch payload, in order", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const broadcasts = [];
+  hub.broadcast = async (payload) => {
+    broadcasts.push(payload);
+  };
+  const res = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/ingest", {
+      method: "POST",
+      body: JSON.stringify([
+        { table: "blocks", block_number: 1 },
+        { table: "blocks", block_number: 2 },
+        { table: "blocks", block_number: 3 },
+      ]),
+    }),
+  );
+  assert.equal(res.status, 202);
+  assert.deepEqual(await res.json(), { ok: true });
+  assert.deepEqual(
+    broadcasts.map((p) => p.block_number),
+    [1, 2, 3],
+  );
 });
 
 test("ChainFirehoseHub /subscribe (SSE): responds with a text/event-stream and an initial comment frame", async () => {

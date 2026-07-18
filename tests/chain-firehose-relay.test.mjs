@@ -43,11 +43,13 @@ import {
   CHAIN_FIREHOSE_DROP_REPORT_INTERVAL_MS,
   CHAIN_FIREHOSE_DROP_REPORT_THRESHOLD,
   CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS,
+  CHAIN_FIREHOSE_INGEST_BATCH_SIZE,
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS,
   CHAIN_FIREHOSE_MAX_RATE_LIMIT_PAUSE_MS,
   CHAIN_FIREHOSE_POLL_BATCH_SIZE,
   CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S,
+  chunkRows,
   computeBackoffDelayMs,
   computeBatchPaceDelayMs,
   computeDropWindowUpdate,
@@ -63,6 +65,33 @@ import {
   reportRateLimitPause,
   touchHeartbeat,
 } from "../scripts/chain-firehose-relay.mjs";
+import { CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE } from "../workers/chain-firehose-hub.mjs";
+
+// #6672: this script deploys standalone (see CHAIN_FIREHOSE_INGEST_BATCH_SIZE's
+// own comment) and can't import workers/chain-firehose-hub.mjs at runtime, so
+// nothing at the source level stops these two constants drifting apart --
+// this cross-file test is the only thing that does. A batch this relay sends
+// larger than the Worker accepts would 400 on every request.
+test("CHAIN_FIREHOSE_INGEST_BATCH_SIZE matches the Worker's CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE", () => {
+  assert.equal(
+    CHAIN_FIREHOSE_INGEST_BATCH_SIZE,
+    CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE,
+  );
+});
+
+// --- chunkRows ------------------------------------------------------------------
+
+test("chunkRows: splits into groups of at most `size`, preserving order", () => {
+  assert.deepEqual(chunkRows([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]]);
+});
+
+test("chunkRows: a single chunk when items.length <= size", () => {
+  assert.deepEqual(chunkRows([1, 2], 5), [[1, 2]]);
+});
+
+test("chunkRows: an empty array yields no chunks", () => {
+  assert.deepEqual(chunkRows([], 5), []);
+});
 
 // --- mapBounded ---------------------------------------------------------------
 
@@ -382,56 +411,87 @@ test("forwardWithRetry: never sleeps after the final attempt (no wasted delay be
 
 // --- forwardBatch --------------------------------------------------------------
 
-test("forwardBatch: forwards every row concurrently, JSON-stringifying the already-parsed payload", async () => {
-  const seen = new Set();
-  const rows = [
-    { id: 1, payload: { table: "blocks", block_number: 1 } },
-    { id: 2, payload: { table: "blocks", block_number: 2 } },
-  ];
+test("forwardBatch: groups rows into CHAIN_FIREHOSE_INGEST_BATCH_SIZE-sized chunks, one POST body (JSON array) per chunk", async () => {
+  const seenBodies = [];
+  // One row over a full chunk, so this exercises exactly 2 chunks: one full
+  // (CHAIN_FIREHOSE_INGEST_BATCH_SIZE rows) and one with the remainder (1 row).
+  const rows = Array.from(
+    { length: CHAIN_FIREHOSE_INGEST_BATCH_SIZE + 1 },
+    (_, i) => ({ id: i, payload: { table: "blocks", block_number: i } }),
+  );
   const result = await forwardBatch(
     rows,
     { ingestUrl: "u", syncSecret: "s" },
     {
       fetchImpl: async (_url, init) => {
-        seen.add(init.body);
+        seenBodies.push(JSON.parse(init.body));
         return new Response("{}", { status: 202 });
       },
       sleepImpl: async () => {},
     },
   );
-  assert.equal(result.forwarded, 2);
+  assert.equal(result.forwarded, rows.length);
   assert.equal(result.dropped, 0);
-  // Concurrent dispatch (CHAIN_FIREHOSE_FORWARD_CONCURRENCY), not strictly
-  // sequential -- assert both were sent, not the order they arrived in.
-  assert.deepEqual(
-    [...seen].sort(),
-    [
-      '{"table":"blocks","block_number":1}',
-      '{"table":"blocks","block_number":2}',
-    ].sort(),
+  assert.equal(seenBodies.length, 2);
+  const sizes = seenBodies.map((body) => body.length).sort((a, b) => a - b);
+  assert.deepEqual(sizes, [1, CHAIN_FIREHOSE_INGEST_BATCH_SIZE]);
+  // Every chunk body is a JSON array of the ALREADY-PARSED payload objects
+  // (not the row wrapper), same shape validateChainFirehoseIngestPayload's
+  // batch branch expects.
+  const fullChunk = seenBodies.find(
+    (body) => body.length === CHAIN_FIREHOSE_INGEST_BATCH_SIZE,
   );
+  assert.equal(fullChunk[0].table, "blocks");
+  assert.equal(typeof fullChunk[0].block_number, "number");
 });
 
-test("forwardBatch: counts a row dropped after exhausting retries separately from forwarded rows", async () => {
+test("forwardBatch: a chunk dropped after exhausting retries drops EVERY row in that chunk together", async () => {
+  // Two single-row chunks (batch size 1) is the smallest case that isolates
+  // "one chunk fails, the other succeeds" without depending on
+  // CHAIN_FIREHOSE_INGEST_BATCH_SIZE's real value.
   const rows = [
     { id: 1, payload: { table: "blocks", block_number: 1 } }, // always fails
     { id: 2, payload: { table: "blocks", block_number: 2 } }, // always succeeds
   ];
+  const dropped = [];
   const result = await forwardBatch(
     rows,
     { ingestUrl: "u", syncSecret: "s" },
     {
-      // Keyed by payload body, not a shared call counter -- rows forward
+      chunkSize: 1,
+      // Keyed by payload body, not a shared call counter -- chunks forward
       // concurrently, so interleaving between the two isn't deterministic.
       fetchImpl: async (_url, init) =>
         new Response("{}", {
           status: init.body.includes('"block_number":1') ? 500 : 202,
         }),
       sleepImpl: async () => {},
+      onDrop: (payload) => dropped.push(payload.block_number),
     },
   );
   assert.equal(result.forwarded, 1);
   assert.equal(result.dropped, 1);
+  assert.deepEqual(dropped, [1]);
+});
+
+test("forwardBatch: a dropped multi-row chunk fires onDrop once per row in that chunk, not once per chunk", async () => {
+  const rows = [
+    { id: 1, payload: { table: "blocks", block_number: 1 } },
+    { id: 2, payload: { table: "blocks", block_number: 2 } },
+  ];
+  const dropped = [];
+  const result = await forwardBatch(
+    rows,
+    { ingestUrl: "u", syncSecret: "s" },
+    {
+      fetchImpl: async () => new Response("{}", { status: 500 }),
+      sleepImpl: async () => {},
+      onDrop: (payload) => dropped.push(payload.block_number),
+    },
+  );
+  assert.equal(result.forwarded, 0);
+  assert.equal(result.dropped, 2);
+  assert.deepEqual(dropped.sort(), [1, 2]);
 });
 
 test("forwardBatch: an empty batch forwards nothing and drops nothing", async () => {
@@ -640,7 +700,7 @@ test("forwardWithRetry: a 429 followed by a thrown network error does not leak t
 
 // --- forwardBatch: rate-limit aggregation ------------------------------------
 
-test("forwardBatch: surfaces rateLimitedForMs as the MAX pause seen across the batch's rows", async () => {
+test("forwardBatch: surfaces rateLimitedForMs as the MAX pause seen across the batch's chunks", async () => {
   const rows = [
     { id: 1, payload: { table: "blocks", block_number: 1 } },
     { id: 2, payload: { table: "blocks", block_number: 2 } },
@@ -649,6 +709,7 @@ test("forwardBatch: surfaces rateLimitedForMs as the MAX pause seen across the b
     rows,
     { ingestUrl: "u", syncSecret: "s" },
     {
+      chunkSize: 1, // isolate 2 separate chunks/requests, one per row
       fetchImpl: async (_url, init) =>
         new Response("{}", {
           status: 429,
