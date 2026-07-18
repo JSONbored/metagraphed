@@ -46,6 +46,25 @@ const GRANDFATHERED_DUPLICATE_URLS = new Set([
   "8-ball.json|https://github.com/Barbariandev/8Ball_miner",
 ]);
 
+// Cross-file counterpart of the check above (#6328). The within-file check only
+// sees one document at a time, so the same URL claimed by two DIFFERENT netuids
+// sailed through — e.g. SN48 and SN63 both registered qbittensorlabs.com/api/health
+// as their own subnet-api, double-counting one endpoint as two subnets' coverage.
+//
+// A shared URL is legitimate when one operator genuinely runs several subnets and
+// the surface describes the operator rather than the subnet (a corporate website,
+// a monorepo). Those live here, keyed by normalized URL. Anything else is an
+// error: an endpoint that serves a specific subnet cannot also be another
+// subnet's endpoint.
+const SHARED_OPERATOR_URLS = new Map([
+  [
+    "https://www.qbittensorlabs.com/",
+    "qBittensor Labs operates both SN48 (Quantum Compute) and SN63 (Enigma); " +
+      "the corporate site is the operator's, so each subnet registering it as " +
+      "its own `website` is accurate.",
+  ],
+]);
+
 // Reviewed-tier authorship convention + its acknowledged exemptions (#5739).
 // Files at the `maintainer-reviewed` / `adapter-backed` curation tier normally
 // pair a non-null `curation.verified_at` with their `reviewed_at` and carry a
@@ -117,6 +136,9 @@ const errors = [];
 const conventionAdvisories = [];
 const conventionExemptions = [];
 const authAdvisories = [];
+// normalized url -> [{ file, netuid, id, authority }] across every file in this
+// run, for the cross-file duplicate check (#6328) after the loop.
+const crossFileRegistrations = new Map();
 let surfaceCount = 0;
 for (const file of files) {
   let document;
@@ -158,6 +180,14 @@ for (const file of files) {
         const ids = surfaceIdsByUrl.get(normalized) || [];
         ids.push(surface.id);
         surfaceIdsByUrl.set(normalized, ids);
+        const registrations = crossFileRegistrations.get(normalized) || [];
+        registrations.push({
+          file: path.basename(file),
+          netuid: document.netuid,
+          id: surface.id,
+          authority: surface.authority,
+        });
+        crossFileRegistrations.set(normalized, registrations);
       }
     }
     if (surface.provider && !providerIds.has(surface.provider)) {
@@ -268,6 +298,29 @@ for (const file of files) {
         );
       }
     }
+  }
+}
+
+// Cross-file duplicate URLs (#6328). Only meaningful over a full run: a
+// single-file invocation (`validate:surface -- registry/subnets/x.json`) can
+// only see its own document, so it cannot judge what another netuid claims.
+if (files.length > 1) {
+  for (const [normalizedUrl, registrations] of crossFileRegistrations) {
+    const netuids = [...new Set(registrations.map((entry) => entry.netuid))];
+    if (netuids.length < 2) continue;
+    if (SHARED_OPERATOR_URLS.has(normalizedUrl)) continue;
+    const claims = registrations
+      .map(
+        (entry) => `${entry.file} (${entry.id}, authority=${entry.authority})`,
+      )
+      .join(", ");
+    errors.push(
+      `"${normalizedUrl}" is registered by ${netuids.length} different netuids (${netuids.join(", ")}): ${claims} — ` +
+        "one endpoint cannot be two subnets' surface. Point each subnet at its own " +
+        "endpoint, or -- if this URL describes the shared operator rather than a " +
+        "subnet (a corporate site, a monorepo) -- add it to SHARED_OPERATOR_URLS " +
+        "with the reason.",
+    );
   }
 }
 
