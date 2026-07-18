@@ -46,6 +46,19 @@ const GRANDFATHERED_DUPLICATE_URLS = new Set([
   "8-ball.json|https://github.com/Barbariandev/8Ball_miner",
 ]);
 
+// Cross-file counterpart to GRANDFATHERED_DUPLICATE_URLS, for the check below
+// (#6328): a normalized URL explicitly allowed to be claimed by 2+ distinct
+// netuids' surfaces, because one operator genuinely runs multiple subnets
+// from shared infrastructure (a single corporate site, a monorepo) — the
+// surface describes the operator, not any one subnet. Confirmed from the
+// resource's own content/structure, not a live probe.
+const SHARED_OPERATOR_URLS = new Set([
+  // qBittensor Labs' single corporate site legitimately fronts both SN48
+  // (Quantum Compute) and SN63 (Enigma) — its own nav/body copy names both
+  // ("SN48: Quantum" / "SN63: Enigma") (#6328).
+  "https://www.qbittensorlabs.com/",
+]);
+
 // Reviewed-tier authorship convention + its acknowledged exemptions (#5739).
 // Files at the `maintainer-reviewed` / `adapter-backed` curation tier normally
 // pair a non-null `curation.verified_at` with their `reviewed_at` and carry a
@@ -118,6 +131,10 @@ const conventionAdvisories = [];
 const conventionExemptions = [];
 const authAdvisories = [];
 let surfaceCount = 0;
+// #6328: normalized URL -> claimant locations, across ALL files in this run
+// (unlike surfaceIdsByUrl below, which resets per-file). Populated in the
+// per-surface loop, checked once after every file has been processed.
+const surfaceLocationsByUrl = new Map();
 for (const file of files) {
   let document;
   try {
@@ -155,6 +172,13 @@ for (const file of files) {
     if (surface.url) {
       const normalized = normalizePublicUrl(surface.url);
       if (normalized) {
+        const locations = surfaceLocationsByUrl.get(normalized) || [];
+        locations.push({
+          file: path.basename(file),
+          id: surface.id,
+          netuid: document.netuid,
+        });
+        surfaceLocationsByUrl.set(normalized, locations);
         const ids = surfaceIdsByUrl.get(normalized) || [];
         ids.push(surface.id);
         surfaceIdsByUrl.set(normalized, ids);
@@ -267,6 +291,33 @@ for (const file of files) {
             "self-referential/pilot manifest.",
         );
       }
+    }
+  }
+}
+
+// #6328: cross-file counterpart to the within-file duplicate-URL check above
+// (#5737) — that one only ever sees one document at a time, so an identical
+// URL copy-pasted into TWO subnet files under different netuids slips past
+// it. Only meaningful on a multi-file run: a single-file
+// `validate:surface -- registry/subnets/x.json` invocation can't see what
+// another netuid claims, so it's skipped rather than false-negative-guessed
+// — `npm run validate` (no file args) always covers it.
+if (files.length > 1) {
+  for (const [normalizedUrl, locations] of surfaceLocationsByUrl) {
+    if (SHARED_OPERATOR_URLS.has(normalizedUrl)) continue;
+    const netuids = new Set(locations.map((location) => location.netuid));
+    if (netuids.size > 1) {
+      const claimants = locations
+        .map(
+          (location) =>
+            `${location.file} (${location.id}, netuid=${location.netuid})`,
+        )
+        .join("; ");
+      errors.push(
+        `Cross-file duplicate: "${normalizedUrl}" is registered by ${locations.length} surface(s) across ${netuids.size} distinct netuids — ${claimants}. ` +
+          "Fix one to a true per-subnet endpoint, remove/reclassify it from the subnet that doesn't own it, or add it to " +
+          "SHARED_OPERATOR_URLS if one operator genuinely runs multiple subnets from shared infrastructure.",
+      );
     }
   }
 }

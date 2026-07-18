@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 557,
+  "surface_count": 556,
   "surfaces": [
     {
       "auth_required": false,
@@ -3521,24 +3521,6 @@
       "surface_id": "sn-47-evolai-validator-config",
       "surface_key": "srf-a9a24073adcde815",
       "url": "https://raw.githubusercontent.com/openevolai/evolai/4cc0040eca74e3541178661ce8b5dd29fa2d343a/evolai/validator/config.py"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 48,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "qbittensor-labs",
-      "public_safe": true,
-      "subnet_name": "Quantum Compute",
-      "subnet_slug": "sn-48",
-      "surface_id": "sn-48-quantum-compute-health-api",
-      "surface_key": "srf-e10c57f6c6431dfe",
-      "url": "https://www.qbittensorlabs.com/api/health"
     },
     {
       "auth_required": false,

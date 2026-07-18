@@ -22,7 +22,7 @@
   "dashboard_url": "https://taomarketcap.com/subnets/48",
   "name": "Quantum Compute",
   "netuid": 48,
-  "notes": "Reviewed overlay for SN48 using the official qBittensor Labs website and Quantum Compute source repository. This pass fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Re-checked for an OpenAPI schema (qbittensorlabs.com and openquantum.com both without one) -- gap_notes remain accurate. All 5 surfaces re-verified live.",
+  "notes": "Reviewed overlay for SN48 using the official qBittensor Labs website and Quantum Compute source repository. This pass fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Re-checked for an OpenAPI schema (qbittensorlabs.com and openquantum.com both without one) -- gap_notes remain accurate. All 4 surfaces re-verified live. Dropped the qbittensorlabs.com/api/health surface (#6328): it's a generic site-liveness ping (byte-identical {\"status\":\"ok\"} response, same ETag, served on both www.qbittensorlabs.com and www.openquantum.com) carrying no subnet-specific data, and the quantum-compute repository never references qbittensorlabs.com as SN48's own domain -- kept exclusively on enigma.json (SN63), whose repository does.",
   "schema_version": 1,
   "slug": "sn-48",
   "social": {
@@ -66,31 +66,6 @@
       "public_safe": true,
       "source_urls": ["https://github.com/qbittensor-labs/quantum-compute"],
       "url": "https://github.com/qbittensor-labs/quantum-compute"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "id": "sn-48-quantum-compute-health-api",
-      "kind": "subnet-api",
-      "name": "Quantum Compute health API",
-      "notes": "Public no-auth GET /api/health on www.qbittensorlabs.com returning JSON liveness (observed: {\"status\":\"ok\"}). Served on the official qBittensor Labs website host alongside the existing website and source-repo surfaces for SN48.",
-      "probe": {
-        "enabled": true,
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "qbittensor-labs",
-      "public_safe": true,
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "kiannidev"
-      },
-      "source_urls": [
-        "https://github.com/qbittensor-labs/quantum-compute",
-        "https://www.qbittensorlabs.com/"
-      ],
-      "url": "https://www.qbittensorlabs.com/api/health"
     },
     {
       "auth_required": false,
