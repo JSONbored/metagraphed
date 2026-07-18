@@ -77,6 +77,16 @@ export const INGESTED_EVENT_KINDS = [
   "Endowed",
   "DustLost",
   "Issued",
+  // Subnet leasing (#6718, pallet_subtensor::subnets::leasing) + the standalone Crowdloan
+  // pallet it's built on -- a crowdfunded, time-boxed primary market for NEW subnets,
+  // distinct from SubnetOwnerHotkeySet (an existing subnet changing hands).
+  "SubnetLeaseCreated",
+  "SubnetLeaseTerminated",
+  "SubnetLeaseDividendsDistributed",
+  // Crowdloan.Created is deliberately excluded (matches indexer-rs's extract() -- it
+  // declares a cap/end with no tao moved yet, so there's no account amount to curate).
+  "Contributed",
+  "Withdrew",
 ];
 
 export const SUBNET_EVENT_SUMMARY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
@@ -123,6 +133,13 @@ const EVENT_KIND_CATEGORIES = {
   Endowed: "transfer",
   DustLost: "transfer",
   Issued: "transfer",
+  // Subnet leasing/crowdloan (#6718) -- same bucket as SubnetOwnerHotkeySet/BurnSet:
+  // who controls/creates a subnet is a governance-adjacent concern.
+  SubnetLeaseCreated: "governance",
+  SubnetLeaseTerminated: "governance",
+  SubnetLeaseDividendsDistributed: "governance",
+  Contributed: "governance",
+  Withdrew: "governance",
 };
 
 function toIso(ms) {

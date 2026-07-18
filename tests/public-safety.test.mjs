@@ -510,6 +510,45 @@ describe("captured-fixture body scan", () => {
     );
   });
 
+  test("allows Rust field-access + method-call syntax on a coldkey field (#6718)", async () => {
+    // ext.coldkey.is_some() / .clone() / .unwrap() -- Rust has no `?.` operator,
+    // so the existing coldkey?. optional-chaining exemption (TS/JS-specific)
+    // doesn't cover this extremely common Option-field-check idiom in
+    // apps/indexer-rs's own test code.
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      [
+        "assert!(ext.coldkey.is_some());",
+        "let c = row.coldkey.clone();",
+        "let c = row.coldkey.unwrap();",
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_PUBLIC_FILE),
+      false,
+      `coldkey.method() Rust syntax should be exempt; got:\n${output}`,
+    );
+  });
+
+  test("does not let 'coldkey.' followed by prose (not a real method call) slip past", async () => {
+    // The new coldkey.[a-z_]+( allowance requires an opening paren -- a
+    // capitalized word or a word with no trailing paren after "coldkey." must
+    // still be flagged, so this can't be used to smuggle real prose past the
+    // guard by appending an unrelated identifier after a dot.
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      "The coldkey.owner field should never be logged in plaintext.\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:1: Bittensor key terminology`),
+      `prose after "coldkey." without a real method call must still be flagged; got:\n${output}`,
+    );
+  });
+
   test("flags hyphenated/compound wallet-key wording a literal-space regex would miss", async () => {
     await fs.writeFile(
       TEST_PUBLIC_PATH,

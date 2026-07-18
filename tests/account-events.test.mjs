@@ -84,6 +84,44 @@ test("INGESTED_EVENT_KINDS accepts the kinds found by the 2026-07-14/15 exhausti
   }
 });
 
+test("INGESTED_EVENT_KINDS accepts subnet leasing + crowdloan kinds (#6718)", () => {
+  for (const kind of [
+    "SubnetLeaseCreated",
+    "SubnetLeaseTerminated",
+    "SubnetLeaseDividendsDistributed",
+    "Contributed",
+    "Withdrew",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
+test("buildSubnetEventSummary categorizes subnet leasing + crowdloan kinds as governance, not other (#6718)", () => {
+  const out = buildSubnetEventSummary(
+    [
+      { event_kind: "SubnetLeaseCreated", event_count: 4 },
+      { event_kind: "SubnetLeaseTerminated", event_count: 1 },
+      { event_kind: "SubnetLeaseDividendsDistributed", event_count: 6 },
+      { event_kind: "Contributed", event_count: 9 },
+      { event_kind: "Withdrew", event_count: 2 },
+    ],
+    [],
+    7,
+  );
+  const byKind = Object.fromEntries(
+    out.event_kinds.map((row) => [row.event_kind, row.category]),
+  );
+  assert.equal(byKind.SubnetLeaseCreated, "governance");
+  assert.equal(byKind.SubnetLeaseTerminated, "governance");
+  assert.equal(byKind.SubnetLeaseDividendsDistributed, "governance");
+  assert.equal(byKind.Contributed, "governance");
+  assert.equal(byKind.Withdrew, "governance");
+  assert.ok(
+    !out.categories.some((row) => row.category === "other"),
+    "none of these kinds should fall into the other category",
+  );
+});
+
 test("buildSubnetEventSummary categorizes the newly-added kinds instead of dumping them in other (2026-07-14/15 audit fix)", () => {
   const out = buildSubnetEventSummary(
     [

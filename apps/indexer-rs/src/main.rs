@@ -827,6 +827,80 @@ fn extract(kind: &str, f: &[&Value<()>]) -> Option<Ext> {
             amount_tao: nth(f, 0).and_then(tao_str),
             ..none
         }),
+        // --- subnet leasing (#6718, pallet_subtensor::subnets::leasing) + the standalone
+        // Crowdloan pallet it's built on (per opentensor/subtensor's leasing.rs / crowdloan
+        // pallet's lib.rs, verified against live source 2026-07-18). A crowdfunded,
+        // time-boxed primary market for NEW subnets -- distinct from the
+        // already-curated subnet-ownership-CONTEST events (an existing subnet changing
+        // hands), which this doesn't touch.
+
+        // SubnetLeaseCreated { beneficiary, lease_id, netuid, end_block } —
+        //   a0=beneficiary (coldkey), a2=netuid. lease_id (a1) and end_block (a3,
+        //   Option<BlockNumber>) not curated (no dedicated column).
+        "SubnetLeaseCreated" => {
+            if f.len() < 3 {
+                return None;
+            }
+            Some(Ext {
+                coldkey: acct(f[0]),
+                netuid: nth(f, 2).and_then(idx_of),
+                ..none
+            })
+        }
+        // SubnetLeaseTerminated { beneficiary, netuid } — a0=beneficiary (coldkey), a1=netuid.
+        "SubnetLeaseTerminated" => {
+            if f.len() < 2 {
+                return None;
+            }
+            Some(Ext {
+                coldkey: acct(f[0]),
+                netuid: nth(f, 1).and_then(idx_of),
+                ..none
+            })
+        }
+        // SubnetLeaseDividendsDistributed { lease_id, contributor, alpha } —
+        //   a1=contributor (coldkey), a2=alpha (alpha_amount). lease_id (a0) not curated;
+        //   no netuid on this event directly -- resolving lease_id -> netuid needs a live
+        //   SubnetUidToLeaseId storage lookup, which this positional-only decoder
+        //   deliberately never does (same reasoning StakeSwapped/StakeTransferred already
+        //   apply to their own not-fully-curated fields).
+        "SubnetLeaseDividendsDistributed" => {
+            if f.len() < 3 {
+                return None;
+            }
+            Some(Ext {
+                coldkey: acct(f[1]),
+                alpha_amount: tao_str(f[2]),
+                ..none
+            })
+        }
+        // Crowdloan.Contributed { crowdloan_id, contributor, amount } —
+        //   a1=contributor (coldkey), a2=amount (TAO). crowdloan_id (a0) not curated (no
+        //   netuid equivalent -- a crowdloan can target a not-yet-created subnet). Deliberately
+        //   NOT curating Crowdloan.Created here: it declares a cap/end, no tao actually moves
+        //   until a Contributed follows, so there's no amount to attribute to an account yet.
+        "Contributed" => {
+            if f.len() < 3 {
+                return None;
+            }
+            Some(Ext {
+                coldkey: acct(f[1]),
+                amount_tao: tao_str(f[2]),
+                ..none
+            })
+        }
+        // Crowdloan.Withdrew { crowdloan_id, contributor, amount } — same shape as Contributed
+        // (a contributor pulling their own funds back before finalization).
+        "Withdrew" => {
+            if f.len() < 3 {
+                return None;
+            }
+            Some(Ext {
+                coldkey: acct(f[1]),
+                amount_tao: tao_str(f[2]),
+                ..none
+            })
+        }
         _ => None,
     }
 }
@@ -1044,7 +1118,9 @@ async fn decode_block(api: &Api, height: u64, head: u64) -> Result<DecodedBlock>
     // --- account_events rows (py event_rows_for_events / decode_head)
     let mut event_rows = Vec::new();
     for e in &decoded_events {
-        if e.pallet != "SubtensorModule" && e.pallet != "Balances" {
+        // Crowdloan (#6718): a standalone pallet (pallets/crowdloan/src/lib.rs), not a
+        // SubtensorModule submodule like subnet leasing -- needs its own name here.
+        if e.pallet != "SubtensorModule" && e.pallet != "Balances" && e.pallet != "Crowdloan" {
             continue;
         }
         let f = ordered_fields(&e.fields);
@@ -2153,5 +2229,116 @@ mod netuid_plausibility_tests {
         let revealed = extract("CRV3WeightsRevealed", &revealed_fields)
             .expect("CRV3WeightsRevealed always decodes with >= 2 fields");
         assert_eq!(revealed.netuid, None);
+    }
+}
+
+#[cfg(test)]
+mod subnet_leasing_and_crowdloan_tests {
+    use super::*;
+
+    fn prim_u128(n: u128) -> Value<()> {
+        Value {
+            value: ValueDef::Primitive(Primitive::U128(n)),
+            context: (),
+        }
+    }
+
+    // AccountId32 = newtype over [u8;32] -> Unnamed([ Unnamed([u8;32]) ]), matching
+    // netuid_plausibility_tests' own account_value helper.
+    fn account_value(byte0: u8) -> Value<()> {
+        let mut bytes = vec![prim_u128(byte0 as u128)];
+        bytes.extend((1..32).map(|_| prim_u128(0)));
+        Value {
+            value: ValueDef::Composite(Composite::Unnamed(vec![Value {
+                value: ValueDef::Composite(Composite::Unnamed(bytes)),
+                context: (),
+            }])),
+            context: (),
+        }
+    }
+
+    #[test]
+    fn subnet_lease_created_curates_beneficiary_and_netuid() {
+        let beneficiary = account_value(0x11);
+        let lease_id = prim_u128(7);
+        let netuid = prim_u128(42);
+        let fields: Vec<&Value<()>> = vec![&beneficiary, &lease_id, &netuid];
+        let ext = extract("SubnetLeaseCreated", &fields)
+            .expect("SubnetLeaseCreated always decodes with >= 3 fields");
+        assert!(ext.coldkey.is_some());
+        assert_eq!(ext.netuid, Some(42));
+        assert_eq!(ext.amount_tao, None);
+    }
+
+    #[test]
+    fn subnet_lease_terminated_curates_beneficiary_and_netuid() {
+        let beneficiary = account_value(0x22);
+        let netuid = prim_u128(9);
+        let fields: Vec<&Value<()>> = vec![&beneficiary, &netuid];
+        let ext = extract("SubnetLeaseTerminated", &fields)
+            .expect("SubnetLeaseTerminated always decodes with >= 2 fields");
+        assert!(ext.coldkey.is_some());
+        assert_eq!(ext.netuid, Some(9));
+    }
+
+    #[test]
+    fn subnet_lease_dividends_distributed_curates_contributor_and_alpha_not_netuid() {
+        let lease_id = prim_u128(3);
+        let contributor = account_value(0x33);
+        // 1.5 alpha in rao-equivalent units, matching tao_str's fixed-point convention.
+        let alpha = prim_u128(1_500_000_000);
+        let fields: Vec<&Value<()>> = vec![&lease_id, &contributor, &alpha];
+        let ext = extract("SubnetLeaseDividendsDistributed", &fields)
+            .expect("SubnetLeaseDividendsDistributed always decodes with >= 3 fields");
+        assert!(ext.coldkey.is_some());
+        assert_eq!(ext.alpha_amount, Some("1.5".to_string()));
+        assert_eq!(ext.netuid, None);
+    }
+
+    #[test]
+    fn crowdloan_contributed_curates_contributor_and_amount_not_crowdloan_id() {
+        let crowdloan_id = prim_u128(1);
+        let contributor = account_value(0x44);
+        let amount = prim_u128(10_000_000_000); // 10 TAO
+        let fields: Vec<&Value<()>> = vec![&crowdloan_id, &contributor, &amount];
+        let ext =
+            extract("Contributed", &fields).expect("Contributed always decodes with >= 3 fields");
+        assert!(ext.coldkey.is_some());
+        assert_eq!(ext.amount_tao, Some("10".to_string()));
+        assert_eq!(ext.netuid, None);
+    }
+
+    #[test]
+    fn crowdloan_withdrew_curates_contributor_and_amount() {
+        let crowdloan_id = prim_u128(1);
+        let contributor = account_value(0x55);
+        let amount = prim_u128(2_500_000_000); // 2.5 TAO
+        let fields: Vec<&Value<()>> = vec![&crowdloan_id, &contributor, &amount];
+        let ext = extract("Withdrew", &fields).expect("Withdrew always decodes with >= 3 fields");
+        assert!(ext.coldkey.is_some());
+        assert_eq!(ext.amount_tao, Some("2.5".to_string()));
+    }
+
+    #[test]
+    fn crowdloan_created_is_not_curated_into_account_events() {
+        // Created only declares a cap/end -- no tao has moved yet, so there's
+        // nothing to attribute to an account. Confirms the deliberate omission
+        // documented on extract()'s Crowdloan.Contributed arm.
+        let crowdloan_id = prim_u128(1);
+        let creator = account_value(0x66);
+        let end = prim_u128(9_000_000);
+        let cap = prim_u128(50_000_000_000);
+        let fields: Vec<&Value<()>> = vec![&crowdloan_id, &creator, &end, &cap];
+        assert!(extract("Created", &fields).is_none());
+    }
+
+    #[test]
+    fn underfilled_fields_return_none_not_a_panic() {
+        let only_one = account_value(0x77);
+        let fields: Vec<&Value<()>> = vec![&only_one];
+        assert!(extract("SubnetLeaseCreated", &fields).is_none());
+        assert!(extract("SubnetLeaseDividendsDistributed", &fields).is_none());
+        assert!(extract("Contributed", &fields).is_none());
+        assert!(extract("Withdrew", &fields).is_none());
     }
 }

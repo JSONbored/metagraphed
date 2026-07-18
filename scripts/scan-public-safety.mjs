@@ -248,8 +248,17 @@ const patterns = [
     // (coldkey/netuid, per-hotkey/per-coldkey) or followed by an explanatory
     // parenthetical (stored in coldkey (the account...)) -- both common in
     // Rust/SQL comments describing the data model, not suspicious wording.
+    //
+    // Extended again (#6718): Rust's OWN field-access + method-call syntax
+    // (ext.coldkey.is_some(), .coldkey.clone(), .coldkey.unwrap()) wasn't
+    // covered by the coldkey?. optional-chaining case above -- that's TS/JS
+    // syntax specifically, and Rust has no `?.` operator, so every Option-field
+    // check on a real Ext/EventRow struct in apps/indexer-rs's own test code
+    // (an extremely common idiom, not a one-off) false-positived. `coldkey\.` +
+    // a lowercase identifier + `(` matches the method-call shape without
+    // loosening the bare `\bcoldkey\b` trigger itself.
     allow:
-      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bcoldkey\?\.|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b|TEXT|VARCHAR|CHAR|INTEGER|BIGINT|NUMERIC|BOOLEAN)\b|'coldkey'|\bcoldkey\s*\/\s*[a-z_]+\b|\b[a-z_]+\s*\/\s*coldkey\b|\b[a-z]+-coldkey\b|\bcoldkey\s*\(/gi,
+      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bcoldkey\?\.|\bcoldkey\.[a-z_]+\(|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b|TEXT|VARCHAR|CHAR|INTEGER|BIGINT|NUMERIC|BOOLEAN)\b|'coldkey'|\bcoldkey\s*\/\s*[a-z_]+\b|\b[a-z_]+\s*\/\s*coldkey\b|\b[a-z]+-coldkey\b|\bcoldkey\s*\(/gi,
     soft: true,
   },
   {
