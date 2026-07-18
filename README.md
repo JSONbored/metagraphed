@@ -127,7 +127,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 
 **129 curated subnets** — 118 with a site, 47 with docs, 118 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
-**Focus areas:** `compute` 9 · `data` 7 · `defi` 7 · `inference` 5 · `language-models` 4 · `computer-vision` 3 · `finance` 3 · `dashboard` 2 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `distributed-training` 2
+**Focus areas:** `compute` 9 · `data` 7 · `defi` 7 · `inference` 5 · `language-models` 4 · `prediction-markets` 4 · `computer-vision` 3 · `finance` 3 · `dashboard` 2 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2
 
 - **[root](https://metagraph.sh/subnets/0)** `SN0` — `chain-rpc` · [site](https://bittensor.com) · [docs](https://docs.learnbittensor.org/concepts/bittensor-networks) · [repo](https://github.com/opentensor/subtensor)
 - **[Apex](https://metagraph.sh/subnets/1)** `SN1` · [site](https://apex.macrocosmos.ai/) · [docs](https://docs.macrocosmos.ai/subnets/subnet-1-apex) · [repo](https://github.com/macrocosm-os/apex)
@@ -186,7 +186,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Yanez MIID](https://metagraph.sh/subnets/54)** `SN54` — `compliance` `synthetic-data` · [site](https://www.yanez.ai/) · [repo](https://github.com/yanez-compliance/MIID-subnet)
 - **[NIOME](https://metagraph.sh/subnets/55)** `SN55` — `genomics` `synthetic-data` · [site](https://niome.genomes.io/) · [repo](https://github.com/genomesio/subnet-niome)
 - **[Gradients](https://metagraph.sh/subnets/56)** `SN56` — `ai-training` `operational-interface` · [site](https://www.gradients.io/) · [docs](https://api.gradients.io/docs) · [repo](https://github.com/gradients-ai/G.O.D)
-- **[Sparket](https://metagraph.sh/subnets/57)** `SN57` — `prediction-market` `sports` · [site](https://sparket.ai/) · [repo](https://github.com/sparket-ai/sparket-ai)
+- **[Sparket](https://metagraph.sh/subnets/57)** `SN57` — `prediction-markets` `sports` · [site](https://sparket.ai/) · [repo](https://github.com/sparket-ai/sparket-ai)
 - **[Handshake58](https://metagraph.sh/subnets/58)** `SN58` — `ai-marketplace` `payments` · [site](https://handshake58.com) · [docs](https://handshake58.com/skill.md) · [repo](https://github.com/Handshake58/HS58-subnet)
 - **[Babelbit](https://metagraph.sh/subnets/59)** `SN59` — `language` · [site](https://babelbit.ai/) · [repo](https://github.com/babelbit/babelbit_subnet)
 - **[Bitsec](https://metagraph.sh/subnets/60)** `SN60` — `security` · [site](https://bitsec.ai/) · [repo](https://github.com/Bitsec-AI/sandbox)
@@ -254,7 +254,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Bitrecs](https://metagraph.sh/subnets/122)** `SN122` — `recommendations` · [site](https://www.bitrecs.ai/) · [docs](https://bitrecs.gitbook.io/bitrecs-docs/) · [repo](https://github.com/bitrecs/bitrecs-subnet)
 - **[MANTIS](https://metagraph.sh/subnets/123)** `SN123` — `sdk` · [site](https://mantis123.com/) · [repo](https://github.com/Barbariandev/MANTIS)
 - **[Swarm](https://metagraph.sh/subnets/124)** `SN124` — `robotics` · [site](https://swarm124.com/) · [repo](https://github.com/swarm-subnet/swarm)
-- **[8 Ball](https://metagraph.sh/subnets/125)** `SN125` — `prediction-market` · [site](https://8ball125.com/) · [docs](https://github.com/Barbariandev/8Ball_miner#readme) · [repo](https://github.com/Barbariandev/8Ball_miner)
+- **[8 Ball](https://metagraph.sh/subnets/125)** `SN125` — `prediction-markets` · [site](https://8ball125.com/) · [docs](https://github.com/Barbariandev/8Ball_miner#readme) · [repo](https://github.com/Barbariandev/8Ball_miner)
 - **[Poker44](https://metagraph.sh/subnets/126)** `SN126` — `security` · [site](https://poker44.net/) · [repo](https://github.com/Poker44/Poker44-subnet)
 - **[Astrid](https://metagraph.sh/subnets/127)** `SN127` — `trading-strategies` · [site](https://astrid.global/) · [repo](https://github.com/astridintelligence/sn-127)
 - **[ByteLeap](https://metagraph.sh/subnets/128)** `SN128` — `compute` · [site](https://byteleap.ai/) · [repo](https://github.com/byteleapai/byteleap-Validator)
