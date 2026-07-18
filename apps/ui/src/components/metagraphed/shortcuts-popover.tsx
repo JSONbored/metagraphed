@@ -67,7 +67,7 @@ export function ShortcutsPopover() {
               className={classNames(
                 "hidden md:inline-flex fixed z-40 bottom-5 left-5 md:bottom-7 md:left-7",
                 "items-center justify-center rounded-full border border-border bg-card/95 backdrop-blur",
-                "size-10 text-ink-muted shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)]",
+                "size-10 text-ink-muted shadow-[0_8px_24px_-12px_color-mix(in_oklab,var(--ink-strong)_35%,transparent)]",
                 "hover:border-accent/60 hover:text-accent transition-colors",
               )}
             >
