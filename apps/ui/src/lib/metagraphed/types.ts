@@ -1912,6 +1912,51 @@ export interface SubnetAlphaVolume {
   vol_mcap_ratio: number | null;
 }
 
+/** Network-wide rollup of every subnet's 24h buy/sell alpha volume, the
+ * "network mood" signal (#6642) -- net_volume_alpha / gross, same
+ * sentiment_ratio/sentiment math as one subnet's own SubnetAlphaVolume,
+ * just summed across the whole network first. */
+export interface ChainAlphaVolumeNetwork {
+  buy_volume_alpha: number;
+  sell_volume_alpha: number;
+  total_volume_alpha: number;
+  buy_volume_tao: number;
+  sell_volume_tao: number;
+  total_volume_tao: number;
+  buy_count: number;
+  sell_count: number;
+  net_volume_alpha: number;
+  sentiment_ratio: number | null;
+  sentiment: "bullish" | "bearish" | "neutral";
+}
+
+/** Spread of per-subnet total_volume_tao across every subnet with volume in
+ * the window; null when no subnet had volume. */
+export interface ChainAlphaVolumeDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  p25: number;
+  median: number;
+  p75: number;
+  p90: number;
+  max: number;
+}
+
+/** Network-wide rolling 24h buy/sell alpha-volume leaderboard from
+ * /api/v1/chain/alpha-volume -- the network mood gauge (#6642) reads only
+ * `network`; `subnets`/`volume_distribution` exist for the (not yet built)
+ * full leaderboard view. */
+export interface ChainAlphaVolume {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainAlphaVolumeNetwork;
+  volume_distribution: ChainAlphaVolumeDistribution | null;
+  subnets: SubnetAlphaVolume[];
+}
+
 /** One open/high/low/close/volume candle from /api/v1/subnets/{netuid}/ohlc. */
 export interface SubnetOhlcCandle {
   bucket_start: number;

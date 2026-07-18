@@ -198,6 +198,9 @@ import type {
   SubnetRegistrations,
   SubnetStakeFlow,
   SubnetAlphaVolume,
+  ChainAlphaVolume,
+  ChainAlphaVolumeNetwork,
+  ChainAlphaVolumeDistribution,
   SubnetOhlc,
   SubnetOhlcCandle,
   SubnetConviction,
@@ -4638,6 +4641,59 @@ export const subnetAlphaVolumeQuery = (netuid: number) =>
         signal,
       });
       return { data: normalizeSubnetAlphaVolume(netuid, res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Network-wide rollup of the same sentiment_ratio/sentiment reading
+// normalizeSubnetAlphaVolume computes per-subnet, just summed across the
+// whole network first (#6642's "network mood" gauge). A cold store returns
+// zeroed totals + a "neutral" reading, never throws.
+function normalizeChainAlphaVolumeNetwork(raw: unknown): ChainAlphaVolumeNetwork {
+  const d = isRecord(raw) ? raw : {};
+  const sentiment = firstString(d.sentiment);
+  return {
+    buy_volume_alpha: coerceFiniteNumber(d.buy_volume_alpha) ?? 0,
+    sell_volume_alpha: coerceFiniteNumber(d.sell_volume_alpha) ?? 0,
+    total_volume_alpha: coerceFiniteNumber(d.total_volume_alpha) ?? 0,
+    buy_volume_tao: coerceFiniteNumber(d.buy_volume_tao) ?? 0,
+    sell_volume_tao: coerceFiniteNumber(d.sell_volume_tao) ?? 0,
+    total_volume_tao: coerceFiniteNumber(d.total_volume_tao) ?? 0,
+    buy_count: firstFiniteNumber(d.buy_count) ?? 0,
+    sell_count: firstFiniteNumber(d.sell_count) ?? 0,
+    net_volume_alpha: coerceFiniteNumber(d.net_volume_alpha) ?? 0,
+    sentiment_ratio: coerceFiniteNumber(d.sentiment_ratio) ?? null,
+    sentiment: sentiment === "bullish" || sentiment === "bearish" ? sentiment : "neutral",
+  };
+}
+
+export function normalizeChainAlphaVolume(raw: unknown): ChainAlphaVolume {
+  const d = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    window: firstString(d.window) ?? "24h",
+    observed_at: firstString(d.observed_at) ?? null,
+    subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+    network: normalizeChainAlphaVolumeNetwork(d.network),
+    volume_distribution: isRecord(d.volume_distribution)
+      ? (d.volume_distribution as unknown as ChainAlphaVolumeDistribution)
+      : null,
+    subnets: Array.isArray(d.subnets) ? (d.subnets as SubnetAlphaVolume[]) : [],
+  };
+}
+
+// GET /api/v1/chain/alpha-volume (#4339/8.2): network-wide rolling 24h
+// buy/sell alpha volume, ranked by total_volume_tao -- the network.sentiment_ratio/
+// sentiment fields are the "network mood" gauge's data source (#6642), reused
+// as-is rather than recomputed client-side.
+export const chainAlphaVolumeQuery = () =>
+  queryOptions({
+    queryKey: k("chain-alpha-volume"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainAlphaVolume>>("/api/v1/chain/alpha-volume", {
+        signal,
+      });
+      return { data: normalizeChainAlphaVolume(res.data), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });

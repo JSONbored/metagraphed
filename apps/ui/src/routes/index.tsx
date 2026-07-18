@@ -35,6 +35,7 @@ import {
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
 import { SubnetPriceTicker } from "@/components/metagraphed/subnet-price-ticker";
+import { NetworkMoodGauge } from "@/components/metagraphed/network-mood-gauge";
 import { HeroSubnetChips } from "@/components/metagraphed/hero-subnet-chips";
 import { QuickActionsRow } from "@/components/metagraphed/quick-actions-row";
 import { RecentIdentityChanges } from "@/components/metagraphed/recent-identity-changes";
@@ -88,6 +89,12 @@ function OverviewPage() {
         <Suspense fallback={null}>
           <SubnetPriceTicker />
         </Suspense>
+      </QueryErrorBoundary>
+
+      {/* #6642: network-wide sentiment reading, surfaced as its own widget --
+          self-manages loading/error via useQuery (no Suspense needed). */}
+      <QueryErrorBoundary fallback={() => null}>
+        <NetworkMoodGauge />
       </QueryErrorBoundary>
 
       <QueryErrorBoundary fallback={() => null}>
