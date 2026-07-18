@@ -83,7 +83,10 @@ export {
   type Density,
   DensityToggle,
 } from "@/components/metagraphed/density-toggle";
-export { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
+export {
+  DownloadCsvButton,
+  buildCsvDownloadUrl,
+} from "@/components/metagraphed/download-csv-button";
 export {
   type PoolEligibility,
   EligibilityChip,

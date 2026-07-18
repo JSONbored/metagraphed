@@ -4050,6 +4050,7 @@ exports.TreemapMini = TreemapMini;
 exports.ViewModeToggle = ViewModeToggle;
 exports.Wordmark = Wordmark;
 exports.YieldPercentileStrip = YieldPercentileStrip;
+exports.buildCsvDownloadUrl = buildCsvDownloadUrl;
 exports.fmtYield = fmtYield;
 exports.prefetchBrandIcon = prefetchBrandIcon;
 exports.safeExternalUrl = safeExternalUrl;

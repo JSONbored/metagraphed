@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Scale, UserMinus, Zap } from "lucide-react";
+import { ChevronDown, Download, Scale, UserMinus, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
@@ -14,8 +14,11 @@ import {
   TimeAgo,
   StatTile,
   ShareButton,
-  DownloadCsvButton,
   ActionBar,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  buildCsvDownloadUrl,
 } from "@jsonbored/ui-kit";
 import {
   chainDeregistrationsQuery,
@@ -76,16 +79,7 @@ function LeaderboardsPage() {
         description="Network-wide chain activity boards — ranked by subnet from live chain-direct analytics."
         actions={
           <ActionBar>
-            <DownloadCsvButton
-              url={buildUrl("/api/v1/chain/weights", { window: win })}
-              label="Weight-setting CSV"
-              bare
-            />
-            <DownloadCsvButton
-              url={buildUrl("/api/v1/chain/deregistrations", { window: win })}
-              label="Deregistrations CSV"
-              bare
-            />
+            <CsvExportMenu win={win} />
             <ShareButton bare />
           </ActionBar>
         }
@@ -126,6 +120,65 @@ function LeaderboardsPage() {
         paths={["/api/v1/chain/weights", "/api/v1/chain/deregistrations", "/api/v1/economics"]}
       />
     </AppShell>
+  );
+}
+
+// Three boards, three CSV sources (#6577). A third bare DownloadCsvButton here
+// collapses to an unlabeled icon below `sm` — its own two prior PR attempts both
+// did exactly that and were rejected by the maintainer ("3 repeating icons" /
+// "utterly ridiculous and confusing" on mobile, since nothing distinguishes one
+// download icon from another once the text label drops). One trigger opening a
+// menu of the three exports keeps the action bar to a single icon at every
+// viewport, mirroring HeaderActionsMenu's single-icon-opens-a-list-of-actions
+// Popover idiom (apps/ui/src/components/metagraphed/header-actions-menu.tsx) —
+// each export's own label stays visible inside the open menu regardless of width.
+function CsvExportMenu({ win }: { win: LeaderboardWindow }) {
+  const [open, setOpen] = useState(false);
+  const exports = [
+    {
+      label: "Weight-setting CSV",
+      url: buildUrl("/api/v1/chain/weights", { window: win }),
+    },
+    {
+      label: "Deregistrations CSV",
+      url: buildUrl("/api/v1/chain/deregistrations", { window: win }),
+    },
+    // Not window-scoped -- EmissionsLeaderboard sources from economicsQuery(),
+    // which takes no window param (/api/v1/economics?window=… is a 400).
+    { label: "Emissions CSV", url: buildUrl("/api/v1/economics") },
+  ];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Download CSV"
+          title="Download CSV"
+          className="inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Download className="size-3" aria-hidden />
+          <span className="hidden sm:inline">Download CSV</span>
+          <ChevronDown className="size-3" aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-56 p-1.5 space-y-0.5">
+        {exports.map((exp) => (
+          <button
+            key={exp.label}
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              window.location.href = buildCsvDownloadUrl(exp.url);
+            }}
+            className="w-full flex items-center gap-2 rounded px-2 py-2 text-left text-[12px] text-ink hover:bg-surface hover:text-ink-strong transition-colors min-h-9"
+          >
+            <Download className="size-3.5 shrink-0 text-ink-muted" aria-hidden />
+            <span>{exp.label}</span>
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }
 
