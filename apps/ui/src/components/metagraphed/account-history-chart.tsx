@@ -202,7 +202,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-[1.75rem] border border-border/80 bg-card/95 shadow-[0_32px_100px_-70px_rgba(15,23,42,0.55)]">
+      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/95 mg-card-glow">
         <div className="grid gap-4 border-b border-border/70 px-5 py-5 md:grid-cols-3">
           <MetricBlock
             label="Total activity"
@@ -223,8 +223,8 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
           />
         </div>
 
-        <div className="bg-[linear-gradient(180deg,rgba(45,212,191,0.08),rgba(45,212,191,0.02)_42%,transparent)] px-4 py-4 md:px-5 md:py-5">
-          <div className="rounded-[1.4rem] border border-border/70 bg-paper/70 px-4 py-4 md:px-5 md:py-5">
+        <div className="bg-[linear-gradient(180deg,color-mix(in_oklab,var(--accent)_8%,transparent),color-mix(in_oklab,var(--accent)_2%,transparent)_42%,transparent)] px-4 py-4 md:px-5 md:py-5">
+          <div className="rounded-xl border border-border/70 bg-paper/70 px-4 py-4 md:px-5 md:py-5">
             <Sparkline
               values={values}
               points={points}
