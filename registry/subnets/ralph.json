@@ -11,7 +11,6 @@
   "curation": {
     "gap_notes": [
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "The README mentions a Streamlit monitoring dashboard (\"Ralph Live\"), but it is a locally-run tool (streamlit run dashboard/app.py), not a hosted public URL, so it is not tracked."
     ],

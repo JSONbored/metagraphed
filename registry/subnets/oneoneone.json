@@ -11,7 +11,6 @@
   "curation": {
     "gap_notes": [
       "No verified official docs URL yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
       "The official website (oneoneone.io) currently returns Cloudflare error 1016 (\"origin DNS error\") on every attempt as of 2026-07-16 -- Cloudflare cannot resolve the origin server behind the proxied domain. The source repository remains active (pushed 2026-06-11, not archived), so this looks like a website-hosting misconfiguration rather than full project abandonment. Probe disabled until it recovers; surface kept tracked."

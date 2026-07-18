@@ -21,7 +21,6 @@
       "mobiusfund/etf appears unrelated to Ditto and is excluded from promoted source repository evidence.",
       "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
       "Canonical source repository verified: ditto-assistant/dittobench-starter-kit self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\" (not a fork, ditto-assistant org).",
-      "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "Diffed the 13-path Ditto Admin API OpenAPI schema for undiscovered public GET endpoints -- every path-level operation explicitly declares AdminKey security (an honest schema, unlike several others in this audit), so no candidates were promotable."
     ],

@@ -38,10 +38,8 @@
       "Common /docs, /api, /health, /openapi.json, and Swagger paths on endure.network currently return 404 and are explicitly excluded from promoted surfaces.",
       "Generic email-protection pages are not listed as subnet interfaces.",
       "No verified source repository yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ]
   },
   "surfaces": [

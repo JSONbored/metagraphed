@@ -14,7 +14,6 @@
       "The subnet mining app currently returns a 403/auth-challenge response to simple probes and is expected to appear degraded rather than healthy.",
       "The community source repository (oxylok/53-EfficientFrontier) previously 404d; re-verified live (200) as of this pass.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "On-chain SubnetIdentitiesV3 for netuid 53 now reports subnetName \"engy\" / description \"Verified inference for frontier open models.\" -- a completely different identity than the tracked EfficientFrontier/SignalPlus branding, corroborated by two independent indexers (metagraph.sh, TaoMarketCap). The live website and source repository both still describe EfficientFrontier/SignalPlus with no mention of \"engy\", and no GitHub presence for \"engy\" was found. The on-chain snapshot also shows subnet_emission_enabled=false, consistent with a dormant/deregistered subnet possibly being repurposed by a new operator whose infrastructure is not yet discoverable. Deliberately NOT renamed given zero infrastructure corroboration for the new on-chain identity; flagging for close attention on the next pass."
     ],

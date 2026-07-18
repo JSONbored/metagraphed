@@ -12,7 +12,6 @@
     "source_count": 6,
     "gap_notes": [
       "cliqueai.toptensor.ai/openapi.json returns HTTP 200 but serves the SPA's HTML fallback, not a real OpenAPI schema -- no machine-readable OpenAPI/Swagger schema verified yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet."
     ]
   },

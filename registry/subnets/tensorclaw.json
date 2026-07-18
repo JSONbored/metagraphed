@@ -16,7 +16,6 @@
       "Website, source-repo, and live-demo surfaces kept tracked despite being dead (521/404) rather than removed, consistent with how outages are handled elsewhere in this registry -- their existing probes will correctly report the ongoing outage.",
       "No verified docs site yet beyond directory pages.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",

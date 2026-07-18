@@ -27,8 +27,7 @@
       "No verified official docs site yet beyond public directory/community pages.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ]
   },
   "surfaces": [

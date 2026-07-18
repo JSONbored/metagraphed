@@ -14,7 +14,6 @@
       "Official website currently still returns 500/server-error responses to simple probes (unchanged since the last review) and should appear degraded until it recovers.",
       "Previously discovered GitHub source repository currently returns 404.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",

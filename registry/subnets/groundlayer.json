@@ -21,7 +21,6 @@
       "No verified live source repository yet.",
       "No verified docs site yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",

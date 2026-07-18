@@ -20,7 +20,6 @@
     "gap_notes": [
       "The bitads.ai website and docs domain currently fails to resolve (DNS lame delegation) and is nulled until it recovers or a replacement domain is confirmed.",
       "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths return marketing-site HTML rather than API/schema payloads.",
-      "No verified safe public subnet API endpoint yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet."
     ],

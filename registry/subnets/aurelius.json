@@ -13,7 +13,6 @@
   "curation": {
     "gap_notes": [
       "The registered website (aureliusaligned.ai) currently fails to connect over both HTTP and HTTPS (DNS resolves, but the connection times out) and is not promoted as a website surface.",
-      "No verified OpenAPI/Swagger schema without an existing surface -- see the tracked openapi surface.",
       "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
