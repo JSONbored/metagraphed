@@ -7,7 +7,7 @@ import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-form
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
 import { formatApyPct, formatTakePct } from "@/lib/metagraphed/validator-apy";
-import type { GlobalValidator } from "@/lib/metagraphed/types";
+import type { GlobalValidator, GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 const TH_BASE = "px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted";
 const TD_BASE = "px-3 py-2 font-mono text-[11px]";
@@ -25,6 +25,11 @@ export interface ValidatorColumn {
   thClassName: string;
   tdClassName: string;
   cell: (v: GlobalValidator) => ReactNode;
+  /** #5344: the API sort key this column ranks by, when it's a sortable metric.
+   *  Columns without one (identity columns) render a plain, non-interactive
+   *  header. Only the metrics the /api/v1/validators endpoint can sort by get
+   *  a clickable SortHeader. */
+  sortKey?: GlobalValidatorSort;
 }
 
 const numeric = (
@@ -84,9 +89,14 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     // apy_estimate (#2551) is a 0..1 fraction; formatApyPct takes a percentage.
     cell: (v) => formatApyPct(v.apy_estimate != null ? v.apy_estimate * 100 : null),
   },
-  { ...numeric("Active subnets"), cell: (v) => formatNumber(v.subnet_count) },
+  {
+    ...numeric("Active subnets"),
+    sortKey: "subnet_count",
+    cell: (v) => formatNumber(v.subnet_count),
+  },
   {
     ...numeric("UIDs"),
+    sortKey: "uid_count",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => formatNumber(v.uid_count),
   },
@@ -97,11 +107,13 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
   },
   {
     ...numeric("Dominance"),
+    sortKey: "stake_dominance",
     cell: (v) => (v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"),
   },
-  { ...numeric("Total stake"), cell: (v) => taoCompact(v.total_stake_tao) },
+  { ...numeric("Total stake"), sortKey: "total_stake", cell: (v) => taoCompact(v.total_stake_tao) },
   {
     ...numeric("Total emission"),
+    sortKey: "total_emission",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => taoCompact(v.total_emission_tao),
   },

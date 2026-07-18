@@ -4,14 +4,21 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero, ShareButton, DownloadCsvButton, ActionBar } from "@jsonbored/ui-kit";
+import {
+  PageHero,
+  ShareButton,
+  DownloadCsvButton,
+  ActionBar,
+  DensityToggle,
+  type Density,
+} from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
+import { formatNumber, isStaleFreshness, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { ValidatorDominanceChart } from "@/components/metagraphed/charts/validator-dominance-chart";
@@ -19,6 +26,7 @@ import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-form
 import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { VALIDATOR_COLUMNS } from "@/components/metagraphed/validator-columns";
+import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 // The full GlobalValidatorSort set the /api/v1/validators endpoint accepts.
@@ -47,6 +55,11 @@ const SORT_LABELS: Record<GlobalValidatorSort, string> = {
 
 const validatorsSearchSchema = z.object({
   sort: fallback(z.enum(validatorSortKeys), "subnet_count").default("subnet_count"),
+  // #5344: bring Validators up to the canonical ranked-list interaction model
+  // (Subnets) — a sort DIRECTION toggled by clicking a column header, and a row
+  // density control — instead of a bare, single-direction <select>.
+  order: fallback(z.enum(["asc", "desc"]), "desc").default("desc"),
+  density: fallback(z.enum(["compact", "comfortable"]), "comfortable").default("comfortable"),
 });
 
 export const Route = createFileRoute("/validators/")({
@@ -73,10 +86,31 @@ function ValidatorsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const sort = search.sort ?? "subnet_count";
+  const order = search.order ?? "desc";
+  const density = search.density ?? "comfortable";
   // Mirror the sibling ranked-list pages (subnets/blocks/surfaces): export the
   // current view as CSV. DownloadCsvButton appends `format=csv`; the backend's
   // handleGlobalValidators already serves it (#5482).
   const validatorsCsvUrl = buildUrl("/api/v1/validators", { sort });
+  // Clicking a column header sorts by it; clicking the active one flips
+  // direction. Metrics default to descending (highest first) — matching the
+  // endpoint's own default order — so the first click on a new column shows the
+  // most-ranked rows, and the toggle reveals the tail.
+  const onSort = (field: string) =>
+    navigate({
+      search: (prev: Record<string, unknown>) =>
+        ({
+          ...prev,
+          sort: field,
+          order: prev.sort === field && prev.order === "desc" ? "asc" : "desc",
+        }) as never,
+      replace: true,
+    });
+  const onDensityChange = (d: Density) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, density: d }) as never,
+      replace: true,
+    });
   return (
     <AppShell>
       <PageHero
@@ -98,12 +132,10 @@ function ValidatorsPage() {
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <ValidatorsTable
             sort={sort}
-            onSortChange={(v) =>
-              navigate({
-                search: (prev: Record<string, unknown>) => ({ ...prev, sort: v }) as never,
-                replace: true,
-              })
-            }
+            order={order}
+            density={density}
+            onSort={onSort}
+            onDensityChange={onDensityChange}
           />
         </Suspense>
       </QueryErrorBoundary>
@@ -126,42 +158,25 @@ function ValidatorsPage() {
   );
 }
 
-function SortSelect({
-  value,
-  onChange,
-}: {
-  value: GlobalValidatorSort;
-  onChange: (v: GlobalValidatorSort) => void;
-}) {
-  return (
-    <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
-      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">Sort</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as GlobalValidatorSort)}
-        className="bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label="Sort validators"
-      >
-        {validatorSortKeys.map((k) => (
-          <option key={k} value={k}>
-            {SORT_LABELS[k]}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 function ValidatorsTable({
   sort,
-  onSortChange,
+  order,
+  density,
+  onSort,
+  onDensityChange,
 }: {
   sort: GlobalValidatorSort;
-  onSortChange: (v: GlobalValidatorSort) => void;
+  order: "asc" | "desc";
+  density: Density;
+  onSort: (field: string) => void;
+  onDensityChange: (d: Density) => void;
 }) {
   const res = useSuspenseQuery(validatorsQuery({ sort })).data;
-  const validators = res.data.validators;
+  const serverRanked = res.data.validators;
   const generatedAt = res.meta?.generated_at ?? null;
+  // The endpoint ranks descending by `sort`, so ascending is that list reversed.
+  const validators = order === "asc" ? [...serverRanked].reverse() : serverRanked;
+  const compact = density === "compact";
 
   return (
     <div className="space-y-3">
@@ -176,17 +191,37 @@ function ValidatorsTable({
         <span className="font-mono text-[11px] text-ink-muted">
           {formatNumber(validators.length)} validators · ranked by {SORT_LABELS[sort]}
         </span>
-        <SortSelect value={sort} onChange={onSortChange} />
+        <DensityToggle value={density} onChange={onDensityChange} />
       </div>
 
       {validators.length > 0 ? (
         <div className="hidden md:block overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-left text-sm">
+          <table
+            className={classNames(
+              "w-full text-left text-sm",
+              compact && "[&_td]:!py-1 [&_th]:!py-1",
+            )}
+          >
             <thead className="bg-surface/50">
               <tr>
                 {VALIDATOR_COLUMNS.map((col) => (
-                  <th key={col.header} className={col.thClassName}>
-                    {col.header}
+                  <th
+                    key={col.header}
+                    className={col.thClassName}
+                    aria-sort={col.sortKey ? ariaSort(sort === col.sortKey, order) : undefined}
+                  >
+                    {col.sortKey ? (
+                      <SortHeader
+                        label={col.header}
+                        field={col.sortKey}
+                        active={sort === col.sortKey}
+                        order={order}
+                        onSort={onSort}
+                        align={col.thClassName.includes("text-right") ? "right" : "left"}
+                      />
+                    ) : (
+                      col.header
+                    )}
                   </th>
                 ))}
               </tr>
