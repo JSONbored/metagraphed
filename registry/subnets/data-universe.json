@@ -234,6 +234,13 @@
       "url": "https://github.com/macrocosm-os/macrocosmos-py"
     },
     {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Macrocosmos SDK Sn13Client/GravityClient credential."
+      },
       "auth_required": true,
       "authority": "community",
       "id": "sn-13-macrocosmos-subnet-api",

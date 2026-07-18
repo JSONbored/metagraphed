@@ -116,6 +116,7 @@ const files =
 const errors = [];
 const conventionAdvisories = [];
 const conventionExemptions = [];
+const authAdvisories = [];
 let surfaceCount = 0;
 for (const file of files) {
   let document;
@@ -198,6 +199,20 @@ for (const file of files) {
           "(the /rpc endpoint lane), not per-subnet contributor surfaces.",
       );
     }
+    // #6330: auth_required makes a promise ("this needs a credential") the
+    // structured auth{} field is what makes caller-actionable ("...and here's
+    // how"). Advisory, not a hard error: the credential mechanism is
+    // sometimes genuinely undocumented by the provider (auth.scheme:
+    // "custom" is the honest answer there, not a blocker), unlike the
+    // reviewed-tier convention above this mirrors in shape.
+    if (surface.auth_required === true && !surface.auth) {
+      authAdvisories.push(
+        `${label}: auth_required is true with no structured auth{} object — ` +
+          "curate one (scheme at minimum; location/name/value_format where knowable " +
+          'from the surface\'s own docs, or scheme: "custom" with a scopes_note if the ' +
+          "exact mechanism isn't publicly documented).",
+      );
+    }
   }
   for (const [normalizedUrl, ids] of surfaceIdsByUrl) {
     if (
@@ -269,6 +284,13 @@ if (conventionAdvisories.length > 0) {
     `\nReviewed-tier convention advisory (${conventionAdvisories.length} — not blocking):`,
   );
   for (const advisory of conventionAdvisories) console.warn(`- ${advisory}`);
+}
+// #6330 — auth_required with no auth{} object, non-blocking.
+if (authAdvisories.length > 0) {
+  console.warn(
+    `\nauth_required advisory (${authAdvisories.length} — not blocking):`,
+  );
+  for (const advisory of authAdvisories) console.warn(`- ${advisory}`);
 }
 
 // ajv.errorsText() collapses every error to its bare `message`, which for an

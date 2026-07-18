@@ -392,6 +392,12 @@
       "url": "https://llm.chutes.ai/v1/models"
     },
     {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
       "auth_required": true,
       "authority": "community",
       "id": "sn-64-chutes-sse",

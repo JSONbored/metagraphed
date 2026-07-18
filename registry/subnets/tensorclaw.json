@@ -111,6 +111,10 @@
       "url": "https://github.com/tensorclaw/tensorclaw"
     },
     {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Gated by a Cloudflare Turnstile challenge to unlock trial requests, not a token/header-based API credential."
+      },
       "auth_required": true,
       "authority": "provider-claimed",
       "id": "sn-92-tensorclaw-dashboard",

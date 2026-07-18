@@ -69,6 +69,10 @@
       "url": "https://www.green-compute.com/models"
     },
     {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Exact credential mechanism not confirmed -- the endpoint validates the request body before auth, so an auth-specific probe response could not be observed."
+      },
       "auth_required": true,
       "authority": "official",
       "id": "sn-110-green-compute-chat-completions-api",

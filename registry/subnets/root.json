@@ -181,6 +181,10 @@
       "url": "wss://bittensor-finney.api.onfinality.io/public-ws"
     },
     {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Nodies now requires a paid subscription plan (HTTP 403 without one, verified 2026-06-15); exact credential mechanism is not publicly documented."
+      },
       "auth_required": true,
       "authority": "community",
       "id": "nodies-finney-rpc",

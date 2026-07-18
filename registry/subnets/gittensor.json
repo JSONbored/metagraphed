@@ -176,6 +176,10 @@
       "url": "https://api.loopover.ai/v1/public/subnet-interface"
     },
     {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Contributor tools are scoped to the authenticated GitHub login (confirmed 401 unauthorized without a credential); exact header/token format is not publicly documented."
+      },
       "auth_required": true,
       "authority": "provider-claimed",
       "id": "gittensory-mcp",

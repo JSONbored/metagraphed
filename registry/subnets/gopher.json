@@ -118,6 +118,13 @@
       "url": "https://github.com/gopher-lab/subnet-42"
     },
     {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "gopher-client's own convention names this credential GOPHER_CLIENT_TOKEN."
+      },
       "auth_required": true,
       "authority": "community",
       "id": "sn-42-gopher-ai-subnet-api",
