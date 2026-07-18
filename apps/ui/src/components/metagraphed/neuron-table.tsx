@@ -136,7 +136,23 @@ export function NeuronTable({
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="overflow-x-auto">
+      {/* Mobile card fallback (#6335): the 8-10 column table is unreadable on a
+          narrow viewport, so mirror ValidatorCardList's per-row cards (one per
+          neuron, each metric labelled by its field). The desktop table below is
+          unchanged, just hidden under md. */}
+      <ul className="divide-y divide-border/60 md:hidden">
+        {sorted.map((n) => (
+          <NeuronCard
+            key={n.uid}
+            n={n}
+            isValidator={isValidator}
+            netuid={netuid}
+            onSelect={onSelect}
+            active={selectedUid === n.uid}
+          />
+        ))}
+      </ul>
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
             <tr>
@@ -313,6 +329,129 @@ export function NeuronTable({
           Download CSV
         </a>
       </div>
+    </div>
+  );
+}
+
+/**
+ * One neuron rendered as a card — the mobile fallback for a table row (#6335),
+ * mirroring ValidatorCardList's per-row layout. Each metric is labelled so the
+ * card reads correctly on its own, and the variant-specific scoring fields +
+ * the validator Delegate action match the desktop columns exactly.
+ */
+function NeuronCard({
+  n,
+  isValidator,
+  netuid,
+  onSelect,
+  active,
+}: {
+  n: MetagraphNeuron;
+  isValidator: boolean;
+  netuid: number;
+  onSelect?: (uid: number) => void;
+  active: boolean;
+}) {
+  return (
+    <li className={classNames("min-w-0 space-y-2 p-3", active && "bg-accent-surface")}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 font-mono text-[12px] tabular-nums text-ink-strong">
+          <span className="text-[10px] uppercase tracking-widest text-ink-muted">UID</span>
+          {onSelect ? (
+            <button
+              type="button"
+              className="underline underline-offset-2 hover:text-accent"
+              onClick={() => onSelect(n.uid)}
+            >
+              {n.uid}
+            </button>
+          ) : (
+            n.uid
+          )}
+        </div>
+        {n.validator_permit ? (
+          <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+            Validator
+          </span>
+        ) : null}
+      </div>
+      <div className="flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-ink-muted">
+        {n.featured ? <SponsoredBadge /> : null}
+        {n.hotkey ? (
+          <>
+            {isValidator ? (
+              <Link
+                to="/validators/$hotkey"
+                params={{ hotkey: n.hotkey }}
+                title={n.hotkey}
+                className="truncate hover:text-ink hover:underline"
+              >
+                {shortHash(n.hotkey) ?? n.hotkey}
+              </Link>
+            ) : (
+              <Link
+                to="/accounts/$ss58"
+                params={{ ss58: n.hotkey }}
+                title={n.hotkey}
+                className="truncate hover:text-ink hover:underline"
+              >
+                {shortHash(n.hotkey) ?? n.hotkey}
+              </Link>
+            )}
+            <CopyButton value={n.hotkey} label="hotkey" compact />
+          </>
+        ) : (
+          "—"
+        )}
+      </div>
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+        <Stat label="Stake τ" value={taoCompact(n.stake_tao)} />
+        <Stat label="Emission τ" value={taoCompact(n.emission_tao)} />
+        {isValidator ? (
+          <>
+            <Stat label="Dividends" value={scoreStr(n.dividends)} />
+            <Stat label="Val Trust" value={scoreStr(validatorTrustValue(n))} />
+            <Stat label="Take" value={formatTakePct(n.take)} />
+            <Stat
+              label="Est. APY"
+              value={formatApyPct(
+                annualizedDelegatorApyPct(n.emission_tao ?? 0, n.stake_tao ?? 0, n.take),
+              )}
+            />
+          </>
+        ) : (
+          <>
+            <Stat label="Rank" value={n.rank == null ? "—" : String(n.rank)} />
+            <Stat label="Trust" value={scoreStr(n.trust)} />
+            <Stat label="Consensus" value={scoreStr(n.consensus)} />
+          </>
+        )}
+      </dl>
+      {isValidator && n.hotkey ? (
+        <StakeUnstakeModal
+          hotkey={n.hotkey}
+          netuid={netuid}
+          trigger={(open) => (
+            <button
+              type="button"
+              onClick={open}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+            >
+              <Coins className="size-3 text-ink-muted" aria-hidden />
+              Delegate
+            </button>
+          )}
+        />
+      ) : null}
+    </li>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="font-mono tabular-nums text-ink">{value}</dd>
     </div>
   );
 }
