@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
@@ -95,6 +95,27 @@ export function AppShell({
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  // #6417: the palette opens both from a global keydown (⌘K / Ctrl+K / "/", no
+  // DOM trigger) and from discrete buttons (the omnibox "Full search" + the
+  // mobile search icon). Radix Dialog only auto-returns focus to a composed
+  // <Dialog.Trigger>, which none of these are, so closing drops focus to
+  // <body>. Capture the invoking element for the discrete triggers and restore
+  // focus to it on close; keydown-opened stays null (no trigger, so leaving
+  // focus where it was is the correct fallback).
+  const paletteTriggerRef = useRef<HTMLElement | null>(null);
+  const openPaletteFrom = useCallback((trigger: HTMLElement | null) => {
+    paletteTriggerRef.current = trigger;
+    setPaletteOpen(true);
+  }, []);
+  const handlePaletteOpenChange = useCallback((open: boolean) => {
+    setPaletteOpen(open);
+    if (!open) {
+      const trigger = paletteTriggerRef.current;
+      paletteTriggerRef.current = null;
+      // Defer past Radix's own close-focus handling so ours wins.
+      if (trigger) requestAnimationFrame(() => trigger.focus());
+    }
+  }, []);
   const crumbs = useMemo(() => buildCrumbs(pathname), [pathname]);
   const parent = useMemo(() => parentCrumb(crumbs), [crumbs]);
 
@@ -125,11 +146,13 @@ export function AppShell({
         tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable);
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
+        paletteTriggerRef.current = null;
         setPaletteOpen((v) => !v);
         return;
       }
       if (e.key === "/" && !inField) {
         e.preventDefault();
+        paletteTriggerRef.current = null;
         setPaletteOpen(true);
       }
     }
@@ -166,7 +189,13 @@ export function AppShell({
               <span aria-hidden className="hidden lg:inline-block h-5 w-px bg-border mx-1" />
               <NavMegaMenu />
               <div className="flex-1 min-w-0 flex justify-end">
-                <NavOmnibox onOpenPalette={() => setPaletteOpen(true)} />
+                <NavOmnibox
+                  onOpenPalette={() =>
+                    openPaletteFrom(
+                      document.activeElement instanceof HTMLElement ? document.activeElement : null,
+                    )
+                  }
+                />
                 {/* Below md the omnibox is hidden (#5034), which left the palette
                     reachable only via ⌘K / Ctrl+K / "/" — none of which exist on a
                     touch device, so mobile had no way into global search at all.
@@ -175,7 +204,7 @@ export function AppShell({
                     (#5319). */}
                 <button
                   type="button"
-                  onClick={() => setPaletteOpen(true)}
+                  onClick={(e) => openPaletteFrom(e.currentTarget)}
                   aria-label="Open search"
                   title="Search"
                   className="md:hidden inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
@@ -327,7 +356,7 @@ export function AppShell({
 
           <SiteFooter />
           <ApiDrawer />
-          <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+          <CommandPalette open={paletteOpen} onOpenChange={handlePaletteOpenChange} />
           <ShortcutsPopover />
           <BackToTop />
         </div>
