@@ -134,9 +134,21 @@ function ProviderShell({ slug }: { slug: string }) {
         title={p?.name ?? slug}
         subtitle={shouldShowProviderSlugSubtitle(p?.name, slug) ? <>· {slug}</> : null}
         description={p?.notes}
-        actions={<ShareButton />}
         links={
-          <PrimaryLinksRail website={p?.website ?? p?.homepage} docs={p?.docs} repo={p?.repo} />
+          // #5481: Share sits in this single connected bar with the link
+          // icons (not EntityHero's separate `actions` slot, which renders
+          // on its own row below) -- matching SegmentedToggle/ViewModeToggle's
+          // one-shared-border-and-divider look rather than separately spaced,
+          // individually-boxed icon buttons.
+          <div className="inline-flex items-center rounded-md border border-border bg-card divide-x divide-border overflow-hidden">
+            <PrimaryLinksRail
+              bare
+              website={p?.website ?? p?.homepage}
+              docs={p?.docs}
+              repo={p?.repo}
+            />
+            <ShareButton connected />
+          </div>
         }
         stats={[
           { label: "Endpoints", value: formatNumber(summary?.endpoint_count) },

@@ -42,6 +42,19 @@ describe("subnet-masthead ShareButton (#5481)", () => {
     const shareButtonWrapper = statusRow.slice(statusRow.indexOf('<div className="ml-auto'));
     expect(shareButtonWrapper.split("\n")[0]).not.toContain("md:hidden");
   });
+
+  it("renders the Website/Docs/Repo/Dashboard row as one connected icon bar, not separately boxed pills", () => {
+    const linksRow = mastheadSource.slice(
+      mastheadSource.indexOf("{links.length > 0"),
+      mastheadSource.indexOf("{/* Desktop/tablet: health"),
+    );
+    // One shared divide-x bar (SegmentedToggle/ViewModeToggle's look), not a
+    // flex-wrap row of individually rounded-full-bordered pills.
+    expect(linksRow).toContain("divide-x divide-border");
+    expect(linksRow).not.toContain("rounded-full border border-border bg-card");
+    // Icon-only -- no <span>{l.label}</span> text label alongside the icon.
+    expect(linksRow).not.toContain("<span>{l.label}</span>");
+  });
 });
 
 describe("subnets.$netuid.tsx ApiSourceFooter (#5481)", () => {
@@ -72,12 +85,26 @@ describe("providers.$slug.tsx ShareButton + ApiSourceFooter (#5481)", () => {
     expect(importBlock).toContain("ShareButton");
   });
 
-  it("passes a ShareButton via EntityHero's actions prop", () => {
+  it("shares one connected bar between PrimaryLinksRail and ShareButton via EntityHero's links prop, not the separate actions slot", () => {
     const heroCall = providerRouteSource.slice(
       providerRouteSource.indexOf("<EntityHero"),
       providerRouteSource.indexOf("<ProfileTabs"),
     );
-    expect(heroCall).toContain("actions={<ShareButton />}");
+    // EntityHero renders `links` and `actions` as two separate rows -- a
+    // ShareButton passed via `actions` would land on its own line below the
+    // link pills instead of sharing their row. Assert it's NOT used that way.
+    expect(heroCall).not.toContain("actions={<ShareButton");
+    const linksBlock = heroCall.slice(heroCall.indexOf("links={"), heroCall.indexOf("stats={"));
+    // `bare` so PrimaryLinksRail contributes bare icon segments (no own
+    // border/rounded) into the shared divide-x bar below, instead of its own
+    // separately-boxed connected bar nested inside this one.
+    expect(linksBlock).toContain("<PrimaryLinksRail");
+    expect(linksBlock).toContain("bare");
+    // `connected` so Share is a borderless segment matching the link icons --
+    // one shared bar (SegmentedToggle/ViewModeToggle's look), not a separately
+    // spaced, individually-boxed button.
+    expect(linksBlock).toContain("<ShareButton connected />");
+    expect(linksBlock).toContain("divide-x divide-border");
   });
 
   it("renders exactly one ApiSourceFooter citing the provider + provider-endpoints paths", () => {

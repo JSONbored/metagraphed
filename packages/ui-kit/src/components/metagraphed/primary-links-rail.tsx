@@ -1,10 +1,4 @@
-import {
-  BookOpen,
-  ExternalLink as ExternalLinkIcon,
-  Github,
-  Globe,
-  LayoutDashboard,
-} from "lucide-react";
+import { BookOpen, Github, Globe, LayoutDashboard } from "lucide-react";
 import { safeExternalUrl } from "@/components/metagraphed/external-link";
 
 type LinkSpec = {
@@ -13,26 +7,31 @@ type LinkSpec = {
   icon: typeof Globe;
 };
 
-function host(url?: string): string {
-  if (!url) return "";
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
 export interface PrimaryLinksRailProps {
   website?: string;
   docs?: string;
   repo?: string;
   dashboard?: string;
   extras?: Array<{ label: string; href: string; icon?: typeof Globe }>;
+  /**
+   * Skip the own connected-bar wrapper (border/divide/rounded) and render
+   * just the bare icon segments — for composing into a shared bar alongside
+   * other icon actions (e.g. a `connected` ShareButton), where the caller
+   * provides the wrapping `divide-x` container instead.
+   */
+  bare?: boolean;
 }
 
 /**
- * Pill rail of the most-used public resources for an entity profile page.
- * Missing links are silently skipped — never renders a "—" placeholder.
+ * Icon-only rail of the most-used public resources for an entity profile
+ * page, styled as one connected segmented bar (matching SegmentedToggle /
+ * ViewModeToggle's shared-border-and-divider look) rather than separately
+ * spaced, individually-bordered icon boxes. Missing links are silently
+ * skipped — never renders a "—" placeholder. No label/host text or trailing
+ * external-link glyph — these icons (globe, book, github mark, dashboard)
+ * are universally recognized, so a bare icon segment stays clean and minimal
+ * rather than repeating what the icon already says. The full label is still
+ * available via `title`/`aria-label` for a11y.
  */
 export function PrimaryLinksRail({
   website,
@@ -40,6 +39,7 @@ export function PrimaryLinksRail({
   repo,
   dashboard,
   extras,
+  bare,
 }: PrimaryLinksRailProps) {
   const items: LinkSpec[] = [
     { label: "Website", href: website, icon: Globe },
@@ -55,28 +55,29 @@ export function PrimaryLinksRail({
 
   if (items.length === 0) return null;
 
+  const segments = items.map((it) => {
+    const Icon = it.icon;
+    const href = safeExternalUrl(it.href)!;
+    return (
+      <a
+        key={it.label + href}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={it.label}
+        aria-label={it.label}
+        className="inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors"
+      >
+        <Icon className="size-4" />
+      </a>
+    );
+  });
+
+  if (bare) return <>{segments}</>;
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {items.map((it) => {
-        const Icon = it.icon;
-        const href = safeExternalUrl(it.href)!;
-        return (
-          <a
-            key={it.label + href}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group inline-flex items-center gap-2 rounded border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-ink-strong hover:border-ink/30 transition-colors"
-          >
-            <Icon className="size-3.5 text-ink-muted" />
-            <span>{it.label}</span>
-            <span className="hidden sm:inline font-mono text-[10px] text-ink-muted">
-              {host(href)}
-            </span>
-            <ExternalLinkIcon className="size-3 text-ink-muted opacity-60 group-hover:opacity-100" />
-          </a>
-        );
-      })}
+    <div className="inline-flex items-center rounded-md border border-border bg-card divide-x divide-border overflow-hidden">
+      {segments}
     </div>
   );
 }

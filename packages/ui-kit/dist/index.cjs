@@ -713,18 +713,18 @@ function useTheme() {
 var viteEnv = undefined;
 var ICON_PROXY_URL = viteEnv?.VITE_ICON_PROXY_URL?.trim() || "https://api.metagraph.sh/api/v1/icon";
 var BLOCKED_PROXY_TLDS = /* @__PURE__ */ new Set(["localhost", "local", "internal"]);
-function isIpLiteral(host2) {
-  if (host2.startsWith("[") && host2.endsWith("]")) return true;
-  if (host2.includes(":")) return true;
-  const parts = host2.split(".");
+function isIpLiteral(host) {
+  if (host.startsWith("[") && host.endsWith("]")) return true;
+  if (host.includes(":")) return true;
+  const parts = host.split(".");
   if (parts.length !== 4 || parts.some((p) => !/^\d+$/.test(p))) return false;
   return parts.every((p) => {
     const n = Number(p);
     return Number.isInteger(n) && n >= 0 && n <= 255;
   });
 }
-function normalizePublicProxyHost(host2) {
-  const normalized = String(host2 ?? "").trim().toLowerCase().replace(/^www\./, "").replace(/\.$/, "");
+function normalizePublicProxyHost(host) {
+  const normalized = String(host ?? "").trim().toLowerCase().replace(/^www\./, "").replace(/\.$/, "");
   if (!normalized || normalized.length > 253) return null;
   if (isIpLiteral(normalized)) return null;
   const labels = normalized.split(".");
@@ -736,8 +736,8 @@ function normalizePublicProxyHost(host2) {
   );
   return ok ? normalized : null;
 }
-function buildProxyIconUrl(host2, size, theme = "light") {
-  const safeHost = normalizePublicProxyHost(host2);
+function buildProxyIconUrl(host, size, theme = "light") {
+  const safeHost = normalizePublicProxyHost(host);
   if (!safeHost) return null;
   const u = new URL(ICON_PROXY_URL);
   u.searchParams.set("host", safeHost);
@@ -828,8 +828,8 @@ function githubOrgFromUrl(input) {
   if (!input) return null;
   try {
     const u = new URL(input.includes("://") ? input : `https://${input}`);
-    const host2 = u.hostname.toLowerCase();
-    if (host2 !== "github.com" && !host2.endsWith(".github.com")) return null;
+    const host = u.hostname.toLowerCase();
+    if (host !== "github.com" && !host.endsWith(".github.com")) return null;
     const seg = u.pathname.split("/").filter(Boolean);
     return seg[0] ?? null;
   } catch {
@@ -905,8 +905,8 @@ function buildCandidateChain({
   };
   push(pickIconSource(iconUrl, theme));
   if (lookup) push(resolveBrandOverride(lookup, theme));
-  const host2 = extractHost(url);
-  if (host2) push(buildProxyIconUrl(host2, size * 2, theme));
+  const host = extractHost(url);
+  if (host) push(buildProxyIconUrl(host, size * 2, theme));
   const repoOrg = githubOrgFromUrl(repoUrl);
   if (repoOrg) push(githubAvatarUrl(repoOrg, 192));
   return out;
@@ -995,7 +995,7 @@ function BrandIcon({
   netuid
 }) {
   const { resolved: theme } = useTheme();
-  const host2 = React3.useMemo(() => extractHost(url), [url]);
+  const host = React3.useMemo(() => extractHost(url), [url]);
   const lookup = React3.useMemo(
     () => ({ providerSlug, subnetSlug, netuid }),
     [providerSlug, subnetSlug, netuid]
@@ -1005,12 +1005,12 @@ function BrandIcon({
     [url, iconUrl, repoUrl, lookup, theme, size]
   );
   const initialIndex = React3.useMemo(() => {
-    if (!host2) return 0;
-    const winner = winnerByHost.get(host2);
+    if (!host) return 0;
+    const winner = winnerByHost.get(host);
     if (!winner) return 0;
     const idx = chain.indexOf(winner);
     return idx >= 0 ? idx : 0;
-  }, [host2, chain]);
+  }, [host, chain]);
   const [index, setIndex] = React3.useState(initialIndex);
   const [loaded, setLoaded] = React3.useState(false);
   const [needsContrastTile, setNeedsContrastTile] = React3.useState(false);
@@ -1047,7 +1047,7 @@ function BrandIcon({
       }
       if (candidate) {
         loadedUrls.add(candidate);
-        if (host2) winnerByHost.set(host2, candidate);
+        if (host) winnerByHost.set(host, candidate);
         if (!isDarkLogo.has(candidate)) {
           const luma = analyseLogoLuminance(img);
           if (luma !== null) isDarkLogo.set(candidate, luma < 0.55);
@@ -1057,7 +1057,7 @@ function BrandIcon({
       }
       setLoaded(true);
     },
-    [candidate, advance, host2, size, theme]
+    [candidate, advance, host, size, theme]
   );
   const baseClasses = classNames(
     "relative inline-flex items-center justify-center shrink-0 overflow-hidden",
@@ -2386,7 +2386,9 @@ function ShareButton({
   url,
   label = "Share view",
   className,
-  bare
+  bare,
+  iconOnly,
+  connected
 }) {
   const { copied, copy } = useCopy({ toastOnSuccess: false });
   const [announcement, setAnnouncement] = React3.useState("");
@@ -2415,12 +2417,22 @@ function ShareButton({
         "aria-label": "Copy link with current filters, sort, and page",
         title: "Copy link with current filters, sort, and page",
         className: classNames(
-          bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          connected ? "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : iconOnly ? "inline-flex size-8 items-center justify-center rounded-md border border-border bg-card text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : bare ? "inline-flex items-center gap-1.5 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           className
         ),
         children: [
-          copied ? /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Check, { className: "size-3 text-health-ok" }) : /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Share2, { className: "size-3 text-ink-muted" }),
-          copied ? "Link copied" : label
+          copied ? /* @__PURE__ */ jsxRuntime.jsx(
+            lucideReact.Check,
+            {
+              className: connected || iconOnly ? "size-4 text-health-ok" : "size-3 text-health-ok"
+            }
+          ) : /* @__PURE__ */ jsxRuntime.jsx(
+            lucideReact.Share2,
+            {
+              className: connected || iconOnly ? "size-4" : "size-3 text-ink-muted"
+            }
+          ),
+          connected || iconOnly ? null : copied ? "Link copied" : label
         ]
       }
     ),
@@ -2833,20 +2845,13 @@ function YieldPercentileStrip({
     }
   );
 }
-function host(url) {
-  if (!url) return "";
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
 function PrimaryLinksRail({
   website,
   docs,
   repo,
   dashboard,
-  extras
+  extras,
+  bare
 }) {
   const items = [
     { label: "Website", href: website, icon: lucideReact.Globe },
@@ -2860,26 +2865,25 @@ function PrimaryLinksRail({
     }))
   ].filter((i) => safeExternalUrl(i.href));
   if (items.length === 0) return null;
-  return /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-wrap items-center gap-2", children: items.map((it) => {
+  const segments = items.map((it) => {
     const Icon = it.icon;
     const href = safeExternalUrl(it.href);
-    return /* @__PURE__ */ jsxRuntime.jsxs(
+    return /* @__PURE__ */ jsxRuntime.jsx(
       "a",
       {
         href,
         target: "_blank",
         rel: "noopener noreferrer",
-        className: "group inline-flex items-center gap-2 rounded border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-ink-strong hover:border-ink/30 transition-colors",
-        children: [
-          /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-3.5 text-ink-muted" }),
-          /* @__PURE__ */ jsxRuntime.jsx("span", { children: it.label }),
-          /* @__PURE__ */ jsxRuntime.jsx("span", { className: "hidden sm:inline font-mono text-[10px] text-ink-muted", children: host(href) }),
-          /* @__PURE__ */ jsxRuntime.jsx(lucideReact.ExternalLink, { className: "size-3 text-ink-muted opacity-60 group-hover:opacity-100" })
-        ]
+        title: it.label,
+        "aria-label": it.label,
+        className: "inline-flex size-8 items-center justify-center text-ink-muted hover:bg-surface hover:text-ink-strong transition-colors",
+        children: /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-4" })
       },
       it.label + href
     );
-  }) });
+  });
+  if (bare) return /* @__PURE__ */ jsxRuntime.jsx(jsxRuntime.Fragment, { children: segments });
+  return /* @__PURE__ */ jsxRuntime.jsx("div", { className: "inline-flex items-center rounded-md border border-border bg-card divide-x divide-border overflow-hidden", children: segments });
 }
 function MethodologyCallout({
   generatedAt,
