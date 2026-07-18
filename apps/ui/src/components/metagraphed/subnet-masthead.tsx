@@ -20,6 +20,7 @@ import {
   safeExternalUrl,
   CurationChip,
   HealthPill,
+  ShareButton,
   DailyRollupFreshness,
   StatWithSpark,
   MiniStack,
@@ -347,6 +348,7 @@ export function SubnetMasthead({
           </span>
         ) : null}
         <div className="ml-auto flex md:hidden items-center gap-1.5">
+          <ShareButton />
           <HealthPill state={probeHealth} />
           <CurationChip level={profile?.curation_level} />
         </div>
@@ -449,6 +451,7 @@ export function SubnetMasthead({
         {/* Desktop/tablet: health + curation beside the identity block. Mobile
             counterpart lives in the status row above so the body column stays wide. */}
         <div className="hidden md:flex shrink-0 flex-col items-end gap-1.5">
+          <ShareButton />
           <HealthPill state={probeHealth} />
           <CurationChip level={profile?.curation_level} />
         </div>
