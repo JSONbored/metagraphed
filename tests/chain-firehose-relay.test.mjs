@@ -912,8 +912,8 @@ test("endSessionAndFlush: ends the session and flushes", async () => {
 });
 
 // --- touchHeartbeat / isHeartbeatFresh -----------------------------------------
-// Real filesystem, not mocked -- matches tests/backup-postgres.test.mjs's own
-// mkdtempSync convention. Both functions default to the real HEARTBEAT_FILE
+// Real filesystem, not mocked -- standard mkdtempSync convention for tests that
+// need real file I/O. Both functions default to the real HEARTBEAT_FILE
 // path, but take an explicit `path` override precisely so tests never touch
 // /tmp/chain-firehose-relay-heartbeat itself.
 

@@ -209,26 +209,9 @@ it's expected and orthogonal (D1 is being decommissioned, not backfilled).
 
 ## Backup job (Postgres → R2)
 
-`deploy/backup/` is the scheduled durability job — `pg_dump | gzip | aws s3 cp` to
-R2 (zero egress). Restoring a dump is minutes; re-backfilling history is weeks.
-
-One-time setup:
-
-1. Create an R2 bucket (e.g. `metagraphed-backups`) + an **R2 API token** (S3
-   access key + secret) in the Cloudflare dashboard.
-2. Build `deploy/backup/Dockerfile` on the box, write the required env vars
-   (`DATABASE_URL` pointed at the box's local Postgres, `R2_BUCKET`,
-   `R2_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `BACKUP_PREFIX`)
-   to a root-only env file, then install and enable
-   `deploy/backup/metagraphed-pg-backup.{service,timer}` — see the header
-   comment in the `.service` file for the exact steps. This is the current,
-   live deployment path (there is no Railway Postgres left to back up via a
-   Railway cron service anymore).
-3. Set an **R2 lifecycle rule** on the bucket for retention, scoped to the
-   `BACKUP_PREFIX` used — e.g. `indexer-postgres/`, expire after 14 days (the
-   robust way, not a script-side prune). Use a distinct `BACKUP_PREFIX` per
-   Postgres instance backed up to the same bucket, so dumps from different
-   databases don't collide under one prefix.
+The scheduled durability job (`pg_dump | gzip | aws s3 cp` to R2, zero egress) is
+managed as private infrastructure tooling, not in this public repo. Restoring a
+dump is minutes; re-backfilling history is weeks.
 
 **Verify it actually restores, not just that it uploads** — a backup that's
 never been restore-tested is only half-verified. Spin up a scratch Postgres
