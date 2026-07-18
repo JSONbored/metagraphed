@@ -33,6 +33,15 @@ was false. Close what's genuinely done (with a comment naming the shipping PR an
 grep confirming the described code/route/page exists); leave partial work open, optionally with a
 scope-clarifying comment.
 
+**Verify against synced upstream, not a stale local checkout.** Before treating any local grep/read
+as evidence that an issue's described work does or doesn't exist, confirm the code you're reading
+matches the default branch's current tip — fetch and fast-forward the checkout (or use a disposable
+worktree off `origin/main` if the primary checkout is dirty or has unpushed work on another branch)
+before doing any verification. A checkout that's merely _clean_ isn't the same as _current_ — a
+stale-but-clean checkout silently produced false "already done"/"not done" conclusions here and in a
+sibling repo's gardening run on 2026-07-17/18, causing duplicate issues to be filed for already-shipped
+work. Confirm sync every run; never assume a previous run's freshness carried over.
+
 **metagraphed-specific things to check while doing this:**
 
 - Milestone **#9 "Wave 3 — Frontend (post-consolidation)"**: checked 2026-07-15, it is **not**
