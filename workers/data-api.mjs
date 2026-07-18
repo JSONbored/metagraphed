@@ -20,6 +20,7 @@
 // per-request client and response headers (a write ack must never carry the
 // read routes' `cache-control: public, max-age=10`).
 import postgres from "postgres";
+import * as Sentry from "@sentry/cloudflare";
 import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.mjs";
 import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
 import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
@@ -353,6 +354,17 @@ import {
   buildChainSigners,
 } from "../src/chain-analytics.mjs";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
+
+// metagraphed#6769: a caught write/query failure (logged via console.error,
+// converted to a clean error response) never reached Sentry -- only an
+// UNCAUGHT exception would, via data-api.sentry.mjs's withSentry() wrapper.
+// Sentry.captureException is a safe no-op with no active client (confirmed
+// live: returns an event id, doesn't throw), which is every test in this
+// file -- they import this raw, unwrapped handler directly.
+function captureDataApiError(err, route) {
+  Sentry.captureException(err, { tags: { route } });
+}
+
 const DATA_API_READ_TRANSACTION = "isolation level repeatable read read only";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -847,6 +859,7 @@ async function handleNeuronsSync(request, env) {
     });
   } catch (err) {
     console.error("data-api neurons-sync write failed:", err);
+    captureDataApiError(err, "neurons-sync");
     return writeJson({ error: "write failed" }, 502);
   }
   // No sql.end() here: Hyperdrive automatically cleans up the connection when
@@ -1042,6 +1055,7 @@ async function handleNeuronDailyBackfill(request, env) {
     });
   } catch (err) {
     console.error("data-api neuron-daily-backfill write failed:", err);
+    captureDataApiError(err, "neuron-daily-backfill");
     return writeJson({ error: "write failed" }, 502);
   }
   // No sql.end() here: Hyperdrive automatically cleans up the connection when
@@ -1135,6 +1149,7 @@ async function handleRollupAccountEventsDaily(request, env) {
     });
   } catch (err) {
     console.error("data-api account-events-daily rollup failed:", err);
+    captureDataApiError(err, "account-events-daily-rollup");
     return writeJson({ error: "rollup failed" }, 502);
   }
 }
@@ -1395,6 +1410,7 @@ async function handleSubnetHyperparamsSync(request, env) {
     });
   } catch (err) {
     console.error("data-api subnet-hyperparams-sync write failed:", err);
+    captureDataApiError(err, "subnet-hyperparams-sync");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -1568,6 +1584,7 @@ async function handleSubnetLocksSync(request, env) {
     });
   } catch (err) {
     console.error("data-api subnet-locks-sync write failed:", err);
+    captureDataApiError(err, "subnet-locks-sync");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -1776,6 +1793,7 @@ async function handleAccountIdentitySync(request, env) {
     });
   } catch (err) {
     console.error("data-api account-identity-sync write failed:", err);
+    captureDataApiError(err, "account-identity-sync");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -1943,6 +1961,7 @@ async function handleValidatorNominatorCountsSync(request, env) {
       "data-api validator-nominator-counts-sync write failed:",
       err,
     );
+    captureDataApiError(err, "validator-nominator-counts-sync");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2072,6 +2091,7 @@ async function handleNominatorPositionsSync(request, env) {
     });
   } catch (err) {
     console.error("data-api nominator-positions-sync write failed:", err);
+    captureDataApiError(err, "nominator-positions-sync");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2235,6 +2255,7 @@ async function handleSubnetIdentitySync(request, env) {
     });
   } catch (err) {
     console.error("data-api subnet-identity-sync write failed:", err);
+    captureDataApiError(err, "subnet-identity-sync");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2415,6 +2436,7 @@ async function handleHealthChecksSync(request, env) {
     });
   } catch (err) {
     console.error("data-api health-checks-sync write failed:", err);
+    captureDataApiError(err, "health-checks-sync");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2555,6 +2577,7 @@ async function handleHealthUptimeRollupSync(request, env) {
     });
   } catch (err) {
     console.error("data-api health-uptime-rollup-sync write failed:", err);
+    captureDataApiError(err, "health-uptime-rollup-sync");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2729,6 +2752,7 @@ async function handleSubnetSnapshotSync(request, env) {
     });
   } catch (err) {
     console.error("data-api subnet-snapshot-sync write failed:", err);
+    captureDataApiError(err, "subnet-snapshot-sync");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2813,6 +2837,7 @@ async function handleRpcUsageEventSync(request, env) {
     return writeJson({ ok: true });
   } catch (err) {
     console.error("data-api rpc-usage-sync write failed:", err);
+    captureDataApiError(err, "rpc-usage-sync");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2866,6 +2891,7 @@ async function handleRpcUsageEventPrune(request, env) {
     return writeJson({ ok: true, rows_deleted: result.count });
   } catch (err) {
     console.error("data-api rpc-usage-prune write failed:", err);
+    captureDataApiError(err, "rpc-usage-prune");
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -3189,6 +3215,7 @@ async function withAlertTriggersSql(env, fn) {
     return await fn(sql);
   } catch (err) {
     console.error("data-api alert-triggers write failed:", err);
+    captureDataApiError(err, "alert-triggers");
     return writeJson({ error: "write failed" }, 502);
   }
   // No sql.end() -- Hyperdrive cleans up the connection when the request/
