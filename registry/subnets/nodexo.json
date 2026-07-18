@@ -74,6 +74,10 @@
       "url": "https://docs.nodexo.ai/"
     },
     {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Console workflows may require account sign-in; exact credential mechanism is not publicly documented."
+      },
       "auth_required": true,
       "authority": "official",
       "id": "sn-106-nodexo-console",

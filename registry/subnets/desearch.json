@@ -140,6 +140,12 @@
       "url": "https://www.desearch.ai/openapi.json"
     },
     {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (ApiKeyAuth)."
+      },
       "auth_required": true,
       "authority": "official",
       "id": "sn-22-desearch-api",

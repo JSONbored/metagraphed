@@ -54,6 +54,10 @@
       "url": "https://www.signalplus.com/"
     },
     {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Exact credential mechanism not confirmed from public docs -- auth_required is based on an access-state/challenge probe response, not a documented API key/token scheme."
+      },
       "auth_required": true,
       "authority": "official",
       "id": "sn-53-signalplus-mining",

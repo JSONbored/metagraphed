@@ -145,6 +145,13 @@
       "url": "https://tournament-api.nepher.ai/openapi.json"
     },
     {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer). Individual endpoints may additionally require admin permissions."
+      },
       "auth_required": true,
       "authority": "official",
       "id": "sn-49-nepher-tournament-api",
