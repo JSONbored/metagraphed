@@ -43,6 +43,7 @@ import {
   flattenSurfaces,
   withSurfaceFreshness,
   resolveBaseRemote,
+  dirtyTrackedPaths,
 } from "../scripts/lib.mjs";
 import { execFileSync } from "node:child_process";
 
@@ -1835,5 +1836,60 @@ describe("resolveBaseRemote", () => {
     // string on both sides) rather than a non-empty remote list.
     const dir = initRepo();
     assert.equal(resolveBaseRemote(dir), "origin");
+  });
+});
+
+describe("dirtyTrackedPaths", () => {
+  function initRepoWithFiles(files) {
+    const dir = mkdtempSync(path.join(tmpdir(), "wj-dirty-paths-"));
+    execFileSync("git", ["init", "-q"], { cwd: dir });
+    execFileSync("git", ["config", "user.email", "test@example.com"], {
+      cwd: dir,
+    });
+    execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
+    for (const [relPath, contents] of Object.entries(files)) {
+      writeFileSync(path.join(dir, relPath), contents);
+    }
+    execFileSync("git", ["add", "-A"], { cwd: dir });
+    execFileSync("git", ["commit", "-q", "-m", "initial"], { cwd: dir });
+    return dir;
+  }
+
+  test("returns only the paths that are actually dirty, not the whole watched set", () => {
+    const dir = initRepoWithFiles({ "a.json": "{}\n", "b.json": "{}\n" });
+    writeFileSync(path.join(dir, "a.json"), '{"changed":true}\n');
+    assert.deepEqual(dirtyTrackedPaths(["a.json", "b.json"], dir), ["a.json"]);
+  });
+
+  test("returns an empty array when none of the watched paths are dirty", () => {
+    const dir = initRepoWithFiles({ "a.json": "{}\n", "b.json": "{}\n" });
+    assert.deepEqual(dirtyTrackedPaths(["a.json", "b.json"], dir), []);
+  });
+
+  test("returns every watched path that is dirty when more than one is", () => {
+    const dir = initRepoWithFiles({ "a.json": "{}\n", "b.json": "{}\n" });
+    writeFileSync(path.join(dir, "a.json"), '{"changed":true}\n');
+    writeFileSync(path.join(dir, "b.json"), '{"changed":true}\n');
+    assert.deepEqual(dirtyTrackedPaths(["a.json", "b.json"], dir), [
+      "a.json",
+      "b.json",
+    ]);
+  });
+
+  test("defaults to process.cwd() when called with no cwd argument", () => {
+    const dir = initRepoWithFiles({ "a.json": "{}\n" });
+    writeFileSync(path.join(dir, "a.json"), '{"changed":true}\n');
+    const previousCwd = process.cwd();
+    process.chdir(dir);
+    try {
+      assert.deepEqual(dirtyTrackedPaths(["a.json"]), ["a.json"]);
+    } finally {
+      process.chdir(previousCwd);
+    }
+  });
+
+  test("returns an empty array when the command fails (not a git repository)", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "wj-dirty-paths-not-a-repo-"));
+    assert.deepEqual(dirtyTrackedPaths(["a.json"], dir), []);
   });
 });

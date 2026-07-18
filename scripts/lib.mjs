@@ -48,6 +48,26 @@ export function resolveBaseRemote(cwd = process.cwd()) {
   return remotes.includes("upstream") ? "upstream" : "origin";
 }
 
+// Returns the subset of `paths` that `git status --porcelain` reports as
+// modified/added/deleted, so a caller can act on exactly what changed instead
+// of treating the whole watched set as dirty the moment any one member is.
+// Porcelain v1 format is a fixed 2-char status + one space before the path,
+// so `line.slice(3)` reliably extracts it for this fixed, non-renaming set of
+// tracked paths (DEPLOY_OWNED_ARTIFACTS has no rename case to worry about).
+export function dirtyTrackedPaths(paths, cwd = process.cwd()) {
+  const result = spawnSync("git", ["status", "--porcelain", "--", ...paths], {
+    cwd,
+    encoding: "utf8",
+  });
+  if (result.status !== 0 || !result.stdout) {
+    return [];
+  }
+  return result.stdout
+    .split("\n")
+    .map((line) => line.slice(3).trim())
+    .filter(Boolean);
+}
+
 const credentialedUrlParams = new Set([
   "access_key",
   "access-token",

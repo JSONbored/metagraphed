@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import {
   DEPLOY_OWNED_ARTIFACTS,
+  dirtyTrackedPaths,
   resolveBaseRemote,
   stableStringify,
 } from "./lib.mjs";
@@ -63,26 +64,34 @@ revertDeployOwnedArtifactsIfChanged();
 function revertDeployOwnedArtifactsIfChanged() {
   // A real publish run (productionBuild) is expected to update these files —
   // leave them alone in that context. Everywhere else (plain local/CI validate
-  // build), these two files are inherently non-deterministic build output
-  // (their *_artifact_size_bytes totals sum the live R2-only artifacts, which
+  // build), r2-manifest.json is inherently non-deterministic build output
+  // (its *_artifact_size_bytes totals sum the live R2-only artifacts, which
   // legitimately vary build-to-build) — never a signal about YOUR change. A
-  // human manually reverting them before every commit was the actual
-  // recurring papercut, so auto-revert them here instead of just warning.
+  // human manually reverting it before every commit was the actual recurring
+  // papercut, so auto-revert here instead of just warning.
+  //
+  // Revert only the DEPLOY_OWNED_ARTIFACTS members that are ACTUALLY dirty,
+  // not the whole set the moment any one member is: schemas/index.json is
+  // deploy-owned in the same sense (its committed copy is a network-capture
+  // cache, not this build's output) but, unlike r2-manifest.json, nothing in
+  // localSteps()/productionSteps() above ever writes it -- the only thing
+  // that legitimately changes it is sync-schema-snapshots.yml's dedicated
+  // `schemas:snapshot` step, committed directly to its own PR. A blanket
+  // revert of the whole array used to stomp that legitimate commit back to
+  // origin/main just because r2-manifest.json also showed dirty in the same
+  // build, which guaranteed ci-verify-submitted-artifacts.mjs would always
+  // see committed != rebuilt and fail that PR's `checks` job.
   if (productionBuild) {
     return;
   }
-  const diff = spawnSync(
-    "git",
-    ["status", "--porcelain", "--", ...DEPLOY_OWNED_ARTIFACTS],
-    { cwd: process.cwd(), encoding: "utf8" },
-  );
-  if (diff.status !== 0 || !diff.stdout.trim()) {
+  const dirty = dirtyTrackedPaths(DEPLOY_OWNED_ARTIFACTS, process.cwd());
+  if (dirty.length === 0) {
     return;
   }
   const baseRemote = resolveBaseRemote(process.cwd());
   const revert = spawnSync(
     "git",
-    ["checkout", `${baseRemote}/main`, "--", ...DEPLOY_OWNED_ARTIFACTS],
+    ["checkout", `${baseRemote}/main`, "--", ...dirty],
     { cwd: process.cwd(), encoding: "utf8" },
   );
   if (revert.status !== 0) {
@@ -93,11 +102,11 @@ function revertDeployOwnedArtifactsIfChanged() {
       [
         "",
         "warning: build modified deploy-owned artifact(s), and auto-revert failed:",
-        ...DEPLOY_OWNED_ARTIFACTS.map((file) => `  - ${file}`),
+        ...dirty.map((file) => `  - ${file}`),
         revert.stderr || "",
         "Revert them manually before committing:",
         "",
-        `  git checkout ${baseRemote}/main -- ${DEPLOY_OWNED_ARTIFACTS.join(" ")}`,
+        `  git checkout ${baseRemote}/main -- ${dirty.join(" ")}`,
         "",
       ].join("\n"),
     );
@@ -108,7 +117,7 @@ function revertDeployOwnedArtifactsIfChanged() {
       "",
       "note: build produced non-deterministic deploy-owned artifact(s), auto-reverted to",
       `${baseRemote}/main (see DEPLOY_OWNED_ARTIFACTS in scripts/lib.mjs):`,
-      ...DEPLOY_OWNED_ARTIFACTS.map((file) => `  - ${file}`),
+      ...dirty.map((file) => `  - ${file}`),
       "",
     ].join("\n"),
   );
