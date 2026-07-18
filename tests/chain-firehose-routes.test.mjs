@@ -259,6 +259,30 @@ test("ingest: a wrong token 401s before the limiter is consulted (#5550)", async
   assert.equal(res.status, 401);
 });
 
+// Sentry METAGRAPHED-1: a DO stub call throws "Durable Object reset because
+// its code was updated" when a deploy touching ChainFirehoseHub lands
+// mid-request -- expected/occasional, not a real fault. Left uncaught this
+// was an unhandled Worker exception instead of a clean, retryable response.
+test("ingest: a DO stub call throwing (e.g. a mid-request deploy reset) 503s cleanly instead of throwing (Sentry METAGRAPHED-1)", async () => {
+  const env = {
+    CHAIN_FIREHOSE_SYNC_SECRET: "shh",
+    CHAIN_FIREHOSE_HUB: stubHub(() => {
+      throw new Error("Durable Object reset because its code was updated.");
+    }),
+  };
+  const res = await handleRequest(
+    ingestRequest("{}", { token: "shh" }),
+    env,
+    {},
+  );
+  assert.equal(res.status, 503);
+  assert.equal(
+    (await res.json()).error.code,
+    "chain_firehose_ingest_unavailable",
+  );
+  assert.ok(res.headers.get("retry-after"));
+});
+
 test("ingest: relays a non-2xx upstream status (e.g. 400 from an invalid payload) unchanged", async () => {
   const env = {
     CHAIN_FIREHOSE_SYNC_SECRET: "shh",

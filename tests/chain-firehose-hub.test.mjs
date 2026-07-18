@@ -808,6 +808,54 @@ test("ChainFirehoseHub broadcast: a WebSocket whose send() throws (dead socket) 
   assert.equal(sent.length, 1);
 });
 
+// Sentry METAGRAPHED-3: state.getWebSockets() itself (not a per-socket op)
+// threw a bare Cloudflare "internal error" under concurrent load. Unlike the
+// per-socket guards above, this call had no try/catch at all -- a throw here
+// used to abort the whole broadcast(), losing SSE/GraphQL/MCP/alerter
+// delivery too, not just the WS population.
+test("ChainFirehoseHub broadcast: state.getWebSockets() throwing doesn't crash the broadcast or drop SSE delivery", () => {
+  const throwingState = {
+    getWebSockets: () => {
+      throw new Error("internal error; reference = deadbeef");
+    },
+  };
+  const sseSent = [];
+  const entry = {
+    topics: null,
+    controller: {
+      desiredSize: 1,
+      enqueue: (message) => sseSent.push(message),
+    },
+  };
+  const hub = new ChainFirehoseHub(throwingState, {});
+  hub.sseClients.add(entry);
+  assert.doesNotThrow(() =>
+    hub.broadcast({ table: "blocks", block_number: 1 }),
+  );
+  assert.equal(sseSent.length, 1);
+});
+
+test("ChainFirehoseHub broadcast: state.getWebSockets(tag) throwing for the graphql-ws tag alone doesn't crash the broadcast", () => {
+  const sent = [];
+  const ws = {
+    deserializeAttachment: () => null,
+    send: (message) => sent.push(message),
+  };
+  const partiallyThrowingState = {
+    getWebSockets: (tag) => {
+      if (tag === GRAPHQL_WS_SOCKET_TAG) {
+        throw new Error("internal error; reference = deadbeef");
+      }
+      return [ws];
+    },
+  };
+  const hub = new ChainFirehoseHub(partiallyThrowingState, {});
+  assert.doesNotThrow(() =>
+    hub.broadcast({ table: "blocks", block_number: 1 }),
+  );
+  assert.equal(sent.length, 1);
+});
+
 test("ChainFirehoseHub.webSocketMessage: a no-op for a plain firehose socket (not registered in graphqlWsSockets)", async () => {
   const hub = new ChainFirehoseHub(stubState(), {});
   await assert.doesNotReject(() => hub.webSocketMessage({}, "ignored"));

@@ -246,6 +246,25 @@ export function formatChainFirehoseSseFrame(payload) {
   return `event: chain\ndata: ${JSON.stringify(payload)}\n\n`;
 }
 
+// Sentry METAGRAPHED-3: state.getWebSockets() itself -- not a per-socket
+// operation like ws.send()/deserializeAttachment() above, which broadcast()
+// already guards individually -- threw a bare Cloudflare "internal error"
+// under concurrent load (16 occurrences in the same second, lining up with
+// chain-firehose-relay's CHAIN_FIREHOSE_FORWARD_CONCURRENCY=16 hitting this
+// same DO instance's broadcast() at once). Unguarded, that crashed the whole
+// broadcast() call -- losing SSE/GraphQL/MCP/alerter delivery too, not just
+// the WS population -- and surfaced to the relay as a 500 requiring a full
+// retry. Failing open to an empty array skips only this cycle's plain/
+// graphql-ws fanout; every other broadcast population is unaffected, and the
+// next broadcast() retries getWebSockets() fresh.
+function safeGetWebSockets(state, tag) {
+  try {
+    return state.getWebSockets(tag);
+  } catch {
+    return [];
+  }
+}
+
 // graphql-ws's wire protocol accepts ANY operation type over the same
 // `subscribe` message -- query and mutation included, not just subscription
 // (a real client can send `subscription { __typename }`-shaped envelopes
@@ -967,9 +986,9 @@ export class ChainFirehoseHub {
     // it (see closeStaleGraphqlWsSocket's comment for why the two can
     // diverge after a hibernation/reconstruction cycle).
     const graphqlWsTagged = new Set(
-      this.state.getWebSockets(GRAPHQL_WS_SOCKET_TAG),
+      safeGetWebSockets(this.state, GRAPHQL_WS_SOCKET_TAG),
     );
-    for (const ws of this.state.getWebSockets()) {
+    for (const ws of safeGetWebSockets(this.state)) {
       if (graphqlWsTagged.has(ws)) {
         // graphql-ws sockets are NOT plain firehose sockets -- sending a bare
         // JSON payload onto one here would corrupt the graphql-transport-ws
