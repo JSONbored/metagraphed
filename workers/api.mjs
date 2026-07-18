@@ -729,7 +729,28 @@ const CHAIN_EVENTS_CSV_COLUMNS = [
   "observed_at",
 ];
 
-async function handleChainEventsProxy(request, env, url) {
+// Response cache for this proxy's upstream (DATA_API) body, keyed on the
+// request path+search -- every param (netuid, kind, window, limit) fully
+// determines the content. Deliberately caches the parsed upstream JSON, not
+// the final client-facing Response: envelopeResponse's ETag/304 handling and
+// the CSV-vs-JSON format branch below both stay per-request and cheap
+// (no Postgres/Hyperdrive round trip either way), while the one expensive
+// part -- the DATA_API fetch -- gets skipped on a hit. Mirrors the
+// caches.default pattern already proven in request-handlers/rpc-proxy.mjs
+// and request-handlers/analytics.mjs (metagraphed#6767); short, fixed TTL
+// (no freshness-stamp invalidation, unlike analytics.mjs's D1-fallback-aware
+// version) since this tier has no publish-time snapshot to key off of.
+const CHAIN_EVENTS_PROXY_CACHE_TTL_SECONDS = 60;
+
+async function chainEventsProxyCacheKey(env, url) {
+  return new Request(
+    `https://edge-cache.metagraph.sh/chain-events-proxy/${encodeURIComponent(
+      contractVersion(env),
+    )}${url.pathname}${url.search}`,
+  );
+}
+
+async function handleChainEventsProxy(request, env, url, ctx) {
   if (!env.DATA_API) {
     return errorResponse(
       "data_tier_unavailable",
@@ -737,33 +758,61 @@ async function handleChainEventsProxy(request, env, url) {
       503,
     );
   }
-  // DATA_API is GET-only (it 405s any other method), so a HEAD probe must be
-  // forwarded as a GET or it would return a 405 error envelope instead of the
-  // bodiless 200 that HEAD yields on every other GET route (and that this route's
-  // own CORS preflight advertises). envelopeResponse(request, …) below still
-  // strips the body for HEAD, so the client gets the correct empty 200.
-  const upstream = await env.DATA_API.fetch(
-    request.method === "HEAD"
-      ? new Request(request.url, { method: "GET", headers: request.headers })
-      : request,
-  );
+  const cache =
+    request.method === "GET" || request.method === "HEAD"
+      ? globalThis.caches?.default
+      : null;
+  const cacheKey = cache ? await chainEventsProxyCacheKey(env, url) : null;
   let body;
-  try {
-    body = await upstream.json();
-  } catch {
-    return errorResponse(
-      "data_tier_unavailable",
-      "The all-events data tier returned an unreadable response.",
-      502,
+  let upstreamOk = true;
+  let upstreamStatus = 200;
+  const cacheHit = cacheKey ? await cache.match(cacheKey) : null;
+  if (cacheHit) {
+    body = await cacheHit.json();
+  } else {
+    // DATA_API is GET-only (it 405s any other method), so a HEAD probe must be
+    // forwarded as a GET or it would return a 405 error envelope instead of the
+    // bodiless 200 that HEAD yields on every other GET route (and that this route's
+    // own CORS preflight advertises). envelopeResponse(request, …) below still
+    // strips the body for HEAD, so the client gets the correct empty 200.
+    const upstream = await env.DATA_API.fetch(
+      request.method === "HEAD"
+        ? new Request(request.url, { method: "GET", headers: request.headers })
+        : request,
     );
+    try {
+      body = await upstream.json();
+    } catch {
+      return errorResponse(
+        "data_tier_unavailable",
+        "The all-events data tier returned an unreadable response.",
+        502,
+      );
+    }
+    upstreamOk = upstream.ok;
+    upstreamStatus = upstream.status;
+    if (cacheKey && upstreamOk) {
+      ctx?.waitUntil?.(
+        cache.put(
+          cacheKey,
+          new Response(JSON.stringify(body), {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+              "cache-control": `public, s-maxage=${CHAIN_EVENTS_PROXY_CACHE_TTL_SECONDS}`,
+            },
+          }),
+        ),
+      );
+    }
   }
-  if (!upstream.ok) {
+  if (!upstreamOk) {
     return errorResponse(
       "data_query_failed",
       typeof body?.error === "string"
         ? body.error
         : "The all-events data tier returned an error.",
-      upstream.status,
+      upstreamStatus,
     );
   }
   // CSV download of the page: the /api/v1/chain-events feed exposes `events`, so
@@ -1292,7 +1341,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         );
       }
     }
-    return handleChainEventsProxy(request, env, url);
+    return handleChainEventsProxy(request, env, url, ctx);
   }
 
   // Change-feed webhooks: subscription management accepts POST/DELETE/GET, so it

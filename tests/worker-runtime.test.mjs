@@ -99,6 +99,93 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.source, "data-worker-postgres");
   });
 
+  test("caches a chain-events GET at the edge and skips a second DATA_API fetch (#6767)", async () => {
+    let dataCalls = 0;
+    const store = new Map();
+    globalThis.caches = {
+      default: {
+        async match(request) {
+          const cached = store.get(request.url);
+          return cached ? cached.clone() : undefined;
+        },
+        async put(request, response) {
+          store.set(request.url, response.clone());
+        },
+      },
+    };
+    try {
+      const testEnv = {
+        ...env,
+        DATA_API: {
+          fetch() {
+            dataCalls += 1;
+            return new Response(
+              JSON.stringify({ window_blocks: 500, activity: [] }),
+              { status: 200, headers: { "content-type": "application/json" } },
+            );
+          },
+        },
+      };
+      const waited = [];
+      const ctx = { waitUntil: (p) => waited.push(p) };
+      const url = "https://metagraph.sh/api/v1/chain-events/stats?blocks=500";
+      const first = await handleRequest(new Request(url), testEnv, ctx);
+      assert.equal(first.status, 200);
+      assert.equal(dataCalls, 1);
+      // The cache.put is scheduled via ctx.waitUntil, not awaited inline --
+      // drain it before the second request expects a warm cache.
+      await Promise.all(waited);
+      assert.equal(store.size, 1);
+
+      const second = await handleRequest(new Request(url), testEnv, ctx);
+      assert.equal(second.status, 200);
+      assert.equal(dataCalls, 1, "second request must not re-fetch DATA_API");
+      const body = await second.json();
+      assert.equal(body.data.window_blocks, 500);
+    } finally {
+      globalThis.caches = undefined;
+    }
+  });
+
+  test("does not cache a non-200 DATA_API response (#6767)", async () => {
+    let dataCalls = 0;
+    const store = new Map();
+    globalThis.caches = {
+      default: {
+        async match(request) {
+          const cached = store.get(request.url);
+          return cached ? cached.clone() : undefined;
+        },
+        async put(request, response) {
+          store.set(request.url, response.clone());
+        },
+      },
+    };
+    try {
+      const testEnv = {
+        ...env,
+        DATA_API: {
+          fetch() {
+            dataCalls += 1;
+            return new Response(JSON.stringify({ error: "boom" }), {
+              status: 502,
+            });
+          },
+        },
+      };
+      const waited = [];
+      const ctx = { waitUntil: (p) => waited.push(p) };
+      const url = "https://metagraph.sh/api/v1/chain-events/stats?blocks=1";
+      const response = await handleRequest(new Request(url), testEnv, ctx);
+      assert.equal(response.status, 502);
+      await Promise.all(waited);
+      assert.equal(store.size, 0, "an error response must never be cached");
+      assert.equal(dataCalls, 1);
+    } finally {
+      globalThis.caches = undefined;
+    }
+  });
+
   test("routes /api/v1/subnets/:netuid/ownership-history through the same DATA_API chain-events proxy (#6637)", async () => {
     let requestedPath = null;
     const response = await handleRequest(
