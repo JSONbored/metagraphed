@@ -239,6 +239,32 @@ test("computeBatchPaceDelayMs: sustained full-batch pacing stays at/under the sa
   );
 });
 
+// #6672 regression: computeBatchPaceDelayMs's first argument must be the
+// number of ingest REQUESTS (chunks) sent, not the raw row count -- passing
+// raw rows again would silently re-cap effective throughput at the
+// pre-batching rate, defeating the entire point of batching. A full
+// CHAIN_FIREHOSE_POLL_BATCH_SIZE (200) poll batched at
+// CHAIN_FIREHOSE_INGEST_BATCH_SIZE (10) is 20 requests -- pollOnce() must
+// pace against 20, not 200.
+test("computeBatchPaceDelayMs: pacing a full poll's worth of REQUESTS (post-batching) is a fraction of pacing the same poll's raw rows", () => {
+  const chunkCount = Math.ceil(
+    CHAIN_FIREHOSE_POLL_BATCH_SIZE / CHAIN_FIREHOSE_INGEST_BATCH_SIZE,
+  );
+  const requestPacedDelayMs = computeBatchPaceDelayMs(chunkCount, 0);
+  const rowPacedDelayMs = computeBatchPaceDelayMs(
+    CHAIN_FIREHOSE_POLL_BATCH_SIZE,
+    0,
+  );
+  assert.equal(
+    requestPacedDelayMs,
+    (chunkCount / CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S) * 60_000,
+  );
+  assert.ok(
+    requestPacedDelayMs < rowPacedDelayMs,
+    "pacing by request count must be shorter than pacing by raw row count once batch size > 1 -- otherwise batching's throughput gain is silently thrown away",
+  );
+});
+
 // --- forwardChainFirehoseNotification ----------------------------------------
 
 test("forwardChainFirehoseNotification: POSTs the payload with the sync-token header, returns ok/status", async () => {

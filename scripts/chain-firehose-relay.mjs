@@ -229,8 +229,8 @@ export const CHAIN_FIREHOSE_POLL_INTERVAL_MS = 250;
 export const CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S = 960;
 
 // Pure: how long to additionally sleep after a non-rate-limited batch of
-// `claimed` rows took `elapsedMs` wall-clock time to forward, so the
-// SUSTAINED rate across batches never organically bursts past the ingest
+// `requestCount` ingest POSTs took `elapsedMs` wall-clock time to forward, so
+// the SUSTAINED rate across batches never organically bursts past the ingest
 // endpoint's own rate limit. This is the fix for a real 2026-07-17 incident,
 // distinct from the retry-after fix above (that one handles a single 429
 // correctly; this one prevents the NEXT batch from re-triggering one at all).
@@ -245,10 +245,23 @@ export const CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S = 960;
 // sat at ~230k pending with a 100% 429 rate for over an hour until this fix.
 // Proactive pacing keeps the relay's own request rate under the cap in the
 // first place, so backlog draining converges instead of oscillating forever.
-export function computeBatchPaceDelayMs(claimed, elapsedMs) {
-  if (claimed <= 0) return 0;
+//
+// #6672: `requestCount` is the number of ingest POSTS (chunks), NOT the raw
+// row count -- CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S is 80% of the
+// server's REQUEST-count rate limit (CHAIN_FIREHOSE_INGEST_RATE_LIMIT in
+// workers/api.mjs), and stayed a request-rate target even after batching
+// changed the relationship between rows and requests. Before batching, one
+// row was one request, so passing the raw claimed-row count here was
+// correct by coincidence; pollOnce() below now passes the chunk count
+// (chunkRows(rows, CHAIN_FIREHOSE_INGEST_BATCH_SIZE).length), not rows.length
+// -- passing raw rows here again would silently re-introduce the exact
+// under-throttling-of-the-rate-limit's-true-headroom bug batching exists to
+// fix (pacing to 960 ROWS/min regardless of batch size caps effective
+// throughput at the pre-batching rate, defeating the entire point of #6672).
+export function computeBatchPaceDelayMs(requestCount, elapsedMs) {
+  if (requestCount <= 0) return 0;
   const targetMs =
-    (claimed / CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S) * 60_000;
+    (requestCount / CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S) * 60_000;
   return Math.max(0, targetMs - elapsedMs);
 }
 
@@ -613,7 +626,8 @@ async function main() {
         FOR UPDATE SKIP LOCKED
       )
       RETURNING id, payload`;
-    if (rows.length === 0) return { claimed: 0, rateLimitedForMs: 0 };
+    if (rows.length === 0)
+      return { claimed: 0, requestCount: 0, rateLimitedForMs: 0 };
     let droppedInBatch = 0;
     let lastDropStatus;
     const result = await forwardBatch(rows, config, {
@@ -648,6 +662,10 @@ async function main() {
     }
     return {
       claimed: rows.length,
+      // #6672: the pacing unit is REQUESTS (chunks), not rows -- see
+      // computeBatchPaceDelayMs's own comment for why passing raw row count
+      // here would silently defeat batching's whole throughput benefit.
+      requestCount: chunkRows(rows, CHAIN_FIREHOSE_INGEST_BATCH_SIZE).length,
       rateLimitedForMs: result.rateLimitedForMs ?? 0,
     };
   }
@@ -667,7 +685,7 @@ async function main() {
   );
   while (!shuttingDown) {
     const pollStartedAt = Date.now();
-    const { claimed, rateLimitedForMs } = await pollOnce();
+    const { claimed, requestCount, rateLimitedForMs } = await pollOnce();
     touchHeartbeat(); // tracks poll-loop liveness, independent of claim/forward outcome -- see HEARTBEAT_FILE's own comment
     if (Date.now() - lastCleanupAt >= CHAIN_FIREHOSE_CLEANUP_INTERVAL_MS) {
       await cleanupOnce();
@@ -693,9 +711,10 @@ async function main() {
       // claimed > 0 and not rate limited: pace the next poll instead of
       // looping immediately -- see computeBatchPaceDelayMs's own comment for
       // why an unpaced immediate reloop reliably re-triggers the same 429
-      // this batch just avoided.
+      // this batch just avoided. requestCount (chunks), not claimed (raw
+      // rows) -- the rate limit this paces against is request-counted.
       const paceDelayMs = computeBatchPaceDelayMs(
-        claimed,
+        requestCount,
         Date.now() - pollStartedAt,
       );
       if (paceDelayMs > 0) {
