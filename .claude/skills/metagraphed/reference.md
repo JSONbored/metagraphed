@@ -441,7 +441,7 @@ api-reference/**` wasn't regenerated — run `node scripts/generate-openapi-docs
   route with no static file — a `route(...)` entry (API surface metadata) AND a distinct
   `artifact(id, path, description, schemaName)` entry (the schema-ref mapping); omitting the
   `artifact()` call makes `npm run build` throw `No public artifact contract maps API artifact
-  <path>` from `schemaRefForArtifactPath`, since `route()`'s own `artifactPath` argument is just a
+<path>` from `schemaRefForArtifactPath`, since `route()`'s own `artifactPath` argument is just a
   label, not a registration. And the local pre-push guard's `validate:docs` check requires a
   matching prose entry in `docs/backend-artifact-contracts.md` (mirror an existing bullet like the
   `subnet-burn` one) for every artifact path — easy to miss since nothing else in the schema/route

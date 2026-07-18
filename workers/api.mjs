@@ -1190,10 +1190,28 @@ async function handleChainFirehoseIngest(request, env) {
   const stub = env.CHAIN_FIREHOSE_HUB.get(
     env.CHAIN_FIREHOSE_HUB.idFromName("global"),
   );
-  const upstream = await stub.fetch(
-    "https://chain-firehose-hub.internal/ingest",
-    { method: "POST", body, headers: { "content-type": "application/json" } },
-  );
+  let upstream;
+  try {
+    upstream = await stub.fetch("https://chain-firehose-hub.internal/ingest", {
+      method: "POST",
+      body,
+      headers: { "content-type": "application/json" },
+    });
+  } catch {
+    // Sentry METAGRAPHED-1: a DO stub call throws "Durable Object reset
+    // because its code was updated" when a deploy touching ChainFirehoseHub
+    // (or a transitive dep) lands mid-request -- expected/occasional, not a
+    // real fault. Left uncaught this was an unhandled Worker exception; a
+    // clean, retryable 503 lets the relay's own retry/backoff (#6451) handle
+    // it the same way it already handles a rate-limited or unavailable hub.
+    return errorResponse(
+      "chain_firehose_ingest_unavailable",
+      "The realtime chain firehose was temporarily unavailable; retry.",
+      503,
+      {},
+      { "retry-after": "1" },
+    );
+  }
   return new Response(await upstream.text(), {
     status: upstream.status,
     headers: { "content-type": "application/json; charset=utf-8" },
