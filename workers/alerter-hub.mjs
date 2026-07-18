@@ -21,6 +21,7 @@
 // triggers matched AND whether a match should actually be delivered right
 // now (burst rate-limiting), never how each channel's request is shaped.
 import { triggerMatchesEvent } from "../src/alert-triggers.mjs";
+import { buildDeregRiskSnapshot } from "../src/dereg-risk.mjs";
 import {
   mapBounded,
   resolvedWebhookUrlStatus,
@@ -33,6 +34,18 @@ import {
   buildWebhookDeliveryRequest,
   isDeliveryRateLimited,
 } from "../src/alert-delivery.mjs";
+
+// #6746/#6747: the empty snapshot every AlerterHub starts with and falls
+// back to whenever a metric refresh is skipped/fails -- both of
+// triggerMatchesEvent's own metric lookups already treat a missing map
+// entry as "does not match" (fails closed), so an empty snapshot is a
+// genuinely safe default, not a placeholder that needs special-casing.
+function emptyMetricSnapshot() {
+  return {
+    subnetAlphaPriceRank: new Map(),
+    neuronImmunityCountdownBlocks: new Map(),
+  };
+}
 
 export const ALERTER_HUB_TRIGGER_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -173,6 +186,13 @@ export class AlerterHub {
     this.deliver = deliver;
     this.triggers = [];
     this.triggersLoadedAt = 0;
+    // #6746/#6747: the cached snapshot condition-type triggers are matched
+    // against -- refreshed ALONGSIDE the trigger list (same TTL/timeout
+    // budget), never fetched per-event. Starts empty (fails closed: a
+    // condition trigger simply never matches until the first successful
+    // refresh populates real data), matching triggersLoadedAt's own
+    // cold-start convention.
+    this.metricSnapshot = emptyMetricSnapshot();
     // Coalesces concurrent evaluate() calls that all find the cache stale
     // into ONE refresh request rather than one per call -- broadcast()
     // fires one /evaluate POST per chain event, and events can arrive
@@ -247,6 +267,45 @@ export class AlerterHub {
       // Best-effort refresh -- keep serving the stale cache rather than
       // throwing out of evaluate().
     }
+    // #6746/#6747: only fetch the metric snapshot when at least one ACTIVE
+    // trigger actually has a condition -- the overwhelming common case
+    // today is zero (this is a brand-new capability), so this keeps every
+    // existing/fixed-field-only deployment's refresh cycle exactly as cheap
+    // as it already was: one Postgres round trip, not two, unless a
+    // predicate trigger genuinely exists to justify the second one.
+    if (this.triggers.some((trigger) => trigger.condition)) {
+      await this.refreshMetricSnapshot();
+    }
+  }
+
+  async refreshMetricSnapshot() {
+    if (!this.env.DATA_API || !this.env.ALERT_TRIGGERS_INTERNAL_TOKEN) {
+      return;
+    }
+    try {
+      const upstream = await this.env.DATA_API.fetch(
+        "https://data-api.internal/api/v1/internal/alert-triggers-dereg-risk-snapshot",
+        {
+          headers: {
+            "x-alert-triggers-internal-token":
+              this.env.ALERT_TRIGGERS_INTERNAL_TOKEN,
+          },
+          signal: AbortSignal.timeout(ALERT_TRIGGER_REFRESH_TIMEOUT_MS),
+        },
+      );
+      if (!upstream.ok) return;
+      const body = await upstream.json();
+      this.metricSnapshot = buildDeregRiskSnapshot({
+        economicsRows: body?.subnets,
+        neuronRows: body?.immune_neurons,
+        currentBlock: body?.current_block,
+      });
+    } catch {
+      // Best-effort -- keep serving the stale (or empty) snapshot rather
+      // than throwing out of evaluate(); a condition trigger just keeps
+      // failing closed against stale data until the next successful
+      // refresh, never against a thrown error.
+    }
   }
 
   // Pure decision given the CURRENT cache -- exported behavior is really
@@ -254,7 +313,7 @@ export class AlerterHub {
   // this just applies it across every cached trigger.
   matchingTriggers(payload) {
     return this.triggers.filter((trigger) =>
-      triggerMatchesEvent(trigger, payload),
+      triggerMatchesEvent(trigger, payload, this.metricSnapshot),
     );
   }
 

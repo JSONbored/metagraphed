@@ -373,6 +373,186 @@ test("refreshTriggers: fetches the internal active-list route with the correct U
   assert.notEqual(hub.triggersLoadedAt, 0);
 });
 
+// --- refreshTriggers: metric-snapshot refresh (#6746/#6747) -----------------
+
+test("refreshTriggers: never fetches the metric snapshot when no active trigger has a condition", async () => {
+  const calledUrls = [];
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async (url) => {
+        calledUrls.push(String(url));
+        return new Response(
+          JSON.stringify({ triggers: [triggerRow(), triggerRow({ id: "2" })] }),
+          { status: 200 },
+        );
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  await hub.refreshTriggers();
+  assert.equal(calledUrls.length, 1);
+  assert.ok(calledUrls[0].includes("alert-triggers-active"));
+});
+
+test("refreshTriggers: fetches the dereg-risk snapshot route when an active trigger has a condition, and populates the snapshot", async () => {
+  const calledUrls = [];
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async (url) => {
+        const s = String(url);
+        calledUrls.push(s);
+        if (s.includes("alert-triggers-active")) {
+          return new Response(
+            JSON.stringify({
+              triggers: [
+                triggerRow({
+                  condition: {
+                    metric: "subnet_alpha_price_rank",
+                    operator: "gt",
+                    threshold: 100,
+                  },
+                }),
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            current_block: 1000,
+            subnets: [{ netuid: 7, alpha_price_tao: 1 }],
+            immune_neurons: [
+              { netuid: 7, hotkey: "5Fhot", immunity_expires_at_block: 1500 },
+            ],
+          }),
+          { status: 200 },
+        );
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  await hub.refreshTriggers();
+  assert.equal(calledUrls.length, 2);
+  assert.ok(
+    calledUrls.some((u) => u.includes("alert-triggers-dereg-risk-snapshot")),
+  );
+  assert.equal(hub.metricSnapshot.subnetAlphaPriceRank.get(7), 1);
+  assert.equal(
+    hub.metricSnapshot.neuronImmunityCountdownBlocks.get("7:5Fhot"),
+    500,
+  );
+});
+
+test("refreshTriggers: the metric-snapshot fetch carries the internal token header and a bounded AbortSignal", async () => {
+  let receivedToken;
+  let receivedSignal;
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async (url, init) => {
+        const s = String(url);
+        if (s.includes("alert-triggers-active")) {
+          return new Response(
+            JSON.stringify({
+              triggers: [
+                triggerRow({
+                  condition: {
+                    metric: "subnet_alpha_price_rank",
+                    operator: "gt",
+                    threshold: 0,
+                  },
+                }),
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        receivedToken = init.headers["x-alert-triggers-internal-token"];
+        receivedSignal = init.signal;
+        return new Response(
+          JSON.stringify({ current_block: 1, subnets: [], immune_neurons: [] }),
+          { status: 200 },
+        );
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  await hub.refreshTriggers();
+  assert.equal(receivedToken, INTERNAL_TOKEN);
+  assert.ok(receivedSignal instanceof AbortSignal);
+});
+
+test("refreshTriggers: a failed metric-snapshot fetch keeps the stale/empty snapshot, never throws", async () => {
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async (url) => {
+        const s = String(url);
+        if (s.includes("alert-triggers-active")) {
+          return new Response(
+            JSON.stringify({
+              triggers: [
+                triggerRow({
+                  condition: {
+                    metric: "subnet_alpha_price_rank",
+                    operator: "gt",
+                    threshold: 0,
+                  },
+                }),
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        throw new Error("network down");
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  await assert.doesNotReject(() => hub.refreshTriggers());
+  assert.equal(hub.metricSnapshot.subnetAlphaPriceRank.size, 0);
+  assert.equal(hub.metricSnapshot.neuronImmunityCountdownBlocks.size, 0);
+});
+
+test("refreshTriggers: a non-ok metric-snapshot response keeps the stale/empty snapshot", async () => {
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async (url) => {
+        const s = String(url);
+        if (s.includes("alert-triggers-active")) {
+          return new Response(
+            JSON.stringify({
+              triggers: [
+                triggerRow({
+                  condition: {
+                    metric: "subnet_alpha_price_rank",
+                    operator: "gt",
+                    threshold: 0,
+                  },
+                }),
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response("", { status: 500 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  await hub.refreshTriggers();
+  assert.equal(hub.metricSnapshot.subnetAlphaPriceRank.size, 0);
+});
+
+test("refreshMetricSnapshot: a no-op when DATA_API/token is unbound, called directly (own defensive guard, independent of refreshTriggers' own check)", async () => {
+  const hub = new AlerterHub({}, {});
+  await assert.doesNotReject(() => hub.refreshMetricSnapshot());
+  assert.equal(hub.metricSnapshot.subnetAlphaPriceRank.size, 0);
+});
+
 test("refreshTriggers: the DATA_API fetch carries a bounded AbortSignal so a slow Postgres query can't stall ChainFirehoseHub's own broadcast()-wide wait", async () => {
   let receivedSignal;
   const hub = new AlerterHub(
@@ -580,6 +760,74 @@ test("matchingTriggers: filters the cache via triggerMatchesEvent", () => {
     matches.map((t) => t.id),
     ["1"],
   );
+});
+
+test("matchingTriggers: a condition trigger matches against the hub's own cached metricSnapshot", () => {
+  const hub = new AlerterHub({}, {});
+  hub.triggers = [
+    triggerRow({
+      id: "1",
+      netuid: 7,
+      condition: {
+        metric: "subnet_alpha_price_rank",
+        operator: "lte",
+        threshold: 5,
+      },
+    }),
+  ];
+  hub.metricSnapshot = {
+    subnetAlphaPriceRank: new Map([[7, 3]]),
+    neuronImmunityCountdownBlocks: new Map(),
+  };
+  const matches = hub.matchingTriggers({ table: "account_events", netuid: 7 });
+  assert.deepEqual(
+    matches.map((t) => t.id),
+    ["1"],
+  );
+});
+
+test("evaluate: an end-to-end condition trigger delivers when refreshTriggers populates a matching metricSnapshot", async () => {
+  const deliver = vi.fn().mockResolvedValue(true);
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async (url) => {
+        const s = String(url);
+        if (s.includes("alert-triggers-active")) {
+          return new Response(
+            JSON.stringify({
+              triggers: [
+                triggerRow({
+                  id: "1",
+                  netuid: 7,
+                  condition: {
+                    metric: "subnet_alpha_price_rank",
+                    operator: "eq",
+                    threshold: 1,
+                  },
+                }),
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            current_block: 1,
+            subnets: [{ netuid: 7, alpha_price_tao: 1 }],
+            immune_neurons: [],
+          }),
+          { status: 200 },
+        );
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+    { deliver },
+  );
+  const result = await hub.evaluate({ table: "account_events", netuid: 7 });
+  assert.equal(result.matched, 1);
+  assert.equal(result.delivered, 1);
+  assert.equal(deliver.mock.calls.length, 1);
 });
 
 test("evaluate: returns {matched:0} and never calls deliver when nothing matches", async () => {

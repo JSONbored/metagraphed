@@ -3330,10 +3330,11 @@ async function handleAlertTriggerCreate(request, env) {
     const v = validated.value;
     const [row] = await sql`
       INSERT INTO chain_alert_triggers
-        (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, channel, destination, created_at, updated_at)
+        (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, condition, channel, destination, created_at, updated_at)
       VALUES (
         ${ownerToken}, ${v.name}, ${v.tableFilter}, ${v.netuid}, ${v.eventKind},
-        ${v.account}, ${v.minAmountTao}, ${v.channel}, ${v.destination}, ${now}, ${now}
+        ${v.account}, ${v.minAmountTao}, ${v.condition ? sql.json(v.condition) : null},
+        ${v.channel}, ${v.destination}, ${now}, ${now}
       )
       RETURNING *`;
     return writeJson(
@@ -3422,6 +3423,7 @@ async function handleAlertTriggerUpdate(request, env, id) {
           existing.min_amount_tao === null
             ? null
             : Number(existing.min_amount_tao),
+        condition: existing.condition,
         channel: existing.channel,
         destination: existing.destination,
       }),
@@ -3442,6 +3444,7 @@ async function handleAlertTriggerUpdate(request, env, id) {
         event_kind = ${v.eventKind},
         account = ${v.account},
         min_amount_tao = ${v.minAmountTao},
+        condition = ${v.condition ? sql.json(v.condition) : null},
         channel = ${v.channel},
         destination = ${v.destination},
         updated_at = ${now}
@@ -3557,6 +3560,87 @@ async function handleAlertTriggersMatchedWriteback(request, env) {
       [now, ...ids],
     );
     return writeJson({ updated: updated.length });
+  });
+}
+
+// Internal-only: the #6747 evaluator's METRIC cache-refresh scan -- the raw
+// rows AlerterHub.refreshTriggers() feeds into src/dereg-risk.mjs's
+// buildDeregRiskSnapshot to build the in-memory Maps triggerMatchesEvent's
+// condition check reads from. Gated the SAME way as the active-list/
+// writeback routes above (same ALERT_TRIGGERS_INTERNAL_TOKEN secret, a
+// different capability from the create/owner tokens). Bounded and
+// network-wide in ONE call (not per-subnet) so the evaluator's own refresh
+// stays one round trip, same shape as handleAlertTriggersActiveList.
+//
+// `immune_neurons` is deliberately narrow (only currently-immune rows, via
+// the is_immunity_period index-friendly filter) rather than every neuron on
+// every subnet -- a full network-wide neuron dump would be a genuinely large
+// payload; only-currently-immune neurons is a small, bounded set. `subnets`
+// reads subnet_snapshots' latest row per netuid (DISTINCT ON, the same
+// idiom this file already uses for hyperparams_hash/identity_hash) -- a
+// DAILY cadence table, so alpha_price_tao here can lag up to ~24h behind
+// the live economics tier; acceptable for this protocol-health signal
+// (directional rank), not something a trading decision should lean on.
+async function handleDeregRiskSnapshot(request, env) {
+  const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      {
+        error:
+          "the alert-triggers dereg-risk snapshot is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      {
+        error: `provide a valid ${ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  return withAlertTriggersSql(env, async (sql) => {
+    const [[block], hyperparamsRows, immuneNeurons, subnetRows] =
+      await Promise.all([
+        sql`SELECT MAX(block_number) AS block_number FROM blocks`,
+        sql`SELECT netuid, immunity_period FROM subnet_hyperparams`,
+        sql`SELECT netuid, hotkey, registered_at_block FROM neurons
+            WHERE is_immunity_period = TRUE AND hotkey IS NOT NULL
+              AND registered_at_block IS NOT NULL`,
+        sql`SELECT DISTINCT ON (netuid) netuid, alpha_price_tao
+            FROM subnet_snapshots
+            ORDER BY netuid, snapshot_date DESC`,
+      ]);
+    const immunityPeriodByNetuid = new Map(
+      hyperparamsRows
+        .filter((row) => Number.isInteger(row.immunity_period))
+        .map((row) => [row.netuid, row.immunity_period]),
+    );
+    const immuneNeuronsWithExpiry = immuneNeurons
+      .map((row) => {
+        const immunityPeriod = immunityPeriodByNetuid.get(row.netuid);
+        if (!Number.isInteger(immunityPeriod)) return null;
+        return {
+          netuid: row.netuid,
+          hotkey: row.hotkey,
+          immunity_expires_at_block: row.registered_at_block + immunityPeriod,
+        };
+      })
+      .filter(Boolean);
+    return writeJson({
+      current_block: Number.isInteger(block?.block_number)
+        ? block.block_number
+        : null,
+      subnets: subnetRows.map((row) => ({
+        netuid: row.netuid,
+        alpha_price_tao:
+          row.alpha_price_tao === null ? null : Number(row.alpha_price_tao),
+      })),
+      immune_neurons: immuneNeuronsWithExpiry,
+    });
   });
 }
 
@@ -3695,6 +3779,14 @@ export default {
       url.pathname === "/api/v1/internal/alert-triggers/matched"
     ) {
       return handleAlertTriggersMatchedWriteback(request, env);
+    }
+    // #6747: the predicate-condition evaluator's own metric-snapshot refresh
+    // -- see handleDeregRiskSnapshot's own header comment.
+    if (
+      request.method === "GET" &&
+      url.pathname === "/api/v1/internal/alert-triggers-dereg-risk-snapshot"
+    ) {
+      return handleDeregRiskSnapshot(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);

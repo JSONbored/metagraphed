@@ -59,6 +59,111 @@ const MIN_AMOUNT_TAO_CEILING = 1_000_000_000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_EMAIL_LENGTH = 254; // RFC 5321 §4.5.3.1.3
 
+// #6746: a trigger's `condition` matches a COMPUTED/derived metric against a
+// threshold, rather than a raw event field -- the extension SubnetAIQ's
+// deregistration-risk monitor pioneers (stripped of its trading framing).
+// Both metrics below are scoped by the SAME payload fields fixed-field
+// matching already reads (netuid, hotkey) -- a condition does not carry its
+// own separate scope, it narrows whichever event already matched. See
+// src/dereg-risk.mjs for how each metric is actually computed into the
+// snapshot triggerMatchesEvent reads from below.
+export const ALERT_CONDITION_METRICS = new Set([
+  // This subnet's rank by alpha_price_tao among all subnets (1 = highest
+  // price) -- keyed by payload.netuid.
+  "subnet_alpha_price_rank",
+  // Blocks remaining until payload.netuid + payload.hotkey's immunity period
+  // expires -- null (never matches) when that neuron isn't currently in its
+  // immunity window. Keyed by `${netuid}:${hotkey}`.
+  "neuron_immunity_countdown_blocks",
+]);
+
+export const ALERT_CONDITION_OPERATORS = new Set([
+  "lt",
+  "lte",
+  "gt",
+  "gte",
+  "eq",
+]);
+
+function compareAlertCondition(value, operator, threshold) {
+  switch (operator) {
+    case "lt":
+      return value < threshold;
+    case "lte":
+      return value <= threshold;
+    case "gt":
+      return value > threshold;
+    case "gte":
+      return value >= threshold;
+    case "eq":
+      return value === threshold;
+    /* v8 ignore next 2 -- unreachable: operator is already validated against
+       ALERT_CONDITION_OPERATORS before a trigger can carry it. */
+    default:
+      return false;
+  }
+}
+
+// Validates the optional `condition` sub-object of a create/update body.
+// `undefined` (the field wasn't provided) is valid and yields `null` --
+// distinct from a present-but-malformed condition, which is rejected.
+function validateAlertCondition(input) {
+  if (input === undefined) return { ok: true, value: null };
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return {
+      ok: false,
+      error: "`condition`, when provided, must be an object.",
+    };
+  }
+  if (!ALERT_CONDITION_METRICS.has(input.metric)) {
+    return {
+      ok: false,
+      error: `\`condition.metric\` must be one of: ${[...ALERT_CONDITION_METRICS].join(", ")}.`,
+    };
+  }
+  if (!ALERT_CONDITION_OPERATORS.has(input.operator)) {
+    return {
+      ok: false,
+      error: `\`condition.operator\` must be one of: ${[...ALERT_CONDITION_OPERATORS].join(", ")}.`,
+    };
+  }
+  if (
+    typeof input.threshold !== "number" ||
+    !Number.isFinite(input.threshold)
+  ) {
+    return {
+      ok: false,
+      error: "`condition.threshold` must be a finite number.",
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      metric: input.metric,
+      operator: input.operator,
+      threshold: input.threshold,
+    },
+  };
+}
+
+// Reads the current value of one condition's metric for the event payload
+// that already matched every fixed-field check -- `null` when the snapshot
+// has no entry for this netuid/hotkey (metric genuinely inapplicable right
+// now, e.g. a neuron outside its immunity window), which triggerMatchesEvent
+// treats as "does not match", never as a thrown error.
+function readConditionMetric(metric, payload, metricSnapshot) {
+  if (metric === "subnet_alpha_price_rank") {
+    const rank = metricSnapshot?.subnetAlphaPriceRank?.get(payload?.netuid);
+    return typeof rank === "number" ? rank : null;
+  }
+  // metric === "neuron_immunity_countdown_blocks" -- the only other value
+  // ALERT_CONDITION_METRICS permits a trigger to carry (validated at
+  // creation/update time), so no further branch/default is reachable here.
+  const key = `${payload?.netuid}:${payload?.hotkey}`;
+  const countdown = metricSnapshot?.neuronImmunityCountdownBlocks?.get(key);
+  return typeof countdown === "number" ? countdown : null;
+}
+
 // Telegram chat ids are either a signed integer (private chat / group) or an
 // `@channelusername` (public channel/supergroup) -- see the Bot API's
 // sendMessage `chat_id` parameter.
@@ -205,11 +310,21 @@ export function validateAlertTriggerInput(input) {
     minAmountTao = input.min_amount_tao;
   }
 
-  if (netuid === null && !eventKind && !account && minAmountTao === null) {
+  const conditionResult = validateAlertCondition(input.condition);
+  if (!conditionResult.ok) return conditionResult;
+  const condition = conditionResult.value;
+
+  if (
+    netuid === null &&
+    !eventKind &&
+    !account &&
+    minAmountTao === null &&
+    !condition
+  ) {
     return {
       ok: false,
       error:
-        "At least one of netuid, event_kind, account, or min_amount_tao is required.",
+        "At least one of netuid, event_kind, account, min_amount_tao, or condition is required.",
     };
   }
 
@@ -222,6 +337,7 @@ export function validateAlertTriggerInput(input) {
       eventKind,
       account,
       minAmountTao,
+      condition,
       channel: input.channel,
       destination: input.destination,
     },
@@ -232,7 +348,16 @@ export function validateAlertTriggerInput(input) {
 // shape ChainFirehoseHub.broadcast() fans out to SSE/WS/GraphQL/MCP -- see
 // workers/chain-firehose-hub.mjs). Pure, no I/O: the caller owns persistence
 // (match_count/last_matched_at) and delivery.
-export function triggerMatchesEvent(trigger, payload) {
+//
+// `metricSnapshot` (#6746/#6747) is an OPTIONAL, pre-computed cache the
+// caller refreshes on its own bounded schedule (AlerterHub.refreshTriggers(),
+// alongside the trigger list itself) -- this function never fetches or
+// computes a metric itself, only reads whatever snapshot it's handed. A
+// condition trigger with no snapshot available (metricSnapshot omitted, or
+// cold on a fresh evaluator) fails closed -- it never matches -- rather than
+// throwing or silently skipping the condition check, so a stale/missing
+// snapshot can only under-fire, never over-fire, a predicate trigger.
+export function triggerMatchesEvent(trigger, payload, metricSnapshot = null) {
   if (!payload || typeof payload !== "object") return false;
   if (trigger.tableFilter && !trigger.tableFilter.includes(payload.table)) {
     return false;
@@ -258,6 +383,23 @@ export function triggerMatchesEvent(trigger, payload) {
     )
   ) {
     return false;
+  }
+  if (trigger.condition) {
+    const value = readConditionMetric(
+      trigger.condition.metric,
+      payload,
+      metricSnapshot,
+    );
+    if (
+      value === null ||
+      !compareAlertCondition(
+        value,
+        trigger.condition.operator,
+        trigger.condition.threshold,
+      )
+    ) {
+      return false;
+    }
   }
   return true;
 }
@@ -299,6 +441,7 @@ export function ownerAlertTriggerView(record) {
       record.min_amount_tao === undefined || record.min_amount_tao === null
         ? null
         : Number(record.min_amount_tao),
+    condition: record.condition ?? null,
     channel: record.channel,
     destination: record.destination,
     active: record.active !== false,
@@ -328,6 +471,7 @@ export function evaluatorAlertTriggerView(record) {
       record.min_amount_tao === undefined || record.min_amount_tao === null
         ? null
         : Number(record.min_amount_tao),
+    condition: record.condition ?? null,
     channel: record.channel,
     destination: record.destination,
   };

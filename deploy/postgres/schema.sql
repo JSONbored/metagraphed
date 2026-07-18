@@ -845,6 +845,13 @@ CREATE TABLE IF NOT EXISTS chain_alert_triggers (
   -- shouldn't require the owner to know which leg a given event used).
   account           TEXT,
   min_amount_tao    NUMERIC,
+  -- #6746: a computed/derived-metric predicate ({metric, operator,
+  -- threshold}, validated by src/alert-triggers.mjs's validateAlertCondition)
+  -- rather than a raw event-field match -- narrows whichever event already
+  -- passed the fixed-field checks above, so it carries no separate scope of
+  -- its own. NULL for every pre-#6746 trigger (a fixed-field-only match,
+  -- unaffected by this column's presence).
+  condition         JSONB,
   channel           TEXT NOT NULL CHECK (channel IN ('webhook', 'email', 'telegram', 'discord')),
   -- Shape depends on channel: a public https:// URL (webhook), an email
   -- address (email), a chat id or @channelusername (telegram), or the exact
@@ -858,6 +865,11 @@ CREATE TABLE IF NOT EXISTS chain_alert_triggers (
   last_matched_at   BIGINT,
   match_count       BIGINT NOT NULL DEFAULT 0
 );
+-- #6746: safe on an already-deployed table (a fresh CREATE TABLE above
+-- already includes the column; this is a no-op there) -- adds it to an
+-- existing production table, where CREATE TABLE IF NOT EXISTS alone would
+-- not, since the table already exists.
+ALTER TABLE chain_alert_triggers ADD COLUMN IF NOT EXISTS condition JSONB;
 -- Covers AlerterHub's own "give me every active trigger" cache-refresh scan
 -- (#4984 Part 2) -- the only query pattern against this table that isn't
 -- already a fast primary-key lookup by id.

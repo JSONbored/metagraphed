@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   ALERT_CHANNELS,
+  ALERT_CONDITION_METRICS,
+  ALERT_CONDITION_OPERATORS,
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
   ALERT_TRIGGER_MAX_BODY_BYTES,
   ALERT_TRIGGER_OWNER_TOKEN_HEADER,
@@ -155,6 +157,114 @@ test("validateAlertTriggerInput: accepts every condition field together", () => 
   assert.equal(result.value.eventKind, "Transfer");
   assert.equal(result.value.account, "5F...");
   assert.equal(result.value.minAmountTao, 100);
+});
+
+test("validateAlertTriggerInput: accepts a valid condition and echoes it structured", () => {
+  const result = validateAlertTriggerInput({
+    channel: "webhook",
+    destination: "https://example.com/hook",
+    netuid: 7,
+    condition: {
+      metric: "neuron_immunity_countdown_blocks",
+      operator: "lte",
+      threshold: 1000,
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.condition, {
+    metric: "neuron_immunity_countdown_blocks",
+    operator: "lte",
+    threshold: 1000,
+  });
+});
+
+test("validateAlertTriggerInput: a condition alone (no other narrowing field) is sufficient", () => {
+  const result = validateAlertTriggerInput({
+    channel: "webhook",
+    destination: "https://example.com/hook",
+    condition: {
+      metric: "subnet_alpha_price_rank",
+      operator: "gt",
+      threshold: 100,
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.netuid, null);
+});
+
+test("validateAlertTriggerInput: condition omitted entirely defaults to null", () => {
+  const result = validateAlertTriggerInput({
+    channel: "webhook",
+    destination: "https://example.com/hook",
+    netuid: 7,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.condition, null);
+});
+
+test("validateAlertTriggerInput: rejects a non-object condition", () => {
+  const result = validateAlertTriggerInput({
+    channel: "webhook",
+    destination: "https://example.com/hook",
+    netuid: 7,
+    condition: "not-an-object",
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /condition/);
+});
+
+test("validateAlertTriggerInput: rejects an unknown condition.metric", () => {
+  const result = validateAlertTriggerInput({
+    channel: "webhook",
+    destination: "https://example.com/hook",
+    netuid: 7,
+    condition: { metric: "made_up_metric", operator: "lt", threshold: 1 },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /condition\.metric/);
+});
+
+test("validateAlertTriggerInput: rejects an unknown condition.operator", () => {
+  const result = validateAlertTriggerInput({
+    channel: "webhook",
+    destination: "https://example.com/hook",
+    netuid: 7,
+    condition: {
+      metric: "subnet_alpha_price_rank",
+      operator: "startswith",
+      threshold: 1,
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /condition\.operator/);
+});
+
+test("validateAlertTriggerInput: rejects a non-finite condition.threshold", () => {
+  for (const threshold of [NaN, Infinity, -Infinity, "10", null, undefined]) {
+    const result = validateAlertTriggerInput({
+      channel: "webhook",
+      destination: "https://example.com/hook",
+      netuid: 7,
+      condition: {
+        metric: "subnet_alpha_price_rank",
+        operator: "lt",
+        threshold,
+      },
+    });
+    assert.equal(result.ok, false, `threshold=${threshold}`);
+    assert.match(result.error, /condition\.threshold/);
+  }
+});
+
+test("ALERT_CONDITION_METRICS/ALERT_CONDITION_OPERATORS are the documented enums", () => {
+  assert.deepEqual(
+    [...ALERT_CONDITION_METRICS].sort(),
+    ["neuron_immunity_countdown_blocks", "subnet_alpha_price_rank"].sort(),
+  );
+  assert.deepEqual(
+    [...ALERT_CONDITION_OPERATORS].sort(),
+    ["eq", "gt", "gte", "lt", "lte"].sort(),
+  );
 });
 
 test("validateAlertTriggerInput: rejects a non-object body", () => {
@@ -475,6 +585,198 @@ test("triggerMatchesEvent: ALL present conditions must match (AND, not OR)", () 
   );
 });
 
+// --- triggerMatchesEvent: condition predicate (#6746/#6747) -----------------
+
+function snapshot({
+  priceRank = new Map(),
+  immunityCountdown = new Map(),
+} = {}) {
+  return {
+    subnetAlphaPriceRank: priceRank,
+    neuronImmunityCountdownBlocks: immunityCountdown,
+  };
+}
+
+test("triggerMatchesEvent: a subnet_alpha_price_rank condition matches against the snapshot", () => {
+  const trigger = baseTrigger({
+    netuid: 7,
+    condition: {
+      metric: "subnet_alpha_price_rank",
+      operator: "gt",
+      threshold: 100,
+    },
+  });
+  const withinRange = snapshot({ priceRank: new Map([[7, 120]]) });
+  const outOfRange = snapshot({ priceRank: new Map([[7, 50]]) });
+  assert.equal(
+    triggerMatchesEvent(
+      trigger,
+      { table: "account_events", netuid: 7 },
+      withinRange,
+    ),
+    true,
+  );
+  assert.equal(
+    triggerMatchesEvent(
+      trigger,
+      { table: "account_events", netuid: 7 },
+      outOfRange,
+    ),
+    false,
+  );
+});
+
+test("triggerMatchesEvent: a neuron_immunity_countdown_blocks condition is keyed by netuid+hotkey", () => {
+  const trigger = baseTrigger({
+    condition: {
+      metric: "neuron_immunity_countdown_blocks",
+      operator: "lte",
+      threshold: 1000,
+    },
+  });
+  const snap = snapshot({
+    immunityCountdown: new Map([
+      ["7:5Fhot", 500],
+      ["7:5Fother", 5000],
+    ]),
+  });
+  assert.equal(
+    triggerMatchesEvent(
+      trigger,
+      { table: "account_events", netuid: 7, hotkey: "5Fhot" },
+      snap,
+    ),
+    true,
+  );
+  assert.equal(
+    triggerMatchesEvent(
+      trigger,
+      { table: "account_events", netuid: 7, hotkey: "5Fother" },
+      snap,
+    ),
+    false,
+  );
+});
+
+test("triggerMatchesEvent: a condition never matches without a metricSnapshot (fails closed)", () => {
+  const trigger = baseTrigger({
+    condition: {
+      metric: "subnet_alpha_price_rank",
+      operator: "gte",
+      threshold: 0,
+    },
+  });
+  assert.equal(
+    triggerMatchesEvent(trigger, { table: "account_events", netuid: 7 }),
+    false,
+  );
+  assert.equal(
+    triggerMatchesEvent(trigger, { table: "account_events", netuid: 7 }, null),
+    false,
+  );
+});
+
+test("triggerMatchesEvent: a condition never matches when the snapshot has no entry for this key", () => {
+  const trigger = baseTrigger({
+    netuid: 7,
+    condition: {
+      metric: "subnet_alpha_price_rank",
+      operator: "gte",
+      threshold: 0,
+    },
+  });
+  const emptySnapshot = snapshot();
+  assert.equal(
+    triggerMatchesEvent(
+      trigger,
+      { table: "account_events", netuid: 7 },
+      emptySnapshot,
+    ),
+    false,
+  );
+});
+
+test("triggerMatchesEvent: neuron_immunity_countdown_blocks never matches when the snapshot has no entry for this neuron", () => {
+  const trigger = baseTrigger({
+    condition: {
+      metric: "neuron_immunity_countdown_blocks",
+      operator: "gte",
+      threshold: 0,
+    },
+  });
+  // A snapshot present but with no entry for this specific netuid:hotkey key
+  // (e.g. the neuron isn't currently in its immunity window at all).
+  const snap = snapshot({ immunityCountdown: new Map([["1:5Fother", 100]]) });
+  assert.equal(
+    triggerMatchesEvent(
+      trigger,
+      { table: "account_events", netuid: 7, hotkey: "5Fhot" },
+      snap,
+    ),
+    false,
+  );
+});
+
+test("triggerMatchesEvent: a condition is ANDed with fixed-field checks, not a substitute for them", () => {
+  const trigger = baseTrigger({
+    netuid: 7,
+    eventKind: "StakeAdded",
+    condition: {
+      metric: "subnet_alpha_price_rank",
+      operator: "eq",
+      threshold: 1,
+    },
+  });
+  const matchingSnapshot = snapshot({ priceRank: new Map([[7, 1]]) });
+  // Fixed fields match, condition matches -> true.
+  assert.equal(
+    triggerMatchesEvent(
+      trigger,
+      { table: "account_events", netuid: 7, event_kind: "StakeAdded" },
+      matchingSnapshot,
+    ),
+    true,
+  );
+  // Fixed fields DON'T match (wrong event_kind), condition would match -> still false.
+  assert.equal(
+    triggerMatchesEvent(
+      trigger,
+      { table: "account_events", netuid: 7, event_kind: "Transfer" },
+      matchingSnapshot,
+    ),
+    false,
+  );
+});
+
+test("triggerMatchesEvent: every operator compares the metric value correctly", () => {
+  const cases = [
+    ["lt", 5, 10, true],
+    ["lt", 10, 10, false],
+    ["lte", 10, 10, true],
+    ["gt", 15, 10, true],
+    ["gt", 10, 10, false],
+    ["gte", 10, 10, true],
+    ["eq", 10, 10, true],
+    ["eq", 9, 10, false],
+  ];
+  for (const [operator, rank, threshold, expected] of cases) {
+    const trigger = baseTrigger({
+      netuid: 7,
+      condition: { metric: "subnet_alpha_price_rank", operator, threshold },
+    });
+    const snap = snapshot({ priceRank: new Map([[7, rank]]) });
+    assert.equal(
+      triggerMatchesEvent(
+        trigger,
+        { table: "account_events", netuid: 7 },
+        snap,
+      ),
+      expected,
+      `operator=${operator} rank=${rank} threshold=${threshold}`,
+    );
+  }
+});
+
 test("triggerMatchesEvent: a null/undefined payload never matches", () => {
   assert.equal(triggerMatchesEvent(baseTrigger({ netuid: 1 }), null), false);
   assert.equal(
@@ -542,6 +844,22 @@ test("ownerAlertTriggerView: a minimal record (every optional field absent) fall
   assert.equal(view.last_matched_at, null);
   assert.equal(view.match_count, 0);
   assert.equal(view.active, true); // `active !== false` defaults true when absent
+  assert.equal(view.condition, null);
+});
+
+test("ownerAlertTriggerView: echoes a present condition verbatim", () => {
+  const condition = {
+    metric: "subnet_alpha_price_rank",
+    operator: "gt",
+    threshold: 100,
+  };
+  const view = ownerAlertTriggerView({
+    id: 1,
+    channel: "email",
+    destination: "a@b.com",
+    condition,
+  });
+  assert.deepEqual(view.condition, condition);
 });
 
 test("ownerAlertTriggerView: active:false is preserved, not defaulted away", () => {
@@ -578,6 +896,7 @@ test("evaluatorAlertTriggerView: reshapes snake_case columns into triggerMatches
   assert.deepEqual(view.tableFilter, ["account_events"]);
   assert.equal(view.eventKind, "Transfer");
   assert.equal(view.minAmountTao, 10);
+  assert.equal(view.condition, null);
   // Round-trips straight into triggerMatchesEvent without reshaping again.
   assert.equal(
     triggerMatchesEvent(view, {
@@ -587,6 +906,33 @@ test("evaluatorAlertTriggerView: reshapes snake_case columns into triggerMatches
       hotkey: "5F...",
       amount_tao: 10,
     }),
+    true,
+  );
+});
+
+test("evaluatorAlertTriggerView: reshapes a present condition into triggerMatchesEvent's shape", () => {
+  const condition = {
+    metric: "neuron_immunity_countdown_blocks",
+    operator: "lte",
+    threshold: 500,
+  };
+  const view = evaluatorAlertTriggerView({
+    id: 7,
+    channel: "discord",
+    destination: "https://discord.com/api/webhooks/1/t",
+    condition,
+  });
+  assert.deepEqual(view.condition, condition);
+  const snap = {
+    subnetAlphaPriceRank: new Map(),
+    neuronImmunityCountdownBlocks: new Map([["7:5Fhot", 100]]),
+  };
+  assert.equal(
+    triggerMatchesEvent(
+      view,
+      { table: "account_events", netuid: 7, hotkey: "5Fhot" },
+      snap,
+    ),
     true,
   );
 });

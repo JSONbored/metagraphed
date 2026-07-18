@@ -34,6 +34,11 @@ vi.mock("postgres", () => ({
     }
     sql.begin = (cb) => cb(sql);
     sql.end = () => Promise.resolve();
+    // #6746: condition (JSONB) is bound via sql.json(value) in the real
+    // INSERT/UPDATE -- this mock's tagged-template sql() doesn't need to
+    // know about JSON wrapping (it just records whatever value it's handed
+    // as a template placeholder), so a passthrough is a faithful stand-in.
+    sql.json = (value) => value;
     // sql.unsafe(text, params) -- the #5022 match write-back's batched
     // UPDATE builds its own placeholder text (plain scalar positional
     // binds) rather than a bound JS array, matching workers/data-api.mjs's
@@ -250,6 +255,48 @@ test("create: 201 on success, mints a fresh owner_token distinct from any stored
   assert.ok(sqlCalls[0].values.includes(7));
   assert.ok(sqlCalls[0].values.includes("email"));
   assert.ok(sqlCalls[0].values.includes("a@b.com"));
+});
+
+test("create: 201 with a condition, inserts it as the JSONB value verbatim", async () => {
+  const condition = {
+    metric: "subnet_alpha_price_rank",
+    operator: "gt",
+    threshold: 100,
+  };
+  mockQueue.current.push([row({ condition })]);
+  const res = await fetch(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: { "x-alert-trigger-create-token": CREATE_TOKEN },
+      body: { channel: "email", destination: "a@b.com", netuid: 7, condition },
+    }),
+  );
+  assert.equal(res.status, 201);
+  const body = await res.json();
+  assert.deepEqual(body.condition, condition);
+  assert.match(sqlCalls[0].text, /INSERT INTO chain_alert_triggers/);
+  assert.ok(
+    sqlCalls[0].values.some(
+      (v) =>
+        v && typeof v === "object" && v.metric === "subnet_alpha_price_rank",
+    ),
+  );
+});
+
+test("create: 400 on a malformed condition", async () => {
+  const res = await fetch(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: { "x-alert-trigger-create-token": CREATE_TOKEN },
+      body: {
+        channel: "email",
+        destination: "a@b.com",
+        condition: { metric: "made-up", operator: "lt", threshold: 1 },
+      },
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
 });
 
 test("create: 429 when ALERT_TRIGGER_CREATE_RATE_LIMITER rejects the request, without ever touching Postgres", async () => {
@@ -509,6 +556,61 @@ test("update: omitting a field on PATCH keeps the existing row's value (partial-
   assert.ok(sqlCalls[1].values.includes("email"));
   assert.ok(sqlCalls[1].values.includes("a@b.com"));
   assert.ok(sqlCalls[1].values.includes("renamed"));
+});
+
+test("update: omitting condition on PATCH keeps the existing row's condition", async () => {
+  const condition = {
+    metric: "neuron_immunity_countdown_blocks",
+    operator: "lte",
+    threshold: 500,
+  };
+  mockQueue.current.push([
+    row({ owner_token: "correct-token", netuid: 7, condition }),
+  ]);
+  mockQueue.current.push([row({ netuid: 7, condition })]);
+  const res = await fetch(
+    req("/api/v1/alerts/triggers/1", {
+      method: "PATCH",
+      headers: { "x-alert-trigger-owner-token": "correct-token" },
+      body: { name: "renamed" },
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.ok(
+    sqlCalls[1].values.some(
+      (v) =>
+        v &&
+        typeof v === "object" &&
+        v.metric === "neuron_immunity_countdown_blocks",
+    ),
+  );
+});
+
+test("update: a resent condition replaces the existing one", async () => {
+  const oldCondition = {
+    metric: "subnet_alpha_price_rank",
+    operator: "gt",
+    threshold: 100,
+  };
+  const newCondition = {
+    metric: "neuron_immunity_countdown_blocks",
+    operator: "lte",
+    threshold: 500,
+  };
+  mockQueue.current.push([
+    row({ owner_token: "correct-token", netuid: 7, condition: oldCondition }),
+  ]);
+  mockQueue.current.push([row({ netuid: 7, condition: newCondition })]);
+  const res = await fetch(
+    req("/api/v1/alerts/triggers/1", {
+      method: "PATCH",
+      headers: { "x-alert-trigger-owner-token": "correct-token" },
+      body: { condition: newCondition },
+    }),
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.deepEqual(body.condition, newCondition);
 });
 
 test("update: an explicit null on PATCH is a no-op, NOT a clear -- the existing value survives (validateAlertTriggerInput rejects a real null for most fields, so PATCH can't safely route an intentional-clear through the CREATE-shared validator)", async () => {
@@ -785,6 +887,105 @@ test("matched writeback: 502 when the UPDATE itself fails", async () => {
       method: "POST",
       headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
       body: { trigger_ids: ["1"] },
+    }),
+  );
+  assert.equal(res.status, 502);
+});
+
+// --- GET /api/v1/internal/alert-triggers-dereg-risk-snapshot (#6747) --------
+
+test("dereg-risk snapshot: 503 when ALERT_TRIGGERS_INTERNAL_TOKEN is not configured", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot"),
+    { ...env, ALERT_TRIGGERS_INTERNAL_TOKEN: undefined },
+  );
+  assert.equal(res.status, 503);
+});
+
+test("dereg-risk snapshot: 401 when the internal token header is entirely absent", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot"),
+  );
+  assert.equal(res.status, 401);
+});
+
+test("dereg-risk snapshot: 401 when the internal token is present but wrong", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
+      headers: { "x-alert-triggers-internal-token": "wrong" },
+    }),
+  );
+  assert.equal(res.status, 401);
+});
+
+test("dereg-risk snapshot: 200, joins registered_at_block + immunity_period into immunity_expires_at_block, and returns the latest subnet_snapshots row per netuid", async () => {
+  mockQueue.current.push([{ block_number: 12345 }]); // MAX(block_number)
+  mockQueue.current.push([
+    { netuid: 7, immunity_period: 500 },
+    { netuid: 8, immunity_period: 1000 },
+  ]);
+  mockQueue.current.push([
+    { netuid: 7, hotkey: "5Fhot", registered_at_block: 12000 },
+  ]);
+  mockQueue.current.push([
+    { netuid: 7, alpha_price_tao: "1.5" },
+    { netuid: 8, alpha_price_tao: null },
+  ]);
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+    }),
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.current_block, 12345);
+  assert.deepEqual(body.subnets, [
+    { netuid: 7, alpha_price_tao: 1.5 },
+    { netuid: 8, alpha_price_tao: null },
+  ]);
+  assert.deepEqual(body.immune_neurons, [
+    { netuid: 7, hotkey: "5Fhot", immunity_expires_at_block: 12500 },
+  ]);
+  assert.equal(sqlCalls.length, 4);
+});
+
+test("dereg-risk snapshot: an immune neuron on a subnet with no immunity_period hyperparameter row is dropped, not defaulted", async () => {
+  mockQueue.current.push([{ block_number: 100 }]);
+  mockQueue.current.push([]); // no subnet_hyperparams rows at all
+  mockQueue.current.push([
+    { netuid: 7, hotkey: "5Fhot", registered_at_block: 50 },
+  ]);
+  mockQueue.current.push([]);
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+    }),
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.deepEqual(body.immune_neurons, []);
+});
+
+test("dereg-risk snapshot: current_block is null when the blocks table is empty", async () => {
+  mockQueue.current.push([{ block_number: null }]);
+  mockQueue.current.push([]);
+  mockQueue.current.push([]);
+  mockQueue.current.push([]);
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+    }),
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.current_block, null);
+});
+
+test("dereg-risk snapshot: 502 when a query fails", async () => {
+  failNextQuery.error = new Error("boom");
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
     }),
   );
   assert.equal(res.status, 502);
