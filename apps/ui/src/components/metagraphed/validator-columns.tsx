@@ -4,6 +4,7 @@ import { CopyButton } from "@jsonbored/ui-kit";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
 import { formatApyPct, formatTakePct } from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
@@ -68,22 +69,10 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     header: "Coldkey",
     thClassName: TH_BASE,
     tdClassName: `${TD_BASE} text-ink-muted`,
-    cell: (v) =>
-      v.coldkey ? (
-        <div className="flex items-center gap-1.5">
-          <Link
-            to="/accounts/$ss58"
-            params={{ ss58: v.coldkey }}
-            className="hover:text-accent hover:underline"
-            title={v.coldkey}
-          >
-            {shortHash(v.coldkey) ?? v.coldkey}
-          </Link>
-          <CopyButton value={v.coldkey} label="coldkey" compact />
-        </div>
-      ) : (
-        "—"
-      ),
+    // Route the coldkey through AccountAddress so it gets the same
+    // EntityHoverCard account-preview every other /accounts/$ss58 link has
+    // (block author, signer, …) instead of a hand-rolled bare link (#6338).
+    cell: (v) => <AccountAddress ss58={v.coldkey} compact fallback="—" />,
   },
   {
     ...numeric("Take"),

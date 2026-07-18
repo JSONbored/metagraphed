@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { CopyButton } from "@jsonbored/ui-kit";
 
 import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
+import { AccountAddress } from "@/components/metagraphed/account-address";
 import { resolveValidatorCard } from "@/lib/metagraphed/validator-card-fields";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 
@@ -45,21 +46,8 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
                 back into the row so it does not add vertical spacing. */}
             <div className="flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-ink-muted">
               <span className="uppercase tracking-widest text-[10px]">coldkey</span>
-              {v.coldkey ? (
-                <>
-                  <Link
-                    to="/accounts/$ss58"
-                    params={{ ss58: v.coldkey }}
-                    title={v.coldkey}
-                    className="truncate hover:text-accent hover:underline"
-                  >
-                    {f.coldkeyShort}
-                  </Link>
-                  <CopyButton value={v.coldkey} label="coldkey" compact />
-                </>
-              ) : (
-                "—"
-              )}
+              {/* Same AccountAddress hover-card treatment as the desktop column (#6338). */}
+              <AccountAddress ss58={v.coldkey} compact fallback="—" />
             </div>
             <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
               <Stat label="Active subnets" value={f.subnetsLabel} />
