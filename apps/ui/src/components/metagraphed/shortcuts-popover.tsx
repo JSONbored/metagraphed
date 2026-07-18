@@ -96,6 +96,10 @@ export function ShortcutsPopover() {
           <Row label="Close menus / panels">
             <Kbd>Esc</Kbd>
           </Row>
+          <Row label="Prev / next block (on block pages)">
+            <Kbd>←</Kbd>
+            <Kbd>→</Kbd>
+          </Row>
         </ul>
         <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mt-4 mb-2">
           Go to
