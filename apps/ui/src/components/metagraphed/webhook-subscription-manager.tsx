@@ -36,6 +36,24 @@ export function parseNetuidsInput(
   return { ok: true, value: netuids };
 }
 
+/**
+ * Optional webhook secret (#6581): an empty value is valid — the server
+ * auto-generates one — but a value the user actually types must be 16–256
+ * characters, matching the field hint and the server-side bound. Validated on
+ * the trimmed value, mirroring what `onSubmit` sends.
+ */
+export function validateSecretInput(raw: string): { ok: true } | { ok: false; error: string } {
+  const secret = raw.trim();
+  if (secret === "") return { ok: true };
+  if (secret.length < 16 || secret.length > 256) {
+    return {
+      ok: false,
+      error: `Secret must be 16–256 characters when set (currently ${secret.length}).`,
+    };
+  }
+  return { ok: true };
+}
+
 /** Distinguishes a 401/503 create rejection, a 404 lookup, and a 403 secret-mismatch delete. */
 function describeApiError(error: unknown): string {
   if (error instanceof ApiError) {
@@ -74,6 +92,7 @@ function CreateSubscriptionSection() {
   const [netuidsError, setNetuidsError] = useState<string | null>(null);
   const [kinds, setKinds] = useState<Set<string>>(new Set());
   const [secret, setSecret] = useState("");
+  const [secretError, setSecretError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: async (vars: CreateVariables): Promise<WebhookSubscriptionCreated> => {
@@ -117,6 +136,12 @@ function CreateSubscriptionSection() {
       return;
     }
     setNetuidsError(null);
+    const secretCheck = validateSecretInput(secret);
+    if (!secretCheck.ok) {
+      setSecretError(secretCheck.error);
+      return;
+    }
+    setSecretError(null);
     mutation.mutate({
       url: url.trim(),
       token: token.trim(),
@@ -198,9 +223,13 @@ function CreateSubscriptionSection() {
             type="password"
             autoComplete="off"
             value={secret}
-            onChange={(e) => setSecret(e.target.value)}
+            onChange={(e) => {
+              setSecret(e.target.value);
+              setSecretError(null);
+            }}
             className={inputCls}
           />
+          {secretError ? <p className="mt-1 text-[11px] text-health-down">{secretError}</p> : null}
         </Field>
         <button
           type="submit"
