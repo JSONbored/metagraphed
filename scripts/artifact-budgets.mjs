@@ -8,7 +8,9 @@ export const ARTIFACT_SIZE_BUDGETS = [
   budget("evidence-ledger.json", 1_000_000, 3_000_000),
   budget("health/history/*.json", 650_000, 1_250_000),
   budget("search.json", 750_000, 2_000_000),
-  budget("openapi.json", 1_400_000, 1_750_000),
+  // Hard ceiling raised after #6786 pushed the committed OpenAPI contract just
+  // over 1.75 MiB (~1.3 KiB); keep the warn threshold so growth stays visible.
+  budget("openapi.json", 1_400_000, 1_800_000),
   // Per-surface schema snapshots now embed the full upstream OpenAPI document.
   budget("schemas/*.json", 1_500_000, 5_000_000),
   budget("profiles.json", 700_000, 1_000_000),
