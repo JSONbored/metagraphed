@@ -200,6 +200,10 @@ import type {
   SubnetAlphaVolume,
   SubnetOhlc,
   SubnetOhlcCandle,
+  SubnetConviction,
+  SubnetConvictionEntry,
+  SubnetOwnershipHistory,
+  SubnetOwnershipChange,
   SubnetMovers,
   SubnetMover,
   MetagraphNeuron,
@@ -4705,6 +4709,116 @@ export const subnetOhlcQuery = (netuid: number, params: SubnetOhlcParams = {}) =
     staleTime: STALE_MED,
   });
 };
+
+// A well-formed leaderboard entry, or null to drop a malformed row rather
+// than poisoning the whole leaderboard -- mirrors normalizeSubnetOhlcCandle.
+export function normalizeSubnetConvictionEntry(raw: unknown): SubnetConvictionEntry | null {
+  if (!isRecord(raw)) return null;
+  const hotkey = firstString(raw.hotkey);
+  if (!hotkey) return null;
+  return {
+    hotkey,
+    is_owner: raw.is_owner === true,
+    locked_mass: coerceFiniteNumber(raw.locked_mass) ?? 0,
+    conviction: coerceFiniteNumber(raw.conviction) ?? 0,
+  };
+}
+
+// Cold/absent store or a subnet with no active challengers both yield a
+// schema-stable empty leaderboard -- never throws, matching the OHLC/volume
+// live-tier convention.
+export function normalizeSubnetConviction(netuid: number, raw: unknown): SubnetConviction {
+  const d = isRecord(raw) ? raw : {};
+  const leaderboard = Array.isArray(d.leaderboard)
+    ? d.leaderboard
+        .map(normalizeSubnetConvictionEntry)
+        .filter((e): e is SubnetConvictionEntry => e != null)
+    : [];
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    queried_at_block: firstFiniteNumber(d.queried_at_block) ?? null,
+    unlock_rate: firstFiniteNumber(d.unlock_rate) ?? null,
+    maturity_rate: firstFiniteNumber(d.maturity_rate) ?? null,
+    king: firstString(d.king) ?? null,
+    count: firstFiniteNumber(d.count) ?? leaderboard.length,
+    leaderboard,
+  };
+}
+
+// GET /api/v1/subnets/{netuid}/conviction (#6638): live ownership-contest
+// leaderboard, rolled forward to query time using the current governance
+// UnlockRate/MaturityRate. Most subnets have no active challengers, so an
+// empty leaderboard is the common case, not an error.
+export const subnetConvictionQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-conviction", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetConviction>>(
+        `/api/v1/subnets/${netuid}/conviction`,
+        { signal },
+      );
+      return { data: normalizeSubnetConviction(netuid, res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// A well-formed ownership-change row, or null to drop a malformed row rather
+// than poisoning the whole history -- mirrors normalizeSubnetOhlcCandle.
+export function normalizeSubnetOwnershipChange(raw: unknown): SubnetOwnershipChange | null {
+  if (!isRecord(raw)) return null;
+  if (raw.old_coldkey == null && raw.new_coldkey == null && raw.block_number == null) return null;
+  return {
+    netuid: firstFiniteNumber(raw.netuid) ?? null,
+    old_coldkey: firstString(raw.old_coldkey) ?? null,
+    new_coldkey: firstString(raw.new_coldkey) ?? null,
+    block_number: firstFiniteNumber(raw.block_number) ?? null,
+    observed_at: firstString(raw.observed_at) ?? null,
+  };
+}
+
+// Cold/absent store or a subnet that has never changed hands both yield a
+// schema-stable empty history -- never throws, matching the OHLC/volume
+// live-tier convention.
+export function normalizeSubnetOwnershipHistory(
+  netuid: number,
+  raw: unknown,
+): SubnetOwnershipHistory {
+  const d = isRecord(raw) ? raw : {};
+  const changes = Array.isArray(d.ownership_changes)
+    ? d.ownership_changes
+        .map(normalizeSubnetOwnershipChange)
+        .filter((c): c is SubnetOwnershipChange => c != null)
+    : [];
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    event_pallet: firstString(d.event_pallet) ?? "SubtensorModule",
+    event_method: firstString(d.event_method) ?? "SubnetOwnerChanged",
+    count: firstFiniteNumber(d.count) ?? changes.length,
+    ownership_changes: changes,
+  };
+}
+
+// GET /api/v1/subnets/{netuid}/ownership-history (#6637): every automatic
+// ownership transfer this subnet has undergone, oldest first. A subnet that
+// has never changed hands is the common case, not an error.
+export const subnetOwnershipHistoryQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-ownership-history", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetOwnershipHistory>>(
+        `/api/v1/subnets/${netuid}/ownership-history`,
+        { signal },
+      );
+      return {
+        data: normalizeSubnetOwnershipHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
 
 export interface SubnetEventsParams {
   /** Filter to one event_kind (e.g. "StakeAdded"). */

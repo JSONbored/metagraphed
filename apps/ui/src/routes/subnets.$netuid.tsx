@@ -53,6 +53,8 @@ import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
 import { EndpointSnippet, apiSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
 import { SubnetOhlcChart } from "@/components/metagraphed/subnet-ohlc-chart";
+import { SubnetConvictionLeaderboard } from "@/components/metagraphed/subnet-conviction-leaderboard";
+import { SubnetOwnershipHistory } from "@/components/metagraphed/subnet-ownership-history";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
 import { DistributionPanel } from "@/components/metagraphed/concentration-panel";
@@ -501,6 +503,36 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         info="GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake — a read-only constant-product AMM estimate against the subnet's live pool reserves. Pure math, no chain write, no custody."
       >
         <StakeQuoteCalculator netuid={netuid} />
+      </SectionAnchor>
+
+      {/* 5a4 — Conviction leaderboard (#6638, frontend companion #6715, part
+          of the ownership-contest tracker epic #4302): who currently holds
+          the most rolled conviction on this subnet -- the dynamic extension
+          of SubnetProfilePanel's static "Ownership" block above. */}
+      <SectionAnchor
+        id="conviction"
+        title="Ownership contest"
+        subtitle="Who currently holds the most rolled conviction -- how close this subnet is to an automatic ownership flip."
+        info="GET /api/v1/subnets/{netuid}/conviction — rolled forward from the periodically-captured lock snapshot to query time, using the live UnlockRate/MaturityRate governance values. Most subnets have no active challengers."
+      >
+        <QueryErrorBoundary>
+          <SubnetConvictionLeaderboard netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      {/* 5a5 — Ownership-change history (#6637, frontend companion #6715,
+          part of the ownership-contest tracker epic #4302): every automatic
+          ownership transfer this subnet has undergone, decoded from the
+          chain_events SubnetOwnerChanged stream. */}
+      <SectionAnchor
+        id="ownership-history"
+        title="Ownership history"
+        subtitle="Every automatic ownership transfer this subnet has undergone."
+        info="GET /api/v1/subnets/{netuid}/ownership-history — decoded from the chain_events SubnetOwnerChanged stream. A subnet that has never changed hands returns an empty list, not an error."
+      >
+        <QueryErrorBoundary>
+          <SubnetOwnershipHistory netuid={netuid} />
+        </QueryErrorBoundary>
       </SectionAnchor>
 
       {/* 5b — On-chain network history (#1302): daily neuron/validator counts,

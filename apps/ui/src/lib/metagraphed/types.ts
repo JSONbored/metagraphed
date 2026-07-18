@@ -1933,6 +1933,56 @@ export interface SubnetOhlc {
   root_excluded: boolean;
 }
 
+/** One hotkey's current standing in a subnet's ownership contest (#6638),
+ * rolled forward to the query time. locked_mass/conviction are raw alpha
+ * units (rao-scale, /1e9 for whole alpha) -- conviction is the exponentially
+ * smoothed integral of locked_mass, what actually determines the contest. */
+export interface SubnetConvictionEntry {
+  hotkey: string;
+  is_owner: boolean;
+  locked_mass: number;
+  conviction: number;
+}
+
+/** Live per-subnet ownership-contest leaderboard from
+ * /api/v1/subnets/{netuid}/conviction (#6638). king is the top-ranked
+ * hotkey by rolled conviction (or null if the leaderboard is empty -- most
+ * subnets have no active challengers). unlock_rate/maturity_rate are the
+ * live governance values the roll-forward used, never a hardcoded figure. */
+export interface SubnetConviction {
+  schema_version: number;
+  netuid: number;
+  queried_at_block: number | null;
+  unlock_rate: number | null;
+  maturity_rate: number | null;
+  king: string | null;
+  count: number;
+  leaderboard: SubnetConvictionEntry[];
+}
+
+/** One automatic ownership transfer, decoded from a chain_events
+ * SubnetOwnerChanged row (#6637). old_coldkey/new_coldkey are SS58-encoded. */
+export interface SubnetOwnershipChange {
+  netuid: number | null;
+  old_coldkey: string | null;
+  new_coldkey: string | null;
+  block_number: number | null;
+  observed_at: string | null;
+}
+
+/** Every automatic ownership transfer one subnet has undergone, from
+ * /api/v1/subnets/{netuid}/ownership-history (#6637). A subnet that has
+ * never changed hands returns an empty list, not an error -- the common
+ * case, per docs/conviction-lock-mechanism.md's permissionless contest. */
+export interface SubnetOwnershipHistory {
+  schema_version: number;
+  netuid: number;
+  event_pallet: string;
+  event_method: string;
+  count: number;
+  ownership_changes: SubnetOwnershipChange[];
+}
+
 /** One subnet's movement over the comparison window on the /subnets/movers board. */
 export interface SubnetMover {
   netuid: number;
