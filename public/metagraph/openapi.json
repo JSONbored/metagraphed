@@ -18228,6 +18228,171 @@
         ],
         "type": "object"
       },
+      "SubnetLease": {
+        "additionalProperties": true,
+        "description": "The terms of one active subnet lease (#6719/#6718, pallets/subtensor/src/subnets/leasing.rs). beneficiary/coldkey/hotkey are SS58-encoded. emissions_share_percent is 0..100. end_block is null for a perpetual lease. accumulated_dividends_alpha is null only when its own sub-read failed independently of the rest of the lease decoding.",
+        "properties": {
+          "accumulated_dividends_alpha": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "beneficiary": {
+            "type": "string"
+          },
+          "coldkey": {
+            "type": "string"
+          },
+          "cost_tao": {
+            "type": "number"
+          },
+          "emissions_share_percent": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "end_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "hotkey": {
+            "type": "string"
+          },
+          "lease_id": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lease_id",
+          "beneficiary",
+          "coldkey",
+          "hotkey",
+          "netuid"
+        ],
+        "type": "object"
+      },
+      "SubnetLeaseArtifact": {
+        "additionalProperties": true,
+        "description": "Live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) -- whether a subnet is currently under a lease and, if so, its terms, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). lease is null while leased:true only when the lease's details couldn't be fetched/decoded this request (transient failure, or a race against a lease being terminated between the two dependent reads) -- callers should treat that as retry, not no-lease.",
+        "properties": {
+          "lease": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubnetLease"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "leased": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "leased"
+        ],
+        "type": "object"
+      },
+      "SubnetLeaseEvent": {
+        "additionalProperties": false,
+        "description": "One SubnetLeaseCreated/SubnetLeaseTerminated event, decoded from the account_events stream (#6718). beneficiary is SS58-encoded (stored under account_events' generic `coldkey` column -- there is no dedicated beneficiary column).",
+        "properties": {
+          "beneficiary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_kind": {
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "SubnetLeaseHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. SubnetLeaseDividendsDistributed/Contributed/Withdrew are deliberately excluded -- none carry a netuid on their account_events row (see src/subnet-lease-history.mjs's own header for why). A subnet that has never been leased returns an empty list, not an error -- that's the common case.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "event_pallet": {
+            "type": "string"
+          },
+          "lease_events": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetLeaseEvent"
+            },
+            "type": "array"
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "count",
+          "lease_events"
+        ],
+        "type": "object"
+      },
       "SubnetMetagraphArtifact": {
         "additionalProperties": true,
         "description": "Per-UID metagraph for one subnet (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -48706,6 +48871,285 @@
         "tags": [
           "subnets",
           "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/lease": {
+      "get": {
+        "operationId": "subnetLease",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "lease": {
+                      "accumulated_dividends_alpha": 0.5,
+                      "beneficiary": "example",
+                      "coldkey": "example",
+                      "cost_tao": 0.5,
+                      "emissions_share_percent": 1,
+                      "end_block": 5000000,
+                      "hotkey": "example",
+                      "lease_id": 1,
+                      "netuid": 7
+                    },
+                    "leased": false,
+                    "netuid": 7,
+                    "queried_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetLeaseArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms + accumulated-but-undistributed alpha dividends, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false).",
+        "tags": [
+          "subnets"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/lease/history": {
+      "get": {
+        "operationId": "subnetLeaseHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "count": 1,
+                    "event_kinds": [
+                      "example"
+                    ],
+                    "event_pallet": "example",
+                    "lease_events": [
+                      {}
+                    ],
+                    "netuid": 7,
+                    "schema_version": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetLeaseHistoryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case.",
+        "tags": [
+          "subnets"
         ]
       }
     },

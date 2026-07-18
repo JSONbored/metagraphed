@@ -616,6 +616,7 @@ import { buildAccountIdentity } from "./account-identity.mjs";
 import { buildAccountIdentityHistory } from "./account-identity-history.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";
 import { loadSubnetBurn } from "./subnet-burn.mjs";
+import { loadSubnetLease } from "./subnet-lease.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
 import { loadNetworkParameters } from "./network-parameters.mjs";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
@@ -1403,6 +1404,46 @@ async function loadSubnetConviction(ctx, netuid) {
     king: data?.king ?? null,
     count: data?.count ?? 0,
     leaderboard: Array.isArray(data?.leaderboard) ? data.leaderboard : [],
+  };
+}
+
+// Mirrors loadSubnetOwnershipHistory above (#6719): same DATA_API-direct
+// proxy shape, a different Postgres-tier route (account_events, not
+// chain_events).
+async function loadSubnetLeaseHistory(ctx, netuid) {
+  await requireDataTierRateLimit(ctx);
+  const dataApi = ctx.env?.DATA_API;
+  if (!dataApi?.fetch) {
+    throw toolError(
+      "tier_unavailable",
+      "The chain-events tier is unavailable (the all-events data Worker is " +
+        "not bound to this deployment). Try again against the production endpoint.",
+    );
+  }
+  let response;
+  try {
+    response = await dataApi.fetch(
+      new Request(`https://d/api/v1/subnets/${netuid}/lease/history`),
+    );
+  } catch {
+    throw toolError(
+      "tier_unavailable",
+      "The chain-events tier could not be reached. Try again shortly.",
+    );
+  }
+  if (!response.ok) {
+    throw toolError(
+      "tier_unavailable",
+      `The chain-events tier returned an error (status ${response.status}). ` +
+        "Try again shortly.",
+    );
+  }
+  const data = await response.json();
+  return {
+    schema_version: data?.schema_version ?? 1,
+    netuid,
+    count: data?.count ?? 0,
+    lease_events: Array.isArray(data?.lease_events) ? data.lease_events : [],
   };
 }
 
@@ -6143,6 +6184,76 @@ export const MCP_TOOLS = [
         }
       }
       return loadSubnetBurn(ctx.env, netuid);
+    },
+  },
+  {
+    name: "get_subnet_lease",
+    title: "Get a subnet's live lease state",
+    description:
+      "Fetch the live subnet-lease state (#6719, part of the subnet-leasing/" +
+      "crowdloan-tracking epic #6717) -- whether a subnet is currently under " +
+      "a lease (via a crowdfunded, time-boxed primary market for new " +
+      "subnets) and, if so, its terms (beneficiary, coldkey, hotkey, " +
+      "emissions_share_percent, end_block, cost_tao) and accumulated-but-" +
+      "undistributed alpha dividends, queried directly from the chain's " +
+      "SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage at " +
+      "request time (not a rollup). leased is null (not false) on an RPC " +
+      "failure, distinct from a confirmed no-lease (leased:false). Mirrors " +
+      "GET /api/v1/subnets/{netuid}/lease.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      if (!isU16Netuid(netuid)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `netuid` must be an integer in the u16 range 0..65535.",
+        );
+      }
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `lease:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live lease-state requests from this client; slow down.",
+          );
+        }
+      }
+      return loadSubnetLease(ctx.env, netuid);
+    },
+  },
+  {
+    name: "get_subnet_lease_history",
+    title: "Get a subnet's lease-lifecycle history",
+    description:
+      "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one " +
+      "subnet has had (#6719, part of the subnet-leasing/crowdloan-" +
+      "tracking epic #6717), decoded from the account_events stream. " +
+      "Companion to get_subnet_lease (that's the current state; this is " +
+      "the event log). Dividend-distribution and crowdloan contribution/" +
+      "withdrawal events are not included -- none carry a netuid on their " +
+      "account_events row. A subnet that has never been leased returns an " +
+      "empty list, not an error. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/lease/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetLeaseHistory(ctx, netuid);
     },
   },
   {
@@ -12749,6 +12860,55 @@ const TOOL_OUTPUT_SCHEMAS = {
       netuid: { type: "integer" },
       burn_tao: { type: ["number", "null"] },
       queried_at: NULLABLE_STRING,
+    },
+  },
+  get_subnet_lease: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "leased"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      leased: { type: ["boolean", "null"] },
+      lease: {
+        type: ["object", "null"],
+        additionalProperties: true,
+        properties: {
+          lease_id: { type: "integer" },
+          beneficiary: { type: "string" },
+          coldkey: { type: "string" },
+          hotkey: { type: "string" },
+          emissions_share_percent: { type: "integer" },
+          end_block: { type: ["integer", "null"] },
+          netuid: { type: "integer" },
+          cost_tao: { type: "number" },
+          accumulated_dividends_alpha: { type: ["number", "null"] },
+        },
+      },
+      queried_at: NULLABLE_STRING,
+    },
+  },
+  get_subnet_lease_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "count", "lease_events"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      count: { type: "integer" },
+      lease_events: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: true,
+          properties: {
+            event_kind: { type: "string" },
+            beneficiary: { type: ["string", "null"] },
+            block_number: { type: ["integer", "null"] },
+            observed_at: NULLABLE_STRING,
+          },
+        },
+      },
     },
   },
   get_neuron_history: {

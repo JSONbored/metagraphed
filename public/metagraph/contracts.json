@@ -1280,6 +1280,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false).",
+      "id": "subnet-lease",
+      "path": "/metagraph/subnets/{netuid}/lease.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetLeaseArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never been leased returns an empty lease_events array, not an error.",
+      "id": "subnet-lease-history",
+      "path": "/metagraph/subnets/{netuid}/lease/history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetLeaseHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",

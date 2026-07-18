@@ -3471,6 +3471,155 @@ describe("MCP get_subnet_ownership_history (DATA_API binding)", () => {
   });
 });
 
+// get_subnet_lease_history (#6719) reaches the same Postgres-backed
+// all-events tier as get_subnet_ownership_history above, so its tests mock
+// DATA_API the same way.
+describe("MCP get_subnet_lease_history (DATA_API binding)", () => {
+  function makeDataApi({ payload, status = 200, throws = false } = {}) {
+    const calls = [];
+    return {
+      calls,
+      fetch(request) {
+        calls.push(new URL(request.url));
+        if (throws) return Promise.reject(new Error("network down"));
+        return Promise.resolve(
+          new Response(status === 200 ? JSON.stringify(payload) : "err", {
+            status,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      },
+    };
+  }
+
+  test("returns the decoded lease-event list from the data Worker", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        schema_version: 1,
+        netuid: 7,
+        count: 1,
+        lease_events: [
+          {
+            event_kind: "SubnetLeaseCreated",
+            beneficiary: "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+            block_number: 8587754,
+            observed_at: "2026-07-09T12:26:40.000Z",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_subnet_lease_history",
+      { netuid: 7 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.netuid, 7);
+    assert.equal(out.count, 1);
+    assert.equal(out.lease_events[0].event_kind, "SubnetLeaseCreated");
+    assert.equal(dataApi.calls[0].pathname, "/api/v1/subnets/7/lease/history");
+  });
+
+  test("falls back to schema_version:1/count:0/lease_events:[] when the data Worker's payload is missing those fields", async () => {
+    const dataApi = makeDataApi({ payload: {} });
+    const res = await callTool(
+      "get_subnet_lease_history",
+      { netuid: 7 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, 7);
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.lease_events, []);
+  });
+
+  test("a subnet that has never been leased returns an empty list, not an error", async () => {
+    const dataApi = makeDataApi({
+      payload: { schema_version: 1, netuid: 4, count: 0, lease_events: [] },
+    });
+    const res = await callTool(
+      "get_subnet_lease_history",
+      { netuid: 4 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.lease_events, []);
+  });
+
+  test("rejects a missing/invalid netuid argument", async () => {
+    const res = await callTool(
+      "get_subnet_lease_history",
+      {},
+      { env: { DATA_API: makeDataApi() } },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("errors cleanly when the DATA_API binding is absent", async () => {
+    const res = await callTool(
+      "get_subnet_lease_history",
+      { netuid: 7 },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(
+      res.body.result.content[0].text.includes("all-events data Worker"),
+      "must surface a clear tier-unavailable message",
+    );
+  });
+
+  test("errors cleanly when the data Worker's fetch throws", async () => {
+    const dataApi = makeDataApi({ throws: true });
+    const res = await callTool(
+      "get_subnet_lease_history",
+      { netuid: 7 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("could not be reached"));
+  });
+
+  test("errors cleanly when the data Worker returns a non-OK response", async () => {
+    const dataApi = makeDataApi({ status: 502 });
+    const res = await callTool(
+      "get_subnet_lease_history",
+      { netuid: 7 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("502"));
+  });
+
+  test("applies the data API limiter before fetching lease history", async () => {
+    const dataApi = makeDataApi({
+      payload: { schema_version: 1, netuid: 7, count: 0, lease_events: [] },
+    });
+    const limiterKeys = [];
+    const res = await callTool(
+      "get_subnet_lease_history",
+      { netuid: 7 },
+      {
+        env: {
+          DATA_API: dataApi,
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: true };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+  });
+});
+
 // get_subnet_conviction (#6638) reaches the same Postgres-backed all-events
 // tier as get_subnet_ownership_history above, so its tests mock DATA_API
 // the same way.
@@ -16405,6 +16554,152 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
     try {
       const res = await callTool("get_subnet_burn", { netuid: 1 }, { env });
       assert.equal(res.body.result.structuredContent.burn_tao, 0.0005);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+});
+
+// get_subnet_lease (#6719) reaches the same live-RPC + KV-cache shape as
+// get_subnet_burn above (a different set of storage items).
+describe("MCP get_subnet_lease", () => {
+  test("returns leased:false for a confirmed no-lease result", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+    });
+    try {
+      const res = await callTool("get_subnet_lease", { netuid: 7 }, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.netuid, 7);
+      assert.equal(out.leased, false);
+      assert.equal(out.lease, null);
+      assert.ok(out.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("returns leased:null on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("rpc down");
+    };
+    try {
+      const res = await callTool("get_subnet_lease", { netuid: 7 }, {});
+      assert.equal(res.body.result.structuredContent.leased, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("rejects a netuid outside the u16 range", async () => {
+    const res = await callTool("get_subnet_lease", { netuid: 70000 }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /u16/);
+  });
+
+  test("applies the RPC rate limiter before the finney fetch", async () => {
+    let limiterKey;
+    let fetchCalled = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      fetchCalled = true;
+      throw new Error("should not fetch");
+    };
+    const env = {
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: false };
+        },
+      },
+    };
+    try {
+      const res = await callTool("get_subnet_lease", { netuid: 7 }, { env });
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rate_limited/);
+      assert.equal(limiterKey, "lease:mcp:anonymous");
+      assert.equal(fetchCalled, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("proceeds to the live RPC when the rate limiter allows the request, decoding the full lease", async () => {
+    const beneficiary = new Uint8Array(32).fill(0x11);
+    const coldkey = new Uint8Array(32).fill(0x22);
+    const hotkey = new Uint8Array(32).fill(0x33);
+    function hex(bytes) {
+      return (
+        "0x" + [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")
+      );
+    }
+    const encodedLease = hex(
+      new Uint8Array([
+        ...beneficiary,
+        ...coldkey,
+        ...hotkey,
+        25, // emissions_share
+        0, // end_block: None
+        9,
+        0, // netuid 9 (u16 LE)
+        0,
+        0x65,
+        0xcd,
+        0x1d,
+        0,
+        0,
+        0,
+        0, // cost 500000000 rao
+      ]),
+    );
+    const { twox64ConcatU32StorageKey } =
+      await import("../src/twox-storage-key.mjs");
+    const leaseKey = twox64ConcatU32StorageKey(
+      "SubtensorModule",
+      "SubnetLeases",
+      3,
+    );
+    const dividendsKey = twox64ConcatU32StorageKey(
+      "SubtensorModule",
+      "AccumulatedLeaseDividends",
+      3,
+    );
+    const orig = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      const key = JSON.parse(init.body).params[0];
+      if (key.endsWith("0900")) {
+        return { ok: true, json: async () => ({ result: "0x03000000" }) };
+      }
+      if (key === leaseKey) {
+        return { ok: true, json: async () => ({ result: encodedLease }) };
+      }
+      if (key === dividendsKey) {
+        return { ok: true, json: async () => ({ result: null }) };
+      }
+      throw new Error(`unexpected storage key ${key}`);
+    };
+    const env = {
+      RPC_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+    };
+    try {
+      const res = await callTool("get_subnet_lease", { netuid: 9 }, { env });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.leased, true);
+      assert.equal(out.lease.lease_id, 3);
+      assert.equal(out.lease.cost_tao, 0.5);
+      assert.equal(out.lease.accumulated_dividends_alpha, 0);
     } finally {
       globalThis.fetch = orig;
     }

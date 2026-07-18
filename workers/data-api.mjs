@@ -58,6 +58,11 @@ import {
   OWNERSHIP_CHANGE_EVENT_METHOD,
 } from "../src/subnet-ownership-history.mjs";
 import {
+  buildSubnetLeaseHistory,
+  SUBNET_LEASE_CREATED_KIND,
+  SUBNET_LEASE_TERMINATED_KIND,
+} from "../src/subnet-lease-history.mjs";
+import {
   buildSubnetConviction,
   fetchConvictionRates,
 } from "../src/subnet-conviction.mjs";
@@ -4645,6 +4650,31 @@ export default {
             AND (args->>'netuid')::int = ${netuid}
           ORDER BY block_number ASC`;
           return json(buildSubnetOwnershipHistory(rows, netuid));
+        }
+
+        // GET /api/v1/subnets/:netuid/lease/history (#6719, part of the
+        // subnet-leasing/crowdloan-tracking epic #6717): every
+        // SubnetLeaseCreated/SubnetLeaseTerminated event this subnet has
+        // had, from the account_events tier #6718 started capturing --
+        // unlike ownership-history just above, this reads account_events
+        // (a plain `netuid` column) rather than chain_events (a JSONB
+        // args->>'netuid' cast), since #6718's indexer-rs extract() already
+        // curates netuid for both these kinds into that column. See
+        // src/subnet-lease-history.mjs's own header for why dividend-
+        // distribution/crowdloan events are excluded. Cold/absent store ->
+        // the schema-stable empty-list shape (never a 404): most subnets
+        // have never been leased.
+        const subnetLeaseHistory = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/lease\/history$/,
+        );
+        if (subnetLeaseHistory) {
+          const netuid = Number(subnetLeaseHistory[1]);
+          const rows = await sql`
+          SELECT block_number, event_kind, coldkey, observed_at
+          FROM account_events
+          WHERE netuid = ${netuid} AND event_kind IN (${SUBNET_LEASE_CREATED_KIND}, ${SUBNET_LEASE_TERMINATED_KIND})
+          ORDER BY block_number ASC`;
+          return json(buildSubnetLeaseHistory(rows, netuid));
         }
 
         // GET /api/v1/subnets/:netuid/conviction (#6638, part of the

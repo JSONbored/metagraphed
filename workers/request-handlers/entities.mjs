@@ -100,6 +100,7 @@ import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { loadNetworkParameters } from "../../src/network-parameters.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { loadSubnetBurn } from "../../src/subnet-burn.mjs";
+import { loadSubnetLease } from "../../src/subnet-lease.mjs";
 import { computeStakeQuote } from "../../src/stake-quote.mjs";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.mjs";
@@ -3711,6 +3712,51 @@ export async function handleSubnetBurn(request, env, netuid) {
   }
 
   const data = await loadSubnetBurn(env, netuid);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/lease (#6719, part of the subnet-leasing/
+// crowdloan-tracking epic #6717): whether a subnet is currently under a
+// lease and, if so, its terms + accumulated-but-undistributed alpha
+// dividends. Same live-RPC + KV-cache + rate-limit shape as handleSubnetBurn
+// just above (a different set of storage items, same pattern). See
+// src/subnet-lease.mjs's header for the on-chain storage-key/struct-layout
+// details. The companion /lease/history route (event log) is a Postgres-
+// tier route in workers/data-api.mjs, not here.
+export async function handleSubnetLease(request, env, netuid) {
+  if (!isU16Netuid(netuid)) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: `lease:${resolveClientIp(request)}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "lease_rate_limited",
+        "Too many live lease-state requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(BALANCE_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(BALANCE_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${BALANCE_RATE_LIMIT.limit};w=${BALANCE_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
+  }
+
+  const data = await loadSubnetLease(env, netuid);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

@@ -17,6 +17,8 @@
     "subnet-hyperparameters",
     "subnet-hyperparameters-history",
     "subnet-identity-history",
+    "subnet-lease",
+    "subnet-lease-history",
     "subnet-metagraph",
     "subnet-movers",
     "subnet-neuron",

@@ -37,6 +37,8 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-ohlc",
   "subnet-ownership-history",
   "subnet-conviction",
+  "subnet-lease",
+  "subnet-lease-history",
   "subnet-stake-quote",
   "subnet-weights",
   "subnet-weight-setters",

@@ -151,6 +151,19 @@ const env = createLocalArtifactEnv({
           { status: 200, headers },
         );
       }
+      if (/^\/api\/v1\/subnets\/\d+\/lease\/history$/.test(pathname)) {
+        return new Response(
+          JSON.stringify({
+            schema_version: 1,
+            netuid: 7,
+            event_pallet: "SubtensorModule",
+            event_kinds: ["SubnetLeaseCreated", "SubnetLeaseTerminated"],
+            count: 0,
+            lease_events: [],
+          }),
+          { status: 200, headers },
+        );
+      }
       return new Response(
         JSON.stringify({ block_number: 100, count: 0, events: [] }),
         { status: 200, headers },
@@ -857,6 +870,23 @@ const checks = [
     (body) => {
       assert.equal(body.data.netuid, 7);
       assert.equal(Array.isArray(body.data.leaderboard), true);
+      assert.equal(typeof body.data.count, "number");
+    },
+  ],
+  [
+    "/api/v1/subnets/7/lease",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.ok(
+        body.data.leased === null || typeof body.data.leased === "boolean",
+      );
+    },
+  ],
+  [
+    "/api/v1/subnets/7/lease/history",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.lease_events), true);
       assert.equal(typeof body.data.count, "number");
     },
   ],

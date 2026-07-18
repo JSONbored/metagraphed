@@ -1049,6 +1049,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-lease",
+      "path": "/metagraph/subnets/{netuid}/lease.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetLeaseArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-lease-history",
+      "path": "/metagraph/subnets/{netuid}/lease/history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetLeaseHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",
       "retirement": null,
@@ -7290,6 +7308,30 @@
       "id": "subnet-conviction",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/conviction",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/lease.json",
+      "cache": "short",
+      "description": "Fetch the live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms + accumulated-but-undistributed alpha dividends, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false).",
+      "id": "subnet-lease",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/lease",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/lease/history.json",
+      "cache": "short",
+      "description": "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case.",
+      "id": "subnet-lease-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/lease/history",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

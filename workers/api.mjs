@@ -107,6 +107,7 @@ import {
   handleSubnetStakeQuote,
   handleSubnetRecycled,
   handleSubnetBurn,
+  handleSubnetLease,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -345,6 +346,7 @@ import {
   SUBNET_STAKE_QUOTE_PATH_PATTERN,
   SUBNET_RECYCLED_PATH_PATTERN,
   SUBNET_BURN_PATH_PATTERN,
+  SUBNET_LEASE_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -1320,7 +1322,8 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     url.pathname === "/api/v1/chain-events/stats" ||
     /^\/api\/v1\/blocks\/\d+\/chain-events$/.test(url.pathname) ||
     /^\/api\/v1\/subnets\/\d+\/ownership-history$/.test(url.pathname) ||
-    /^\/api\/v1\/subnets\/\d+\/conviction$/.test(url.pathname)
+    /^\/api\/v1\/subnets\/\d+\/conviction$/.test(url.pathname) ||
+    /^\/api\/v1\/subnets\/\d+\/lease\/history$/.test(url.pathname)
   ) {
     if (env.DATA_RATE_LIMITER?.limit) {
       const { success } = await env.DATA_RATE_LIMITER.limit({
@@ -2021,6 +2024,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       // Live RPC + KV-cache route (#6321), same shape as SUBNET_RECYCLED
       // just above — a different storage item, not D1-backed either.
       return handleSubnetBurn(request, env, Number(burnMatch[1]));
+    }
+    const leaseMatch = SUBNET_LEASE_PATH_PATTERN.exec(resolved.url.pathname);
+    if (leaseMatch) {
+      // Live RPC + KV-cache route (#6719), same shape as SUBNET_BURN just
+      // above. Tested BEFORE the DATA_API forwarding gate further up already
+      // ran (that gate only matches .../lease/history, a longer suffix), so
+      // this never shadows it.
+      return handleSubnetLease(request, env, Number(leaseMatch[1]));
     }
     const weightSettersMatch = SUBNET_WEIGHT_SETTERS_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -2906,6 +2917,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_STAKE_QUOTE_PATH_PATTERN.test(pathname) ||
     SUBNET_RECYCLED_PATH_PATTERN.test(pathname) ||
     SUBNET_BURN_PATH_PATTERN.test(pathname) ||
+    SUBNET_LEASE_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
     SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||

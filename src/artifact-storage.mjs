@@ -166,6 +166,12 @@ export const R2_ONLY_PATTERNS = [
   // Subnet conviction leaderboard (#6638): served live from the Postgres-
   // backed all-events tier + a live RPC rate lookup, never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/conviction\.json$/,
+  // Live subnet-lease state (#6719): computed from RPC at request time,
+  // never a static file.
+  /^subnets\/(?:\d+|\{netuid\})\/lease\.json$/,
+  // Lease-lifecycle history (#6719): served live from the Postgres-backed
+  // all-events tier (ADR 0013), never a static file.
+  /^subnets\/(?:\d+|\{netuid\})\/lease\/history\.json$/,
   // Block-explorer tiers (#1345): computed live from the blocks D1 tier at
   // /api/v1/blocks (recent feed) + /api/v1/blocks/{ref} (numeric block_number or
   // 0x block_hash) — never written as files.

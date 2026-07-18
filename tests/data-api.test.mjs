@@ -3369,6 +3369,39 @@ test("GET /api/v1/subnets/:netuid/ownership-history with no rows returns an empt
   expect(body.ownership_changes).toEqual([]);
 });
 
+test("GET /api/v1/subnets/:netuid/lease/history shapes raw account_events rows into lease-lifecycle events", async () => {
+  mockRows.current = [
+    {
+      block_number: "8587754",
+      event_kind: "SubnetLeaseCreated",
+      coldkey: "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+      observed_at: "1783600000000",
+    },
+  ];
+  const res = await req("/api/v1/subnets/7/lease/history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.count).toBe(1);
+  expect(body.lease_events[0].event_kind).toBe("SubnetLeaseCreated");
+  expect(body.lease_events[0].beneficiary).toBe(
+    "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+  );
+  const text = queryText();
+  expect(text).toContain("FROM account_events");
+  expect(text).toContain("netuid =");
+  expect(text).toContain("event_kind IN");
+});
+
+test("GET /api/v1/subnets/:netuid/lease/history with no rows returns an empty list, not a throw", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/7/lease/history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.count).toBe(0);
+  expect(body.lease_events).toEqual([]);
+});
+
 // conviction (#6638) combines a subnet_locks Postgres read (mocked via
 // mockRows, same as every other route in this file) with a live
 // UnlockRate/MaturityRate/chain-tip RPC lookup -- stub globalThis.fetch for

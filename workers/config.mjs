@@ -87,6 +87,15 @@ export const SUBNET_RECYCLED_PATH_PATTERN =
 // tier, no static file. Dispatched separately from SUBNET_RECYCLED (a
 // different storage item, different route).
 export const SUBNET_BURN_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/burn$/;
+// Live subnet-lease state (#6719) — whether a subnet is currently under a
+// lease and, if so, its terms, queried from the chain's own SubnetUidTo-
+// LeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request
+// time — not a D1/account_events tier, no static file. The companion
+// /lease/history route (lease-lifecycle events, Postgres-tier via the
+// DATA_API service binding) is dispatched separately in api.mjs's
+// handleRequest, matching ownership-history/conviction's own inline-regex
+// convention rather than a config.mjs pattern constant.
+export const SUBNET_LEASE_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/lease$/;
 // Validator weight-setting activity over the window, live from account_events, no static file.
 export const SUBNET_WEIGHTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/weights$/;

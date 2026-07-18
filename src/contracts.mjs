@@ -1388,6 +1388,18 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetConvictionArtifact",
   ),
   artifact(
+    "subnet-lease",
+    "/metagraph/subnets/{netuid}/lease.json",
+    "Live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false).",
+    "SubnetLeaseArtifact",
+  ),
+  artifact(
+    "subnet-lease-history",
+    "/metagraph/subnets/{netuid}/lease/history.json",
+    "Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never been leased returns an empty lease_events array, not an error.",
+    "SubnetLeaseHistoryArtifact",
+  ),
+  artifact(
     "blocks-feed",
     "/metagraph/blocks.json",
     "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
@@ -3188,6 +3200,38 @@ export const API_ROUTES = [
     "/api/v1/subnets/{netuid}/conviction",
     "/metagraph/subnets/{netuid}/conviction.json",
     "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the periodically-captured subnet_locks snapshot forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
+    "short",
+    ["subnets"],
+    [],
+    [
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
+    "subnet-lease",
+    "GET",
+    "/api/v1/subnets/{netuid}/lease",
+    "/metagraph/subnets/{netuid}/lease.json",
+    "Fetch the live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms + accumulated-but-undistributed alpha dividends, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false).",
+    "short",
+    ["subnets"],
+    [],
+    [
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
+    "subnet-lease-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/lease/history",
+    "/metagraph/subnets/{netuid}/lease/history.json",
+    "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case.",
     "short",
     ["subnets"],
     [],
