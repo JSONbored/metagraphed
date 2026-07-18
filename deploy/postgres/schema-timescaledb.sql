@@ -39,15 +39,30 @@ SELECT create_hypertable('surface_checks', 'checked_at', chunk_time_interval => 
 -- (verified live 2026-07-03 — the hypertables/compression policies below
 -- applied without error, but every scheduled compression job then silently
 -- failed at its first run). DATE-partitioned neuron_daily doesn't need this.
+-- Guarded, not 5 bare SELECT set_integer_now_func(...) calls: unlike every
+-- other statement in this file, set_integer_now_func has no if_not_exists
+-- option and hard-ERRORs ("custom time function already set for hypertable
+-- X") if called on a hypertable that already has one -- confirmed live
+-- 2026-07-18 running this file a second time against the already-configured
+-- indexer box (metagraphed-infra#95, which relies on this whole file being
+-- safe to re-run unconditionally on every Ansible apply).
 CREATE OR REPLACE FUNCTION current_epoch_ms() RETURNS BIGINT
 LANGUAGE SQL STABLE AS $$
   SELECT (extract(epoch from now()) * 1000)::BIGINT
 $$;
-SELECT set_integer_now_func('blocks',         'current_epoch_ms');
-SELECT set_integer_now_func('extrinsics',     'current_epoch_ms');
-SELECT set_integer_now_func('account_events', 'current_epoch_ms');
-SELECT set_integer_now_func('chain_events',   'current_epoch_ms');
-SELECT set_integer_now_func('surface_checks', 'current_epoch_ms');
+DO $$
+DECLARE
+  tbl TEXT;
+BEGIN
+  FOREACH tbl IN ARRAY ARRAY['blocks', 'extrinsics', 'account_events', 'chain_events', 'surface_checks'] LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM timescaledb_information.dimensions
+      WHERE hypertable_name = tbl AND integer_now_func IS NOT NULL
+    ) THEN
+      PERFORM set_integer_now_func(tbl, 'current_epoch_ms');
+    END IF;
+  END LOOP;
+END $$;
 
 ALTER TABLE blocks         SET (timescaledb.compress, timescaledb.compress_orderby = 'observed_at DESC');
 ALTER TABLE extrinsics     SET (timescaledb.compress, timescaledb.compress_segmentby = 'signer', timescaledb.compress_orderby = 'observed_at DESC');
@@ -55,8 +70,13 @@ ALTER TABLE account_events SET (timescaledb.compress, timescaledb.compress_segme
 ALTER TABLE chain_events   SET (timescaledb.compress, timescaledb.compress_segmentby = 'pallet', timescaledb.compress_orderby = 'observed_at DESC');
 ALTER TABLE surface_checks SET (timescaledb.compress, timescaledb.compress_segmentby = 'surface_id', timescaledb.compress_orderby = 'checked_at DESC');
 
-SELECT add_compression_policy('blocks',         BIGINT '604800000');  -- 7d in ms
-SELECT add_compression_policy('extrinsics',     BIGINT '604800000');
-SELECT add_compression_policy('account_events', BIGINT '604800000');
-SELECT add_compression_policy('chain_events',   BIGINT '604800000');
-SELECT add_compression_policy('surface_checks', BIGINT '604800000');
+-- if_not_exists => true on all 5: unlike ALTER TABLE...SET (timescaledb.compress...)
+-- above (idempotent by default), add_compression_policy hard-ERRORs ("compression
+-- policy already exists") if called twice on the same hypertable -- confirmed live
+-- 2026-07-18 running this file a second time against the already-configured indexer
+-- box (metagraphed-infra#95). Postgres's own error even hints at this exact fix.
+SELECT add_compression_policy('blocks',         BIGINT '604800000', if_not_exists => true);  -- 7d in ms
+SELECT add_compression_policy('extrinsics',     BIGINT '604800000', if_not_exists => true);
+SELECT add_compression_policy('account_events', BIGINT '604800000', if_not_exists => true);
+SELECT add_compression_policy('chain_events',   BIGINT '604800000', if_not_exists => true);
+SELECT add_compression_policy('surface_checks', BIGINT '604800000', if_not_exists => true);
