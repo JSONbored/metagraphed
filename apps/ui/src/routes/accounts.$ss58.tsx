@@ -2381,7 +2381,7 @@ function DataPanel({ children, className }: { children: ReactNode; className?: s
   return (
     <div
       className={classNames(
-        "overflow-x-auto rounded-[1.5rem] border border-border/80 bg-card/95 mg-card-glow",
+        "overflow-x-auto rounded-2xl border border-border/80 bg-card/95 mg-card-glow",
         className,
       )}
     >
@@ -2400,7 +2400,7 @@ function AccountHeroAside({
   firstSeenAt: string | null;
 }) {
   return (
-    <div className="w-[20rem] rounded-[1.75rem] border border-border/80 bg-card/95 p-5 mg-card-glow">
+    <div className="w-[20rem] rounded-2xl border border-border/80 bg-card/95 p-5 mg-card-glow">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
