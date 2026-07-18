@@ -2938,6 +2938,7 @@ async function loadFeaturedHotkeys(sql) {
     return new Set(rows.map((row) => row.hotkey));
   } catch (err) {
     console.error("featured_validators query failed:", err);
+    captureDataApiError(err, "featured-validators-query");
     return new Set();
   }
 }
@@ -2965,6 +2966,7 @@ async function loadAccountIdentitiesByColdkey(sql, coldkeys) {
     return new Map(rows.map((row) => [row.account, row]));
   } catch (err) {
     console.error("account_identity join query failed:", err);
+    captureDataApiError(err, "account-identity-join-query");
     return new Map();
   }
 }
@@ -2993,6 +2995,7 @@ async function loadValidatorNominatorCounts(sql) {
     return nominatorCountsByHotkey(rows);
   } catch (err) {
     console.error("validator_nominator_counts query failed:", err);
+    captureDataApiError(err, "validator-nominator-counts-query");
     return new Map();
   }
 }
@@ -3010,6 +3013,7 @@ async function loadSubnetTempos(sql) {
     return buildTempoByNetuid(rows);
   } catch (err) {
     console.error("subnet_hyperparams tempo query failed:", err);
+    captureDataApiError(err, "subnet-hyperparams-tempo-query");
     return new Map();
   }
 }
@@ -3035,6 +3039,7 @@ async function loadSubnetImmunityPeriod(sql, netuid) {
     return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
   } catch (err) {
     console.error("subnet_hyperparams immunity_period query failed:", err);
+    captureDataApiError(err, "subnet-hyperparams-immunity-period-query");
     return null;
   }
 }
@@ -3051,6 +3056,7 @@ async function loadNominatorPositions(sql, ss58) {
     );
   } catch (err) {
     console.error("nominator_positions query failed:", err);
+    captureDataApiError(err, "nominator-positions-query");
     return [];
   }
 }
@@ -3074,6 +3080,7 @@ async function loadNeuronStakeByHotkeys(sql, hotkeys) {
     return stakeByHotkeyNetuid(rows);
   } catch (err) {
     console.error("neurons stake-by-hotkey join query failed:", err);
+    captureDataApiError(err, "neurons-stake-by-hotkey-query");
     return new Map();
   }
 }
@@ -7533,6 +7540,10 @@ export default {
       // Log internally (Wrangler observability) but NEVER leak DB error details
       // (schema, table, or connection info) to API clients.
       console.error("data-api query failed:", err);
+      // url.pathname (not a static tag) -- this catch is the generic
+      // fallback for the WHOLE route dispatcher above, so the actual
+      // failing route is the only thing that makes the Sentry event useful.
+      captureDataApiError(err, url.pathname);
       return json({ error: "data query failed" }, 502);
     }
     // No sql.end() here: Hyperdrive automatically cleans up the connection

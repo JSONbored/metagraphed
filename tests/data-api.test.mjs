@@ -116,6 +116,17 @@ const nominatorPositionsSyncFailure = vi.hoisted(() => ({ error: null }));
 // isolation purpose as subnetTemposQueryFailure above, but for
 // loadNominatorPositions' own SELECT.
 const nominatorPositionsQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for the /positions route's second query (#6769 gap-closure) --
+// loadNeuronStakeByHotkeys' own sql.unsafe IN-list SELECT, isolated from
+// nominatorPositionsQueryFailure above so a test can fail just this one
+// without also failing the read it depends on.
+const neuronStakeByHotkeyQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for GET /api/v1/accounts/:ss58/history's own SELECT (#6769
+// gap-closure) -- this route has no per-query try/catch of its own, so a
+// failure here is the one that reaches the router's OUTERMOST generic
+// catch (captureDataApiError(err, url.pathname)), unlike every other flag
+// above which targets a route with its own dedicated fallback.
+const accountHistoryQueryFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -171,6 +182,12 @@ vi.mock("postgres", () => ({
         /INSERT INTO account_events_daily/.test(text)
       ) {
         return Promise.reject(rollupFailure.error);
+      }
+      if (
+        accountHistoryQueryFailure.error &&
+        /FROM account_events_daily\b/.test(text)
+      ) {
+        return Promise.reject(accountHistoryQueryFailure.error);
       }
       if (
         subnetHyperparamsSyncFailure.error &&
@@ -297,6 +314,12 @@ vi.mock("postgres", () => ({
         }
         return Promise.resolve(accountIdentityJoinRows.current);
       }
+      if (/stake_tao FROM neurons WHERE hotkey IN/.test(text)) {
+        if (neuronStakeByHotkeyQueryFailure.error) {
+          return Promise.reject(neuronStakeByHotkeyQueryFailure.error);
+        }
+        return Promise.resolve(mockRows.current);
+      }
       return Promise.resolve(mockRows.current);
     };
     // sql.begin(["read only",] cb) reserves a connection for cb in real
@@ -386,6 +409,8 @@ beforeEach(() => {
   subnetTemposQueryFailure.error = null;
   nominatorPositionsSyncFailure.error = null;
   nominatorPositionsQueryFailure.error = null;
+  neuronStakeByHotkeyQueryFailure.error = null;
+  accountHistoryQueryFailure.error = null;
   subnetIdentitySyncFailure.error = null;
   subnetIdentityLatestHashes.current = [];
   healthChecksSyncFailure.error = null;
@@ -3998,6 +4023,18 @@ test("GET /api/v1/accounts/:ss58/history?limit=1 emits a next_cursor when the pa
   expect(body.next_cursor).not.toBeNull();
 });
 
+test("GET /api/v1/accounts/:ss58/history maps a DB failure to a clean 502 via the router's generic catch (#6769)", async () => {
+  // This route has no per-query try/catch of its own -- a failure here is
+  // the one path in this whole file that reaches the OUTERMOST generic
+  // catch (captureDataApiError(err, url.pathname)) at the bottom of the
+  // route dispatcher, rather than a route-specific fallback.
+  accountHistoryQueryFailure.error = new Error("connection reset");
+  const res = await req(`/api/v1/accounts/${SS58}/history`);
+  expect(res.status).toBe(502);
+  const body = await res.json();
+  expect(body.error).toBe("data query failed");
+});
+
 // #4832 gap-closure: POST /api/v1/internal/subnet-hyperparams-sync -- the
 // write path into subnet_hyperparams/subnet_hyperparams_history (see
 // workers/data-api.mjs's handleSubnetHyperparamsSync), plus its read paths,
@@ -5106,6 +5143,37 @@ test("GET /api/v1/accounts/:ss58/positions still serves an empty card when the n
   const body = await res.json();
   expect(body.position_count).toBe(0);
   expect(body.positions).toEqual([]);
+});
+
+test("GET /api/v1/accounts/:ss58/positions still serves a card (with zeroed stake) when the neurons stake-by-hotkey join fails (#6769)", async () => {
+  // nominator_positions succeeds with a real hotkey, so loadNeuronStakeByHotkeys
+  // actually runs (an empty hotkeys array short-circuits before ever issuing
+  // this query -- see the "no positions" test above).
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        coldkey: "5Cold1",
+        hotkey: "5Hk1",
+        netuid: 3,
+        share_fraction: 0.25,
+        captured_at: "1780000000000",
+      },
+    ], // loadNominatorPositions
+  ];
+  neuronStakeByHotkeyQueryFailure.error = new Error("connection reset");
+  const res = await req("/api/v1/accounts/5Cold1/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  // buildAccountPositions drops any position it can't resolve a stake_tao
+  // for (src/account-nominator-positions.mjs: `if (hotkeyStake == null)
+  // continue;`) rather than fabricating a zero -- the join failing for
+  // every hotkey degrades to the same empty card the "no positions" and
+  // "nominator_positions read fails" tests above assert, just reached via
+  // the OTHER query in this route failing instead.
+  expect(body.position_count).toBe(0);
+  expect(body.positions).toEqual([]);
+  expect(body.total_stake_tao).toBe(0);
 });
 
 test("GET /api/v1/accounts/:ss58/identity returns the latest row", async () => {
