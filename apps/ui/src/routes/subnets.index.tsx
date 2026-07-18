@@ -50,7 +50,14 @@ import {
   agentCatalogMapQuery,
   economicsQuery,
 } from "@/lib/metagraphed/queries";
-import { classNames, formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
+import {
+  classNames,
+  formatNumber,
+  formatTao,
+  isStaleFreshness,
+  subnetAgeDays,
+  formatSubnetAge,
+} from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import {
   joinEconomics,
@@ -619,293 +626,308 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   }
 
   return (
-    <ListShell
-      filters={filters}
-      isEmpty={rows.length === 0 && !hasNextPage}
-      isStale={isFetching && !isFetchingNextPage}
-      empty={emptyNode}
-      cards={rows.map((s) => (
-        <Link
-          key={s.netuid}
-          to="/subnets/$netuid"
-          params={{ netuid: s.netuid }}
-          className="block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-3 min-w-0">
-              <BrandIcon
-                url={s.website}
-                repoUrl={s.repo}
-                iconUrl={s.icon_url}
-                netuid={s.netuid}
-                name={s.name}
-                fallback={s.netuid}
-                size={32}
-              />
-              <div className="min-w-0">
-                <div className="font-mono text-[11px] text-ink-muted">
-                  #{String(s.netuid).padStart(3, "0")}
-                  {s.symbol ? ` · ${s.symbol}` : ""}
-                </div>
-                <div className="font-medium text-ink-strong truncate">
-                  {s.name ?? `Subnet ${s.netuid}`}
+    <div id="subnets-list">
+      <ListShell
+        filters={filters}
+        isEmpty={rows.length === 0 && !hasNextPage}
+        isStale={isFetching && !isFetchingNextPage}
+        empty={emptyNode}
+        cards={rows.map((s) => (
+          <Link
+            key={s.netuid}
+            to="/subnets/$netuid"
+            params={{ netuid: s.netuid }}
+            className="block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <BrandIcon
+                  url={s.website}
+                  repoUrl={s.repo}
+                  iconUrl={s.icon_url}
+                  netuid={s.netuid}
+                  name={s.name}
+                  fallback={s.netuid}
+                  size={32}
+                />
+                <div className="min-w-0">
+                  <div className="font-mono text-[11px] text-ink-muted">
+                    #{String(s.netuid).padStart(3, "0")}
+                    {s.symbol ? ` · ${s.symbol}` : ""}
+                    {" · "}
+                    {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
+                  </div>
+                  <div className="font-medium text-ink-strong truncate">
+                    {s.name ?? `Subnet ${s.netuid}`}
+                  </div>
                 </div>
               </div>
+              <HealthPill state={s.health} />
             </div>
-            <HealthPill state={s.health} />
-          </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-ink-muted">
-            <span>{formatNumber(s.participants)} participants</span>
-            <span>{s.surfaces_count ?? 0} surfaces</span>
-            <span>
-              <TimeAgo at={s.updated_at ?? s.freshness} />
-            </span>
-          </div>
-          <div className="mt-1.5">
-            <CurationChip level={s.curation_level} />
-          </div>
-        </Link>
-      ))}
-      table={(() => {
-        const compact = density === "compact";
-        const cellPad = compact ? "px-3 py-1.5" : "px-4 py-2.5";
-        const firstPad = compact ? "pl-3 pr-1 py-1.5" : "pl-4 pr-1 py-2.5";
-        const monoSize = compact ? "text-[11px]" : "text-[12px]";
-        return (
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
-              <tr>
-                <th className={classNames(firstPad, "w-6")} aria-label="Compare" />
-                <th
-                  className={cellPad}
-                  aria-sort={ariaSort(search.sort === "netuid", search.order)}
-                >
-                  <SortHeader
-                    label="UID"
-                    field="netuid"
-                    active={search.sort === "netuid"}
-                    order={search.order}
-                    onSort={onSort}
-                  />
-                </th>
-                <th className={cellPad} aria-sort={ariaSort(search.sort === "name", search.order)}>
-                  <SortHeader
-                    label="Name"
-                    field="name"
-                    active={search.sort === "name"}
-                    order={search.order}
-                    onSort={onSort}
-                  />
-                </th>
-                <th
-                  className={cellPad}
-                  aria-sort={ariaSort(search.sort === "symbol", search.order)}
-                >
-                  <SortHeader
-                    label="Symbol"
-                    field="symbol"
-                    active={search.sort === "symbol"}
-                    order={search.order}
-                    onSort={onSort}
-                  />
-                </th>
-                <th
-                  className={classNames(cellPad, "text-right")}
-                  aria-sort={ariaSort(search.sort === "participants", search.order)}
-                >
-                  <SortHeader
-                    label="Participants"
-                    field="participants"
-                    active={search.sort === "participants"}
-                    order={search.order}
-                    onSort={onSort}
-                    align="right"
-                  />
-                </th>
-                <th
-                  className={cellPad}
-                  aria-sort={ariaSort(search.sort === "curation_level", search.order)}
-                >
-                  <SortHeader
-                    label="Curation"
-                    field="curation_level"
-                    active={search.sort === "curation_level"}
-                    order={search.order}
-                    onSort={onSort}
-                  />
-                </th>
-                <th
-                  className={classNames(cellPad, "text-right")}
-                  aria-sort={ariaSort(search.sort === "surfaces_count", search.order)}
-                >
-                  <SortHeader
-                    label="Surfaces"
-                    field="surfaces_count"
-                    active={search.sort === "surfaces_count"}
-                    order={search.order}
-                    onSort={onSort}
-                    align="right"
-                  />
-                </th>
-                <th
-                  className={classNames(cellPad, "text-right")}
-                  aria-sort={ariaSort(search.sort === "integration_readiness", search.order)}
-                >
-                  <SortHeader
-                    label="Readiness"
-                    field="integration_readiness"
-                    active={search.sort === "integration_readiness"}
-                    order={search.order}
-                    onSort={onSort}
-                    align="right"
-                  />
-                </th>
-                <th
-                  className={classNames(cellPad, "text-right")}
-                  aria-sort={ariaSort(search.sort === "registration_cost_tao", search.order)}
-                >
-                  <SortHeader
-                    label="Registration"
-                    field="registration_cost_tao"
-                    active={search.sort === "registration_cost_tao"}
-                    order={search.order}
-                    onSort={onSort}
-                    align="right"
-                  />
-                </th>
-                <th className={cellPad}>Health</th>
-                <th
-                  className={classNames(cellPad, "text-right")}
-                  aria-sort={ariaSort(search.sort === "emission_share", search.order)}
-                >
-                  <SortHeader
-                    label="Emission"
-                    field="emission_share"
-                    active={search.sort === "emission_share"}
-                    order={search.order}
-                    onSort={onSort}
-                    align="right"
-                  />
-                </th>
-                <th
-                  className={classNames(cellPad, "text-right")}
-                  aria-sort={ariaSort(search.sort === "updated_at", search.order)}
-                >
-                  <SortHeader
-                    label="Updated"
-                    field="updated_at"
-                    active={search.sort === "updated_at"}
-                    order={search.order}
-                    onSort={onSort}
-                    align="right"
-                  />
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((s) => (
-                <tr key={s.netuid} className="mg-row-accent hover:bg-surface/40">
-                  <td className={classNames(firstPad, "align-middle")}>
-                    <CompareToggle netuid={s.netuid} />
-                  </td>
-                  <td className={classNames(cellPad, "font-mono text-ink-muted", monoSize)}>
-                    <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: s.netuid }}
-                        className="hover:text-ink-strong"
-                      >
-                        {String(s.netuid).padStart(3, "0")}
-                      </Link>
-                    </EntityHoverCard>
-                  </td>
-                  <td className={cellPad}>
-                    <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: s.netuid }}
-                        className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
-                      >
-                        <BrandIcon
-                          url={s.website}
-                          repoUrl={s.repo}
-                          iconUrl={s.icon_url}
-                          netuid={s.netuid}
-                          name={s.name}
-                          fallback={s.netuid}
-                          size={compact ? 18 : 20}
-                        />
-                        <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
-                      </Link>
-                    </EntityHoverCard>
-                  </td>
-                  <td className={classNames(cellPad, "font-mono text-[11px] text-ink-muted")}>
-                    {s.symbol ?? "—"}
-                  </td>
-                  <td className={classNames(cellPad, "text-right")}>
-                    <ParticipantsCell
-                      value={s.participants}
-                      density={density}
-                      updatedAt={s.updated_at ?? s.freshness}
+            <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-ink-muted">
+              <span>{formatNumber(s.participants)} participants</span>
+              <span>{s.surfaces_count ?? 0} surfaces</span>
+              <span>
+                <TimeAgo at={s.updated_at ?? s.freshness} />
+              </span>
+            </div>
+            <div className="mt-1.5">
+              <CurationChip level={s.curation_level} />
+            </div>
+          </Link>
+        ))}
+        table={(() => {
+          const compact = density === "compact";
+          const cellPad = compact ? "px-3 py-1.5" : "px-4 py-2.5";
+          const firstPad = compact ? "pl-3 pr-1 py-1.5" : "pl-4 pr-1 py-2.5";
+          const monoSize = compact ? "text-[11px]" : "text-[12px]";
+          return (
+            <table className="w-full text-left text-sm">
+              <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
+                <tr>
+                  <th className={classNames(firstPad, "w-6")} aria-label="Compare" />
+                  <th
+                    className={cellPad}
+                    aria-sort={ariaSort(search.sort === "netuid", search.order)}
+                  >
+                    <SortHeader
+                      label="UID"
+                      field="netuid"
+                      active={search.sort === "netuid"}
+                      order={search.order}
+                      onSort={onSort}
                     />
-                  </td>
-                  <td className={cellPad}>
-                    <CurationChip level={s.curation_level} />
-                  </td>
-                  <td className={classNames(cellPad, "text-right")}>
-                    <SurfacesCell subnet={s} density={density} />
-                  </td>
-                  <td className={classNames(cellPad, "text-right")}>
-                    <ReadinessCell
-                      score={s.integration_readiness}
-                      tier={s.readiness_tier}
-                      kinds={s.service_kinds}
+                  </th>
+                  <th
+                    className={cellPad}
+                    aria-sort={ariaSort(search.sort === "name", search.order)}
+                  >
+                    <SortHeader
+                      label="Name"
+                      field="name"
+                      active={search.sort === "name"}
+                      order={search.order}
+                      onSort={onSort}
                     />
-                  </td>
-                  <td
-                    className={classNames(
-                      cellPad,
-                      "text-right font-mono text-[11px] tabular-nums",
-                      // #3364: dim the cost only when registration is explicitly
-                      // closed. `registration_allowed === undefined` (economics
-                      // entry present but flag absent, or no entry at all) keeps
-                      // the neutral tone — do NOT read it as "open".
-                      s.registration_allowed === false ? "text-ink-muted" : "text-ink",
-                    )}
-                    title={
-                      s.registration_allowed === false
-                        ? "Registration currently closed"
-                        : s.registration_allowed === true
-                          ? "Registration open"
-                          : undefined
-                    }
+                  </th>
+                  <th
+                    className={cellPad}
+                    aria-sort={ariaSort(search.sort === "symbol", search.order)}
                   >
-                    {formatTao(s.registration_cost_tao)}
-                  </td>
-                  <td className={cellPad}>
-                    <HealthPill state={s.health} />
-                  </td>
-                  <td
-                    className={classNames(cellPad, "text-right font-mono text-[11px] tabular-nums")}
+                    <SortHeader
+                      label="Symbol"
+                      field="symbol"
+                      active={search.sort === "symbol"}
+                      order={search.order}
+                      onSort={onSort}
+                    />
+                  </th>
+                  <th
+                    className={classNames(cellPad, "text-right")}
+                    aria-sort={ariaSort(search.sort === "participants", search.order)}
                   >
-                    <EmissionCell share={s.emission_share} />
-                  </td>
-                  <td
-                    className={classNames(
-                      cellPad,
-                      "text-right font-mono text-[11px] text-ink-muted",
-                    )}
+                    <SortHeader
+                      label="Participants"
+                      field="participants"
+                      active={search.sort === "participants"}
+                      order={search.order}
+                      onSort={onSort}
+                      align="right"
+                    />
+                  </th>
+                  <th
+                    className={cellPad}
+                    aria-sort={ariaSort(search.sort === "curation_level", search.order)}
                   >
-                    <TimeAgo at={s.updated_at ?? s.freshness} />
-                  </td>
+                    <SortHeader
+                      label="Curation"
+                      field="curation_level"
+                      active={search.sort === "curation_level"}
+                      order={search.order}
+                      onSort={onSort}
+                    />
+                  </th>
+                  <th
+                    className={classNames(cellPad, "text-right")}
+                    aria-sort={ariaSort(search.sort === "surfaces_count", search.order)}
+                  >
+                    <SortHeader
+                      label="Surfaces"
+                      field="surfaces_count"
+                      active={search.sort === "surfaces_count"}
+                      order={search.order}
+                      onSort={onSort}
+                      align="right"
+                    />
+                  </th>
+                  <th
+                    className={classNames(cellPad, "text-right")}
+                    aria-sort={ariaSort(search.sort === "integration_readiness", search.order)}
+                  >
+                    <SortHeader
+                      label="Readiness"
+                      field="integration_readiness"
+                      active={search.sort === "integration_readiness"}
+                      order={search.order}
+                      onSort={onSort}
+                      align="right"
+                    />
+                  </th>
+                  <th
+                    className={classNames(cellPad, "text-right")}
+                    aria-sort={ariaSort(search.sort === "registration_cost_tao", search.order)}
+                  >
+                    <SortHeader
+                      label="Registration"
+                      field="registration_cost_tao"
+                      active={search.sort === "registration_cost_tao"}
+                      order={search.order}
+                      onSort={onSort}
+                      align="right"
+                    />
+                  </th>
+                  <th className={cellPad}>Health</th>
+                  <th
+                    className={classNames(cellPad, "text-right")}
+                    aria-sort={ariaSort(search.sort === "emission_share", search.order)}
+                  >
+                    <SortHeader
+                      label="Emission"
+                      field="emission_share"
+                      active={search.sort === "emission_share"}
+                      order={search.order}
+                      onSort={onSort}
+                      align="right"
+                    />
+                  </th>
+                  <th
+                    className={classNames(cellPad, "text-right")}
+                    aria-sort={ariaSort(search.sort === "updated_at", search.order)}
+                  >
+                    <SortHeader
+                      label="Updated"
+                      field="updated_at"
+                      active={search.sort === "updated_at"}
+                      order={search.order}
+                      onSort={onSort}
+                      align="right"
+                    />
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        );
-      })()}
-      footer={footerNode}
-    />
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((s) => (
+                  <tr key={s.netuid} className="mg-row-accent hover:bg-surface/40">
+                    <td className={classNames(firstPad, "align-middle")}>
+                      <CompareToggle netuid={s.netuid} />
+                    </td>
+                    <td className={classNames(cellPad, "font-mono text-ink-muted", monoSize)}>
+                      <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: s.netuid }}
+                          className="hover:text-ink-strong"
+                        >
+                          {String(s.netuid).padStart(3, "0")}
+                        </Link>
+                      </EntityHoverCard>
+                      {/* #6643: age-in-days, estimated from the already-fetched
+                        registered_at_block/block delta -- no new backend call. */}
+                      <div className="text-[10px] font-sans text-ink-muted/70 whitespace-nowrap">
+                        {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
+                      </div>
+                    </td>
+                    <td className={cellPad}>
+                      <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: s.netuid }}
+                          className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
+                        >
+                          <BrandIcon
+                            url={s.website}
+                            repoUrl={s.repo}
+                            iconUrl={s.icon_url}
+                            netuid={s.netuid}
+                            name={s.name}
+                            fallback={s.netuid}
+                            size={compact ? 18 : 20}
+                          />
+                          <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
+                        </Link>
+                      </EntityHoverCard>
+                    </td>
+                    <td className={classNames(cellPad, "font-mono text-[11px] text-ink-muted")}>
+                      {s.symbol ?? "—"}
+                    </td>
+                    <td className={classNames(cellPad, "text-right")}>
+                      <ParticipantsCell
+                        value={s.participants}
+                        density={density}
+                        updatedAt={s.updated_at ?? s.freshness}
+                      />
+                    </td>
+                    <td className={cellPad}>
+                      <CurationChip level={s.curation_level} />
+                    </td>
+                    <td className={classNames(cellPad, "text-right")}>
+                      <SurfacesCell subnet={s} density={density} />
+                    </td>
+                    <td className={classNames(cellPad, "text-right")}>
+                      <ReadinessCell
+                        score={s.integration_readiness}
+                        tier={s.readiness_tier}
+                        kinds={s.service_kinds}
+                      />
+                    </td>
+                    <td
+                      className={classNames(
+                        cellPad,
+                        "text-right font-mono text-[11px] tabular-nums",
+                        // #3364: dim the cost only when registration is explicitly
+                        // closed. `registration_allowed === undefined` (economics
+                        // entry present but flag absent, or no entry at all) keeps
+                        // the neutral tone — do NOT read it as "open".
+                        s.registration_allowed === false ? "text-ink-muted" : "text-ink",
+                      )}
+                      title={
+                        s.registration_allowed === false
+                          ? "Registration currently closed"
+                          : s.registration_allowed === true
+                            ? "Registration open"
+                            : undefined
+                      }
+                    >
+                      {formatTao(s.registration_cost_tao)}
+                    </td>
+                    <td className={cellPad}>
+                      <HealthPill state={s.health} />
+                    </td>
+                    <td
+                      className={classNames(
+                        cellPad,
+                        "text-right font-mono text-[11px] tabular-nums",
+                      )}
+                    >
+                      <EmissionCell share={s.emission_share} />
+                    </td>
+                    <td
+                      className={classNames(
+                        cellPad,
+                        "text-right font-mono text-[11px] text-ink-muted",
+                      )}
+                    >
+                      <TimeAgo at={s.updated_at ?? s.freshness} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          );
+        })()}
+        footer={footerNode}
+      />
+    </div>
   );
 }
 

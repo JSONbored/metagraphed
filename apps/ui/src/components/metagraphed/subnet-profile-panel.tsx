@@ -7,7 +7,7 @@ import {
   subnetEndpointsQuery,
   subnetProfileQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, subnetAgeDays, formatSubnetAge } from "@/lib/metagraphed/format";
 import {
   Tooltip,
   TooltipContent,
@@ -202,11 +202,13 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
             hint="Whether this is the root subnet or an application subnet."
           />
           <Meta
-            label="Reg. block"
-            value={
-              profile?.registration_block != null ? formatNumber(profile.registration_block) : "—"
+            label="Age"
+            value={formatSubnetAge(subnetAgeDays(profile?.registered_at_block, profile?.block))}
+            hint={
+              profile?.registered_at_block != null
+                ? `Registered at block ${formatNumber(profile.registered_at_block)} -- estimated from the block delta to this snapshot's current block, at Bittensor's ~12s/block.`
+                : "Registration block not yet captured for this subnet."
             }
-            hint="Block height at which this subnet was registered."
           />
           <Meta
             label="Mechanisms"

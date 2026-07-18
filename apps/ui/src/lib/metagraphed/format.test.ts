@@ -7,6 +7,8 @@ import {
   relativeFromDiff,
   isStaleFreshness,
   formatTao,
+  subnetAgeDays,
+  formatSubnetAge,
 } from "./format";
 
 describe("isUsableTimestamp", () => {
@@ -195,5 +197,52 @@ describe("formatTao", () => {
     expect(formatTao(-999_999)).toBe("-1000.0k τ"); // still < 1e6 → k-tier
     expect(formatTao(-1_000_000)).toBe("-1.00M τ"); // lower boundary of M-tier
     expect(formatTao(-2_500_000)).toBe("-2.50M τ");
+  });
+});
+
+describe("subnetAgeDays", () => {
+  it("returns null when either input is nullish or non-finite", () => {
+    expect(subnetAgeDays(null, 1000)).toBeNull();
+    expect(subnetAgeDays(1000, null)).toBeNull();
+    expect(subnetAgeDays(undefined, undefined)).toBeNull();
+    expect(subnetAgeDays(Number.NaN, 1000)).toBeNull();
+    expect(subnetAgeDays(1000, Number.NaN)).toBeNull();
+  });
+
+  it("returns null for a negative delta rather than a nonsensical negative age", () => {
+    expect(subnetAgeDays(1000, 500)).toBeNull();
+  });
+
+  it("returns 0 for a subnet registered within the last day", () => {
+    expect(subnetAgeDays(1000, 1000)).toBe(0);
+    // 7199 blocks * 12s = 86,388s, still < 86,400s (1 day)
+    expect(subnetAgeDays(0, 7199)).toBe(0);
+  });
+
+  it("converts a block delta to whole days at ~12s/block", () => {
+    // 7200 blocks * 12s = 86,400s = exactly 1 day
+    expect(subnetAgeDays(0, 7_200)).toBe(1);
+    // 720,000 blocks * 12s = 8,640,000s = 100 days
+    expect(subnetAgeDays(0, 720_000)).toBe(100);
+  });
+});
+
+describe("formatSubnetAge", () => {
+  it("returns the placeholder for null", () => {
+    expect(formatSubnetAge(null)).toBe("—");
+  });
+
+  it("uses singular phrasing for exactly 1 day", () => {
+    expect(formatSubnetAge(1)).toBe("1 day old");
+  });
+
+  it("uses plural phrasing for 0 and >1 days", () => {
+    expect(formatSubnetAge(0)).toBe("0 days old");
+    expect(formatSubnetAge(2)).toBe("2 days old");
+    expect(formatSubnetAge(412)).toBe("412 days old");
+  });
+
+  it("thousands-separates large day counts via formatNumber", () => {
+    expect(formatSubnetAge(1234)).toBe("1,234 days old");
   });
 });

@@ -141,7 +141,11 @@ export interface Subnet {
   subnet_type?: "root" | "application" | string;
   participants?: number;
   tempo?: number;
-  registration_block?: number;
+  // registered_at_block/block (the current snapshot block, for #6643's
+  // age-in-days estimate) are the real wire field names (SubnetIndexEntry) --
+  // `registration_block` never matched anything the API actually returns.
+  registered_at_block?: number;
+  block?: number;
   mechanism_count?: number;
   curation_level?: CurationLevel;
   coverage_level?: CoverageLevel;

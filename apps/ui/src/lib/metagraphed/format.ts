@@ -149,3 +149,31 @@ export function durationLabel(start?: string | null, end?: string | null): strin
   const eMs = end ? Date.parse(end) : Date.now();
   return humaniseSeconds(Math.max(0, (eMs - sMs) / 1000));
 }
+
+// Display-only estimate (Bittensor's well-known ~12s block time), mirroring
+// take-extrinsics.ts's own APPROX_SECONDS_PER_BLOCK convention -- never used
+// for anything gating/correctness-critical, only this "roughly how old" label.
+const APPROX_SECONDS_PER_BLOCK = 12;
+
+/**
+ * A subnet's age in whole days, estimated from the block delta between its
+ * registration block and the current chain block (#6643). Null when either
+ * input is missing/non-finite, or when the delta would be negative (a
+ * mid-flight/inconsistent snapshot -- never show a nonsensical negative age).
+ */
+export function subnetAgeDays(
+  registeredAtBlock?: number | null,
+  currentBlock?: number | null,
+): number | null {
+  if (registeredAtBlock == null || currentBlock == null) return null;
+  if (!Number.isFinite(registeredAtBlock) || !Number.isFinite(currentBlock)) return null;
+  const ageBlocks = currentBlock - registeredAtBlock;
+  if (ageBlocks < 0) return null;
+  return Math.floor((ageBlocks * APPROX_SECONDS_PER_BLOCK) / 86400);
+}
+
+/** Formats a day count from {@link subnetAgeDays} as "N days old" ("1 day old" singular). */
+export function formatSubnetAge(days: number | null): string {
+  if (days == null) return "—";
+  return `${formatNumber(days)} day${days === 1 ? "" : "s"} old`;
+}
