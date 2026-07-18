@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, useMemo } from "react";
 import { z } from "zod";
-import { Network, Radio, Layers, Activity } from "lucide-react";
+import { Network, Radio, Layers, Activity, Coins } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
@@ -23,6 +23,7 @@ import {
   StatTile,
   SparkLegend,
   MiniStack,
+  Sparkline,
   type Density,
   type ViewMode,
 } from "@jsonbored/ui-kit";
@@ -49,6 +50,7 @@ import {
   subnetHealthMapQuery,
   agentCatalogMapQuery,
   economicsQuery,
+  economicsTrendsQuery,
 } from "@/lib/metagraphed/queries";
 import {
   classNames,
@@ -197,7 +199,8 @@ function SubnetsPage() {
       <QueryErrorBoundary>
         <Suspense
           fallback={
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div className="flex flex-wrap gap-3 mb-6 [&>*]:grow [&>*]:basis-[160px]">
+              <Skeleton className="h-20" />
               <Skeleton className="h-20" />
               <Skeleton className="h-20" />
               <Skeleton className="h-20" />
@@ -223,6 +226,16 @@ function SubnetsPage() {
 function SubnetsStatStrip() {
   const coverage = useSuspenseQuery(coverageQuery()).data.data ?? {};
   const health = useSuspenseQuery(healthQuery()).data.data ?? {};
+  // #6271: the network-wide total-stake series already powers /explorer's
+  // "Network economics trend" section (EconomicsTrendsSection's MiniSeries,
+  // #3365) via the same GET /api/v1/economics/trends source (subnet_snapshots
+  // rollup) -- reused here as a StatTile + Sparkline rather than a static
+  // number, matching the issue's own "trend" framing and the existing
+  // Alpha-price StatTile+Sparkline precedent in economics-panel.tsx. days[] is
+  // newest-first (see explorer.tsx's own chrono = [...days].reverse()).
+  const trends = useSuspenseQuery(economicsTrendsQuery()).data.data;
+  const stakeSeries = [...trends.days].reverse().map((d) => d.total_stake_tao ?? 0);
+  const latestTotalStake = trends.days[0]?.total_stake_tao ?? undefined;
   // Wired to the live /api/v1/coverage shape (same as CoverageFunnel): the older
   // netuids_active/netuids_total/adapter_backed fields are null on the live payload.
   const active =
@@ -246,7 +259,12 @@ function SubnetsStatStrip() {
   const totalH = health.total;
   const healthyOk = ok != null && totalH != null && totalH > 0 && ok / totalH > 0.9;
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+    // Flex-wrap (not grid) so a trailing partial row's tiles stretch to fill
+    // the row instead of leaving an orphaned single tile — grid tracks are
+    // shared across every row, but flex lines size independently. Same
+    // pattern as economics-panel.tsx's own StatTile strip and the stat spine
+    // in subnet-masthead.tsx/operational-panel.tsx.
+    <div className="flex flex-wrap gap-3 mb-6 [&>*]:grow [&>*]:basis-[160px]">
       <StatTile
         icon={Network}
         eyebrow="Active subnets"
@@ -266,6 +284,24 @@ function SubnetsStatStrip() {
         eyebrow="Healthy"
         value={ok != null && totalH ? `${formatNumber(ok)}/${formatNumber(totalH)}` : "—"}
         tone={healthyOk ? "ok" : "default"}
+      />
+      <StatTile
+        icon={Coins}
+        eyebrow="Total stake"
+        value={formatTao(latestTotalStake)}
+        hint="network-wide"
+        tone="accent"
+        chart={
+          stakeSeries.length > 1 ? (
+            <Sparkline
+              values={stakeSeries}
+              width={64}
+              height={28}
+              formatValue={formatTao}
+              ariaLabel="Total stake trend"
+            />
+          ) : undefined
+        }
       />
     </div>
   );
