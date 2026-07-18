@@ -133,6 +133,7 @@
       "provider": "desearch",
       "public_safe": true,
       "schema_status": "machine-readable",
+      "schema_url": "https://www.desearch.ai/openapi.json",
       "source_urls": [
         "https://www.desearch.ai/openapi.json",
         "https://api.desearch.ai"

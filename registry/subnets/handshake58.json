@@ -139,6 +139,7 @@
       "provider": "handshake58",
       "public_safe": true,
       "schema_status": "machine-readable",
+      "schema_url": "https://handshake58.com/openapi.json",
       "source_urls": [
         "https://handshake58.com/.well-known/ai-plugin.json",
         "https://handshake58.com/openapi.json"

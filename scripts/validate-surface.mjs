@@ -198,6 +198,17 @@ for (const file of files) {
           "(the /rpc endpoint lane), not per-subnet contributor surfaces.",
       );
     }
+    // #6331: a surface claiming its schema is machine-readable is a claim
+    // about where to fetch it — with no schema_url there is nowhere for a
+    // caller to actually get the spec, so the claim is unverifiable. Found 6
+    // live instances (each an openapi-kind surface) before this check existed.
+    if (surface.schema_status === "machine-readable" && !surface.schema_url) {
+      errors.push(
+        `${label}: schema_status "machine-readable" requires a non-empty ` +
+          "schema_url — set it (usually the surface's own url) or downgrade " +
+          'schema_status to "ui-only"/"not-captured" if no machine-readable spec is actually served.',
+      );
+    }
   }
   for (const [normalizedUrl, ids] of surfaceIdsByUrl) {
     if (

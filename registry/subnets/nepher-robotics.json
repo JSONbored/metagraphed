@@ -138,6 +138,7 @@
       "provider": "nepher-robotics",
       "public_safe": true,
       "schema_status": "machine-readable",
+      "schema_url": "https://tournament-api.nepher.ai/openapi.json",
       "source_urls": [
         "https://tournament-api.nepher.ai/docs",
         "https://tournament-api.nepher.ai/openapi.json"
