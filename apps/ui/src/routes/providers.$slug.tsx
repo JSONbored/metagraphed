@@ -10,12 +10,14 @@ import {
   RECOVERY,
 } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
   EntityHero,
   BrandIcon,
   PrimaryLinksRail,
   CopyableCode,
   SectionAnchor,
+  ShareButton,
 } from "@jsonbored/ui-kit";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
@@ -132,6 +134,7 @@ function ProviderShell({ slug }: { slug: string }) {
         title={p?.name ?? slug}
         subtitle={shouldShowProviderSlugSubtitle(p?.name, slug) ? <>· {slug}</> : null}
         description={p?.notes}
+        actions={<ShareButton />}
         links={
           <PrimaryLinksRail website={p?.website ?? p?.homepage} docs={p?.docs} repo={p?.repo} />
         }
@@ -175,6 +178,10 @@ function ProviderShell({ slug }: { slug: string }) {
           {summary?.by_layer ? <BreakdownCard title="By layer" data={summary.by_layer} /> : null}
         </aside>
       </div>
+
+      <ApiSourceFooter
+        paths={[`/api/v1/providers/${slug}`, `/api/v1/providers/${slug}/endpoints`]}
+      />
     </>
   );
 }

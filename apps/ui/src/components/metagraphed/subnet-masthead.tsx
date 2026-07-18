@@ -26,6 +26,7 @@ import {
   MiniRadial,
   DotRow,
   NoDataSpark,
+  ShareButton,
   Sparkline,
 } from "@jsonbored/ui-kit";
 import {
@@ -346,9 +347,15 @@ export function SubnetMasthead({
             stale
           </span>
         ) : null}
-        <div className="ml-auto flex md:hidden items-center gap-1.5">
-          <HealthPill state={probeHealth} />
-          <CurationChip level={profile?.curation_level} />
+        <div className="ml-auto flex items-center gap-1.5">
+          {/* #5481: the subnet-detail masthead was one of only two entity-detail headers with no
+              copy-current-URL affordance. It lives in the status row (not the identity grid's md+ only
+              health column) so it is reachable at every viewport, like every peer detail page's. */}
+          <div className="flex md:hidden items-center gap-1.5">
+            <HealthPill state={probeHealth} />
+            <CurationChip level={profile?.curation_level} />
+          </div>
+          <ShareButton bare />
         </div>
       </div>
 
