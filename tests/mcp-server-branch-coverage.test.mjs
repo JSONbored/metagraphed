@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import {
-  handleMcpRequest,
-  MAX_MCP_BODY_BYTES,
-} from "../src/mcp-server.mjs";
+import { handleMcpRequest, MAX_MCP_BODY_BYTES } from "../src/mcp-server.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -1086,7 +1083,11 @@ describe("handleMcpRequest — rate limiter success + content-length guard", () 
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
       });
       const response = await handleMcpRequest(request, {}, makeDeps());
-      assert.equal(response.status, 400, `content-length=${JSON.stringify(value)}`);
+      assert.equal(
+        response.status,
+        400,
+        `content-length=${JSON.stringify(value)}`,
+      );
       const body = await response.json();
       assert.equal(body.error.code, -32600);
       assert.match(body.error.message, /Invalid Content-Length/);
