@@ -2811,6 +2811,31 @@ async function loadSubnetTempos(sql) {
   }
 }
 
+// One netuid's live immunity_period hyperparameter (#6640) -- never
+// hardcoded, mirrors the MaxDelegateTake/TxDelegateTakeRateLimit convention
+// (#5229). Same savepoint-isolated-failure shape as loadSubnetTempos just
+// above: a subnet_hyperparams read failure degrades the immunity-window
+// fields to omitted (formatNeuron's immunityPeriod-undefined no-op) rather
+// than failing the neurons/metagraph response. Same null-guard as
+// subnet-hyperparams.mjs's own nonNegativeInt -- Number(null) is 0, not
+// NaN -- written inline rather than imported since each domain file owns its
+// small D1/Postgres cell-coercion copies (see that file's own header).
+async function loadSubnetImmunityPeriod(sql, netuid) {
+  try {
+    const rows = await sql.savepoint(
+      (sql) =>
+        sql`SELECT immunity_period FROM subnet_hyperparams WHERE netuid = ${netuid} LIMIT 1`,
+    );
+    const value = rows[0]?.immunity_period;
+    if (value == null) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+  } catch (err) {
+    console.error("subnet_hyperparams immunity_period query failed:", err);
+    return null;
+  }
+}
+
 // Raw nominator_positions rows for one coldkey (#5233) -- savepoint-isolated
 // like the loaders above, so a cold/absent table degrades this specific
 // route to an empty positions card rather than failing the request.
@@ -6402,14 +6427,17 @@ export default {
           const netuid = Number(subnetMetagraph[1]);
           const validatorsOnly =
             url.searchParams.get("validator_permit") === "true";
-          const rows = validatorsOnly
-            ? await sql`
+          const [rows, immunityPeriod] = await Promise.all([
+            validatorsOnly
+              ? sql`
               SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
               FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE ORDER BY uid`
-            : await sql`
+              : sql`
               SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
-              FROM neurons WHERE netuid = ${netuid} ORDER BY uid`;
-          return json(buildSubnetMetagraph(rows, netuid));
+              FROM neurons WHERE netuid = ${netuid} ORDER BY uid`,
+            loadSubnetImmunityPeriod(sql, netuid),
+          ]);
+          return json(buildSubnetMetagraph(rows, netuid, { immunityPeriod }));
         }
 
         // GET /api/v1/subnets/:netuid/neurons/:uid (#4771): per-UID detail,
@@ -6421,10 +6449,15 @@ export default {
         if (neuronDetail) {
           const netuid = Number(neuronDetail[1]);
           const uid = Number(neuronDetail[2]);
-          const rows = await sql`
+          const [rows, immunityPeriod] = await Promise.all([
+            sql`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
-          FROM neurons WHERE netuid = ${netuid} AND uid = ${uid} LIMIT 1`;
-          return json(buildNeuronDetail(rows[0] ?? null, netuid));
+          FROM neurons WHERE netuid = ${netuid} AND uid = ${uid} LIMIT 1`,
+            loadSubnetImmunityPeriod(sql, netuid),
+          ]);
+          return json(
+            buildNeuronDetail(rows[0] ?? null, netuid, { immunityPeriod }),
+          );
         }
 
         // GET /api/v1/subnets/:netuid/validators (#4771): validator_permit=1

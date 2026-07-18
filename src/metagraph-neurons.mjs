@@ -166,7 +166,53 @@ function toD1Flag(value) {
 // validator-list builders below -- buildSubnetMetagraph/buildNeuronDetail/
 // buildValidatorDetail never pass one, so `featured` is simply omitted from
 // their Neuron output, leaving those artifacts' shape unchanged.
-export function formatNeuron(row, featuredHotkeys) {
+// #6640 (TaoSwap finding, #5968 survey): a neuron still inside its immunity
+// window can't be pruned for low incentive yet -- a deregistration-risk
+// signal. immunity_period is a governance-adjustable per-subnet hyperparameter
+// (never hardcoded -- mirrors the MaxDelegateTake/TxDelegateTakeRateLimit
+// convention, #5229; see also docs/conviction-lock-mechanism.md's UnlockRate
+// caveat), so the caller live-reads it (subnet_hyperparams) and passes it in
+// -- this does no I/O of its own. Anchors the wall-clock ETA off the row's OWN
+// block_number/captured_at, not "now": every response is itself a
+// point-in-time snapshot, so the estimate is reproducible from that snapshot
+// alone rather than drifting with whenever the API happens to be called.
+// Reuses APY_SECONDS_PER_BLOCK, the same ~12s/block assumption apy_estimate
+// already depends on. Exported for direct unit testing, mirroring
+// src/concentration.mjs's pure-statistics convention; formatNeuron is its only
+// real caller.
+export function computeImmunityWindow(row, neuron, immunityPeriod) {
+  if (!neuron.is_immunity_period || neuron.registered_at_block == null) {
+    return {};
+  }
+  const expiresAtBlock = neuron.registered_at_block + immunityPeriod;
+  const snapshotBlock = nonNegativeInt(row.block_number);
+  const capturedAtMs = row.captured_at == null ? null : Number(row.captured_at);
+  let expiresAt = null;
+  if (
+    snapshotBlock != null &&
+    Number.isFinite(capturedAtMs) &&
+    capturedAtMs > 0
+  ) {
+    const blocksRemaining = expiresAtBlock - snapshotBlock;
+    if (blocksRemaining > 0) {
+      expiresAt = toIso(
+        capturedAtMs + blocksRemaining * APY_SECONDS_PER_BLOCK * 1000,
+      );
+    }
+  }
+  return {
+    immunity_expires_at_block: expiresAtBlock,
+    immunity_expires_at: expiresAt,
+  };
+}
+
+// immunityPeriod (optional) is the subnet's live immunity_period hyperparameter
+// (#6640) -- only buildSubnetMetagraph/buildNeuronDetail pass one; every other
+// caller (buildSubnetValidators/buildGlobalValidators/buildValidatorDetail)
+// omits it, so their rows get no immunity_expires_at* keys at all (not
+// null-valued ones), keeping their own additionalProperties:false schemas
+// untouched by this change.
+export function formatNeuron(row, featuredHotkeys, immunityPeriod) {
   if (!row || typeof row !== "object") return null;
   const hotkey = row.hotkey ?? null;
   const neuron = {
@@ -202,6 +248,9 @@ export function formatNeuron(row, featuredHotkeys) {
   if (featuredHotkeys) {
     neuron.featured = Boolean(hotkey && featuredHotkeys.has(hotkey));
   }
+  if (Number.isSafeInteger(immunityPeriod) && immunityPeriod >= 0) {
+    Object.assign(neuron, computeImmunityWindow(row, neuron, immunityPeriod));
+  }
   return neuron;
 }
 
@@ -218,14 +267,16 @@ function snapshotStamp(rows) {
   };
 }
 
-export function buildSubnetMetagraph(rows, netuid) {
+export function buildSubnetMetagraph(rows, netuid, { immunityPeriod } = {}) {
   const { captured_at, block_number } = snapshotStamp(rows);
   // Drop any malformed row (formatNeuron → null) so the array only holds real
   // Neuron objects, mirroring the blocks/extrinsics feed builders; the count
   // tracks the array, so callers can rely on neuron_count === neurons.length.
   // Wrapped (not a bare `rows.map(formatNeuron)`) so Array#map's index arg
   // never lands in formatNeuron's featuredHotkeys parameter.
-  const neurons = rows.map((row) => formatNeuron(row)).filter(Boolean);
+  const neurons = rows
+    .map((row) => formatNeuron(row, undefined, immunityPeriod))
+    .filter(Boolean);
   return {
     schema_version: 1,
     netuid,
@@ -259,7 +310,7 @@ export function buildSubnetValidators(
   };
 }
 
-export function buildNeuronDetail(row, netuid) {
+export function buildNeuronDetail(row, netuid, { immunityPeriod } = {}) {
   return {
     schema_version: 1,
     netuid,
@@ -267,7 +318,7 @@ export function buildNeuronDetail(row, netuid) {
     // Same D1 numeric-string coercion as snapshotStamp / buildGlobalValidators
     // (#2611): keep the top-level block_number an integer or null, never a string.
     block_number: nonNegativeInt(row?.block_number),
-    neuron: formatNeuron(row),
+    neuron: formatNeuron(row, undefined, immunityPeriod),
   };
 }
 

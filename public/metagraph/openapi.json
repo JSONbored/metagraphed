@@ -11519,6 +11519,18 @@
               "null"
             ]
           },
+          "immunity_expires_at": {
+            "description": "Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block_number/captured_at at ~12s/block (the same block-time assumption apy_estimate depends on). Only present alongside immunity_expires_at_block; null when that snapshot anchor is unavailable or the window has already elapsed (#6640).",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "immunity_expires_at_block": {
+            "description": "The block immunity ends (registered_at_block + the subnet's live immunity_period). Only present while is_immunity_period is true and both inputs are known (#6640) -- omitted, not null, otherwise.",
+            "type": "integer"
+          },
           "incentive": {
             "type": [
               "number",
@@ -48637,6 +48649,8 @@
                       "emission_tao": 0.5,
                       "featured": false,
                       "hotkey": "example",
+                      "immunity_expires_at": "2026-06-01T00:00:00.000Z",
+                      "immunity_expires_at_block": 5000000,
                       "incentive": 0.5,
                       "is_immunity_period": false,
                       "rank": 0.5,

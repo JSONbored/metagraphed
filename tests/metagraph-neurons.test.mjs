@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   formatNeuron,
+  computeImmunityWindow,
   buildSubnetMetagraph,
   buildSubnetValidators,
   buildGlobalValidators,
@@ -318,6 +319,120 @@ describe("metagraph-neurons builders", () => {
     assert.equal(formatNeuron(MINER, featured).featured, false);
     // An empty (but real) set still yields a real boolean, not an omission.
     assert.equal(formatNeuron(ROW, new Set()).featured, false);
+  });
+
+  // --- computeImmunityWindow / formatNeuron's immunityPeriod param (#6640) --
+
+  const IMMUNE_ROW = {
+    ...ROW,
+    is_immunity_period: 1,
+    registered_at_block: 8450000,
+    block_number: 8454388,
+    captured_at: 1750000000000,
+  };
+
+  test("computeImmunityWindow returns {} when the neuron isn't in its immunity window", () => {
+    assert.deepEqual(computeImmunityWindow(ROW, formatNeuron(ROW), 7200), {});
+  });
+
+  test("computeImmunityWindow returns {} when registered_at_block is unknown", () => {
+    const row = { ...IMMUNE_ROW, registered_at_block: null };
+    assert.deepEqual(computeImmunityWindow(row, formatNeuron(row), 7200), {});
+  });
+
+  test("computeImmunityWindow computes the expiry block and a wall-clock ETA anchored on the snapshot", () => {
+    const immunityPeriod = 7200;
+    const blocksRemaining =
+      IMMUNE_ROW.registered_at_block + immunityPeriod - IMMUNE_ROW.block_number;
+    const result = computeImmunityWindow(
+      IMMUNE_ROW,
+      formatNeuron(IMMUNE_ROW),
+      immunityPeriod,
+    );
+    assert.equal(
+      result.immunity_expires_at_block,
+      IMMUNE_ROW.registered_at_block + immunityPeriod,
+    );
+    assert.equal(
+      result.immunity_expires_at,
+      new Date(
+        IMMUNE_ROW.captured_at + blocksRemaining * 12 * 1000,
+      ).toISOString(),
+    );
+  });
+
+  test("computeImmunityWindow still returns the expiry block, but a null ETA, once the window has already elapsed", () => {
+    // registered_at_block + immunityPeriod is BEFORE the snapshot's own block --
+    // is_immunity_period says yes (chain-authoritative, trusted as-is) but the
+    // block math says the window ended before this snapshot was captured.
+    const result = computeImmunityWindow(
+      IMMUNE_ROW,
+      formatNeuron(IMMUNE_ROW),
+      1,
+    );
+    assert.equal(result.immunity_expires_at_block, 8450001);
+    assert.equal(result.immunity_expires_at, null);
+  });
+
+  test("computeImmunityWindow omits the wall-clock ETA when the snapshot has no usable block_number/captured_at", () => {
+    for (const row of [
+      { ...IMMUNE_ROW, block_number: null },
+      { ...IMMUNE_ROW, captured_at: null },
+      { ...IMMUNE_ROW, block_number: "" },
+    ]) {
+      const result = computeImmunityWindow(row, formatNeuron(row), 7200);
+      assert.equal(result.immunity_expires_at_block, 8457200);
+      assert.equal(result.immunity_expires_at, null, JSON.stringify(row));
+    }
+  });
+
+  test("formatNeuron omits immunity_expires_at* when no immunityPeriod is passed", () => {
+    // Mirrors the `featured` omission test above -- buildSubnetValidators/
+    // buildGlobalValidators/buildValidatorDetail never pass immunityPeriod, so
+    // their Neuron-shaped rows keep their existing shape unchanged, and their
+    // additionalProperties:false schemas stay valid untouched.
+    const n = formatNeuron(IMMUNE_ROW);
+    assert.equal("immunity_expires_at_block" in n, false);
+    assert.equal("immunity_expires_at" in n, false);
+  });
+
+  test("formatNeuron omits immunity_expires_at* when immunityPeriod is invalid", () => {
+    for (const bad of [-1, 1.5, Number.NaN, "7200", null, undefined]) {
+      const n = formatNeuron(IMMUNE_ROW, undefined, bad);
+      assert.equal(
+        "immunity_expires_at_block" in n,
+        false,
+        JSON.stringify(bad),
+      );
+    }
+  });
+
+  test("formatNeuron includes immunity_expires_at* when immunityPeriod is a valid non-negative integer", () => {
+    const n = formatNeuron(IMMUNE_ROW, undefined, 7200);
+    assert.equal(n.immunity_expires_at_block, 8457200);
+    assert.equal(typeof n.immunity_expires_at, "string");
+  });
+
+  test("formatNeuron omits immunity_expires_at* for a neuron outside its immunity window even with a valid immunityPeriod", () => {
+    const n = formatNeuron(ROW, undefined, 7200);
+    assert.equal("immunity_expires_at_block" in n, false);
+  });
+
+  test("buildSubnetMetagraph threads immunityPeriod through to every row", () => {
+    const data = buildSubnetMetagraph([IMMUNE_ROW], 7, {
+      immunityPeriod: 7200,
+    });
+    assert.equal(data.neurons[0].immunity_expires_at_block, 8457200);
+  });
+
+  test("buildSubnetMetagraph omits immunity_expires_at* when immunityPeriod isn't passed (back-compat)", () => {
+    const data = buildSubnetMetagraph([IMMUNE_ROW], 7);
+    assert.equal("immunity_expires_at_block" in data.neurons[0], false);
+  });
+
+  test("buildNeuronDetail threads immunityPeriod through", () => {
+    const data = buildNeuronDetail(IMMUNE_ROW, 7, { immunityPeriod: 7200 });
+    assert.equal(data.neuron.immunity_expires_at_block, 8457200);
   });
 
   test("buildSubnetValidators always includes `featured`, matched by hotkey", () => {

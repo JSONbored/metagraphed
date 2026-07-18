@@ -1492,6 +1492,15 @@
           "stake_tao": { "type": ["number", "null"] },
           "registered_at_block": { "type": ["integer", "null"] },
           "is_immunity_period": { "type": "boolean" },
+          "immunity_expires_at_block": {
+            "type": "integer",
+            "description": "The block immunity ends (registered_at_block + the subnet's live immunity_period). Only present while is_immunity_period is true and both inputs are known (#6640) -- omitted, not null, otherwise."
+          },
+          "immunity_expires_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block_number/captured_at at ~12s/block (the same block-time assumption apy_estimate depends on). Only present alongside immunity_expires_at_block; null when that snapshot anchor is unavailable or the window has already elapsed (#6640)."
+          },
           "axon": { "type": ["string", "null"] },
           "featured": { "type": "boolean" },
           "take": {

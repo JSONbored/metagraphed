@@ -5947,6 +5947,42 @@ describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () 
     });
   });
 
+  test("exposes immunity_expires_at_block/immunity_expires_at when the REST tier returns them (#6640)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          captured_at: "2026-07-01T00:00:00.000Z",
+          block_number: 8621331,
+          neuron: {
+            uid: 12,
+            hotkey: "5Hot",
+            registered_at_block: 8000000,
+            is_immunity_period: true,
+            immunity_expires_at_block: 8007200,
+            immunity_expires_at: "2026-07-02T00:00:00.000Z",
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ neuron(netuid: 5, uid: 12) {
+          neuron { uid is_immunity_period immunity_expires_at_block immunity_expires_at }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.neuron.neuron, {
+      uid: 12,
+      is_immunity_period: true,
+      immunity_expires_at_block: 8007200,
+      immunity_expires_at: "2026-07-02T00:00:00.000Z",
+    });
+  });
+
   test("hits /api/v1/subnets/{netuid}/neurons/{uid} on the Postgres tier", async () => {
     let capturedUrl;
     const env = {

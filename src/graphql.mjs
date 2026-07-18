@@ -2194,6 +2194,10 @@ export const SDL = `
     stake_tao: Float
     registered_at_block: Int
     is_immunity_period: Boolean
+    "The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640)."
+    immunity_expires_at_block: Int
+    "Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block/timestamp at ~12s/block; null if that anchor is unavailable (#6640)."
+    immunity_expires_at: String
     "Axon endpoint as host:port, or null when not served."
     axon: String
     "Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture."

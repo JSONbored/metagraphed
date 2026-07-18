@@ -1453,6 +1453,72 @@ test("GET /api/v1/subnets/:netuid/neurons/:uid on an unknown uid returns neuron:
   expect(body.neuron).toBeNull();
 });
 
+// #6640: deregistration-risk signal -- immunity_period is read live from
+// subnet_hyperparams (never hardcoded, #5229 convention) alongside the
+// neurons query, same Promise.all + savepoint-isolated shape as loadSubnetTempos
+// (#2551).
+const IMMUNE_ROW = {
+  ...NEURON_ROW,
+  is_immunity_period: true,
+  registered_at_block: "5000000",
+  block_number: "5000100",
+  captured_at: "1780000000000",
+};
+
+test("GET /api/v1/subnets/:netuid/metagraph computes immunity_expires_at* from a live subnet_hyperparams read (#6640)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [IMMUNE_ROW], // main neurons query
+    [{ immunity_period: 7200 }], // loadSubnetImmunityPeriod
+  ];
+  const res = await req("/api/v1/subnets/7/metagraph");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(queryText()).toMatch(/SELECT immunity_period FROM subnet_hyperparams/);
+  expect(body.neurons[0].immunity_expires_at_block).toBe(5007200);
+  expect(typeof body.neurons[0].immunity_expires_at).toBe("string");
+});
+
+test("GET /api/v1/subnets/:netuid/metagraph omits immunity_expires_at* when subnet_hyperparams has no row yet (cold)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [IMMUNE_ROW],
+    [], // loadSubnetImmunityPeriod -- no row for this netuid
+  ];
+  const res = await req("/api/v1/subnets/7/metagraph");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect("immunity_expires_at_block" in body.neurons[0]).toBe(false);
+});
+
+test("GET /api/v1/subnets/:netuid/metagraph still serves neurons when the immunity_period read fails (#6640)", async () => {
+  subnetTemposQueryFailure.error = new Error(
+    'relation "subnet_hyperparams" does not exist',
+  );
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [IMMUNE_ROW],
+  ];
+  const res = await req("/api/v1/subnets/7/metagraph");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.neurons[0].uid).toBe(3);
+  expect("immunity_expires_at_block" in body.neurons[0]).toBe(false);
+});
+
+test("GET /api/v1/subnets/:netuid/neurons/:uid computes immunity_expires_at* from a live subnet_hyperparams read (#6640)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [IMMUNE_ROW], // main neuron-detail query
+    [{ immunity_period: 7200 }], // loadSubnetImmunityPeriod
+  ];
+  const res = await req("/api/v1/subnets/7/neurons/3");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.neuron.immunity_expires_at_block).toBe(5007200);
+  expect(typeof body.neuron.immunity_expires_at).toBe("string");
+});
+
 test("GET /api/v1/subnets/:netuid/validators ranks validator_permit rows by stake", async () => {
   mockRows.current = [NEURON_ROW];
   const res = await req("/api/v1/subnets/7/validators");

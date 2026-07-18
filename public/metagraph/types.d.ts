@@ -5528,6 +5528,13 @@ export interface components {
             emission_tao?: number | null;
             featured?: boolean;
             hotkey: string | null;
+            /**
+             * Format: date-time
+             * @description Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block_number/captured_at at ~12s/block (the same block-time assumption apy_estimate depends on). Only present alongside immunity_expires_at_block; null when that snapshot anchor is unavailable or the window has already elapsed (#6640).
+             */
+            immunity_expires_at?: string | null;
+            /** @description The block immunity ends (registered_at_block + the subnet's live immunity_period). Only present while is_immunity_period is true and both inputs are known (#6640) -- omitted, not null, otherwise. */
+            immunity_expires_at_block?: number;
             incentive?: number | null;
             is_immunity_period?: boolean;
             rank?: number | null;
@@ -25719,6 +25726,8 @@ export interface operations {
                      *           "emission_tao": 0.5,
                      *           "featured": false,
                      *           "hotkey": "example",
+                     *           "immunity_expires_at": "2026-06-01T00:00:00.000Z",
+                     *           "immunity_expires_at_block": 5000000,
                      *           "incentive": 0.5,
                      *           "is_immunity_period": false,
                      *           "rank": 0.5,
