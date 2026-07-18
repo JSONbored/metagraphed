@@ -1086,6 +1086,19 @@ async function handleSubnetHyperparamsSyncProxy(request, env) {
   });
 }
 
+// Proxies POST /api/v1/internal/subnet-locks-sync -- the write path into
+// subnet_locks (#6638, conviction/ownership-contest tracker epic #4302).
+// Same DATA_API service binding as the other internal sync routes above.
+async function handleSubnetLocksSyncProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "subnet_locks_sync_unavailable",
+    notBoundMessage:
+      "The subnet-locks sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The subnet-locks sync tier returned an unreadable response.",
+  });
+}
+
 // Proxies POST /api/v1/internal/account-identity-sync -- the write path into
 // account_identity/account_identity_history (#4832 gap-closure). Same
 // DATA_API service binding as the other internal sync routes above.
@@ -1257,7 +1270,8 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     url.pathname === "/api/v1/chain-events" ||
     url.pathname === "/api/v1/chain-events/stats" ||
     /^\/api\/v1\/blocks\/\d+\/chain-events$/.test(url.pathname) ||
-    /^\/api\/v1\/subnets\/\d+\/ownership-history$/.test(url.pathname)
+    /^\/api\/v1\/subnets\/\d+\/ownership-history$/.test(url.pathname) ||
+    /^\/api\/v1\/subnets\/\d+\/conviction$/.test(url.pathname)
   ) {
     if (env.DATA_RATE_LIMITER?.limit) {
       const { success } = await env.DATA_RATE_LIMITER.limit({
@@ -1358,6 +1372,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // above. Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/subnet-hyperparams-sync") {
     return handleSubnetHyperparamsSyncProxy(request, env);
+  }
+  // The write path into subnet_locks (#6638, conviction/ownership-contest
+  // tracker epic #4302) -- the fetch-subnet-locks.py box-side systemd timer
+  // calls this the same way the other periodic fetch scripts call their own
+  // sync endpoints. Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/subnet-locks-sync") {
+    return handleSubnetLocksSyncProxy(request, env);
   }
   // The write path into account_identity/account_identity_history (#4832
   // gap-closure) -- refresh-account-identity.yml's sign-and-stage job calls

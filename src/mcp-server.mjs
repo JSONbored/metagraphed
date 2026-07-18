@@ -1361,6 +1361,51 @@ async function loadSubnetOwnershipHistory(ctx, netuid) {
   };
 }
 
+// Mirrors loadSubnetOwnershipHistory above (#6638): the data-api.mjs route
+// already does both the subnet_locks read AND the live UnlockRate/
+// MaturityRate RPC lookup and returns the fully-rolled-forward result, so
+// this just proxies -- no duplicate logic here.
+async function loadSubnetConviction(ctx, netuid) {
+  await requireDataTierRateLimit(ctx);
+  const dataApi = ctx.env?.DATA_API;
+  if (!dataApi?.fetch) {
+    throw toolError(
+      "tier_unavailable",
+      "The chain-events tier is unavailable (the all-events data Worker is " +
+        "not bound to this deployment). Try again against the production endpoint.",
+    );
+  }
+  let response;
+  try {
+    response = await dataApi.fetch(
+      new Request(`https://d/api/v1/subnets/${netuid}/conviction`),
+    );
+  } catch {
+    throw toolError(
+      "tier_unavailable",
+      "The chain-events tier could not be reached. Try again shortly.",
+    );
+  }
+  if (!response.ok) {
+    throw toolError(
+      "tier_unavailable",
+      `The chain-events tier returned an error (status ${response.status}). ` +
+        "Try again shortly.",
+    );
+  }
+  const data = await response.json();
+  return {
+    schema_version: data?.schema_version ?? 1,
+    netuid,
+    queried_at_block: data?.queried_at_block ?? null,
+    unlock_rate: data?.unlock_rate ?? null,
+    maturity_rate: data?.maturity_rate ?? null,
+    king: data?.king ?? null,
+    count: data?.count ?? 0,
+    leaderboard: Array.isArray(data?.leaderboard) ? data.leaderboard : [],
+  };
+}
+
 async function requireDataTierRateLimit(ctx) {
   if (!ctx.env?.DATA_RATE_LIMITER?.limit) return;
   const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
@@ -5892,6 +5937,34 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetOwnershipHistory(ctx, netuid);
+    },
+  },
+  {
+    name: "get_subnet_conviction",
+    title: "Get a subnet's live conviction leaderboard",
+    description:
+      "Fetch the live per-subnet conviction leaderboard (#6638, part of " +
+      "the conviction/ownership-contest tracker epic #4302) — who " +
+      "currently holds the most rolled conviction, i.e. how close the " +
+      "subnet is to an automatic ownership flip. Companion to " +
+      "get_subnet_ownership_history (that's the event log of past flips; " +
+      "this is the current standings). Rolled forward from a periodically-" +
+      "captured snapshot using the CURRENT live-queried unlock_rate/" +
+      "maturity_rate — never a hardcoded figure, both are independently " +
+      "governance-adjustable. A subnet with no active challengers/owner " +
+      "lock returns an empty leaderboard, not an error. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/conviction.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetConviction(ctx, netuid);
     },
   },
   {
@@ -12398,6 +12471,33 @@ const TOOL_OUTPUT_SCHEMAS = {
             new_coldkey: { type: ["string", "null"] },
             block_number: { type: ["integer", "null"] },
             observed_at: NULLABLE_STRING,
+          },
+        },
+      },
+    },
+  },
+  get_subnet_conviction: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "count", "leaderboard"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      queried_at_block: { type: ["integer", "null"] },
+      unlock_rate: { type: ["integer", "null"] },
+      maturity_rate: { type: ["integer", "null"] },
+      king: { type: ["string", "null"] },
+      count: { type: "integer" },
+      leaderboard: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: true,
+          properties: {
+            hotkey: { type: "string" },
+            is_owner: { type: "boolean" },
+            locked_mass: { type: "number" },
+            conviction: { type: "number" },
           },
         },
       },

@@ -7,8 +7,9 @@
   // Also owns every write route into this same Postgres instance (#4771's
   // neurons-sync, subnet-hyperparams-sync, account-identity-sync,
   // subnet-identity-sync, health-checks-sync, health-uptime-rollup-sync,
-  // subnet-snapshot-sync, rpc-usage-sync -- see workers/data-api.mjs's
-  // handle*Sync functions) -- each requires its own secret, set via:
+  // subnet-snapshot-sync, rpc-usage-sync, subnet-locks-sync (#6638) -- see
+  // workers/data-api.mjs's handle*Sync functions) -- each requires its own
+  // secret, set via:
   //   wrangler secret put <NAME>_SYNC_SECRET -c wrangler.data.jsonc
   // (and, for the ones called from the main Worker's own cron rather than an
   // external GitHub Actions workflow, the SAME secret value on the main

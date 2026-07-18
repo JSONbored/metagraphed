@@ -3266,6 +3266,95 @@ test("GET /api/v1/subnets/:netuid/ownership-history with no rows returns an empt
   expect(body.ownership_changes).toEqual([]);
 });
 
+// conviction (#6638) combines a subnet_locks Postgres read (mocked via
+// mockRows, same as every other route in this file) with a live
+// UnlockRate/MaturityRate/chain-tip RPC lookup -- stub globalThis.fetch for
+// just that part, mirroring tests/subnet-burn.test.mjs's own save/restore
+// pattern.
+function stubConvictionRpc({ unlockRateHex, maturityRateHex, blockHex }) {
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => {
+    const body = JSON.parse(init.body);
+    if (body.method === "state_getStorage") {
+      const key = body.params[0];
+      // Last few hex chars distinguish the two hardcoded storage keys --
+      // matches how the real keys differ only in their twox128(item) half.
+      const hex = key.endsWith("cadb") ? unlockRateHex : maturityRateHex;
+      return new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: 1, result: hex }),
+      );
+    }
+    if (body.method === "chain_getHeader") {
+      return new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: 1, result: { number: blockHex } }),
+      );
+    }
+    return new Response(
+      JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }),
+    );
+  };
+  return () => {
+    globalThis.fetch = orig;
+  };
+}
+
+test("GET /api/v1/subnets/:netuid/conviction rolls a real subnet_locks row forward using the live rates", async () => {
+  const restore = stubConvictionRpc({
+    // 934866 LE u64 hex (real live-verified value).
+    unlockRateHex: "0xd2430e0000000000",
+    // 311622 LE u64 hex (real live-verified value).
+    maturityRateHex: "0x46c1040000000000",
+    // block 8647076 in hex.
+    blockHex: "0x83f1a4",
+  });
+  try {
+    mockRows.current = [
+      {
+        hotkey: "5CsvRJXuR955WojnGMdok1hbhffZyB4N5ocrv82f3p5A2zVp",
+        is_owner: false,
+        is_perpetual: true,
+        locked_mass: "12801009134",
+        conviction_bits: "103052736623230389324344213370",
+        last_update: "8639094",
+      },
+    ];
+    const res = await req("/api/v1/subnets/1/conviction");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.netuid).toBe(1);
+    expect(body.unlock_rate).toBe(934866);
+    expect(body.maturity_rate).toBe(311622);
+    expect(body.count).toBe(1);
+    expect(body.king).toBe("5CsvRJXuR955WojnGMdok1hbhffZyB4N5ocrv82f3p5A2zVp");
+    // Conviction must have grown (perpetual lock, existing conviction
+    // matures toward locked_mass), never shrunk to 0 or gone negative.
+    expect(body.leaderboard[0].conviction).toBeGreaterThan(5586500046);
+    const text = queryText();
+    expect(text).toContain("FROM subnet_locks");
+  } finally {
+    restore();
+  }
+});
+
+test("GET /api/v1/subnets/:netuid/conviction with no rows returns an empty leaderboard, not a throw", async () => {
+  const restore = stubConvictionRpc({
+    unlockRateHex: "0x9282e40000000000",
+    maturityRateHex: "0x0663c40400000000",
+    blockHex: "0x83f1a4",
+  });
+  try {
+    mockRows.current = [];
+    const res = await req("/api/v1/subnets/999/conviction");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.count).toBe(0);
+    expect(body.leaderboard).toEqual([]);
+    expect(body.king).toBe(null);
+  } finally {
+    restore();
+  }
+});
+
 test("GET /api/v1/subnets/:netuid/events returns the per-subnet feed and applies filters", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
   const res = await req(

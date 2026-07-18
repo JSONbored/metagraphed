@@ -424,6 +424,33 @@ CREATE INDEX IF NOT EXISTS idx_subnet_hyperparams_history_netuid_observed
 CREATE INDEX IF NOT EXISTS idx_subnet_hyperparams_history_netuid_id
   ON subnet_hyperparams_history (netuid, id DESC);
 
+-- Subnet-ownership-contest lock positions (#6638, conviction/ownership-contest
+-- tracker epic #4302) -- latest-only snapshot of the chain's HotkeyLock/
+-- DecayingHotkeyLock/OwnerLock/DecayingOwnerLock storage maps (see
+-- docs/conviction-lock-mechanism.md). One row per (netuid, hotkey, is_owner,
+-- is_perpetual): the pallet maintains a PERPETUAL sub-aggregate and a DECAYING
+-- sub-aggregate separately per hotkey (and per subnet owner) -- both must be
+-- captured and rolled forward independently at read time (each decays, or
+-- doesn't, on its own), never summed raw before rolling. conviction_bits is
+-- the raw U64F64 (u128) fixed-point value straight off the chain -- NUMERIC,
+-- not BIGINT, since it exceeds BIGINT's 64-bit range; the read-side shaping
+-- divides by 2^64 for the float value, live-rolled forward using the
+-- CURRENT UnlockRate/MaturityRate (also live-queried, never hardcoded --
+-- confirmed live 2026-07-18 that MaturityRate's live value, 311622, differs
+-- from what an earlier research pass assumed).
+CREATE TABLE IF NOT EXISTS subnet_locks (
+  netuid          INTEGER NOT NULL,
+  hotkey          TEXT NOT NULL,
+  is_owner        BOOLEAN NOT NULL,
+  is_perpetual    BOOLEAN NOT NULL,
+  locked_mass     BIGINT NOT NULL,
+  conviction_bits NUMERIC NOT NULL,
+  last_update     BIGINT,
+  captured_at     BIGINT NOT NULL,
+  PRIMARY KEY (netuid, hotkey, is_owner, is_perpetual)
+);
+CREATE INDEX IF NOT EXISTS idx_subnet_locks_netuid ON subnet_locks (netuid);
+
 -- Personal (coldkey) chain identity, latest-only (#4832 gap-closure Phase B;
 -- mirrors D1 migrations/0039_account_identity.sql). One row per account,
 -- upserted by the refresh-account-identity workflow's direct POST to

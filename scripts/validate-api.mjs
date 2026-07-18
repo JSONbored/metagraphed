@@ -136,6 +136,21 @@ const env = createLocalArtifactEnv({
           { status: 200, headers },
         );
       }
+      if (/^\/api\/v1\/subnets\/\d+\/conviction$/.test(pathname)) {
+        return new Response(
+          JSON.stringify({
+            schema_version: 1,
+            netuid: 7,
+            queried_at_block: 8647000,
+            unlock_rate: 934866,
+            maturity_rate: 311622,
+            king: null,
+            count: 0,
+            leaderboard: [],
+          }),
+          { status: 200, headers },
+        );
+      }
       return new Response(
         JSON.stringify({ block_number: 100, count: 0, events: [] }),
         { status: 200, headers },
@@ -834,6 +849,14 @@ const checks = [
     (body) => {
       assert.equal(body.data.netuid, 7);
       assert.equal(Array.isArray(body.data.ownership_changes), true);
+      assert.equal(typeof body.data.count, "number");
+    },
+  ],
+  [
+    "/api/v1/subnets/7/conviction",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.leaderboard), true);
       assert.equal(typeof body.data.count, "number");
     },
   ],

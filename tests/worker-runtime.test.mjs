@@ -133,6 +133,42 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.source, "data-worker-postgres");
   });
 
+  test("routes /api/v1/subnets/:netuid/conviction through the same DATA_API chain-events proxy (#6638)", async () => {
+    let requestedPath = null;
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/subnets/1/conviction"),
+      {
+        ...env,
+        DATA_API: {
+          fetch(request) {
+            requestedPath = new URL(request.url).pathname;
+            return new Response(
+              JSON.stringify({
+                schema_version: 1,
+                netuid: 1,
+                queried_at_block: 8647076,
+                unlock_rate: 934866,
+                maturity_rate: 311622,
+                king: null,
+                count: 0,
+                leaderboard: [],
+              }),
+              { status: 200, headers: { "content-type": "application/json" } },
+            );
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(requestedPath, "/api/v1/subnets/1/conviction");
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.data.netuid, 1);
+    assert.deepEqual(body.data.leaderboard, []);
+    assert.equal(body.meta.source, "data-worker-postgres");
+  });
+
   const CHAIN_EVENTS_CSV_HEADER =
     "block_number,event_index,pallet,method,phase,extrinsic_index,observed_at";
 

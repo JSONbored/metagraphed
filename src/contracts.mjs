@@ -1382,6 +1382,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetOwnershipHistoryArtifact",
   ),
   artifact(
+    "subnet-conviction",
+    "/metagraph/subnets/{netuid}/conviction.json",
+    "Live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to subnet-ownership-history above (that's the event log of past flips; this is the current standings). Rolls the periodically-captured subnet_locks snapshot forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable. Served live, no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error.",
+    "SubnetConvictionArtifact",
+  ),
+  artifact(
     "blocks-feed",
     "/metagraph/blocks.json",
     "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
@@ -3166,6 +3172,22 @@ export const API_ROUTES = [
     "/api/v1/subnets/{netuid}/ownership-history",
     "/metagraph/subnets/{netuid}/ownership-history.json",
     "Fetch every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case.",
+    "short",
+    ["subnets"],
+    [],
+    [
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
+    "subnet-conviction",
+    "GET",
+    "/api/v1/subnets/{netuid}/conviction",
+    "/metagraph/subnets/{netuid}/conviction.json",
+    "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the periodically-captured subnet_locks snapshot forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
     "short",
     ["subnets"],
     [],

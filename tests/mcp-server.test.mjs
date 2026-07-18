@@ -3471,6 +3471,119 @@ describe("MCP get_subnet_ownership_history (DATA_API binding)", () => {
   });
 });
 
+// get_subnet_conviction (#6638) reaches the same Postgres-backed all-events
+// tier as get_subnet_ownership_history above, so its tests mock DATA_API
+// the same way.
+describe("MCP get_subnet_conviction (DATA_API binding)", () => {
+  function makeDataApi({ payload, status = 200 } = {}) {
+    const calls = [];
+    return {
+      calls,
+      fetch(request) {
+        calls.push(new URL(request.url));
+        return Promise.resolve(
+          new Response(status === 200 ? JSON.stringify(payload) : "err", {
+            status,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      },
+    };
+  }
+
+  test("returns the rolled-forward leaderboard from the data Worker", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        schema_version: 1,
+        netuid: 1,
+        queried_at_block: 8647076,
+        unlock_rate: 934866,
+        maturity_rate: 311622,
+        king: "5CsvRJXuR955WojnGMdok1hbhffZyB4N5ocrv82f3p5A2zVp",
+        count: 1,
+        leaderboard: [
+          {
+            hotkey: "5CsvRJXuR955WojnGMdok1hbhffZyB4N5ocrv82f3p5A2zVp",
+            is_owner: false,
+            locked_mass: 12801009134,
+            conviction: 5768948497.63,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_subnet_conviction",
+      { netuid: 1 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.netuid, 1);
+    assert.equal(out.unlock_rate, 934866);
+    assert.equal(out.king, "5CsvRJXuR955WojnGMdok1hbhffZyB4N5ocrv82f3p5A2zVp");
+    assert.equal(out.leaderboard[0].locked_mass, 12801009134);
+    assert.equal(dataApi.calls[0].pathname, "/api/v1/subnets/1/conviction");
+  });
+
+  test("a subnet with no active challengers/owner lock returns an empty leaderboard, not an error", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        schema_version: 1,
+        netuid: 999,
+        queried_at_block: 8647076,
+        unlock_rate: 934866,
+        maturity_rate: 311622,
+        king: null,
+        count: 0,
+        leaderboard: [],
+      },
+    });
+    const res = await callTool(
+      "get_subnet_conviction",
+      { netuid: 999 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.count, 0);
+    assert.equal(out.king, null);
+    assert.deepEqual(out.leaderboard, []);
+  });
+
+  test("rejects a missing/invalid netuid argument", async () => {
+    const res = await callTool(
+      "get_subnet_conviction",
+      {},
+      { env: { DATA_API: makeDataApi() } },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("errors cleanly when the DATA_API binding is absent", async () => {
+    const res = await callTool(
+      "get_subnet_conviction",
+      { netuid: 1 },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(
+      res.body.result.content[0].text.includes("all-events data Worker"),
+      "must surface a clear tier-unavailable message",
+    );
+  });
+
+  test("errors cleanly when the data Worker returns a non-OK response", async () => {
+    const dataApi = makeDataApi({ status: 502 });
+    const res = await callTool(
+      "get_subnet_conviction",
+      { netuid: 1 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("502"));
+  });
+});
+
 describe("MCP get_subnet_performance", () => {
   // neurons' D1 write path is retired (#4772) and the table is dropped in
   // production, so this tool always returns the schema-stable zeroed card

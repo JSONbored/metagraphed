@@ -3952,6 +3952,36 @@
           }
         }
       },
+      "SubnetConvictionEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One hotkey's current standing in a subnet's ownership contest (#6638), rolled forward to the query time -- SS58 hotkey, whether this is the current subnet owner's own position, rolled locked_mass (alpha), and rolled conviction (the exponentially-smoothed integral of locked_mass -- what actually determines the contest, not locked_mass alone).",
+        "properties": {
+          "hotkey": { "type": "string" },
+          "is_owner": { "type": "boolean" },
+          "locked_mass": { "type": "number" },
+          "conviction": { "type": "number" }
+        }
+      },
+      "SubnetConvictionArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) -- who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. See docs/conviction-lock-mechanism.md. Rolled forward from the periodically-captured subnet_locks snapshot to queried_at_block using the CURRENT live-queried unlock_rate/maturity_rate (never a hardcoded 30/60-day figure -- both are independently governance-adjustable and confirmed live to differ from each other). king is the top-ranked hotkey (or null if the leaderboard is empty). A subnet with no active challengers/owner lock returns an empty leaderboard, not an error -- that's the common case.",
+        "required": ["schema_version", "netuid", "count", "leaderboard"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0, "maximum": 65535 },
+          "queried_at_block": { "type": ["integer", "null"] },
+          "unlock_rate": { "type": ["integer", "null"] },
+          "maturity_rate": { "type": ["integer", "null"] },
+          "king": { "type": ["string", "null"] },
+          "count": { "type": "integer", "minimum": 0 },
+          "leaderboard": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SubnetConvictionEntry" }
+          }
+        }
+      },
       "Block": {
         "type": "object",
         "additionalProperties": false,

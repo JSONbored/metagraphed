@@ -57,6 +57,10 @@ import {
   OWNERSHIP_CHANGE_EVENT_METHOD,
 } from "../src/subnet-ownership-history.mjs";
 import {
+  buildSubnetConviction,
+  fetchConvictionRates,
+} from "../src/subnet-conviction.mjs";
+import {
   buildBlocksSummary,
   BLOCKS_SUMMARY_SCAN_CAP,
 } from "../src/blocks-summary.mjs";
@@ -1391,6 +1395,179 @@ async function handleSubnetHyperparamsSync(request, env) {
     });
   } catch (err) {
     console.error("data-api subnet-hyperparams-sync write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
+// --- POST /api/v1/internal/subnet-locks-sync (#6638, conviction/ownership-
+// contest tracker epic #4302) ------------------------------------------
+//
+// The write path into subnet_locks -- latest-only snapshot of the chain's
+// HotkeyLock/DecayingHotkeyLock/OwnerLock/DecayingOwnerLock storage maps
+// (see docs/conviction-lock-mechanism.md). No history table here, unlike
+// subnet_hyperparams above: this feeds a live leaderboard, not an audit
+// trail -- the read side rolls each row forward from its own last_update
+// using the CURRENT UnlockRate/MaturityRate at query time, so only the
+// latest snapshot per (netuid, hotkey, is_owner, is_perpetual) matters.
+// fetch-subnet-locks.py always covers the WHOLE network in one run (its
+// query_map calls carry no netuid filter), so -- like
+// handleSubnetHyperparamsSync's own reasoning -- the prune below is a
+// plain "not in this batch" sweep, never scoped to a subset of netuids.
+const SUBNET_LOCKS_SYNC_TOKEN_HEADER = "x-subnet-locks-sync-token";
+// Real-world row count is small (a few dozen active locks network-wide as
+// of 2026-07-18 -- building conviction is opt-in and most subnets have
+// none), but generous headroom for growth: ~129 subnets x up to a few
+// hundred concurrent challengers each, x2 for the perpetual/decaying split.
+const SUBNET_LOCKS_SYNC_MAX_BODY_BYTES = 5_000_000;
+const SUBNET_LOCKS_SYNC_MAX_ROWS = 50_000;
+const SUBNET_LOCKS_INSERT_COLUMNS = [
+  "netuid",
+  "hotkey",
+  "is_owner",
+  "is_perpetual",
+  "locked_mass",
+  "conviction_bits",
+  "last_update",
+  "captured_at",
+];
+
+// conviction_bits is the raw U64F64 (u128) value -- arrives as a decimal
+// digit string (u128 exceeds JS's safe-integer range and Postgres NUMERIC
+// accepts a string literal directly), never a JS number.
+function validSubnetLocksSyncRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (!Number.isInteger(row.netuid) || row.netuid < 0 || row.netuid > 65_535)
+    return false;
+  if (
+    typeof row.hotkey !== "string" ||
+    row.hotkey.length < 1 ||
+    row.hotkey.length > 64
+  )
+    return false;
+  if (typeof row.is_owner !== "boolean") return false;
+  if (typeof row.is_perpetual !== "boolean") return false;
+  if (!Number.isInteger(row.locked_mass) || row.locked_mass < 0) return false;
+  if (
+    typeof row.conviction_bits !== "string" ||
+    !/^\d+$/.test(row.conviction_bits)
+  )
+    return false;
+  if (row.last_update !== null && !Number.isInteger(row.last_update))
+    return false;
+  if (!Number.isInteger(row.captured_at) || row.captured_at <= 0) return false;
+  return true;
+}
+
+async function handleSubnetLocksSync(request, env) {
+  if (!env.SUBNET_LOCKS_SYNC_SECRET) {
+    return writeJson(
+      { error: "subnet-locks sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(SUBNET_LOCKS_SYNC_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.SUBNET_LOCKS_SYNC_SECRET)) {
+    return writeJson(
+      { error: `provide a valid ${SUBNET_LOCKS_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > SUBNET_LOCKS_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${SUBNET_LOCKS_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of subnet-locks rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > SUBNET_LOCKS_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${SUBNET_LOCKS_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  if (!incoming.every(validSubnetLocksSyncRow)) {
+    return writeJson(
+      { error: "rows must match the subnet-locks row shape" },
+      400,
+    );
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    return await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+
+      if (incoming.length) {
+        await sql`
+          INSERT INTO subnet_locks ${sql(incoming, ...SUBNET_LOCKS_INSERT_COLUMNS)}
+          ON CONFLICT (netuid, hotkey, is_owner, is_perpetual) DO UPDATE SET
+            locked_mass = EXCLUDED.locked_mass,
+            conviction_bits = EXCLUDED.conviction_bits,
+            last_update = EXCLUDED.last_update,
+            captured_at = EXCLUDED.captured_at
+          WHERE subnet_locks.captured_at <= EXCLUDED.captured_at`;
+      }
+
+      // Every run is a full-network snapshot (see header comment) -- prune
+      // whatever this batch didn't report. Row-value tuple comparison
+      // (native Postgres, no array bind) -- scalar positional placeholders
+      // via sql.unsafe, same landmine-avoidance as handleSubnetHyperparams-
+      // Sync's own prune (fetch_types:false makes bound ARRAY/ANY() params
+      // unreliable on this connection).
+      let prunedCount = 0;
+      if (incoming.length) {
+        const values = [];
+        const tuples = incoming.map((row, i) => {
+          const base = i * 4;
+          values.push(row.netuid, row.hotkey, row.is_owner, row.is_perpetual);
+          return `($${base + 1}::int, $${base + 2}::text, $${base + 3}::bool, $${base + 4}::bool)`;
+        });
+        const prunedRows = await sql.unsafe(
+          `DELETE FROM subnet_locks
+           WHERE (netuid, hotkey, is_owner, is_perpetual) NOT IN (${tuples.join(", ")})
+           RETURNING netuid`,
+          values,
+        );
+        prunedCount = prunedRows.length;
+      }
+
+      return writeJson({
+        ok: true,
+        subnet_locks_written: incoming.length,
+        pruned: prunedCount,
+      });
+    });
+  } catch (err) {
+    console.error("data-api subnet-locks-sync write failed:", err);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -3376,6 +3553,12 @@ export default {
     }
     if (
       request.method === "POST" &&
+      url.pathname === "/api/v1/internal/subnet-locks-sync"
+    ) {
+      return handleSubnetLocksSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
       url.pathname === "/api/v1/internal/account-identity-sync"
     ) {
       return handleAccountIdentitySync(request, env);
@@ -4403,6 +4586,41 @@ export default {
             AND (args->>'netuid')::int = ${netuid}
           ORDER BY block_number ASC`;
           return json(buildSubnetOwnershipHistory(rows, netuid));
+        }
+
+        // GET /api/v1/subnets/:netuid/conviction (#6638, part of the
+        // conviction/ownership-contest tracker epic #4302): the live
+        // "who's winning the ownership contest right now" leaderboard --
+        // see docs/conviction-lock-mechanism.md. Companion to /ownership-
+        // history above (that's the event log of past flips; this is the
+        // current standings). Reads the periodically-refreshed subnet_locks
+        // snapshot (fetch-subnet-locks.py, a box-side systemd timer -- NOT
+        // a live per-request chain-state scan, which would be far too slow/
+        // abusive to run on every API call) and rolls each row forward to
+        // "now" using the CURRENT live-queried UnlockRate/MaturityRate
+        // (fetchConvictionRates -- never hardcoded, see that function's own
+        // header for why). Cold/absent store -> the schema-stable empty-
+        // leaderboard shape (never a 404): most subnets have no active
+        // challengers.
+        const subnetConviction = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/conviction$/,
+        );
+        if (subnetConviction) {
+          const netuid = Number(subnetConviction[1]);
+          const [rows, rates] = await Promise.all([
+            sql`
+          SELECT hotkey, is_owner, is_perpetual, locked_mass, conviction_bits, last_update
+          FROM subnet_locks
+          WHERE netuid = ${netuid}`,
+            fetchConvictionRates(),
+          ]);
+          return json(
+            buildSubnetConviction(rows, netuid, {
+              now: rates.now,
+              unlockRate: rates.unlockRate,
+              maturityRate: rates.maturityRate,
+            }),
+          );
         }
 
         // GET /api/v1/subnets/:netuid/weights/setters

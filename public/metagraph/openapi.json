@@ -16437,6 +16437,80 @@
         ],
         "type": "object"
       },
+      "SubnetConvictionArtifact": {
+        "additionalProperties": true,
+        "description": "Live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) -- who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. See docs/conviction-lock-mechanism.md. Rolled forward from the periodically-captured subnet_locks snapshot to queried_at_block using the CURRENT live-queried unlock_rate/maturity_rate (never a hardcoded 30/60-day figure -- both are independently governance-adjustable and confirmed live to differ from each other). king is the top-ranked hotkey (or null if the leaderboard is empty). A subnet with no active challengers/owner lock returns an empty leaderboard, not an error -- that's the common case.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "king": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "leaderboard": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetConvictionEntry"
+            },
+            "type": "array"
+          },
+          "maturity_rate": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "queried_at_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "unlock_rate": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "count",
+          "leaderboard"
+        ],
+        "type": "object"
+      },
+      "SubnetConvictionEntry": {
+        "additionalProperties": false,
+        "description": "One hotkey's current standing in a subnet's ownership contest (#6638), rolled forward to the query time -- SS58 hotkey, whether this is the current subnet owner's own position, rolled locked_mass (alpha), and rolled conviction (the exponentially-smoothed integral of locked_mass -- what actually determines the contest, not locked_mass alone).",
+        "properties": {
+          "conviction": {
+            "type": "number"
+          },
+          "hotkey": {
+            "type": "string"
+          },
+          "is_owner": {
+            "type": "boolean"
+          },
+          "locked_mass": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
       "SubnetDeregistrationsArtifact": {
         "additionalProperties": false,
         "description": "Per-subnet neuron-deregistration activity over a 7d/30d window: the distinct deregistered hotkeys, NeuronDeregistered event count, and deregistrations per hotkey for ONE subnet. Raw deregistration/eviction activity from the account_events NeuronDeregistered stream — the exit-side companion to /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily validator-set churn in /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume) — served live at /api/v1/subnets/{netuid}/deregistrations (no static file); zeroed when the subnet has no NeuronDeregistered events in the window.",
@@ -45530,6 +45604,143 @@
         "tags": [
           "subnets",
           "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/conviction": {
+      "get": {
+        "operationId": "subnetConviction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "count": 1,
+                    "king": "example",
+                    "leaderboard": [
+                      {}
+                    ],
+                    "maturity_rate": 1,
+                    "netuid": 7,
+                    "queried_at_block": 5000000,
+                    "schema_version": 1,
+                    "unlock_rate": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetConvictionArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the periodically-captured subnet_locks snapshot forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
+        "tags": [
+          "subnets"
         ]
       }
     },

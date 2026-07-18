@@ -1942,6 +1942,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/conviction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the periodically-captured subnet_locks snapshot forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case. */
+        get: operations["subnetConviction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/deregistrations": {
         parameters: {
             query?: never;
@@ -6727,6 +6744,26 @@ export interface components {
             window?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** @description Live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) -- who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. See docs/conviction-lock-mechanism.md. Rolled forward from the periodically-captured subnet_locks snapshot to queried_at_block using the CURRENT live-queried unlock_rate/maturity_rate (never a hardcoded 30/60-day figure -- both are independently governance-adjustable and confirmed live to differ from each other). king is the top-ranked hotkey (or null if the leaderboard is empty). A subnet with no active challengers/owner lock returns an empty leaderboard, not an error -- that's the common case. */
+        SubnetConvictionArtifact: {
+            count: number;
+            king?: string | null;
+            leaderboard: components["schemas"]["SubnetConvictionEntry"][];
+            maturity_rate?: number | null;
+            netuid: number;
+            queried_at_block?: number | null;
+            schema_version: number;
+            unlock_rate?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One hotkey's current standing in a subnet's ownership contest (#6638), rolled forward to the query time -- SS58 hotkey, whether this is the current subnet owner's own position, rolled locked_mass (alpha), and rolled conviction (the exponentially-smoothed integral of locked_mass -- what actually determines the contest, not locked_mass alone). */
+        SubnetConvictionEntry: {
+            conviction?: number;
+            hotkey?: string;
+            is_owner?: boolean;
+            locked_mass?: number;
         };
         /** @description Per-subnet neuron-deregistration activity over a 7d/30d window: the distinct deregistered hotkeys, NeuronDeregistered event count, and deregistrations per hotkey for ONE subnet. Raw deregistration/eviction activity from the account_events NeuronDeregistered stream — the exit-side companion to /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily validator-set churn in /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume) — served live at /api/v1/subnets/{netuid}/deregistrations (no static file); zeroed when the subnet has no NeuronDeregistered events in the window. */
         SubnetDeregistrationsArtifact: {
@@ -23632,6 +23669,116 @@ export interface operations {
                      *     2026-06-27,2,0.490099,1,0.990099,0.409091,1,0.909091
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetConviction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "count": 1,
+                     *         "king": "example",
+                     *         "leaderboard": [
+                     *           {}
+                     *         ],
+                     *         "maturity_rate": 1,
+                     *         "netuid": 7,
+                     *         "queried_at_block": 5000000,
+                     *         "schema_version": 1,
+                     *         "unlock_rate": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetConvictionArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
