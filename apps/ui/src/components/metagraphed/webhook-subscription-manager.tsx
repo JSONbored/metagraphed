@@ -4,6 +4,8 @@ import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { classNames } from "@/lib/metagraphed/format";
 import { CopyableCode, SectionHeading } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { SettingsSummaryStrip } from "@/components/metagraphed/settings-summary-strip";
+import { CHANGE_KINDS } from "@/lib/metagraphed/settings-summary";
 import type {
   WebhookDeliveryStatus,
   WebhookSubscriptionCreated,
@@ -14,8 +16,6 @@ import type {
 // Must match src/webhooks.mjs — WEBHOOK_SUBSCRIPTION_TOKEN_HEADER / WEBHOOK_SECRET_HEADER.
 const SUBSCRIPTION_TOKEN_HEADER = "x-metagraph-webhook-subscription-token";
 const SUBSCRIPTION_SECRET_HEADER = "x-metagraph-webhook-secret";
-
-const CHANGE_KINDS = ["subnets", "artifacts"] as const;
 
 const inputCls =
   "w-full rounded border border-border bg-card px-2.5 py-1.5 text-[13px] text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
@@ -70,6 +70,7 @@ function describeApiError(error: unknown): string {
 export function WebhookSubscriptionManager() {
   return (
     <div className="space-y-8">
+      <SettingsSummaryStrip />
       <CreateSubscriptionSection />
       <LookupSubscriptionSection />
       <DeleteSubscriptionSection />
