@@ -26,13 +26,13 @@ export const SETTINGS_SUMMARY_ACTIONS = [
     id: "lookup",
     label: "Look up",
     method: "GET",
-    hint: "by subscription id",
+    hint: "by id",
   },
   {
     id: "delete",
     label: "Delete",
     method: "DELETE",
-    hint: "secret-gated",
+    hint: "secret",
   },
 ] as const;
 
