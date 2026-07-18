@@ -1491,6 +1491,18 @@ test("GET /api/v1/subnets/:netuid/metagraph omits immunity_expires_at* when subn
   expect("immunity_expires_at_block" in body.neurons[0]).toBe(false);
 });
 
+test("GET /api/v1/subnets/:netuid/metagraph omits immunity_expires_at* for a negative immunity_period value (defensive, shouldn't occur on real chain data)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [IMMUNE_ROW],
+    [{ immunity_period: -1 }], // loadSubnetImmunityPeriod
+  ];
+  const res = await req("/api/v1/subnets/7/metagraph");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect("immunity_expires_at_block" in body.neurons[0]).toBe(false);
+});
+
 test("GET /api/v1/subnets/:netuid/metagraph still serves neurons when the immunity_period read fails (#6640)", async () => {
   subnetTemposQueryFailure.error = new Error(
     'relation "subnet_hyperparams" does not exist',
