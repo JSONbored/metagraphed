@@ -436,7 +436,16 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   "Build API reference docs (drift check)" step (added 2026-07-18, mirrors the
   `packages/client`/`packages/ui-kit` drift checks just above it) fails if `apps/ui/content/docs/
 api-reference/**` wasn't regenerated — run `node scripts/generate-openapi-docs.mjs` from
-  `apps/ui/` and commit the result alongside the contract change.
+  `apps/ui/` and commit the result alongside the contract change. Two more, caught live 2026-07-18
+  shipping a templated computed artifact: `src/contracts.mjs` has **two separate registries** for a
+  route with no static file — a `route(...)` entry (API surface metadata) AND a distinct
+  `artifact(id, path, description, schemaName)` entry (the schema-ref mapping); omitting the
+  `artifact()` call makes `npm run build` throw `No public artifact contract maps API artifact
+  <path>` from `schemaRefForArtifactPath`, since `route()`'s own `artifactPath` argument is just a
+  label, not a registration. And the local pre-push guard's `validate:docs` check requires a
+  matching prose entry in `docs/backend-artifact-contracts.md` (mirror an existing bullet like the
+  `subnet-burn` one) for every artifact path — easy to miss since nothing else in the schema/route
+  wiring references this file.
 - **Reader tests** serve R2-only artifacts that only exist after `npm run build` — build before the
   suite if a test reads served artifacts.
 - **Never commit `public/metagraph/r2-manifest.json` or `public/metagraph/schemas/index.json`.**
