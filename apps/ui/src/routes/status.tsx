@@ -32,7 +32,10 @@ import {
   NetworkDecentralizationPanel,
   NetworkDecentralizationSkeleton,
 } from "@/components/metagraphed/network-decentralization-panel";
-import { EmissionYieldPanel } from "@/components/metagraphed/emission-yield-panel";
+import {
+  EmissionYieldPanel,
+  EmissionYieldSkeleton,
+} from "@/components/metagraphed/emission-yield-panel";
 
 const SURFACES_INITIAL = 10;
 // A downtime event whose last failure is within this of the latest snapshot is
@@ -163,7 +166,9 @@ function StatusPage() {
             intro="Chain-wide emission yield — total emission over total stake, split by validator/miner role — plus the per-neuron return distribution, computed across every neuron from the metagraph snapshot."
           />
           <QueryErrorBoundary>
-            <EmissionYieldPanel />
+            <Suspense fallback={<EmissionYieldSkeleton />}>
+              <EmissionYieldPanel />
+            </Suspense>
           </QueryErrorBoundary>
         </section>
 
