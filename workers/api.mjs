@@ -196,6 +196,7 @@ import {
   handleDomainSummary,
   handleEconomicsTrends,
   handleLeaderboards,
+  handleProviderEmissions,
   handleTrajectory,
   handleUptime,
 } from "./request-handlers/analytics-routes.mjs";
@@ -3069,6 +3070,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         "economics-trends",
         () => handleEconomicsTrends(request, env, resolved.url),
         canonicalEconomicsTrendsCachePath(resolved.url, request),
+      );
+    }
+    // #6644: per-provider emission leaderboard — a derived rollup, matched
+    // before the artifact-alias provider routes so "emissions" is never read as
+    // a provider slug. Edge-cached like the sibling economics routes (no query
+    // params, so the pathname is the whole key).
+    if (resolved.url.pathname === "/api/v1/providers/emissions") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "provider-emissions",
+        () => handleProviderEmissions(request, env, resolved.url),
+        resolved.url.pathname,
       );
     }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);

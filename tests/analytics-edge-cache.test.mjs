@@ -201,6 +201,23 @@ afterEach(() => {
   globalThis.caches = originalCaches;
 });
 
+describe("provider emissions route (#6644)", () => {
+  test("routes /api/v1/providers/emissions through the worker to a 200 ranked payload", async () => {
+    originalCaches = globalThis.caches;
+    mockCaches().install();
+    const env = analyticsEnv([]);
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/providers/emissions"),
+      env,
+      ctx,
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.ok(Array.isArray(body.data));
+  });
+});
+
 describe("analytics edge cache", () => {
   test("INVARIANT: cache key includes contract_version + snapshot stamp + netuid + window", async () => {
     // D1 fully eliminated (2026-07-17): percentiles always marks a Postgres-tier

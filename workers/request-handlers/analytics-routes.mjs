@@ -31,6 +31,7 @@ import {
   unsupportedWindowMessage,
 } from "../../src/neuron-history.mjs";
 import { loadEconomicsTrends } from "../../src/economics-trends.mjs";
+import { buildProviderEmissionsLeaderboard } from "../../src/provider-emissions.mjs";
 import {
   COMPARE_DIMENSIONS,
   COMPARE_VALIDATORS_MAX,
@@ -262,6 +263,31 @@ export async function handleEconomicsTrends(request, env, url) {
     "short",
   );
   return isFallback ? markD1FallbackResponse(response) : response;
+}
+
+// #6644: per-provider emission leaderboard. Joins the providers registry
+// (each provider's backed `netuids`) with the current economics snapshot
+// (per-subnet `emission_share`/`emission_tao`) and ranks providers by their
+// aggregate share — a cross-source rollup over two existing artifacts, no new
+// ingestion. Cached "short" like the sibling economics routes; the shaping is
+// unit-tested in src/provider-emissions.mjs.
+export async function handleProviderEmissions(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const [providersArtifact, subnets] = await Promise.all([
+    readArtifact(env, "/metagraph/providers.json"),
+    resolveEconomicsRows(env),
+  ]);
+  const providers = providersArtifact.ok ? providersArtifact.data : null;
+  const leaderboard = buildProviderEmissionsLeaderboard(providers, { subnets });
+  return envelopeResponse(
+    request,
+    {
+      data: leaderboard,
+      meta: await analyticsMeta(env, "/metagraph/providers.json", null),
+    },
+    "short",
+  );
 }
 
 // Long-term daily uptime history for one subnet's operational surfaces.

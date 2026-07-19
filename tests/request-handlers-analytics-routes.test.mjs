@@ -17,6 +17,7 @@ import {
   handleCompareValidators,
   handleEconomicsTrends,
   handleLeaderboards,
+  handleProviderEmissions,
   handleTrajectory,
   handleUptime,
 } from "../workers/request-handlers/analytics-routes.mjs";
@@ -638,6 +639,66 @@ describe("handleUptime", () => {
     const body = await errorJson(res);
     assert.equal(res.status, 400);
     assert.equal(body.meta.parameter, "format");
+  });
+});
+
+describe("handleProviderEmissions", () => {
+  const path = "/api/v1/providers/emissions";
+
+  test("ranks providers by aggregate backed-subnet emission from the registry + a controlled economics snapshot", async () => {
+    // Control economics so the ranking is deterministic regardless of the
+    // committed economics artifact: give every netuid an emission_share equal
+    // to netuid/1000, so a provider's total scales with the netuids it backs.
+    configureAnalyticsRoutes({
+      readHealthMetaKv: async () => ({ last_run_at: OBSERVED_AT }),
+      readEconomicsCurrentKv: async () => ({
+        subnets: Array.from({ length: 400 }, (_, netuid) => ({
+          netuid,
+          emission_share: netuid / 1000,
+          emission_tao: netuid,
+        })),
+      }),
+    });
+    const env = createLocalArtifactEnv();
+    const body = await json(
+      await handleProviderEmissions(req(path), env, url(path)),
+    );
+    assert.ok(Array.isArray(body.data));
+    assert.ok(body.data.length > 0);
+    // ranks are sequential 1..N and emission_share is non-increasing
+    body.data.forEach((row, i) => assert.equal(row.rank, i + 1));
+    for (let i = 1; i < body.data.length; i++) {
+      assert.ok(
+        body.data[i - 1].emission_share >= body.data[i].emission_share,
+        "leaderboard is sorted by emission_share descending",
+      );
+    }
+    const top = body.data[0];
+    for (const key of [
+      "rank",
+      "id",
+      "name",
+      "subnet_count",
+      "emission_subnet_count",
+      "emission_share",
+      "emission_tao",
+      "netuids",
+    ]) {
+      assert.ok(key in top, `row is missing "${key}"`);
+    }
+    assert.ok(Array.isArray(top.netuids));
+    // with a full economics snapshot, the top provider actually summed to >0
+    assert.ok(top.emission_share > 0);
+  });
+
+  test("rejects unexpected query params", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleProviderEmissions(
+      req(path),
+      env,
+      url(`${path}?bogus=1`),
+    );
+    await errorJson(res);
   });
 });
 
