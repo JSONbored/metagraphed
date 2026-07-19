@@ -1118,10 +1118,11 @@ test("GET /api/v1/extrinsics/:ref skips the embedded-events query on an unresolv
   expect(sqlCalls.length).toBe(2); // SET + the main lookup, no events query
 });
 
-test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from one bounded event window", async () => {
+test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from two merged, re-capped bounded scans", async () => {
   mockQueue.current = [
     [], // SET
-    [ACCOUNT_EVENT_ROW, { ...ACCOUNT_EVENT_ROW, netuid: 5 }], // scanRows
+    [ACCOUNT_EVENT_ROW], // hotkeyScanRows
+    [{ ...ACCOUNT_EVENT_ROW, netuid: 5 }], // coldkeyScanRows
     [{ netuid: 4, uid: 1, stake_tao: "10", validator_permit: 1, active: 1 }], // regRows
     [
       {
@@ -1144,14 +1145,18 @@ test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from one bounde
   expect(body.recent_events.length).toBe(2);
   expect(body.activity.tx_count).toBe(3);
   expect(body.activity.modules_called[0].call_module).toBe("SubtensorModule");
-  expect(queryText()).toContain("WHERE (hotkey =");
-  expect(queryText()).toContain("OR coldkey =");
+  const text = queryText();
+  expect(text).toContain("FROM account_events WHERE hotkey =");
+  expect(text).toContain("FROM account_events WHERE coldkey =");
+  expect(text).toContain("hotkey IS NULL OR hotkey <>");
+  expect(text).not.toContain("WHERE (hotkey =");
 });
 
 test("GET /api/v1/accounts/:ss58 ignores null netuid events in subnet_count", async () => {
   mockQueue.current = [
     [], // SET
-    [ACCOUNT_EVENT_ROW, { ...ACCOUNT_EVENT_ROW, netuid: null }], // scanRows
+    [ACCOUNT_EVENT_ROW], // hotkeyScanRows
+    [{ ...ACCOUNT_EVENT_ROW, netuid: null }], // coldkeyScanRows
     [], // regRows
     [], // activityRows
     [], // moduleRows
@@ -1162,6 +1167,111 @@ test("GET /api/v1/accounts/:ss58 ignores null netuid events in subnet_count", as
   expect(body.event_count).toBe(2);
   expect(body.subnet_count).toBe(1);
   expect(body.recent_events.map((event) => event.netuid)).toEqual([4, null]);
+});
+
+test("GET /api/v1/accounts/:ss58 merges, re-sorts, and re-caps events from BOTH the hotkey and coldkey branches", async () => {
+  // An address with genuine activity under both hotkey and coldkey (e.g. a
+  // hotkey it owns, plus a separate account whose coldkey it is) must have
+  // both branches' rows merged into one newest-first, correctly-capped
+  // window -- not just whichever branch happened to be queried.
+  const hotkeyRow = {
+    ...ACCOUNT_EVENT_ROW,
+    block_number: "100",
+    event_index: 0,
+    event_kind: "StakeAdded",
+    hotkey: SS58,
+    coldkey: "5ColdOther",
+  };
+  const coldkeyRowNewer = {
+    ...ACCOUNT_EVENT_ROW,
+    block_number: "200",
+    event_index: 1,
+    event_kind: "StakeRemoved",
+    hotkey: "5HotOther",
+    coldkey: SS58,
+  };
+  const coldkeyRowOlder = {
+    ...ACCOUNT_EVENT_ROW,
+    block_number: "50",
+    event_index: 2,
+    event_kind: "WeightsSet",
+    hotkey: "5HotOther2",
+    coldkey: SS58,
+  };
+  mockQueue.current = [
+    [], // SET
+    [hotkeyRow], // hotkeyScanRows
+    [coldkeyRowNewer, coldkeyRowOlder], // coldkeyScanRows
+    [], // regRows
+    [], // activityRows
+    [], // moduleRows
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  // 3 distinct rows across both branches, correctly re-sorted newest-first
+  // by (block_number DESC, event_index DESC) regardless of which branch
+  // each row came from.
+  expect(body.event_count).toBe(3);
+  expect(body.recent_events.map((e) => e.block_number)).toEqual([200, 100, 50]);
+  expect(body.recent_events.map((e) => e.event_kind)).toEqual([
+    "StakeRemoved",
+    "StakeAdded",
+    "WeightsSet",
+  ]);
+});
+
+test("GET /api/v1/accounts/:ss58 breaks a same-block tie between branches by event_index DESC", async () => {
+  // Two rows sharing the SAME block_number (one from each branch) exercise the
+  // merge sort's tie-break path (blockDelta === 0), distinct from the
+  // block_number-DESC path the test above already covers.
+  const hotkeyRow = {
+    ...ACCOUNT_EVENT_ROW,
+    block_number: "500",
+    event_index: 1,
+    event_kind: "StakeAdded",
+    hotkey: SS58,
+    coldkey: "5ColdOther",
+  };
+  const coldkeyRow = {
+    ...ACCOUNT_EVENT_ROW,
+    block_number: "500",
+    event_index: 4,
+    event_kind: "StakeRemoved",
+    hotkey: "5HotOther",
+    coldkey: SS58,
+  };
+  mockQueue.current = [
+    [], // SET
+    [hotkeyRow], // hotkeyScanRows
+    [coldkeyRow], // coldkeyScanRows
+    [], // regRows
+    [], // activityRows
+    [], // moduleRows
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.recent_events.map((e) => e.event_index)).toEqual([4, 1]);
+  expect(body.recent_events.map((e) => e.event_kind)).toEqual([
+    "StakeRemoved",
+    "StakeAdded",
+  ]);
+});
+
+test("GET /api/v1/accounts/:ss58's coldkey scan excludes rows the hotkey scan already matched", async () => {
+  // A row where hotkey === coldkey === ss58 would match BOTH branches' raw
+  // WHERE predicates if the coldkey branch had no guard -- the query text
+  // must carry the `hotkey IS NULL OR hotkey <> $1` exclusion so Postgres
+  // itself never returns that row twice across the two result sets (the
+  // merge step has no separate app-level dedup; it trusts this SQL guard,
+  // mirroring the D1 predecessor's own coldkey-branch exclusion).
+  await req(`/api/v1/accounts/${SS58}`);
+  const coldkeyQuery = sqlCalls.find((call) =>
+    call.text.includes("FROM account_events WHERE coldkey ="),
+  );
+  expect(coldkeyQuery.text).toContain("(hotkey IS NULL OR hotkey <>");
+  expect(coldkeyQuery.values).toContain(SS58);
 });
 
 test("GET /api/v1/accounts/:ss58 with no matching rows returns a schema-stable empty summary", async () => {
