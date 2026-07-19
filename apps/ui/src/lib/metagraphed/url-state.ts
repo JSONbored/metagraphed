@@ -37,7 +37,7 @@ export const tableSearchSchema = z.object({
   includeRoot: fallback(z.boolean(), true).default(true),
   // Layout state for list routes that support multiple views + row density.
   // Additive + optional with safe fallbacks so the toggles persist in the URL.
-  view: fallback(z.enum(["table", "grid", "matrix"]), "table").default("table"),
+  view: fallback(z.enum(["table", "grid", "matrix", "bubble"]), "table").default("table"),
   density: fallback(z.enum(["comfortable", "compact"]), "comfortable").default("comfortable"),
 });
 

@@ -39,6 +39,7 @@ import {
   SortHeader,
 } from "@/components/metagraphed/table-controls";
 import { SubnetsSavedViews } from "@/components/metagraphed/subnets-saved-views";
+import { SubnetBubbleChart } from "@/components/metagraphed/charts/subnet-bubble-chart";
 import {
   SubnetsCompareDrawer,
   CompareToggle,
@@ -184,7 +185,11 @@ function SubnetsPage() {
         description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
         actions={
           <>
-            <ViewModeToggle value={search.view} onChange={setView} />
+            <ViewModeToggle
+              value={search.view}
+              onChange={setView}
+              options={["table", "grid", "matrix", "bubble"]}
+            />
             {search.view === "table" ? (
               <DensityToggle value={effectiveDensity} onChange={setDensity} />
             ) : null}
@@ -642,10 +647,11 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     />
   );
 
-  // Grid / matrix views skip ListShell so they're not boxed in a table card.
-  if (view === "grid" || view === "matrix") {
+  // Grid / matrix / bubble views skip ListShell so they're not boxed in a
+  // table card — they share the same filtered `rows` and the sticky filter bar.
+  if (view === "grid" || view === "matrix" || view === "bubble") {
     return (
-      <div>
+      <div id="subnets-list" className="scroll-mt-32">
         <div className="sticky top-14 z-20 -mx-4 md:mx-0 mb-3 bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80 border-b border-border md:border md:rounded md:bg-card px-3 py-2 md:p-2.5">
           <div className="flex flex-wrap items-center gap-2">{filters}</div>
         </div>
@@ -653,8 +659,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           emptyNode
         ) : view === "grid" ? (
           <SubnetGrid rows={rows} />
-        ) : (
+        ) : view === "matrix" ? (
           <SubnetMatrix rows={rows} />
+        ) : (
+          <SubnetBubbleChart rows={rows} />
         )}
         <div className="mt-3">{footerNode}</div>
       </div>
