@@ -3838,6 +3838,36 @@ test("GET /api/v1/subnets/:netuid/stake-transfers with no aggregate row returns 
   expect(body.transfers).toBe(0);
 });
 
+// Regression for METAGRAPHED-6 (#6877): the distinct-mover/sender subqueries
+// GROUP BY coldkey (`GROUP BY 1`) but also selected the unused `observed_at`,
+// which Postgres rejects ("column ... must appear in the GROUP BY clause"),
+// 500ing both routes. observed_at is dead weight there (the outer query computes
+// its own MAX), so it must be dropped. Assert the emitted SQL no longer carries
+// it in the inner subquery — the existing tests above canned the aggregate row
+// and never exercised the real query shape, so the bug slipped through.
+test("GET /api/v1/subnets/:netuid/stake-{moves,transfers} inner distinct subquery selects only coldkey (valid Postgres GROUP BY)", async () => {
+  mockRows.current = [
+    { movements: "4", distinct_movers: "3", newest_observed: "1783600000000" },
+  ];
+  const movesRes = await req("/api/v1/subnets/4/stake-moves");
+  expect(movesRes.status).toBe(200);
+  const moversQuery = sqlCalls.find((c) => /AS distinct_movers/.test(c.text));
+  expect(moversQuery).toBeDefined();
+  expect(moversQuery.text).toMatch(/SELECT coldkey FROM account_events/);
+  expect(moversQuery.text).not.toMatch(/SELECT coldkey, observed_at/);
+
+  sqlCalls.length = 0;
+  mockRows.current = [
+    { transfers: "6", distinct_senders: "2", newest_observed: "1783600000000" },
+  ];
+  const transfersRes = await req("/api/v1/subnets/4/stake-transfers");
+  expect(transfersRes.status).toBe(200);
+  const sendersQuery = sqlCalls.find((c) => /AS distinct_senders/.test(c.text));
+  expect(sendersQuery).toBeDefined();
+  expect(sendersQuery.text).toMatch(/SELECT coldkey FROM account_events/);
+  expect(sendersQuery.text).not.toMatch(/SELECT coldkey, observed_at/);
+});
+
 const ACCOUNT_FOOTPRINT_ROUTES = [
   ["registrations", "registrations"],
   ["serving", "announcements"],
