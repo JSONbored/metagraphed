@@ -57,11 +57,11 @@ import type { Subnet } from "@/lib/metagraphed/types";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Metagraphed — Bittensor public-interface registry" },
+      { title: "Metagraphed — Bittensor registry & block explorer" },
       {
         name: "description",
         content:
-          "Unofficial registry and explorer for Bittensor subnet APIs, schemas, docs, endpoints, providers, and health.",
+          "Unofficial registry and block explorer for Bittensor — subnet APIs, schemas, docs, endpoints, providers, health, plus live blocks, extrinsics, and events.",
       },
     ],
   }),
@@ -365,8 +365,8 @@ function HomeHero() {
             The public-interface registry for <span className="text-accent">Bittensor</span>.
           </h1>
           <p className="mg-fade-in mg-fade-in-delay-2 mt-5 max-w-xl text-base text-ink-muted leading-relaxed">
-            A builder-facing index of subnet APIs, schemas, docs, endpoints, providers, freshness,
-            and registry gaps. Not a block explorer.
+            A builder-facing index of subnet APIs, schemas, docs, endpoints, and providers — plus a
+            chain-direct block explorer for blocks, extrinsics, and events.
           </p>
           <div className="mg-fade-in mg-fade-in-delay-3 mt-7 flex flex-wrap items-center gap-3">
             <Link
