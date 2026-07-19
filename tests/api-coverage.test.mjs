@@ -2892,6 +2892,72 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
   });
 });
 
+// --- Internal sync write-path HTTP dispatch -----------------------------------
+//
+// Regression coverage for a real gap found live (2026-07-19): data-api.mjs's
+// own handleAccountBalancesSync existed and was fully tested at that layer,
+// but nothing in this public-facing Worker's handleRequest ever forwarded
+// POST /api/v1/internal/account-balances-sync to it -- every real
+// data-refresh-cron run since #6742 shipped 405'd on this exact path, so
+// account_balances never received a row from any caller. Each of these
+// routes is a thin `if (url.pathname === "...") return handleXProxy(...)`
+// registration with no dedicated test of its own confirming handleRequest
+// actually reaches it -- asserting the dispatch (not just the downstream
+// handler) is what would have caught this.
+//
+// Scoped to ONLY the routes with a real EXTERNAL caller (a box-side
+// data-refresh-cron script hitting the public domain, since it has no
+// service-binding access) -- deliberately excludes the many other
+// /api/v1/internal/* routes in data-api.mjs (health-checks-sync,
+// subnet-identity-sync, subnet-snapshot-sync, rpc-usage-sync/-prune,
+// compare-health, health-status-live, latest-block-number, ...): those are
+// each documented at their own definition as "own hourly cron, direct
+// env.DATA_API.fetch() service-binding call... not an external GitHub
+// Actions workflow" -- correctly reached only via a direct service-binding
+// call from elsewhere in THIS SAME Worker's code (src/health-prober.mjs,
+// src/subnet-identity-history.mjs, etc.), never through this public HTTP
+// dispatcher. Adding a public proxy for those would be unnecessary surface,
+// not a fix -- verified live (2026-07-19) that none of them have any
+// caller, in this repo or metagraphed-infra, that hits the public domain.
+describe("internal sync routes reach DATA_API through handleRequest", () => {
+  const INTERNAL_SYNC_ROUTES = [
+    "/api/v1/internal/neurons-sync",
+    "/api/v1/internal/account-identity-sync",
+    "/api/v1/internal/subnet-hyperparams-sync",
+    "/api/v1/internal/validator-nominator-counts-sync",
+    "/api/v1/internal/nominator-positions-sync",
+    "/api/v1/internal/account-balances-sync",
+  ];
+
+  for (const path of INTERNAL_SYNC_ROUTES) {
+    test(`POST ${path} forwards to DATA_API (not a 405 fallthrough)`, async () => {
+      let received = false;
+      const env = {
+        ...createLocalArtifactEnv(),
+        DATA_API: {
+          fetch(request) {
+            received = true;
+            assert.equal(new URL(request.url).pathname, path);
+            assert.equal(request.method, "POST");
+            return Response.json({ ok: true });
+          },
+        },
+      };
+      const res = await handleRequest(
+        req(path, { method: "POST", headers: { "x-test-token": "x" } }),
+        env,
+        {},
+      );
+      assert.equal(received, true, `${path} never reached DATA_API`);
+      assert.notEqual(
+        res.status,
+        405,
+        `${path} fell through to the generic method-not-allowed handler`,
+      );
+    });
+  }
+});
+
 // --- logEvent disabled --------------------------------------------------------
 describe("logEvent", () => {
   test("R2 timeout with logs disabled still produces a 504 (no log spam)", async () => {

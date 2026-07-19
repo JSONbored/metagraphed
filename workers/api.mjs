@@ -1340,6 +1340,23 @@ async function handleNominatorPositionsSyncProxy(request, env) {
   });
 }
 
+// Proxies POST /api/v1/internal/account-balances-sync -- the write path into
+// account_balances (#6742). Same DATA_API service binding as the other
+// internal sync routes above. This proxy was missing entirely (data-api.mjs's
+// own handleAccountBalancesSync existed, but nothing in this public-facing
+// Worker ever forwarded to it) -- confirmed live 2026-07-19: every real
+// data-refresh-cron run since #6742 shipped 405'd on this exact route,
+// meaning account_balances has never received a row from any caller.
+async function handleAccountBalancesSyncProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "account_balances_sync_unavailable",
+    notBoundMessage:
+      "The account-balances sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The account-balances sync tier returned an unreadable response.",
+  });
+}
+
 // GET /api/v1/chain/stream (#4982, ADR 0015) -- the public realtime firehose
 // transport. SSE by default; a WebSocket Upgrade header on this same path
 // gets the WS transport instead. No auth: this is the same public read-only
@@ -1625,6 +1642,11 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // service binding.
   if (url.pathname === "/api/v1/internal/nominator-positions-sync") {
     return handleNominatorPositionsSyncProxy(request, env);
+  }
+  // The write path into account_balances (#6742) -- data-refresh-cron's
+  // account-balances job POSTs here. Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/account-balances-sync") {
+    return handleAccountBalancesSyncProxy(request, env);
   }
   // The write path the #4981 box-side relay POSTs #4980's NOTIFY payloads to
   // (#4982, ADR 0015) -- forwards into ChainFirehoseHub after its own
