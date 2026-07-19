@@ -7,29 +7,70 @@ import { compareQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { CompareSubnet, HealthState } from "@/lib/metagraphed/types";
 import { HealthPill, CurationChip } from "@jsonbored/ui-kit";
+import { SubnetsCompareHistoryChart } from "@/components/metagraphed/subnets-compare-history-chart";
+import {
+  COMPARE_BODY_CLASS,
+  COMPARE_SCRIM_CLASS,
+  COMPARE_SHEET_CARD_CLASS,
+  COMPARE_SHEET_ROOT_CLASS,
+  COMPARE_SHEET_WRAPPER_CLASS,
+} from "@/lib/metagraphed/compare-drawer-layout";
+
+/** The two views of the expanded drawer: instant metrics, or history over time. */
+type CompareView = "metrics" | "history";
+const COMPARE_VIEWS: Array<{ key: CompareView; label: string }> = [
+  { key: "metrics", label: "Metrics" },
+  { key: "history", label: "History" },
+];
 
 /**
  * Floating bottom dock + expandable side-by-side compare drawer for selected
  * subnets. Selection state lives in localStorage via useCompareSelection so
  * it survives navigation. Pure presentation — does not mutate URL.
+ *
+ * The expanded view tabs between CompareGrid (current instant metrics) and
+ * SubnetsCompareHistoryChart (the multi-subnet history overlay, #6885).
  */
 export function SubnetsCompareDrawer() {
   const { selected, max, remove, clear } = useCompareSelection();
   const [expanded, setExpanded] = useState(false);
+  const [view, setView] = useState<CompareView>("metrics");
 
   if (selected.length === 0) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
-      <div className="max-w-shell-max mx-auto px-4 md:px-10 pb-3">
+    <div
+      className={classNames(
+        "fixed inset-x-0 bottom-0 z-40 pointer-events-none",
+        // Expanded, the drawer becomes a bottom sheet below md so the content
+        // gets real room instead of being squeezed into a floating card over
+        // the page. From md up it stays the inline dock it has always been.
+        expanded && COMPARE_SHEET_ROOT_CLASS,
+      )}
+    >
+      {expanded ? (
+        <button
+          type="button"
+          aria-label="Close compare"
+          onClick={() => setExpanded(false)}
+          className={COMPARE_SCRIM_CLASS}
+        />
+      ) : null}
+      <div
+        className={classNames(
+          "max-w-shell-max mx-auto px-4 md:px-10 pb-3",
+          expanded && COMPARE_SHEET_WRAPPER_CLASS,
+        )}
+      >
         <div
           className={classNames(
             "pointer-events-auto rounded-xl border border-border bg-card/95 backdrop-blur shadow-[0_-8px_32px_-12px_color-mix(in_oklab,var(--ink-strong)_35%,transparent)]",
             "mg-fade-in",
+            expanded && COMPARE_SHEET_CARD_CLASS,
           )}
         >
           {/* Dock */}
-          <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 py-2">
             <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
               <BarChart3 className="size-3 text-accent" />
               Compare
@@ -81,7 +122,38 @@ export function SubnetsCompareDrawer() {
           </div>
 
           {/* Expanded side-by-side */}
-          {expanded && selected.length >= 2 ? <CompareGrid netuids={selected} /> : null}
+          {expanded && selected.length >= 2 ? (
+            <>
+              <div
+                role="tablist"
+                aria-label="Compare view"
+                className="flex shrink-0 items-center gap-1 border-t border-border px-3 py-1.5"
+              >
+                {COMPARE_VIEWS.map((v) => (
+                  <button
+                    key={v.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={v.key === view}
+                    onClick={() => setView(v.key)}
+                    className={classNames(
+                      "rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+                      v.key === view
+                        ? "bg-ink-strong text-paper"
+                        : "text-ink-muted hover:text-ink-strong",
+                    )}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+              {view === "metrics" ? (
+                <CompareGrid netuids={selected} />
+              ) : (
+                <SubnetsCompareHistoryChart netuids={selected} />
+              )}
+            </>
+          ) : null}
         </div>
       </div>
     </div>
@@ -225,9 +297,39 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
     );
   }
 
+  const cell = (netuid: number, row: (typeof rows)[number]) =>
+    isPending ? (
+      <span className="inline-block h-3 w-12 animate-pulse rounded bg-border/60" />
+    ) : (
+      row.render(netuid)
+    );
+
   return (
-    <div className="border-t border-border max-h-[55vh] overflow-auto">
-      <table className="min-w-full text-[12px]">
+    <div className={COMPARE_BODY_CLASS}>
+      {/*
+        Below md the side-by-side table cannot fit: with the label column plus
+        one column per subnet it always clipped the right-most subnet. Render a
+        card per subnet instead (the house `md:hidden` / `hidden md:block` pair),
+        driven by the SAME rows[] the table uses so the two can't drift.
+      */}
+      <ul className="space-y-2 p-3 md:hidden">
+        {netuids.map((n) => (
+          <li key={n} className="min-w-0 space-y-2 rounded-lg border border-border bg-card p-3">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-strong">
+              SN{n}
+            </div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+              {rows.map((row) => (
+                <div key={row.label} className="flex items-baseline justify-between gap-2">
+                  <dt className="shrink-0 text-ink-muted">{row.label}</dt>
+                  <dd className="min-w-0 truncate text-right">{cell(n, row)}</dd>
+                </div>
+              ))}
+            </dl>
+          </li>
+        ))}
+      </ul>
+      <table className="hidden min-w-full text-[12px] md:table">
         <thead className="sticky top-0 bg-card/95 backdrop-blur z-[1]">
           <tr>
             <th className="sticky left-0 z-[2] w-40 bg-card/95 px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-muted backdrop-blur">
@@ -251,11 +353,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
               </td>
               {netuids.map((n) => (
                 <td key={n} className="px-3 py-2">
-                  {isPending ? (
-                    <span className="inline-block h-3 w-12 animate-pulse rounded bg-border/60" />
-                  ) : (
-                    row.render(n)
-                  )}
+                  {cell(n, row)}
                 </td>
               ))}
             </tr>
