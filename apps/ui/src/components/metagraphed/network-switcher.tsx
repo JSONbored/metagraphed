@@ -77,7 +77,13 @@ export function NetworkSwitcher() {
           title={`Network: ${network.label} · ${base}`}
         >
           <Globe2 className="size-3 text-ink-muted" />
-          <span className="text-ink-strong">{network.label}</span>
+          {/* #6902: below md the label is dropped so the trigger collapses to
+              an icon-only pill. It renders unconditionally (unlike its sibling
+              header actions, which are `hidden md:inline-flex`), and at 375px the
+              full "Mainnet" label pushed the shared header 10px past the viewport
+              site-wide. The button stays a full tap target that opens the same
+              network popover, so it remains reachable on mobile. */}
+          <span className="hidden md:inline text-ink-strong">{network.label}</span>
           <span className={classNames("inline-block size-1.5 rounded-full", dotCls)} aria-hidden />
           <ChevronDown className="size-3 text-ink-muted" />
         </button>
