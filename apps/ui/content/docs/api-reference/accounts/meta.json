@@ -29,6 +29,7 @@
     "evm-address-mapping",
     "network-parameters",
     "randomness",
-    "sudo-key"
+    "sudo-key",
+    "top-holders"
   ]
 }
