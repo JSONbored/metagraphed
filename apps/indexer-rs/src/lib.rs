@@ -25,6 +25,67 @@ pub type Api = OnlineClient<PolkadotConfig>;
 /// slower against a public RPC).
 pub type AtBlock = subxt::client::OnlineClientAtBlock<PolkadotConfig>;
 
+/// Retries `f` up to `attempts` times with a short linear backoff -- for
+/// transient failures on a single stateless call against an already-
+/// resolved `AtBlock` snapshot. Lighter weight than `ChainClient::call`
+/// (no reconnect, no fresh `at_current_block()` -- see `AtBlock`'s own doc
+/// comment for why repeating that per call is a real cost to avoid), but
+/// still tolerant of the transient failures live-tested against the public
+/// archive RPC under concurrent multi-job load (metagraphed-infra#138): a
+/// bare, unretried storage fetch failed outright on the ReconnectingRpcClient's
+/// 60s request_timeout under contention, even though the SAME call reliably
+/// succeeded in under a second once that contention cleared moments later.
+pub async fn retry_transient<T, F, Fut>(attempts: u32, mut f: F) -> Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<T>>,
+{
+    let mut last_err: Option<anyhow::Error> = None;
+    for attempt in 0..attempts.max(1) {
+        match f().await {
+            Ok(v) => return Ok(v),
+            Err(e) => last_err = Some(e),
+        }
+        if attempt + 1 < attempts {
+            tokio::time::sleep(Duration::from_millis(300 * (attempt as u64 + 1))).await;
+        }
+    }
+    Err(last_err.unwrap_or_else(|| anyhow::anyhow!("retry_transient: no attempts made")))
+}
+
+/// Now, as epoch milliseconds -- the `captured_at` clock every poller job
+/// uses for its snapshot rows (wall-clock, not chain-derived: unlike
+/// main.rs's block-anchored `observed_at`, these are polls, not events tied
+/// to a specific block). Matches the same `int(time.time() * 1000)`
+/// convention the Python fetch-*.py scripts these jobs replace already used.
+pub fn now_ms() -> i64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock before unix epoch")
+        .as_millis() as i64
+}
+
+/// rao rendered as an EXACT TAO decimal string for Postgres NUMERIC. Never
+/// routes through f64 (the same precision-loss shape as metagraphed#2588's
+/// "Mechanism B" -- an exact rao integer discarded to a lossy double one
+/// line before rendering). Postgres NUMERIC is exact-precision, so an exact
+/// decimal string here is exact forever, with no ~9M-TAO ceiling at all.
+/// Shared by main.rs's `tao_str` (via a `Value<()>` wrapper) and the
+/// poller's jobs that decode a raw `u128` rao amount directly.
+pub fn rao_to_tao_exact(rao: u128) -> String {
+    let whole = rao / 1_000_000_000;
+    let frac = rao % 1_000_000_000;
+    if frac == 0 {
+        return whole.to_string();
+    }
+    let mut frac_str = format!("{frac:09}");
+    while frac_str.ends_with('0') {
+        frac_str.pop();
+    }
+    format!("{whole}.{frac_str}")
+}
+
 pub fn redact_rpc_url(url: &str) -> String {
     let scheme_end = url.find("://").map(|idx| idx + 3).unwrap_or(0);
     let after_scheme = &url[scheme_end..];
@@ -216,5 +277,67 @@ mod tests {
             redact_rpc_url("ws://meta-fullnode-01-us-nyc1:9944"),
             "ws://meta-fullnode-01-us-nyc1:9944"
         );
+    }
+
+    #[test]
+    fn rao_to_tao_exact_renders_whole_amounts_with_no_decimal_point() {
+        assert_eq!(rao_to_tao_exact(5_000_000_000), "5");
+    }
+
+    #[test]
+    fn rao_to_tao_exact_trims_trailing_zeros_in_the_fraction() {
+        assert_eq!(rao_to_tao_exact(1_500_000_000), "1.5");
+    }
+
+    #[test]
+    fn rao_to_tao_exact_is_exact_above_the_f64_double_rounding_threshold() {
+        // 2**53 rao (~9.007M TAO) is where `rao as f64 / 1e9` starts silently
+        // losing precision -- this must stay exact past that point.
+        assert_eq!(rao_to_tao_exact(9_007_199_254_740_993), "9007199.254740993");
+    }
+
+    #[test]
+    fn rao_to_tao_exact_zero_is_zero() {
+        assert_eq!(rao_to_tao_exact(0), "0");
+    }
+
+    #[tokio::test]
+    async fn retry_transient_returns_immediately_on_first_success() {
+        let mut calls = 0;
+        let result = retry_transient(3, || {
+            calls += 1;
+            async { Ok::<_, anyhow::Error>(42) }
+        })
+        .await;
+        assert_eq!(result.unwrap(), 42);
+        assert_eq!(calls, 1);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn retry_transient_succeeds_after_transient_failures() {
+        let attempt = std::cell::Cell::new(0);
+        let result = retry_transient(3, || {
+            attempt.set(attempt.get() + 1);
+            async {
+                if attempt.get() < 3 {
+                    anyhow::bail!("transient");
+                }
+                Ok(attempt.get())
+            }
+        })
+        .await;
+        assert_eq!(result.unwrap(), 3);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn retry_transient_gives_up_after_exhausting_attempts() {
+        let attempt = std::cell::Cell::new(0);
+        let result: Result<()> = retry_transient(3, || {
+            attempt.set(attempt.get() + 1);
+            async { anyhow::bail!("always fails") }
+        })
+        .await;
+        assert!(result.is_err());
+        assert_eq!(attempt.get(), 3);
     }
 }

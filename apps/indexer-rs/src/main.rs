@@ -404,24 +404,11 @@ fn plausible_netuid(n: Option<i64>) -> Option<i64> {
 }
 
 /// py `_tao`: rao rendered as an EXACT TAO decimal string for Postgres NUMERIC.
-/// Never routes through f64 (the old `n as f64 / RAO` here was the same precision-
-/// loss shape as metagraphed#2588's "Mechanism B" -- an exact rao integer discarded
-/// to a lossy double one line before rendering -- just for this Rust indexer's
-/// Postgres sink, which #2588's D1/SQLite-REAL framing never covered). Postgres
-/// NUMERIC is exact-precision, so an exact decimal string here is exact forever,
-/// with no ~9M-TAO ceiling at all.
+/// The actual conversion (`rao_to_tao_exact`) lives in lib.rs, shared with the
+/// poller's jobs -- this just adapts it to the `Value<()>` this file decodes
+/// events/extrinsics into.
 fn tao_str(v: &Value<()>) -> Option<String> {
-    let rao = int_of(v)?;
-    let whole = rao / 1_000_000_000;
-    let frac = rao % 1_000_000_000;
-    if frac == 0 {
-        return Some(whole.to_string());
-    }
-    let mut frac_str = format!("{frac:09}");
-    while frac_str.ends_with('0') {
-        frac_str.pop();
-    }
-    Some(format!("{whole}.{frac_str}"))
+    Some(backfill_rs::rao_to_tao_exact(int_of(v)?))
 }
 
 fn nth<'a>(fields: &'a [&'a Value<()>], i: usize) -> Option<&'a Value<()>> {

@@ -14,6 +14,13 @@ scale-value = "0.18"
 # Metadata::types()'s PortableRegistry and this crate's would be considered
 # distinct nominal types despite being structurally identical.
 scale-info = "2.11"
+# Pinned to the exact version subxt 0.50.1 already resolves transitively
+# (verified via Cargo.lock), same convention as scale-info above -- needed
+# directly for the #[derive(DecodeAsType)] the poller's jobs use to decode
+# storage values into small typed structs (e.g. System::Account's
+# AccountInfo) instead of the generic scale_value::Value tree main.rs's own
+# dynamic decode uses.
+scale-decode = { version = "0.16.2", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 tokio-postgres = "0.7"
 futures = "0.3"
@@ -23,6 +30,12 @@ blake2 = "0.10.6"      # extrinsic_hash = blake2_256(extrinsic bytes)
 serde_json = "1"
 bytes = "1.12.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+# test-util (start_paused / manual clock advance for retry_transient's own
+# tests) is deliberately NOT in the [dependencies] "full" feature set above --
+# it's testing-only and shouldn't ship in the built binary.
+tokio = { version = "1", features = ["test-util"] }
 
 [profile.release]
 opt-level = 3

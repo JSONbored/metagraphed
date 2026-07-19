@@ -44,11 +44,10 @@
 // scheduled interval -- an acceptable cost for a periodic poller, unlike
 // main.rs's live-follow hot path this same reasoning would NOT apply to.
 
-use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 use anyhow::{Context, Result};
-use backfill_rs::{AtBlock, ChainClient};
+use backfill_rs::{now_ms, retry_transient, AtBlock, ChainClient};
 use subxt::dynamic;
 use subxt::utils::AccountId32;
 
@@ -60,6 +59,9 @@ use crate::JobOutcome;
 // upgrade) rather than upsert a mostly-empty snapshot over a good one.
 const MAX_ERROR_RATE: f64 = 0.5;
 
+// See resolve_ownership's own doc comment for why individual fetches retry.
+const RETRY_ATTEMPTS: u32 = 3;
+
 const ZERO_ACCOUNT: AccountId32 = AccountId32([0u8; 32]);
 
 struct OwnershipRow {
@@ -68,7 +70,36 @@ struct OwnershipRow {
     owner_coldkey: String,
 }
 
-pub async fn run(chain: Arc<ChainClient>, pg: Arc<tokio_postgres::Client>) -> Result<JobOutcome> {
+/// Connects its own chain + Postgres client (each kept alive for the loop's
+/// lifetime, separate from every other job's connections -- see main.rs's
+/// own doc comment for why) and ticks `run` on `interval` forever, reporting
+/// through the shared `crate::log_job_outcome`.
+pub async fn run_loop(rpc_url: String, db_url: String, interval: Duration) {
+    let chain = match ChainClient::connect(rpc_url).await {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("subnet-ownership: chain connect failed, job will not run: {e:#}");
+            return;
+        }
+    };
+    let mut pg = match backfill_rs::connect_pg(&db_url).await {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("subnet-ownership: postgres connect failed, job will not run: {e:#}");
+            return;
+        }
+    };
+    let mut ticker = tokio::time::interval(interval);
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    loop {
+        ticker.tick().await;
+        let t0 = std::time::Instant::now();
+        let result = run(&chain, &mut pg).await;
+        crate::log_job_outcome("subnet-ownership", &result, t0.elapsed(), interval);
+    }
+}
+
+async fn run(chain: &ChainClient, pg: &mut tokio_postgres::Client) -> Result<JobOutcome> {
     let at = chain
         .call(|api| async move { Ok(api.at_current_block().await?) })
         .await
@@ -110,7 +141,7 @@ pub async fn run(chain: Arc<ChainClient>, pg: Arc<tokio_postgres::Client>) -> Re
     }
 
     let captured_at = now_ms();
-    let written = upsert(&pg, &rows, captured_at)
+    let written = upsert(pg, &rows, captured_at)
         .await
         .context("upsert subnet_ownership")?;
 
@@ -139,28 +170,32 @@ async fn discover_netuids(at: &AtBlock) -> Result<Vec<u16>> {
 /// SubnetOwnerHotkey(netuid) -> Owner(hotkey) -> owning account. Returns `None`
 /// (not an error) when either step resolves to the zero account -- that's a
 /// real, valid "no owner" state per the bittensor SDK's own convention, not
-/// a decode failure.
+/// a decode failure. Each fetch retries transient failures (RETRY_ATTEMPTS)
+/// -- live-verified 2026-07-19 that a single unretried fetch can hit the
+/// ReconnectingRpcClient's 60s request_timeout under concurrent multi-job
+/// load even though the same call reliably completes in under a second
+/// moments later (see `backfill_rs::retry_transient`'s own doc comment).
 async fn resolve_ownership(at: &AtBlock, netuid: u16) -> Result<Option<OwnershipRow>> {
     let hotkey_addr =
         dynamic::storage::<(u16,), AccountId32>("SubtensorModule", "SubnetOwnerHotkey");
-    let hotkey: AccountId32 = at
-        .storage()
-        .fetch(hotkey_addr, (netuid,))
-        .await
-        .with_context(|| format!("SubnetOwnerHotkey(netuid={netuid})"))?
-        .decode()?;
+    let hotkey: AccountId32 = retry_transient(RETRY_ATTEMPTS, || async {
+        Ok(at.storage().fetch(&hotkey_addr, (netuid,)).await?)
+    })
+    .await
+    .with_context(|| format!("SubnetOwnerHotkey(netuid={netuid})"))?
+    .decode()?;
 
     if hotkey == ZERO_ACCOUNT {
         return Ok(None);
     }
 
     let owner_addr = dynamic::storage::<(AccountId32,), AccountId32>("SubtensorModule", "Owner");
-    let coldkey: AccountId32 = at
-        .storage()
-        .fetch(owner_addr, (hotkey,))
-        .await
-        .with_context(|| format!("Owner(hotkey={hotkey})"))?
-        .decode()?;
+    let coldkey: AccountId32 = retry_transient(RETRY_ATTEMPTS, || async {
+        Ok(at.storage().fetch(&owner_addr, (hotkey,)).await?)
+    })
+    .await
+    .with_context(|| format!("Owner(hotkey={hotkey})"))?
+    .decode()?;
 
     if coldkey == ZERO_ACCOUNT {
         return Ok(None);
@@ -216,13 +251,6 @@ async fn upsert(
     }
 
     Ok(written)
-}
-
-fn now_ms() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock before unix epoch")
-        .as_millis() as i64
 }
 
 #[cfg(test)]

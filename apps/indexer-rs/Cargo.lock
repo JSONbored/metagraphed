@@ -223,6 +223,7 @@ dependencies = [
  "bytes",
  "futures",
  "hex",
+ "scale-decode",
  "scale-info",
  "scale-value",
  "serde_json",
