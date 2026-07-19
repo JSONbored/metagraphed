@@ -18035,6 +18035,68 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     const res = await callTool("list_accounts", { sort: "bogus" });
     assert.equal(res.body.result.isError, true);
   });
+
+  test("get_top_holders returns a schema-stable empty leaderboard (cold/absent Postgres tier)", async () => {
+    const res = await callTool("get_top_holders", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "total_tao");
+    assert.equal(out.limit, 20);
+    assert.equal(out.account_count, 0);
+    assert.deepEqual(out.accounts, []);
+  });
+
+  test("get_top_holders accepts each REST-supported sort key with an empty leaderboard", async () => {
+    for (const sort of ["total_tao", "free_tao", "delegated_tao"]) {
+      const res = await callTool("get_top_holders", { sort, limit: 1 });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.sort, sort);
+      assert.equal(out.limit, 1);
+    }
+  });
+
+  test("get_top_holders rejects an invalid sort", async () => {
+    const res = await callTool("get_top_holders", { sort: "bogus" });
+    assert.equal(res.body.result.isError, true);
+  });
+});
+
+// get_top_holders uses its own METAGRAPH_TOP_HOLDERS_SOURCE flag (#6741/
+// #6743), distinct from the shared METAGRAPH_NEURONS_SOURCE flag the CASES
+// table below tests -- verified separately here rather than folded into
+// that table, same isolation rationale as every other flag-scoped block.
+describe("MCP get_top_holders — Postgres tier wiring", () => {
+  test("flag=postgres uses Postgres data at the REST-equivalent path", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({ schema_version: 1, marker: "from-postgres" });
+        },
+      },
+    };
+    const res = await callTool("get_top_holders", {}, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
+    assert.equal(captured, "/api/v1/accounts/top-holders?sort=total_tao&limit=20");
+  });
+
+  test("flag=postgres falls back to the schema-stable empty shape on failure", async () => {
+    const env = {
+      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await callTool("get_top_holders", {}, { env });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.marker, undefined);
+    assert.equal(res.body.result.structuredContent.account_count, 0);
+  });
 });
 
 describe("MCP endpoint tools — live overlay staleness fix (#5225)", () => {

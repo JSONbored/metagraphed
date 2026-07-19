@@ -613,6 +613,13 @@ import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
 } from "./accounts-list.mjs";
+import {
+  buildTopHoldersList,
+  TOP_HOLDERS_SORTS,
+  DEFAULT_TOP_HOLDERS_SORT,
+  TOP_HOLDERS_LIMIT_DEFAULT,
+  TOP_HOLDERS_LIMIT_MAX,
+} from "./top-holders.mjs";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
 import { buildAlphaVolume } from "./alpha-volume.mjs";
@@ -8640,6 +8647,54 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_top_holders",
+    title: "Get the balance-based top-holder leaderboard",
+    description:
+      "Fetch the balance-based top-holder leaderboard (#6741/#6743): every " +
+      "account (coldkey) with a nonzero free balance and/or delegated stake " +
+      "position, with free/delegated/total TAO columns list_accounts explicitly " +
+      "cannot derive. Sortable by total_tao (default), free_tao, or " +
+      "delegated_tao. The coldkey/balance-centric counterpart to list_accounts. " +
+      "Mirrors GET /api/v1/accounts/top-holders.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sort: {
+          type: "string",
+          enum: TOP_HOLDERS_SORTS,
+          description: "Ranking key (default total_tao).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max accounts to return (1-100, default 20).",
+          minimum: 1,
+          maximum: TOP_HOLDERS_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const sort =
+        optionalEnum(args, "sort", TOP_HOLDERS_SORTS) ??
+        DEFAULT_TOP_HOLDERS_SORT;
+      const limit = clampLimit(
+        args?.limit,
+        TOP_HOLDERS_LIMIT_DEFAULT,
+        TOP_HOLDERS_LIMIT_MAX,
+      );
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/accounts/top-holders", {
+            sort,
+            limit,
+          }),
+          "METAGRAPH_TOP_HOLDERS_SOURCE",
+        )) ?? buildTopHoldersList([], { sort, limit })
+      );
+    },
+  },
+  {
     name: "get_block_chain_events",
     title: "Get every raw chain event in one block",
     description:
@@ -14366,6 +14421,25 @@ const TOOL_OUTPUT_SCHEMAS = {
         latest_captured_at: NULLABLE_STRING,
         latest_block_number: NULLABLE_INT,
         subnets: { type: "array", items: { type: "object" } },
+      }),
+    },
+  },
+  get_top_holders: {
+    type: "object",
+    additionalProperties: true,
+    required: ["sort", "limit", "account_count", "accounts"],
+    properties: {
+      schema_version: { type: "integer" },
+      sort: { type: "string", enum: TOP_HOLDERS_SORTS },
+      limit: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      account_count: { type: "integer" },
+      accounts: objectItems({
+        ss58: { type: "string" },
+        free_tao: ANY,
+        delegated_tao: ANY,
+        total_tao: ANY,
+        last_updated: NULLABLE_STRING,
       }),
     },
   },
