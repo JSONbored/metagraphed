@@ -9,7 +9,10 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
-import { handleAccountEntities } from "../workers/request-handlers/entities.mjs";
+import {
+  handleAccount,
+  handleAccountEntities,
+} from "../workers/request-handlers/entities.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -41,6 +44,21 @@ async function assertValidComponent(componentName, data) {
   assert.equal(validate(data), true, ajv.errorsText(validate.errors));
 }
 
+function entitiesArchiveEnv(entities) {
+  return {
+    METAGRAPH_ARCHIVE: {
+      async get(key) {
+        if (!key.endsWith("entities.json")) return null;
+        return {
+          async json() {
+            return { schema_version: 1, generated_at: null, entities };
+          },
+        };
+      },
+    },
+  };
+}
+
 describe("handleAccountEntities", () => {
   test("returns a schema-stable empty result on cold D1/R2", async () => {
     const body = await json(
@@ -55,6 +73,75 @@ describe("handleAccountEntities", () => {
     assert.equal(body.data.ownership_tie_count, 0);
     assert.deepEqual(body.data.ownership_ties, []);
     await assertValidComponent("AccountEntitiesArtifact", body.data);
+  });
+
+  test("joins a populated entities.json artifact's labels for this ss58", async () => {
+    const env = entitiesArchiveEnv([
+      {
+        schema_version: 1,
+        ss58: SS58,
+        name: "Example Foundation",
+        category: "foundation",
+        source_urls: ["https://example.org/proof"],
+        review: { state: "maintainer-reviewed" },
+      },
+    ]);
+    const body = await json(
+      await handleAccountEntities(
+        req(`/api/v1/accounts/${SS58}/entities`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.labels.length, 1);
+    assert.equal(body.data.labels[0].name, "Example Foundation");
+  });
+
+  test("a successful DATA_API response wins over the schema-stable cold fallback", async () => {
+    const env = {
+      METAGRAPH_SUBNET_OWNERSHIP_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            ownership_tie_count: 1,
+            ownership_ties: [
+              { netuid: 7, role: "gained_ownership", block_number: 100 },
+            ],
+          }),
+      },
+    };
+    const body = await json(
+      await handleAccountEntities(
+        req(`/api/v1/accounts/${SS58}/entities`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.ownership_tie_count, 1);
+    assert.equal(body.data.ownership_ties[0].netuid, 7);
+    // labels still joined locally regardless of which source served ties.
+    assert.deepEqual(body.data.labels, []);
+  });
+});
+
+describe("handleAccount labels join", () => {
+  test("joins a populated entities.json artifact's labels for this ss58", async () => {
+    const env = entitiesArchiveEnv([
+      {
+        schema_version: 1,
+        ss58: SS58,
+        name: "Example Exchange",
+        category: "exchange",
+        source_urls: ["https://example.org/proof"],
+        review: { state: "maintainer-reviewed" },
+      },
+    ]);
+    const res = await handleAccount(req(`/api/v1/accounts/${SS58}`), env, SS58);
+    const body = await json(res);
+    assert.equal(body.data.labels.length, 1);
+    assert.equal(body.data.labels[0].name, "Example Exchange");
   });
 });
 
