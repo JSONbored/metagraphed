@@ -45,6 +45,7 @@ import {
   listJsonFiles,
   listJsonFilesRecursive,
   loadCandidates,
+  loadEntities,
   loadDetailedVerification,
   loadProviders,
   loadVerification,
@@ -1589,6 +1590,51 @@ describe("script utility contracts", () => {
     assert.equal(community.provider, undefined);
     assert.equal(community.submission, undefined);
     assert.ok(community.id && community.name && community.website_url);
+  });
+
+  test("loadEntities returns an empty list before any registry/entities/ contribution lands", async () => {
+    // registry/entities/ starts genuinely empty (#6737/#6738) -- listJsonFiles
+    // tolerates the directory not existing yet, matching loadProviders' own
+    // ENOENT-tolerant convention above.
+    const entities = await loadEntities();
+    assert.deepEqual(entities, []);
+  });
+
+  test("loadEntities loads flat entity objects, deduped by ss58, sorted ascending", async () => {
+    const entitiesDir = path.join(repoRoot, "registry/entities");
+    try {
+      await rm(entitiesDir, { recursive: true, force: true });
+      await mkdir(entitiesDir, { recursive: true });
+      await writeFile(
+        path.join(entitiesDir, "z-address.json"),
+        JSON.stringify({
+          schema_version: 1,
+          ss58: "z-address",
+          name: "Z Exchange",
+          category: "exchange",
+          source_urls: ["https://example.org/z"],
+          review: { state: "community-submitted" },
+        }),
+      );
+      await writeFile(
+        path.join(entitiesDir, "a-address.json"),
+        JSON.stringify({
+          schema_version: 1,
+          ss58: "a-address",
+          name: "A Foundation",
+          category: "foundation",
+          source_urls: ["https://example.org/a"],
+          review: { state: "community-submitted" },
+        }),
+      );
+      const entities = await loadEntities();
+      assert.deepEqual(
+        entities.map((entity) => entity.ss58),
+        ["a-address", "z-address"],
+      );
+    } finally {
+      await rm(entitiesDir, { recursive: true, force: true });
+    }
   });
 
   test("loads checked-in candidates and verification fallback contracts", async () => {

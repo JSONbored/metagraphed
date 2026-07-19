@@ -13,6 +13,7 @@ import {
   artifactRelativePath,
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.mjs";
+import { entityLabelsIndex } from "../src/entity-labels.mjs";
 import { sanitizeChainText, slugify } from "./lib/formatting.mjs";
 
 // Resolve via fileURLToPath rather than `new URL("..").pathname` so the repo
@@ -603,11 +604,11 @@ export async function loadProviders() {
 export async function loadEntities() {
   const files = await listJsonFiles(path.join(repoRoot, "registry/entities"));
   const entities = await Promise.all(files.map(readJson));
-  const bySs58 = new Map();
-  for (const entity of entities) {
-    if (entity?.ss58) bySs58.set(entity.ss58, entity);
-  }
-  return [...bySs58.values()].sort((a, b) => a.ss58.localeCompare(b.ss58));
+  // Dedup-by-ss58 delegated to entityLabelsIndex (src/entity-labels.mjs,
+  // already unit-tested there) rather than re-implemented inline here.
+  return [...entityLabelsIndex(entities).values()].sort((a, b) =>
+    a.ss58.localeCompare(b.ss58),
+  );
 }
 
 export async function loadSubnets() {
