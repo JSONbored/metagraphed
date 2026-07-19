@@ -222,6 +222,26 @@ CREATE TABLE IF NOT EXISTS nominator_positions (
   PRIMARY KEY (coldkey, hotkey, netuid)
 );
 
+-- ---------------------------------------------------------------------------
+-- Chain-wide account balance snapshot (#6741/#6742) -- the balance-based
+-- top-holder leaderboard epic's foundational data tier. One row per account
+-- with a nonzero free or reserved balance, from a direct System::Account
+-- storage-map scan (scripts/fetch-account-balances.py) -- NOT reconstructed
+-- from transfer/stake/fee events, which can silently drift if any mutation
+-- path is missed. Covers every account that has ever held a balance,
+-- registered neuron or not -- joined with `neurons`.stake_tao at the API
+-- layer for the "Delegated"/"Total" leaderboard columns, not duplicated
+-- here.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS account_balances (
+  ss58          TEXT NOT NULL,
+  free_tao      NUMERIC NOT NULL,
+  reserved_tao  NUMERIC NOT NULL,
+  captured_at   BIGINT NOT NULL,
+  PRIMARY KEY (ss58)
+);
+CREATE INDEX IF NOT EXISTS idx_account_balances_free_tao ON account_balances (free_tao DESC);
+
 -- Daily per-UID history (mirror of D1 `neuron_daily`, ~10.8M rows / 370d).
 CREATE TABLE IF NOT EXISTS neuron_daily (
   netuid           INTEGER NOT NULL,
