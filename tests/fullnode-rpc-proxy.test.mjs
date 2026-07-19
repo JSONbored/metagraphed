@@ -34,7 +34,7 @@ async function makeValidatedKeyEnv(overrides = {}) {
         new Response(
           JSON.stringify({
             secret_hash: secretHash,
-            tier: "free",
+            tier: overrides.tier ?? "free",
             revoked_at: overrides.revoked_at ?? null,
             account_id: 1,
           }),
@@ -151,6 +151,66 @@ test("429s when the per-key rate limiter denies", async () => {
     env,
   );
   assert.equal(res.status, 429);
+});
+
+test("gittensor-partner tier keys are rate-limited against the Gittensor binding, not the free one", async () => {
+  const { env, key } = await makeValidatedKeyEnv({
+    tier: "gittensor-partner",
+    FULLNODE_RPC_RATE_LIMITER: {
+      limit: async () => {
+        throw new Error(
+          "free-tier limiter must not be consulted for this tier",
+        );
+      },
+    },
+    FULLNODE_RPC_RATE_LIMITER_GITTENSOR: {
+      limit: async () => ({ success: false }),
+    },
+  });
+  const res = await call(
+    `/rpc/v1/fullnode?authorization=${key}`,
+    { body: { jsonrpc: "2.0", id: 1, method: "system_health" } },
+    env,
+  );
+  assert.equal(res.status, 429);
+  // The Gittensor tier's own, materially higher policy figure (6000/60s),
+  // not the free tier's (300/60s).
+  assert.equal(res.headers.get("x-ratelimit-limit"), "6000");
+});
+
+test("gittensor-partner tier keys succeed past a bound-and-allowing Gittensor limiter", async () => {
+  const { env, key } = await makeValidatedKeyEnv({
+    tier: "gittensor-partner",
+    FULLNODE_RPC_RATE_LIMITER_GITTENSOR: {
+      limit: async () => ({ success: true }),
+    },
+  });
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "ok" }), {
+      status: 200,
+    });
+  const res = await call(
+    `/rpc/v1/fullnode?authorization=${key}`,
+    { body: { jsonrpc: "2.0", id: 1, method: "system_health" } },
+    env,
+  );
+  assert.equal(res.status, 200);
+});
+
+test("an unrecognized tier falls back to the free-tier rate-limit policy", async () => {
+  const { env, key } = await makeValidatedKeyEnv({
+    tier: "some-future-tier",
+    FULLNODE_RPC_RATE_LIMITER: {
+      limit: async () => ({ success: false }),
+    },
+  });
+  const res = await call(
+    `/rpc/v1/fullnode?authorization=${key}`,
+    { body: { jsonrpc: "2.0", id: 1, method: "system_health" } },
+    env,
+  );
+  assert.equal(res.status, 429);
+  assert.equal(res.headers.get("x-ratelimit-limit"), "300");
 });
 
 test("400s on an unparsable/negative content-length header", async () => {

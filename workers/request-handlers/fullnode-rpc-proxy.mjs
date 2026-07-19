@@ -66,12 +66,37 @@ const FULLNODE_RPC_HEALTH = new Map();
 // -- checked BEFORE key validation, by client IP, same posture and figure as
 // the public proxy's own RPC_RATE_LIMITER.
 export const FULLNODE_RPC_GUESS_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
-// The actual per-key product limit (ADR 0021 section 5: "looser than the
-// existing anonymous pool's limits") -- checked AFTER a key validates,
-// keyed by prefix (public, non-secret, stable per key) rather than IP, so
-// legitimate traffic from many callers sharing one key isn't starved and one
-// key can't be inflated by rotating source IPs.
-export const FULLNODE_RPC_RATE_LIMIT = { limit: 300, windowSeconds: 60 };
+
+// Per-tier rate-limit policy, keyed by the SAME tier names
+// workers/data-api.mjs's FULLNODE_INVITE_CODE_TIERS stamps on a minted key
+// (ADR 0021 section 5: "looser than the existing anonymous pool's limits" --
+// now tier-differentiated rather than one flat figure, 2026-07-19).
+// 'gittensor-partner' is an owner-designated partner cohort with a
+// materially higher ceiling for real internal infra use, not casual dev
+// exploration; 'free' keeps the original figure. An unrecognized/future
+// tier falls back to 'free' rather than being unbounded. Each entry's own
+// Cloudflare Rate Limiting binding is checked AFTER a key validates, keyed
+// by prefix (public, non-secret, stable per key) rather than IP, so
+// legitimate traffic from many callers sharing one key isn't starved and
+// one key can't be inflated by rotating source IPs.
+export const FULLNODE_RPC_TIER_RATE_LIMITS = {
+  free: {
+    envVar: "FULLNODE_RPC_RATE_LIMITER",
+    limit: 300,
+    windowSeconds: 60,
+  },
+  "gittensor-partner": {
+    envVar: "FULLNODE_RPC_RATE_LIMITER_GITTENSOR",
+    limit: 6000,
+    windowSeconds: 60,
+  },
+};
+
+function rateLimitPolicyForTier(tier) {
+  return (
+    FULLNODE_RPC_TIER_RATE_LIMITS[tier] || FULLNODE_RPC_TIER_RATE_LIMITS.free
+  );
+}
 
 function parseFullnodeOrigins(env) {
   const raw = env?.FULLNODE_RPC_ORIGINS || "";
@@ -138,11 +163,13 @@ export async function handleFullnodeRpcProxyRequest(request, env, url) {
     );
   }
 
-  if (env.FULLNODE_RPC_RATE_LIMITER?.limit) {
+  const rateLimitPolicy = rateLimitPolicyForTier(auth.tier);
+  const rateLimiter = env[rateLimitPolicy.envVar];
+  if (rateLimiter?.limit) {
     // No fallback here: auth.ok already guarantees parseApiKey(rawKey)
     // parses (validateApiKey's own contract), so this can't be null.
     const { prefix: keyPrefix } = parseApiKey(rawKey);
-    const { success } = await env.FULLNODE_RPC_RATE_LIMITER.limit({
+    const { success } = await rateLimiter.limit({
       key: `fullnode-rpc:${keyPrefix}`,
     });
     if (!success) {
@@ -152,9 +179,9 @@ export async function handleFullnodeRpcProxyRequest(request, env, url) {
         429,
         {},
         {
-          "retry-after": String(FULLNODE_RPC_RATE_LIMIT.windowSeconds),
-          "x-ratelimit-limit": String(FULLNODE_RPC_RATE_LIMIT.limit),
-          "x-ratelimit-policy": `${FULLNODE_RPC_RATE_LIMIT.limit};w=${FULLNODE_RPC_RATE_LIMIT.windowSeconds}`,
+          "retry-after": String(rateLimitPolicy.windowSeconds),
+          "x-ratelimit-limit": String(rateLimitPolicy.limit),
+          "x-ratelimit-policy": `${rateLimitPolicy.limit};w=${rateLimitPolicy.windowSeconds}`,
         },
       );
     }

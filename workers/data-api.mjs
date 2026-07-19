@@ -3890,6 +3890,39 @@ async function requireAccountSession(request, env) {
   return { session };
 }
 
+// Named invite-code cohorts (evolved 2026-07-19 from ADR 0021 section 4's
+// single shared secret): each entry is its OWN independently rotatable/
+// revocable secret, mapped to the tier stamped on any key minted with it.
+// Onboarding a distinct partner cohort (their own users, self-serve via
+// their own code) never risks the original private-team code, and a
+// partner-cohort key stays permanently attributable -- exempt from
+// whatever the general 'free' tier's limits become later -- rather than
+// indistinguishable from it. Add an entry here (+ its own wrangler secret +
+// a matching FULLNODE_RPC_RATE_LIMITER_<NAME> binding, see
+// fullnode-rpc-proxy.mjs) for the next named cohort; this is deliberately a
+// short, explicit list, not a general multi-tenant invite-code registry --
+// two cohorts today (the private team, and an owner-designated partner
+// cohort, the Gittensor (SN74) team's own users).
+const FULLNODE_INVITE_CODE_TIERS = [
+  { envVar: "FULLNODE_INVITE_CODE", tier: "free" },
+  { envVar: "FULLNODE_INVITE_CODE_GITTENSOR", tier: "gittensor-partner" },
+];
+
+// Returns the tier for the first configured code the caller's header
+// matches (checking every configured entry, not short-circuiting on the
+// first configured-but-non-matching one), or null if none configured/
+// matched.
+function resolveInviteCodeTier(providedInvite, env) {
+  if (!providedInvite) return null;
+  for (const { envVar, tier } of FULLNODE_INVITE_CODE_TIERS) {
+    const configured = env[envVar];
+    if (configured && timingSafeEqual(providedInvite, configured)) {
+      return tier;
+    }
+  }
+  return null;
+}
+
 async function handleAccountKeyCreate(request, env) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
@@ -3897,15 +3930,18 @@ async function handleAccountKeyCreate(request, env) {
   );
   if (sessionError) return sessionError;
 
-  const configuredInvite = env.FULLNODE_INVITE_CODE;
-  if (!configuredInvite) {
+  const anyConfigured = FULLNODE_INVITE_CODE_TIERS.some(
+    ({ envVar }) => env[envVar],
+  );
+  if (!anyConfigured) {
     return writeJson(
       { error: "fullnode key issuance is not provisioned on this deployment" },
       503,
     );
   }
   const providedInvite = request.headers.get(FULLNODE_INVITE_CODE_HEADER) || "";
-  if (!providedInvite || !timingSafeEqual(providedInvite, configuredInvite)) {
+  const tier = resolveInviteCodeTier(providedInvite, env);
+  if (!tier) {
     return writeJson(
       { error: `provide a valid ${FULLNODE_INVITE_CODE_HEADER} header` },
       401,
@@ -3931,11 +3967,13 @@ async function handleAccountKeyCreate(request, env) {
   }
 
   return withAccountsSql(env, async (sql) => {
+    // The session's signature already proved this account row exists at
+    // verify time; a missing row here means it was removed since -- decline
+    // rather than mint an orphaned key. Tier comes from the invite code
+    // presented above, NOT the account row -- the same wallet can mint keys
+    // under different cohorts if it legitimately holds more than one code.
     const [account] =
-      await sql`SELECT tier FROM rpc_accounts WHERE id = ${session.accountId}`;
-    // The session's signature already proved this row exists at verify time;
-    // a missing row here means the account was removed since -- decline
-    // rather than mint an orphaned key.
+      await sql`SELECT id FROM rpc_accounts WHERE id = ${session.accountId}`;
     if (!account) return writeJson({ error: "no such account" }, 404);
     const { prefix, secret, full } = generateApiKey();
     const secretHash = await hashApiKeySecret(secret);
@@ -3944,14 +3982,14 @@ async function handleAccountKeyCreate(request, env) {
       INSERT INTO api_keys
         (prefix, secret_hash, owner_contact, tier, account_id, created_at)
       VALUES (
-        ${prefix}, ${secretHash}, ${session.ss58}, ${account.tier},
+        ${prefix}, ${secretHash}, ${session.ss58}, ${tier},
         ${session.accountId}, ${now}
       )`;
     return writeJson(
       // Returned ONCE at creation, like ADR 0020's own mint route design and
       // chain_alert_triggers' owner_token -- never echoed back on any later
       // GET (handleAccountKeysList below selects prefix, never secret_hash).
-      { key: full, prefix, tier: account.tier, created_at: now },
+      { key: full, prefix, tier, created_at: now },
       201,
     );
   });

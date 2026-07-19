@@ -653,5 +653,21 @@
         "period": 60,
       },
     },
+    // The 'gittensor-partner' tier's own, materially higher limit (20x the
+    // free tier) -- an owner-designated partner cohort (the Gittensor SN74
+    // team's own users) with real internal infra needs, not casual dev
+    // exploration. Keys get this tier by presenting
+    // FULLNODE_INVITE_CODE_GITTENSOR at mint time (see workers/data-api.mjs's
+    // FULLNODE_INVITE_CODE_TIERS). Skipped when the binding is absent (local
+    // dev/CI) -- falls back to the free-tier policy in that case, same as an
+    // unrecognized tier.
+    {
+      "name": "FULLNODE_RPC_RATE_LIMITER_GITTENSOR",
+      "namespace_id": "1011",
+      "simple": {
+        "limit": 6000,
+        "period": 60,
+      },
+    },
   ],
 }

@@ -31,13 +31,22 @@
   //
   // Wallet-signature login + account-gated fullnode API keys (ADR 0021,
   // #6835, src/wallet-auth.mjs + workers/data-api.mjs's handleWallet*/
-  // handleAccountKeys* functions) need THREE more secrets:
+  // handleAccountKeys* functions) need secrets:
   //   wrangler secret put WALLET_SESSION_SECRET -c wrangler.data.jsonc
   //   wrangler secret put FULLNODE_INVITE_CODE -c wrangler.data.jsonc
+  //   wrangler secret put FULLNODE_INVITE_CODE_GITTENSOR -c wrangler.data.jsonc
   //   wrangler secret put API_KEY_LOOKUP_INTERNAL_TOKEN -c wrangler.data.jsonc
   // (WALLET_SESSION_SECRET signs the key-management session token;
   // FULLNODE_INVITE_CODE is the private-launch mint gate, a shared secret
   // handed to teammates out-of-band -- ADR 0021 section 4;
+  // FULLNODE_INVITE_CODE_GITTENSOR is a SEPARATE, independently rotatable
+  // code for the Gittensor (SN74) team's own users -- presenting it at mint
+  // time stamps 'gittensor-partner' tier instead of 'free' (see
+  // workers/data-api.mjs's FULLNODE_INVITE_CODE_TIERS and
+  // workers/request-handlers/fullnode-rpc-proxy.mjs's
+  // FULLNODE_RPC_TIER_RATE_LIMITS, wrangler.jsonc's own
+  // FULLNODE_RPC_RATE_LIMITER_GITTENSOR binding) -- neither code affects the
+  // other's holders if rotated/revoked;
   // API_KEY_LOOKUP_INTERNAL_TOKEN gates the internal key-prefix lookup route
   // the fullnode RPC gate's validator calls -- the SAME value must also be
   // set on the main Worker, wrangler.jsonc, see that file's own comment.)

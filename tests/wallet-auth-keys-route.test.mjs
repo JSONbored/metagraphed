@@ -552,6 +552,64 @@ test("keys create: 201 mints a key scoped to the session's account", async () =>
   assert.ok(insertCall.values.includes(11)); // account_id
 });
 
+test("keys create: mints a 'gittensor-partner'-tier key when the Gittensor invite code is presented", async () => {
+  const env = baseEnv({ FULLNODE_INVITE_CODE_GITTENSOR: "gittensor-code" });
+  const token = await sessionToken(12, "5GittensorUser");
+  mockQueue.current.push([{ id: 12 }]);
+  const res = await fetch(
+    req("/api/v1/keys", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "x-fullnode-invite-code": "gittensor-code",
+      },
+    }),
+    env,
+  );
+  assert.equal(res.status, 201);
+  const body = await res.json();
+  assert.equal(body.tier, "gittensor-partner");
+  const insertCall = sqlCalls.find((c) => /INSERT INTO api_keys/.test(c.text));
+  assert.ok(insertCall.values.includes("gittensor-partner"));
+});
+
+test("keys create: the private-team code and the Gittensor code are independent -- each still works when only one is configured", async () => {
+  const gittensorOnlyEnv = baseEnv({
+    FULLNODE_INVITE_CODE: undefined,
+    FULLNODE_INVITE_CODE_GITTENSOR: "gittensor-code",
+  });
+  const token = await sessionToken(13, "5Solo");
+  mockQueue.current.push([{ id: 13 }]);
+  const res = await fetch(
+    req("/api/v1/keys", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "x-fullnode-invite-code": "gittensor-code",
+      },
+    }),
+    gittensorOnlyEnv,
+  );
+  assert.equal(res.status, 201);
+  assert.equal((await res.json()).tier, "gittensor-partner");
+});
+
+test("keys create: 401 when the presented code matches neither configured cohort", async () => {
+  const env = baseEnv({ FULLNODE_INVITE_CODE_GITTENSOR: "gittensor-code" });
+  const token = await sessionToken();
+  const res = await fetch(
+    req("/api/v1/keys", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "x-fullnode-invite-code": "some-other-code",
+      },
+    }),
+    env,
+  );
+  assert.equal(res.status, 401);
+});
+
 test("keys revoke: 400 on a malformed prefix", async () => {
   const env = baseEnv();
   const token = await sessionToken();

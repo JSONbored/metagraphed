@@ -64,6 +64,66 @@ Only safe read methods pass. Mutating and heavy prefixes are denied. State-query
 
 `author_`\* · `state_call`\* · `sudo_`\* · `payment_`\* · `contracts_`\*
 
+## Gated fullnode access
+
+An account-gated tier for real fullnode RPC access — not just the read-only proxy above. Requires a wallet-signed login and an invite code (private-launch only, not self-serve yet). Grants the same safe read methods as the public proxy, plus `author_submitExtrinsic` (real transaction broadcast), at a materially higher rate limit than the keyless tier.
+
+**1. Request a challenge**
+
+```bash tab="cURL"
+curl -s https://api.metagraph.sh/api/v1/auth/wallet/challenge \
+  -X POST -H 'content-type: application/json' \
+  -d '{"ss58":"YOUR_SS58_ADDRESS"}'
+```
+
+Returns a `message` to sign and how long it stays valid.
+
+**2. Sign the message with your wallet**
+
+Sign the returned `message` as raw bytes with your own wallet signer (e.g. `@polkadot/extension-dapp`'s `signRaw({ address, data: message, type: "bytes" })`). The signing key material never reaches this API — only the resulting signature does.
+
+**3. Verify and get a session**
+
+```bash tab="cURL"
+curl -s https://api.metagraph.sh/api/v1/auth/wallet/verify \
+  -X POST -H 'content-type: application/json' \
+  -d '{"ss58":"YOUR_SS58_ADDRESS","signature":"YOUR_HEX_SIGNATURE"}'
+```
+
+Returns a `session_token` — scoped only to key management (create/list/revoke your own keys), not itself the RPC credential.
+
+**4. Mint your key**
+
+```bash tab="cURL"
+curl -s https://api.metagraph.sh/api/v1/keys \
+  -X POST \
+  -H "authorization: Bearer YOUR_SESSION_TOKEN" \
+  -H "x-fullnode-invite-code: YOUR_INVITE_CODE"
+```
+
+Returns the full `mg_...` key exactly once — store it yourself; it's never shown again. Revoke anytime with `DELETE /api/v1/keys/{prefix}`, presenting the same session.
+
+**5. Call the gated proxy**
+
+```bash tab="cURL"
+curl -s 'https://api.metagraph.sh/rpc/v1/fullnode?authorization=YOUR_KEY' \
+  -X POST -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"chain_getHeader","params":[]}'
+```
+
+The key travels as an `?authorization=` query parameter, not a header — matching the convention several hosted-RPC providers already use, so existing WSS-shaped client code needs minimal changes to point here.
+
+<Callout title="Invite-only for now">
+  This tier isn't self-serve yet — invite codes are handed out directly, not published. If you were
+  given one, use it in step 4 above.
+</Callout>
+
+| What         | Value                                        | Notes                                                                              |
+| ------------ | -------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Endpoint     | `POST /rpc/v1/fullnode`                      | Isolated from the public `/rpc/v1/{network}` pool — no shared failover state.      |
+| Method scope | Safe read methods + `author_submitExtrinsic` | Every other `author_`/`sudo_`/`payment_`/`contracts_`/`state_call` call is denied. |
+| Key delivery | `?authorization=` query parameter            | Not an `Authorization` header.                                                     |
+
 ## Limits
 
 Hard caps on every proxied POST. Matching constants live in `workers/config.mjs` and `workers/request-handlers/rpc-proxy.mjs`.

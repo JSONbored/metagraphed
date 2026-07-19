@@ -144,6 +144,23 @@ anti-abuse gate (contact + rate limit on an otherwise-open mint) — this one
 is binary access control, not abuse throttling, and applies in addition to
 wallet verification, not instead of it.
 
+### 4a. Evolution: named invite-code cohorts, not one shared secret (2026-07-19)
+
+The single shared invite code above generalized, in practice, to a short
+list of independently-provisioned codes (`workers/data-api.mjs`'s
+`FULLNODE_INVITE_CODE_TIERS`), each mapping to a distinct `tier` stamped on
+any key minted with it — e.g. a separate code for an owner-designated
+partner cohort onboarding its own users, distinct from the original
+private-team code. This preserves both properties section 4 required (a
+single rotation kills exactly one cohort's access, never the other's; each
+is still the "delete the check, keep everything else" relax-later
+mechanism) while adding per-cohort attribution and a per-cohort rate-limit
+policy (`workers/request-handlers/fullnode-rpc-proxy.mjs`'s
+`FULLNODE_RPC_TIER_RATE_LIMITS`) instead of one flat figure for every
+minted key. Deliberately a short, explicit list — not a general
+multi-tenant invite-code registry — until a third cohort actually
+materializes.
+
 ### 5. Tiering: one free tier at launch, matching taostats' own current reality
 
 Even taostats' own RBAC/billing is "coming soon" per their docs — there is no
