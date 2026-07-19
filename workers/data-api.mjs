@@ -4672,7 +4672,7 @@ export default {
         // one capped ORDER BY/LIMIT scan on hotkey = $1 (lets the planner use
         // a plain index on hotkey/coldkey + (block_number, event_index)), a
         // second on coldkey = $1 that excludes rows the hotkey branch already
-        // matched (so a self hotkey==coldkey account isn't double-counted),
+        // matched (so a self-referential hotkey/coldkey account isn't double-counted),
         // then merged + re-sorted + re-capped client-side to CAP+1 -- the
         // aggregate/kind/recent-events fields below all derive from that
         // merged CAP+1-row window, computed once client-side, rather than
