@@ -215,7 +215,14 @@ export function AppShell({
               <div className="flex items-center gap-1">
                 <ApiDrawerTrigger />
 
-                <NetworkSwitcher />
+                {/* #6902: NetworkSwitcher was the one header action still rendering
+                    at every breakpoint (its siblings are all hidden below md),
+                    overflowing the mobile viewport by ~10px. Give it the same
+                    treatment and relocate it into the mobile nav sheet below so it
+                    stays reachable -- matching SettingsPopover/WalletConnectButton. */}
+                <div className="hidden md:inline-flex">
+                  <NetworkSwitcher />
+                </div>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Link
@@ -334,11 +341,23 @@ export function AppShell({
                     unreachable below `md` entirely. */}
                 <WalletConnectButton />
               </div>
-              <div className="mt-auto border-t border-border pt-3">
-                <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted mb-1.5">
-                  API base
+              <div className="mt-auto border-t border-border pt-3 space-y-3">
+                {/* #6902: mobile home for the NetworkSwitcher, which is `hidden`
+                    below md in the header row (same relocation as the settings/
+                    wallet actions above). Grouped with the API base as the
+                    environment controls. */}
+                <div>
+                  <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted mb-1.5">
+                    Network
+                  </div>
+                  <NetworkSwitcher />
                 </div>
-                <ApiBaseRow />
+                <div>
+                  <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted mb-1.5">
+                    API base
+                  </div>
+                  <ApiBaseRow />
+                </div>
               </div>
             </SheetContent>
           </Sheet>
