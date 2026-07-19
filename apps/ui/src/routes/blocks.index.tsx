@@ -187,12 +187,14 @@ function BlockProductionHeader() {
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
       <StatTile
         icon={Timer}
+        truncate={false}
         eyebrow="Inter-block time"
         value={blockTime ? humaniseSeconds(blockTime.mean_ms / 1000) : "—"}
         hint={blockTime ? `p90 ${humaniseSeconds(blockTime.p90_ms / 1000)}` : undefined}
       />
       <StatTile
         icon={Activity}
+        truncate={false}
         eyebrow="Throughput"
         // #3940: bare number like the sibling tiles -- unit + secondary metric live in the hint.
         value={throughput ? formatNumber(throughput.mean_extrinsics_per_block) : "—"}
@@ -204,6 +206,7 @@ function BlockProductionHeader() {
       />
       <StatTile
         icon={Users}
+        truncate={false}
         eyebrow="Author decentralization"
         value={nakamoto != null ? formatNumber(nakamoto) : "—"}
         hint="Nakamoto coefficient"
