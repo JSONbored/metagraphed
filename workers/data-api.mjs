@@ -6396,7 +6396,7 @@ export default {
           const rows = await sql`
           SELECT COUNT(*) AS movements,
             (SELECT COUNT(*) FROM (
-              SELECT coldkey, observed_at FROM account_events
+              SELECT coldkey, COUNT(*) FROM account_events
               WHERE netuid = ${netuid} AND event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff}
               GROUP BY 1
             ) movers) AS distinct_movers,
@@ -6430,7 +6430,7 @@ export default {
           const rows = await sql`
           SELECT COUNT(*) AS transfers,
             (SELECT COUNT(*) FROM (
-              SELECT coldkey, observed_at FROM account_events
+              SELECT coldkey, COUNT(*) FROM account_events
               WHERE netuid = ${netuid} AND event_kind = ${STAKE_TRANSFERRED_EVENT_KIND} AND observed_at >= ${cutoff}
               GROUP BY 1
             ) senders) AS distinct_senders,

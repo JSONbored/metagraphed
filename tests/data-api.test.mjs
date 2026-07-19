@@ -3830,12 +3830,34 @@ test("GET /api/v1/subnets/:netuid/stake-transfers returns the single-row aggrega
   expect(body.transfers).toBe(6);
 });
 
-test("GET /api/v1/subnets/:netuid/stake-transfers with no aggregate row returns the zeroed card, not a throw", async () => {
-  mockRows.current = [];
-  const res = await req("/api/v1/subnets/4/stake-transfers");
-  expect(res.status).toBe(200);
-  const body = await res.json();
-  expect(body.transfers).toBe(0);
+// Regression for #6877: the distinct-senders/movers correlated subquery must
+// group every non-aggregate column it selects. It previously did
+// `SELECT coldkey, observed_at ... GROUP BY 1`, selecting an ungrouped
+// `observed_at`, which Postgres rejects ("column ... must appear in the GROUP
+// BY clause") — a live 500 on both routes. `observed_at` was never read from
+// the subquery (the outer query computes its own MAX(observed_at)), so the fix
+// pairs `coldkey` with an aggregate instead. A mocked `sql` returns canned rows
+// and so cannot reproduce the Postgres grouping error from a bare 200 assertion,
+// so assert the query SHAPE: coldkey sits beside an aggregate (valid under
+// GROUP BY 1), never beside a second ungrouped column.
+test("subnet stake-transfers/-moves group every column in the distinct-count subquery (#6877)", async () => {
+  for (const route of ["stake-transfers", "stake-moves"]) {
+    sqlCalls.length = 0;
+    mockRows.current = [
+      {
+        transfers: "5",
+        movements: "5",
+        distinct_senders: "2",
+        distinct_movers: "2",
+        newest_observed: "1783600000000",
+      },
+    ];
+    const res = await req(`/api/v1/subnets/4/${route}`);
+    expect(res.status).toBe(200);
+    const text = queryText();
+    expect(text).toMatch(/SELECT coldkey, COUNT\(\*\) FROM account_events/);
+    expect(text).not.toMatch(/SELECT coldkey, observed_at FROM account_events/);
+  }
 });
 
 const ACCOUNT_FOOTPRINT_ROUTES = [
