@@ -385,6 +385,14 @@ in `apps/ui/src`):
 Capture exactly that viewport, nothing more. If the changed content is below the fold, scroll to it
 first — don't reach for a full-page capture to get there.
 
+**Also never `locator.screenshot()` / `elementHandle.screenshot()`** (e.g.
+`page.locator(".hero").screenshot(...)`) as a shortcut to "just the changed part" — confirmed on
+#6928/#6933, both shipped with a locator-scoped capture instead of the fixed viewport. It crops to
+that element's own rendered box, not the fixed viewport frame this contract requires, so a
+reviewer can't see the change in its real page context (surrounding layout, whether anything else
+shifted). The only call to make is `page.screenshot({ path })` — no `fullPage`, no locator, after
+resizing the viewport and scrolling to the changed content if needed.
+
 **3. Force each theme explicitly — never rely on system/`prefers-color-scheme`** (it varies by capture
 environment, so it isn't reproducible run to run). In the page, before capturing:
 
