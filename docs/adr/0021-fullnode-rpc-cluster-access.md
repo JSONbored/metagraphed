@@ -1,6 +1,8 @@
 # ADR 0021 — Account-gated fullnode RPC cluster access
 
-- **Status:** Proposed
+- **Status:** Accepted (owner decisions locked 2026-07-19: wallet-only auth,
+  shared invite-code gate for the private launch, real pool/failover
+  architecture from day one)
 - **Date:** 2026-07-19
 - **Relates to:** #6835 (this design), ADR 0020 (self-serve API key issuance
   - storage, #6733), #2111 (archive node), #6646 (tiered/paid public API
@@ -63,12 +65,12 @@ here is **what has to happen before a key can be minted**: instead of ADR
 0020's "email contact + rate limit" anti-abuse gate on an otherwise-anonymous
 mint, this tier requires a **verified account** first.
 
-### 2. Auth: wallet-signature login as the primary path, ship it before email
+### 2. Auth: wallet-signature login ONLY — no email/OAuth path (owner decision)
 
 Given the target audience (agent-reached integration devs already holding a
-Bittensor wallet — ADR 0003) and that a wallet challenge-sign is the more
-native fit than adding a third-party OAuth provider dependency, **wallet
-login ships first**:
+Bittensor wallet — ADR 0003) and that a wallet challenge-sign avoids adding
+a third-party OAuth provider dependency entirely, **wallet login is the only
+auth path, decided, not just "ships first"**:
 
 - **Challenge issuance**: `POST /api/v1/auth/wallet/challenge { ss58 }` →
   a short-lived, single-use nonce (e.g. `mg-login:<ss58>:<random>`, stored in
@@ -102,10 +104,9 @@ verify.js`) — a **pure-JS, audited implementation** ("Audited & minimal
   add `@scure/sr25519` as an explicit direct dependency (currently only a
   transitive one via `apps/ui`'s `@polkadot/util-crypto`) rather than rely on
   workspace-hoisting luck.
-- **Email/anonymous sign-in** (taostats' simpler fallback path) is
-  explicitly **deferred**, not rejected — v1 ships wallet-only to keep the
-  identity model to one path while it's new; revisit once wallet login is
-  live and real usage data exists.
+- **Email/anonymous sign-in** (taostats' simpler fallback path) is **not
+  built** (owner decision, 2026-07-19) — wallet-signature login is the sole
+  identity path for this surface, not a v1-only starting point.
 
 ### 3. Session + account storage: Postgres row (same tier as ADR 0020's `api_keys`)
 
@@ -121,7 +122,24 @@ revoking THIS account's own keys) — the actual RPC credential is still the
 `mg_...` API key, not the session, matching taostats' own "session gets you
 to the dashboard, the API key is the actual bearer credential" split.
 
-### 4. Tiering: one free tier at launch, matching taostats' own current reality
+### 4. Private-launch access gate: a shared invite code (owner decision)
+
+Wallet-verified login alone would let anyone with a wallet complete sign-up
+— too open for the private-team phase. Gate the mint step (not login
+itself) behind a single shared invite code, checked the same way
+`ALERT_TRIGGER_CREATE_TOKEN` already gates `chain_alert_triggers` creation
+(`workers/data-api.mjs`'s `handleAlertTriggerCreate`, `timingSafeEqual`
+against an `env`-provisioned secret) — a `wrangler secret put` value the
+owner hands to teammates out-of-band (Slack/email), never committed. Two
+properties this needs to preserve: (1) rotating/killing access for everyone
+at once is a single secret rotation, not a per-person revocation sweep; (2)
+this is the exact mechanism to later relax for a public launch — delete the
+gate check, keep everything else unchanged. Distinct from ADR 0020's own
+anti-abuse gate (contact + rate limit on an otherwise-open mint) — this one
+is binary access control, not abuse throttling, and applies in addition to
+wallet verification, not instead of it.
+
+### 5. Tiering: one free tier at launch, matching taostats' own current reality
 
 Even taostats' own RBAC/billing is "coming soon" per their docs — there is no
 working reference implementation to copy for paid tiers yet, so this ADR
@@ -132,7 +150,7 @@ actual product) the existing anonymous `/rpc/v1` pool's limits applies per
 key, enforced the same Cloudflare Workers Rate Limiting binding pattern ADR
 0020 already establishes.
 
-### 5. New route, new infra, explicitly isolated from the public pool
+### 6. New route, new infra, explicitly isolated from the public pool
 
 - **`/rpc/v1/fullnode/*`** (exact path TBD in implementation, naming should
   make "this is the gated one" obvious) proxies **only** to the fullnode
@@ -141,6 +159,16 @@ key, enforced the same Cloudflare Workers Rate Limiting binding pattern ADR
   gated guaranteed path in the same failover logic is a real isolation risk:
   a public-pool degradation must never affect a paying caller's request, and
   a gated-tier incident must never silently fail open to public traffic.
+- **Real pool/failover architecture from day one (owner decision)**: rather
+  than a single-origin proxy refactored into a pool once a second fullnode
+  exists, the gated route reuses the SAME scoring/failover machinery
+  `workers/request-handlers/rpc-proxy.mjs` already runs in production for
+  the public pool (origin health scoring, best→worst failover walk — see
+  that file's own header) against a **separate, dedicated origin list**
+  (starting with exactly one entry). This is genuinely lower-risk than it
+  sounds: it's proven code, not new/untested logic, just pointed at a
+  different, isolated origin set — growing the fullnode cluster later is
+  purely a config change (append to the list), not a code change.
 - **Network exposure**: the fullnode(s) need a Cloudflare Tunnel hostname the
   Worker can reach, the same mechanism already used for the archive box's
   Postgres connection via Hyperdrive (`wrangler.data.jsonc`'s own comment:
@@ -166,18 +194,16 @@ key, enforced the same Cloudflare Workers Rate Limiting binding pattern ADR
   systems (ADR 0020's anonymous public-API keys and this ADR's account-
   linked fullnode keys) — any change to that module needs both call sites
   considered.
+- The gated route's failover machinery is shared code with the public
+  `/rpc/v1` proxy (section 6) — a bug fix there benefits both; a bug
+  introduced there risks both, so changes to
+  `workers/request-handlers/rpc-proxy.mjs`'s scoring/failover logic need
+  testing against both origin sets, not just the public one.
 
 ## Open questions
 
-- **Fullnode cluster load-balancing**: with only one instance today, the
-  "cluster" framing is aspirational — does the new route need real multi-
-  instance failover logic now, or a single-origin proxy that's refactored
-  into a pool once a second instance actually exists? Leaning toward the
-  latter (build for the class the moment it's real, not speculatively).
 - **Paid tiers**: explicitly deferred to #6646 (needs the owner's pricing/
   billing-provider call) — this ADR only reserves the `tier` column.
-- **Email/anonymous login**: deferred, not designed — revisit once wallet
-  login has real usage.
 - **Session mechanism**: signed cookie vs. bearer token for the key-
   management dashboard/routes isn't decided — whichever is simpler to
   implement correctly without a framework this codebase doesn't have wins;
