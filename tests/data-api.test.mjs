@@ -1121,7 +1121,8 @@ test("GET /api/v1/extrinsics/:ref skips the embedded-events query on an unresolv
 test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from one bounded event window", async () => {
   mockQueue.current = [
     [], // SET
-    [ACCOUNT_EVENT_ROW, { ...ACCOUNT_EVENT_ROW, netuid: 5 }], // scanRows
+    [ACCOUNT_EVENT_ROW, { ...ACCOUNT_EVENT_ROW, netuid: 5, event_index: 1 }], // hotkeyRows
+    [], // coldkeyRows
     [{ netuid: 4, uid: 1, stake_tao: "10", validator_permit: 1, active: 1 }], // regRows
     [
       {
@@ -1144,14 +1145,20 @@ test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from one bounde
   expect(body.recent_events.length).toBe(2);
   expect(body.activity.tx_count).toBe(3);
   expect(body.activity.modules_called[0].call_module).toBe("SubtensorModule");
-  expect(queryText()).toContain("WHERE (hotkey =");
-  expect(queryText()).toContain("OR coldkey =");
+  // Two per-column index-seekable scans (#6878), not one combined OR'd plan.
+  expect(queryText()).toContain("WHERE hotkey =");
+  expect(queryText()).toContain("WHERE coldkey =");
+  expect(queryText()).not.toContain("OR coldkey");
 });
 
 test("GET /api/v1/accounts/:ss58 ignores null netuid events in subnet_count", async () => {
   mockQueue.current = [
     [], // SET
-    [ACCOUNT_EVENT_ROW, { ...ACCOUNT_EVENT_ROW, netuid: null }], // scanRows
+    [
+      { ...ACCOUNT_EVENT_ROW, event_index: 1 },
+      { ...ACCOUNT_EVENT_ROW, netuid: null, event_index: 0 },
+    ], // hotkeyRows
+    [], // coldkeyRows
     [], // regRows
     [], // activityRows
     [], // moduleRows
@@ -1162,6 +1169,52 @@ test("GET /api/v1/accounts/:ss58 ignores null netuid events in subnet_count", as
   expect(body.event_count).toBe(2);
   expect(body.subnet_count).toBe(1);
   expect(body.recent_events.map((event) => event.netuid)).toEqual([4, null]);
+});
+
+test("GET /api/v1/accounts/:ss58 merges hotkey + coldkey scans, deduping the shared row and re-capping newest-first", async () => {
+  // An address active under BOTH columns: the two branches overlap on the row
+  // where hotkey == coldkey == ss58, which must be counted once, and the merged
+  // window must stay ordered by (block_number, event_index) DESC across branches.
+  const both = {
+    ...ACCOUNT_EVENT_ROW,
+    block_number: "8586302",
+    event_index: 0,
+    coldkey: SS58,
+    netuid: 7,
+  };
+  mockQueue.current = [
+    [], // SET
+    [
+      both, // shared row (also in coldkey branch)
+      {
+        ...ACCOUNT_EVENT_ROW,
+        block_number: "8586301",
+        event_index: 3,
+        netuid: 4,
+      },
+    ], // hotkeyRows
+    [
+      both, // same physical row surfaced by the coldkey seek
+      {
+        ...ACCOUNT_EVENT_ROW,
+        block_number: "8586300",
+        event_index: 9,
+        coldkey: SS58,
+        netuid: 5,
+      },
+    ], // coldkeyRows
+    [], // regRows
+    [], // activityRows
+    [], // moduleRows
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.event_count).toBe(3); // shared row deduped, not double-counted
+  expect(body.subnet_count).toBe(3); // netuids 7, 4, 5
+  expect(body.recent_events.map((event) => event.block_number)).toEqual([
+    8586302, 8586301, 8586300,
+  ]);
 });
 
 test("GET /api/v1/accounts/:ss58 with no matching rows returns a schema-stable empty summary", async () => {

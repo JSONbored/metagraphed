@@ -278,6 +278,40 @@ export function formatAccountActivity(agg, modules) {
   };
 }
 
+// Merge the two per-column account_events scans the summary route runs (one
+// filtered on `hotkey`, one on `coldkey`) back into a single newest-first
+// window, re-capped to the same CAP+1 probe size a single OR'd scan would have
+// produced. The route was split into two branches (#6878) because Postgres
+// evaluates a flat `(hotkey = $1 OR coldkey = $1)` as one combined plan that
+// can't index-seek either column and scans far past the LIMIT for addresses
+// whose rows are sparse relative to the table's block_number order — timing out
+// (Sentry METAGRAPHED-5). Each branch alone is a plain `hotkey`/`coldkey` +
+// `(block_number, event_index)` index seek. A row where hotkey == coldkey ==
+// the queried ss58 shows up in both branches; it's the same physical row, so
+// dedup on (block_number, event_index) — the ORDER BY key, unique per row —
+// before re-sorting and re-capping. Because each branch is already the newest
+// CAP+1 rows of its own column, their union is a superset of the true global
+// newest CAP+1, so this reproduces the OR'd scan's result exactly, minus the
+// timeout risk.
+export function mergeAccountEventScans(hotkeyRows, coldkeyRows, cap) {
+  const byKey = new Map();
+  for (const row of [...(hotkeyRows || []), ...(coldkeyRows || [])]) {
+    if (!row) continue;
+    const key = `${row.block_number}:${row.event_index}`;
+    if (!byKey.has(key)) byKey.set(key, row);
+  }
+  return [...byKey.values()]
+    .sort((a, b) => {
+      const bnA = toBlockNumber(a.block_number) ?? 0;
+      const bnB = toBlockNumber(b.block_number) ?? 0;
+      if (bnA !== bnB) return bnB - bnA;
+      const eiA = toBlockNumber(a.event_index) ?? 0;
+      const eiB = toBlockNumber(b.event_index) ?? 0;
+      return eiB - eiA;
+    })
+    .slice(0, cap);
+}
+
 export function buildAccountSummary(
   ss58,
   { agg, kinds, scanned, registrations, recent, activity, modules } = {},

@@ -14,7 +14,56 @@ import {
   loadAccountHistory,
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   buildAccountTransfers,
+  mergeAccountEventScans,
 } from "../src/account-events.mjs";
+
+const scanRow = (block_number, event_index, extra = {}) => ({
+  block_number,
+  event_index,
+  event_kind: "StakeAdded",
+  ...extra,
+});
+
+test("mergeAccountEventScans merges two branches newest-first by (block, event_index)", () => {
+  const hotkey = [scanRow("10", 1), scanRow("8", 0)];
+  const coldkey = [scanRow("9", 2), scanRow("8", 5)];
+  const merged = mergeAccountEventScans(hotkey, coldkey, 10);
+  assert.deepEqual(
+    merged.map((r) => [r.block_number, r.event_index]),
+    [
+      ["10", 1],
+      ["9", 2],
+      ["8", 5],
+      ["8", 0],
+    ],
+  );
+});
+
+test("mergeAccountEventScans dedups the row shared by both branches on (block, event_index)", () => {
+  const shared = scanRow("12", 0, { netuid: 7 });
+  const merged = mergeAccountEventScans([shared], [shared], 10);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].netuid, 7);
+});
+
+test("mergeAccountEventScans re-caps the merged window to the requested size", () => {
+  const hotkey = [scanRow("5", 0), scanRow("4", 0), scanRow("3", 0)];
+  const coldkey = [scanRow("6", 0), scanRow("2", 0)];
+  const merged = mergeAccountEventScans(hotkey, coldkey, 3);
+  assert.deepEqual(
+    merged.map((r) => r.block_number),
+    ["6", "5", "4"],
+  );
+});
+
+test("mergeAccountEventScans is null-safe on absent branches and junk rows", () => {
+  assert.deepEqual(mergeAccountEventScans(null, undefined, 5), []);
+  const merged = mergeAccountEventScans([null, scanRow("1", 0)], [null], 5);
+  assert.deepEqual(
+    merged.map((r) => r.block_number),
+    ["1"],
+  );
+});
 
 test("INDEXED_EVENT_KINDS covers the core entity events", () => {
   for (const k of [

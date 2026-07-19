@@ -40,6 +40,7 @@ import {
   buildAccountSummary,
   buildAccountSubnets,
   buildAccountHistory,
+  mergeAccountEventScans,
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   SUBNET_EVENT_SUMMARY_WINDOWS,
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
@@ -4206,22 +4207,35 @@ export default {
         // summary -- event aggregates, per-kind counts, 10 newest events,
         // current registrations, and bounded signing activity from the
         // extrinsics tier, mirroring the former src/account-events.mjs
-        // account-summary D1 loader (removed in #4772). Postgres has no INDEXED BY equivalent and
-        // evaluates (hotkey = $1 OR coldkey = $1) as one plan, so the D1
-        // path's two-branch UNION-of-seeks (each capped, then re-merged and
-        // re-capped) collapses to a single bounded ORDER BY/LIMIT scan here --
-        // the aggregate/kind/recent-events fields below all derive from that
-        // one CAP+1-row window, computed once client-side, rather than
+        // account-summary D1 loader (removed in #4772). The event window comes
+        // from two per-column capped scans (one on `hotkey`, one on `coldkey`)
+        // merged + re-sorted + re-capped client-side (#6878), restoring the D1
+        // loader's two-branch shape: a flat `(hotkey = $1 OR coldkey = $1)`
+        // forces Postgres into one combined plan that can't index-seek either
+        // column and scans far past the LIMIT for sparse addresses, timing out
+        // (Sentry METAGRAPHED-5). Each branch alone is a plain index seek. The
+        // aggregate/kind/recent-events fields below all derive from that one
+        // merged CAP+1-row window, computed once client-side, rather than
         // separate SQL aggregates per field.
         const acctSummary = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)$/,
         );
         if (acctSummary) {
           const ss58 = decodeURIComponent(acctSummary[1]);
-          const scanRows = await sql`
+          const scanCap = ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1;
+          const hotkeyRows = await sql`
           SELECT block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index
-          FROM account_events WHERE (hotkey = ${ss58} OR coldkey = ${ss58})
-          ORDER BY block_number DESC, event_index DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
+          FROM account_events WHERE hotkey = ${ss58}
+          ORDER BY block_number DESC, event_index DESC LIMIT ${scanCap}`;
+          const coldkeyRows = await sql`
+          SELECT block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index
+          FROM account_events WHERE coldkey = ${ss58}
+          ORDER BY block_number DESC, event_index DESC LIMIT ${scanCap}`;
+          const scanRows = mergeAccountEventScans(
+            hotkeyRows,
+            coldkeyRows,
+            scanCap,
+          );
           const regRows = await sql`
           SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
           WHERE hotkey = ${ss58} ORDER BY stake_tao DESC, netuid ASC`;
