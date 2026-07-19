@@ -4,6 +4,7 @@ import { X, BarChart3, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useCompareSelection } from "@/lib/metagraphed/compare-selection";
 import { compareQuery } from "@/lib/metagraphed/queries";
+import { SubnetsOverlayChart } from "@/components/metagraphed/subnets-overlay-chart";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { CompareSubnet, HealthState } from "@/lib/metagraphed/types";
 import { HealthPill, CurationChip } from "@jsonbored/ui-kit";
@@ -80,8 +81,8 @@ export function SubnetsCompareDrawer() {
             </div>
           </div>
 
-          {/* Expanded side-by-side */}
-          {expanded && selected.length >= 2 ? <CompareGrid netuids={selected} /> : null}
+          {/* Expanded: side-by-side metrics grid + an overlay history chart */}
+          {expanded && selected.length >= 2 ? <CompareExpanded netuids={selected} /> : null}
         </div>
       </div>
     </div>
@@ -100,6 +101,46 @@ function compareHealthState(health: CompareSubnet["health"]): HealthState {
   if (ok >= total) return "ok";
   if (ok === 0) return "down";
   return "warn";
+}
+
+// #6885: two tabs in the expanded view — the side-by-side metrics grid, and an
+// overlay chart of the selected subnets' history on one shared set of axes.
+function CompareExpanded({ netuids }: { netuids: number[] }) {
+  const [tab, setTab] = useState<"grid" | "chart">("grid");
+  const TABS: Array<{ id: "grid" | "chart"; label: string }> = [
+    { id: "grid", label: "Grid" },
+    { id: "chart", label: "Chart" },
+  ];
+  return (
+    <div className="mt-3">
+      <div
+        role="tablist"
+        aria-label="Compare view"
+        className="mb-2 inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={classNames(
+              "rounded px-3 py-1 text-[11px] font-mono uppercase tracking-wider transition-colors",
+              tab === t.id ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === "grid" ? (
+        <CompareGrid netuids={netuids} />
+      ) : (
+        <SubnetsOverlayChart netuids={netuids} />
+      )}
+    </div>
+  );
 }
 
 function CompareGrid({ netuids }: { netuids: number[] }) {
