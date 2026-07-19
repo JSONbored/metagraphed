@@ -56,7 +56,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
             {rows.length} endpoint{rows.length === 1 ? "" : "s"}
           </h3>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {(["all", "ok", "warn", "down", "unknown"] as const).map((k) => {
             const active = filter === k;
             const n = k === "all" ? endpoints.length : (counts[k] ?? 0);
