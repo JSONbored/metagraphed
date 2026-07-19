@@ -1,28 +1,26 @@
 # Contributor pipeline gardening — reference (metagraphed)
 
-## Docs architecture migration — spike landed on loopover 2026-07-15, metagraphed port issue filed 2026-07-16
+## Scope boundary — registry enrichment is a separate automation (see SKILL.md)
 
-metagraphed's website docs (currently hand-built TanStack Router route files, one full React
-component per page — see the shipped `Docs page: X` precedents like #3512/#3513/#3515) are migrating
-to a shared MDX pipeline: **`fumadocs-core`/`fumadocs-mdx` (headless, not `fumadocs-ui`'s component
-shell) for content/structure/search, rendered through existing ui-kit primitives, plus Scalar
-(`@scalar/api-reference`) for the API playground.**
+Don't file, triage, or fix anything under `registry/subnets/*.json` from this pipeline — not just the
+Enrich-SNxx new-subnet-intake family, but registry data work of any kind (accuracy passes,
+probe-config gaps, curation fields, etc). See SKILL.md's "Scope boundary" section for the 2026-07-19
+incident that established this.
 
-**Status as of 2026-07-16:** the loopover spike (JSONbored/loopover#6037) landed 2026-07-15 and
-JSONbored/loopover#6271 (merged same day) already migrated every existing loopover-ui docs page onto
-the new pattern — proven, not just spiked. Loopover's own AMS-docs epic (#6012 + sub-issues
-#6022-#6032) was fully closed as a result. The metagraphed-side port is now tracked as **#6225**
-(`maintainer-only`, filed 2026-07-16) and #3504/3505/3506/3507/3508/3509/3510/3511/3514/3516 are all
-linked `addBlockedBy` #6225.
+## Docs architecture migration — RESOLVED 2026-07-16, fully shipped
 
-**Until #6225 lands:**
+metagraphed's website docs migrated off hand-built TanStack Router route files (one full React
+component per page — the old `docs.*.tsx` pattern) onto a shared MDX pipeline. **#6225** (the port
+issue, filed 2026-07-16 after loopover's own spike/rollout — JSONbored/loopover#6037 + #6271) closed
+the same day as **superseded**: the pipeline shipped via a native `fumadocs-mdx` + `fumadocs-ui` +
+`fumadocs-openapi` integration (not the originally-proposed Scalar `@scalar/api-reference`) — content
+now lives in `content/docs/*.mdx` behind a single `docs.$.tsx` catch-all route, and the API-reference
+half is generated straight from `openapi.json` via `fumadocs-openapi` (#6210) rather than an embedded
+Scalar component.
 
-- Don't file new issues asking a contributor to hand-build a `docs.*.tsx` route. If a genuine docs
-  gap is found during Pass 2, note it in the digest instead of filing it under the old pattern.
-- Don't "fix" the `maintainer-only` labeling on the "Docs page: X" family in a future stale-sweep
-  pass — check #6225's state first. Once it lands, those issues need their Requirements rewritten to
-  target a `content/docs/*.mdx` file instead of a hand-built route, then `maintainer-only` removed —
-  see JSONbored/loopover#6012's family for the precedent of that exact follow-up rewrite.
+**All 10 previously-paused "Docs page: X" issues (#3504-#3511, #3514, #3516) plus the earlier
+#3512/#3513/#3515 are written and closed (#6232).** This family is fully drained — don't look here
+for Pass 2 top-up material, and don't re-open or re-triage any of these issues; they're done.
 
 ## Product shape
 

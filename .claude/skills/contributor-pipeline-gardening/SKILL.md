@@ -15,6 +15,17 @@ description: >-
 
 # Contributor pipeline gardening — metagraphed
 
+## Scope boundary — no registry enrichment (reinforced 2026-07-19)
+
+**This pipeline covers code/feature/bug work only.** Registry surface/subnet data work of any
+kind — new-subnet intake (Enrich-SNxx), accuracy passes, probe-config fixes, or any other edit to
+`registry/subnets/<slug>.json` content — is **out of scope entirely**, not just the already-documented
+Enrich-SNxx exclusion below. A separate, dedicated automation owns registry enrichment end to end.
+This was reinforced by the maintainer 2026-07-19 after this pipeline generated 34 registry
+probe-config issues (decomposing #5932) that had to be reverted mid-run. If Pass 1's stale-sweep or
+Pass 2's top-up work surfaces a real registry data gap, name it in the digest for the dedicated
+registry automation to pick up — do not file issues or PRs against `registry/` from this pipeline.
+
 metagraphed is a Bittensor subnet registry / block-explorer product. Unlike gittensory/loopover,
 **a linked issue is optional here** — the gate judges a PR on its own merit when nothing is linked,
 it only auto-closes for a missing link if a linked issue was claimed and doesn't hold up (see
@@ -91,11 +102,12 @@ Hardening`) same as before.
    `gittensor:priority` as a **standalone** points label (54 of 59 `gittensor:priority` issues here
    carry no `gittensor:feature`/`gittensor:bug` pairing, as of 2026-07-14). Don't "fix" this to match
    gittensory's scarcer convention unless asked — it's this repo's own established norm.
-3. Real, concrete gaps worth scoping from first: the **"Docs page: <endpoint>" family** in
-   `Wave 4 — Docs & Dev Surface` (docs for existing shipped API surfaces — `/rpc/*`, `/api/v1/search`,
-   `/api/v1/webhooks/*`, etc.) are currently `maintainer-only` but look like exactly the kind of
-   low-risk, precedent-following, no-business-judgment work this framework says is safe to unlock —
-   worth a first-pass review to confirm and relabel rather than only generating net-new issues.
+3. **The "Docs page: <endpoint>" family is fully resolved as of 2026-07-19 — don't look here anymore.**
+   #6225 (the fumadocs-mdx port issue) closed as superseded 2026-07-16: the docs pipeline shipped via
+   a native `fumadocs-mdx` + `fumadocs-ui` + `fumadocs-openapi` integration (not Scalar as originally
+   proposed), and all 10 paused issues (#3504-#3511, #3514, #3516) plus #3512/#3513/#3515 are written
+   and closed. This bullet previously pointed here as a top-up source; it no longer applies — source
+   Pass 2 issues elsewhere.
 4. **Every new issue gets a real milestone — no issue ships unmilestoned.** A `gittensor:bug`/
    `gittensor:feature`/`gittensor:priority` label (this repo's own convention — priority isn't scarce
    here the way it is in gittensory, but still means "the maintainer actually wants this soon," don't
