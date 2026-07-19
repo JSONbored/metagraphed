@@ -116,9 +116,9 @@ function BlocksPage() {
           fallback={
             // Shaped to BlockProductionHeader's own 3-tile grid (#6388), matching
             // subnets.index.tsx's tile-skeleton convention -- a single flat box
-            // here visibly jumps in height/columns once the real 2/3-col grid
+            // here visibly jumps in height/columns once the real 1/3-col grid
             // of StatTiles resolves.
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
               <Skeleton className="h-20" />
               <Skeleton className="h-20" />
               <Skeleton className="h-20" />
@@ -184,7 +184,10 @@ function BlockProductionHeader() {
   const nakamoto = summary.author_concentration?.nakamoto_coefficient;
   const nakamotoStatTone = nakamotoTone(nakamoto);
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
+      {/* #6905: full-width tiles on mobile (grid-cols-1) so each label/hint fits
+          on one line instead of clipping mid-word in the old 2-col grid's cramped
+          ~165px cells; md+ keeps the 3-up row. */}
       <StatTile
         icon={Timer}
         eyebrow="Inter-block time"
