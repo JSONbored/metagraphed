@@ -132,6 +132,11 @@ import {
   DEFAULT_ACCOUNTS_LIST_SORT,
   ACCOUNTS_LIST_LIMIT_DEFAULT,
 } from "../src/accounts-list.mjs";
+import {
+  buildTopHoldersList,
+  DEFAULT_TOP_HOLDERS_SORT,
+  TOP_HOLDERS_LIMIT_DEFAULT,
+} from "../src/top-holders.mjs";
 import { decodeChainEventArgs } from "../src/chain-event-args.mjs";
 import {
   buildValidatorNominators,
@@ -4859,6 +4864,41 @@ export default {
             events = eventRows.map(formatAccountEvent).filter(Boolean);
           }
           return json(buildExtrinsic(resolved, ref, events));
+        }
+
+        // GET /api/v1/accounts/top-holders?sort=&limit= (#6741/#6743): the
+        // balance-based top-holder leaderboard, mirroring
+        // src/top-holders.mjs's buildTopHoldersList. FULL OUTER JOIN so an
+        // account with real free balance but no delegated position (or vice
+        // versa) still appears -- neither source alone is a complete account
+        // list. Checked here, before the generic /api/v1/accounts/:ss58
+        // pattern below, so "top-holders" is never matched as an address --
+        // same ordering rationale as workers/api.mjs's own dispatch.
+        if (url.pathname === "/api/v1/accounts/top-holders") {
+          const sortParam = url.searchParams.get("sort") || undefined;
+          const limitRaw = url.searchParams.get("limit");
+          const limit =
+            limitRaw == null || limitRaw === ""
+              ? TOP_HOLDERS_LIMIT_DEFAULT
+              : Number(limitRaw);
+          const rows = await sql`
+          SELECT
+            COALESCE(b.ss58, d.coldkey) AS ss58,
+            COALESCE(b.free_tao, 0) AS free_tao,
+            COALESCE(d.delegated_tao, 0) AS delegated_tao,
+            b.captured_at
+          FROM account_balances b
+          FULL OUTER JOIN (
+            SELECT np.coldkey, SUM(np.share_fraction * n.stake_tao) AS delegated_tao
+            FROM nominator_positions np
+            JOIN neurons n ON n.hotkey = np.hotkey AND n.netuid = np.netuid
+            GROUP BY np.coldkey) d ON d.coldkey = b.ss58`;
+          return json(
+            buildTopHoldersList(rows, {
+              sort: sortParam ?? DEFAULT_TOP_HOLDERS_SORT,
+              limit,
+            }),
+          );
         }
 
         // GET /api/v1/accounts/:ss58 (#4832 Tier 1c): cross-subnet account

@@ -138,6 +138,8 @@ import {
   canonicalGlobalValidatorsCachePath,
   handleAccountsList,
   canonicalAccountsListCachePath,
+  handleTopHoldersList,
+  canonicalTopHoldersCachePath,
   handleValidatorDetail,
   handleValidatorNominators,
   handleValidatorHistory,
@@ -1899,6 +1901,23 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       "accounts-list",
       () => handleAccountsList(request, env, url),
       accountsCache.cachePathAndSearch,
+    );
+  }
+
+  // Balance-based top-holder leaderboard (#6741/#6743): the coldkey/balance-
+  // centric counterpart to /api/v1/accounts above -- checked here (before the
+  // generic /api/v1/accounts/{ss58} pattern further below) so "top-holders"
+  // is never mistaken for an ss58 path parameter.
+  if (url.pathname === "/api/v1/accounts/top-holders") {
+    const topHoldersCache = canonicalTopHoldersCachePath(url, request);
+    if (topHoldersCache.response) return topHoldersCache.response;
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "top-holders",
+      () => handleTopHoldersList(request, env, url),
+      topHoldersCache.cachePathAndSearch,
     );
   }
 

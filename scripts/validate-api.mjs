@@ -589,6 +589,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/top-holders?sort=free_tao&limit=3",
+    (body) => {
+      assert.equal(body.data.sort, "free_tao");
+      assert.equal(body.data.limit, 3);
+      assert.equal(Array.isArray(body.data.accounts), true);
+      assert.equal(typeof body.data.account_count, "number");
+    },
+  ],
+  [
     "/api/v1/validators/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
     (body) => {
       assert.equal(

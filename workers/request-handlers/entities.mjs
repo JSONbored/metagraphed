@@ -59,6 +59,13 @@ import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
 } from "../../src/accounts-list.mjs";
+import {
+  buildTopHoldersList,
+  TOP_HOLDERS_SORTS,
+  DEFAULT_TOP_HOLDERS_SORT,
+  TOP_HOLDERS_LIMIT_DEFAULT,
+  TOP_HOLDERS_LIMIT_MAX,
+} from "../../src/top-holders.mjs";
 import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.mjs";
 import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.mjs";
 import {
@@ -352,6 +359,13 @@ const ACCOUNTS_LIST_CSV_COLUMNS = [
   "latest_captured_at",
   "latest_block_number",
   "subnets",
+];
+const TOP_HOLDERS_CSV_COLUMNS = [
+  "ss58",
+  "free_tao",
+  "delegated_tao",
+  "total_tao",
+  "last_updated",
 ];
 // Public per-nominator row shape from buildValidatorNominators (#5745); the
 // internal `last_observed_ms` sort key is dropped before the response, so it is
@@ -986,6 +1000,85 @@ export async function handleAccountsList(request, env, url) {
       meta: await metagraphMeta(
         env,
         "/metagraph/accounts.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/top-holders?sort=total_tao|free_tao|delegated_tao&
+// limit=20 (#6741/#6743): the balance-based top-holder leaderboard -- the
+// coldkey/balance-centric counterpart to /api/v1/accounts above (hotkey/
+// neuron-centric, explicitly missing the Free/Total columns this route
+// exists to add -- see that route's own header). Cold/absent Postgres tier
+// returns a schema-stable empty leaderboard, same posture as accounts-list.
+function parseTopHoldersQuery(url) {
+  const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
+  if (validationError) return { error: validationError };
+
+  const sort = url.searchParams.get("sort") || DEFAULT_TOP_HOLDERS_SORT;
+  if (!TOP_HOLDERS_SORTS.includes(sort)) {
+    return {
+      error: {
+        parameter: "sort",
+        message: `"${sort}" is not a supported sort. Supported: ${TOP_HOLDERS_SORTS.join(
+          ", ",
+        )}.`,
+      },
+    };
+  }
+
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: TOP_HOLDERS_LIMIT_DEFAULT,
+    min: 1,
+    max: TOP_HOLDERS_LIMIT_MAX,
+  });
+  if (limit.error) return { error: limit.error };
+
+  return { sort, limit: limit.value };
+}
+
+export function canonicalTopHoldersCachePath(url, request = null) {
+  const parsed = parseTopHoldersQuery(url);
+  if (parsed.error) {
+    return { response: analyticsQueryError(parsed.error) };
+  }
+  const search = `sort=${encodeURIComponent(parsed.sort)}&limit=${parsed.limit}`;
+  return {
+    cachePathAndSearch: csvCacheVariant(
+      url,
+      request,
+      `${url.pathname}?${search}`,
+    ),
+  };
+}
+
+export async function handleTopHoldersList(request, env, url) {
+  const parsed = parseTopHoldersQuery(url);
+  if (parsed.error) return analyticsQueryError(parsed.error);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_TOP_HOLDERS_SOURCE")) ??
+    buildTopHoldersList([], {
+      sort: parsed.sort,
+      limit: parsed.limit,
+    });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.accounts,
+      "top-holders",
+      "short",
+      request,
+      TOP_HOLDERS_CSV_COLUMNS,
+    );
+  }
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/top-holders.json",
         data.captured_at,
       ),
     },

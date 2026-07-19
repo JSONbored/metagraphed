@@ -227,6 +227,12 @@
     // handleNeuronsSync) actually works end-to-end. tryPostgresTier still
     // falls back to D1 on any failure, so this remains a single-flag revert.
     "METAGRAPH_NEURONS_SOURCE": "postgres",
+    // top-holders (#6741/#6743): no D1 predecessor ever existed for this route
+    // (account_balances/nominator_positions are Postgres-only tables) -- this
+    // flag exists purely to reuse tryPostgresTier's proven fail-closed-to-
+    // empty-leaderboard behavior on a DATA_API outage, not for an actual
+    // tier migration. Always "postgres" from this route's first deploy.
+    "METAGRAPH_TOP_HOLDERS_SOURCE": "postgres",
     // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-subnet-hyperparams.yml's real
     // workflow_dispatch run synced all 129 subnets (Postgres started

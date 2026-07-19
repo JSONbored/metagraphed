@@ -2205,6 +2205,32 @@ test("GET /api/v1/accounts respects an explicit sort/limit", async () => {
   expect(body.limit).toBe(5);
 });
 
+test("GET /api/v1/accounts/top-holders shapes the balance-based leaderboard from the FULL OUTER JOIN", async () => {
+  mockRows.current = [
+    {
+      ss58: "5Whale1",
+      free_tao: 1000.5,
+      delegated_tao: 250.25,
+      captured_at: 1750000000000,
+    },
+  ];
+  const res = await req("/api/v1/accounts/top-holders");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.accounts[0].ss58).toBe("5Whale1");
+  expect(body.accounts[0].total_tao).toBe(1250.75);
+  expect(queryText()).toContain("FULL OUTER JOIN");
+  expect(queryText()).toContain("FROM account_balances");
+});
+
+test("GET /api/v1/accounts/top-holders respects an explicit sort/limit", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/accounts/top-holders?sort=free_tao&limit=5");
+  const body = await res.json();
+  expect(body.sort).toBe("free_tao");
+  expect(body.limit).toBe(5);
+});
+
 // #4832 Tier 2b: the neuron_daily-history routes -- structural history,
 // concentration/performance/yield history, and chain/subnet turnover + movers
 // (the boundary-snapshot routes translate SQLite's date(MAX(snapshot_date),

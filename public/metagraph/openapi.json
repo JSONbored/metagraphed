@@ -22332,6 +22332,89 @@
           }
         ]
       },
+      "TopHoldersArtifact": {
+        "additionalProperties": true,
+        "description": "Balance-based top-holder leaderboard (#6741/#6743): every account with a nonzero free balance and/or delegated stake position, ranked by total_tao (free + delegated) by default, served live at /api/v1/accounts/top-holders (no static file). The coldkey/balance-centric counterpart to /api/v1/accounts (which is hotkey/neuron-centric and explicitly does not carry Free/Total columns -- see AccountsListArtifact's own description for why). Sourced from account_balances (a direct chain-state scan, not event-reconstructed) joined with nominator_positions x neurons for the delegated-stake side.",
+        "properties": {
+          "account_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/TopHoldersEntry"
+            },
+            "type": "array"
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sort": {
+            "enum": [
+              "total_tao",
+              "free_tao",
+              "delegated_tao"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "sort",
+          "limit",
+          "account_count",
+          "accounts"
+        ],
+        "type": "object"
+      },
+      "TopHoldersEntry": {
+        "additionalProperties": false,
+        "description": "One coldkey/account row in the balance-based top-holder leaderboard (#6741/#6743) -- the taostats-style Account/Free/Delegated/Total columns AccountsListEntry cannot derive (see that schema's own description). free_tao/last_updated come from account_balances (a direct System::Account chain-state scan, scripts/fetch-account-balances.py -- see that script's own docstring for why this is ground-truth rather than event-reconstructed). delegated_tao is this account's own total stake positions across every hotkey/subnet (nominator_positions.share_fraction x neurons.stake_tao, the SAME computation GET /api/v1/accounts/:ss58/positions already does per-account, here aggregated across all accounts). total_tao is free_tao + delegated_tao only (reserved balance is NOT included, matching the cited benchmark's own Total = Free + Delegated definition). An account can appear here from either source alone -- e.g. an account with real free balance that has never delegated shows delegated_tao: 0, and vice versa.",
+        "properties": {
+          "delegated_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "free_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "last_updated": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "total_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "ss58",
+          "free_tao",
+          "delegated_tao",
+          "total_tao",
+          "last_updated"
+        ],
+        "type": "object"
+      },
       "UptimeArtifact": {
         "additionalProperties": true,
         "properties": {
@@ -27451,6 +27534,180 @@
           }
         },
         "summary": "Fetch one account's (validator's) weight-setting footprint per subnet over a recent window (7d/30d): each subnet's WeightsSet count with the first and last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Keyed on the hotkey (the validator submitting weights); the account-level companion to GET /api/v1/chain/weights/setters and GET /api/v1/subnets/{netuid}/weights/setters.",
+        "tags": [
+          "accounts",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/accounts/top-holders": {
+      "get": {
+        "operationId": "topHolders",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "total_tao",
+                "free_tao",
+                "delegated_tao"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "account_count": 1,
+                    "accounts": [
+                      {
+                        "delegated_tao": 0.5,
+                        "free_tao": 0.5,
+                        "last_updated": "2026-06-01T00:00:00.000Z",
+                        "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                        "total_tao": 0.5
+                      }
+                    ],
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "limit": 1,
+                    "schema_version": 1,
+                    "sort": "total_tao"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/TopHoldersArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "text/csv": {
+                "example": "netuid,name\r\n7,Allways",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, or delegated_tao; limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet.",
         "tags": [
           "accounts",
           "analytics"

@@ -446,6 +446,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/top-holders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, or delegated_tao; limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet. */
+        get: operations["topHolders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/adapters/{slug}": {
         parameters: {
             query?: never;
@@ -8388,6 +8405,28 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description Balance-based top-holder leaderboard (#6741/#6743): every account with a nonzero free balance and/or delegated stake position, ranked by total_tao (free + delegated) by default, served live at /api/v1/accounts/top-holders (no static file). The coldkey/balance-centric counterpart to /api/v1/accounts (which is hotkey/neuron-centric and explicitly does not carry Free/Total columns -- see AccountsListArtifact's own description for why). Sourced from account_balances (a direct chain-state scan, not event-reconstructed) joined with nominator_positions x neurons for the delegated-stake side. */
+        TopHoldersArtifact: {
+            account_count: number;
+            accounts: components["schemas"]["TopHoldersEntry"][];
+            /** Format: date-time */
+            captured_at?: string | null;
+            limit: number;
+            schema_version: number;
+            /** @enum {string} */
+            sort: "total_tao" | "free_tao" | "delegated_tao";
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One coldkey/account row in the balance-based top-holder leaderboard (#6741/#6743) -- the taostats-style Account/Free/Delegated/Total columns AccountsListEntry cannot derive (see that schema's own description). free_tao/last_updated come from account_balances (a direct System::Account chain-state scan, scripts/fetch-account-balances.py -- see that script's own docstring for why this is ground-truth rather than event-reconstructed). delegated_tao is this account's own total stake positions across every hotkey/subnet (nominator_positions.share_fraction x neurons.stake_tao, the SAME computation GET /api/v1/accounts/:ss58/positions already does per-account, here aggregated across all accounts). total_tao is free_tao + delegated_tao only (reserved balance is NOT included, matching the cited benchmark's own Total = Free + Delegated definition). An account can appear here from either source alone -- e.g. an account with real free balance that has never delegated shows delegated_tao: 0, and vice versa. */
+        TopHoldersEntry: {
+            delegated_tao: number;
+            free_tao: number;
+            /** Format: date-time */
+            last_updated: string | null;
+            ss58: string;
+            total_tao: number;
+        };
         UptimeArtifact: {
             netuid: number;
             reliability?: components["schemas"]["ReliabilityScore"] | null;
@@ -11732,6 +11771,128 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountWeightSettersArtifact"];
                     };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    topHolders: {
+        parameters: {
+            query?: {
+                sort?: "total_tao" | "free_tao" | "delegated_tao";
+                limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "account_count": 1,
+                     *         "accounts": [
+                     *           {
+                     *             "delegated_tao": 0.5,
+                     *             "free_tao": 0.5,
+                     *             "last_updated": "2026-06-01T00:00:00.000Z",
+                     *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "total_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "limit": 1,
+                     *         "schema_version": 1,
+                     *         "sort": "total_tao"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["TopHoldersArtifact"];
+                    };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

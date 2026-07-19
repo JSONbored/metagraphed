@@ -20,6 +20,10 @@ export const R2_ONLY_PATTERNS = [
   // Site-wide accounts leaderboard (#4324/5.3), computed live from the neurons
   // D1 tier — the collection-level counterpart to validators.json above.
   /^accounts\.json$/,
+  // Balance-based top-holder leaderboard (#6741/#6743): computed live from
+  // the account_balances/nominator_positions Postgres tier, the coldkey/
+  // balance-centric counterpart to accounts.json above.
+  /^top-holders\.json$/,
   // Cross-subnet validator detail (#4334/7.1): computed live from the neurons D1 tier.
   /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\.json$/,
   // Validator nominator list (#4334/7.2): computed live from account_events.

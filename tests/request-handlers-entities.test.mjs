@@ -41,6 +41,7 @@ import {
   handleAccountPortfolio,
   handleAccountPositions,
   handleAccountsList,
+  handleTopHoldersList,
   handleSubnetConcentrationHistory,
   handleSubnetPerformanceHistory,
   handleSubnetYieldHistory,
@@ -5612,6 +5613,39 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         req("/api/v1/accounts"),
         env,
         url("/api/v1/accounts"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  // Called directly (bypassing workers/api.mjs's canonicalTopHoldersCachePath,
+  // which already validates and short-circuits on a bad query before ever
+  // reaching this handler) so handleTopHoldersList's own defensive
+  // parsed.error guard -- the same defense-in-depth shape as every other
+  // handler in this file -- is exercised too.
+  test("handleTopHoldersList: rejects an unsupported query param with 400", async () => {
+    const res = await handleTopHoldersList(
+      req("/api/v1/accounts/top-holders?bogus=1"),
+      emptyEnv(),
+      url("/api/v1/accounts/top-holders?bogus=1"),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+  });
+
+  test("handleTopHoldersList: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_TOP_HOLDERS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", accounts: [] }),
+    };
+    const body = await json(
+      await handleTopHoldersList(
+        req("/api/v1/accounts/top-holders"),
+        env,
+        url("/api/v1/accounts/top-holders"),
       ),
     );
     assert.equal(body.data.marker, "pg");
