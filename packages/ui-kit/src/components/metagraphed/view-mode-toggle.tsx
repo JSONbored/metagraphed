@@ -1,10 +1,10 @@
-import { LayoutGrid, List, Grid3x3 } from "lucide-react";
+import { LayoutGrid, List, Grid3x3, Radar } from "lucide-react";
 import {
   SegmentedToggle,
   type SegmentedToggleOption,
 } from "@/components/ui/segmented-toggle";
 
-export type ViewMode = "table" | "grid" | "matrix";
+export type ViewMode = "table" | "grid" | "matrix" | "bubble";
 
 const OPTIONS: Array<SegmentedToggleOption<ViewMode>> = [
   {
@@ -24,6 +24,12 @@ const OPTIONS: Array<SegmentedToggleOption<ViewMode>> = [
     label: "Matrix",
     Icon: Grid3x3,
     ariaLabel: "Switch to matrix view",
+  },
+  {
+    value: "bubble",
+    label: "Bubble",
+    Icon: Radar,
+    ariaLabel: "Switch to bubble/radar view",
   },
 ];
 
