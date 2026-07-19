@@ -8831,6 +8831,68 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /insufficient_liquidity/);
   });
 
+  test("get_stake_action_preview returns a clean plan-shaped advisory (warnings [] + ok true) for a low-impact size (#6894)", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 10, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.ok(out.price_impact_pct < 1);
+    assert.deepEqual(out.warnings, []);
+    assert.equal(out.ok, true);
+  });
+
+  test("get_stake_action_preview flags a non-trivial (>=1% <5%) impact as a soft warning but keeps ok true (#6894)", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 10000, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.ok(out.price_impact_pct >= 1 && out.price_impact_pct < 5);
+    assert.equal(out.warnings.length, 1);
+    assert.match(out.warnings[0], /non-trivial/);
+    assert.equal(out.ok, true);
+  });
+
+  test("get_stake_action_preview flips ok to false and warns when impact >= the 5% high-impact threshold (#6894)", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 20000, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.ok(out.price_impact_pct >= 5);
+    assert.equal(out.warnings.length, 1);
+    assert.match(out.warnings[0], /high-impact threshold/);
+    assert.equal(out.ok, false);
+  });
+
+  test("get_stake_action_preview root (netuid 0) preview is clean — 0% impact, no warnings, ok true (#6894)", async () => {
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 0, amount: 42, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.price_impact_pct, 0);
+    assert.deepEqual(out.warnings, []);
+    assert.equal(out.ok, true);
+  });
+
   test("get_economics serves the live KV economics tier with REST list-query filters", async () => {
     const blob = {
       ...ECON_BLOB,

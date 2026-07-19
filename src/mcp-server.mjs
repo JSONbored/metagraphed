@@ -673,6 +673,34 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
 export const MCP_SERVER_VERSION = "1.78.7";
+// Price-impact thresholds for get_stake_action_preview's plan-shaped
+// `warnings`/`ok` advisory (#6894). There is no prior precedent for these in
+// this codebase, so they follow common AMM/DEX slippage conventions: ~1% is the
+// point most swap UIs surface a soft slippage notice, and 5% is the widely-used
+// "high price impact — confirm carefully" hard threshold above which `ok` flips
+// to false. A root (netuid 0) stake is always 1:1 with 0% impact, so it never
+// warns. All units are percent, matching the quote's `price_impact_pct`.
+const STAKE_PREVIEW_IMPACT_NOTICE_PCT = 1;
+const STAKE_PREVIEW_IMPACT_MAX_PCT = 5;
+
+// Derive the plan-shaped advisory (a `plan`-convention `warnings[]` + policy
+// `ok` flag) purely from a computed stake quote's price impact — the one signal
+// the preview already carries that reflects how much this size moves the pool.
+// Additive over get_subnet_stake_quote's numbers; adds no execution capability.
+function computeStakePreviewAdvisory(quote) {
+  const impact = quote.price_impact_pct;
+  const warnings = [];
+  if (impact >= STAKE_PREVIEW_IMPACT_MAX_PCT) {
+    warnings.push(
+      `Estimated price impact ${impact}% meets or exceeds the ${STAKE_PREVIEW_IMPACT_MAX_PCT}% high-impact threshold: this size would move the pool price substantially against you — consider a smaller amount.`,
+    );
+  } else if (impact >= STAKE_PREVIEW_IMPACT_NOTICE_PCT) {
+    warnings.push(
+      `Estimated price impact ${impact}% is non-trivial for this size; a smaller amount would reduce slippage.`,
+    );
+  }
+  return { warnings, ok: impact < STAKE_PREVIEW_IMPACT_MAX_PCT };
+}
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -3178,9 +3206,32 @@ export const MCP_TOOLS = [
         spot_price_tao: { type: "number" },
         effective_price_tao: { type: "number" },
         price_impact_pct: { type: "number" },
+        warnings: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Plan-shaped, non-fatal cautions computed from the preview (e.g. " +
+            "high price impact / slippage). Empty array when none apply, never " +
+            "null or omitted.",
+        },
+        ok: {
+          type: "boolean",
+          description:
+            "Plan-style policy-compliance flag: false when a documented safety " +
+            "threshold is exceeded (estimated price impact >= 5%), true " +
+            "otherwise. Purely advisory — the tool still executes nothing.",
+        },
         disclaimer: { type: "string" },
       },
-      required: ["netuid", "direction", "amount", "summary", "disclaimer"],
+      required: [
+        "netuid",
+        "direction",
+        "amount",
+        "summary",
+        "warnings",
+        "ok",
+        "disclaimer",
+      ],
       additionalProperties: true,
     },
     async handler(args, ctx) {
@@ -3202,6 +3253,7 @@ export const MCP_TOOLS = [
         throw toolError(result.code, result.error);
       }
       const q = result.quote;
+      const advisory = computeStakePreviewAdvisory(q);
       const inUnit = direction === "stake" ? "TAO" : "alpha";
       const outUnit = q.expected_out_unit === "alpha" ? "alpha" : "TAO";
       const verb = direction === "stake" ? "Staking" : "Unstaking";
@@ -3217,6 +3269,8 @@ export const MCP_TOOLS = [
         spot_price_tao: q.spot_price_tao,
         effective_price_tao: q.effective_price_tao,
         price_impact_pct: q.price_impact_pct,
+        warnings: advisory.warnings,
+        ok: advisory.ok,
         disclaimer:
           "Informational preview only. This does not execute, build, prepare, " +
           "or sign any transaction, produces no signable or extrinsic artifact, " +
