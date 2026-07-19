@@ -190,6 +190,10 @@ function BlockProductionHeader() {
         eyebrow="Inter-block time"
         value={blockTime ? humaniseSeconds(blockTime.mean_ms / 1000) : "—"}
         hint={blockTime ? `p90 ${humaniseSeconds(blockTime.p90_ms / 1000)}` : undefined}
+        // #6905: these labels/hints ("Inter-block time", "Author decentralization",
+        // "ext/block · N events/block") clip mid-word in the ~165px-wide tiles of
+        // the 2-col mobile grid; wrap instead of truncating so they stay legible.
+        truncate={false}
       />
       <StatTile
         icon={Activity}
@@ -201,6 +205,7 @@ function BlockProductionHeader() {
             ? `ext/block · ${formatNumber(throughput.mean_events_per_block)} events/block`
             : undefined
         }
+        truncate={false}
       />
       <StatTile
         icon={Users}
@@ -208,6 +213,7 @@ function BlockProductionHeader() {
         value={nakamoto != null ? formatNumber(nakamoto) : "—"}
         hint="Nakamoto coefficient"
         tone={nakamotoStatTone}
+        truncate={false}
       />
     </div>
   );
