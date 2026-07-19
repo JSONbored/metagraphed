@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Coins } from "lucide-react";
+import { ArrowRightLeft, Coins } from "lucide-react";
 import { useQueries, useSuspenseQuery } from "@tanstack/react-query";
 import { CopyButton, StatTile } from "@jsonbored/ui-kit";
 import {
@@ -10,6 +10,7 @@ import {
   subnetStakeQuoteQuery,
 } from "@/lib/metagraphed/queries";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
+import { MoveStakeModal } from "@/components/metagraphed/move-stake-modal";
 import { EmptyState } from "@/components/metagraphed/states";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
@@ -213,7 +214,15 @@ export function YourPositionsPanel({ address }: { address: string }) {
                   {pct(p.yield)}
                 </td>
                 <td className="px-3 py-2.5 text-right">
-                  <ManageButton hotkey={p.hotkey} netuid={p.netuid} />
+                  <div className="inline-flex items-center gap-1.5">
+                    <ManageButton hotkey={p.hotkey} netuid={p.netuid} />
+                    <MoveButton
+                      hotkey={p.hotkey}
+                      netuid={p.netuid}
+                      positionAlpha={p.alpha}
+                      positionSpotTao={p.spotTao}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -245,7 +254,15 @@ export function YourPositionsPanel({ address }: { address: string }) {
               <Stat label="Exit τ" value={taoCompact(exitTaoFor(i, p))} />
               <Stat label="Yield" value={pct(p.yield)} />
             </dl>
-            <ManageButton hotkey={p.hotkey} netuid={p.netuid} />
+            <div className="flex items-center gap-1.5">
+              <ManageButton hotkey={p.hotkey} netuid={p.netuid} />
+              <MoveButton
+                hotkey={p.hotkey}
+                netuid={p.netuid}
+                positionAlpha={p.alpha}
+                positionSpotTao={p.spotTao}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -298,6 +315,39 @@ function ManageButton({ hotkey, netuid }: { hotkey: string | null; netuid: numbe
         >
           <Coins className="size-3 text-ink-muted" aria-hidden />
           Manage
+        </button>
+      )}
+    />
+  );
+}
+
+/** #5244: "Move this position" -- a second entry point alongside Manage, opening the move/re-delegate flow for this exact (hotkey, netuid) position. */
+function MoveButton({
+  hotkey,
+  netuid,
+  positionAlpha,
+  positionSpotTao,
+}: {
+  hotkey: string | null;
+  netuid: number;
+  positionAlpha: number | null;
+  positionSpotTao: number;
+}) {
+  if (!hotkey) return null;
+  return (
+    <MoveStakeModal
+      hotkey={hotkey}
+      netuid={netuid}
+      positionAlpha={positionAlpha}
+      positionSpotTao={positionSpotTao}
+      trigger={(open) => (
+        <button
+          type="button"
+          onClick={open}
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-strong transition-colors hover:border-accent/50 hover:text-accent"
+        >
+          <ArrowRightLeft className="size-3 text-ink-muted" aria-hidden />
+          Move
         </button>
       )}
     />
