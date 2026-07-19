@@ -183,6 +183,27 @@ describe("buildProviderEmissionsLeaderboard", () => {
     );
   });
 
+  test("a full tie among name/id-less providers still sorts (empty-string keys on both sides)", () => {
+    // Three providers all tied on share (0.1) and tao (10); two of them have
+    // neither name nor id, so both sides of the localeCompare fall all the way
+    // to "" during the pairwise comparisons.
+    const rows = buildProviderEmissionsLeaderboard(
+      {
+        providers: [
+          { netuids: [1] }, // no name, no id -> ""
+          { netuids: [1] }, // no name, no id -> ""
+          { id: "m", name: "M", netuids: [1] },
+        ],
+      },
+      economics,
+    );
+    assert.equal(rows.length, 3);
+    assert.deepEqual(
+      rows.map((r) => r.rank),
+      [1, 2, 3],
+    );
+  });
+
   test("empty / missing artifacts yield an empty leaderboard, not a throw", () => {
     assert.deepEqual(buildProviderEmissionsLeaderboard(null, null), []);
     assert.deepEqual(buildProviderEmissionsLeaderboard({}, {}), []);

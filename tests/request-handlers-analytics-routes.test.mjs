@@ -700,6 +700,18 @@ describe("handleProviderEmissions", () => {
     );
     await errorJson(res);
   });
+
+  test("returns an empty leaderboard when the providers artifact is unavailable", async () => {
+    // ASSETS 404s -> readArtifact(providers.json) is not ok -> providers=null,
+    // and economics falls through to []; the route still 200s with data: [].
+    const env = {
+      ASSETS: { fetch: async () => new Response("not found", { status: 404 }) },
+    };
+    const body = await json(
+      await handleProviderEmissions(req(path), env, url(path)),
+    );
+    assert.deepEqual(body.data, []);
+  });
 });
 
 describe("handleLeaderboards", () => {
