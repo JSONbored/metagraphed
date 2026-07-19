@@ -1929,13 +1929,18 @@ function ChainEventsFeedSection() {
         value={search.pallet}
         onChange={(v) => setSearch({ pallet: v, method: v.trim() ? search.method : "" })}
         placeholder="Filter by pallet"
-        className="min-w-[140px] flex-none font-mono text-[11px]"
+        // SearchInput's own base hardcodes `min-w-[180px]` unconditionally, which
+        // wins the same-property (min-width) cascade over a plain `min-w-[140px]`
+        // override regardless of prop order (classNames() is a plain string-join,
+        // not tailwind-merge-aware -- see #6904); the trailing `!` forces this
+        // narrower floor to actually apply for these compact pallet/method filters.
+        className="min-w-[140px]! flex-none font-mono text-[11px]"
       />
       <SearchInput
         value={search.method}
         onChange={(v) => setSearch({ method: v })}
         placeholder={search.pallet.trim() ? "Filter by method" : "Method (requires pallet)"}
-        className="min-w-[140px] flex-none font-mono text-[11px]"
+        className="min-w-[140px]! flex-none font-mono text-[11px]"
       />
     </>
   );

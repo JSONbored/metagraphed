@@ -289,35 +289,41 @@ function BlocksTable() {
           onChange={(v) => setSearch({ spec_version: v, offset: 0 })}
           placeholder="Spec version…"
           inputMode="numeric"
-          className="min-w-[120px] max-w-[140px] flex-none"
+          // SearchInput's own base hardcodes `min-w-[180px]` unconditionally, which
+          // wins the same-property (min-width) cascade over a plain `min-w-[120px]`
+          // override here regardless of prop order (classNames() is a plain
+          // string-join, not tailwind-merge-aware -- see #6904); the trailing `!`
+          // forces this narrower floor to actually apply so max-w-[140px] can take
+          // effect as intended for this compact numeric filter.
+          className="min-w-[120px]! max-w-[140px] flex-none"
         />
         <SearchInput
           value={search.block_start}
           onChange={(v) => setSearch({ block_start: v, offset: 0 })}
           placeholder="Block from…"
           inputMode="numeric"
-          className="min-w-[120px] max-w-[140px] flex-none"
+          className="min-w-[120px]! max-w-[140px] flex-none"
         />
         <SearchInput
           value={search.block_end}
           onChange={(v) => setSearch({ block_end: v, offset: 0 })}
           placeholder="Block to…"
           inputMode="numeric"
-          className="min-w-[120px] max-w-[140px] flex-none"
+          className="min-w-[120px]! max-w-[140px] flex-none"
         />
         <SearchInput
           value={search.min_extrinsics}
           onChange={(v) => setSearch({ min_extrinsics: v, offset: 0 })}
           placeholder="Min extrinsics…"
           inputMode="numeric"
-          className="min-w-[120px] max-w-[140px] flex-none"
+          className="min-w-[120px]! max-w-[140px] flex-none"
         />
         <SearchInput
           value={search.min_events}
           onChange={(v) => setSearch({ min_events: v, offset: 0 })}
           placeholder="Min events…"
           inputMode="numeric"
-          className="min-w-[120px] max-w-[140px] flex-none"
+          className="min-w-[120px]! max-w-[140px] flex-none"
         />
         <PageSizeSelect
           value={search.limit}
