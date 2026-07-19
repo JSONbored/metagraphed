@@ -7,6 +7,9 @@ import { compareQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { CompareSubnet, HealthState } from "@/lib/metagraphed/types";
 import { HealthPill, CurationChip } from "@jsonbored/ui-kit";
+import { SubnetsCompareHistoryChart } from "@/components/metagraphed/subnets-compare-history-chart";
+
+type CompareView = "grid" | "chart";
 
 /**
  * Floating bottom dock + expandable side-by-side compare drawer for selected
@@ -16,6 +19,7 @@ import { HealthPill, CurationChip } from "@jsonbored/ui-kit";
 export function SubnetsCompareDrawer() {
   const { selected, max, remove, clear } = useCompareSelection();
   const [expanded, setExpanded] = useState(false);
+  const [view, setView] = useState<CompareView>("grid");
 
   if (selected.length === 0) return null;
 
@@ -81,7 +85,16 @@ export function SubnetsCompareDrawer() {
           </div>
 
           {/* Expanded side-by-side */}
-          {expanded && selected.length >= 2 ? <CompareGrid netuids={selected} /> : null}
+          {expanded && selected.length >= 2 ? (
+            <div className="border-t border-border">
+              <CompareViewTabs value={view} onChange={setView} />
+              {view === "grid" ? (
+                <CompareGrid netuids={selected} />
+              ) : (
+                <SubnetsCompareHistoryChart netuids={selected} />
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -100,6 +113,47 @@ function compareHealthState(health: CompareSubnet["health"]): HealthState {
   if (ok >= total) return "ok";
   if (ok === 0) return "down";
   return "warn";
+}
+
+function CompareViewTabs({
+  value,
+  onChange,
+}: {
+  value: CompareView;
+  onChange: (v: CompareView) => void;
+}) {
+  const tabs: Array<{ id: CompareView; label: string }> = [
+    { id: "grid", label: "Metrics" },
+    { id: "chart", label: "Overlay chart" },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Compare view"
+      className="flex items-center gap-1 border-b border-border px-3 py-2"
+    >
+      {tabs.map((t) => {
+        const active = value === t.id;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(t.id)}
+            className={classNames(
+              "inline-flex items-center rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+              active
+                ? "border-accent/60 bg-accent/15 text-ink-strong"
+                : "border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-ink/30",
+            )}
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function CompareGrid({ netuids }: { netuids: number[] }) {
@@ -212,7 +266,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
 
   if (isError) {
     return (
-      <div className="border-t border-border px-3 py-6 text-center">
+      <div className="px-3 py-6 text-center">
         <p className="font-mono text-[11px] text-ink-muted">Could not load comparison.</p>
         <button
           type="button"
@@ -226,7 +280,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
   }
 
   return (
-    <div className="border-t border-border max-h-[55vh] overflow-auto">
+    <div className="max-h-[55vh] overflow-auto">
       <table className="min-w-full text-[12px]">
         <thead className="sticky top-0 bg-card/95 backdrop-blur z-[1]">
           <tr>
