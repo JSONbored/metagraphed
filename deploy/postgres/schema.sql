@@ -875,6 +875,37 @@ ALTER TABLE chain_alert_triggers ADD COLUMN IF NOT EXISTS condition JSONB;
 -- already a fast primary-key lookup by id.
 CREATE INDEX IF NOT EXISTS idx_cat_active ON chain_alert_triggers (active) WHERE active;
 
+-- ---------------------------------------------------------------------------
+-- Self-serve API keys (ADR 0020, epic #6733/#6735) -- the optional identity
+-- tier a caller can opt into for a higher rate-limit bucket + self-checkable
+-- usage. Keyless-by-default is unchanged; this table is additive.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS api_keys (
+  id             BIGSERIAL PRIMARY KEY,
+  -- Public, non-secret identifier (16 hex chars) -- safe to log, safe as a KV
+  -- cache key, safe in a support ticket. Never the full credential.
+  prefix         TEXT NOT NULL UNIQUE,
+  -- SHA-256 hex digest of the secret portion ONLY -- a deliberate departure
+  -- from chain_alert_triggers.owner_token's plaintext-at-rest precedent (see
+  -- ADR 0020 section 2): this credential is broader-scope and longer-lived,
+  -- so a full-table compromise must not hand out live credentials in
+  -- plaintext. The raw secret is never stored anywhere, only ever compared
+  -- by re-hashing the caller-provided value.
+  secret_hash    TEXT NOT NULL,
+  -- Not a login/auth flow (none exists) -- purely somewhere an abuse report
+  -- or deprecation notice can go, matching taostats' own signup requirement.
+  -- Unverified in v1.
+  owner_contact  TEXT NOT NULL,
+  tier           TEXT NOT NULL DEFAULT 'keyed',
+  created_at     BIGINT NOT NULL,
+  revoked_at     BIGINT,
+  last_used_at   BIGINT
+);
+-- The hot-path lookup: KV-cache-miss validation resolves a caller's prefix to
+-- its stored hash/tier/revoked state. Already covered by the UNIQUE
+-- constraint's implicit index; explicit only for readability/documentation.
+CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys (prefix);
+
 -- TimescaleDB hypertables/compression are OPTIONAL and live in the companion
 -- schema-timescaledb.sql in this same directory — apply it separately, only
 -- on a Postgres that actually has the TimescaleDB extension. This file is a
