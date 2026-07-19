@@ -212,6 +212,7 @@ import {
   GET_CHANGELOG_OUTPUT_SCHEMA,
   loadChangelog,
 } from "./changelog-mcp.mjs";
+import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.mjs";
 import {
   GET_FEED_INSTRUCTIONS,
   GET_FEED_MCP_TOOL,
@@ -10932,6 +10933,62 @@ export const MCP_TOOLS = [
         }),
         connect: workerWebSocketConnector(globalThis.fetch),
       });
+    },
+  },
+  {
+    name: "run_saved_query",
+    title: "Run a curated saved query",
+    description:
+      "Run one maintainer-curated, parameterized query template -- a third " +
+      "query modality sitting between the fixed REST-mirror tools above and " +
+      "the open query_graphql tool: narrower than raw GraphQL, but callable " +
+      "without knowing the schema. Mirrors GET /api/v1/queries/{id}. " +
+      "Available query_id values: " +
+      SAVED_QUERY_TEMPLATES.map(
+        (template) =>
+          `"${template.id}" (${template.description})` +
+          (template.params.length
+            ? ` Params: ${template.params
+                .map(
+                  (param) =>
+                    `${param.name}${param.required ? "" : "?"}: ${param.type}` +
+                    (param.enum ? ` [${param.enum.join("|")}]` : ""),
+                )
+                .join(", ")}.`
+            : " No params."),
+      ).join(" | "),
+    inputSchema: {
+      type: "object",
+      required: ["query_id"],
+      properties: {
+        query_id: {
+          type: "string",
+          enum: SAVED_QUERY_TEMPLATES.map((template) => template.id),
+          description: "Which curated template to run.",
+        },
+        params: {
+          type: "object",
+          description:
+            "The chosen template's own params (see the tool description). Omit for a template with no required params.",
+        },
+      },
+      additionalProperties: false,
+    },
+    outputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["query_id", "params", "data"],
+      properties: {
+        query_id: { type: "string" },
+        params: { type: "object" },
+        data: {},
+      },
+    },
+    async handler(args, ctx) {
+      if (typeof args?.query_id !== "string" || !args.query_id) {
+        throw toolError("invalid_params", "Argument `query_id` is required.");
+      }
+      return runSavedQuery(ctx.env, args.query_id, args?.params);
     },
   },
 ];

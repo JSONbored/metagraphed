@@ -4280,6 +4280,85 @@ describe("MCP get_chain_registrations", () => {
   });
 });
 
+describe("MCP run_saved_query (#6755/#6757)", () => {
+  test("runs the subnet-leaderboard template", async () => {
+    const res = await callTool(
+      "run_saved_query",
+      { query_id: "subnet-leaderboard", params: { limit: 5 } },
+      {},
+    );
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.query_id, "subnet-leaderboard");
+    assert.deepEqual(out.params, { board: null, limit: 5 });
+    assert.ok(out.data && typeof out.data === "object");
+  });
+
+  test("runs the chain-registrations-window template on a cold Postgres tier", async () => {
+    const res = await callTool(
+      "run_saved_query",
+      { query_id: "chain-registrations-window", params: { window: "30d" } },
+      {},
+    );
+    assert.equal(res.body.result.isError, false);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.query_id, "chain-registrations-window");
+    assert.equal(out.params.window, "30d");
+    assert.equal(out.data.subnet_count, 0);
+  });
+
+  test("omitting params runs the template with every default", async () => {
+    const res = await callTool(
+      "run_saved_query",
+      { query_id: "chain-registrations-window" },
+      {},
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.params.window, "7d");
+  });
+
+  test("rejects a missing query_id", async () => {
+    const res = await callTool("run_saved_query", {}, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /query_id/);
+  });
+
+  test("rejects an unknown query_id", async () => {
+    const res = await callTool(
+      "run_saved_query",
+      { query_id: "not-a-real-template" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
+  test("rejects an invalid param", async () => {
+    const res = await callTool(
+      "run_saved_query",
+      {
+        query_id: "subnet-leaderboard",
+        params: { board: "not-a-board" },
+      },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+  });
+
+  test("rejects an unrecognized top-level argument", async () => {
+    const res = await callTool(
+      "run_saved_query",
+      { query_id: "subnet-leaderboard", unexpected: true },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+});
+
 describe("MCP get_chain_transfers", () => {
   function chainTransfersD1(
     {

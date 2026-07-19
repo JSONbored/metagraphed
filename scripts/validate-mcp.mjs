@@ -1237,7 +1237,34 @@ assert.ok(
   "get_block_events must return ref + block_number:null + events[] on cold D1",
 );
 
+// Curated saved-query library (#6755/#6757): one call per seed template,
+// exercising the same dispatch GET /api/v1/queries/{id} shares.
+const savedLeaderboard = await callOk("run_saved_query", {
+  query_id: "subnet-leaderboard",
+  params: { board: "highest-emission", limit: 5 },
+});
+assert.equal(savedLeaderboard.query_id, "subnet-leaderboard");
+assert.ok(
+  savedLeaderboard.data && typeof savedLeaderboard.data === "object",
+  "run_saved_query(subnet-leaderboard) must return a data object",
+);
+const savedRegistrations = await callOk("run_saved_query", {
+  query_id: "chain-registrations-window",
+  params: { window: "7d", limit: 5 },
+});
+assert.equal(savedRegistrations.query_id, "chain-registrations-window");
+assert.equal(savedRegistrations.data.window, "7d");
+
 // --- Negative paths --------------------------------------------------------
+
+const unknownSavedQuery = await call("run_saved_query", {
+  query_id: "not-a-real-template",
+});
+assert.equal(
+  unknownSavedQuery.isError,
+  true,
+  "run_saved_query with an unknown query_id must return isError",
+);
 
 const unknownMethod = await mcp({
   jsonrpc: "2.0",

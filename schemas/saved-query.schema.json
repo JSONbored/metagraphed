@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/saved-query.schema.json",
+  "title": "Metagraphed Saved Query Template",
+  "description": "Maintainer-curated parameterized query template exposed via run_saved_query (MCP) and GET /api/v1/queries/{id} (REST) -- admin-curated only, never user-submitted. Each template's underlying implementation wraps an existing derived-view module (a build*/compose* function already served elsewhere) and runs with elevated query trust, unlike the public GraphQL tool's own per-request depth/complexity sandboxing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "description", "category", "params"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Stable identifier: run_saved_query's query_id argument and the REST route's GET /api/v1/queries/{id} path segment."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable template name."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the query returns and why it's curated -- shown to callers via list discovery and the MCP tool description."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["leaderboard", "chain-activity"],
+      "description": "Grouping for discovery. Extend this enum, don't bypass it, when a new template doesn't fit an existing category."
+    },
+    "params": {
+      "type": "array",
+      "description": "The template's own parameter shape, validated against a caller's params before the underlying implementation runs. Empty for a template with no inputs.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "type", "required"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["string", "integer"]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "enum": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "description": "Allowed values for a string param. Omit for a free-form string or any integer param."
+          },
+          "default": {
+            "description": "Value used when the param is omitted and not required."
+          },
+          "minimum": {
+            "type": "integer",
+            "description": "Inclusive lower bound for an integer param."
+          },
+          "maximum": {
+            "type": "integer",
+            "description": "Inclusive upper bound for an integer param."
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "One line on the underlying implementation -- which existing module/function it wraps."
+    }
+  }
+}

@@ -281,6 +281,10 @@ import { handleOgImage } from "../src/og-image.mjs";
 import { handleIconProxy } from "../src/icon-proxy.mjs";
 import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
+  handleSavedQueryRequest,
+  SAVED_QUERIES_PATH_PREFIX,
+} from "./request-handlers/saved-queries.mjs";
+import {
   aiEnabled,
   askQuestion,
   runEmbeddingSync,
@@ -1565,6 +1569,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
           headers: response.headers,
         })
       : response;
+  }
+
+  // Curated parameterized query library (#6755/#6757): GET /api/v1/queries/{id}
+  // runs one maintainer-curated saved-query template (src/saved-queries.mjs),
+  // the REST mirror of the run_saved_query MCP tool. Live per-request result
+  // with no fixed response shape across templates -- same reason /api/v1/graphql
+  // above sits outside the API_ROUTES/contracts.mjs registry rather than a
+  // route()+artifact() pair.
+  if (url.pathname.startsWith(SAVED_QUERIES_PATH_PREFIX)) {
+    return handleSavedQueryRequest(request, env, url);
   }
 
   // Embeddable SVG badges at /api/v1/{subnets/{netuid}|providers/{slug}}/
