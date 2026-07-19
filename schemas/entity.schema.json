@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/entity.schema.json",
+  "title": "Metagraphed Entity Label",
+  "description": "Community-contributable label for a known ss58 address (exchange/foundation/operator/other) -- one file per address, same single-file-per-entity shape as registry/providers/<slug>.json. Every claim needs an independent source_urls proof, matching subnet surfaces' own convention; the public-safety scan applies identically.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ss58",
+    "name",
+    "category",
+    "source_urls",
+    "review"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "ss58": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
+      "description": "The labeled address. Must match this file's own name (registry/entities/<ss58>.json)."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable entity name, e.g. \"Binance\" or \"Rayon Labs\"."
+    },
+    "category": {
+      "enum": ["exchange", "foundation", "operator", "other"]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "source_urls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Independent proof this address belongs to the named entity (e.g. an official announcement, a block explorer's own tag, the entity's own published address list). A claim with no proof is not accepted."
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "description": "Human-governance axis ONLY, same shape and meaning as a subnet surface's own `review` block -- a label enters as \"community-submitted\"; a maintainer promotes it to \"maintainer-reviewed\" or marks it \"rejected\".",
+      "properties": {
+        "state": {
+          "enum": ["community-submitted", "maintainer-reviewed", "rejected"]
+        },
+        "submitted_by": {
+          "type": "string"
+        },
+        "submitted_at": {
+          "type": "string"
+        },
+        "review_notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

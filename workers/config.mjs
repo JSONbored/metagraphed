@@ -187,6 +187,12 @@ export const ACCOUNT_EVENTS_PATH_PATTERN =
 // account_events_daily rollup. Dispatched BEFORE the bare ACCOUNT_PATH_PATTERN.
 export const ACCOUNT_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/history$/;
+// Reverse entity-label lookup (#6740): one address's own community-
+// contributed entity labels plus its subnet-ownership ties, computed live
+// from the entities.json artifact + chain_events SubnetOwnerChanged stream,
+// no static file. Dispatched BEFORE the bare ACCOUNT_PATH_PATTERN.
+export const ACCOUNT_ENTITIES_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/entities$/;
 // Account entity routes (#1347):
 export const ACCOUNT_SUBNETS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/subnets$/;

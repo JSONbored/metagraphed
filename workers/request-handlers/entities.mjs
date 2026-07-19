@@ -103,6 +103,12 @@ import {
 import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { loadNetworkParameters } from "../../src/network-parameters.mjs";
 import { loadRandomnessStatus } from "../../src/randomness.mjs";
+import {
+  ENTITY_LABELS_ARTIFACT,
+  buildAccountEntities,
+  entityLabelsIndex,
+  labelsForSs58,
+} from "../../src/entity-labels.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { loadSubnetBurn } from "../../src/subnet-burn.mjs";
 import { loadSubnetLease } from "../../src/subnet-lease.mjs";
@@ -2874,6 +2880,18 @@ export async function handleAccount(request, env, ss58) {
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
     buildAccountSummary(ss58, {});
+  // Community-contributable entity labels (#6739): additive field over the
+  // baked entities.json artifact, joined by ss58 here rather than in either
+  // upstream builder above (one join site instead of two). A missing/cold
+  // artifact degrades to an empty label list, matching this route's own
+  // never-404 contract.
+  const entitiesArtifact = await readArtifact(env, ENTITY_LABELS_ARTIFACT);
+  data.labels = labelsForSs58(
+    entityLabelsIndex(
+      entitiesArtifact.ok ? entitiesArtifact.data?.entities : [],
+    ),
+    ss58,
+  );
   return accountEnvelopeResponse(
     request,
     {
@@ -2883,6 +2901,39 @@ export async function handleAccount(request, env, ss58) {
         `/metagraph/accounts/${ss58}.json`,
         data.last_seen_at,
       ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{coldkey}/entities (#6740): one address's own entity
+// labels plus every subnet-ownership tie it has via the SubnetOwnerChanged
+// chain_events stream (either side of the transfer) -- see
+// src/entity-labels.mjs's own header for the scope/limitation note (this
+// only tracks AUTOMATIC ownership transfers, not genesis ownership).
+//
+// The DATA_API service binding (workers/data-api.mjs) only carries the
+// Postgres/Hyperdrive connection -- no R2/KV bindings of its own -- so it
+// builds ownership_ties alone (entities: [] on its side); this handler then
+// joins the entities.json artifact's `labels` on top, same join site as
+// handleAccount above.
+export async function handleAccountEntities(request, env, coldkey) {
+  const [entitiesArtifact, ownershipData] = await Promise.all([
+    readArtifact(env, ENTITY_LABELS_ARTIFACT),
+    tryPostgresTier(env, request, "METAGRAPH_SUBNET_OWNERSHIP_SOURCE"),
+  ]);
+  const data = ownershipData ?? buildAccountEntities(coldkey, { entities: [] });
+  data.labels = labelsForSs58(
+    entityLabelsIndex(
+      entitiesArtifact.ok ? entitiesArtifact.data?.entities : [],
+    ),
+    coldkey,
+  );
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: { contract_version: contractVersion(env) },
     },
     "short",
   );

@@ -6,6 +6,7 @@
     "account-children",
     "account-counterparties",
     "account-deregistrations",
+    "account-entities",
     "account-events",
     "account-extrinsics",
     "account-history",

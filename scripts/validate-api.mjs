@@ -651,6 +651,19 @@ const checks = [
       );
       assert.equal(typeof body.data.event_count, "number");
       assert.equal(Array.isArray(body.data.registrations), true);
+      assert.equal(Array.isArray(body.data.labels), true);
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/entities",
+    (body) => {
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal(Array.isArray(body.data.labels), true);
+      assert.equal(typeof body.data.ownership_tie_count, "number");
+      assert.equal(Array.isArray(body.data.ownership_ties), true);
     },
   ],
   [

@@ -7,6 +7,7 @@ import {
   listJsonFiles,
   listJsonFilesRecursive,
   loadCandidates,
+  loadEntities,
   loadProviders,
   loadSubnets,
   readJson,
@@ -70,6 +71,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-history",
   "subnet-identity-history",
   "account-summary",
+  "account-entities",
   "account-events",
   "account-history",
   "account-extrinsics",
@@ -170,6 +172,9 @@ const candidateSchema = await readJson(
 const providerSubmissionSchema = await readJson(
   path.join(repoRoot, "schemas/provider-submission.schema.json"),
 );
+const entitySchema = await readJson(
+  path.join(repoRoot, "schemas/entity.schema.json"),
+);
 // #5551: public-artifacts.schema.json documents the top-level shape of every
 // generated artifact served from metagraph.sh/metagraph (schema_version: 1,
 // network: "finney", the required per-kind properties). Registered explicitly
@@ -189,6 +194,7 @@ for (const schema of [
   subnetSchema,
   candidateSchema,
   providerSubmissionSchema,
+  entitySchema,
   publicArtifactsSchema,
 ]) {
   ajv.addSchema(schema, schema.$id);
@@ -198,6 +204,7 @@ const explicitlyRegisteredSchemaIds = new Set([
   subnetSchema.$id,
   candidateSchema.$id,
   providerSubmissionSchema.$id,
+  entitySchema.$id,
   publicArtifactsSchema.$id,
 ]);
 for (const schemaPath of await listJsonFiles(path.join(repoRoot, "schemas"))) {
@@ -221,6 +228,7 @@ const validators = {
   subnet: ajv.getSchema(subnetSchema.$id),
   candidate: ajv.getSchema(candidateSchema.$id),
   providerSubmission: ajv.getSchema(providerSubmissionSchema.$id),
+  entity: ajv.getSchema(entitySchema.$id),
 };
 
 const errors = [];
@@ -235,6 +243,27 @@ for (const subnet of await loadSubnets()) {
 
 for (const candidate of await loadCandidates()) {
   validate(validators.candidate, candidate, `candidate:${candidate.id}`);
+}
+
+for (const entity of await loadEntities()) {
+  validate(validators.entity, entity, `entity:${entity.ss58}`);
+}
+
+// registry/entities/<ss58>.json -- the filename IS the address (no slug), so a
+// mismatch means the file was renamed/copied without updating its own `ss58`
+// field, which would silently mislabel a DIFFERENT address than the filename
+// implies. Checked directly against the files rather than loadEntities()'s
+// already-deduped-by-ss58 view, which doesn't retain the source path.
+for (const filePath of await listJsonFiles(
+  path.join(repoRoot, "registry/entities"),
+)) {
+  const entity = await readJson(filePath);
+  const expectedName = `${entity?.ss58}.json`;
+  if (path.basename(filePath) !== expectedName) {
+    errors.push(
+      `registry/entities/${path.basename(filePath)}: filename must match its own ss58 field (expected ${expectedName})`,
+    );
+  }
 }
 
 // #5476: enforce the direct-provider-profile intake fixture against its actual

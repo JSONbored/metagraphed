@@ -2582,6 +2582,7 @@ describe("handleAccount", () => {
     assert.equal(body.data.subnet_count, 0);
     assert.deepEqual(body.data.registrations, []);
     assert.equal(body.data.activity.tx_count, 0);
+    assert.deepEqual(body.data.labels, []);
     assert.equal(body.meta.source, "chain-events");
   });
 

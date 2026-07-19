@@ -12701,6 +12701,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
       "get_account",
       "get_account_events",
       "get_account_subnets",
+      "get_account_entities",
     ]) {
       const res = await callTool(name, { ss58: "not-an-address" }, { env: {} });
       assert.equal(
@@ -12724,6 +12725,15 @@ describe("MCP account tools (get_account + events + subnets)", () => {
 
     const subnets = await callTool("get_account_subnets", { ss58: SS58 });
     assert.equal(subnets.body.result.structuredContent.subnet_count, 0);
+
+    // get_account (#6739) always joins the labels field, cold or not.
+    assert.deepEqual(summary.body.result.structuredContent.labels, []);
+
+    const entities = await callTool("get_account_entities", { ss58: SS58 });
+    assert.equal(entities.body.result.isError, false);
+    assert.deepEqual(entities.body.result.structuredContent.labels, []);
+    assert.equal(entities.body.result.structuredContent.ownership_tie_count, 0);
+    assert.deepEqual(entities.body.result.structuredContent.ownership_ties, []);
   });
 
   test("populated account payloads validate against their declared outputSchemas", async () => {

@@ -57,6 +57,7 @@ import {
   buildSubnetOwnershipHistory,
   OWNERSHIP_CHANGE_EVENT_METHOD,
 } from "../src/subnet-ownership-history.mjs";
+import { buildAccountEntities } from "../src/entity-labels.mjs";
 import {
   buildSubnetLeaseHistory,
   SUBNET_LEASE_CREATED_KIND,
@@ -4746,6 +4747,32 @@ export default {
             AND (args->>'netuid')::int = ${netuid}
           ORDER BY block_number ASC`;
           return json(buildSubnetOwnershipHistory(rows, netuid));
+        }
+
+        // GET /api/v1/accounts/:coldkey/entities (#6740, part of the curated
+        // entity-label registry epic #6737): every subnet-ownership tie this
+        // address has via the SAME chain_events SubnetOwnerChanged stream as
+        // ownership-history above -- unfiltered by netuid here (a network-
+        // wide scan, not a per-subnet one), filtered by address in JS after
+        // decoding (see src/entity-labels.mjs's own header for why). This
+        // Worker has no R2/KV bindings, so `entities` (community labels) is
+        // always [] here -- the main API Worker joins those on afterward.
+        const accountEntities = url.pathname.match(
+          /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/entities$/,
+        );
+        if (accountEntities) {
+          const coldkey = accountEntities[1];
+          const rows = await sql`
+          SELECT block_number, pallet, method, args, observed_at
+          FROM chain_events
+          WHERE pallet = 'SubtensorModule' AND method = ${OWNERSHIP_CHANGE_EVENT_METHOD}
+          ORDER BY block_number ASC`;
+          return json(
+            buildAccountEntities(coldkey, {
+              entities: [],
+              ownershipRows: rows,
+            }),
+          );
         }
 
         // GET /api/v1/subnets/:netuid/lease/history (#6719, part of the

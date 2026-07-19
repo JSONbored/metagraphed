@@ -824,6 +824,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-entities",
+      "path": "/metagraph/accounts/{ss58}/entities.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AccountEntitiesArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "account-events",
       "path": "/metagraph/accounts/{ss58}/events.json",
       "retirement": null,
@@ -6687,6 +6696,18 @@
       "id": "account-summary",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/entities.json",
+      "cache": "short",
+      "description": "Fetch one address's community-contributed entity labels plus every subnet-ownership tie it has via the chain_events SubnetOwnerChanged stream (#6737-#6740) — either side of an automatic conviction-contest transfer. Only tracks transfers, not genesis ownership.",
+      "id": "account-entities",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/entities",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

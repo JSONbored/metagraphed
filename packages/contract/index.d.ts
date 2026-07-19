@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one address's community-contributed entity labels plus every subnet-ownership tie it has via the chain_events SubnetOwnerChanged stream (#6737-#6740) — either side of an automatic conviction-contest transfer. Only tracks transfers, not genesis ownership. */
+        get: operations["accountEntities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/events": {
         parameters: {
             query?: never;
@@ -3088,6 +3105,25 @@ export interface components {
             /** @enum {string|null} */
             window: "7d" | "30d" | "90d" | null;
         };
+        /** @description One address's entity labels plus every subnet-ownership tie it has via the chain_events SubnetOwnerChanged stream (#6740) -- either side of an automatic conviction-contest transfer. Only tracks transfers, not genesis ownership: an address that has held a subnet since registration and never lost it will not appear in ownership_ties. Served live at GET /api/v1/accounts/{ss58}/entities (no static file). */
+        AccountEntitiesArtifact: {
+            labels: components["schemas"]["EntityLabel"][];
+            ownership_tie_count: number;
+            ownership_ties: ({
+                block_number?: number | null;
+                netuid: number | null;
+                /** Format: date-time */
+                observed_at?: string | null;
+                /** @enum {unknown} */
+                role: "gained_ownership" | "lost_ownership";
+            } & {
+                [key: string]: unknown;
+            })[];
+            schema_version: number;
+            ss58: string;
+        } & {
+            [key: string]: unknown;
+        };
         /** @description One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); alpha_amount (#1856) is the alpha leg of a stake swap in TAO units (StakeAdded/StakeRemoved only, else null); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows). */
         AccountEvent: {
             alpha_amount?: number | null;
@@ -3422,6 +3458,8 @@ export interface components {
             first_block?: number | null;
             /** Format: date-time */
             first_seen_at?: string | null;
+            /** @description Community-contributed entity labels for this address (#6737/#6739), joined live from the entities.json artifact. Empty when the address has no contributed label. */
+            labels?: components["schemas"]["EntityLabel"][];
             last_block?: number | null;
             /** Format: date-time */
             last_seen_at?: string | null;
@@ -5181,6 +5219,16 @@ export interface components {
             endpoint_count: number;
             monitored_count: number;
             pool_eligible_count: number;
+        };
+        /** @description One community-contributed entity label (#6737/#6738) -- omits the underlying registry file's `review` governance state, which is curation metadata, not a user-facing claim. */
+        EntityLabel: {
+            /** @enum {unknown} */
+            category?: "exchange" | "foundation" | "operator" | "other" | null;
+            name?: string | null;
+            notes?: string | null;
+            source_urls?: string[];
+        } & {
+            [key: string]: unknown;
         };
         ErrorEnvelope: {
             data: null;
@@ -8854,6 +8902,9 @@ export interface operations {
                      *         "event_scan_capped": false,
                      *         "first_block": 5000000,
                      *         "first_seen_at": "2026-06-01T00:00:00.000Z",
+                     *         "labels": [
+                     *           {}
+                     *         ],
                      *         "last_block": 5000000,
                      *         "last_seen_at": "2026-06-01T00:00:00.000Z",
                      *         "recent_events": [
@@ -9507,6 +9558,118 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountDeregistrationsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountEntities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "labels": [
+                     *           {}
+                     *         ],
+                     *         "ownership_tie_count": 1,
+                     *         "ownership_ties": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "role": "gained_ownership"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountEntitiesArtifact"];
                     };
                 };
             };

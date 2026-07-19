@@ -595,6 +595,21 @@ export async function loadProviders() {
   return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
+// Community-contributable entity labels (#6737/#6738): flat objects in
+// registry/entities/<ss58>.json, same single-file-per-entity shape as
+// loadProviders() above. The directory doesn't exist until the first
+// contribution lands -- listJsonFiles already tolerates ENOENT, so this
+// naturally returns [] rather than throwing.
+export async function loadEntities() {
+  const files = await listJsonFiles(path.join(repoRoot, "registry/entities"));
+  const entities = await Promise.all(files.map(readJson));
+  const bySs58 = new Map();
+  for (const entity of entities) {
+    if (entity?.ss58) bySs58.set(entity.ss58, entity);
+  }
+  return [...bySs58.values()].sort((a, b) => a.ss58.localeCompare(b.ss58));
+}
+
 export async function loadSubnets() {
   const { generateBaselineOverlaySet, loadManualSubnetOverlays } =
     await import("./generated-overlays.mjs");

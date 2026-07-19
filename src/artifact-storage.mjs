@@ -154,6 +154,9 @@ export const R2_ONLY_PATTERNS = [
   // live from the account_identity_history D1 tier at
   // /api/v1/accounts/{ss58}/identity-history — never a file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/identity-history\.json$/,
+  // Reverse entity-label lookup (#6740): computed live from the entities.json
+  // artifact + chain_events SubnetOwnerChanged stream — never a file.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/entities\.json$/,
   // Current Sudo::Key holder (#4310/2.4): computed from RPC at request time,
   // never a static file.
   /^sudo\/key\.json$/,
@@ -369,6 +372,10 @@ export const R2_ONLY_PATTERNS = [
   // upload/kv/verify pipeline reads it like a lockfile.)
   /^build-summary\.json$/,
   /^curation\.json$/,
+  // Community-contributable entity labels (#6737/#6738): built from
+  // registry/entities/<ss58>.json at deploy time, same R2-only tier as
+  // providers.json above.
+  /^entities\.json$/,
   /^evidence-ledger\.json$/,
   /^freshness\.json$/,
   /^gaps\.json$/,

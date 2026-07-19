@@ -2823,7 +2823,66 @@
             "type": "array",
             "items": { "$ref": "#/components/schemas/AccountEvent" }
           },
-          "activity": { "$ref": "#/components/schemas/AccountActivity" }
+          "activity": { "$ref": "#/components/schemas/AccountActivity" },
+          "labels": {
+            "type": "array",
+            "description": "Community-contributed entity labels for this address (#6737/#6739), joined live from the entities.json artifact. Empty when the address has no contributed label.",
+            "items": { "$ref": "#/components/schemas/EntityLabel" }
+          }
+        }
+      },
+      "EntityLabel": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "One community-contributed entity label (#6737/#6738) -- omits the underlying registry file's `review` governance state, which is curation metadata, not a user-facing claim.",
+        "properties": {
+          "name": { "type": ["string", "null"] },
+          "category": {
+            "enum": ["exchange", "foundation", "operator", "other", null]
+          },
+          "notes": { "type": ["string", "null"] },
+          "source_urls": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "AccountEntitiesArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "One address's entity labels plus every subnet-ownership tie it has via the chain_events SubnetOwnerChanged stream (#6740) -- either side of an automatic conviction-contest transfer. Only tracks transfers, not genesis ownership: an address that has held a subnet since registration and never lost it will not appear in ownership_ties. Served live at GET /api/v1/accounts/{ss58}/entities (no static file).",
+        "required": [
+          "schema_version",
+          "ss58",
+          "labels",
+          "ownership_tie_count",
+          "ownership_ties"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "labels": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/EntityLabel" }
+          },
+          "ownership_tie_count": { "type": "integer", "minimum": 0 },
+          "ownership_ties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["netuid", "role"],
+              "properties": {
+                "netuid": { "type": ["integer", "null"] },
+                "role": { "enum": ["gained_ownership", "lost_ownership"] },
+                "block_number": { "type": ["integer", "null"] },
+                "observed_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                }
+              }
+            }
+          }
         }
       },
       "AccountActivity": {

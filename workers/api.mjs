@@ -149,6 +149,7 @@ import {
   handleAccountBalance,
   handleAccountChildren,
   handleAccountParents,
+  handleAccountEntities,
   handleAccountEvents,
   handleAccountExtrinsics,
   handleAccountTransfers,
@@ -290,6 +291,7 @@ import {
   ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_CHILDREN_PATH_PATTERN,
   ACCOUNT_PARENTS_PATH_PATTERN,
+  ACCOUNT_ENTITIES_PATH_PATTERN,
   ACCOUNT_EVENTS_PATH_PATTERN,
   ACCOUNT_HISTORY_PATH_PATTERN,
   ACCOUNT_EXTRINSICS_PATH_PATTERN,
@@ -2464,6 +2466,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         resolved.url,
       );
     }
+    const accountEntitiesMatch = ACCOUNT_ENTITIES_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountEntitiesMatch) {
+      return handleAccountEntities(request, env, accountEntitiesMatch[1]);
+    }
     const accountEventsMatch = ACCOUNT_EVENTS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2995,6 +3003,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
     SUBNET_IDLE_STAKE_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_ENTITIES_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EVENTS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_HISTORY_PATH_PATTERN.test(pathname) ||
     ACCOUNT_SUBNETS_PATH_PATTERN.test(pathname) ||

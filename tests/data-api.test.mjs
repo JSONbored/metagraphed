@@ -3395,6 +3395,57 @@ test("GET /api/v1/subnets/:netuid/ownership-history with no rows returns an empt
   expect(body.ownership_changes).toEqual([]);
 });
 
+test("GET /api/v1/accounts/:coldkey/entities shapes a network-wide (unfiltered) chain_events scan into this coldkey's ownership ties", async () => {
+  mockRows.current = [
+    {
+      block_number: "8587754",
+      pallet: "SubtensorModule",
+      method: "SubnetOwnerChanged",
+      args: {
+        netuid: 7,
+        old_coldkey: [
+          [
+            230, 177, 94, 10, 88, 222, 149, 217, 176, 218, 228, 3, 237, 17, 117,
+            251, 19, 70, 95, 132, 123, 114, 171, 235, 189, 66, 130, 2, 183, 175,
+            143, 88,
+          ],
+        ],
+        new_coldkey: [
+          [
+            109, 111, 100, 108, 115, 117, 98, 116, 101, 110, 115, 114, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          ],
+        ],
+      },
+      observed_at: "1783600000000",
+    },
+  ];
+  const res = await req(
+    "/api/v1/accounts/5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F/entities",
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.ss58).toBe("5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F");
+  expect(body.ownership_tie_count).toBe(1);
+  expect(body.ownership_ties[0].role).toBe("gained_ownership");
+  expect(body.ownership_ties[0].netuid).toBe(7);
+  const text = queryText();
+  expect(text).toContain("FROM chain_events");
+  expect(text).toContain("pallet = 'SubtensorModule'");
+  expect(text).not.toContain("netuid");
+});
+
+test("GET /api/v1/accounts/:coldkey/entities with no matching rows returns an empty result, not a throw", async () => {
+  mockRows.current = [];
+  const res = await req(
+    "/api/v1/accounts/5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F/entities",
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.ownership_tie_count).toBe(0);
+  expect(body.ownership_ties).toEqual([]);
+});
+
 test("GET /api/v1/subnets/:netuid/lease/history shapes raw account_events rows into lease-lifecycle events", async () => {
   mockRows.current = [
     {

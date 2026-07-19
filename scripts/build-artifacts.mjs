@@ -37,6 +37,7 @@ import {
   isJsonContentType,
   listJsonFilesRecursive,
   loadCandidates,
+  loadEntities,
   loadNativeSnapshot,
   loadProviders,
   loadSubnets,
@@ -1051,6 +1052,19 @@ await mapLimit(
     });
   },
 );
+
+// Community-contributable entity labels (#6737/#6738): a plain passthrough
+// of registry/entities/<ss58>.json, minus rejected entries -- no cross-
+// referencing at build time (the reverse-lookup route joins against
+// subnet_ownership_history live, at request time, #6740).
+const publishableEntities = (await loadEntities()).filter(
+  (entity) => entity.review?.state !== "rejected",
+);
+await writeJson(artifactFile("entities.json"), {
+  schema_version: 1,
+  generated_at: generatedAt,
+  entities: publishableEntities,
+});
 
 await writeJson(artifactFile("subnets.json"), {
   schema_version: 1,

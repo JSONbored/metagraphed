@@ -630,6 +630,12 @@ import { loadSubnetLease } from "./subnet-lease.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
 import { loadNetworkParameters } from "./network-parameters.mjs";
 import { loadRandomnessStatus } from "./randomness.mjs";
+import {
+  ENTITY_LABELS_ARTIFACT,
+  buildAccountEntities,
+  entityLabelsIndex,
+  labelsForSs58,
+} from "./entity-labels.mjs";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import {
   buildValidatorNominators,
@@ -6384,13 +6390,69 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
-      return (
+      const data =
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}`),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildAccountSummary(ss58, {})
+        )) ?? buildAccountSummary(ss58, {});
+      // Community-contributable entity labels (#6739), same REST-parity join
+      // as workers/request-handlers/entities.mjs's own handleAccount.
+      const entitiesArtifact = await ctx.readArtifact(
+        ctx.env,
+        ENTITY_LABELS_ARTIFACT,
       );
+      data.labels = labelsForSs58(
+        entityLabelsIndex(
+          entitiesArtifact?.ok ? entitiesArtifact.data?.entities : [],
+        ),
+        ss58,
+      );
+      return data;
+    },
+  },
+  {
+    name: "get_account_entities",
+    title: "Get an account's entity labels and subnet-ownership ties",
+    description:
+      "Fetch one coldkey's community-contributed entity labels (exchange/" +
+      "foundation/operator/other) plus every subnet-ownership tie it has via " +
+      "the chain_events SubnetOwnerChanged stream (either side of an " +
+      "automatic conviction-contest transfer). Only tracks transfers, not " +
+      "genesis ownership -- a coldkey that has held a subnet since " +
+      "registration and never lost it will not appear in ownership_ties. " +
+      "Mirrors GET /api/v1/accounts/{ss58}/entities.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description: "The coldkey's SS58 address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const [entitiesArtifact, ownershipData] = await Promise.all([
+        ctx.readArtifact(ctx.env, ENTITY_LABELS_ARTIFACT),
+        tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/entities`),
+          "METAGRAPH_SUBNET_OWNERSHIP_SOURCE",
+        ),
+      ]);
+      const data =
+        ownershipData ?? buildAccountEntities(ss58, { entities: [] });
+      data.labels = labelsForSs58(
+        entityLabelsIndex(
+          entitiesArtifact?.ok ? entitiesArtifact.data?.entities : [],
+        ),
+        ss58,
+      );
+      return data;
     },
   },
   {
@@ -13243,6 +13305,34 @@ const TOOL_OUTPUT_SCHEMAS = {
       registrations: objectItems(ACCOUNT_REGISTRATION_ITEM),
       recent_events: objectItems(ACCOUNT_EVENT_ITEM),
       activity: { type: "object", additionalProperties: true },
+      labels: objectItems({
+        name: NULLABLE_STRING,
+        category: NULLABLE_STRING,
+        notes: NULLABLE_STRING,
+        source_urls: { type: "array", items: { type: "string" } },
+      }),
+    },
+  },
+  get_account_entities: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "labels", "ownership_tie_count", "ownership_ties"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      labels: objectItems({
+        name: NULLABLE_STRING,
+        category: NULLABLE_STRING,
+        notes: NULLABLE_STRING,
+        source_urls: { type: "array", items: { type: "string" } },
+      }),
+      ownership_tie_count: { type: "integer" },
+      ownership_ties: objectItems({
+        netuid: NULLABLE_INT,
+        role: { type: "string" },
+        block_number: NULLABLE_INT,
+        observed_at: NULLABLE_STRING,
+      }),
     },
   },
   get_account_balance: {
