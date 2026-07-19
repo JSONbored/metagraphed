@@ -215,7 +215,17 @@ export function AppShell({
               <div className="flex items-center gap-1">
                 <ApiDrawerTrigger />
 
-                <NetworkSwitcher />
+                {/* #6902: NetworkSwitcher was the one header action still
+                    rendering at every breakpoint — its siblings below
+                    (developer settings, SettingsPopover, WalletConnectButton)
+                    are all already `hidden md:inline-flex`, and ApiDrawerTrigger
+                    hides below md too. Left unhidden it overflowed the 375px
+                    mobile viewport by 10px (the switcher pill sat at right:385).
+                    Give it the same below-md treatment; it's relocated into the
+                    mobile navigation sheet so it stays reachable on touch. */}
+                <div className="hidden md:inline-flex">
+                  <NetworkSwitcher />
+                </div>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Link
@@ -318,6 +328,10 @@ export function AppShell({
                 <Compass className="size-3" /> Unofficial registry
               </div>
               <MobileMegaMenu onNavigate={() => setMobileOpen(false)} />
+              {/* #6902: the header NetworkSwitcher is `hidden` below md (it
+                  overflowed the mobile viewport), so this is its mobile home —
+                  same rationale as the wallet-connect note below. */}
+              <NetworkSwitcher />
               <div className="flex items-center gap-2">
                 <Link
                   to="/settings"
