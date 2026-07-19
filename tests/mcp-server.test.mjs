@@ -8737,6 +8737,30 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(out.summary, /Staking 1000 TAO on subnet 64/);
     assert.match(out.summary, /price impact \(slippage\)/);
     assert.match(out.disclaimer, /does not execute/i);
+    // Low price impact (~0.5%, well under the 5% warning threshold): clean
+    // preview, no warnings, ok.
+    assert.deepEqual(out.warnings, []);
+    assert.equal(out.ok, true);
+  });
+
+  test("get_stake_action_preview flags a warning and ok:false when price impact meets the 5% threshold", async () => {
+    // 15000 TAO against a ~201960 TAO pool is ~7.4% price impact -- over the
+    // ADR 0018 §3 default 5% slippage tolerance this tool's ok/warnings fields
+    // are keyed to.
+    const res = await callTool(
+      "get_stake_action_preview",
+      { netuid: 64, amount: 15000, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.ok(out.price_impact_pct >= 5);
+    assert.equal(out.ok, false);
+    assert.equal(out.warnings.length, 1);
+    assert.match(out.warnings[0], /price impact/i);
+    assert.match(out.warnings[0], /5%/);
   });
 
   test("get_stake_action_preview defaults direction to stake when omitted", async () => {
@@ -8781,6 +8805,8 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.price_impact_pct, 0);
     assert.match(out.summary, /root/);
     assert.match(out.summary, /no price impact/);
+    assert.deepEqual(out.warnings, []);
+    assert.equal(out.ok, true);
   });
 
   test("get_stake_action_preview output carries NO signable/extrinsic payload — only the human-readable summary", async () => {

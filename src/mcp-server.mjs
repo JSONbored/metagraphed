@@ -623,7 +623,11 @@ import {
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.mjs";
-import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
+import {
+  computeStakeQuote,
+  STAKE_QUOTE_DIRECTIONS,
+  HIGH_PRICE_IMPACT_WARNING_PCT,
+} from "./stake-quote.mjs";
 import { buildAccountPositionHistory } from "./account-position-history.mjs";
 import { buildAccountIdentity } from "./account-identity.mjs";
 import { buildAccountIdentityHistory } from "./account-identity-history.mjs";
@@ -3178,9 +3182,34 @@ export const MCP_TOOLS = [
         spot_price_tao: { type: "number" },
         effective_price_tao: { type: "number" },
         price_impact_pct: { type: "number" },
+        warnings: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Non-fatal cautions computed from this preview's own data " +
+            "(currently: price impact at or above the high-impact " +
+            "threshold). Empty when none apply -- never omitted or null.",
+        },
+        ok: {
+          type: "boolean",
+          description:
+            "Policy-style compliance flag: false when the preview trips a " +
+            "documented threshold (currently: price impact >= " +
+            `${HIGH_PRICE_IMPACT_WARNING_PCT}%, matching this codebase's ` +
+            "own default slippage tolerance, ADR 0018 §3). Does not " +
+            "block or alter the preview -- informational only.",
+        },
         disclaimer: { type: "string" },
       },
-      required: ["netuid", "direction", "amount", "summary", "disclaimer"],
+      required: [
+        "netuid",
+        "direction",
+        "amount",
+        "summary",
+        "warnings",
+        "ok",
+        "disclaimer",
+      ],
       additionalProperties: true,
     },
     async handler(args, ctx) {
@@ -3208,6 +3237,15 @@ export const MCP_TOOLS = [
       const summary = q.is_root
         ? `${verb} ${amount} ${inUnit} on subnet ${netuid} (root) previews an estimated ${q.expected_out} ${outUnit} at a 1:1 price with no price impact.`
         : `${verb} ${amount} ${inUnit} on subnet ${netuid} previews an estimated ${q.expected_out} ${outUnit} at an effective price of ${q.effective_price_tao} TAO/alpha (spot ${q.spot_price_tao}), with an estimated ${q.price_impact_pct}% price impact (slippage).`;
+      const warnings = [];
+      if (q.price_impact_pct >= HIGH_PRICE_IMPACT_WARNING_PCT) {
+        warnings.push(
+          `Estimated price impact (${q.price_impact_pct.toFixed(2)}%) meets ` +
+            `or exceeds the ${HIGH_PRICE_IMPACT_WARNING_PCT}% default ` +
+            "slippage tolerance (ADR 0018 §3) -- the realized price may " +
+            "differ materially from spot.",
+        );
+      }
       return {
         netuid: q.netuid,
         direction: q.direction,
@@ -3217,6 +3255,8 @@ export const MCP_TOOLS = [
         spot_price_tao: q.spot_price_tao,
         effective_price_tao: q.effective_price_tao,
         price_impact_pct: q.price_impact_pct,
+        warnings,
+        ok: warnings.length === 0,
         disclaimer:
           "Informational preview only. This does not execute, build, prepare, " +
           "or sign any transaction, produces no signable or extrinsic artifact, " +

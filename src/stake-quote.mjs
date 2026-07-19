@@ -15,6 +15,13 @@ export const STAKE_QUOTE_DIRECTIONS = ["stake", "unstake"];
 // insufficient-liquidity error instead of a degenerate ~100%-impact quote.
 export const MAX_INPUT_RESERVE_MULTIPLE = 1000;
 
+// A preview whose price impact meets or exceeds this codebase's own default
+// slippage-protection tolerance (ADR 0018 §3: 5%, the same band
+// pre-sign-confirmation.tsx already protects live transactions to) is worth
+// flagging as non-fatal but noteworthy -- the realized price is materially
+// worse than spot. Used by get_stake_action_preview's warnings/ok fields.
+export const HIGH_PRICE_IMPACT_WARNING_PCT = 5;
+
 function isFinitePositive(n) {
   return typeof n === "number" && Number.isFinite(n) && n > 0;
 }
