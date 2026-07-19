@@ -18,6 +18,13 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/target/release/backfill-rs /app/backfill-rs
+# poller (metagraphed-infra#136/#137): the consolidated chain-state polling
+# service, a separate process/binary from backfill-rs above -- `cargo build
+# --release` with no `--bin` filter already builds both targets, this just
+# ships the second one too. Selected via docker_container's `command:` in
+# roles/indexer-rust, not this image's own CMD (which stays backfill-rs's
+# entrypoint.sh, unchanged).
+COPY --from=build /app/target/release/poller /app/poller
 COPY entrypoint.sh /app/entrypoint.sh
 # entrypoint shards [FROM,TO) into BACKFILL_SHARDS independent conc=1 processes
 # (sidesteps subxt's intra-client concurrency deadlock). Runtime env on the service:

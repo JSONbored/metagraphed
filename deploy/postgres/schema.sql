@@ -471,6 +471,26 @@ CREATE TABLE IF NOT EXISTS subnet_locks (
 );
 CREATE INDEX IF NOT EXISTS idx_subnet_locks_netuid ON subnet_locks (netuid);
 
+-- Real on-chain subnet ownership (metagraphed-infra#138; closes the gap
+-- JSONbored/metagraphed#6644 found -- no clean provider<->owner mapping
+-- existed anywhere). Latest-only snapshot, one row per currently-registered
+-- netuid, resolved via SubtensorModule::SubnetOwnerHotkey(netuid) ->
+-- SubtensorModule::Owner(hotkey) and written by apps/indexer-rs's poller
+-- binary (src/bin/poller.rs), NOT the JS Worker -- this is the first job in
+-- the consolidated chain-state polling service, not a data-refresh-cron/
+-- data-api.mjs sync route like every other table in this file. A netuid
+-- whose owner hotkey resolves to the zero account (unset/deregistered) is
+-- never written here, matching the bittensor SDK's own "no real owner"
+-- convention -- rows disappear (pruned) rather than being written as
+-- zero-account placeholders.
+CREATE TABLE IF NOT EXISTS subnet_ownership (
+  netuid        INTEGER NOT NULL,
+  owner_hotkey  TEXT NOT NULL,
+  owner_coldkey TEXT NOT NULL,
+  captured_at   BIGINT NOT NULL,
+  PRIMARY KEY (netuid)
+);
+
 -- Personal (coldkey) chain identity, latest-only (#4832 gap-closure Phase B;
 -- mirrors D1 migrations/0039_account_identity.sql). One row per account,
 -- upserted by the refresh-account-identity workflow's direct POST to

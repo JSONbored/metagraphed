@@ -20,7 +20,7 @@
 //   VERIFY_BLOCKS       comma list: decode these blocks, print canonical JSON, exit
 //                       (no DB writes) — used to diff against the python ground-truth.
 //
-// KNOWN ISSUE (2026-07-03, MITIGATED by ChainClient below): against our own
+// KNOWN ISSUE (2026-07-03, MITIGATED by ChainClient, now in lib.rs): against our own
 // metagraphed subtensor node while it is still catching up from genesis (rapidly
 // importing many blocks/sec, as opposed to steady-state ~1 block/12s), both
 // connect_chain()'s initial api.at_current_block() call and later
@@ -38,8 +38,8 @@
 // Confirmed NOT specific to the reconnecting-rpc-client feature either (a plain
 // OnlineClient::from_insecure_url client hangs identically). This is a known,
 // still-open upstream gap (paritytech/subxt#2050) with no built-in fix; ChainClient
-// (below) adds the app-level timeout + reconnect the subxt maintainers themselves
-// recommend as the workaround.
+// (src/lib.rs, shared with src/bin/poller.rs) adds the app-level timeout +
+// reconnect the subxt maintainers themselves recommend as the workaround.
 //
 // "MITIGATED", not "resolved": verified live 2026-07-03 that ChainClient's
 // timeout+reconnect turns the silent indefinite hang into a bounded, clearly
@@ -54,160 +54,24 @@
 // still mid-sync viable.
 
 use std::collections::{HashMap, HashSet};
-use std::future::Future;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::{Context, Result};
+use backfill_rs::{connect_pg, redact_rpc_url, Api, ChainClient};
 use blake2::digest::consts::U32;
 use blake2::{Blake2b, Digest};
 use futures::stream::{self, StreamExt};
 use scale_info::{PortableRegistry, TypeDef, TypeDefPrimitive};
 use scale_value::{Composite, Primitive, Value, ValueDef};
 use subxt::config::substrate::DigestItem;
-use subxt::config::PolkadotConfig;
 use subxt::utils::AccountId32;
-use subxt::OnlineClient;
-use tokio::sync::{RwLock, Semaphore};
+use tokio::sync::Semaphore;
 
 const BLOCKS_PER_DAY: u64 = 7200;
 // finney ~12s block time; observed_at derived from height when a block's own
 // Timestamp.set can't be decoded (see decode_block's fallback). Matches the
 // same clock scripts/fetch-events.py already uses.
 const BLOCK_MS: i64 = 12_000;
-
-type Api = OnlineClient<PolkadotConfig>;
-
-fn redact_rpc_url(url: &str) -> String {
-    let scheme_end = url.find("://").map(|idx| idx + 3).unwrap_or(0);
-    let after_scheme = &url[scheme_end..];
-    let authority_len = after_scheme
-        .find(|ch| matches!(ch, '/' | '?' | '#'))
-        .unwrap_or(after_scheme.len());
-    let (authority, rest) = after_scheme.split_at(authority_len);
-    let safe_authority = authority
-        .rsplit_once('@')
-        .map(|(_, host)| host)
-        .unwrap_or(authority);
-    let path_len = rest
-        .find(|ch| matches!(ch, '?' | '#'))
-        .unwrap_or(rest.len());
-    let safe_rest = &rest[..path_len];
-    format!("{}{}{}", &url[..scheme_end], safe_authority, safe_rest)
-}
-
-// KNOWN ISSUE fix (was "unresolved" above, 2026-07-03): subxt 0.50's per-block
-// metadata fetch depends on a chainHead_v1_follow subscription that can silently
-// stop emitting events (0% CPU, zero further websocket traffic, no error) --
-// this is a known, still-open upstream gap (paritytech/subxt#2050), whose own
-// maintainers' recommended fix is exactly this: an app-level timeout that
-// recreates the subscription when nothing comes back in time, since subxt
-// doesn't do this internally. `OnlineClient` is `Clone` (cheap, Arc-backed
-// internally), so ChainClient holds one behind an RwLock and swaps in a fresh
-// connection when a call stalls past RPC_STALL_TIMEOUT.
-//
-// A generation counter guards against a reconnect storm: if several concurrent
-// callers (BACKFILL_CONCURRENCY > 1) all stall around the same time, only the
-// first to notice actually reconnects -- everyone else sees the generation has
-// already moved and just retries against the fresh client. In the currently
-// DEPLOYED configuration (entrypoint.sh's sharding launcher pins each shard to
-// BACKFILL_CONCURRENCY=1), there is at most one caller at a time, so this is
-// pure defense-in-depth rather than a scenario this process actually hits.
-//
-// Verified live 2026-07-03 against our own archive node while it was rapidly
-// importing blocks during its own historical catch-up (the exact reproducing
-// condition): api.at_current_block() stalled with zero further websocket
-// traffic, the 90s timeout fired, and reconnect_if_stale rebuilt a working
-// connection -- confirming this is the real failure mode described below, and
-// that a reconnect actually clears it. It also showed the stall isn't
-// necessarily a one-off: a single reconnect-and-retry can still land on a
-// second stall while the node is continuously under heavy import churn, so
-// `call` retries a bounded number of times internally rather than reconnecting
-// only once and handing a single failure back to the caller.
-const RPC_STALL_TIMEOUT: Duration = Duration::from_secs(90);
-const RPC_CALL_ATTEMPTS: u32 = 3;
-
-struct ChainClient {
-    url: String,
-    api: RwLock<Api>,
-    generation: AtomicU64,
-}
-
-impl ChainClient {
-    async fn connect(url: String) -> Result<Self> {
-        let api = connect_chain(&url).await?;
-        Ok(Self {
-            url,
-            api: RwLock::new(api),
-            generation: AtomicU64::new(0),
-        })
-    }
-
-    /// The current client handle + the generation it was read at (cheap: Api
-    /// clones are Arc-based internally, so this is a brief read-lock, not a
-    /// hold-for-the-duration-of-an-RPC-call lock).
-    async fn current(&self) -> (Api, u64) {
-        let api = self.api.read().await.clone();
-        (api, self.generation.load(Ordering::SeqCst))
-    }
-
-    /// Rebuild the connection, unless someone else already did since
-    /// `seen_generation` was observed (checked again after acquiring the write
-    /// lock, since another caller may have raced ahead while we were waiting).
-    async fn reconnect_if_stale(&self, seen_generation: u64) -> Result<()> {
-        if self.generation.load(Ordering::SeqCst) != seen_generation {
-            return Ok(());
-        }
-        let mut guard = self.api.write().await;
-        if self.generation.load(Ordering::SeqCst) != seen_generation {
-            return Ok(());
-        }
-        eprintln!("chain client: reconnecting after a stalled RPC call ({RPC_STALL_TIMEOUT:?})");
-        let fresh = connect_chain(&self.url).await?;
-        *guard = fresh;
-        self.generation.fetch_add(1, Ordering::SeqCst);
-        Ok(())
-    }
-
-    /// Run `f` against the current client, bounded by RPC_STALL_TIMEOUT, and
-    /// RETRY internally (up to RPC_CALL_ATTEMPTS, with a short backoff) against
-    /// a freshly reconnected client whenever a stall is detected — a single
-    /// reconnect isn't guaranteed to land on a working attempt (verified live:
-    /// a heavily-importing node can stall the very next call too), so this is
-    /// a self-contained "call reliably through a stall" primitive rather than
-    /// relying on every call site to also wrap it in its own retry loop. The
-    /// existing per-block retry loops (backfill's inner 3-attempt + outer
-    /// round-based retry) still apply on top of this for OTHER failure classes
-    /// (e.g. rate-limit 429s from the public RPC) — the two compose fine.
-    async fn call<T, F, Fut>(&self, mut f: F) -> Result<T>
-    where
-        F: FnMut(Api) -> Fut,
-        Fut: Future<Output = Result<T>>,
-    {
-        let mut last_err: Option<anyhow::Error> = None;
-        for attempt in 0..RPC_CALL_ATTEMPTS {
-            let (api, generation) = self.current().await;
-            match tokio::time::timeout(RPC_STALL_TIMEOUT, f(api)).await {
-                Ok(Ok(value)) => return Ok(value),
-                Ok(Err(e)) => last_err = Some(e),
-                Err(_) => {
-                    last_err = Some(anyhow::anyhow!(
-                        "rpc call stalled past {RPC_STALL_TIMEOUT:?} (no response, chainHead \
-                         subscription likely stopped emitting -- see paritytech/subxt#2050)"
-                    ));
-                    if let Err(reconnect_err) = self.reconnect_if_stale(generation).await {
-                        return Err(reconnect_err.context("reconnect after a stalled rpc call"));
-                    }
-                }
-            }
-            if attempt + 1 < RPC_CALL_ATTEMPTS {
-                tokio::time::sleep(Duration::from_millis(500 * (attempt as u64 + 1))).await;
-            }
-        }
-        Err(last_err.unwrap_or_else(|| anyhow::anyhow!("rpc call failed with no error recorded")))
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Row types (column order matches deploy/postgres/schema.sql exactly).
@@ -327,8 +191,6 @@ fn acct(v: &Value<()>) -> Option<String> {
     }
 }
 
-/// The ss58 authority accounts from a decoded Aura.Authorities value (a Vec, possibly
-/// wrapped in a BoundedVec/newtype). Each authority is an sr25519 32-byte public key.
 // ---------------------------------------------------------------------------
 // Call-arg type names (metagraphed#4724 D1/Postgres call_args parity)
 // ---------------------------------------------------------------------------
@@ -481,6 +343,8 @@ fn call_args_json_from_fields(
     )
 }
 
+/// The ss58 authority accounts from a decoded Aura.Authorities value (a Vec, possibly
+/// wrapped in a BoundedVec/newtype). Each authority is an sr25519 32-byte public key.
 fn authority_accounts(v: &Value<()>) -> Vec<String> {
     let top = ordered_fields(v);
     // Descend one level through a BoundedVec/newtype wrapper if the single child
@@ -1078,18 +942,20 @@ async fn decode_block(api: &Api, height: u64, head: u64) -> Result<DecodedBlock>
 
     // --- extrinsics: decode, find block timestamp from Timestamp.set inherent
     let extrinsics = at.extrinsics().fetch().await.context("extrinsics.fetch")?;
-    let mut decoded_extr: Vec<(
+    // (index, module, function, hash, signer, call_args_json)
+    type DecodedExtrinsic = (
         usize,
         String,
         String,
         Option<String>,
         Option<String>,
         Option<String>,
-    )> = Vec::new(); // (index, module, function, hash, signer, call_args_json)
+    );
+    let mut decoded_extr: Vec<DecodedExtrinsic> = Vec::new();
     let mut observed_at: Option<i64> = None;
     for ext in extrinsics.iter() {
         let ext = ext.context("extrinsic iter")?;
-        let index = ext.index() as usize;
+        let index = ext.index();
         let module = ext.pallet_name().to_string();
         let function = ext.call_name().to_string();
         let xhash = blake2_256(ext.bytes());
@@ -1482,63 +1348,9 @@ async fn copy_send(sink: tokio_postgres::CopyInSink<bytes::Bytes>, buf: String) 
 }
 
 // ---------------------------------------------------------------------------
-// Connection
+// Connection: ChainClient / connect_chain / connect_pg now live in lib.rs,
+// shared with src/bin/poller.rs (see backfill_rs::* import above).
 // ---------------------------------------------------------------------------
-async fn connect_chain(url: &str) -> Result<Api> {
-    // Reconnecting client: a multi-hour backfill WILL see the archive drop the WSS
-    // socket; without auto-reconnect every call after the first drop fails (verified).
-    // request_timeout is the critical one: a throttled/wedged upstream that drops a
-    // request on the floor (no error, no close) would otherwise leave the in-flight
-    // decode futures awaiting forever — the whole run wedges alive-but-frozen with no
-    // log line (the exact failure mode that silently stalled the metered run). A
-    // bounded timeout turns that into an Err the retry loop recovers from (a dead/
-    // half-open socket surfaces as a timed-out request within 60s rather than never).
-    use subxt::backend::LegacyBackend;
-    use subxt::rpcs::client::{ReconnectingRpcClient, RpcClient};
-    eprintln!(
-        "connect_chain: building reconnecting rpc client -> {}",
-        redact_rpc_url(url)
-    );
-    let inner = ReconnectingRpcClient::builder()
-        .request_timeout(Duration::from_secs(60))
-        .connection_timeout(Duration::from_secs(20))
-        .build(url.to_string())
-        .await
-        .map_err(|e| anyhow::anyhow!("reconnecting rpc build: {e}"))?;
-    eprintln!("connect_chain: reconnecting rpc client built, wrapping RpcClient");
-    let rpc_client = RpcClient::new(inner);
-    // LegacyBackend, not OnlineClient::from_rpc_client's default (CombinedBackend,
-    // which tries chainhead_* before legacy_* per call): this is the actual fix for
-    // the KNOWN ISSUE documented at the top of this file, not just a mitigation.
-    // paritytech/subxt#2050 is specifically the chainHead_v1_follow subscription
-    // silently going idle under heavy concurrent block-import churn -- a failure
-    // mode intrinsic to that stateful subscription protocol. LegacyBackend never
-    // opens one; every call (state_getMetadata, chain_getBlock, state_getStorage,
-    // Core_version via state_call, ...) is a stateless one-shot RPC request, so the
-    // whole bug CLASS is structurally unreachable, not just recovered-from-faster.
-    // ChainClient's timeout+reconnect above stays as defense-in-depth (a slow/dead
-    // TCP connection is still possible under any backend), but is no longer the
-    // primary defense against #2050 specifically.
-    eprintln!("connect_chain: calling OnlineClient::from_backend (LegacyBackend)");
-    let backend = LegacyBackend::builder().build(rpc_client);
-    let api = OnlineClient::<PolkadotConfig>::from_backend(std::sync::Arc::new(backend))
-        .await
-        .context("online client")?;
-    eprintln!("connect_chain: OnlineClient ready");
-    Ok(api)
-}
-
-async fn connect_pg(url: &str) -> Result<tokio_postgres::Client> {
-    let (client, conn) = tokio_postgres::connect(url, tokio_postgres::NoTls)
-        .await
-        .context("pg connect")?;
-    tokio::spawn(async move {
-        if let Err(e) = conn.await {
-            eprintln!("pg connection error: {e}");
-        }
-    });
-    Ok(client)
-}
 
 // ---------------------------------------------------------------------------
 // Verify mode: decode blocks, print canonical JSON, no DB.
@@ -1821,7 +1633,7 @@ async fn run_live(client: &ChainClient, pg: &mut tokio_postgres::Client) -> Resu
                 .with_context(|| format!("live flush #{h}"))?;
             cursor = h;
             n += 1;
-            if n % 20 == 0 {
+            if n.is_multiple_of(20) {
                 eprintln!(
                     "live: #{h} · {} extr · {} ce",
                     d.extrinsics.len(),
