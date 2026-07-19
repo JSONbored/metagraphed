@@ -495,6 +495,39 @@ describe("captured-fixture body scan", () => {
     );
   });
 
+  test("allows a single-column 'SELECT coldkey FROM ...' query (#6877)", async () => {
+    // Every prior call site paired coldkey with a second selected column, so
+    // coldkey was always immediately followed by a comma. The stake-moves/
+    // stake-transfers distinct-count subqueries (#6877) are the first
+    // single-column case, where coldkey is directly followed by FROM.
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      "SELECT coldkey FROM account_events WHERE netuid = ${netuid}\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_PUBLIC_FILE),
+      false,
+      `single-column SELECT coldkey FROM should be exempt; got:\n${output}`,
+    );
+  });
+
+  test("does not let 'coldkey from' prose slip past the new FROM allowance", async () => {
+    // The FROM exemption above must require the literal SQL keyword directly
+    // after coldkey -- ordinary prose using "from" must still be flagged.
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      "Never extract your coldkey from an untrusted device.\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:1: Bittensor key terminology`),
+      `prose using "coldkey from" must still be flagged; got:\n${output}`,
+    );
+  });
+
   test("does not let 'coldkey is not' prose without the literal NULL keyword slip past", async () => {
     // The IS [NOT] NULL exemption requires the literal SQL keyword, not just
     // "is"/"is not" -- prose using the same words must still be flagged.

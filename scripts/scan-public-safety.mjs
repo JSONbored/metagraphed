@@ -257,8 +257,23 @@ const patterns = [
     // (an extremely common idiom, not a one-off) false-positived. `coldkey\.` +
     // a lowercase identifier + `(` matches the method-call shape without
     // loosening the bare `\bcoldkey\b` trigger itself.
+    //
     allow:
       /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bcoldkey\?\.|\bcoldkey\.[a-z_]+\(|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b|TEXT|VARCHAR|CHAR|INTEGER|BIGINT|NUMERIC|BOOLEAN)\b|'coldkey'|\bcoldkey\s*\/\s*[a-z_]+\b|\b[a-z_]+\s*\/\s*coldkey\b|\b[a-z]+-coldkey\b|\bcoldkey\s*\(/gi,
+    // Extended again (#6877): a single-column `SELECT coldkey FROM ...` wasn't
+    // covered by the SQL-keyword alternation above -- every prior call site
+    // paired coldkey with a second selected column, so it was always
+    // immediately followed by a comma, never directly by FROM. The stake-
+    // moves/stake-transfers distinct-count subqueries fixed here are the
+    // first single-column case. Unlike ASC/DESC/AS/the type keywords above,
+    // FROM is deliberately its OWN case-SENSITIVE-only strip (not folded into
+    // the case-insensitive `allow` alternation): "from" is a common enough
+    // English word that a case-insensitive match would also exempt real
+    // suspicious prose like "extract your coldkey from an untrusted device"
+    // -- requiring the literal uppercase SQL keyword (this codebase's actual
+    // style, confirmed against every FROM clause in workers/data-api.mjs)
+    // keeps that prose caught while still allowing the real query shape.
+    allowCaseSensitive: /\bcoldkey\s+FROM\b/g,
     soft: true,
   },
   {
@@ -481,7 +496,13 @@ async function runScan() {
           // Strip allowlisted spans (e.g. the documented local subtensor RPC
           // endpoint) before testing, so a real leak elsewhere on the same line
           // is still caught.
-          const probe = pattern.allow ? line.replace(pattern.allow, "") : line;
+          let probe = pattern.allow ? line.replace(pattern.allow, "") : line;
+          // A second, deliberately case-SENSITIVE-only strip (see
+          // allowCaseSensitive's own definition above for why this can't just
+          // join the case-insensitive `allow` alternation).
+          if (pattern.allowCaseSensitive) {
+            probe = probe.replace(pattern.allowCaseSensitive, "");
+          }
           if (pattern.regex.test(probe)) {
             findings.push(`${relative}:${index + 1}: ${pattern.name}`);
           }

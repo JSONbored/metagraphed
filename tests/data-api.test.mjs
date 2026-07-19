@@ -3820,6 +3820,21 @@ test("GET /api/v1/subnets/:netuid/stake-moves with no aggregate row returns the 
   expect(body.movements).toBe(0);
 });
 
+test("GET /api/v1/subnets/:netuid/stake-moves distinct-mover subquery only selects the grouped column (regression #6877)", async () => {
+  // Postgres (unlike MySQL) rejects a selected column that isn't in the
+  // GROUP BY clause or wrapped in an aggregate -- the inner subquery must
+  // select only `coldkey` to match its `GROUP BY 1`.
+  mockRows.current = [
+    { movements: "2", distinct_movers: "1", newest_observed: "1783600000000" },
+  ];
+  await req("/api/v1/subnets/4/stake-moves");
+  const moversSubquery = queryText().match(
+    /\(SELECT COUNT\(\*\) FROM \(\s*SELECT ([^\n]+) FROM account_events[\s\S]*?\) movers\)/,
+  );
+  expect(moversSubquery).not.toBeNull();
+  expect(moversSubquery[1].trim()).toBe("coldkey");
+});
+
 test("GET /api/v1/subnets/:netuid/stake-transfers returns the single-row aggregate", async () => {
   mockRows.current = [
     { transfers: "6", distinct_senders: "2", newest_observed: "1783600000000" },
@@ -3836,6 +3851,20 @@ test("GET /api/v1/subnets/:netuid/stake-transfers with no aggregate row returns 
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.transfers).toBe(0);
+});
+
+test("GET /api/v1/subnets/:netuid/stake-transfers distinct-sender subquery only selects the grouped column (regression #6877)", async () => {
+  // Same shape as the stake-moves regression test above -- the sibling
+  // `senders` subquery must select only `coldkey` to match its `GROUP BY 1`.
+  mockRows.current = [
+    { transfers: "3", distinct_senders: "1", newest_observed: "1783600000000" },
+  ];
+  await req("/api/v1/subnets/4/stake-transfers");
+  const sendersSubquery = queryText().match(
+    /\(SELECT COUNT\(\*\) FROM \(\s*SELECT ([^\n]+) FROM account_events[\s\S]*?\) senders\)/,
+  );
+  expect(sendersSubquery).not.toBeNull();
+  expect(sendersSubquery[1].trim()).toBe("coldkey");
 });
 
 const ACCOUNT_FOOTPRINT_ROUTES = [
