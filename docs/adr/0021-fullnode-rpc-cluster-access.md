@@ -81,21 +81,27 @@ login ships first**:
   at all), the Worker verifies the signature against the claimed `ss58`,
   consumes the nonce (single-use), and on success issues a session tied to
   that account.
-- **Open technical question, not resolved here**: Bittensor wallets are
-  predominantly **sr25519** (Schnorrkel), which `@noble/curves` does not
-  implement, and the reference implementation
-  (`@polkadot/util-crypto`/`@polkadot/wasm-crypto`) is a WASM build whose
-  Cloudflare Workers compatibility is **unverified** — this codebase already
-  had to reject `node:crypto`'s `blake2b512` for exactly this class of
-  workerd-compatibility surprise (`src/account-balance.mjs`'s header). Some
-  Bittensor tooling supports ed25519 keys too, which `@noble/curves/ed25519`
-  (already an indirect dependency via `@noble/hashes`' sibling package) DOES
-  cover. Before writing a single line of verification code: prototype
-  sr25519 signature verification in an actual `wrangler dev`/Miniflare
-  environment and confirm it works, or scope v1 to ed25519-only wallets with
-  sr25519 as an explicit, flagged follow-up. **Do not guess this — verify it
-  first**, the same discipline this codebase already applies to every other
-  crypto primitive choice.
+- **sr25519 verification — RESOLVED (2026-07-19), no longer blocking**:
+  Bittensor wallets are predominantly **sr25519** (Schnorrkel), which
+  `@noble/curves` doesn't implement directly — but `@polkadot/util-crypto`
+  (already a dependency, `apps/ui/package.json`, v14.0.3) does **not** use
+  the old WASM path for this anymore: its `sr25519Verify` is a thin wrapper
+  around `@scure/sr25519` (`node_modules/@polkadot/util-crypto/sr25519/
+verify.js`) — a **pure-JS, audited implementation** ("Audited & minimal
+  implementation of sr25519 (polkadot) cryptography") whose own dependency
+  tree is just `@noble/curves` + `@noble/hashes`, the identical audited,
+  no-WASM family this codebase already trusts and uses elsewhere. Verified
+  empirically, not assumed: a real `wrangler dev` Worker importing
+  `@scure/sr25519` directly (not the full `@polkadot/util-crypto` bundle,
+  to avoid pulling in its unrelated `@polkadot/wasm-crypto` transitive
+  dependency for functions this doesn't need) generated an sr25519 keypair,
+  signed a message, and verified both the valid signature (accepted) and a
+  tampered one (correctly rejected) — no WASM instantiation, no
+  workerd-compatibility surprise of the kind `src/account-balance.mjs`'s
+  header warns about for `node:crypto`'s `blake2b512`. Implementation should
+  add `@scure/sr25519` as an explicit direct dependency (currently only a
+  transitive one via `apps/ui`'s `@polkadot/util-crypto`) rather than rely on
+  workspace-hoisting luck.
 - **Email/anonymous sign-in** (taostats' simpler fallback path) is
   explicitly **deferred**, not rejected — v1 ships wallet-only to keep the
   identity model to one path while it's new; revisit once wallet login is
@@ -152,10 +158,8 @@ key, enforced the same Cloudflare Workers Rate Limiting binding pattern ADR
 - This is the **first user-account system** in this codebase (ADR 0020
   explicitly noted there was none). `rpc_accounts` + wallet-signature
   verification is new surface area, not an extension of an existing pattern.
-- The sr25519-in-workerd question **blocks real implementation** until
-  answered — this ADR's wallet-login design is sound independent of that
-  answer, but the answer determines whether v1 ships sr25519, ed25519-only,
-  or a client-side-verification-service workaround.
+- The sr25519-in-workerd question is resolved (see section 2) — no longer a
+  blocker on implementation starting.
 - The archive node and the existing public `/rpc/v1` proxy are unaffected —
   zero risk of this work regressing either.
 - `src/api-keys.mjs` (format/hash/validate) is now used by two independent
@@ -165,9 +169,6 @@ key, enforced the same Cloudflare Workers Rate Limiting binding pattern ADR
 
 ## Open questions
 
-- **sr25519 verification library/runtime feasibility** — see section 2.
-  Needs a real `wrangler dev` prototype before implementation starts, not a
-  design-time guess.
 - **Fullnode cluster load-balancing**: with only one instance today, the
   "cluster" framing is aspirational — does the new route need real multi-
   instance failover logic now, or a single-origin proxy that's refactored
