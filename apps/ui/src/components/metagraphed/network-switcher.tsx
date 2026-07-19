@@ -73,13 +73,17 @@ export function NetworkSwitcher() {
       <PopoverTrigger asChild>
         <button
           type="button"
+          aria-label={`Network: ${network.label}`}
           className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink hover:border-ink/30 transition-colors min-h-11"
           title={`Network: ${network.label} · ${base}`}
         >
           <Globe2 className="size-3 text-ink-muted" />
-          <span className="text-ink-strong">{network.label}</span>
+          {/* #6902: below sm the label+chevron pushed the header 10px past the
+              viewport -- icon + status dot stay visible everywhere so the
+              network is still reachable/tappable on mobile, just collapsed. */}
+          <span className="hidden text-ink-strong sm:inline">{network.label}</span>
           <span className={classNames("inline-block size-1.5 rounded-full", dotCls)} aria-hidden />
-          <ChevronDown className="size-3 text-ink-muted" />
+          <ChevronDown className="hidden size-3 text-ink-muted sm:inline" aria-hidden />
         </button>
       </PopoverTrigger>
       <ClampedPopoverContent align="end" className="w-80 p-3 space-y-3">
