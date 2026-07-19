@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   DEFAULT_SS58_PREFIX,
+  decodeSs58,
   encodeAccountId32,
   normalizeAccountId32Field,
   unwrapMultiAddressId,
@@ -73,6 +74,51 @@ describe("encodeAccountId32", () => {
     assert.equal(encodeAccountId32([1, 2, 3]), null);
     assert.equal(encodeAccountId32(new Array(31).fill(0)), null);
     assert.equal(encodeAccountId32(new Array(33).fill(0)), null);
+  });
+});
+
+describe("decodeSs58", () => {
+  test("decodes the golden Sudo::Key SS58 address back to its known raw bytes", () => {
+    const decoded = decodeSs58(GOLDEN_SS58);
+    assert.equal(decoded.prefix, DEFAULT_SS58_PREFIX);
+    assert.deepEqual(
+      [...decoded.publicKey],
+      [...hexToBytes(GOLDEN_RAW_STORAGE)],
+    );
+  });
+
+  test("decodes the real add_stake hotkey SS58 address back to its known raw bytes", () => {
+    const decoded = decodeSs58(ADD_STAKE_HOTKEY_SS58);
+    assert.equal(decoded.prefix, DEFAULT_SS58_PREFIX);
+    assert.deepEqual([...decoded.publicKey], ADD_STAKE_HOTKEY_BYTES);
+  });
+
+  test("round-trips arbitrary bytes through encodeAccountId32 -> decodeSs58", () => {
+    const bytes = Uint8Array.from({ length: 32 }, (_, i) => (i * 7 + 3) % 256);
+    const address = encodeAccountId32(bytes);
+    const decoded = decodeSs58(address);
+    assert.equal(decoded.prefix, DEFAULT_SS58_PREFIX);
+    assert.deepEqual([...decoded.publicKey], [...bytes]);
+  });
+
+  test("returns null for a bad checksum (single flipped character)", () => {
+    const flipped =
+      GOLDEN_SS58.slice(0, -1) + (GOLDEN_SS58.at(-1) === "E" ? "F" : "E");
+    assert.equal(decodeSs58(flipped), null);
+  });
+
+  test("returns null for a character outside the base58 alphabet", () => {
+    assert.equal(decodeSs58(`0${GOLDEN_SS58.slice(1)}`), null);
+    assert.equal(decodeSs58(`I${GOLDEN_SS58.slice(1)}`), null);
+  });
+
+  test("returns null for malformed/non-string input", () => {
+    assert.equal(decodeSs58(""), null);
+    assert.equal(decodeSs58(null), null);
+    assert.equal(decodeSs58(undefined), null);
+    assert.equal(decodeSs58(42), null);
+    assert.equal(decodeSs58("too-short"), null);
+    assert.equal(decodeSs58(`${GOLDEN_SS58}${GOLDEN_SS58}`), null);
   });
 });
 

@@ -218,6 +218,7 @@ import {
   selectSafeRpcEndpoint,
   weightedPickEndpoint,
 } from "./request-handlers/rpc-proxy.mjs";
+import { handleFullnodeRpcProxyRequest } from "./request-handlers/fullnode-rpc-proxy.mjs";
 import {
   buildChangeEvent,
   deliveryStoragePrefix,
@@ -944,6 +945,134 @@ async function handleAlertTriggersProxy(request, env) {
   return dataResponse(env, body, upstream.status);
 }
 
+// Distinct error code per upstream failure condition, same reasoning as
+// alertTriggerErrorCode above -- workers/data-api.mjs's handleWallet* return
+// a plain `{ error: "message" }` with no code of its own.
+function walletAuthErrorCode(status) {
+  switch (status) {
+    case 400:
+      return "wallet_auth_invalid";
+    case 401:
+      return "wallet_auth_unauthorized";
+    case 413:
+      return "wallet_auth_payload_too_large";
+    case 429:
+      return "wallet_auth_rate_limited";
+    case 502:
+    case 503:
+      return "wallet_auth_unavailable";
+    default:
+      return "wallet_auth_request_failed";
+  }
+}
+
+// Proxies POST /api/v1/auth/wallet/challenge and /verify (ADR 0021, #6835) to
+// the DATA_API service binding -- all challenge issuance, sr25519
+// verification, and session issuance live in workers/data-api.mjs (via
+// src/wallet-auth.mjs); this is only the forwarding + envelope-translation
+// boundary, same shape as handleAlertTriggersProxy above.
+async function handleWalletAuthProxy(request, env) {
+  if (!env.DATA_API) {
+    return errorResponse(
+      "wallet_auth_unavailable",
+      "The wallet-auth tier is not bound to this deployment.",
+      503,
+    );
+  }
+  const upstream = await env.DATA_API.fetch(request);
+  let body;
+  try {
+    body = await upstream.json();
+  } catch {
+    return errorResponse(
+      "wallet_auth_unavailable",
+      "The wallet-auth tier returned an unreadable response.",
+      502,
+    );
+  }
+  if (!upstream.ok) {
+    const extraHeaders = {};
+    for (const name of FORWARDED_RATE_LIMIT_HEADERS) {
+      const value = upstream.headers.get(name);
+      if (value != null) extraHeaders[name] = value;
+    }
+    return errorResponse(
+      walletAuthErrorCode(upstream.status),
+      typeof body?.error === "string"
+        ? body.error
+        : "The wallet-auth tier returned an error.",
+      upstream.status,
+      {},
+      extraHeaders,
+    );
+  }
+  return dataResponse(env, body, upstream.status);
+}
+
+function accountKeysErrorCode(status) {
+  switch (status) {
+    case 400:
+      return "account_key_invalid";
+    case 401:
+      return "account_key_unauthorized";
+    case 404:
+      return "account_key_not_found";
+    case 405:
+      return "account_key_method_not_allowed";
+    case 413:
+      return "account_key_payload_too_large";
+    case 429:
+      return "account_key_rate_limited";
+    case 502:
+    case 503:
+      return "account_keys_unavailable";
+    default:
+      return "account_key_request_failed";
+  }
+}
+
+// Proxies POST/GET /api/v1/keys and DELETE /api/v1/keys/{prefix} (ADR 0021,
+// #6835) to the DATA_API service binding -- session validation, the invite-
+// code gate, and all Postgres plumbing live in workers/data-api.mjs; this is
+// only the forwarding + envelope-translation boundary.
+async function handleAccountKeysProxy(request, env) {
+  if (!env.DATA_API) {
+    return errorResponse(
+      "account_keys_unavailable",
+      "The account-keys tier is not bound to this deployment.",
+      503,
+    );
+  }
+  const upstream = await env.DATA_API.fetch(request);
+  let body;
+  try {
+    body = await upstream.json();
+  } catch {
+    return errorResponse(
+      "account_keys_unavailable",
+      "The account-keys tier returned an unreadable response.",
+      502,
+    );
+  }
+  if (!upstream.ok) {
+    const extraHeaders = {};
+    for (const name of FORWARDED_RATE_LIMIT_HEADERS) {
+      const value = upstream.headers.get(name);
+      if (value != null) extraHeaders[name] = value;
+    }
+    return errorResponse(
+      accountKeysErrorCode(upstream.status),
+      typeof body?.error === "string"
+        ? body.error
+        : "The account-keys tier returned an error.",
+      upstream.status,
+      {},
+      extraHeaders,
+    );
+  }
+  return dataResponse(env, body, upstream.status);
+}
+
 // Proxies POST /api/v1/internal/registry-sync to the dedicated registry-sync
 // Worker (REGISTRY_SYNC_API service binding), the sole write path into the
 // registry Postgres instance. This function forwards the request as-is
@@ -1329,6 +1458,15 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
   }
 
+  // Isolated, account-gated fullnode RPC gate (ADR 0021, #6835) -- checked
+  // BEFORE the public /rpc/v1/{network} prefix below so "fullnode" is never
+  // mistaken for a network name there (RPC_PROXY_POOLS has no such entry,
+  // which would otherwise just 404 as rpc_network_unsupported instead of
+  // reaching this dedicated, differently-authed handler).
+  if (url.pathname === "/rpc/v1/fullnode") {
+    return handleFullnodeRpcProxyRequest(request, env, url);
+  }
+
   if (url.pathname.startsWith("/rpc/v1/")) {
     return handleRpcProxyRequest(request, env, url, ctx);
   }
@@ -1380,6 +1518,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // boundary.
   if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
     return handleAlertTriggersProxy(request, env);
+  }
+
+  // Wallet-signature login + account-gated fullnode API keys (ADR 0021,
+  // #6835): both accept POST (challenge/verify/create), plus GET (list) and
+  // DELETE (revoke) for /api/v1/keys, so both must run before the read-only
+  // method gate below, same as webhooks/alert-triggers above.
+  if (
+    url.pathname === "/api/v1/auth/wallet/challenge" ||
+    url.pathname === "/api/v1/auth/wallet/verify"
+  ) {
+    return handleWalletAuthProxy(request, env);
+  }
+  if (url.pathname.startsWith("/api/v1/keys")) {
+    return handleAccountKeysProxy(request, env);
   }
 
   // Remote MCP server, for AI agents: stateless JSON-RPC over POST, plus GET
@@ -2994,6 +3146,9 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     pathname.startsWith("/api/v1/alerts/triggers") ||
+    pathname === "/api/v1/auth/wallet/challenge" ||
+    pathname === "/api/v1/auth/wallet/verify" ||
+    pathname.startsWith("/api/v1/keys") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||
     PERCENTILES_PATH_PATTERN.test(pathname) ||

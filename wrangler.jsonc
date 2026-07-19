@@ -431,6 +431,26 @@
   // None yet provisioned on any deployment; until each is, that ONE
   // channel silently no-ops on delivery (webhook/discord/the other two
   // channels are unaffected).
+  //
+  // Isolated fullnode RPC gate (ADR 0021, #6835):
+  //   wrangler secret put FULLNODE_RPC_ORIGINS
+  // Comma-separated https://... origin(s) for the gated fullnode cluster --
+  // a secret, not a plain var, because the Cloudflare Tunnel hostname isn't
+  // provisioned yet (infra prerequisite, tracked separately from this
+  // application code -- see ADR 0021 section 6) and is deliberately kept out
+  // of the committed config until it exists. Starts with exactly one entry;
+  // growing the cluster later is purely appending to this value, no code
+  // change (workers/request-handlers/fullnode-rpc-proxy.mjs reuses
+  // rpc-proxy.mjs's pool/failover machinery against whatever this list
+  // contains). Until set, the route 503s (no endpoint configured).
+  //   wrangler secret put API_KEY_LOOKUP_INTERNAL_TOKEN
+  // src/api-key-validation.mjs's KV-cache-fronted validator (called from the
+  // fullnode gate above) sends this as a header to the DATA_API service
+  // binding's internal key-lookup route -- SAME value must also be set on
+  // wrangler.data.jsonc (see that file's own comment), same two-deployment
+  // shape as ALERT_TRIGGERS_INTERNAL_TOKEN above. Until set on both sides,
+  // every key lookup is a clean miss (fails closed as "invalid key", never
+  // a crash).
   "durable_objects": {
     "bindings": [
       { "name": "CHAIN_FIREHOSE_HUB", "class_name": "ChainFirehoseHub" },
@@ -604,6 +624,32 @@
       "namespace_id": "1008",
       "simple": {
         "limit": 1200,
+        "period": 60,
+      },
+    },
+    // Isolated fullnode RPC gate (ADR 0021, #6835): bounds the cost of an
+    // unauthenticated caller guessing random API keys (each miss forces a
+    // real KV-then-Postgres lookup via src/api-key-validation.mjs) -- checked
+    // BEFORE key validation, by client IP. Same figure as the public proxy's
+    // own RPC_RATE_LIMITER. Skipped when the binding is absent (local dev/CI).
+    {
+      "name": "FULLNODE_RPC_GUESS_RATE_LIMITER",
+      "namespace_id": "1009",
+      "simple": {
+        "limit": 100,
+        "period": 60,
+      },
+    },
+    // The actual per-key product limit for the fullnode gate (ADR 0021
+    // section 5: "looser than the existing anonymous pool's limits") --
+    // checked AFTER a key validates, keyed by prefix (not IP) so traffic
+    // from one paying key isn't starved by other callers sharing an IP, and
+    // one key can't dodge the limit by rotating source IPs.
+    {
+      "name": "FULLNODE_RPC_RATE_LIMITER",
+      "namespace_id": "1010",
+      "simple": {
+        "limit": 300,
         "period": 60,
       },
     },

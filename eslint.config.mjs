@@ -40,6 +40,8 @@ export default [
         Response: "readonly",
         URL: "readonly",
         URLSearchParams: "readonly",
+        atob: "readonly",
+        btoa: "readonly",
         console: "readonly",
         crypto: "readonly",
         fetch: "readonly",

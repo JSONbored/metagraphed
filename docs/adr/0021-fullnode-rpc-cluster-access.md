@@ -1,8 +1,13 @@
 # ADR 0021 — Account-gated fullnode RPC cluster access
 
-- **Status:** Accepted (owner decisions locked 2026-07-19: wallet-only auth,
-  shared invite-code gate for the private launch, real pool/failover
-  architecture from day one)
+- **Status:** Accepted · implemented (2026-07-19, #6835): wallet-signature
+  login (`src/wallet-auth.mjs`), the `rpc_accounts` table + `api_keys.
+account_id`, session-authed + invite-gated key mint/list/revoke
+  (`workers/data-api.mjs`), and the isolated `/rpc/v1/fullnode` proxy
+  (`workers/request-handlers/fullnode-rpc-proxy.mjs`, reusing
+  `rpc-proxy.mjs`'s scoring/failover machinery against a separate origin
+  allowlist) all shipped in one PR. Network exposure (the actual Cloudflare
+  Tunnel hostname) remains an infra prerequisite, tracked separately.
 - **Date:** 2026-07-19
 - **Relates to:** #6835 (this design), ADR 0020 (self-serve API key issuance
   - storage, #6733), #2111 (archive node), #6646 (tiered/paid public API
@@ -181,6 +186,22 @@ key, enforced the same Cloudflare Workers Rate Limiting binding pattern ADR
   this instead — a deliberate compatibility choice, not an accidental
   departure from ADR 0020's header-based convention for the public API.
 
+### 7. Method scope: read-only PLUS `author_submitExtrinsic` (owner decision)
+
+Decided during implementation (2026-07-19): the gated route allows real tx
+broadcast, not just the public proxy's read-only `SAFE_RPC_METHODS` set —
+this tier is genuine RPC access, and read-only-only would give a paying
+caller nothing the free public proxy doesn't already offer.
+`author_submitAndWatchExtrinsic` stays excluded (subscription-based, doesn't
+fit this proxy's single-POST/single-response model — no WSS support here,
+matching the public proxy's own HTTP-only `/rpc/v1/{network}` route); every
+other `author_`/`sudo_`/`payment_`/`contracts_`/`state_call` method stays
+blocked by the same `DENIED_RPC_PREFIXES` defense-in-depth the public proxy
+uses. `state_getStorage`/`state_getKeysPaged` (the public proxy's separately-
+gated state-query set) are deliberately NOT included in v1 — they need their
+own param-shape validation/rate-limit budget ported over, a scope cut noted
+here rather than silently expanded.
+
 ## Consequences
 
 - This is the **first user-account system** in this codebase (ADR 0020
@@ -204,10 +225,20 @@ key, enforced the same Cloudflare Workers Rate Limiting binding pattern ADR
 
 - **Paid tiers**: explicitly deferred to #6646 (needs the owner's pricing/
   billing-provider call) — this ADR only reserves the `tier` column.
-- **Session mechanism**: signed cookie vs. bearer token for the key-
-  management dashboard/routes isn't decided — whichever is simpler to
-  implement correctly without a framework this codebase doesn't have wins;
-  needs a concrete choice before implementation, not during it.
+- **Network exposure**: the gated cluster's actual Cloudflare Tunnel
+  hostname(s) aren't provisioned yet — `FULLNODE_RPC_ORIGINS` is wired as a
+  deployment secret (never a committed value) precisely so this can land
+  without waiting on that infra step; until it's set, the route 503s with no
+  configured endpoint.
+
+## Resolved during implementation
+
+- **Session mechanism**: a stateless HMAC-signed bearer token
+  (`src/wallet-auth.mjs`'s `createSessionToken`/`verifySessionToken`, scoped
+  only to the key-management routes, 1h TTL) — no sessions table, no
+  framework; picked over a signed cookie as the simpler correct option this
+  codebase's existing HMAC primitive (`src/webhooks.mjs`'s `signPayload`)
+  already supports.
 
 ## Links/resources
 

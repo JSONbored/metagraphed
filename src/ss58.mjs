@@ -61,6 +61,58 @@ export function encodeAccountId32(
   return encodeBase58(full);
 }
 
+// Total byte length of a decoded single-byte-prefix AccountId32 SS58 address:
+// 1 prefix byte + 32 account bytes + 2 checksum bytes (the same three parts
+// encodeAccountId32 builds, in the same order).
+const SS58_ACCOUNT_ID32_BYTE_LENGTH = 35;
+
+// Reverse of encodeBase58 above, into a FIXED byte length rather than the
+// natural minimum -- correct here because every caller already knows the
+// target is exactly SS58_ACCOUNT_ID32_BYTE_LENGTH bytes and (per
+// encodeBase58's own comment) the leading byte is always a non-zero network
+// prefix, so the "leading zero byte -> leading '1' char" base58 edge case
+// this deliberately doesn't handle can't arise for a well-formed address.
+// Returns null for a character outside the alphabet or a value too large to
+// fit in that many bytes (either way, not a valid encoding of that length).
+function decodeBase58(str, byteLength) {
+  let num = 0n;
+  for (const char of str) {
+    const index = BASE58_ALPHABET.indexOf(char);
+    if (index === -1) return null;
+    num = num * 58n + BigInt(index);
+  }
+  const bytes = new Uint8Array(byteLength);
+  for (let i = byteLength - 1; i >= 0; i -= 1) {
+    bytes[i] = Number(num & 0xffn);
+    num >>= 8n;
+  }
+  return num === 0n ? bytes : null;
+}
+
+/**
+ * SS58 -> AccountId32: the reverse of encodeAccountId32. Base58-decodes to
+ * exactly SS58_ACCOUNT_ID32_BYTE_LENGTH bytes, splits prefix/pubkey/checksum,
+ * and recomputes the same blake2b512("SS58PRE" + payload)[0:2] checksum
+ * encodeAccountId32 writes -- returns null on any malformed input or checksum
+ * mismatch (never throws on attacker-controlled strings, since this is the
+ * entry point for a caller-supplied address in the wallet-auth verify route).
+ * Round-trip tested against tests/ss58.test.mjs's existing encode golden
+ * values.
+ */
+export function decodeSs58(address) {
+  if (typeof address !== "string" || address.length === 0) return null;
+  const decoded = decodeBase58(address, SS58_ACCOUNT_ID32_BYTE_LENGTH);
+  if (!decoded) return null;
+  const payload = decoded.slice(0, 33);
+  const checksum = decoded.slice(33, 35);
+  const preimage = new Uint8Array(SS58_PREIMAGE.length + payload.length);
+  preimage.set(SS58_PREIMAGE, 0);
+  preimage.set(payload, SS58_PREIMAGE.length);
+  const hash = blake2b(preimage, { dkLen: 64 });
+  if (hash[0] !== checksum[0] || hash[1] !== checksum[1]) return null;
+  return { prefix: payload[0], publicKey: payload.slice(1) };
+}
+
 function isByteArray(value, len) {
   return (
     Array.isArray(value) &&

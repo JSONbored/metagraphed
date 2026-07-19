@@ -129,6 +129,7 @@
     "@duckdb/node-api": "^1.5.4-r.1",
     "@noble/hashes": "^2.2.0",
     "@resvg/resvg-js": "^2.6.2",
+    "@scure/sr25519": "^0.2.0",
     "@sentry/cloudflare": "^10.66.0",
     "@sentry/node": "^10.66.0",
     "graphql": "^17.0.2",

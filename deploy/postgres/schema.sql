@@ -906,6 +906,31 @@ CREATE TABLE IF NOT EXISTS api_keys (
 -- constraint's implicit index; explicit only for readability/documentation.
 CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys (prefix);
 
+-- ---------------------------------------------------------------------------
+-- Wallet-gated accounts for the fullnode RPC cluster (ADR 0021, #6835) -- the
+-- first user-account system in this codebase. One row per verified ss58
+-- address (wallet-signature login only, no email/password). A single
+-- account can hold multiple api_keys rows; account_id below links a minted
+-- key back to the account that minted it.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS rpc_accounts (
+  id             BIGSERIAL PRIMARY KEY,
+  ss58           TEXT NOT NULL UNIQUE,
+  tier           TEXT NOT NULL DEFAULT 'free',
+  created_at     BIGINT NOT NULL,
+  last_login_at  BIGINT
+);
+-- Already covered by the UNIQUE constraint's implicit index; explicit only
+-- for readability/documentation (matches idx_api_keys_prefix's convention).
+CREATE INDEX IF NOT EXISTS idx_rpc_accounts_ss58 ON rpc_accounts (ss58);
+
+-- Nullable: ADR 0020's anonymous, contact-only keys (the public API tier
+-- this ADR doesn't touch) keep working unchanged with no account_id. Safe on
+-- an already-deployed api_keys table -- CREATE TABLE IF NOT EXISTS above
+-- already includes the column for a fresh deploy; this is a no-op there.
+ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS account_id BIGINT REFERENCES rpc_accounts (id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_account_id ON api_keys (account_id) WHERE account_id IS NOT NULL;
+
 -- TimescaleDB hypertables/compression are OPTIONAL and live in the companion
 -- schema-timescaledb.sql in this same directory — apply it separately, only
 -- on a Postgres that actually has the TimescaleDB extension. This file is a

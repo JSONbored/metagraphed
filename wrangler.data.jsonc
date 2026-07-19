@@ -28,6 +28,22 @@
   // ALERT_TRIGGER_CREATE_TOKEN is set, POST /api/v1/alerts/triggers 503s;
   // the table/routes are otherwise fully live once this file's schema.sql
   // is applied.
+  //
+  // Wallet-signature login + account-gated fullnode API keys (ADR 0021,
+  // #6835, src/wallet-auth.mjs + workers/data-api.mjs's handleWallet*/
+  // handleAccountKeys* functions) need THREE more secrets:
+  //   wrangler secret put WALLET_SESSION_SECRET -c wrangler.data.jsonc
+  //   wrangler secret put FULLNODE_INVITE_CODE -c wrangler.data.jsonc
+  //   wrangler secret put API_KEY_LOOKUP_INTERNAL_TOKEN -c wrangler.data.jsonc
+  // (WALLET_SESSION_SECRET signs the key-management session token;
+  // FULLNODE_INVITE_CODE is the private-launch mint gate, a shared secret
+  // handed to teammates out-of-band -- ADR 0021 section 4;
+  // API_KEY_LOOKUP_INTERNAL_TOKEN gates the internal key-prefix lookup route
+  // the fullnode RPC gate's validator calls -- the SAME value must also be
+  // set on the main Worker, wrangler.jsonc, see that file's own comment.)
+  // Until WALLET_SESSION_SECRET is set, POST /api/v1/auth/wallet/verify and
+  // every /api/v1/keys route 503; the rpc_accounts/api_keys.account_id
+  // schema is otherwise live once this file's schema.sql is applied.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "metagraphed-data-api",
   // Sentry deploy-entry wrapper (metagraphed#6479/#6485), not the raw
@@ -76,6 +92,17 @@
       "localConnectionString": "postgresql://postgres:postgres@localhost:5432/metagraphed",
     },
   ],
+  // Wallet-login challenge nonces (ADR 0021, #6835, src/wallet-auth.mjs) --
+  // the SAME namespace id as the main Worker's own METAGRAPH_CONTROL binding
+  // (wrangler.jsonc), bound under the same name here so both Workers read/
+  // write the identical KV namespace (Cloudflare namespaces can be bound to
+  // multiple Worker scripts; this is not a second namespace).
+  "kv_namespaces": [
+    {
+      "binding": "METAGRAPH_CONTROL",
+      "id": "9c5577a3454d4830b2ffd2f83775efb1",
+    },
+  ],
   // Found by adversarial review (#4984 Part 3): ALERT_TRIGGER_CREATE_TOKEN
   // alone doesn't bound REQUEST VOLUME from a legitimate token holder --
   // every created row becomes a permanent per-event cost in AlerterHub's
@@ -90,6 +117,31 @@
     {
       "name": "ALERT_TRIGGER_CREATE_RATE_LIMITER",
       "namespace_id": "1001",
+      "simple": {
+        "limit": 10,
+        "period": 60,
+      },
+    },
+    // Wallet-login abuse control (ADR 0021, #6835) -- an unauthenticated
+    // caller can hit challenge/verify before any session exists, so this is
+    // keyed by client IP, same posture/figure as ALERT_TRIGGER_CREATE_RATE_LIMITER
+    // above. Skipped when unbound (local dev/CI).
+    {
+      "name": "WALLET_AUTH_RATE_LIMITER",
+      "namespace_id": "1002",
+      "simple": {
+        "limit": 10,
+        "period": 60,
+      },
+    },
+    // Per-account key-mint abuse control (ADR 0021, #6835) -- the invite-code
+    // gate bounds WHO can mint, not how many rows a legitimate holder mints
+    // (the same gap adversarial review found in ALERT_TRIGGER_CREATE_TOKEN
+    // alone), so this is keyed by account id rather than IP. Skipped when
+    // unbound (local dev/CI).
+    {
+      "name": "ACCOUNT_KEYS_MINT_RATE_LIMITER",
+      "namespace_id": "1003",
       "simple": {
         "limit": 10,
         "period": 60,

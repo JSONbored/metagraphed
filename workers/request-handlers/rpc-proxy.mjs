@@ -1030,11 +1030,18 @@ export async function proxyWithFailover(
 // proxyable); a genuinely unsafe URL is reported (for a 502) only when no safe
 // endpoint exists. Circuit-breaker-ejected endpoints are deprioritised to the
 // back (never removed) so a fully-ejected pool still self-heals via half-open
-// retries. randomFn / healthMap / now injectable for tests.
+// retries. randomFn / healthMap / now / trustedOrigins injectable for tests
+// and for the isolated fullnode gate (#6835/ADR 0021), which passes its own
+// origin allowlist + its own healthMap so its circuit-breaker state never
+// mixes with the public pool's.
 export function orderSafeRpcEndpoints(
   pool,
   randomFn = Math.random,
-  { healthMap = RPC_HEALTH, now = Date.now() } = {},
+  {
+    healthMap = RPC_HEALTH,
+    now = Date.now(),
+    trustedOrigins = TRUSTED_RPC_UPSTREAM_ORIGINS,
+  } = {},
 ) {
   const safe = [];
   let unsafeEndpoint = null;
@@ -1042,7 +1049,7 @@ export function orderSafeRpcEndpoints(
     if (!endpoint?.pool_eligible) {
       continue;
     }
-    if (!isSafeRpcEndpointUrl(endpoint.url)) {
+    if (!isSafeRpcEndpointUrl(endpoint.url, trustedOrigins)) {
       unsafeEndpoint ||= endpoint;
       continue;
     }
@@ -1120,7 +1127,14 @@ export function weightedPickEndpoint(endpoints, randomFn = Math.random) {
   return endpoints[endpoints.length - 1];
 }
 
-function isSafeRpcEndpointUrl(value) {
+// trustedOrigins defaults to the public pool's allowlist so every existing
+// call site is unaffected; the isolated fullnode gate (#6835/ADR 0021) passes
+// its own separate Set so a public-pool origin can never satisfy a gated
+// request's safety check, or vice versa.
+function isSafeRpcEndpointUrl(
+  value,
+  trustedOrigins = TRUSTED_RPC_UPSTREAM_ORIGINS,
+) {
   if (typeof value !== "string") {
     return false;
   }
@@ -1136,7 +1150,7 @@ function isSafeRpcEndpointUrl(value) {
     return false;
   }
 
-  if (!TRUSTED_RPC_UPSTREAM_ORIGINS.has(parsed.origin)) {
+  if (!trustedOrigins.has(parsed.origin)) {
     return false;
   }
 

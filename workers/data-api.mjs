@@ -482,6 +482,15 @@ import {
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.mjs";
 import { buildAccountPositionHistory } from "../src/account-position-history.mjs";
+import { generateApiKey, hashApiKeySecret } from "../src/api-keys.mjs";
+import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.mjs";
+import {
+  createSessionToken,
+  issueWalletChallenge,
+  SESSION_TTL_SECONDS,
+  verifySessionToken,
+  verifyWalletChallenge,
+} from "../src/wallet-auth.mjs";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -3674,6 +3683,387 @@ async function handleAlertTriggersRoute(request, env, url) {
   );
 }
 
+// --- Wallet-signature login + account-gated fullnode API keys (ADR 0021,
+// #6835) -------------------------------------------------------------------
+//
+// Reached only via workers/api.mjs's DATA_API service binding, same as every
+// route in this file. Two route groups:
+//   POST /api/v1/auth/wallet/challenge  { ss58 } -> a signable message
+//   POST /api/v1/auth/wallet/verify     { ss58, signature } -> a session
+//   POST/GET /api/v1/keys, DELETE /api/v1/keys/{prefix} -> mint/list/revoke
+//     THIS account's own mg_... API keys (src/api-keys.mjs, ADR 0020's
+//     format/hashing reused unchanged) -- every /api/v1/keys route requires
+//     a session (Authorization: Bearer <session_token>, src/wallet-auth.mjs);
+//     minting ALSO requires FULLNODE_INVITE_CODE (ADR 0021 section 4's
+//     private-launch gate, checked the exact way handleAlertTriggerCreate
+//     above checks ALERT_TRIGGER_CREATE_TOKEN -- a shared secret, not a
+//     per-user credential, so rotating it revokes everyone's mint access at
+//     once). All crypto/no-I/O logic lives in src/wallet-auth.mjs;
+//     everything here is Postgres plumbing + the invite-code gate.
+//
+// This does NOT implement ADR 0020's own anonymous/contact-only mint route
+// (still unbuilt, out of scope here) -- api_keys.account_id is nullable
+// specifically so that separate flow can land later without touching this
+// one.
+
+const FULLNODE_INVITE_CODE_HEADER = "x-fullnode-invite-code";
+// Mirrors ALERT_TRIGGER_CREATE_RATE_LIMIT's shape/reasoning: an unauthenticated
+// caller can hit challenge/verify before any session exists, so this is keyed
+// by client IP like that limiter, not by account.
+const WALLET_AUTH_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
+// Keyed by account (not IP): the invite-code gate already bounds WHO can
+// mint, but not how many rows a legitimate holder mints (the same gap
+// adversarial review found in ALERT_TRIGGER_CREATE_TOKEN alone) -- the
+// abuse unit here is api_keys rows per account, so the limiter key matches.
+const ACCOUNT_KEYS_MINT_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
+
+async function withAccountsSql(env, fn) {
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+  try {
+    return await fn(sql);
+  } catch (err) {
+    console.error("data-api wallet-auth/keys write failed:", err);
+    captureDataApiError(err, "wallet-auth-keys");
+    return writeJson({ error: "write failed" }, 502);
+  }
+  // No sql.end() -- same Hyperdrive-cleans-up-on-invocation-end convention
+  // withAlertTriggersSql documents above.
+}
+
+const ACCOUNT_ROUTES_MAX_BODY_BYTES = 4096;
+
+async function readAccountRouteBody(request) {
+  if (
+    Number(request.headers.get("content-length") || 0) >
+    ACCOUNT_ROUTES_MAX_BODY_BYTES
+  ) {
+    return { error: writeJson({ error: "body too large" }, 413) };
+  }
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > ACCOUNT_ROUTES_MAX_BODY_BYTES) {
+    return { error: writeJson({ error: "body too large" }, 413) };
+  }
+  try {
+    return { body: raw ? JSON.parse(raw) : {} };
+  } catch {
+    return { error: writeJson({ error: "body must be JSON" }, 400) };
+  }
+}
+
+// No default/fallback case: src/wallet-auth.mjs's issueWalletChallenge and
+// verifyWalletChallenge are the only callers of this map, and both are a
+// closed set of exactly these four codes -- a fifth is not reachable from
+// this codebase's own contract, so a catch-all here would be untestable
+// dead code rather than real robustness (matches this session's existing
+// "don't add validation for scenarios that can't happen" convention).
+function walletAuthErrorMessage(code) {
+  switch (code) {
+    case "invalid_ss58":
+      return "ss58 must be a valid Bittensor (prefix 42) address";
+    case "challenge_store_unavailable":
+      return "wallet login is not provisioned on this deployment";
+    case "challenge_expired_or_missing":
+      return "no pending challenge for this address -- request a new one";
+    case "invalid_signature":
+      return "signature verification failed";
+  }
+}
+
+function walletAuthErrorStatus(code) {
+  return code === "challenge_store_unavailable" ? 503 : 400;
+}
+
+async function walletAuthRateLimited(request, env) {
+  if (!env.WALLET_AUTH_RATE_LIMITER?.limit) return null;
+  const { success } = await env.WALLET_AUTH_RATE_LIMITER.limit({
+    key: resolveClientIp(request),
+  });
+  if (success) return null;
+  return writeJson({ error: "too many wallet-auth requests; slow down" }, 429, {
+    "retry-after": String(WALLET_AUTH_RATE_LIMIT.windowSeconds),
+    "x-ratelimit-limit": String(WALLET_AUTH_RATE_LIMIT.limit),
+    "x-ratelimit-policy": `${WALLET_AUTH_RATE_LIMIT.limit};w=${WALLET_AUTH_RATE_LIMIT.windowSeconds}`,
+    "x-ratelimit-remaining": "0",
+  });
+}
+
+async function handleWalletChallenge(request, env) {
+  const rateLimited = await walletAuthRateLimited(request, env);
+  if (rateLimited) return rateLimited;
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  const ss58 = typeof body?.ss58 === "string" ? body.ss58 : "";
+  const result = await issueWalletChallenge(env, ss58);
+  if (!result.ok) {
+    return writeJson(
+      { error: walletAuthErrorMessage(result.code) },
+      walletAuthErrorStatus(result.code),
+    );
+  }
+  return writeJson({
+    message: result.message,
+    expires_in_seconds: result.expiresInSeconds,
+  });
+}
+
+async function handleWalletVerify(request, env) {
+  const rateLimited = await walletAuthRateLimited(request, env);
+  if (rateLimited) return rateLimited;
+  if (!env.WALLET_SESSION_SECRET) {
+    return writeJson(
+      { error: "wallet login is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  const ss58 = typeof body?.ss58 === "string" ? body.ss58 : "";
+  const signature = typeof body?.signature === "string" ? body.signature : "";
+  const result = await verifyWalletChallenge(env, ss58, signature);
+  if (!result.ok) {
+    return writeJson(
+      { error: walletAuthErrorMessage(result.code) },
+      // Same anti-oracle posture as requireAlertTriggerOwner: an
+      // authentication failure is a 401 regardless of WHICH check inside
+      // verifyWalletChallenge failed (bad ss58 vs bad signature), so a
+      // caller can't distinguish "not a real address" from "wrong
+      // signature" purely from the status code. challenge_store_unavailable
+      // is a genuine deployment-config gap, not an auth failure -- that one
+      // alone gets 503.
+      result.code === "challenge_store_unavailable" ? 503 : 401,
+    );
+  }
+  return withAccountsSql(env, async (sql) => {
+    const now = Date.now();
+    const [account] = await sql`
+      INSERT INTO rpc_accounts (ss58, created_at, last_login_at)
+      VALUES (${ss58}, ${now}, ${now})
+      ON CONFLICT (ss58) DO UPDATE SET last_login_at = ${now}
+      RETURNING id, ss58, tier`;
+    const sessionToken = await createSessionToken(env.WALLET_SESSION_SECRET, {
+      accountId: account.id,
+      ss58: account.ss58,
+    });
+    return writeJson({
+      session_token: sessionToken,
+      expires_in_seconds: SESSION_TTL_SECONDS,
+      account: { ss58: account.ss58, tier: account.tier },
+    });
+  });
+}
+
+// Shared by every /api/v1/keys route: resolves the Authorization header to
+// { accountId, ss58 }, or a ready-to-return error response. A missing
+// WALLET_SESSION_SECRET is a deployment-config gap (503), distinct from a
+// missing/invalid/expired token (401).
+async function requireAccountSession(request, env) {
+  if (!env.WALLET_SESSION_SECRET) {
+    return {
+      error: writeJson(
+        { error: "wallet login is not provisioned on this deployment" },
+        503,
+      ),
+    };
+  }
+  const header = request.headers.get("authorization") || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const session = token
+    ? await verifySessionToken(env.WALLET_SESSION_SECRET, token)
+    : null;
+  if (!session) {
+    return {
+      error: writeJson(
+        {
+          error: "provide a valid Authorization: Bearer <session_token> header",
+        },
+        401,
+      ),
+    };
+  }
+  return { session };
+}
+
+async function handleAccountKeyCreate(request, env) {
+  const { session, error: sessionError } = await requireAccountSession(
+    request,
+    env,
+  );
+  if (sessionError) return sessionError;
+
+  const configuredInvite = env.FULLNODE_INVITE_CODE;
+  if (!configuredInvite) {
+    return writeJson(
+      { error: "fullnode key issuance is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const providedInvite = request.headers.get(FULLNODE_INVITE_CODE_HEADER) || "";
+  if (!providedInvite || !timingSafeEqual(providedInvite, configuredInvite)) {
+    return writeJson(
+      { error: `provide a valid ${FULLNODE_INVITE_CODE_HEADER} header` },
+      401,
+    );
+  }
+
+  if (env.ACCOUNT_KEYS_MINT_RATE_LIMITER?.limit) {
+    const { success } = await env.ACCOUNT_KEYS_MINT_RATE_LIMITER.limit({
+      key: `account-keys-mint:${session.accountId}`,
+    });
+    if (!success) {
+      return writeJson(
+        { error: "too many key-creation requests for this account; slow down" },
+        429,
+        {
+          "retry-after": String(ACCOUNT_KEYS_MINT_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(ACCOUNT_KEYS_MINT_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${ACCOUNT_KEYS_MINT_RATE_LIMIT.limit};w=${ACCOUNT_KEYS_MINT_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
+  }
+
+  return withAccountsSql(env, async (sql) => {
+    const [account] =
+      await sql`SELECT tier FROM rpc_accounts WHERE id = ${session.accountId}`;
+    // The session's signature already proved this row exists at verify time;
+    // a missing row here means the account was removed since -- decline
+    // rather than mint an orphaned key.
+    if (!account) return writeJson({ error: "no such account" }, 404);
+    const { prefix, secret, full } = generateApiKey();
+    const secretHash = await hashApiKeySecret(secret);
+    const now = Date.now();
+    await sql`
+      INSERT INTO api_keys
+        (prefix, secret_hash, owner_contact, tier, account_id, created_at)
+      VALUES (
+        ${prefix}, ${secretHash}, ${session.ss58}, ${account.tier},
+        ${session.accountId}, ${now}
+      )`;
+    return writeJson(
+      // Returned ONCE at creation, like ADR 0020's own mint route design and
+      // chain_alert_triggers' owner_token -- never echoed back on any later
+      // GET (handleAccountKeysList below selects prefix, never secret_hash).
+      { key: full, prefix, tier: account.tier, created_at: now },
+      201,
+    );
+  });
+}
+
+async function handleAccountKeysList(request, env) {
+  const { session, error: sessionError } = await requireAccountSession(
+    request,
+    env,
+  );
+  if (sessionError) return sessionError;
+  return withAccountsSql(env, async (sql) => {
+    const rows = await sql`
+      SELECT prefix, tier, created_at, revoked_at, last_used_at
+      FROM api_keys
+      WHERE account_id = ${session.accountId}
+      ORDER BY created_at DESC`;
+    return writeJson({ keys: rows });
+  });
+}
+
+const KEY_PREFIX_PATTERN = /^[0-9a-f]{16}$/;
+
+async function handleAccountKeyRevoke(request, env, prefix) {
+  const { session, error: sessionError } = await requireAccountSession(
+    request,
+    env,
+  );
+  if (sessionError) return sessionError;
+  if (!KEY_PREFIX_PATTERN.test(prefix)) {
+    return writeJson({ error: "malformed key prefix" }, 400);
+  }
+  return withAccountsSql(env, async (sql) => {
+    // WHERE account_id = ... is the ownership check -- a prefix that exists
+    // but belongs to a different account gets the SAME 404 a nonexistent
+    // prefix would (no existence oracle across accounts, same posture as
+    // requireAlertTriggerOwner).
+    const [row] = await sql`
+      UPDATE api_keys SET revoked_at = ${Date.now()}
+      WHERE prefix = ${prefix}
+        AND account_id = ${session.accountId}
+        AND revoked_at IS NULL
+      RETURNING prefix`;
+    if (!row) return writeJson({ error: "no such key" }, 404);
+    return writeJson({ prefix, revoked: true });
+  });
+}
+
+// Internal-only: resolves ONE key prefix to its stored secret_hash/tier/
+// revoked/account_id, for src/api-key-validation.mjs's KV-cache-fronted
+// validator (reached via the RPC-gate Worker's own DATA_API service
+// binding, ADR 0021 section 6). Gated by its OWN shared secret -- a
+// DIFFERENT capability from the session-based /api/v1/keys routes above
+// (this one exposes secret_hash, even hashed, to a caller that has neither
+// a session nor an invite code) -- same "different capability, different
+// secret" reasoning as ALERT_TRIGGERS_INTERNAL_TOKEN vs the create/owner
+// tokens. Bumps last_used_at on every successful lookup (best-effort
+// bookkeeping, not the source of truth for rate limiting).
+async function handleApiKeyLookup(request, env, prefix) {
+  const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      { error: "api-key lookup is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(API_KEY_LOOKUP_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      { error: `provide a valid ${API_KEY_LOOKUP_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!KEY_PREFIX_PATTERN.test(prefix)) {
+    return writeJson({ error: "malformed key prefix" }, 400);
+  }
+  return withAccountsSql(env, async (sql) => {
+    const [row] = await sql`
+      SELECT secret_hash, tier, revoked_at, account_id
+      FROM api_keys WHERE prefix = ${prefix}`;
+    if (!row) return writeJson({ error: "no such key" }, 404);
+    await sql`UPDATE api_keys SET last_used_at = ${Date.now()} WHERE prefix = ${prefix}`;
+    return writeJson({
+      secret_hash: row.secret_hash,
+      tier: row.tier,
+      revoked_at: row.revoked_at,
+      account_id: row.account_id,
+    });
+  });
+}
+
+async function handleAccountKeysRoute(request, env, url) {
+  const segments = url.pathname.split("/").filter(Boolean);
+  // ["api", "v1", "keys", <prefix?>]
+  const prefix = segments[3];
+  if (!prefix && request.method === "POST") {
+    return handleAccountKeyCreate(request, env);
+  }
+  if (!prefix && request.method === "GET") {
+    return handleAccountKeysList(request, env);
+  }
+  if (prefix && request.method === "DELETE") {
+    return handleAccountKeyRevoke(request, env, prefix);
+  }
+  return writeJson(
+    {
+      error: "Use POST/GET /api/v1/keys, or DELETE /api/v1/keys/{prefix}.",
+    },
+    405,
+  );
+}
+
 export default {
   async fetch(request, env, _ctx) {
     const url = new URL(request.url);
@@ -3764,12 +4154,41 @@ export default {
     ) {
       return handleRpcUsageEventPrune(request, env);
     }
+    // Internal-only key-prefix lookup for the isolated fullnode RPC gate's
+    // KV-cache-fronted validator (src/api-key-validation.mjs, ADR 0021
+    // section 6). GET-with-path-param, so it can't join the exact-match
+    // checks above.
+    if (
+      request.method === "GET" &&
+      url.pathname.startsWith("/api/v1/internal/keys/")
+    ) {
+      const prefix = url.pathname.split("/").filter(Boolean)[4];
+      return handleApiKeyLookup(request, env, prefix || "");
+    }
     // #4984 Part 1: multi-method (POST/GET/PATCH/DELETE), so it can't join
     // the exact-path-and-method checks above -- handleAlertTriggersRoute
     // does its own method dispatch, same shape as workers/api.mjs's
     // handleWebhookRequest.
     if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
       return handleAlertTriggersRoute(request, env, url);
+    }
+    // Wallet login + account-gated fullnode API keys (ADR 0021, #6835) --
+    // same multi-method-can't-join-the-exact-match-checks shape as the
+    // alert-triggers route just above.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/auth/wallet/challenge"
+    ) {
+      return handleWalletChallenge(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/auth/wallet/verify"
+    ) {
+      return handleWalletVerify(request, env);
+    }
+    if (url.pathname.startsWith("/api/v1/keys")) {
+      return handleAccountKeysRoute(request, env, url);
     }
     if (
       request.method === "GET" &&

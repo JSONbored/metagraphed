@@ -1,0 +1,247 @@
+// Isolated, account-gated fullnode RPC proxy (ADR 0021, #6835):
+// POST /rpc/v1/fullnode. Reuses rpc-proxy.mjs's proven scoring/failover
+// machinery (orderSafeRpcEndpoints, proxyWithFailover) against a SEPARATE,
+// dedicated origin list -- never TRUSTED_RPC_UPSTREAM_ORIGINS's public pool,
+// and a SEPARATE in-isolate circuit-breaker map -- so a public-pool
+// degradation can never affect a paying caller's request, and a gated-tier
+// incident can never silently fail open to public traffic (ADR 0021 section
+// 6's explicit isolation requirement).
+//
+// Auth: a caller-supplied mg_... API key travels as a `?authorization=`
+// query param, not a header (matches taostats' own convention so existing
+// WSS-client code needs minimal changes to point here instead -- ADR 0021
+// section 6), validated via src/api-key-validation.mjs's KV-cache-fronted
+// lookup (which itself reuses src/api-keys.mjs's format/hash/compare
+// unchanged from ADR 0020).
+//
+// Method scope: read-only SAFE_RPC_METHODS PLUS author_submitExtrinsic
+// (owner decision, 2026-07-19) -- this gated, account-authenticated tier is
+// real RPC access, not the free/anonymous pool's read-only-only posture.
+// author_submitAndWatchExtrinsic is deliberately excluded: it's subscription-
+// based and doesn't fit this proxy's single-POST/single-response model (no
+// WSS support here, matching the public proxy's own HTTP-only /rpc/v1/{network}
+// route). Every other author_/sudo_/payment_/contracts_/state_call method
+// stays blocked by the same DENIED_RPC_PREFIXES the public proxy uses.
+//
+// No response caching here (unlike the public proxy's Cache API layer): this
+// is a lower-volume, paid/gated tier where correctness/freshness matters more
+// than shaving upstream calls, and it now carries a non-idempotent write
+// method -- a deliberate v1 scope cut, not an oversight.
+import { errorResponse } from "../http.mjs";
+import { parseApiKey } from "../../src/api-keys.mjs";
+import { validateApiKey } from "../../src/api-key-validation.mjs";
+import {
+  orderSafeRpcEndpoints,
+  proxyWithFailover,
+  RPC_MAX_ATTEMPTS,
+} from "./rpc-proxy.mjs";
+import {
+  DENIED_RPC_PREFIXES,
+  MAX_RPC_BODY_BYTES,
+  resolveClientIp,
+  SAFE_RPC_METHODS,
+} from "../config.mjs";
+
+const FULLNODE_EXTRA_SAFE_METHODS = new Set(["author_submitExtrinsic"]);
+
+function isFullnodeSafeRpcMethod(method) {
+  if (method.startsWith("author_")) {
+    return FULLNODE_EXTRA_SAFE_METHODS.has(method);
+  }
+  if (DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))) {
+    return false;
+  }
+  return SAFE_RPC_METHODS.has(method);
+}
+
+// Isolated in-isolate circuit breaker -- deliberately a SEPARATE Map from
+// rpc-proxy.mjs's own module-default RPC_HEALTH (see that file's own header
+// on why the breaker co-locates with its readers/writers). An ejected
+// public-pool endpoint must never influence this pool's ordering, or vice
+// versa.
+const FULLNODE_RPC_HEALTH = new Map();
+
+// Bounds the cost of an unauthenticated caller guessing random keys (each
+// miss is a real KV-then-Postgres round trip via src/api-key-validation.mjs)
+// -- checked BEFORE key validation, by client IP, same posture and figure as
+// the public proxy's own RPC_RATE_LIMITER.
+export const FULLNODE_RPC_GUESS_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
+// The actual per-key product limit (ADR 0021 section 5: "looser than the
+// existing anonymous pool's limits") -- checked AFTER a key validates,
+// keyed by prefix (public, non-secret, stable per key) rather than IP, so
+// legitimate traffic from many callers sharing one key isn't starved and one
+// key can't be inflated by rotating source IPs.
+export const FULLNODE_RPC_RATE_LIMIT = { limit: 300, windowSeconds: 60 };
+
+function parseFullnodeOrigins(env) {
+  const raw = env?.FULLNODE_RPC_ORIGINS || "";
+  const trustedOrigins = new Set();
+  const endpoints = [];
+  for (const rawUrl of raw.split(",").map((entry) => entry.trim())) {
+    if (!rawUrl) continue;
+    let parsed;
+    try {
+      parsed = new URL(rawUrl);
+    } catch {
+      continue; // malformed config entry -- skip rather than 500
+    }
+    trustedOrigins.add(parsed.origin);
+    endpoints.push({
+      id: `fullnode-${endpoints.length}`,
+      url: rawUrl,
+      pool_eligible: true,
+      provider: "fullnode",
+    });
+  }
+  return { pool: { endpoints }, trustedOrigins };
+}
+
+export async function handleFullnodeRpcProxyRequest(request, env, url) {
+  if (request.method !== "POST") {
+    return errorResponse(
+      "method_not_allowed",
+      "The fullnode RPC gate only accepts POST requests.",
+      405,
+      {},
+      { allow: "POST, OPTIONS" },
+    );
+  }
+
+  if (env.FULLNODE_RPC_GUESS_RATE_LIMITER?.limit) {
+    const { success } = await env.FULLNODE_RPC_GUESS_RATE_LIMITER.limit({
+      key: `fullnode-rpc-guess:${resolveClientIp(request)}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "fullnode_rpc_rate_limited",
+        "Too many fullnode RPC requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(FULLNODE_RPC_GUESS_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(FULLNODE_RPC_GUESS_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${FULLNODE_RPC_GUESS_RATE_LIMIT.limit};w=${FULLNODE_RPC_GUESS_RATE_LIMIT.windowSeconds}`,
+        },
+      );
+    }
+  }
+
+  const rawKey = url.searchParams.get("authorization") || "";
+  const auth = await validateApiKey(env, rawKey);
+  if (!auth.ok) {
+    return errorResponse(
+      "fullnode_rpc_unauthorized",
+      auth.code === "key_revoked"
+        ? "This API key has been revoked."
+        : "Provide a valid API key via ?authorization=.",
+      401,
+    );
+  }
+
+  if (env.FULLNODE_RPC_RATE_LIMITER?.limit) {
+    // No fallback here: auth.ok already guarantees parseApiKey(rawKey)
+    // parses (validateApiKey's own contract), so this can't be null.
+    const { prefix: keyPrefix } = parseApiKey(rawKey);
+    const { success } = await env.FULLNODE_RPC_RATE_LIMITER.limit({
+      key: `fullnode-rpc:${keyPrefix}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "fullnode_rpc_rate_limited",
+        "Too many requests for this API key; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(FULLNODE_RPC_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(FULLNODE_RPC_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${FULLNODE_RPC_RATE_LIMIT.limit};w=${FULLNODE_RPC_RATE_LIMIT.windowSeconds}`,
+        },
+      );
+    }
+  }
+
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null) {
+    const contentLength = Number(declaredLength);
+    if (!Number.isFinite(contentLength) || contentLength < 0) {
+      return errorResponse(
+        "fullnode_rpc_invalid_content_length",
+        "Invalid Content-Length header.",
+        400,
+      );
+    }
+    if (contentLength > MAX_RPC_BODY_BYTES) {
+      return errorResponse(
+        "fullnode_rpc_body_too_large",
+        "Request body is too large for the fullnode RPC gate.",
+        413,
+      );
+    }
+  }
+
+  let bodyText;
+  let rpcBody;
+  try {
+    bodyText = await request.text();
+    if (new TextEncoder().encode(bodyText).length > MAX_RPC_BODY_BYTES) {
+      return errorResponse(
+        "fullnode_rpc_body_too_large",
+        "Request body is too large for the fullnode RPC gate.",
+        413,
+      );
+    }
+    rpcBody = JSON.parse(bodyText);
+  } catch {
+    return errorResponse(
+      "fullnode_rpc_invalid_json",
+      "RPC request body must be a JSON object.",
+      400,
+    );
+  }
+
+  if (
+    !rpcBody ||
+    Array.isArray(rpcBody) ||
+    typeof rpcBody !== "object" ||
+    typeof rpcBody.method !== "string"
+  ) {
+    return errorResponse(
+      "fullnode_rpc_invalid_request",
+      "Only single JSON-RPC request objects are supported.",
+      400,
+    );
+  }
+
+  if (!isFullnodeSafeRpcMethod(rpcBody.method)) {
+    return errorResponse(
+      "fullnode_rpc_method_blocked",
+      `RPC method is not allowed through the fullnode gate: ${rpcBody.method}`,
+      403,
+    );
+  }
+
+  const { pool, trustedOrigins } = parseFullnodeOrigins(env);
+  const { endpoints, unsafeEndpoint } = orderSafeRpcEndpoints(
+    pool,
+    Math.random,
+    { healthMap: FULLNODE_RPC_HEALTH, trustedOrigins },
+  );
+  if (!endpoints.length) {
+    return errorResponse(
+      unsafeEndpoint
+        ? "fullnode_rpc_endpoint_unsafe"
+        : "fullnode_rpc_unavailable",
+      unsafeEndpoint
+        ? "The configured fullnode endpoint URL is not allowed by the Worker upstream safety policy."
+        : "No fullnode RPC endpoint is configured for this deployment.",
+      unsafeEndpoint ? 502 : 503,
+    );
+  }
+
+  return proxyWithFailover(endpoints, {
+    bodyText,
+    poolId: "fullnode",
+    healthMap: FULLNODE_RPC_HEALTH,
+    maxAttempts: RPC_MAX_ATTEMPTS,
+  });
+}
