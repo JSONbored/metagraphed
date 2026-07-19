@@ -2120,6 +2120,136 @@ async function handleNominatorPositionsSync(request, env) {
   }
 }
 
+// --- POST /api/v1/internal/account-balances-sync (#6742) -------------------
+//
+// Chain-wide free/reserved balance snapshot, one row per account with a
+// nonzero balance -- scripts/fetch-account-balances.py's own header comment
+// on why this reads System::Account directly rather than reconstructing
+// balance from transfer/fee/stake events (a direct state read can't drift;
+// event-replay can, one missed mutation path at a time). Same "latest-only,
+// captured_at freshness guard" upsert shape as nominator-positions-sync.
+const ACCOUNT_BALANCE_INSERT_COLUMNS = [
+  "ss58",
+  "free_tao",
+  "reserved_tao",
+  "captured_at",
+];
+const ACCOUNT_BALANCES_SYNC_TOKEN_HEADER = "x-account-balances-sync-token";
+// floor(65535 / 4 columns) = 16383 -- batchedUpsert's per-statement row cap,
+// rounded down for headroom, matching NOMINATOR_POSITIONS_MAX_ROWS_PER_BATCH's
+// own rounding for a different column count.
+const ACCOUNT_BALANCES_MAX_ROWS_PER_BATCH = 10_000;
+// Generous headroom over the ~543k total System::Account entries observed
+// in the live full-scan probe (2026-07-19, ~530k after filtering all-zero
+// accounts) -- same order of magnitude as nominator-positions-sync's own
+// ceiling, not a tight bound.
+const ACCOUNT_BALANCES_SYNC_MAX_BODY_BYTES = 200_000_000;
+const ACCOUNT_BALANCES_SYNC_MAX_ROWS = 1_000_000;
+
+function validAccountBalanceSyncRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (typeof row.ss58 !== "string" || row.ss58.length === 0) return false;
+  if (!Number.isFinite(row.free_tao) || row.free_tao < 0) return false;
+  if (!Number.isFinite(row.reserved_tao) || row.reserved_tao < 0) return false;
+  if (!Number.isFinite(row.captured_at)) return false;
+  for (const key of Object.keys(row)) {
+    if (!ACCOUNT_BALANCE_INSERT_COLUMNS.includes(key)) return false;
+  }
+  return true;
+}
+
+async function handleAccountBalancesSync(request, env) {
+  if (!env.ACCOUNT_BALANCES_SYNC_SECRET) {
+    return writeJson(
+      { error: "account-balances sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(ACCOUNT_BALANCES_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.ACCOUNT_BALANCES_SYNC_SECRET)
+  ) {
+    return writeJson(
+      { error: `provide a valid ${ACCOUNT_BALANCES_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > ACCOUNT_BALANCES_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${ACCOUNT_BALANCES_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of account-balance rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > ACCOUNT_BALANCES_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${ACCOUNT_BALANCES_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validAccountBalanceSyncRow)) {
+    return writeJson(
+      { error: "rows must match the account-balance row shape" },
+      400,
+    );
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+      await batchedUpsert(
+        sql,
+        incoming,
+        (sql, batch) => sql`
+          INSERT INTO account_balances ${sql(batch, ...ACCOUNT_BALANCE_INSERT_COLUMNS)}
+          ON CONFLICT (ss58) DO UPDATE SET
+            free_tao = EXCLUDED.free_tao,
+            reserved_tao = EXCLUDED.reserved_tao,
+            captured_at = EXCLUDED.captured_at
+          WHERE account_balances.captured_at <= EXCLUDED.captured_at`,
+        ACCOUNT_BALANCES_MAX_ROWS_PER_BATCH,
+      );
+    });
+    return writeJson({ ok: true, account_balances_written: incoming.length });
+  } catch (err) {
+    console.error("data-api account-balances-sync write failed:", err);
+    captureDataApiError(err, "account-balances-sync");
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 // --- POST /api/v1/internal/subnet-identity-sync (#4832 gap-closure) -------
 //
 // The write path into subnet_identity_history -- architecturally different
@@ -4214,6 +4344,12 @@ export default {
       url.pathname === "/api/v1/internal/nominator-positions-sync"
     ) {
       return handleNominatorPositionsSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/account-balances-sync"
+    ) {
+      return handleAccountBalancesSync(request, env);
     }
     if (
       request.method === "POST" &&

@@ -54,6 +54,15 @@
   // Until WALLET_SESSION_SECRET is set, POST /api/v1/auth/wallet/verify and
   // every /api/v1/keys route 503; the rpc_accounts/api_keys.account_id
   // schema is otherwise live once this file's schema.sql is applied.
+  //
+  // Chain-wide account balance snapshot (#6741/#6742, the balance-based
+  // top-holder leaderboard epic's data tier) needs:
+  //   wrangler secret put ACCOUNT_BALANCES_SYNC_SECRET -c wrangler.data.jsonc
+  // Set on metagraphed-infra's account-balances data-refresh job too
+  // (roles/data-refresh-cron's vault, same secret_var convention every
+  // other sync job uses). Until set, POST /api/v1/internal/account-balances-sync
+  // 503s; the account_balances table is otherwise live once this file's
+  // schema.sql is applied.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "metagraphed-data-api",
   // Sentry deploy-entry wrapper (metagraphed#6479/#6485), not the raw

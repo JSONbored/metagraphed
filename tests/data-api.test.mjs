@@ -112,6 +112,8 @@ const validatorNominatorCountsQueryFailure = vi.hoisted(() => ({
 const subnetTemposQueryFailure = vi.hoisted(() => ({ error: null }));
 // State for the nominator-positions-sync WRITE (#5233) tests only.
 const nominatorPositionsSyncFailure = vi.hoisted(() => ({ error: null }));
+// State for the account-balances-sync WRITE (#6742) tests only.
+const accountBalancesSyncFailure = vi.hoisted(() => ({ error: null }));
 // State for the nominator_positions READ (#5233) tests only -- same
 // isolation purpose as subnetTemposQueryFailure above, but for
 // loadNominatorPositions' own SELECT.
@@ -212,6 +214,12 @@ vi.mock("postgres", () => ({
         /INSERT INTO nominator_positions\b/.test(text)
       ) {
         return Promise.reject(nominatorPositionsSyncFailure.error);
+      }
+      if (
+        accountBalancesSyncFailure.error &&
+        /INSERT INTO account_balances\b/.test(text)
+      ) {
+        return Promise.reject(accountBalancesSyncFailure.error);
       }
       if (
         nominatorPositionsQueryFailure.error &&
@@ -372,6 +380,7 @@ const HEALTH_CHECKS_SYNC_SECRET = "test-health-checks-sync-secret";
 const SUBNET_SNAPSHOT_SYNC_SECRET = "test-subnet-snapshot-sync-secret";
 const RPC_USAGE_SYNC_SECRET = "test-rpc-usage-sync-secret";
 const NOMINATOR_POSITIONS_SYNC_SECRET = "test-nominator-positions-sync-secret";
+const ACCOUNT_BALANCES_SYNC_SECRET = "test-account-balances-sync-secret";
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   NEURONS_SYNC_SECRET,
@@ -385,6 +394,7 @@ const env = {
   SUBNET_SNAPSHOT_SYNC_SECRET,
   RPC_USAGE_SYNC_SECRET,
   NOMINATOR_POSITIONS_SYNC_SECRET,
+  ACCOUNT_BALANCES_SYNC_SECRET,
 };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
@@ -409,6 +419,7 @@ beforeEach(() => {
   subnetTemposQueryFailure.error = null;
   nominatorPositionsSyncFailure.error = null;
   nominatorPositionsQueryFailure.error = null;
+  accountBalancesSyncFailure.error = null;
   neuronStakeByHotkeyQueryFailure.error = null;
   accountHistoryQueryFailure.error = null;
   subnetIdentitySyncFailure.error = null;
@@ -5329,6 +5340,210 @@ test("nominator-positions-sync issues a single INSERT for a payload at or under 
   expect(res.status).toBe(200);
   const insertCalls = sqlCalls.filter((call) =>
     call.text.includes("INSERT INTO nominator_positions"),
+  );
+  expect(insertCalls.length).toBe(1);
+});
+
+// #6742: POST /api/v1/internal/account-balances-sync -- the write path into
+// account_balances (see workers/data-api.mjs's handleAccountBalancesSync).
+// Same latest-only-upsert shape as nominator-positions-sync above, a
+// single-column key instead of a composite one.
+function accountBalanceRow(overrides = {}) {
+  return {
+    ss58: "5Whale1",
+    free_tao: 1000.5,
+    reserved_tao: 25.25,
+    captured_at: 1_780_000_000_000,
+    ...overrides,
+  };
+}
+
+function postAccountBalances(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined) headers["x-account-balances-sync-token"] = secret;
+  return req("/api/v1/internal/account-balances-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
+  });
+}
+
+test("account-balances-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postAccountBalances([accountBalanceRow()], {
+    secret: "nope",
+  });
+  expect(wrong.status).toBe(401);
+  const missing = await postAccountBalances([accountBalanceRow()]);
+  expect(missing.status).toBe(401);
+});
+
+test("account-balances-sync is disabled (503) when ACCOUNT_BALANCES_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/account-balances-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-account-balances-sync-token": ACCOUNT_BALANCES_SYNC_SECRET,
+      },
+      body: JSON.stringify([accountBalanceRow()]),
+    }),
+    { ...env, ACCOUNT_BALANCES_SYNC_SECRET: undefined },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("account-balances-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/account-balances-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-account-balances-sync-token": ACCOUNT_BALANCES_SYNC_SECRET,
+      },
+      body: JSON.stringify([accountBalanceRow()]),
+    }),
+    { ...env, HYPERDRIVE: undefined },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("account-balances-sync rejects malformed JSON (400)", async () => {
+  const res = await postAccountBalances(null, {
+    secret: ACCOUNT_BALANCES_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("account-balances-sync rejects a body that isn't an array (400)", async () => {
+  const res = await postAccountBalances(null, {
+    secret: ACCOUNT_BALANCES_SYNC_SECRET,
+    raw: JSON.stringify({ nope: true }),
+  });
+  expect(res.status).toBe(400);
+});
+
+test("account-balances-sync rejects an empty array (400)", async () => {
+  const res = await postAccountBalances([], {
+    secret: ACCOUNT_BALANCES_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("account-balances-sync rejects a body over the byte cap (413)", async () => {
+  const res = await postAccountBalances(null, {
+    secret: ACCOUNT_BALANCES_SYNC_SECRET,
+    raw: "[" + "1".repeat(200_000_001) + "]",
+  });
+  expect(res.status).toBe(413);
+});
+
+test("account-balances-sync rejects more rows than the per-request cap (413)", async () => {
+  const rows = Array.from({ length: 1_000_001 }, (_, i) =>
+    accountBalanceRow({ ss58: `5Whale${i}` }),
+  );
+  const res = await postAccountBalances(rows, {
+    secret: ACCOUNT_BALANCES_SYNC_SECRET,
+  });
+  expect(res.status).toBe(413);
+});
+
+test("account-balances-sync rejects a non-object/array row (400)", async () => {
+  const nullRow = await postAccountBalances(null, {
+    secret: ACCOUNT_BALANCES_SYNC_SECRET,
+    raw: JSON.stringify([null]),
+  });
+  expect(nullRow.status).toBe(400);
+
+  const arrayRow = await postAccountBalances(null, {
+    secret: ACCOUNT_BALANCES_SYNC_SECRET,
+    raw: JSON.stringify([["not", "an", "object"]]),
+  });
+  expect(arrayRow.status).toBe(400);
+});
+
+test("account-balances-sync rejects a row missing a required field or carrying an unknown key (400)", async () => {
+  const missingSs58 = await postAccountBalances(
+    [accountBalanceRow({ ss58: "" })],
+    { secret: ACCOUNT_BALANCES_SYNC_SECRET },
+  );
+  expect(missingSs58.status).toBe(400);
+
+  const negativeFree = await postAccountBalances(
+    [accountBalanceRow({ free_tao: -1 })],
+    { secret: ACCOUNT_BALANCES_SYNC_SECRET },
+  );
+  expect(negativeFree.status).toBe(400);
+
+  const negativeReserved = await postAccountBalances(
+    [accountBalanceRow({ reserved_tao: -1 })],
+    { secret: ACCOUNT_BALANCES_SYNC_SECRET },
+  );
+  expect(negativeReserved.status).toBe(400);
+
+  const badCapturedAt = await postAccountBalances(
+    [accountBalanceRow({ captured_at: "not-a-number" })],
+    { secret: ACCOUNT_BALANCES_SYNC_SECRET },
+  );
+  expect(badCapturedAt.status).toBe(400);
+
+  const unknownKey = await postAccountBalances(
+    [{ ...accountBalanceRow(), extra: 1 }],
+    { secret: ACCOUNT_BALANCES_SYNC_SECRET },
+  );
+  expect(unknownKey.status).toBe(400);
+});
+
+test("account-balances-sync accepts the wrapped {rows:[...]} form and upserts on ss58", async () => {
+  const res = await postAccountBalances(
+    { rows: [accountBalanceRow()] },
+    { secret: ACCOUNT_BALANCES_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, account_balances_written: 1 });
+  expect(queryText()).toMatch(/INSERT INTO account_balances/);
+  expect(queryText()).toMatch(/ON CONFLICT \(ss58\)/);
+});
+
+test("account-balances-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  accountBalancesSyncFailure.error = new Error("connection reset");
+  const res = await postAccountBalances([accountBalanceRow()], {
+    secret: ACCOUNT_BALANCES_SYNC_SECRET,
+  });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+test("account-balances-sync splits a payload over the per-statement param cap into multiple INSERT statements", async () => {
+  const MAX_ROWS_PER_BATCH = 10_000; // must match workers/data-api.mjs's own constant
+  const rows = Array.from({ length: MAX_ROWS_PER_BATCH + 1 }, (_, i) =>
+    accountBalanceRow({ ss58: `5Whale${i}` }),
+  );
+  const res = await postAccountBalances(rows, {
+    secret: ACCOUNT_BALANCES_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  expect((await res.json()).account_balances_written).toBe(rows.length);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO account_balances"),
+  );
+  expect(insertCalls.length).toBe(2);
+});
+
+test("account-balances-sync issues a single INSERT for a payload at or under the per-statement batch size", async () => {
+  const rows = [
+    accountBalanceRow({ ss58: "5Whale1" }),
+    accountBalanceRow({ ss58: "5Whale2" }),
+  ];
+  const res = await postAccountBalances(rows, {
+    secret: ACCOUNT_BALANCES_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO account_balances"),
   );
   expect(insertCalls.length).toBe(1);
 });
