@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { hasInjectedWallet, connectWallet, getSigner } from "./wallet-injected";
+import { hasInjectedWallet, connectWallet, getSigner, signMessage } from "./wallet-injected";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -51,5 +51,16 @@ describe("getSigner (SSR safety only)", () => {
     await expect(getSigner("polkadot-js")).rejects.toThrow(
       "getSigner() is client-only and must not be called during SSR",
     );
+  });
+});
+
+// Same posture as getSigner above: signMessage() calls getSigner() first, so the SSR
+// guard is the only path exercised here. The real signRaw path is deliberately NOT
+// unit-tested for the same WASM-avoidance reason; see the PR description for manual QA.
+describe("signMessage (SSR safety only)", () => {
+  it("rejects under SSR without ever touching @polkadot/extension-dapp", async () => {
+    await expect(
+      signMessage("polkadot-js", "5Fake...", "metagraphed wallet login"),
+    ).rejects.toThrow("getSigner() is client-only and must not be called during SSR");
   });
 });

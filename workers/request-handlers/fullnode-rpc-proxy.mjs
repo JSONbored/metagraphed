@@ -11,8 +11,8 @@
 // query param, not a header (matches taostats' own convention so existing
 // WSS-client code needs minimal changes to point here instead -- ADR 0021
 // section 6), validated via src/api-key-validation.mjs's KV-cache-fronted
-// lookup (which itself reuses src/api-keys.mjs's format/hash/compare
-// unchanged from ADR 0020).
+// lookup -- Unkey-backed since the 2026-07-19 rework (src/unkey-client.mjs),
+// not the local hash/compare ADR 0020 originally used.
 //
 // Method scope: read-only SAFE_RPC_METHODS PLUS author_submitExtrinsic
 // (owner decision, 2026-07-19) -- this gated, account-authenticated tier is
@@ -28,7 +28,6 @@
 // than shaving upstream calls, and it now carries a non-idempotent write
 // method -- a deliberate v1 scope cut, not an oversight.
 import { errorResponse } from "../http.mjs";
-import { parseApiKey } from "../../src/api-keys.mjs";
 import { validateApiKey } from "../../src/api-key-validation.mjs";
 import {
   orderSafeRpcEndpoints,
@@ -67,18 +66,22 @@ const FULLNODE_RPC_HEALTH = new Map();
 // the public proxy's own RPC_RATE_LIMITER.
 export const FULLNODE_RPC_GUESS_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 
-// Per-tier rate-limit policy, keyed by the SAME tier names
-// workers/data-api.mjs's FULLNODE_INVITE_CODE_TIERS stamps on a minted key
-// (ADR 0021 section 5: "looser than the existing anonymous pool's limits" --
-// now tier-differentiated rather than one flat figure, 2026-07-19).
-// 'gittensor-partner' is an owner-designated partner cohort with a
-// materially higher ceiling for real internal infra use, not casual dev
-// exploration; 'free' keeps the original figure. An unrecognized/future
-// tier falls back to 'free' rather than being unbounded. Each entry's own
+// Per-tier rate-limit policy, keyed by rpc_accounts.tier (workers/data-api.mjs's
+// handleAccountTierPromote is the only way a tier changes -- no invite code
+// stamps this anymore, 2026-07-19 rework). 'gittensor-partner' is an owner-
+// designated partner cohort with a materially higher ceiling for real
+// internal infra use, not casual dev exploration; 'unlimited' is for a
+// manually-promoted account with no meaningful ceiling; 'free' is the
+// default every self-served key starts at. An unrecognized/future tier
+// falls back to 'free' rather than being unbounded. Each entry's own
 // Cloudflare Rate Limiting binding is checked AFTER a key validates, keyed
-// by prefix (public, non-secret, stable per key) rather than IP, so
-// legitimate traffic from many callers sharing one key isn't starved and
-// one key can't be inflated by rotating source IPs.
+// by accountId (stable per account, available even on a KV-cache hit --
+// src/api-key-validation.mjs no longer has a "prefix" concept to key by,
+// since Unkey's key format has no separate public prefix segment) rather
+// than IP, so legitimate traffic from many callers sharing one key isn't
+// starved and one key can't be inflated by rotating source IPs. This is
+// DELIBERATELY still Cloudflare-native, not Unkey's own per-key ratelimits
+// -- see src/unkey-client.mjs's header comment for why.
 export const FULLNODE_RPC_TIER_RATE_LIMITS = {
   free: {
     envVar: "FULLNODE_RPC_RATE_LIMITER",
@@ -88,6 +91,11 @@ export const FULLNODE_RPC_TIER_RATE_LIMITS = {
   "gittensor-partner": {
     envVar: "FULLNODE_RPC_RATE_LIMITER_GITTENSOR",
     limit: 6000,
+    windowSeconds: 60,
+  },
+  unlimited: {
+    envVar: "FULLNODE_RPC_RATE_LIMITER_UNLIMITED",
+    limit: 100_000,
     windowSeconds: 60,
   },
 };
@@ -166,11 +174,8 @@ export async function handleFullnodeRpcProxyRequest(request, env, url) {
   const rateLimitPolicy = rateLimitPolicyForTier(auth.tier);
   const rateLimiter = env[rateLimitPolicy.envVar];
   if (rateLimiter?.limit) {
-    // No fallback here: auth.ok already guarantees parseApiKey(rawKey)
-    // parses (validateApiKey's own contract), so this can't be null.
-    const { prefix: keyPrefix } = parseApiKey(rawKey);
     const { success } = await rateLimiter.limit({
-      key: `fullnode-rpc:${keyPrefix}`,
+      key: `fullnode-rpc:${auth.accountId}`,
     });
     if (!success) {
       return errorResponse(

@@ -119,6 +119,26 @@ need for bypassing protection surfaces later, it requires its own ADR
 amendment and explicit, separately-worded consent copy — it is not a
 toggle to add casually.
 
+### 4. Message-signing scope evolution (2026-07-19): opaque login-challenge signing
+
+The original v1 scope for `wallet-injected.ts` was extrinsic-signing only —
+`connectWallet`/`getSigner` feed `signAndSend`, and the connect/persistence
+module (`lib/metagraphed/wallet.ts`) was explicitly read-only, "never used to
+sign anything." The freemium API-key epic (#6733/#6735/#6736, now built on
+Unkey) needs a wallet-signature login: connect → sign an opaque challenge
+string → authenticated dashboard session — no on-chain transaction anywhere
+in that flow.
+
+This adds `signMessage()` to `wallet-injected.ts`, calling the extension's
+`signRaw({ type: "bytes" })` — the same signer surface already used for
+extrinsics, just signing an arbitrary message instead of a call. This is a
+narrow, additive capability, not a reversal of section 2's broadcast-path
+decision: no extrinsic is ever constructed or submitted by this path, and
+`lib/metagraphed/wallet.ts` itself still persists only an address, never a
+signature. The signature format (bare hex, no `0x` prefix, sr25519) matches
+`src/wallet-auth.mjs`'s existing challenge/verify machinery, built for ADR
+0021's fullnode-gate login and reused here unchanged.
+
 ## Consequences
 
 - Every Phase 2 issue (#5236–#5241) builds against this decision directly:

@@ -29,27 +29,28 @@
   // the table/routes are otherwise fully live once this file's schema.sql
   // is applied.
   //
-  // Wallet-signature login + account-gated fullnode API keys (ADR 0021,
-  // #6835, src/wallet-auth.mjs + workers/data-api.mjs's handleWallet*/
-  // handleAccountKeys* functions) need secrets:
+  // Wallet-signature login + self-serve fullnode/freemium API keys
+  // (src/wallet-auth.mjs + workers/data-api.mjs's handleWallet*/
+  // handleAccountKeys*/handleApiKeyVerify/handleAccountTierPromote
+  // functions; Unkey is the actual key store since the 2026-07-19 rework --
+  // src/unkey-client.mjs) need secrets + one plain var:
   //   wrangler secret put WALLET_SESSION_SECRET -c wrangler.data.jsonc
-  //   wrangler secret put FULLNODE_INVITE_CODE -c wrangler.data.jsonc
-  //   wrangler secret put FULLNODE_INVITE_CODE_GITTENSOR -c wrangler.data.jsonc
+  //   wrangler secret put UNKEY_ROOT_KEY -c wrangler.data.jsonc
   //   wrangler secret put API_KEY_LOOKUP_INTERNAL_TOKEN -c wrangler.data.jsonc
+  //   wrangler secret put ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN -c wrangler.data.jsonc
   // (WALLET_SESSION_SECRET signs the key-management session token;
-  // FULLNODE_INVITE_CODE is the private-launch mint gate, a shared secret
-  // handed to teammates out-of-band -- ADR 0021 section 4;
-  // FULLNODE_INVITE_CODE_GITTENSOR is a SEPARATE, independently rotatable
-  // code for the Gittensor (SN74) team's own users -- presenting it at mint
-  // time stamps 'gittensor-partner' tier instead of 'free' (see
-  // workers/data-api.mjs's FULLNODE_INVITE_CODE_TIERS and
-  // workers/request-handlers/fullnode-rpc-proxy.mjs's
-  // FULLNODE_RPC_TIER_RATE_LIMITS, wrangler.jsonc's own
-  // FULLNODE_RPC_RATE_LIMITER_GITTENSOR binding) -- neither code affects the
-  // other's holders if rotated/revoked;
-  // API_KEY_LOOKUP_INTERNAL_TOKEN gates the internal key-prefix lookup route
-  // the fullnode RPC gate's validator calls -- the SAME value must also be
-  // set on the main Worker, wrangler.jsonc, see that file's own comment.)
+  // UNKEY_ROOT_KEY must be scoped to ONLY this deployment's one Unkey API/
+  // keyspace (UNKEY_API_ID below) with exactly api.<id>.{create,verify,
+  // update,delete,read}_key -- never the account-wide api.*.* wildcard, and
+  // never the account's default/master root key;
+  // API_KEY_LOOKUP_INTERNAL_TOKEN gates the internal key-verify route the
+  // fullnode RPC gate's validator calls -- the SAME value must also be set
+  // on the main Worker, wrangler.jsonc, see that file's own comment;
+  // ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN gates the ops-only tier-promotion
+  // route, called manually after confirming out of band that an account
+  // should move off the 'free' default -- no self-serve path to a higher
+  // tier exists by design.) There is no invite-code gate anymore: every
+  // wallet-connected account can self-serve a key immediately.
   // Until WALLET_SESSION_SECRET is set, POST /api/v1/auth/wallet/verify and
   // every /api/v1/keys route 503; the rpc_accounts/api_keys.account_id
   // schema is otherwise live once this file's schema.sql is applied.
@@ -76,6 +77,12 @@
     "binding": "CF_VERSION_METADATA",
   },
   "upload_source_maps": true,
+  // Public identifier for this deployment's one Unkey API/keyspace -- not a
+  // secret (see UNKEY_ROOT_KEY above for the actual credential), just an
+  // opaque id every src/unkey-client.mjs call needs to scope its request to.
+  "vars": {
+    "UNKEY_API_ID": "api_2Dv8cVjrTSiD",
+  },
   // Smart placement: run the Worker close to the Hyperdrive origin (self-hosted indexer
   // box Postgres, reached via Cloudflare Tunnel) to minimize the per-request DB round-trip,
   // not at the nearest edge to the client.
@@ -143,11 +150,12 @@
         "period": 60,
       },
     },
-    // Per-account key-mint abuse control (ADR 0021, #6835) -- the invite-code
-    // gate bounds WHO can mint, not how many rows a legitimate holder mints
-    // (the same gap adversarial review found in ALERT_TRIGGER_CREATE_TOKEN
-    // alone), so this is keyed by account id rather than IP. Skipped when
-    // unbound (local dev/CI).
+    // Per-account key-mint abuse control -- with no invite-code gate at all,
+    // "you can sign in as this wallet" is the only bound on WHO can mint;
+    // this is what stops one signed-in account from minting rows in a tight
+    // loop (the same gap adversarial review found in
+    // ALERT_TRIGGER_CREATE_TOKEN alone), keyed by account id rather than IP.
+    // Skipped when unbound (local dev/CI).
     {
       "name": "ACCOUNT_KEYS_MINT_RATE_LIMITER",
       "namespace_id": "1003",

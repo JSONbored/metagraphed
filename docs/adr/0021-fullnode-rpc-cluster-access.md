@@ -161,6 +161,39 @@ minted key. Deliberately a short, explicit list — not a general
 multi-tenant invite-code registry — until a third cohort actually
 materializes.
 
+### 4b. Evolution: the invite-code gate is removed entirely, onto Unkey (2026-07-19)
+
+Section 4 named this exact mechanism as "the one to later relax for a public
+launch — delete the gate check, keep everything else unchanged." That
+relax happened as planned, but "everything else" changed alongside it: this
+became the freemium API epic (#6733/#6735/#6736), and the decision was to
+put Unkey (unkeyed/unkey) in as the actual key store rather than keep
+hand-rolling it. `src/api-keys.mjs` and the Postgres `secret_hash`-based
+half of `src/api-key-validation.mjs` (section 1's reuse) are retired;
+`src/unkey-client.mjs` mints/verifies/revokes every key now. Every
+wallet-connected account self-serves a key immediately at its account's
+current tier (`rpc_accounts.tier`, default `'free'`) — no invite code, no
+cohort selection at mint time. A cohort/tier change is now an ops action
+(`workers/data-api.mjs`'s `handleAccountTierPromote`, its own internal
+secret) run manually after confirming out of band that an account should
+move up, rather than a code presented at mint time — the same "single
+rotation/promotion, never a per-key sweep" property section 4 required,
+just moved from mint-time to promote-time.
+
+One thing deliberately NOT adopted from Unkey: its own per-key `ratelimits`.
+Section 4a's `FULLNODE_RPC_TIER_RATE_LIMITS` (Cloudflare-native, per-tier
+bindings) stays exactly as the enforcement mechanism, now keyed by
+`accountId` instead of the old locally-generated `prefix` (Unkey's key
+format has no separate public-prefix segment to key a cache/rate-limit by).
+See `src/unkey-client.mjs`'s own header comment for why a KV-cache-fronted
+validator and Unkey's own rate-limit checking don't compose: caching a
+rate-limit verdict for the tens-of-minutes TTL this validator needs would
+let a burst get replayed as "still fine" for the whole window.
+
+No pre-existing key needed a migration path: no one had minted a key
+through this route yet at the time of this rework (confirmed with the
+owner), so this was a clean cutover, not a dual-system transition.
+
 ### 5. Tiering: one free tier at launch, matching taostats' own current reality
 
 Even taostats' own RBAC/billing is "coming soon" per their docs — there is no

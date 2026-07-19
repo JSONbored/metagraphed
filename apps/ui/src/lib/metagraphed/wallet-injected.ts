@@ -65,3 +65,41 @@ export async function getSigner(source: string): Promise<Signer> {
   const extension = await web3FromSource(source);
   return extension.signer;
 }
+
+/** Hex-encodes a UTF-8 string's raw bytes, 0x-prefixed -- the `data` shape
+ * signRaw({ type: "bytes" }) expects. A local one-liner rather than pulling
+ * in @polkadot/util's stringToHex for a single call site. */
+function stringToHexBytes(message: string): string {
+  const bytes = new TextEncoder().encode(message);
+  return "0x" + [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Signs an opaque login-challenge string via the extension's
+ * signRaw({ type: "bytes" }) -- never an extrinsic, never broadcast. This is
+ * the exact message/signature shape src/wallet-auth.mjs's
+ * walletChallengeMessage()/verifyWalletChallenge() expect server-side (see
+ * that file's own header comment). A deliberate, narrow evolution of this
+ * file's previously extrinsic-only signing surface -- docs/adr/0018 §4.
+ *
+ * Throws under SSR via getSigner()'s own guard (every caller is already
+ * client-only, mid-flow after a wallet is connected) and if the extension
+ * doesn't implement signRaw at all (some very old extension builds omit it).
+ */
+export async function signMessage(
+  source: string,
+  address: string,
+  message: string,
+): Promise<string> {
+  const signer = await getSigner(source);
+  if (!signer.signRaw) {
+    throw new Error(`${source} does not support message signing`);
+  }
+  const { signature } = await signer.signRaw({
+    address,
+    data: stringToHexBytes(message),
+    type: "bytes",
+  });
+  // src/wallet-auth.mjs expects a bare 128-char hex sr25519 signature, no 0x prefix.
+  return signature.startsWith("0x") ? signature.slice(2) : signature;
+}

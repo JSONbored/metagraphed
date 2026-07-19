@@ -435,12 +435,19 @@
   // Isolated fullnode RPC gate (ADR 0021, #6835):
   //   wrangler secret put FULLNODE_RPC_ORIGINS
   // Comma-separated https://... origin(s) for the gated fullnode cluster --
-  // a secret, not a plain var, because the Cloudflare Tunnel hostname isn't
-  // provisioned yet (infra prerequisite, tracked separately from this
-  // application code -- see ADR 0021 section 6) and is deliberately kept out
-  // of the committed config until it exists. Starts with exactly one entry;
-  // growing the cluster later is purely appending to this value, no code
-  // change (workers/request-handlers/fullnode-rpc-proxy.mjs reuses
+  // a secret, not a plain var, so this deployment's infra topology (real
+  // Cloudflare Tunnel hostnames) never appears in committed config. The
+  // Cloudflare Tunnel prerequisite itself is now provisioned and verified
+  // live (fullnode-rpc.metagraph.sh -> the box's RPC port, 2026-07-19) --
+  // this secret is deliberately left UNSET on every deployment until the
+  // Unkey-backed key rework (workers/data-api.mjs's handleAccountKeyCreate/
+  // src/unkey-client.mjs) ships: setting it any earlier would let the
+  // still-deployed old invite-code system actually start serving real RPC
+  // traffic, and a key minted under it before the rework merges recreates
+  // exactly the "live legacy keys" migration problem the rework is timed to
+  // avoid. Set it right after that cutover, not before. Starts with exactly
+  // one entry; growing the cluster later is purely appending to this value,
+  // no code change (workers/request-handlers/fullnode-rpc-proxy.mjs reuses
   // rpc-proxy.mjs's pool/failover machinery against whatever this list
   // contains). Until set, the route 503s (no endpoint configured).
   //   wrangler secret put API_KEY_LOOKUP_INTERNAL_TOKEN
@@ -656,9 +663,9 @@
     // The 'gittensor-partner' tier's own, materially higher limit (20x the
     // free tier) -- an owner-designated partner cohort (the Gittensor SN74
     // team's own users) with real internal infra needs, not casual dev
-    // exploration. Keys get this tier by presenting
-    // FULLNODE_INVITE_CODE_GITTENSOR at mint time (see workers/data-api.mjs's
-    // FULLNODE_INVITE_CODE_TIERS). Skipped when the binding is absent (local
+    // exploration. No invite code stamps this anymore -- an account reaches
+    // this tier only via workers/data-api.mjs's handleAccountTierPromote
+    // (ops-triggered, manual). Skipped when the binding is absent (local
     // dev/CI) -- falls back to the free-tier policy in that case, same as an
     // unrecognized tier.
     {
@@ -666,6 +673,19 @@
       "namespace_id": "1011",
       "simple": {
         "limit": 6000,
+        "period": 60,
+      },
+    },
+    // The 'unlimited' tier -- a manually-promoted account with no
+    // meaningful ceiling (handleAccountTierPromote again; there is no
+    // self-serve path to this tier). Not a literal no-op limit (Cloudflare's
+    // Rate Limiting API has no such flag), a ceiling high enough that no
+    // real caller reaches it.
+    {
+      "name": "FULLNODE_RPC_RATE_LIMITER_UNLIMITED",
+      "namespace_id": "1012",
+      "simple": {
+        "limit": 100000,
         "period": 60,
       },
     },

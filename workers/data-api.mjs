@@ -482,7 +482,12 @@ import {
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.mjs";
 import { buildAccountPositionHistory } from "../src/account-position-history.mjs";
-import { generateApiKey, hashApiKeySecret } from "../src/api-keys.mjs";
+import {
+  createUnkeyKey,
+  verifyUnkeyKey,
+  updateUnkeyKeyTier,
+  revokeUnkeyKey,
+} from "../src/unkey-client.mjs";
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.mjs";
 import {
   createSessionToken,
@@ -3683,38 +3688,38 @@ async function handleAlertTriggersRoute(request, env, url) {
   );
 }
 
-// --- Wallet-signature login + account-gated fullnode API keys (ADR 0021,
-// #6835) -------------------------------------------------------------------
+// --- Wallet-signature login + self-serve fullnode/freemium API keys
+// (originally ADR 0021/#6835, reworked onto Unkey 2026-07-19) --------------
 //
 // Reached only via workers/api.mjs's DATA_API service binding, same as every
-// route in this file. Two route groups:
+// route in this file. Route groups:
 //   POST /api/v1/auth/wallet/challenge  { ss58 } -> a signable message
 //   POST /api/v1/auth/wallet/verify     { ss58, signature } -> a session
-//   POST/GET /api/v1/keys, DELETE /api/v1/keys/{prefix} -> mint/list/revoke
-//     THIS account's own mg_... API keys (src/api-keys.mjs, ADR 0020's
-//     format/hashing reused unchanged) -- every /api/v1/keys route requires
-//     a session (Authorization: Bearer <session_token>, src/wallet-auth.mjs);
-//     minting ALSO requires FULLNODE_INVITE_CODE (ADR 0021 section 4's
-//     private-launch gate, checked the exact way handleAlertTriggerCreate
-//     above checks ALERT_TRIGGER_CREATE_TOKEN -- a shared secret, not a
-//     per-user credential, so rotating it revokes everyone's mint access at
-//     once). All crypto/no-I/O logic lives in src/wallet-auth.mjs;
-//     everything here is Postgres plumbing + the invite-code gate.
-//
-// This does NOT implement ADR 0020's own anonymous/contact-only mint route
-// (still unbuilt, out of scope here) -- api_keys.account_id is nullable
-// specifically so that separate flow can land later without touching this
-// one.
+//   POST/GET /api/v1/keys, DELETE /api/v1/keys/{key_id} -> mint/list/revoke
+//     THIS account's own mg_... API key, now minted/verified/revoked via
+//     Unkey (src/unkey-client.mjs) rather than locally generated/hashed --
+//     every /api/v1/keys route requires a session (Authorization: Bearer
+//     <session_token>, src/wallet-auth.mjs). No invite-code gate anymore:
+//     any wallet-connected account can self-serve a key immediately, at its
+//     account's current tier (rpc_accounts.tier, default 'free'); promoting
+//     an account to a higher tier afterward is the internal tier-promotion
+//     route below, not a mint-time credential. All crypto/no-I/O logic
+//     lives in src/wallet-auth.mjs; everything here is Postgres plumbing +
+//     the Unkey calls.
+//   POST /api/v1/internal/keys/verify   -- internal-only, see
+//     handleApiKeyVerify's own header comment.
+//   POST /api/v1/internal/accounts/tier -- internal-only, see
+//     handleAccountTierPromote's own header comment.
 
-const FULLNODE_INVITE_CODE_HEADER = "x-fullnode-invite-code";
 // Mirrors ALERT_TRIGGER_CREATE_RATE_LIMIT's shape/reasoning: an unauthenticated
 // caller can hit challenge/verify before any session exists, so this is keyed
 // by client IP like that limiter, not by account.
 const WALLET_AUTH_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
-// Keyed by account (not IP): the invite-code gate already bounds WHO can
-// mint, but not how many rows a legitimate holder mints (the same gap
-// adversarial review found in ALERT_TRIGGER_CREATE_TOKEN alone) -- the
-// abuse unit here is api_keys rows per account, so the limiter key matches.
+// Keyed by account (not IP): with no invite-code gate at all, mint access is
+// bounded only by "you can sign in as this wallet" -- this limiter is what
+// stops one signed-in account from minting rows in a tight loop (the same
+// gap adversarial review found in ALERT_TRIGGER_CREATE_TOKEN alone), not who
+// gets to mint at all.
 const ACCOUNT_KEYS_MINT_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
 async function withAccountsSql(env, fn) {
@@ -3890,39 +3895,6 @@ async function requireAccountSession(request, env) {
   return { session };
 }
 
-// Named invite-code cohorts (evolved 2026-07-19 from ADR 0021 section 4's
-// single shared secret): each entry is its OWN independently rotatable/
-// revocable secret, mapped to the tier stamped on any key minted with it.
-// Onboarding a distinct partner cohort (their own users, self-serve via
-// their own code) never risks the original private-team code, and a
-// partner-cohort key stays permanently attributable -- exempt from
-// whatever the general 'free' tier's limits become later -- rather than
-// indistinguishable from it. Add an entry here (+ its own wrangler secret +
-// a matching FULLNODE_RPC_RATE_LIMITER_<NAME> binding, see
-// fullnode-rpc-proxy.mjs) for the next named cohort; this is deliberately a
-// short, explicit list, not a general multi-tenant invite-code registry --
-// two cohorts today (the private team, and an owner-designated partner
-// cohort, the Gittensor (SN74) team's own users).
-const FULLNODE_INVITE_CODE_TIERS = [
-  { envVar: "FULLNODE_INVITE_CODE", tier: "free" },
-  { envVar: "FULLNODE_INVITE_CODE_GITTENSOR", tier: "gittensor-partner" },
-];
-
-// Returns the tier for the first configured code the caller's header
-// matches (checking every configured entry, not short-circuiting on the
-// first configured-but-non-matching one), or null if none configured/
-// matched.
-function resolveInviteCodeTier(providedInvite, env) {
-  if (!providedInvite) return null;
-  for (const { envVar, tier } of FULLNODE_INVITE_CODE_TIERS) {
-    const configured = env[envVar];
-    if (configured && timingSafeEqual(providedInvite, configured)) {
-      return tier;
-    }
-  }
-  return null;
-}
-
 async function handleAccountKeyCreate(request, env) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
@@ -3930,21 +3902,10 @@ async function handleAccountKeyCreate(request, env) {
   );
   if (sessionError) return sessionError;
 
-  const anyConfigured = FULLNODE_INVITE_CODE_TIERS.some(
-    ({ envVar }) => env[envVar],
-  );
-  if (!anyConfigured) {
+  if (!env.UNKEY_ROOT_KEY || !env.UNKEY_API_ID) {
     return writeJson(
       { error: "fullnode key issuance is not provisioned on this deployment" },
       503,
-    );
-  }
-  const providedInvite = request.headers.get(FULLNODE_INVITE_CODE_HEADER) || "";
-  const tier = resolveInviteCodeTier(providedInvite, env);
-  if (!tier) {
-    return writeJson(
-      { error: `provide a valid ${FULLNODE_INVITE_CODE_HEADER} header` },
-      401,
     );
   }
 
@@ -3969,27 +3930,41 @@ async function handleAccountKeyCreate(request, env) {
   return withAccountsSql(env, async (sql) => {
     // The session's signature already proved this account row exists at
     // verify time; a missing row here means it was removed since -- decline
-    // rather than mint an orphaned key. Tier comes from the invite code
-    // presented above, NOT the account row -- the same wallet can mint keys
-    // under different cohorts if it legitimately holds more than one code.
+    // rather than mint an orphaned key. Tier is the account's OWN tier
+    // (rpc_accounts.tier, default 'free') -- no invite code anymore: every
+    // wallet-connected account can self-serve a key immediately, and gets
+    // promoted later via the internal tier-promotion route below.
     const [account] =
-      await sql`SELECT id FROM rpc_accounts WHERE id = ${session.accountId}`;
+      await sql`SELECT id, tier FROM rpc_accounts WHERE id = ${session.accountId}`;
     if (!account) return writeJson({ error: "no such account" }, 404);
-    const { prefix, secret, full } = generateApiKey();
-    const secretHash = await hashApiKeySecret(secret);
+
+    const minted = await createUnkeyKey(env, {
+      externalId: String(session.accountId),
+      tier: account.tier,
+    });
+    if (!minted.ok) {
+      return writeJson({ error: "key issuance failed; try again" }, 502);
+    }
+
     const now = Date.now();
     await sql`
       INSERT INTO api_keys
-        (prefix, secret_hash, owner_contact, tier, account_id, created_at)
+        (unkey_key_id, owner_contact, tier, account_id, created_at)
       VALUES (
-        ${prefix}, ${secretHash}, ${session.ss58}, ${tier},
+        ${minted.keyId}, ${session.ss58}, ${account.tier},
         ${session.accountId}, ${now}
       )`;
     return writeJson(
       // Returned ONCE at creation, like ADR 0020's own mint route design and
       // chain_alert_triggers' owner_token -- never echoed back on any later
-      // GET (handleAccountKeysList below selects prefix, never secret_hash).
-      { key: full, prefix, tier, created_at: now },
+      // GET (handleAccountKeysList below selects unkey_key_id, never the key
+      // itself, which Unkey also never returns again after this call).
+      {
+        key: minted.key,
+        key_id: minted.keyId,
+        tier: account.tier,
+        created_at: now,
+      },
       201,
     );
   });
@@ -4003,7 +3978,7 @@ async function handleAccountKeysList(request, env) {
   if (sessionError) return sessionError;
   return withAccountsSql(env, async (sql) => {
     const rows = await sql`
-      SELECT prefix, tier, created_at, revoked_at, last_used_at
+      SELECT unkey_key_id AS key_id, tier, created_at, revoked_at, last_used_at
       FROM api_keys
       WHERE account_id = ${session.accountId}
       ORDER BY created_at DESC`;
@@ -4011,44 +3986,60 @@ async function handleAccountKeysList(request, env) {
   });
 }
 
-const KEY_PREFIX_PATTERN = /^[0-9a-f]{16}$/;
+const UNKEY_KEY_ID_PATTERN = /^key_[a-zA-Z0-9_]+$/;
 
-async function handleAccountKeyRevoke(request, env, prefix) {
+async function handleAccountKeyRevoke(request, env, keyId) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
     env,
   );
   if (sessionError) return sessionError;
-  if (!KEY_PREFIX_PATTERN.test(prefix)) {
-    return writeJson({ error: "malformed key prefix" }, 400);
+  if (!UNKEY_KEY_ID_PATTERN.test(keyId)) {
+    return writeJson({ error: "malformed key id" }, 400);
   }
   return withAccountsSql(env, async (sql) => {
-    // WHERE account_id = ... is the ownership check -- a prefix that exists
-    // but belongs to a different account gets the SAME 404 a nonexistent
-    // prefix would (no existence oracle across accounts, same posture as
-    // requireAlertTriggerOwner).
+    // Ownership check BEFORE ever calling Unkey -- a key_id that exists but
+    // belongs to a different account gets the SAME 404 a nonexistent one
+    // would (no existence oracle across accounts, same posture as
+    // requireAlertTriggerOwner), and we never touch Unkey for a key this
+    // session doesn't own.
     const [row] = await sql`
-      UPDATE api_keys SET revoked_at = ${Date.now()}
-      WHERE prefix = ${prefix}
+      SELECT unkey_key_id FROM api_keys
+      WHERE unkey_key_id = ${keyId}
         AND account_id = ${session.accountId}
-        AND revoked_at IS NULL
-      RETURNING prefix`;
+        AND revoked_at IS NULL`;
     if (!row) return writeJson({ error: "no such key" }, 404);
-    return writeJson({ prefix, revoked: true });
+
+    // Unkey is the actual enforcement point (verifyKey() is what the
+    // fullnode gate checks, not this table) -- disable there FIRST. Only
+    // mark our own bookkeeping row revoked once that's confirmed, so
+    // revoked_at never claims a state Unkey didn't actually reach: a key
+    // that fails to revoke stays reported as still-active, not falsely
+    // "revoked" while actually still working.
+    const revoked = await revokeUnkeyKey(env, keyId);
+    if (!revoked.ok) {
+      return writeJson({ error: "revoke failed; try again" }, 502);
+    }
+    await sql`UPDATE api_keys SET revoked_at = ${Date.now()} WHERE unkey_key_id = ${keyId}`;
+    return writeJson({ key_id: keyId, revoked: true });
   });
 }
 
-// Internal-only: resolves ONE key prefix to its stored secret_hash/tier/
-// revoked/account_id, for src/api-key-validation.mjs's KV-cache-fronted
-// validator (reached via the RPC-gate Worker's own DATA_API service
-// binding, ADR 0021 section 6). Gated by its OWN shared secret -- a
-// DIFFERENT capability from the session-based /api/v1/keys routes above
-// (this one exposes secret_hash, even hashed, to a caller that has neither
-// a session nor an invite code) -- same "different capability, different
-// secret" reasoning as ALERT_TRIGGERS_INTERNAL_TOKEN vs the create/owner
-// tokens. Bumps last_used_at on every successful lookup (best-effort
-// bookkeeping, not the source of truth for rate limiting).
-async function handleApiKeyLookup(request, env, prefix) {
+// Internal-only: verifies ONE raw key against Unkey, for
+// src/api-key-validation.mjs's KV-cache-fronted validator (reached via the
+// RPC-gate Worker's own DATA_API service binding -- that Worker never holds
+// UNKEY_ROOT_KEY itself). Gated by its OWN shared secret -- a DIFFERENT
+// capability from the session-based /api/v1/keys routes above (this one
+// verifies ANY caller-supplied key with neither a session nor a wallet) --
+// same "different capability, different secret" reasoning as
+// ALERT_TRIGGERS_INTERNAL_TOKEN vs the create/owner tokens. POST-with-body
+// (the raw key), not GET-with-path-param like the old prefix-lookup route
+// this replaces -- a secret-bearing value never belongs in a URL. Bumps
+// last_used_at on a valid verify (best-effort bookkeeping for the account's
+// own key list, not the source of truth for anything) -- cheap now that
+// this route is only hit once per unique key per KV-cache TTL window, not
+// once per RPC request.
+async function handleApiKeyVerify(request, env) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -4063,40 +4054,108 @@ async function handleApiKeyLookup(request, env, prefix) {
       401,
     );
   }
-  if (!KEY_PREFIX_PATTERN.test(prefix)) {
-    return writeJson({ error: "malformed key prefix" }, 400);
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  const rawKey = typeof body?.key === "string" ? body.key : "";
+  if (!rawKey) {
+    return writeJson({ error: "provide a key to verify" }, 400);
+  }
+  const result = await verifyUnkeyKey(env, rawKey);
+  if (!result.ok) {
+    // Unkey itself unreachable/misconfigured -- fail closed as not found,
+    // same posture the old Postgres-lookup-failure path used (a validation
+    // call must never 500 the caller's RPC request).
+    return writeJson({ valid: false, code: "NOT_FOUND" });
+  }
+  if (result.valid) {
+    void withAccountsSql(env, async (sql) => {
+      await sql`UPDATE api_keys SET last_used_at = ${Date.now()} WHERE unkey_key_id = ${result.keyId}`;
+    });
+  }
+  return writeJson({
+    valid: result.valid,
+    code: result.code,
+    tier: result.tier,
+    accountId: result.accountId,
+  });
+}
+
+const ACCOUNT_TIER_PROMOTE_TOKEN_HEADER = "x-account-tier-promote-token";
+
+// Internal-only: bumps ONE account's tier. An ops action, run manually after
+// confirming out of band that an account should be promoted (e.g. a
+// Gittensor team member's wallet) -- there is no invite code or self-serve
+// path to a higher tier by design. Updates BOTH rpc_accounts.tier (what
+// future key mints size by) AND every one of that account's existing,
+// still-active Unkey keys in place via updateUnkeyKeyTier -- no re-mint
+// needed, the caller's existing mg_... key keeps working at the new tier.
+// Gated by its own shared secret, matching the internal verify/alert-
+// trigger routes' "different capability, different secret" convention.
+async function handleAccountTierPromote(request, env) {
+  const configured = env.ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      { error: "account tier promotion is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(ACCOUNT_TIER_PROMOTE_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      { error: `provide a valid ${ACCOUNT_TIER_PROMOTE_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  const ss58 = typeof body?.ss58 === "string" ? body.ss58 : "";
+  const tier = typeof body?.tier === "string" ? body.tier : "";
+  if (!ss58 || !tier) {
+    return writeJson({ error: "provide ss58 and tier" }, 400);
   }
   return withAccountsSql(env, async (sql) => {
-    const [row] = await sql`
-      SELECT secret_hash, tier, revoked_at, account_id
-      FROM api_keys WHERE prefix = ${prefix}`;
-    if (!row) return writeJson({ error: "no such key" }, 404);
-    await sql`UPDATE api_keys SET last_used_at = ${Date.now()} WHERE prefix = ${prefix}`;
+    const [account] = await sql`
+      UPDATE rpc_accounts SET tier = ${tier} WHERE ss58 = ${ss58} RETURNING id`;
+    if (!account) return writeJson({ error: "no such account" }, 404);
+
+    const keys = await sql`
+      SELECT unkey_key_id FROM api_keys
+      WHERE account_id = ${account.id} AND revoked_at IS NULL`;
+    const results = await Promise.all(
+      keys.map((row) =>
+        updateUnkeyKeyTier(env, { keyId: row.unkey_key_id, tier }),
+      ),
+    );
+    const failedCount = results.filter((r) => !r.ok).length;
+    await sql`
+      UPDATE api_keys SET tier = ${tier}
+      WHERE account_id = ${account.id} AND revoked_at IS NULL`;
+
     return writeJson({
-      secret_hash: row.secret_hash,
-      tier: row.tier,
-      revoked_at: row.revoked_at,
-      account_id: row.account_id,
+      ss58,
+      tier,
+      keys_updated: results.length - failedCount,
+      keys_failed: failedCount,
     });
   });
 }
 
 async function handleAccountKeysRoute(request, env, url) {
   const segments = url.pathname.split("/").filter(Boolean);
-  // ["api", "v1", "keys", <prefix?>]
-  const prefix = segments[3];
-  if (!prefix && request.method === "POST") {
+  // ["api", "v1", "keys", <key_id?>]
+  const keyId = segments[3];
+  if (!keyId && request.method === "POST") {
     return handleAccountKeyCreate(request, env);
   }
-  if (!prefix && request.method === "GET") {
+  if (!keyId && request.method === "GET") {
     return handleAccountKeysList(request, env);
   }
-  if (prefix && request.method === "DELETE") {
-    return handleAccountKeyRevoke(request, env, prefix);
+  if (keyId && request.method === "DELETE") {
+    return handleAccountKeyRevoke(request, env, keyId);
   }
   return writeJson(
     {
-      error: "Use POST/GET /api/v1/keys, or DELETE /api/v1/keys/{prefix}.",
+      error: "Use POST/GET /api/v1/keys, or DELETE /api/v1/keys/{key_id}.",
     },
     405,
   );
@@ -4192,16 +4251,23 @@ export default {
     ) {
       return handleRpcUsageEventPrune(request, env);
     }
-    // Internal-only key-prefix lookup for the isolated fullnode RPC gate's
-    // KV-cache-fronted validator (src/api-key-validation.mjs, ADR 0021
-    // section 6). GET-with-path-param, so it can't join the exact-match
-    // checks above.
+    // Internal-only key verification for the isolated fullnode RPC gate's
+    // KV-cache-fronted validator (src/api-key-validation.mjs). See
+    // handleApiKeyVerify's own header comment for why this is POST-with-body
+    // rather than the old GET-with-path-param shape.
     if (
-      request.method === "GET" &&
-      url.pathname.startsWith("/api/v1/internal/keys/")
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/keys/verify"
     ) {
-      const prefix = url.pathname.split("/").filter(Boolean)[4];
-      return handleApiKeyLookup(request, env, prefix || "");
+      return handleApiKeyVerify(request, env);
+    }
+    // Internal-only, ops-triggered account tier promotion -- see
+    // handleAccountTierPromote's own header comment.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/accounts/tier"
+    ) {
+      return handleAccountTierPromote(request, env);
     }
     // #4984 Part 1: multi-method (POST/GET/PATCH/DELETE), so it can't join
     // the exact-path-and-method checks above -- handleAlertTriggersRoute

@@ -931,6 +931,22 @@ CREATE INDEX IF NOT EXISTS idx_rpc_accounts_ss58 ON rpc_accounts (ss58);
 ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS account_id BIGINT REFERENCES rpc_accounts (id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_account_id ON api_keys (account_id) WHERE account_id IS NOT NULL;
 
+-- Freemium API on Unkey (2026-07-19): Unkey is now the actual key store --
+-- it mints/hashes/verifies/revokes every key; this table keeps only a thin
+-- (account_id, unkey_key_id) mapping for listing/ownership checks.
+-- unkey_key_id (Unkey's own opaque key_xxx id, public/non-secret -- safe to
+-- log, safe in a support ticket, exactly like the old `prefix` column) is
+-- nullable, and prefix/secret_hash are relaxed to nullable rather than
+-- dropped: any row minted under the pre-Unkey custom system keeps its
+-- historical prefix/secret_hash for audit purposes, it just stops being
+-- validated against (src/api-key-validation.mjs no longer reads either
+-- column). New rows populate unkey_key_id only.
+ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS unkey_key_id TEXT;
+ALTER TABLE api_keys ALTER COLUMN prefix DROP NOT NULL;
+ALTER TABLE api_keys ALTER COLUMN secret_hash DROP NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_unkey_key_id
+  ON api_keys (unkey_key_id) WHERE unkey_key_id IS NOT NULL;
+
 -- TimescaleDB hypertables/compression are OPTIONAL and live in the companion
 -- schema-timescaledb.sql in this same directory — apply it separately, only
 -- on a Postgres that actually has the TimescaleDB extension. This file is a
