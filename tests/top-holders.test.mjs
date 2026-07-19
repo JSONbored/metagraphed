@@ -188,12 +188,55 @@ describe("buildTopHoldersList", () => {
     assert.equal(data.accounts[0].last_updated, null);
   });
 
-  test("TOP_HOLDERS_SORTS matches the three real sort keys", () => {
+  test("TOP_HOLDERS_SORTS matches the six real sort keys", () => {
     assert.deepEqual(TOP_HOLDERS_SORTS, [
       "total_tao",
       "free_tao",
       "delegated_tao",
+      "net_flow_7d",
+      "net_flow_30d",
+      "net_flow_90d",
     ]);
+  });
+
+  test("net_flow_7d/30d/90d default to 0 when the flow rollup has no row for this account", () => {
+    const data = buildTopHoldersList([ROW]);
+    assert.equal(data.accounts[0].net_flow_7d, 0);
+    assert.equal(data.accounts[0].net_flow_30d, 0);
+    assert.equal(data.accounts[0].net_flow_90d, 0);
+  });
+
+  test("a negative net flow (net outflow) is preserved, not clamped to 0", () => {
+    const data = buildTopHoldersList([
+      { ...ROW, net_flow_7d: -500.25, net_flow_30d: -1000, net_flow_90d: -1 },
+    ]);
+    assert.equal(data.accounts[0].net_flow_7d, -500.25);
+    assert.equal(data.accounts[0].net_flow_30d, -1000);
+    assert.equal(data.accounts[0].net_flow_90d, -1);
+  });
+
+  test("a non-finite net flow value falls back to 0", () => {
+    const data = buildTopHoldersList([
+      { ...ROW, net_flow_30d: "not-a-number" },
+    ]);
+    assert.equal(data.accounts[0].net_flow_30d, 0);
+  });
+
+  test("sorts by net_flow_30d when requested, biggest net inflow first", () => {
+    const data = buildTopHoldersList(
+      [
+        { ss58: "5Outflow", free_tao: 0, delegated_tao: 0, net_flow_30d: -500 },
+        {
+          ss58: "5BigInflow",
+          free_tao: 0,
+          delegated_tao: 0,
+          net_flow_30d: 500,
+        },
+      ],
+      { sort: "net_flow_30d" },
+    );
+    assert.equal(data.accounts[0].ss58, "5BigInflow");
+    assert.equal(data.accounts[1].ss58, "5Outflow");
   });
 });
 
@@ -275,6 +318,9 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
                 free_tao: 1000.5,
                 delegated_tao: 250.25,
                 total_tao: 1250.75,
+                net_flow_7d: -50,
+                net_flow_30d: 200,
+                net_flow_90d: 900,
                 last_updated: new Date(1750000000000).toISOString(),
               },
             ],
@@ -292,7 +338,10 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
     assert.match(res.headers.get("content-type"), /text\/csv/);
     const lines = (await res.text()).trim().split("\r\n");
     assert.equal(lines.length, 2);
-    assert.match(lines[1], /^5Whale1,1000\.5,250\.25,1250\.75,/);
+    // net_flow_7d (-50) gets a leading `'` -- the formula-injection guard for
+    // CSV cells starting with -/+/=/@ (workers/csv.mjs), same as any other
+    // negative-leading cell in this codebase's CSV exports.
+    assert.match(lines[1], /^5Whale1,1000\.5,250\.25,1250\.75,'-50,200,900,/);
   });
 
   test("testnet has no variant (mainnet-only leaderboard)", async () => {

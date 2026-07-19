@@ -1144,7 +1144,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "top-holders",
     "/metagraph/top-holders.json",
-    "Balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, ranked by total TAO (free + delegated), computed live from account_balances (a direct System::Account chain-state scan) joined with nominator_positions x neurons at /api/v1/accounts/top-holders (no static file). The coldkey/balance-centric counterpart to /api/v1/accounts, which is hotkey/neuron-centric.",
+    "Balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, ranked by total TAO (free + delegated) or by cross-subnet stake flow (StakeAdded - StakeRemoved over a 7d/30d/90d window, from the wallet_flow_daily rollup, #6886/#6887), computed live from account_balances (a direct System::Account chain-state scan) joined with nominator_positions x neurons and wallet_flow_daily at /api/v1/accounts/top-holders (no static file). The coldkey/balance-centric counterpart to /api/v1/accounts, which is hotkey/neuron-centric.",
     "TopHoldersArtifact",
   ),
   artifact(
@@ -2635,7 +2635,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/top-holders",
     "/metagraph/top-holders.json",
-    "Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, or delegated_tao; limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet.",
+    "Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value.",
     "short",
     ["accounts", "analytics"],
     csvRouteQuery([

@@ -453,7 +453,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, or delegated_tao; limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet. */
+        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own total stake positions across every hotkey/subnet; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value. */
         get: operations["topHolders"];
         put?: never;
         post?: never;
@@ -8418,12 +8418,15 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One coldkey/account row in the balance-based top-holder leaderboard (#6741/#6743) -- the taostats-style Account/Free/Delegated/Total columns AccountsListEntry cannot derive (see that schema's own description). free_tao/last_updated come from account_balances (a direct System::Account chain-state scan, scripts/fetch-account-balances.py -- see that script's own docstring for why this is ground-truth rather than event-reconstructed). delegated_tao is this account's own total stake positions across every hotkey/subnet (nominator_positions.share_fraction x neurons.stake_tao, the SAME computation GET /api/v1/accounts/:ss58/positions already does per-account, here aggregated across all accounts). total_tao is free_tao + delegated_tao only (reserved balance is NOT included, matching the cited benchmark's own Total = Free + Delegated definition). An account can appear here from either source alone -- e.g. an account with real free balance that has never delegated shows delegated_tao: 0, and vice versa. */
+        /** @description One coldkey/account row in the balance-based top-holder leaderboard (#6741/#6743) -- the taostats-style Account/Free/Delegated/Total columns AccountsListEntry cannot derive (see that schema's own description). free_tao/last_updated come from account_balances (a direct System::Account chain-state scan, scripts/fetch-account-balances.py -- see that script's own docstring for why this is ground-truth rather than event-reconstructed). delegated_tao is this account's own total stake positions across every hotkey/subnet (nominator_positions.share_fraction x neurons.stake_tao, the SAME computation GET /api/v1/accounts/:ss58/positions already does per-account, here aggregated across all accounts). total_tao is free_tao + delegated_tao only (reserved balance is NOT included, matching the cited benchmark's own Total = Free + Delegated definition). An account can appear here from either source alone -- e.g. an account with real free balance that has never delegated shows delegated_tao: 0, and vice versa. net_flow_7d/30d/90d (#6886/#6887) extend this same leaderboard with a cross-subnet stake-flow ranking (StakeAdded - StakeRemoved over the window, from the wallet_flow_daily rollup) rather than shipping as a separate feature; unlike the balance fields these are signed -- a negative value is a real net outflow, not a missing/cold value (which is 0, same as the balance fields). */
         TopHoldersEntry: {
             delegated_tao: number;
             free_tao: number;
             /** Format: date-time */
             last_updated: string | null;
+            net_flow_30d: number;
+            net_flow_7d: number;
+            net_flow_90d: number;
             ss58: string;
             total_tao: number;
         };
@@ -11850,6 +11853,9 @@ export interface operations {
                      *             "delegated_tao": 0.5,
                      *             "free_tao": 0.5,
                      *             "last_updated": "2026-06-01T00:00:00.000Z",
+                     *             "net_flow_30d": 0.5,
+                     *             "net_flow_7d": 0.5,
+                     *             "net_flow_90d": 0.5,
                      *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
                      *             "total_tao": 0.5
                      *           }

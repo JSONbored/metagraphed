@@ -365,6 +365,9 @@ const TOP_HOLDERS_CSV_COLUMNS = [
   "free_tao",
   "delegated_tao",
   "total_tao",
+  "net_flow_7d",
+  "net_flow_30d",
+  "net_flow_90d",
   "last_updated",
 ];
 // Public per-nominator row shape from buildValidatorNominators (#5745); the

@@ -18046,7 +18046,14 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
   });
 
   test("get_top_holders accepts each REST-supported sort key with an empty leaderboard", async () => {
-    for (const sort of ["total_tao", "free_tao", "delegated_tao"]) {
+    for (const sort of [
+      "total_tao",
+      "free_tao",
+      "delegated_tao",
+      "net_flow_7d",
+      "net_flow_30d",
+      "net_flow_90d",
+    ]) {
       const res = await callTool("get_top_holders", { sort, limit: 1 });
       const out = res.body.result.structuredContent;
       assert.equal(out.sort, sort);

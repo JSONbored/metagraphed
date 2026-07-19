@@ -7,8 +7,24 @@
 // positions, the SAME computation GET /api/v1/accounts/:ss58/positions
 // already does per-account, aggregated across every account here). An
 // account can appear from either source alone.
+//
+// net_flow_7d/30d/90d (#6886/#6887) extend this same coldkey-keyed leaderboard
+// with a rollup-backed cross-subnet stake-flow ranking (StakeAdded -
+// StakeRemoved over a window) rather than shipping as a separate wallet-
+// holdings feature -- reuses this route's existing holdings computation
+// instead of duplicating it. Sourced from wallet_flow_daily (a daily
+// coldkey-keyed rollup of account_events, populated by the same cron as
+// account_events_daily); unlike free_tao/delegated_tao, net flow is signed
+// (a real net outflow is negative), so it gets its own signed-number guard.
 
-export const TOP_HOLDERS_SORTS = ["total_tao", "free_tao", "delegated_tao"];
+export const TOP_HOLDERS_SORTS = [
+  "total_tao",
+  "free_tao",
+  "delegated_tao",
+  "net_flow_7d",
+  "net_flow_30d",
+  "net_flow_90d",
+];
 export const DEFAULT_TOP_HOLDERS_SORT = "total_tao";
 export const TOP_HOLDERS_LIMIT_DEFAULT = 20;
 export const TOP_HOLDERS_LIMIT_MAX = 100;
@@ -26,6 +42,13 @@ function numberOrZero(value) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
+// Net flow can be genuinely negative (net outflow) -- numberOrZero's >= 0
+// guard would silently clamp a real outflow to 0, which is wrong here.
+function numberOrZeroSigned(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function buildTopHoldersEntry(row) {
   const freeTao = numberOrZero(row?.free_tao);
   const delegatedTao = numberOrZero(row?.delegated_tao);
@@ -34,6 +57,9 @@ function buildTopHoldersEntry(row) {
     free_tao: freeTao,
     delegated_tao: delegatedTao,
     total_tao: freeTao + delegatedTao,
+    net_flow_7d: numberOrZeroSigned(row?.net_flow_7d),
+    net_flow_30d: numberOrZeroSigned(row?.net_flow_30d),
+    net_flow_90d: numberOrZeroSigned(row?.net_flow_90d),
     last_updated: toIso(
       row?.captured_at == null ? null : Number(row.captured_at),
     ),

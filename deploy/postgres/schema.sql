@@ -554,6 +554,27 @@ CREATE INDEX IF NOT EXISTS idx_account_events_daily_netuid_day
 CREATE INDEX IF NOT EXISTS idx_account_events_daily_hotkey_day
   ON account_events_daily (hotkey, day);
 
+-- Per-coldkey daily stake-flow rollup (#6886/#6887): net/gross StakeAdded vs
+-- StakeRemoved per account per day, summed cross-subnet -- the account-keyed,
+-- pre-aggregated counterpart to account_events_daily above (which is
+-- hotkey+netuid-keyed). Written by the same rollup tick as
+-- account_events_daily (handleRollupAccountEventsDaily), re-rolling the
+-- active UTC day(s) each run. Read by GET /api/v1/accounts/top-holders'
+-- ?sort=net_flow_7d|net_flow_30d|net_flow_90d, which SUMs the requested
+-- window's rows per account at request time -- this table stays DAILY
+-- granularity (not pre-summed per window) so a new window can be added later
+-- without a backfill.
+CREATE TABLE IF NOT EXISTS wallet_flow_daily (
+  coldkey       TEXT NOT NULL,
+  day           DATE NOT NULL,
+  net_flow_tao  NUMERIC NOT NULL,
+  gross_in_tao  NUMERIC NOT NULL,
+  gross_out_tao NUMERIC NOT NULL,
+  updated_at    BIGINT NOT NULL,
+  PRIMARY KEY (coldkey, day)
+);
+CREATE INDEX IF NOT EXISTS idx_wallet_flow_daily_day ON wallet_flow_daily (day);
+
 -- ---------------------------------------------------------------------------
 -- Health tracking (#4832 gap-closure; mirrors D1 migrations/0001_health.sql +
 -- 0003_uptime_history.sql + 0005_surface_key.sql + 0006_surface_key_rekey.sql

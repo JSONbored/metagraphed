@@ -2223,6 +2223,28 @@ test("GET /api/v1/accounts/top-holders shapes the balance-based leaderboard from
   expect(queryText()).toContain("FROM account_balances");
 });
 
+test("GET /api/v1/accounts/top-holders joins wallet_flow_daily and shapes the net-flow columns (#6886/#6887)", async () => {
+  mockRows.current = [
+    {
+      ss58: "5Whale1",
+      free_tao: 1000.5,
+      delegated_tao: 250.25,
+      net_flow_7d: -50,
+      net_flow_30d: 200,
+      net_flow_90d: 900,
+      captured_at: 1750000000000,
+    },
+  ];
+  const res = await req("/api/v1/accounts/top-holders?sort=net_flow_30d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.accounts[0].net_flow_7d).toBe(-50);
+  expect(body.accounts[0].net_flow_30d).toBe(200);
+  expect(body.accounts[0].net_flow_90d).toBe(900);
+  expect(queryText()).toContain("LEFT JOIN");
+  expect(queryText()).toContain("FROM wallet_flow_daily");
+});
+
 test("GET /api/v1/accounts/top-holders respects an explicit sort/limit", async () => {
   mockRows.current = [];
   const res = await req("/api/v1/accounts/top-holders?sort=free_tao&limit=5");
@@ -4221,6 +4243,14 @@ test("rollup-account-events-daily rolls up the two active UTC days and reports t
   expect(queryText()).toMatch(/INSERT INTO account_events_daily/);
   expect(queryText()).toMatch(/FROM account_events/);
   expect(queryText()).toMatch(/string_agg\(DISTINCT event_kind/);
+});
+
+test("rollup-account-events-daily also rolls up wallet_flow_daily in the same run (#6886/#6887)", async () => {
+  const res = await postRollup({ secret: ROLLUP_SYNC_SECRET });
+  expect(res.status).toBe(200);
+  expect(queryText()).toMatch(/INSERT INTO wallet_flow_daily/);
+  expect(queryText()).toMatch(/net_flow_tao/);
+  expect(queryText()).toMatch(/GROUP BY \(coldkey\)/);
 });
 
 test("rollup-account-events-daily maps a DB failure to a clean 502 instead of throwing", async () => {

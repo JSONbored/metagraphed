@@ -1099,8 +1099,14 @@ async function handleNeuronDailyBackfill(request, env) {
 // rollup onto -- a Worker-native cron (ACCOUNT_EVENTS_ROLLUP_CRON,
 // workers/config.mjs) dispatches this instead, proxied through the main
 // Worker the same way (workers/api.mjs's handleRollupAccountEventsDailyProxy,
-// called from handleScheduled). Formerly a dedicated hourly GitHub Actions
-// workflow (rollup-account-events-daily.yml, retired) made the same POST over
+// called from handleScheduled). Also rolls up wallet_flow_daily (#6886/#6887)
+// in the same run -- the account-keyed, per-day net/gross StakeAdded vs
+// StakeRemoved rollup GET /api/v1/accounts/top-holders' ?sort=net_flow_*
+// reads, sharing this same day-bucket loop rather than a second cron entry
+// (same source table, same active-day re-roll window, one Postgres
+// round-trip pair per day instead of two separate ticks). Formerly a
+// dedicated hourly GitHub Actions workflow (rollup-account-events-daily.yml,
+// retired) made the same POST over
 // the public internet; the cron dispatch constructs the identical request
 // internally instead. Mirrors D1's rollupAccountEventsDaily
 // (src/account-events.mjs) exactly: re-roll the two active UTC days each
@@ -1171,6 +1177,29 @@ async function handleRollupAccountEventsDaily(request, env) {
             event_kinds = EXCLUDED.event_kinds,
             first_block = EXCLUDED.first_block,
             last_block = EXCLUDED.last_block,
+            updated_at = EXCLUDED.updated_at`;
+        // wallet_flow_daily (#6886/#6887): the account-keyed counterpart to
+        // account_events_daily above, scoped to just the two stake-flow
+        // kinds and grouped by account instead of (hotkey, netuid). Both
+        // StakeAdded and StakeRemoved carry a positive amount_tao (see
+        // src/chain-stake-flow.mjs's own header), so net = added - removed.
+        await sql`
+          INSERT INTO wallet_flow_daily (coldkey, day, net_flow_tao, gross_in_tao, gross_out_tao, updated_at)
+          SELECT
+            coldkey,
+            ${date}::date AS day,
+            COALESCE(SUM(CASE WHEN event_kind = ${STAKE_ADDED_KIND} THEN amount_tao WHEN event_kind = ${STAKE_REMOVED_KIND} THEN -amount_tao ELSE 0 END), 0) AS net_flow_tao,
+            COALESCE(SUM(CASE WHEN event_kind = ${STAKE_ADDED_KIND} THEN amount_tao ELSE 0 END), 0) AS gross_in_tao,
+            COALESCE(SUM(CASE WHEN event_kind = ${STAKE_REMOVED_KIND} THEN amount_tao ELSE 0 END), 0) AS gross_out_tao,
+            ${runAt} AS updated_at
+          FROM account_events
+          WHERE coldkey IS NOT NULL AND event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND})
+            AND observed_at >= ${start} AND observed_at < ${end}
+          GROUP BY (coldkey)
+          ON CONFLICT (coldkey, day) DO UPDATE SET
+            net_flow_tao = EXCLUDED.net_flow_tao,
+            gross_in_tao = EXCLUDED.gross_in_tao,
+            gross_out_tao = EXCLUDED.gross_out_tao,
             updated_at = EXCLUDED.updated_at`;
         rolled.push(date);
       }
@@ -4874,6 +4903,11 @@ export default {
         // list. Checked here, before the generic /api/v1/accounts/:ss58
         // pattern below, so "top-holders" is never matched as an address --
         // same ordering rationale as workers/api.mjs's own dispatch.
+        //
+        // net_flow_7d/30d/90d (#6886/#6887) LEFT JOIN wallet_flow_daily --
+        // one grouped pass over the last 90 days (the widest window), with
+        // the two narrower windows as conditional sums within that same
+        // filtered set, rather than three separate subqueries.
         if (url.pathname === "/api/v1/accounts/top-holders") {
           const sortParam = url.searchParams.get("sort") || undefined;
           const limitRaw = url.searchParams.get("limit");
@@ -4886,13 +4920,25 @@ export default {
             COALESCE(b.ss58, d.coldkey) AS ss58,
             COALESCE(b.free_tao, 0) AS free_tao,
             COALESCE(d.delegated_tao, 0) AS delegated_tao,
+            COALESCE(f.net_flow_7d, 0) AS net_flow_7d,
+            COALESCE(f.net_flow_30d, 0) AS net_flow_30d,
+            COALESCE(f.net_flow_90d, 0) AS net_flow_90d,
             b.captured_at
           FROM account_balances b
           FULL OUTER JOIN (
             SELECT np.coldkey, SUM(np.share_fraction * n.stake_tao) AS delegated_tao
             FROM nominator_positions np
             JOIN neurons n ON n.hotkey = np.hotkey AND n.netuid = np.netuid
-            GROUP BY np.coldkey) d ON d.coldkey = b.ss58`;
+            GROUP BY np.coldkey) d ON d.coldkey = b.ss58
+          LEFT JOIN (
+            SELECT
+              coldkey,
+              SUM(CASE WHEN day >= CURRENT_DATE - 7 THEN net_flow_tao ELSE 0 END) AS net_flow_7d,
+              SUM(CASE WHEN day >= CURRENT_DATE - 30 THEN net_flow_tao ELSE 0 END) AS net_flow_30d,
+              SUM(net_flow_tao) AS net_flow_90d
+            FROM wallet_flow_daily
+            WHERE day >= CURRENT_DATE - 90
+            GROUP BY coldkey) f ON f.coldkey = COALESCE(b.ss58, d.coldkey)`;
           return json(
             buildTopHoldersList(rows, {
               sort: sortParam ?? DEFAULT_TOP_HOLDERS_SORT,

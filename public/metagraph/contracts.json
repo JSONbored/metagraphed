@@ -829,7 +829,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, ranked by total TAO (free + delegated), computed live from account_balances (a direct System::Account chain-state scan) joined with nominator_positions x neurons at /api/v1/accounts/top-holders (no static file). The coldkey/balance-centric counterpart to /api/v1/accounts, which is hotkey/neuron-centric.",
+      "description": "Balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, ranked by total TAO (free + delegated) or by cross-subnet stake flow (StakeAdded - StakeRemoved over a 7d/30d/90d window, from the wallet_flow_daily rollup, #6886/#6887), computed live from account_balances (a direct System::Account chain-state scan) joined with nominator_positions x neurons and wallet_flow_daily at /api/v1/accounts/top-holders (no static file). The coldkey/balance-centric counterpart to /api/v1/accounts, which is hotkey/neuron-centric.",
       "id": "top-holders",
       "path": "/metagraph/top-holders.json",
       "retirement": null,
