@@ -4663,22 +4663,49 @@ export default {
         // summary -- event aggregates, per-kind counts, 10 newest events,
         // current registrations, and bounded signing activity from the
         // extrinsics tier, mirroring the former src/account-events.mjs
-        // account-summary D1 loader (removed in #4772). Postgres has no INDEXED BY equivalent and
-        // evaluates (hotkey = $1 OR coldkey = $1) as one plan, so the D1
-        // path's two-branch UNION-of-seeks (each capped, then re-merged and
-        // re-capped) collapses to a single bounded ORDER BY/LIMIT scan here --
-        // the aggregate/kind/recent-events fields below all derive from that
-        // one CAP+1-row window, computed once client-side, rather than
+        // account-summary D1 loader (removed in #4772). Postgres has no
+        // INDEXED BY equivalent, and a single (hotkey = $1 OR coldkey = $1)
+        // WHERE forces one combined plan the planner can't always satisfy
+        // with an index-only scan for a sparse address -- risking a
+        // statement-timeout 500 under real load (Sentry METAGRAPHED-5,
+        // #6878). Restored the D1 predecessor's two-branch shape instead:
+        // one capped ORDER BY/LIMIT scan on hotkey = $1 (lets the planner use
+        // a plain index on hotkey/coldkey + (block_number, event_index)), a
+        // second on coldkey = $1 that excludes rows the hotkey branch already
+        // matched (so a self hotkey==coldkey account isn't double-counted),
+        // then merged + re-sorted + re-capped client-side to CAP+1 -- the
+        // aggregate/kind/recent-events fields below all derive from that
+        // merged CAP+1-row window, computed once client-side, rather than
         // separate SQL aggregates per field.
         const acctSummary = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)$/,
         );
         if (acctSummary) {
           const ss58 = decodeURIComponent(acctSummary[1]);
-          const scanRows = await sql`
+          const hotkeyScanRows = await sql`
           SELECT block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index
-          FROM account_events WHERE (hotkey = ${ss58} OR coldkey = ${ss58})
+          FROM account_events WHERE hotkey = ${ss58}
           ORDER BY block_number DESC, event_index DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
+          const coldkeyScanRows = await sql`
+          SELECT block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index
+          FROM account_events WHERE coldkey = ${ss58} AND (hotkey IS NULL OR hotkey <> ${ss58})
+          ORDER BY block_number DESC, event_index DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
+          // Each branch is already the account's own newest CAP+1 rows on its
+          // key, so the union's true newest CAP+1 rows are guaranteed to be
+          // present in this merged set -- re-sort by the same feed order and
+          // re-cap to CAP+1, matching what the single-scan query used to
+          // return in one step. block_number/event_index are NOT NULL columns
+          // (deploy/postgres/schema.sql), so a plain Number() coercion is
+          // enough here -- no null-fallback branch to keep covered.
+          const scanRows = hotkeyScanRows
+            .concat(coldkeyScanRows)
+            .sort((a, b) => {
+              const blockDelta =
+                Number(b.block_number) - Number(a.block_number);
+              if (blockDelta !== 0) return blockDelta;
+              return Number(b.event_index) - Number(a.event_index);
+            })
+            .slice(0, ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1);
           const regRows = await sql`
           SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
           WHERE hotkey = ${ss58} ORDER BY stake_tao DESC, netuid ASC`;
