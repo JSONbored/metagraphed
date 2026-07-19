@@ -76,13 +76,18 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
         value={pallet}
         onChange={(v) => onFilter({ pallet: v, method: v.trim() ? method : "" })}
         placeholder="Filter by pallet"
-        className="min-w-[140px] flex-none font-mono text-[11px]"
+        // SearchInput's own base hardcodes `min-w-[180px]` unconditionally, which
+        // wins the same-property (min-width) cascade over a plain `min-w-[140px]`
+        // override regardless of prop order (classNames() is a plain string-join,
+        // not tailwind-merge-aware -- see #6904); the trailing `!` forces this
+        // narrower floor to actually apply for these compact pallet/method filters.
+        className="min-w-[140px]! flex-none font-mono text-[11px]"
       />
       <SearchInput
         value={method}
         onChange={(v) => onFilter({ method: v })}
         placeholder={pallet.trim() ? "Filter by method" : "Method (requires pallet)"}
-        className="min-w-[140px] flex-none font-mono text-[11px]"
+        className="min-w-[140px]! flex-none font-mono text-[11px]"
       />
       {/* #6387: a filtered /events?pallet=X or /explorer?pallet=X link is
           URL-persisted and otherwise stuck until manually cleared, unlike every
