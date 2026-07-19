@@ -101,6 +101,10 @@ import {
   loadAccountParents,
 } from "../../src/child-hotkey-delegation.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
+import {
+  H160_PATTERN,
+  loadAddressMapping,
+} from "../../src/address-mapping.mjs";
 import { loadNetworkParameters } from "../../src/network-parameters.mjs";
 import { loadRandomnessStatus } from "../../src/randomness.mjs";
 import {
@@ -4448,6 +4452,47 @@ export async function handleRuntime(request, env, url) {
 // key (schema-stable, never throws).
 export async function handleSudoKey(request, env) {
   const data = await loadSudoKey(env);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+export const EVM_ADDRESS_MAPPING_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
+
+// GET /api/v1/evm/address/{h160} (#6725/#6728): live H160 -> SS58 address
+// mapping via the AddressMapping EVM precompile, queried from the finney RPC
+// at request time. 1h KV cache via METAGRAPH_CONTROL (deterministic given
+// h160, never changes). Returns 400 on invalid h160; 200 with ss58:null on
+// RPC failure (schema-stable, consistent with handleAccountBalance below).
+export async function handleEvmAddressMapping(request, env, h160) {
+  if (!H160_PATTERN.test(h160)) {
+    return errorResponse(
+      "invalid_h160",
+      "h160 must be a 20-byte 0x-prefixed hex address.",
+      400,
+    );
+  }
+
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: `evm-address-mapping:${resolveClientIp(request)}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "evm_address_mapping_rate_limited",
+        "Too many live address-mapping requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(EVM_ADDRESS_MAPPING_RATE_LIMIT.windowSeconds),
+        },
+      );
+    }
+  }
+
+  const data = await loadAddressMapping(env, h160);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

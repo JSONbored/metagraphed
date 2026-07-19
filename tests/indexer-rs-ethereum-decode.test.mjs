@@ -203,6 +203,8 @@ describe("decodeEthereumTransactArgs (real production fixture, block 8587453/9)"
       access_list: [],
       max_fee_per_gas: "10000000000",
       max_priority_fee_per_gas: "0",
+      // Not a known precompile address -- an ordinary contract call.
+      precompile_call: null,
     });
   });
 
@@ -333,7 +335,9 @@ describe("decodeEthereumTransactArgs (real production fixture, block 8587453/9)"
       },
     };
     assert.deepEqual(decodeEthereumTransactArgs(partial), {
-      transaction: { EIP1559: { chain_id: 964, nonce: "1" } },
+      transaction: {
+        EIP1559: { chain_id: 964, nonce: "1", precompile_call: null },
+      },
     });
   });
 
@@ -352,6 +356,7 @@ describe("decodeEthereumTransactArgs (real production fixture, block 8587453/9)"
       transaction: {
         EIP1559: {
           signature: { r: [1, 2, 3], s: "already-hex", odd_y_parity: false },
+          precompile_call: null,
         },
       },
     });
@@ -369,7 +374,132 @@ describe("decodeEthereumTransactArgs (real production fixture, block 8587453/9)"
       },
     };
     assert.deepEqual(decodeEthereumTransactArgs(raw), {
-      transaction: { EIP1559: { action: "already-a-string" } },
+      transaction: {
+        EIP1559: { action: "already-a-string", precompile_call: null },
+      },
+    });
+  });
+
+  describe("precompile_call (#6725/#6727)", () => {
+    // StakingV2's real address (0x...805) and getTotalColdkeyStake(bytes32)'s
+    // real selector, both from src/evm-precompiles.mjs's own registry -- not
+    // hand-transcribed here, so a registry change can never silently drift
+    // this fixture out of sync with it.
+    const STAKING_V2_ADDRESS = "0x0000000000000000000000000000000000000805";
+    const STAKING_V2_FUNCTION = "getTotalColdkeyStake";
+
+    function precompileCallTransaction(inputBytes) {
+      return {
+        transaction: {
+          name: "EIP1559",
+          values: [
+            {
+              input: inputBytes,
+              action: {
+                name: "Call",
+                values: [
+                  [
+                    [
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8,
+                      5,
+                    ],
+                  ],
+                ],
+              },
+            },
+          ],
+        },
+      };
+    }
+
+    test("decodes a real precompile call's calldata into named args", async () => {
+      const { EVM_PRECOMPILE_BY_ADDRESS } =
+        await import("../src/evm-precompiles.mjs");
+      const fn = EVM_PRECOMPILE_BY_ADDRESS.get(
+        STAKING_V2_ADDRESS,
+      ).functions.find((f) => f.name === STAKING_V2_FUNCTION);
+      const coldkeyByte = 0xab;
+      const selectorBytes = Array.from(
+        Buffer.from(fn.selector.slice(2), "hex"),
+      );
+      const coldkeyBytes = Array(32).fill(coldkeyByte);
+      const out = decodeEthereumTransactArgs(
+        precompileCallTransaction([...selectorBytes, ...coldkeyBytes]),
+      );
+      assert.deepEqual(out.transaction.EIP1559.precompile_call, {
+        precompile: "StakingV2",
+        address: STAKING_V2_ADDRESS,
+        function: STAKING_V2_FUNCTION,
+        signature: fn.signature,
+        args: { coldkey: "0x" + "ab".repeat(32) },
+      });
+      // `input` itself stays untouched -- precompile_call is additive.
+      assert.deepEqual(out.transaction.EIP1559.input, [
+        ...selectorBytes,
+        ...coldkeyBytes,
+      ]);
+    });
+
+    test("identifies a known precompile address with an unrecognized selector", () => {
+      const out = decodeEthereumTransactArgs(
+        precompileCallTransaction([0xff, 0xff, 0xff, 0xff]),
+      );
+      assert.deepEqual(out.transaction.EIP1559.precompile_call, {
+        precompile: "StakingV2",
+        address: STAKING_V2_ADDRESS,
+        function: null,
+      });
+    });
+
+    test("is null for calldata too short to carry a 4-byte selector", () => {
+      const out = decodeEthereumTransactArgs(precompileCallTransaction([1, 2]));
+      assert.deepEqual(out.transaction.EIP1559.precompile_call, {
+        precompile: "StakingV2",
+        address: STAKING_V2_ADDRESS,
+        function: null,
+      });
+    });
+
+    test("is null for an ordinary (non-precompile) contract address", () => {
+      const raw = {
+        transaction: {
+          name: "EIP1559",
+          values: [
+            {
+              input: [0x99, 0x85, 0x38, 0xc4],
+              action: {
+                name: "Call",
+                values: [
+                  [
+                    [
+                      126, 76, 156, 196, 185, 110, 235, 3, 90, 161, 111, 26,
+                      115, 223, 85, 37, 45, 199, 5, 92,
+                    ],
+                  ],
+                ],
+              },
+            },
+          ],
+        },
+      };
+      const out = decodeEthereumTransactArgs(raw);
+      assert.equal(out.transaction.EIP1559.precompile_call, null);
+    });
+
+    test("is null for a Create action (no `to` to check)", () => {
+      const raw = {
+        transaction: {
+          name: "EIP1559",
+          values: [
+            {
+              input: [0x99, 0x85, 0x38, 0xc4],
+              action: { name: "Create", values: [null] },
+            },
+          ],
+        },
+      };
+      const out = decodeEthereumTransactArgs(raw);
+      assert.equal(out.transaction.EIP1559.precompile_call, null);
     });
   });
 });

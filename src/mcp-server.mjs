@@ -213,6 +213,8 @@ import {
   loadChangelog,
 } from "./changelog-mcp.mjs";
 import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.mjs";
+import { decodeEvmPrecompileCall } from "./evm-precompiles.mjs";
+import { H160_PATTERN, loadAddressMapping } from "./address-mapping.mjs";
 import {
   GET_FEED_INSTRUCTIONS,
   GET_FEED_MCP_TOOL,
@@ -10989,6 +10991,120 @@ export const MCP_TOOLS = [
         throw toolError("invalid_params", "Argument `query_id` is required.");
       }
       return runSavedQuery(ctx.env, args.query_id, args?.params);
+    },
+  },
+  {
+    name: "decode_evm_call",
+    title: "Decode an EVM precompile call",
+    description:
+      "Identify + decode a raw Ethereum.transact `to`/`input` pair against " +
+      "Bittensor's 16 fixed-address EVM precompiles (epic #6725) -- the " +
+      "same registry src/evm-precompiles.mjs uses to add a `precompile_call` " +
+      "field onto captured Ethereum.transact calldata. precompile/address/" +
+      "function are all null when `to` isn't one of the 16 known precompile " +
+      "addresses (an ordinary contract call). When `to` IS a known " +
+      "precompile but the calldata's 4-byte selector doesn't match any of " +
+      "its declared functions, function is null but precompile/address are " +
+      "still populated.",
+    inputSchema: {
+      type: "object",
+      required: ["to", "input"],
+      properties: {
+        to: {
+          type: "string",
+          pattern: "^0x[0-9a-fA-F]{40}$",
+          description:
+            "The transaction's target H160 address (20 bytes, 0x-prefixed hex).",
+        },
+        input: {
+          type: "string",
+          pattern: "^0x[0-9a-fA-F]*$",
+          description:
+            "The transaction's raw calldata: a 4-byte selector plus ABI-encoded args, 0x-prefixed hex.",
+        },
+      },
+      additionalProperties: false,
+    },
+    outputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["precompile", "address", "function"],
+      properties: {
+        precompile: { type: ["string", "null"] },
+        address: { type: ["string", "null"] },
+        function: { type: ["string", "null"] },
+        signature: { type: "string" },
+        args: { type: "object" },
+      },
+    },
+    async handler(args) {
+      if (
+        typeof args?.to !== "string" ||
+        !/^0x[0-9a-fA-F]{40}$/.test(args.to)
+      ) {
+        throw toolError(
+          "invalid_params",
+          "Argument `to` must be a 20-byte 0x-prefixed hex address.",
+        );
+      }
+      if (
+        typeof args?.input !== "string" ||
+        !/^0x[0-9a-fA-F]*$/.test(args.input)
+      ) {
+        throw toolError(
+          "invalid_params",
+          "Argument `input` must be 0x-prefixed hex calldata.",
+        );
+      }
+      return (
+        decodeEvmPrecompileCall(args.to, args.input) ?? {
+          precompile: null,
+          address: null,
+          function: null,
+        }
+      );
+    },
+  },
+  {
+    name: "get_evm_address_mapping",
+    title: "Get H160 -> SS58 address mapping",
+    description:
+      "Fetch the live H160 -> SS58 address mapping for one EVM address, via " +
+      "the AddressMapping EVM precompile's addressMapping(address) " +
+      "(#6725/#6728) -- a deterministic function of the runtime's configured " +
+      "mapping algorithm, queried live rather than replicated client-side. " +
+      "Mirrors GET /api/v1/evm/address/{h160}. ss58 is null on RPC failure.",
+    inputSchema: {
+      type: "object",
+      required: ["h160"],
+      properties: {
+        h160: {
+          type: "string",
+          pattern: "^0x[0-9a-fA-F]{40}$",
+          description: "The EVM address (20 bytes, 0x-prefixed hex).",
+        },
+      },
+      additionalProperties: false,
+    },
+    outputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["schema_version", "h160", "ss58", "queried_at"],
+      properties: {
+        schema_version: { type: "integer" },
+        h160: { type: "string" },
+        ss58: { type: ["string", "null"] },
+        queried_at: { type: ["string", "null"] },
+      },
+    },
+    async handler(args, ctx) {
+      if (typeof args?.h160 !== "string" || !H160_PATTERN.test(args.h160)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `h160` must be a 20-byte 0x-prefixed hex address.",
+        );
+      }
+      return loadAddressMapping(ctx.env, args.h160);
     },
   },
 ];

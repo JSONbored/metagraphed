@@ -32,6 +32,7 @@ import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
 import { buildChainTransfers } from "../src/chain-transfers.mjs";
 import { buildChainCalls } from "../src/chain-analytics.mjs";
 import { DOMAIN_TAGS } from "../src/domain-tags.mjs";
+import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -4356,6 +4357,128 @@ describe("MCP run_saved_query (#6755/#6757)", () => {
       {},
     );
     assert.equal(res.body.result.isError, true);
+  });
+});
+
+describe("MCP decode_evm_call (#6725/#6729)", () => {
+  const SUBNET_ADDRESS = "0x0000000000000000000000000000000000000803";
+
+  test("decodes a real precompile call end-to-end", async () => {
+    const fn = EVM_PRECOMPILE_BY_ADDRESS.get(SUBNET_ADDRESS).functions.find(
+      (f) => f.name === "getWeightsVersionKey",
+    );
+    const res = await callTool(
+      "decode_evm_call",
+      { to: SUBNET_ADDRESS, input: `${fn.selector}${"7".padStart(64, "0")}` },
+      {},
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(res.body.result.structuredContent, {
+      precompile: "Subnet",
+      address: SUBNET_ADDRESS,
+      function: "getWeightsVersionKey",
+      signature: fn.signature,
+      args: { netuid: 7 },
+    });
+  });
+
+  test("returns precompile:null for a non-precompile address", async () => {
+    const res = await callTool(
+      "decode_evm_call",
+      {
+        to: "0x7e4c9cc4b96eeb035aa16f1a73df55252dc7055c",
+        input: "0x12345678",
+      },
+      {},
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(res.body.result.structuredContent, {
+      precompile: null,
+      address: null,
+      function: null,
+    });
+  });
+
+  test("identifies the precompile with function:null for an unrecognized selector", async () => {
+    const res = await callTool(
+      "decode_evm_call",
+      { to: SUBNET_ADDRESS, input: "0xffffffff" },
+      {},
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(res.body.result.structuredContent, {
+      precompile: "Subnet",
+      address: SUBNET_ADDRESS,
+      function: null,
+    });
+  });
+
+  test("rejects a malformed `to` address", async () => {
+    const res = await callTool(
+      "decode_evm_call",
+      { to: "not-an-address", input: "0x12345678" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /`to`/);
+  });
+
+  test("rejects malformed `input`", async () => {
+    const res = await callTool(
+      "decode_evm_call",
+      { to: SUBNET_ADDRESS, input: "not-hex" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /`input`/);
+  });
+});
+
+describe("MCP get_evm_address_mapping (#6725/#6728)", () => {
+  const H160 = "0x0000000000000000000000000000000000000001";
+  // Same golden AccountId32 <-> SS58 pair as tests/sudo-key.test.mjs /
+  // tests/address-mapping.test.mjs -- verifies this tool's own eth_call
+  // parsing, not a claim about what this H160 maps to on the real chain.
+  const GOLDEN_ETH_CALL_RESULT =
+    "0x4471816662ea3cfadc9868e5f083e26a3be6706b8d8dad7fbef565983afb3556";
+  const GOLDEN_SS58 = "5DcSqBNqCmfdJZRGFSwwcRb2dZdJHZuKK8Tb1Gx8gbmF5E8s";
+
+  test("returns the SS58-encoded mapping from finney RPC", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ result: GOLDEN_ETH_CALL_RESULT }),
+    });
+    try {
+      const res = await callTool("get_evm_address_mapping", { h160: H160 }, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.h160, H160);
+      assert.equal(out.ss58, GOLDEN_SS58);
+      assert.ok(out.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("ss58 is null on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: false });
+    try {
+      const res = await callTool("get_evm_address_mapping", { h160: H160 }, {});
+      assert.equal(res.body.result.structuredContent.ss58, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("rejects a malformed h160", async () => {
+    const res = await callTool(
+      "get_evm_address_mapping",
+      { h160: "not-an-address" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /`h160`/);
   });
 });
 

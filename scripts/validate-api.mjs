@@ -886,6 +886,16 @@ const checks = [
     },
   ],
   [
+    "/api/v1/evm/address/0x0000000000000000000000000000000000000001",
+    (body) => {
+      assert.equal(
+        body.data.h160,
+        "0x0000000000000000000000000000000000000001",
+      );
+      assert.equal("ss58" in body.data, true);
+    },
+  ],
+  [
     "/api/v1/network/randomness",
     (body) => {
       assert.equal("last_stored_round" in body.data, true);

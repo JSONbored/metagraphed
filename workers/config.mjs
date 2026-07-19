@@ -312,6 +312,13 @@ export const NETWORK_PARAMETERS_PATH_PATTERN =
 // OldestStoredRound -- a live finney RPC read, same shape as
 // NETWORK_PARAMETERS_PATH_PATTERN just above (no path params, no D1 tier).
 export const RANDOMNESS_PATH_PATTERN = /^\/api\/v1\/network\/randomness$/;
+// Live H160 -> SS58 address mapping (#6725/#6728), via the AddressMapping EVM
+// precompile -- a live finney RPC read keyed by h160. Captures any non-slash
+// segment (same looseness as ACCOUNT_BALANCE_PATH_PATTERN above); the handler
+// applies the stricter H160_PATTERN guard before making the RPC call, so a
+// malformed value gets a clear 400 rather than a generic 404.
+export const EVM_ADDRESS_MAPPING_PATH_PATTERN =
+  /^\/api\/v1\/evm\/address\/([^/]+)$/;
 // AdminUtils config-change feed (#4310/2.3, re-scoped from the original
 // Council/Senate framing — see #4310's audit): the extrinsics feed hardcoded
 // to call_module='AdminUtils', subtensor's own root-origin hyperparameter/

@@ -1376,6 +1376,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountParentsArtifact",
   ),
   artifact(
+    "evm-address-mapping",
+    "/metagraph/evm/address/{h160}.json",
+    "Live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache (deterministic given h160, never changes). ss58 is null on RPC failure.",
+    "EvmAddressMappingArtifact",
+  ),
+  artifact(
     "sudo-key",
     "/metagraph/sudo/key.json",
     "The current Sudo::Key holder (#4310/2.4, re-scoped from the original Senate/Council membership framing — subtensor has no such pallet), queried from the finney RPC at request time with 1h KV cache (the key changes extremely rarely). hotkey is null on RPC failure or an unset sudo key.",
@@ -3217,6 +3223,17 @@ export const API_ROUTES = [
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
+    "evm-address-mapping",
+    "GET",
+    "/api/v1/evm/address/{h160}",
+    "/metagraph/evm/address/{h160}.json",
+    "Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure.",
+    "short",
+    ["accounts"],
+    [],
+    [{ name: "h160", schema: { type: "string" } }],
+  ),
+  route(
     "sudo-key",
     "GET",
     "/api/v1/sudo/key",
@@ -4589,7 +4606,10 @@ export function compileRoutePattern(pathTemplate) {
     // Domain rollup {tag} (#6749/#6750): one of the fixed 14 domain/capability
     // tags (src/domain-tags.mjs) — same lowercase-hyphen shape as {slug}, kept
     // as its own token since it's a distinct, unrelated enum.
-    .replace(/\{tag\}/g, "__METAGRAPH_TAG__");
+    .replace(/\{tag\}/g, "__METAGRAPH_TAG__")
+    // EVM {h160} (#6725/#6728): a 20-byte 0x-prefixed hex address, distinct
+    // from {ss58}/{hotkey}'s base58 shape.
+    .replace(/\{h160\}/g, "__METAGRAPH_H160__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
@@ -4603,7 +4623,8 @@ export function compileRoutePattern(pathTemplate) {
     )
     .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})")
     .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64}|\\d+-\\d+)")
-    .replace(/__METAGRAPH_TAG__/g, "(?<tag>[a-z-]+)");
+    .replace(/__METAGRAPH_TAG__/g, "(?<tag>[a-z-]+)")
+    .replace(/__METAGRAPH_H160__/g, "(?<h160>0x[0-9a-fA-F]{40})");
   return new RegExp(`^${pattern}\\/?$`);
 }
 

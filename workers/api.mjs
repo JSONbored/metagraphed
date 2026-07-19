@@ -177,6 +177,7 @@ import {
   handleExtrinsic,
   handleSudo,
   handleSudoKey,
+  handleEvmAddressMapping,
   handleNetworkParameters,
   handleRandomnessStatus,
   handleGovernanceConfigChanges,
@@ -377,6 +378,7 @@ import {
   DOMAIN_SUMMARY_PATH_PATTERN,
   SUDO_CALLS_PATH_PATTERN,
   SUDO_KEY_PATH_PATTERN,
+  EVM_ADDRESS_MAPPING_PATH_PATTERN,
   NETWORK_PARAMETERS_PATH_PATTERN,
   RANDOMNESS_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
@@ -2747,6 +2749,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (SUDO_KEY_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleSudoKey(request, env);
     }
+    const evmAddressMappingMatch = EVM_ADDRESS_MAPPING_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (evmAddressMappingMatch) {
+      return handleEvmAddressMapping(request, env, evmAddressMappingMatch[1]);
+    }
     if (NETWORK_PARAMETERS_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleNetworkParameters(request, env);
     }
@@ -3048,6 +3056,7 @@ function isMainnetOnlyApiPath(pathname) {
     EXTRINSIC_DETAIL_PATH_PATTERN.test(pathname) ||
     SUDO_CALLS_PATH_PATTERN.test(pathname) ||
     SUDO_KEY_PATH_PATTERN.test(pathname) ||
+    EVM_ADDRESS_MAPPING_PATH_PATTERN.test(pathname) ||
     NETWORK_PARAMETERS_PATH_PATTERN.test(pathname) ||
     RANDOMNESS_PATH_PATTERN.test(pathname) ||
     GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN.test(pathname) ||

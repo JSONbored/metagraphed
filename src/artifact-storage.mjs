@@ -166,6 +166,9 @@ export const R2_ONLY_PATTERNS = [
   // Live drand randomness-beacon status (#6730/#6731): computed from RPC at
   // request time, never a static file.
   /^network\/randomness\.json$/,
+  // Live H160 -> SS58 address mapping (#6725/#6728): computed from RPC at
+  // request time, never a static file.
+  /^evm\/address\/(?:0x[0-9a-fA-F]{40}|\{h160\})\.json$/,
   // Live cumulative TAO recycled for registration on one subnet (#4339/8.4):
   // computed from RPC at request time, never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/recycled\.json$/,

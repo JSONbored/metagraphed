@@ -26,6 +26,7 @@
     "account-transfers",
     "account-weight-setters",
     "accounts-list",
+    "evm-address-mapping",
     "network-parameters",
     "randomness",
     "sudo-key"

@@ -25,6 +25,7 @@ import {
 } from "../workers/mcp-session-hub.mjs";
 import { SubnetStatusHub } from "../workers/subnet-status-hub.mjs";
 import { buildSubnetStatusResourceUri } from "../src/subnet-status-subscribe.mjs";
+import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.mjs";
 import {
   artifactFilePath,
   createLocalArtifactEnv,
@@ -1094,6 +1095,14 @@ assert.ok(
   "balance_tao" in accountBalance && accountBalance.ss58 === SS58,
   "get_account_balance must return ss58 + balance_tao (null on cold RPC)",
 );
+const evmAddressMapping = await callOk("get_evm_address_mapping", {
+  h160: "0x0000000000000000000000000000000000000001",
+});
+assert.ok(
+  "ss58" in evmAddressMapping &&
+    evmAddressMapping.h160 === "0x0000000000000000000000000000000000000001",
+  "get_evm_address_mapping must return h160 + ss58 (null on cold RPC)",
+);
 
 // Derive a real surface_id with a captured schema so get_api_schema resolves.
 const schemaService = apis.services.find((service) => service.schema_artifact);
@@ -1254,6 +1263,27 @@ const savedRegistrations = await callOk("run_saved_query", {
 });
 assert.equal(savedRegistrations.query_id, "chain-registrations-window");
 assert.equal(savedRegistrations.data.window, "7d");
+
+// EVM precompile decoding (#6725/#6729): one known-address/known-selector
+// call, exercising the same registry+decoder decodeEthereumTransactArgs's
+// own precompile_call field shares.
+const subnetPrecompileAddress = "0x0000000000000000000000000000000000000803";
+const getWeightsVersionKeyFn = EVM_PRECOMPILE_BY_ADDRESS.get(
+  subnetPrecompileAddress,
+).functions.find((fn) => fn.name === "getWeightsVersionKey");
+const evmDecoded = await callOk("decode_evm_call", {
+  to: subnetPrecompileAddress,
+  input: `${getWeightsVersionKeyFn.selector}${"7".padStart(64, "0")}`,
+});
+assert.equal(evmDecoded.precompile, "Subnet");
+assert.equal(evmDecoded.function, "getWeightsVersionKey");
+assert.equal(evmDecoded.args.netuid, 7);
+const evmUnknownSelector = await callOk("decode_evm_call", {
+  to: subnetPrecompileAddress,
+  input: "0xffffffff",
+});
+assert.equal(evmUnknownSelector.precompile, "Subnet");
+assert.equal(evmUnknownSelector.function, null);
 
 // --- Negative paths --------------------------------------------------------
 

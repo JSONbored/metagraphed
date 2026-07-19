@@ -4131,6 +4131,18 @@
           "queried_at": { "type": ["string", "null"], "format": "date-time" }
         }
       },
+      "EvmAddressMappingArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping precompile's addressMapping(address), queried from the finney RPC at request time and cached for 1h (deterministic given h160, never changes). ss58 is null on RPC failure.",
+        "required": ["schema_version", "h160"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "h160": { "type": "string" },
+          "ss58": { "type": ["string", "null"] },
+          "queried_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
       "SubnetRecycledArtifact": {
         "type": "object",
         "additionalProperties": true,

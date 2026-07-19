@@ -97,6 +97,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "sudo-key",
   "network-parameters",
   "randomness",
+  "evm-address-mapping",
   "subnet-recycled",
   "subnet-burn",
   "blocks-feed",

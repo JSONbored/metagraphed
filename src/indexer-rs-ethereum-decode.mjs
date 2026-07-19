@@ -54,6 +54,7 @@
 // the numeric STRING that parser produces for a limb large enough to need it.
 import { isEnumTreeNode } from "./scale-normalize.mjs";
 import { unwrapByteArray, bytesToHex } from "./bytes.mjs";
+import { decodeEvmPrecompileCall } from "./evm-precompiles.mjs";
 
 // A single limb (u64, up to 2^64-1) as delivered by src/extrinsics.mjs's
 // parseJsonPreservingBigInts (#4692 review fix): most limbs are small enough
@@ -150,9 +151,10 @@ const U256_FIELDS = [
 // values, NOT wrapped in an enum -- the ECDSA signature is a plain struct,
 // unrelated to the Signature::Sr25519 enum family below). `chain_id`/
 // `odd_y_parity`/`access_list`/Legacy's `signature.v` need no decode
-// (already plain scalars/empty arrays either tier). `input` is deliberately
-// left untouched -- its own mojibake bug is D1's, out of scope here
-// (bytes.mjs's own header).
+// (already plain scalars/empty arrays either tier). `input` itself is
+// deliberately left untouched -- its own mojibake bug is D1's, out of scope
+// here (bytes.mjs's own header) -- `precompile_call` below is an ADDITIVE
+// field decoded from it, not a rewrite of it.
 function decodeEthereumTransactionPayload(payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return payload;
@@ -171,6 +173,18 @@ function decodeEthereumTransactionPayload(payload) {
       s: decodeHash32Bytes(out.signature.s),
     };
   }
+  // Precompile call decode (#6725/#6727): only possible for a Call action --
+  // a Create transaction has no `to`, so the concept doesn't apply. Always
+  // set (never conditionally omitted), same schema-stable-null contract as
+  // every other build* function here: null for a Create action, a non-
+  // precompile `to`, or calldata too short to carry a 4-byte selector.
+  const to =
+    out.action && typeof out.action === "object" ? out.action.Call : undefined;
+  const inputBytes = unwrapByteArray(out.input);
+  out.precompile_call =
+    typeof to === "string" && inputBytes
+      ? decodeEvmPrecompileCall(to, bytesToHex(inputBytes))
+      : null;
   return out;
 }
 

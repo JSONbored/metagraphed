@@ -1031,6 +1031,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "evm-address-mapping",
+      "path": "/metagraph/evm/address/{h160}.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/EvmAddressMappingArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "sudo-key",
       "path": "/metagraph/sudo/key.json",
       "retirement": null,
@@ -7356,6 +7365,18 @@
       "id": "account-parents",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/parents",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/evm/address/{h160}.json",
+      "cache": "short",
+      "description": "Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure.",
+      "id": "evm-address-mapping",
+      "method": "GET",
+      "path": "/api/v1/evm/address/{h160}",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
