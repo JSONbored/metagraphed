@@ -36,7 +36,7 @@ const UNKEY_BASE_URL = "https://api.unkey.com";
 // a discriminated result, not crash the caller's request.
 async function unkeyFetch(env, path, body) {
   if (!env?.UNKEY_ROOT_KEY || !env?.UNKEY_API_ID) {
-    return { ok: false, code: "unkey_not_configured" };
+    return { ok: false, code: "provider_not_configured" };
   }
   let response;
   try {
@@ -49,16 +49,16 @@ async function unkeyFetch(env, path, body) {
       body: JSON.stringify(body),
     });
   } catch {
-    return { ok: false, code: "unkey_unreachable" };
+    return { ok: false, code: "provider_unreachable" };
   }
   let payload;
   try {
     payload = await response.json();
   } catch {
-    return { ok: false, code: "unkey_invalid_response" };
+    return { ok: false, code: "provider_invalid_response" };
   }
   if (!response.ok || !payload?.data) {
-    return { ok: false, code: "unkey_error", status: response.status };
+    return { ok: false, code: "provider_error", status: response.status };
   }
   return { ok: true, data: payload.data };
 }

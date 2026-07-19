@@ -7,7 +7,10 @@ import {
   revokeUnkeyKey,
 } from "./unkey-client.mjs";
 
-const ENV = { UNKEY_ROOT_KEY: "unkey_root_test", UNKEY_API_ID: "api_test123" };
+const ENV = {
+  UNKEY_ROOT_KEY: "test-root-key-placeholder",
+  UNKEY_API_ID: "api_test123",
+};
 
 function mockJsonResponse(status, data) {
   return {
@@ -25,7 +28,10 @@ describe("createUnkeyKey", () => {
     vi.stubGlobal("fetch", async (url, opts) => {
       capturedBody = JSON.parse(opts.body);
       assert.equal(url, "https://api.unkey.com/v2/keys.createKey");
-      assert.equal(opts.headers.authorization, "Bearer unkey_root_test");
+      assert.equal(
+        opts.headers.authorization,
+        "Bearer test-root-key-placeholder",
+      );
       return mockJsonResponse(200, { keyId: "key_abc", key: "mg_secret123" });
     });
 
@@ -47,7 +53,7 @@ describe("createUnkeyKey", () => {
 
   test("fails closed when env is missing UNKEY_ROOT_KEY/UNKEY_API_ID", async () => {
     const result = await createUnkeyKey({}, { externalId: "42", tier: "free" });
-    assert.deepEqual(result, { ok: false, code: "unkey_not_configured" });
+    assert.deepEqual(result, { ok: false, code: "provider_not_configured" });
   });
 
   test("fails closed on a network error", async () => {
@@ -58,7 +64,7 @@ describe("createUnkeyKey", () => {
       externalId: "42",
       tier: "free",
     });
-    assert.deepEqual(result, { ok: false, code: "unkey_unreachable" });
+    assert.deepEqual(result, { ok: false, code: "provider_unreachable" });
   });
 
   test("fails closed on a malformed response body", async () => {
@@ -73,7 +79,7 @@ describe("createUnkeyKey", () => {
       externalId: "42",
       tier: "free",
     });
-    assert.deepEqual(result, { ok: false, code: "unkey_invalid_response" });
+    assert.deepEqual(result, { ok: false, code: "provider_invalid_response" });
   });
 
   test("fails closed on a non-2xx response", async () => {
@@ -82,7 +88,11 @@ describe("createUnkeyKey", () => {
       externalId: "42",
       tier: "free",
     });
-    assert.deepEqual(result, { ok: false, code: "unkey_error", status: 401 });
+    assert.deepEqual(result, {
+      ok: false,
+      code: "provider_error",
+      status: 401,
+    });
   });
 });
 
@@ -140,7 +150,7 @@ describe("verifyUnkeyKey", () => {
       throw new Error("timeout");
     });
     const result = await verifyUnkeyKey(ENV, "mg_secret123");
-    assert.deepEqual(result, { ok: false, code: "unkey_unreachable" });
+    assert.deepEqual(result, { ok: false, code: "provider_unreachable" });
   });
 });
 

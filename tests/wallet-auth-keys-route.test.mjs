@@ -61,7 +61,7 @@ function createFakeKv() {
 }
 
 const SESSION_SECRET = "test-wallet-session-secret";
-const UNKEY_ROOT_KEY = "unkey_root_test";
+const UNKEY_ROOT_KEY = "test-root-key-placeholder";
 const UNKEY_API_ID = "api_test123";
 
 function baseEnv(overrides = {}) {
