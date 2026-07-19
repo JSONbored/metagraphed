@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "metagraphed"
-version = "0.5.0"
+version = "0.6.0"
 description = "Thin Python client for metagraphed — the operational + integration registry for Bittensor subnets (api.metagraph.sh)."
 readme = "README.md"
 license = { text = "Apache-2.0" }

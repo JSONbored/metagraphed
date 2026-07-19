@@ -1,6 +1,6 @@
 {
-  "packages/client": "0.17.0",
-  "python": "0.5.0",
-  "apps/ui": "0.7.0",
-  ".": "0.40.0"
+  "packages/client": "0.18.0",
+  "python": "0.6.0",
+  "apps/ui": "0.8.0",
+  ".": "0.41.0"
 }
