@@ -764,6 +764,22 @@ jobs:
             exit 1
           fi
 
+      # Same drift-check shape as the API reference docs step just above
+      # (#6634, the #1652 acceptance line that was never actually built):
+      # content/docs/catalog.mdx is entirely generated from the curated
+      # registry/subnets/ overlays via scripts/lib/readme-catalog.mjs (the
+      # same renderer README.md's own catalog section uses) -- an enriched
+      # subnet that never regenerates this page silently drifts otherwise.
+      - name: Build subnet catalog docs (drift check)
+        if: env.RUN_UI_VALIDATION == 'true'
+        working-directory: apps/ui
+        run: |
+          node scripts/generate-catalog-docs.mjs
+          if ! git diff --exit-code -- content/docs/catalog.mdx; then
+            echo "::error::apps/ui/content/docs/catalog.mdx is stale -- run 'node scripts/generate-catalog-docs.mjs' (from apps/ui) and commit the result."
+            exit 1
+          fi
+
       - name: Typecheck packages/ui-kit
         if: env.RUN_UI_VALIDATION == 'true'
         run: npm run typecheck --workspace=packages/ui-kit
