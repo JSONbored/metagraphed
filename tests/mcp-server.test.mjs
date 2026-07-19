@@ -18080,7 +18080,10 @@ describe("MCP get_top_holders — Postgres tier wiring", () => {
     const res = await callTool("get_top_holders", {}, { env });
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, "/api/v1/accounts/top-holders?sort=total_tao&limit=20");
+    assert.equal(
+      captured,
+      "/api/v1/accounts/top-holders?sort=total_tao&limit=20",
+    );
   });
 
   test("flag=postgres falls back to the schema-stable empty shape on failure", async () => {
