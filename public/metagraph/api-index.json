@@ -1040,6 +1040,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "randomness",
+      "path": "/metagraph/network/randomness.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/RandomnessArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-recycled",
       "path": "/metagraph/subnets/{netuid}/recycled.json",
       "retirement": null,
@@ -7350,6 +7359,18 @@
       "id": "network-parameters",
       "method": "GET",
       "path": "/api/v1/network/parameters",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/network/randomness.json",
+      "cache": "short",
+      "description": "Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache. A current-state snapshot, not a history feed. Each field is independently null on its own RPC failure.",
+      "id": "randomness",
+      "method": "GET",
+      "path": "/api/v1/network/randomness",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

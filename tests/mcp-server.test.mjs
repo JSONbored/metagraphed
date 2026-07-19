@@ -17597,6 +17597,56 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     assert.equal(res.body.result.isError, true);
   });
 
+  test("get_randomness_status resolves both fields and derives the round span from live RPC hits", async () => {
+    const LAST_STORED_ROUND_KEY =
+      "0xa285cdb66e8b8524ea70b1693c7b1e05087f3dd6e0ceded0e388dd34f810a73d";
+    const OLDEST_STORED_ROUND_KEY =
+      "0xa285cdb66e8b8524ea70b1693c7b1e05bc30947083dc3a2cb9eb93b9db7c6fbd";
+    const orig = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      const key = JSON.parse(init.body).params[0];
+      const byKey = {
+        [LAST_STORED_ROUND_KEY]: "0x404b4c0000000000", // round 5,000,000
+        [OLDEST_STORED_ROUND_KEY]: "0xe82f4c0000000000", // round 4,993,000
+      };
+      return {
+        ok: true,
+        json: async () => ({ jsonrpc: "2.0", id: 1, result: byKey[key] }),
+      };
+    };
+    try {
+      const res = await callTool("get_randomness_status", {}, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.last_stored_round, 5_000_000);
+      assert.equal(out.oldest_stored_round, 4_993_000);
+      assert.equal(out.stored_round_span, 7001);
+      assert.ok(out.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_randomness_status returns all-null fields on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("rpc down");
+    };
+    try {
+      const res = await callTool("get_randomness_status", {}, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.last_stored_round, null);
+      assert.equal(out.oldest_stored_round, null);
+      assert.equal(out.stored_round_span, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_randomness_status rejects an unexpected argument", async () => {
+    const res = await callTool("get_randomness_status", { netuid: 7 }, {});
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("get_runtime returns a schema-stable empty transition timeline (D1 write path retired)", async () => {
     const res = await callTool("get_runtime", {}, {});
     const out = res.body.result.structuredContent;

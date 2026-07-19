@@ -102,6 +102,7 @@ import {
 } from "../../src/child-hotkey-delegation.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { loadNetworkParameters } from "../../src/network-parameters.mjs";
+import { loadRandomnessStatus } from "../../src/randomness.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { loadSubnetBurn } from "../../src/subnet-burn.mjs";
 import { loadSubnetLease } from "../../src/subnet-lease.mjs";
@@ -4412,6 +4413,21 @@ export async function handleSudoKey(request, env) {
 // (schema-stable, never throws).
 export async function handleNetworkParameters(request, env) {
   const data = await loadNetworkParameters(env);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/network/randomness (#6731): live drand randomness-beacon
+// status -- LastStoredRound/OldestStoredRound -- a finney RPC read, KV-
+// cached snapshot (not a history feed, pulses land ~3s apart). Same shape
+// as handleNetworkParameters just above (no path params, no dedicated rate
+// limiter). Every field is independently null on RPC failure
+// (schema-stable, never throws).
+export async function handleRandomnessStatus(request, env) {
+  const data = await loadRandomnessStatus(env);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

@@ -873,6 +873,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/network/randomness",
+    (body) => {
+      assert.equal("last_stored_round" in body.data, true);
+      assert.equal("oldest_stored_round" in body.data, true);
+      assert.equal("stored_round_span" in body.data, true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/recycled",
     (body) => {
       assert.equal(body.data.netuid, 7);

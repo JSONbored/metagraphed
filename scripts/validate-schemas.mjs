@@ -94,6 +94,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "account-identity-history",
   "sudo-key",
   "network-parameters",
+  "randomness",
   "subnet-recycled",
   "subnet-burn",
   "blocks-feed",

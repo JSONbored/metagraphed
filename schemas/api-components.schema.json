@@ -12695,6 +12695,44 @@
         ],
         "type": "object"
       },
+      "RandomnessArtifact": {
+        "additionalProperties": true,
+        "description": "Live drand randomness-beacon status (#6730/#6731) -- LastStoredRound/OldestStoredRound -- queried from the finney RPC at request time and cached for 30s. A current-state snapshot, not a history feed (pulses land ~3s apart). Each field is independently null on its own RPC failure.",
+        "properties": {
+          "last_stored_round": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "oldest_stored_round": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stored_round_span": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version"
+        ],
+        "type": "object"
+      },
       "RegistryLeaderboardsArtifact": {
         "additionalProperties": true,
         "properties": {

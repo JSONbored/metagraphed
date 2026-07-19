@@ -26,6 +26,7 @@
     "account-weight-setters",
     "accounts-list",
     "network-parameters",
+    "randomness",
     "sudo-key"
   ]
 }

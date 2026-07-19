@@ -177,6 +177,7 @@ import {
   handleSudo,
   handleSudoKey,
   handleNetworkParameters,
+  handleRandomnessStatus,
   handleGovernanceConfigChanges,
   handleRuntime,
 } from "./request-handlers/entities.mjs";
@@ -371,6 +372,7 @@ import {
   SUDO_CALLS_PATH_PATTERN,
   SUDO_KEY_PATH_PATTERN,
   NETWORK_PARAMETERS_PATH_PATTERN,
+  RANDOMNESS_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -2726,6 +2728,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (NETWORK_PARAMETERS_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleNetworkParameters(request, env);
     }
+    if (RANDOMNESS_PATH_PATTERN.test(resolved.url.pathname)) {
+      return handleRandomnessStatus(request, env);
+    }
     if (SUDO_CALLS_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleSudo(request, env, resolved.url);
     }
@@ -3021,6 +3026,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUDO_CALLS_PATH_PATTERN.test(pathname) ||
     SUDO_KEY_PATH_PATTERN.test(pathname) ||
     NETWORK_PARAMETERS_PATH_PATTERN.test(pathname) ||
+    RANDOMNESS_PATH_PATTERN.test(pathname) ||
     GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN.test(pathname) ||
     RUNTIME_VERSIONS_PATH_PATTERN.test(pathname)
   );

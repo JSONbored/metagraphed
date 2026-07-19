@@ -629,6 +629,7 @@ import { loadSubnetBurn } from "./subnet-burn.mjs";
 import { loadSubnetLease } from "./subnet-lease.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
 import { loadNetworkParameters } from "./network-parameters.mjs";
+import { loadRandomnessStatus } from "./randomness.mjs";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import {
   buildValidatorNominators,
@@ -8348,6 +8349,26 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_randomness_status",
+    title: "Get the live drand randomness-beacon status",
+    description:
+      "Fetch the live drand randomness-beacon status -- " +
+      "LastStoredRound and OldestStoredRound -- queried live from finney " +
+      "RPC at request time (30s KV cache). A current-state snapshot, not a " +
+      "history feed (pulses land ~3s apart). Useful for a commit-reveal " +
+      "weight-setter checking whether a given round has landed. Each field " +
+      "is independently null on its own RPC failure. Mirrors GET " +
+      "/api/v1/network/randomness.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadRandomnessStatus(ctx.env);
+    },
+  },
+  {
     name: "get_governance_config_changes",
     title: "Get the root-origin network-config change feed",
     description:
@@ -13954,6 +13975,23 @@ const TOOL_OUTPUT_SCHEMAS = {
       tao_weight: { type: ["number", "null"] },
       stake_threshold_tao: { type: ["number", "null"] },
       pending_childkey_cooldown_blocks: { type: ["integer", "null"] },
+      queried_at: NULLABLE_STRING,
+    },
+  },
+  get_randomness_status: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "last_stored_round",
+      "oldest_stored_round",
+      "stored_round_span",
+      "queried_at",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      last_stored_round: { type: ["integer", "null"] },
+      oldest_stored_round: { type: ["integer", "null"] },
+      stored_round_span: { type: ["integer", "null"] },
       queried_at: NULLABLE_STRING,
     },
   },
