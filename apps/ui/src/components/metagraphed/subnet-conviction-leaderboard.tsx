@@ -1,11 +1,40 @@
 import { useQuery } from "@tanstack/react-query";
 import { Crown } from "lucide-react";
 import { subnetConvictionQuery } from "@/lib/metagraphed/queries";
+import { contestGap, type ContestStatus } from "@/lib/metagraphed/conviction-contest";
 import { CopyableCode } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 
 const UNITS_PER_WHOLE = 1_000_000_000;
+
+const CONTEST_STATUS_LABEL: Record<ContestStatus, string> = {
+  secure: "Secure",
+  contested: "Contested",
+  "takeover-imminent": "Takeover imminent",
+};
+
+const CONTEST_STATUS_CLASS: Record<ContestStatus, string> = {
+  secure: "border-health-ok/40 bg-health-ok/10 text-health-ok",
+  contested: "border-health-warn/40 bg-health-warn/10 text-health-warn",
+  "takeover-imminent": "border-health-down/40 bg-health-down/10 text-health-down",
+};
+
+/** Gap%/status pill (#6883) -- see conviction-contest.ts for the threshold reasoning. */
+function ContestStatusBadge({ status, gapPct }: { status: ContestStatus; gapPct: number | null }) {
+  return (
+    <span
+      className={classNames(
+        "shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+        CONTEST_STATUS_CLASS[status],
+      )}
+      title="Ownership-contest urgency: how close the top challenger's conviction is to the king's"
+    >
+      {CONTEST_STATUS_LABEL[status]}
+      {gapPct != null ? ` · ${gapPct < 1 ? "<1" : gapPct.toFixed(0)}% gap` : ""}
+    </span>
+  );
+}
 
 // locked_mass/conviction arrive as raw rao-scale integers (mirrors every
 // other on-chain alpha/TAO amount in this codebase) -- divide before display.
@@ -51,15 +80,22 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
     );
   }
 
+  const gap = contestGap(leaderboard, data?.king ?? null);
+
   return (
     <div className="space-y-3">
-      {data?.queried_at_block != null ? (
-        <p className="font-mono text-[11px] text-ink-muted">
-          Rolled forward to block #{formatNumber(data.queried_at_block)}
-          {data.unlock_rate != null ? ` · unlock_rate ${formatNumber(data.unlock_rate)}` : ""}
-          {data.maturity_rate != null ? ` · maturity_rate ${formatNumber(data.maturity_rate)}` : ""}
-        </p>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        {data?.queried_at_block != null ? (
+          <p className="font-mono text-[11px] text-ink-muted">
+            Rolled forward to block #{formatNumber(data.queried_at_block)}
+            {data.unlock_rate != null ? ` · unlock_rate ${formatNumber(data.unlock_rate)}` : ""}
+            {data.maturity_rate != null
+              ? ` · maturity_rate ${formatNumber(data.maturity_rate)}`
+              : ""}
+          </p>
+        ) : null}
+        <ContestStatusBadge status={gap.status} gapPct={gap.gapPct} />
+      </div>
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
