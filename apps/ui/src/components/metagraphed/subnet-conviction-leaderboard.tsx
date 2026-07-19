@@ -4,8 +4,29 @@ import { subnetConvictionQuery } from "@/lib/metagraphed/queries";
 import { CopyableCode } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import {
+  convictionContest,
+  type ConvictionContestStatus,
+} from "@/lib/metagraphed/conviction-contest";
 
 const UNITS_PER_WHOLE = 1_000_000_000;
+
+// How the contest gap reads at a glance (#6883). Down/warn/muted tones follow
+// the health palette used elsewhere so "takeover imminent" reads as the alarm.
+const CONTEST_STATUS_META: Record<ConvictionContestStatus, { label: string; className: string }> = {
+  "takeover-imminent": {
+    label: "Takeover imminent",
+    className: "border-health-down/40 bg-health-down/10 text-health-down",
+  },
+  contested: {
+    label: "Contested",
+    className: "border-health-warn/40 bg-health-warn/10 text-health-warn",
+  },
+  secure: {
+    label: "Secure",
+    className: "border-border bg-surface/40 text-ink-muted",
+  },
+};
 
 // locked_mass/conviction arrive as raw rao-scale integers (mirrors every
 // other on-chain alpha/TAO amount in this codebase) -- divide before display.
@@ -51,8 +72,26 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
     );
   }
 
+  const contest = convictionContest(leaderboard);
+  const contestMeta = CONTEST_STATUS_META[contest.status];
+
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={classNames(
+            "inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest",
+            contestMeta.className,
+          )}
+        >
+          {contestMeta.label}
+        </span>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {contest.gapPct != null
+            ? `Leader is ${contest.gapPct.toFixed(1)}% ahead of the top challenger`
+            : "No active challenger"}
+        </span>
+      </div>
       {data?.queried_at_block != null ? (
         <p className="font-mono text-[11px] text-ink-muted">
           Rolled forward to block #{formatNumber(data.queried_at_block)}
