@@ -3,23 +3,27 @@ import { useQuery } from "@tanstack/react-query";
 import { subnetHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
-import { healthColorVar } from "@/lib/health-tokens";
-import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import {
+  SUBNET_HISTORY_METRICS,
+  SUBNET_HISTORY_WINDOWS,
+  pickMetricValues,
+  type SubnetHistoryWindow,
+} from "@/lib/metagraphed/subnet-history-metrics";
 import type { SubnetHistoryPoint } from "@/lib/metagraphed/types";
-
-// Lowercase windows, mirroring the /history API + the inline toggle conventions
-// used by health-trends.tsx. "all" maps to the API's widest supported window.
-type Win = "7d" | "30d" | "90d" | "1y" | "all";
-const WINDOWS: Win[] = ["7d", "30d", "90d", "1y", "all"];
 
 /**
  * Per-subnet on-chain history (#1302). A window selector drives a daily snapshot
  * series; each metric renders as a labelled Sparkline row (mirrors
  * subnet-growth-card.tsx's GrowthRow). Optional detail — renders null when the
  * subnet has no history yet, so it never clutters a cold profile.
+ *
+ * The window + metric vocabulary lives in lib/metagraphed/subnet-history-metrics
+ * so the compare drawer's multi-subnet overlay (#6885) offers exactly the same
+ * set without either side drifting.
  */
 export function SubnetHistoryChart({ netuid }: { netuid: number }) {
-  const [win, setWin] = useState<Win>("90d");
+  const [win, setWin] = useState<SubnetHistoryWindow>("90d");
   const {
     data: res,
     isLoading,
@@ -29,25 +33,16 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
   } = useQuery(subnetHistoryQuery(netuid, win));
   const points = useMemo<SubnetHistoryPoint[]>(() => res?.data?.points ?? [], [res?.data?.points]);
 
-  const series = useMemo(() => {
-    const pick = (key: keyof SubnetHistoryPoint) =>
-      points
-        .map((p) => p[key])
-        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-    return {
-      neurons: pick("neuron_count"),
-      validators: pick("validator_count"),
-      stake: pick("total_stake_tao"),
-      emission: pick("total_emission_tao"),
-    };
-  }, [points]);
+  const series = useMemo(
+    () =>
+      SUBNET_HISTORY_METRICS.map((metric) => ({
+        metric,
+        values: pickMetricValues(points, metric.field),
+      })),
+    [points],
+  );
 
-  const hasData =
-    series.neurons.length +
-      series.validators.length +
-      series.stake.length +
-      series.emission.length >
-    0;
+  const hasData = series.some((s) => s.values.length > 0);
 
   const windowSelector = (
     <div
@@ -55,7 +50,7 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
       aria-label="History window"
       className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
     >
-      {WINDOWS.map((w) => (
+      {SUBNET_HISTORY_WINDOWS.map((w) => (
         <button
           key={w}
           type="button"
@@ -87,32 +82,17 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
         />
       ) : (
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          {series.neurons.length > 0 ? (
-            <HistoryRow label="Neurons" series={series.neurons} color="var(--accent)" />
-          ) : null}
-          {series.validators.length > 0 ? (
-            <HistoryRow
-              label="Validators"
-              series={series.validators}
-              color={healthColorVar("ok")}
-            />
-          ) : null}
-          {series.stake.length > 0 ? (
-            <HistoryRow
-              label="Total stake"
-              series={series.stake}
-              color={healthColorVar("warn")}
-              format={formatTao}
-            />
-          ) : null}
-          {series.emission.length > 0 ? (
-            <HistoryRow
-              label="Total emission"
-              series={series.emission}
-              color="var(--accent)"
-              format={formatTao}
-            />
-          ) : null}
+          {series.map(({ metric, values }) =>
+            values.length > 0 ? (
+              <HistoryRow
+                key={metric.key}
+                label={metric.label}
+                series={values}
+                color={metric.color}
+                format={metric.format}
+              />
+            ) : null,
+          )}
         </div>
       )}
     </div>

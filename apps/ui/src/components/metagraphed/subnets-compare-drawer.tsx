@@ -7,15 +7,27 @@ import { compareQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { CompareSubnet, HealthState } from "@/lib/metagraphed/types";
 import { HealthPill, CurationChip } from "@jsonbored/ui-kit";
+import { SubnetsCompareHistoryChart } from "@/components/metagraphed/subnets-compare-history-chart";
+
+/** The two views of the expanded drawer: instant metrics, or history over time. */
+type CompareView = "metrics" | "history";
+const COMPARE_VIEWS: Array<{ key: CompareView; label: string }> = [
+  { key: "metrics", label: "Metrics" },
+  { key: "history", label: "History" },
+];
 
 /**
  * Floating bottom dock + expandable side-by-side compare drawer for selected
  * subnets. Selection state lives in localStorage via useCompareSelection so
  * it survives navigation. Pure presentation — does not mutate URL.
+ *
+ * The expanded view tabs between CompareGrid (current instant metrics) and
+ * SubnetsCompareHistoryChart (the multi-subnet history overlay, #6885).
  */
 export function SubnetsCompareDrawer() {
   const { selected, max, remove, clear } = useCompareSelection();
   const [expanded, setExpanded] = useState(false);
+  const [view, setView] = useState<CompareView>("metrics");
 
   if (selected.length === 0) return null;
 
@@ -81,7 +93,38 @@ export function SubnetsCompareDrawer() {
           </div>
 
           {/* Expanded side-by-side */}
-          {expanded && selected.length >= 2 ? <CompareGrid netuids={selected} /> : null}
+          {expanded && selected.length >= 2 ? (
+            <>
+              <div
+                role="tablist"
+                aria-label="Compare view"
+                className="flex items-center gap-1 border-t border-border px-3 py-1.5"
+              >
+                {COMPARE_VIEWS.map((v) => (
+                  <button
+                    key={v.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={v.key === view}
+                    onClick={() => setView(v.key)}
+                    className={classNames(
+                      "rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+                      v.key === view
+                        ? "bg-ink-strong text-paper"
+                        : "text-ink-muted hover:text-ink-strong",
+                    )}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+              {view === "metrics" ? (
+                <CompareGrid netuids={selected} />
+              ) : (
+                <SubnetsCompareHistoryChart netuids={selected} />
+              )}
+            </>
+          ) : null}
         </div>
       </div>
     </div>
