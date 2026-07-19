@@ -160,6 +160,9 @@ export const R2_ONLY_PATTERNS = [
   // Live global Subtensor protocol/governance parameters (#6343): computed
   // from RPC at request time, never a static file.
   /^network\/parameters\.json$/,
+  // Live drand randomness-beacon status (#6730/#6731): computed from RPC at
+  // request time, never a static file.
+  /^network\/randomness\.json$/,
   // Live cumulative TAO recycled for registration on one subnet (#4339/8.4):
   // computed from RPC at request time, never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/recycled\.json$/,
