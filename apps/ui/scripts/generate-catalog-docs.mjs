@@ -14,6 +14,7 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import prettier from "prettier";
 import { loadOverlays, renderCatalog } from "../../../scripts/lib/readme-catalog.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,7 +34,20 @@ function frontmatter(overlays) {
 async function main() {
   const overlays = loadOverlays();
   const catalog = renderCatalog(overlays);
-  await writeFile(OUTPUT_PATH, `${frontmatter(overlays)}${catalog}\n`);
+  const raw = `${frontmatter(overlays)}${catalog}\n`;
+  // Run through this workspace's own Prettier config (MDX treats <sub> as
+  // JSX, which reflows differently than the plain-markdown formatting the
+  // shared renderer's output otherwise matches) so the committed file is
+  // always byte-identical to what `format:check` -- and this generator
+  // re-run -- both expect, regardless of which one runs first.
+  // prettier.format() does NOT read .prettierrc on its own (that's CLI-only
+  // behavior) -- resolveConfig() is required to pick it up here.
+  const config = (await prettier.resolveConfig(OUTPUT_PATH)) ?? {};
+  const formatted = await prettier.format(raw, {
+    ...config,
+    filepath: OUTPUT_PATH,
+  });
+  await writeFile(OUTPUT_PATH, formatted);
   console.log(`Wrote content/docs/catalog.mdx: ${overlays.length} curated subnets.`);
 }
 
