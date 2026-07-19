@@ -1,0 +1,135 @@
+---
+title: Documentation
+description: Every guide to Metagraphed's public Bittensor registry API — subnets, the metagraph, blocks, extrinsics, accounts, chain events, economics, search, webhooks, and the on-chain protocol concepts behind them. No API key required for any of it.
+---
+
+Metagraphed indexes Bittensor chain-direct: every subnet, block, extrinsic, account, and
+on-chain event, plus derived health, economics, and market data. These guides cover the
+public REST API surface by domain, with a full auto-generated reference for every endpoint.
+
+<Callout type="info">
+  New to Bittensor itself, not just this API? The [Protocol](#protocol) guides below explain
+  stake-weight, registration, weight-setting, proxies, and delegation from first principles.
+</Callout>
+
+## Core domains
+
+<Cards>
+  <Card
+    title="Subnets"
+    description="Structure, lifecycle, market, decentralization, and curation — everything about a subnet except who's on its metagraph."
+    href="/docs/subnets"
+  />
+  <Card
+    title="Subnet metagraph & validators"
+    description="The live neuron table, per-UID trust/incentive/consensus/dividends, and the global validators surface."
+    href="/docs/metagraph"
+  />
+  <Card
+    title="Blocks"
+    description="Block detail, extrinsics, events, block-production analytics, and the runtime-version timeline."
+    href="/docs/blocks"
+  />
+  <Card
+    title="Extrinsics"
+    description="The on-chain call feed, root-origin governance/hyperparameter changes, and sudo calls."
+    href="/docs/extrinsics"
+  />
+  <Card
+    title="Accounts"
+    description="Identity, balance, holdings, activity feeds, network participation, and stake movement for one SS58 address."
+    href="/docs/accounts"
+  />
+  <Card
+    title="Chain events reference"
+    description="The Postgres deep-history all-events tier — params, response shapes, and the two-store split."
+    href="/docs/chain-events"
+  />
+  <Card
+    title="Chain analytics"
+    description="Chain-wide rollups and leaderboards over activity, transfers, stake movement, weights, and concentration."
+    href="/docs/chain-analytics"
+  />
+  <Card
+    title="Economics"
+    description="The dynamic-TAO per-subnet snapshot and network-wide daily time series — alpha pools, emission share, FDV."
+    href="/docs/economics"
+  />
+  <Card
+    title="Health & readiness"
+    description="Probe-derived health, history, trends, and incidents — never hand-set."
+    href="/docs/health"
+  />
+  <Card
+    title="RPC"
+    description="One read-only JSON-RPC URL for Bittensor — health-aware load balancing, failover, and abuse controls."
+    href="/docs/rpc"
+  />
+  <Card
+    title="GraphQL"
+    description="Shape one request across the registry — a subnet with health, surfaces, endpoints, and economics."
+    href="/docs/graphql"
+  />
+  <Card
+    title="Webhooks"
+    description="Subscribe to the registry's publish change feed with HMAC-signed, at-least-once delivery."
+    href="/docs/webhooks"
+  />
+  <Card
+    title="Feeds"
+    description="Registry changes, incidents, and coverage gaps as RSS 2.0, Atom 1.0, or JSON Feed."
+    href="/docs/feeds"
+  />
+  <Card
+    title="Search & AI"
+    description="Keyword search, vector search, and grounded question-answering over the registry."
+    href="/docs/search-ai"
+  />
+</Cards>
+
+## Reference & catalog
+
+<Cards>
+  <Card
+    title="Subnet catalog"
+    description="129 curated subnets, generated from the registry overlays — focus areas, links, and coverage at a glance."
+    href="/docs/catalog"
+  />
+  <Card
+    title="API reference"
+    description="Every endpoint, request/response schema, and a live try-it client — generated from the published OpenAPI spec."
+    href="/docs/api-reference"
+  />
+</Cards>
+
+## Protocol
+
+How Bittensor itself works, independent of this API.
+
+<Cards>
+  <Card
+    title="Understanding stake-weight"
+    description="The two-component stake_weight formula, and why root TAO counts differently than subnet Alpha."
+    href="/docs/protocol/stake-weight"
+  />
+  <Card
+    title="Registration and validator permits"
+    description="What it costs to get a UID on a subnet, and why that's different from holding a validator permit."
+    href="/docs/protocol/registration-and-permits"
+  />
+  <Card
+    title="Weight-setting, tempos, and rewards"
+    description="What validators submit, when a subnet's consensus run happens, and how incentive/dividends get computed."
+    href="/docs/protocol/weight-setting-and-rewards"
+  />
+  <Card
+    title="Proxy accounts"
+    description="How pallet_proxy lets an account delegate scoped, revocable authority without a multisig ceremony."
+    href="/docs/protocol/proxies"
+  />
+  <Card
+    title="Root stake and childkey delegation"
+    description="How set_children lets a parent hotkey's root-network stake back child hotkeys across many subnets."
+    href="/docs/protocol/root-delegation"
+  />
+</Cards>
