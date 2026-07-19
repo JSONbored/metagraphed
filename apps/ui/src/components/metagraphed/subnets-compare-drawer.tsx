@@ -7,15 +7,19 @@ import { compareQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { CompareSubnet, HealthState } from "@/lib/metagraphed/types";
 import { HealthPill, CurationChip } from "@jsonbored/ui-kit";
+import { SubnetsCompareHistoryChart } from "@/components/metagraphed/subnets-compare-history-chart";
 
 /**
  * Floating bottom dock + expandable side-by-side compare drawer for selected
  * subnets. Selection state lives in localStorage via useCompareSelection so
  * it survives navigation. Pure presentation — does not mutate URL.
  */
+type ExpandedTab = "metrics" | "chart";
+
 export function SubnetsCompareDrawer() {
   const { selected, max, remove, clear } = useCompareSelection();
   const [expanded, setExpanded] = useState(false);
+  const [tab, setTab] = useState<ExpandedTab>("metrics");
 
   if (selected.length === 0) return null;
 
@@ -81,7 +85,18 @@ export function SubnetsCompareDrawer() {
           </div>
 
           {/* Expanded side-by-side */}
-          {expanded && selected.length >= 2 ? <CompareGrid netuids={selected} /> : null}
+          {expanded && selected.length >= 2 ? (
+            <div className="border-t border-border">
+              <ExpandedTabs value={tab} onChange={setTab} />
+              {tab === "metrics" ? (
+                <CompareGrid netuids={selected} />
+              ) : (
+                <div className="max-h-[55vh] overflow-auto">
+                  <SubnetsCompareHistoryChart netuids={selected} />
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -100,6 +115,42 @@ function compareHealthState(health: CompareSubnet["health"]): HealthState {
   if (ok >= total) return "ok";
   if (ok === 0) return "down";
   return "warn";
+}
+
+function ExpandedTabs({
+  value,
+  onChange,
+}: {
+  value: ExpandedTab;
+  onChange: (t: ExpandedTab) => void;
+}) {
+  const tabs: Array<{ id: ExpandedTab; label: string }> = [
+    { id: "metrics", label: "Metrics" },
+    { id: "chart", label: "Overlay chart" },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Compare view"
+      className="flex items-center gap-1 border-b border-border bg-card/70 px-3 py-1.5"
+    >
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="tab"
+          aria-selected={t.id === value}
+          onClick={() => onChange(t.id)}
+          className={classNames(
+            "rounded px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+            t.id === value ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
+          )}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function CompareGrid({ netuids }: { netuids: number[] }) {
@@ -212,7 +263,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
 
   if (isError) {
     return (
-      <div className="border-t border-border px-3 py-6 text-center">
+      <div className="px-3 py-6 text-center">
         <p className="font-mono text-[11px] text-ink-muted">Could not load comparison.</p>
         <button
           type="button"
@@ -226,7 +277,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
   }
 
   return (
-    <div className="border-t border-border max-h-[55vh] overflow-auto">
+    <div className="max-h-[55vh] overflow-auto">
       <table className="min-w-full text-[12px]">
         <thead className="sticky top-0 bg-card/95 backdrop-blur z-[1]">
           <tr>
