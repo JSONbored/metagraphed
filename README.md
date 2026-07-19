@@ -36,7 +36,7 @@ Three ways to use Metagraphed. Pick one.
 
 #### 🤖 AI agent (MCP)
 
-Agent-native, public, read-only, Streamable-HTTP. 26 tools to discover a subnet, check if it's up, read its economics and metagraph, trace what a wallet does across the network, and learn how to call it.
+Agent-native, public, read-only, Streamable-HTTP. 173 tools to discover a subnet, check if it's up, read its economics and metagraph, trace what a wallet does across the network, and learn how to call it.
 
 ```bash
 claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
