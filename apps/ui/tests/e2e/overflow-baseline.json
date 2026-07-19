@@ -10,7 +10,7 @@
   "/@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
   "/@1280": ["DIV:flex items-center gap-1"],
   "/subnets/1@375": [
-    "A:inline-flex items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong hover:decoration-ink mt-3 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent-surface px-3 py-2 text-sm",
+    "SPAN:min-w-0 flex-1 truncate",
     "DIV:flex items-center gap-1",
     "DIV:flex-1 flex justify-end"
   ],
