@@ -513,6 +513,25 @@ test("keys create: 429 when the mint rate limiter denies", async () => {
   assert.equal(res.status, 429);
 });
 
+test("keys create: 201 succeeds when the mint rate limiter is bound and allows", async () => {
+  const env = baseEnv({
+    ACCOUNT_KEYS_MINT_RATE_LIMITER: { limit: async () => ({ success: true }) },
+  });
+  const token = await sessionToken(11, "5Minter");
+  mockQueue.current.push([{ id: 11, tier: "free" }]);
+  stubUnkeyFetch([
+    { data: { keyId: "key_abc123", key: "mg_opaqueSecretValue" } },
+  ]);
+  const res = await fetchRoute(
+    req("/api/v1/keys", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    }),
+    env,
+  );
+  assert.equal(res.status, 201);
+});
+
 test("keys create: 404 when the session's account no longer exists", async () => {
   const env = baseEnv();
   const token = await sessionToken(999, "5Gone");
@@ -868,7 +887,15 @@ test("tier promote: 503 when not provisioned", async () => {
 
 test("tier promote: 401 when the token is missing or wrong", async () => {
   const env = baseEnv({ ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN: PROMOTE_TOKEN });
-  const res = await fetchRoute(
+  const missing = await fetchRoute(
+    req("/api/v1/internal/accounts/tier", {
+      method: "POST",
+      body: { ss58: "5X", tier: "unlimited" },
+    }),
+    env,
+  );
+  assert.equal(missing.status, 401);
+  const wrong = await fetchRoute(
     req("/api/v1/internal/accounts/tier", {
       method: "POST",
       headers: { "x-account-tier-promote-token": "wrong" },
@@ -876,7 +903,7 @@ test("tier promote: 401 when the token is missing or wrong", async () => {
     }),
     env,
   );
-  assert.equal(res.status, 401);
+  assert.equal(wrong.status, 401);
 });
 
 test("tier promote: 400 on unparsable JSON body", async () => {
@@ -897,7 +924,7 @@ test("tier promote: 400 on unparsable JSON body", async () => {
 
 test("tier promote: 400 when ss58 or tier is missing", async () => {
   const env = baseEnv({ ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN: PROMOTE_TOKEN });
-  const res = await fetchRoute(
+  const noTier = await fetchRoute(
     req("/api/v1/internal/accounts/tier", {
       method: "POST",
       headers: { "x-account-tier-promote-token": PROMOTE_TOKEN },
@@ -905,7 +932,16 @@ test("tier promote: 400 when ss58 or tier is missing", async () => {
     }),
     env,
   );
-  assert.equal(res.status, 400);
+  assert.equal(noTier.status, 400);
+  const noSs58 = await fetchRoute(
+    req("/api/v1/internal/accounts/tier", {
+      method: "POST",
+      headers: { "x-account-tier-promote-token": PROMOTE_TOKEN },
+      body: { tier: "unlimited" },
+    }),
+    env,
+  );
+  assert.equal(noSs58.status, 400);
 });
 
 test("tier promote: 404 when no such account exists", async () => {
