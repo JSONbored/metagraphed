@@ -39,6 +39,7 @@ import {
   SortHeader,
 } from "@/components/metagraphed/table-controls";
 import { SubnetsSavedViews } from "@/components/metagraphed/subnets-saved-views";
+import { SubnetBubbleView } from "@/components/metagraphed/charts/subnet-bubble-view";
 import {
   SubnetsCompareDrawer,
   CompareToggle,
@@ -184,7 +185,11 @@ function SubnetsPage() {
         description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
         actions={
           <>
-            <ViewModeToggle value={search.view} onChange={setView} />
+            <ViewModeToggle
+              value={search.view}
+              options={["table", "grid", "matrix", "bubble"]}
+              onChange={setView}
+            />
             {search.view === "table" ? (
               <DensityToggle value={effectiveDensity} onChange={setDensity} />
             ) : null}
@@ -642,8 +647,8 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     />
   );
 
-  // Grid / matrix views skip ListShell so they're not boxed in a table card.
-  if (view === "grid" || view === "matrix") {
+  // Grid / matrix / bubble views skip ListShell so they're not boxed in a table card.
+  if (view === "grid" || view === "matrix" || view === "bubble") {
     return (
       <div>
         <div className="sticky top-14 z-20 -mx-4 md:mx-0 mb-3 bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80 border-b border-border md:border md:rounded md:bg-card px-3 py-2 md:p-2.5">
@@ -653,8 +658,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           emptyNode
         ) : view === "grid" ? (
           <SubnetGrid rows={rows} />
-        ) : (
+        ) : view === "matrix" ? (
           <SubnetMatrix rows={rows} />
+        ) : (
+          <SubnetBubbleView rows={rows} />
         )}
         <div className="mt-3">{footerNode}</div>
       </div>

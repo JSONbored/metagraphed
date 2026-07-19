@@ -1,7 +1,7 @@
 import * as React3 from 'react';
 import { useState, useRef, useEffect, useMemo, useCallback, useId } from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import { ChevronDown, X, Search, ArrowUp, Check, Copy, Rows3, Rows2, Download, Info, AlertCircle, RefreshCw, Link, Link2, Share2, ChevronLeft, ChevronRight, Clock, Inbox, ExternalLink as ExternalLink$1, List, LayoutGrid, Grid3x3, ChevronUp, Globe, BookOpen, Github, LayoutDashboard, Lock, AlertTriangle } from 'lucide-react';
+import { ChevronDown, X, Search, ArrowUp, Check, Copy, Rows3, Rows2, Download, Info, AlertCircle, RefreshCw, Link, Link2, Share2, ChevronLeft, ChevronRight, Clock, Inbox, ExternalLink as ExternalLink$1, List, LayoutGrid, Grid3x3, Radar, ChevronUp, Globe, BookOpen, Github, LayoutDashboard, Lock, AlertTriangle } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
@@ -2602,6 +2602,12 @@ var OPTIONS = [
     label: "Matrix",
     Icon: Grid3x3,
     ariaLabel: "Switch to matrix view"
+  },
+  {
+    value: "bubble",
+    label: "Bubble",
+    Icon: Radar,
+    ariaLabel: "Switch to bubble/radar view"
   }
 ];
 function ViewModeToggle({
