@@ -14913,6 +14913,643 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   });
 });
 
+describe("graphql — chain_idle_stake (#6975, Postgres-tier + cold-store fallback)", () => {
+  const query = `{ chain_idle_stake {
+    schema_version captured_at subnet_count total_idle_stake_tao
+    subnets { netuid neuron_count idle_neuron_count idle_stake_tao }
+  } }`;
+
+  test("cold store: schema-stable empty ranking, never an error", async () => {
+    const { status, body } = await gql(query);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_idle_stake, {
+      schema_version: 1,
+      captured_at: null,
+      subnet_count: 0,
+      total_idle_stake_tao: 0,
+      subnets: [],
+    });
+  });
+
+  test("resolves Postgres-tier data", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            captured_at: "2026-07-20T00:00:00.000Z",
+            subnet_count: 1,
+            total_idle_stake_tao: 12.5,
+            subnets: [
+              {
+                netuid: 7,
+                neuron_count: 10,
+                idle_neuron_count: 3,
+                idle_stake_tao: 12.5,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(query, env);
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/idle-stake");
+    assert.equal(body.data.chain_idle_stake.subnet_count, 1);
+    assert.equal(body.data.chain_idle_stake.total_idle_stake_tao, 12.5);
+    assert.equal(body.data.chain_idle_stake.subnets[0].netuid, 7);
+  });
+
+  test("a malformed Postgres-tier body falls back to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query, env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_idle_stake.subnet_count, 0);
+    assert.equal(body.data.chain_idle_stake.total_idle_stake_tao, 0);
+    assert.deepEqual(body.data.chain_idle_stake.subnets, []);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_idle_stake,
+      FIELD_COMPLEXITY.chain_yield,
+    );
+  });
+});
+
+describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallback)", () => {
+  function flowQuery(argsClause = "") {
+    return `{ chain_stake_flow${argsClause} {
+      schema_version window observed_at subnet_count
+      network {
+        total_staked_tao total_unstaked_tao net_flow_tao gross_flow_tao
+        stake_events unstake_events gaining losing flat
+      }
+      net_flow_distribution { count mean min p25 median p75 p90 max }
+      subnets {
+        netuid total_staked_tao total_unstaked_tao net_flow_tao gross_flow_tao
+        stake_events unstake_events direction
+      }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable zeroed card", async () => {
+    const { status, body } = await gql(flowQuery());
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_stake_flow, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        total_staked_tao: 0,
+        total_unstaked_tao: 0,
+        net_flow_tao: 0,
+        gross_flow_tao: 0,
+        stake_events: 0,
+        unstake_events: 0,
+        gaining: 0,
+        losing: 0,
+        flat: 0,
+      },
+      net_flow_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for a non-default window/limit", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-20T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              total_staked_tao: 100,
+              total_unstaked_tao: 40,
+              net_flow_tao: 60,
+              gross_flow_tao: 140,
+              stake_events: 5,
+              unstake_events: 2,
+              gaining: 1,
+              losing: 0,
+              flat: 0,
+            },
+            net_flow_distribution: {
+              count: 1,
+              mean: 60,
+              min: 60,
+              p25: 60,
+              median: 60,
+              p75: 60,
+              p90: 60,
+              max: 60,
+            },
+            subnets: [
+              {
+                netuid: 3,
+                total_staked_tao: 100,
+                total_unstaked_tao: 40,
+                net_flow_tao: 60,
+                gross_flow_tao: 140,
+                stake_events: 5,
+                unstake_events: 2,
+                direction: "inflow",
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      flowQuery('(window: "30d", limit: 5)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/stake-flow");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(body.data.chain_stake_flow.window, "30d");
+    assert.equal(body.data.chain_stake_flow.subnet_count, 1);
+    assert.equal(body.data.chain_stake_flow.network.net_flow_tao, 60);
+    assert.equal(body.data.chain_stake_flow.subnets[0].direction, "inflow");
+  });
+
+  test("unsupported window is BAD_USER_INPUT", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(flowQuery('(window: "1y")'), env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("malformed Postgres body falls back to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(flowQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_stake_flow.subnet_count, 0);
+    assert.equal(body.data.chain_stake_flow.network.stake_events, 0);
+    assert.deepEqual(body.data.chain_stake_flow.subnets, []);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_stake_flow,
+      FIELD_COMPLEXITY.chain_weights,
+    );
+  });
+});
+
+describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallback)", () => {
+  function movesQuery(argsClause = "") {
+    return `{ chain_stake_moves${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_movers movements movements_per_mover }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_movers movements movements_per_mover }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable zeroed card", async () => {
+    const { status, body } = await gql(movesQuery());
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_stake_moves, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_movers: 0,
+        movements: 0,
+        movements_per_mover: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for a non-default window/limit", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-20T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_movers: 4,
+              movements: 12,
+              movements_per_mover: 3,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 3,
+              min: 3,
+              p25: 3,
+              median: 3,
+              p75: 3,
+              p90: 3,
+              max: 3,
+            },
+            subnets: [
+              {
+                netuid: 5,
+                distinct_movers: 4,
+                movements: 12,
+                movements_per_mover: 3,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      movesQuery('(window: "30d", limit: 8)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/stake-moves");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "8");
+    assert.equal(body.data.chain_stake_moves.network.movements, 12);
+    assert.equal(body.data.chain_stake_moves.subnets[0].netuid, 5);
+  });
+
+  test("unsupported window is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(movesQuery('(window: "90d")'));
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+  });
+
+  test("malformed Postgres body falls back to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(movesQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_stake_moves.window, "7d");
+    assert.equal(body.data.chain_stake_moves.subnet_count, 0);
+    assert.equal(body.data.chain_stake_moves.network.movements, 0);
+    assert.equal(body.data.chain_stake_moves.intensity_distribution, null);
+    assert.deepEqual(body.data.chain_stake_moves.subnets, []);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_stake_moves,
+      FIELD_COMPLEXITY.chain_registrations,
+    );
+  });
+});
+
+describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store fallback)", () => {
+  function transfersQuery(argsClause = "") {
+    return `{ chain_stake_transfers${argsClause} {
+      schema_version window observed_at subnet_count
+      network { distinct_senders transfers transfers_per_sender }
+      intensity_distribution { count mean min p25 median p75 p90 max }
+      subnets { netuid distinct_senders transfers transfers_per_sender }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable zeroed card", async () => {
+    const { status, body } = await gql(transfersQuery());
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_stake_transfers, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      subnet_count: 0,
+      network: {
+        distinct_senders: 0,
+        transfers: 0,
+        transfers_per_sender: null,
+      },
+      intensity_distribution: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for a non-default window/limit", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-20T00:00:00.000Z",
+            subnet_count: 1,
+            network: {
+              distinct_senders: 2,
+              transfers: 6,
+              transfers_per_sender: 3,
+            },
+            intensity_distribution: {
+              count: 1,
+              mean: 3,
+              min: 3,
+              p25: 3,
+              median: 3,
+              p75: 3,
+              p90: 3,
+              max: 3,
+            },
+            subnets: [
+              {
+                netuid: 9,
+                distinct_senders: 2,
+                transfers: 6,
+                transfers_per_sender: 3,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      transfersQuery('(window: "30d", limit: 3)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/stake-transfers");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "3");
+    assert.equal(body.data.chain_stake_transfers.network.transfers, 6);
+    assert.equal(body.data.chain_stake_transfers.subnets[0].netuid, 9);
+  });
+
+  test("unsupported window is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(transfersQuery('(window: "1y")'));
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+  });
+
+  test("malformed Postgres body falls back to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(transfersQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_stake_transfers.subnet_count, 0);
+    assert.deepEqual(body.data.chain_stake_transfers.subnets, []);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_stake_transfers,
+      FIELD_COMPLEXITY.chain_stake_moves,
+    );
+  });
+});
+
+describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fallback)", () => {
+  function pairsQuery(argsClause = "") {
+    return `{ chain_transfer_pairs${argsClause} {
+      schema_version window sort observed_at
+      total_volume_tao transfer_count unique_pairs pair_count top_pair_share
+      pairs { from to volume_tao transfer_count last_block last_observed_at }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable zeroed card", async () => {
+    const { status, body } = await gql(pairsQuery());
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_transfer_pairs, {
+      schema_version: 1,
+      window: "7d",
+      sort: "volume",
+      observed_at: null,
+      total_volume_tao: 0,
+      transfer_count: 0,
+      unique_pairs: 0,
+      pair_count: 0,
+      top_pair_share: null,
+      pairs: [],
+    });
+  });
+
+  test("resolves Postgres-tier data forwarding window/sort/limit", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            sort: "count",
+            observed_at: "2026-07-20T00:00:00.000Z",
+            total_volume_tao: 250,
+            transfer_count: 10,
+            unique_pairs: 2,
+            pair_count: 1,
+            top_pair_share: 0.8,
+            pairs: [
+              {
+                from: "5Sender",
+                to: "5Receiver",
+                volume_tao: 200,
+                transfer_count: 8,
+                last_block: 1000,
+                last_observed_at: "2026-07-20T00:00:00.000Z",
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      pairsQuery('(window: "30d", sort: "count", limit: 10)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/transfer-pairs");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("sort"), "count");
+    assert.equal(capturedUrl.searchParams.get("limit"), "10");
+    assert.equal(body.data.chain_transfer_pairs.sort, "count");
+    assert.equal(body.data.chain_transfer_pairs.pairs[0].from, "5Sender");
+  });
+
+  test("unsupported window is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(pairsQuery('(window: "90d")'));
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+  });
+
+  test("unsupported sort is BAD_USER_INPUT", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(pairsQuery('(sort: "fee")'), env);
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("malformed Postgres body falls back to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(pairsQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_transfer_pairs.pair_count, 0);
+    assert.deepEqual(body.data.chain_transfer_pairs.pairs, []);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_transfer_pairs,
+      FIELD_COMPLEXITY.chain_transfers,
+    );
+  });
+});
+
+describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallback)", () => {
+  function xfersQuery(argsClause = "") {
+    return `{ chain_transfers${argsClause} {
+      schema_version window observed_at
+      total_volume_tao transfer_count unique_senders unique_receivers top_sender_share
+      top_senders { address volume_tao transfer_count }
+      top_receivers { address volume_tao transfer_count }
+    } }`;
+  }
+
+  test("cold store, default args: schema-stable zeroed card", async () => {
+    const { status, body } = await gql(xfersQuery());
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_transfers, {
+      schema_version: 1,
+      window: "7d",
+      observed_at: null,
+      total_volume_tao: 0,
+      transfer_count: 0,
+      unique_senders: 0,
+      unique_receivers: 0,
+      top_sender_share: null,
+      top_senders: [],
+      top_receivers: [],
+    });
+  });
+
+  test("resolves Postgres-tier data for a non-default window/limit", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            window: "30d",
+            observed_at: "2026-07-20T00:00:00.000Z",
+            total_volume_tao: 500,
+            transfer_count: 20,
+            unique_senders: 3,
+            unique_receivers: 4,
+            top_sender_share: 0.6,
+            top_senders: [
+              { address: "5Alice", volume_tao: 300, transfer_count: 10 },
+            ],
+            top_receivers: [
+              { address: "5Bob", volume_tao: 200, transfer_count: 8 },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      xfersQuery('(window: "30d", limit: 15)'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(capturedUrl.pathname, "/api/v1/chain/transfers");
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "15");
+    assert.equal(body.data.chain_transfers.total_volume_tao, 500);
+    assert.equal(body.data.chain_transfers.top_senders[0].address, "5Alice");
+    assert.equal(body.data.chain_transfers.top_receivers[0].address, "5Bob");
+  });
+
+  test("unsupported window is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(xfersQuery('(window: "1y")'));
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+  });
+
+  test("malformed Postgres body falls back to schema-stable defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(xfersQuery(), env);
+    assert.equal(status, 200);
+    assert.equal(body.data.chain_transfers.transfer_count, 0);
+    assert.deepEqual(body.data.chain_transfers.top_senders, []);
+    assert.deepEqual(body.data.chain_transfers.top_receivers, []);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_transfers,
+      FIELD_COMPLEXITY.chain_weights,
+    );
+  });
+});
+
 describe("graphql — adapter (#6984, reuses loadAdapter / MCP get_adapter)", () => {
   const SAMPLE = {
     schema_version: 1,

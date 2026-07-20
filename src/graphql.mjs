@@ -163,9 +163,19 @@ import {
   GLOBAL_VALIDATOR_SORTS,
   buildGlobalValidators,
   buildNeuronDetail,
+  buildSubnetValidators,
   buildValidatorDetail,
   overlayFeaturedValidators,
 } from "./metagraph-neurons.mjs";
+import { buildAlphaVolume } from "./alpha-volume.mjs";
+import {
+  buildSubnetOhlc,
+  OHLC_INTERVALS,
+  OHLC_INTERVAL_DEFAULT,
+  DEFAULT_OHLC_WINDOW_DAYS,
+  MAX_OHLC_WINDOW_DAYS,
+} from "./subnet-ohlc.mjs";
+import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
@@ -310,6 +320,43 @@ import {
   CHAIN_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
 } from "./chain-weight-setters.mjs";
+import { buildChainIdleStake } from "./subnet-idle-stake.mjs";
+import {
+  buildChainStakeFlow,
+  CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+  CHAIN_STAKE_FLOW_LIMIT_MAX,
+  CHAIN_STAKE_FLOW_WINDOWS,
+  DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
+} from "./chain-stake-flow.mjs";
+import {
+  buildChainStakeMoves,
+  CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
+  CHAIN_STAKE_MOVES_LIMIT_MAX,
+  CHAIN_STAKE_MOVES_WINDOWS,
+  DEFAULT_CHAIN_STAKE_MOVES_WINDOW,
+} from "./chain-stake-moves.mjs";
+import {
+  buildChainStakeTransfers,
+  CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
+  CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
+  CHAIN_STAKE_TRANSFERS_WINDOWS,
+  DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW,
+} from "./chain-stake-transfers.mjs";
+import {
+  buildChainTransfers,
+  CHAIN_TRANSFER_LIMIT_DEFAULT,
+  CHAIN_TRANSFER_LIMIT_MAX,
+  CHAIN_TRANSFER_WINDOWS,
+  DEFAULT_CHAIN_TRANSFER_WINDOW,
+} from "./chain-transfers.mjs";
+import {
+  buildChainTransferPairs,
+  CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
+  CHAIN_TRANSFER_PAIR_LIMIT_MAX,
+  CHAIN_TRANSFER_PAIR_SORTS,
+  CHAIN_TRANSFER_PAIR_WINDOWS,
+  DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
+} from "./chain-transfer-pairs.mjs";
 import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
@@ -349,6 +396,14 @@ export const SDL = `
     subnet_health_incidents(netuid: Int!, window: String): SubnetHealthIncidents!
     "One subnet's per-surface latency percentiles (p50/p90/p95/p99) over a 7d/30d window (default 7d), computed live from the success-only health-probe history. The latency-distribution companion of subnet_health_incidents' availability view. A subnet with no probe history resolves to a schema-stable empty surfaces list, never null. Mirrors GET /api/v1/subnets/{netuid}/health/percentiles."
     subnet_health_percentiles(netuid: Int!, window: String): SubnetHealthPercentiles!
+    "One subnet's rolling 24h alpha trading volume from the StakeAdded/StakeRemoved trade stream: buy/sell volume in alpha and TAO, trade counts, net flow, a buy-vs-sell sentiment ratio, and volume-to-market-cap ratio. A subnet with no trades resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/volume."
+    subnet_volume(netuid: Int!): SubnetVolume!
+    "One subnet's alpha-price OHLC candles bucketed by interval (1h or 1d, default 1h) over the trailing days window (default 90, max 365), from the same executed-trade stream subnet_volume reads. A subnet with no trades resolves to a schema-stable empty candle list, never null. Mirrors GET /api/v1/subnets/{netuid}/ohlc."
+    subnet_ohlc(netuid: Int!, interval: String, days: Int): SubnetOhlc!
+    "A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
+    subnet_stake_quote(netuid: Int!, amount: Float!, direction: String): SubnetStakeQuote!
+    "One subnet's current validator set (permitted neurons) from the live metagraph snapshot, with each validator's full neuron record. A subnet with no snapshot resolves to a schema-stable empty list, never null. Mirrors GET /api/v1/subnets/{netuid}/validators."
+    subnet_validators(netuid: Int!): SubnetValidatorList!
     "One subnet's chain-event activity summary over a 7d/30d/90d window (default 30d): total events, the per-kind and per-category breakdowns with hotkey/coldkey participation and TAO/alpha amounts, and a bounded newest-first recent-event list (limit 1-50, default 10). A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/event-summary."
     subnet_event_summary(netuid: Int!, window: String, limit: Int): SubnetEventSummary!
     "One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_gaps MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/gaps."
@@ -517,6 +572,18 @@ export const SDL = `
     chain_concentration: ChainConcentration!
     "Network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet with StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h ranked by total_volume_tao, each carrying its full buy/sell/total volume + sentiment scorecard (vol_mcap_ratio always null here -- no per-subnet market-cap input at the network level), plus a network rollup with its own net/gross sentiment reading and the per-subnet total-volume spread, summed live from the account_events stream. Fixed 24h window (no window arg); limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/alpha-volume."
     chain_alpha_volume(limit: Int): ChainAlphaVolume!
+    "Network-wide idle-stake rollup: every subnet's stake delegated to a currently-zero-dividends hotkey, ranked by idle_stake_tao, plus the network total. Current snapshot only (no window/params). A cold store yields a schema-stable empty ranking, never a GraphQL error. Mirrors GET /api/v1/chain/idle-stake."
+    chain_idle_stake: ChainIdleStake!
+    "Network-wide cross-subnet capital-flow leaderboard over a 7d/30d window (default 7d): subnets ranked by net StakeAdded minus StakeRemoved TAO with staked/unstaked/gross totals and an inflow/outflow/balanced direction label, plus a network rollup and the per-subnet net-flow spread, summed live from the account_events stream. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/stake-flow."
+    chain_stake_flow(window: String, limit: Int): ChainStakeFlow!
+    "Network-wide stake-movement (re-delegation) leaderboard over a 7d/30d window (default 7d): subnets ranked by StakeMoved events with each's distinct-mover count and movements-per-mover intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. StakeMoved relocates stake between hotkeys/subnets without unstaking -- re-delegation churn, not net capital flow. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/stake-moves."
+    chain_stake_moves(window: String, limit: Int): ChainStakeMoves!
+    "Network-wide stake-transfer (between-coldkeys) leaderboard over a 7d/30d window (default 7d): subnets ranked by StakeTransferred events with each's distinct-sender count and transfers-per-sender intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. StakeTransferred relocates ownership on the same hotkey -- not net capital or re-delegation churn. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/stake-transfers."
+    chain_stake_transfers(window: String, limit: Int): ChainStakeTransfers!
+    "Network-wide directed native-TAO transfer-corridor leaderboard over a 7d/30d window (default 7d): top sender->receiver pairs ranked by volume (default) or transfer count, each with volume, count, and last block/time, plus a network rollup (total volume, transfer count, unique corridors, top-corridor share). Self-transfers and malformed rows are excluded. limit caps the corridors (default 25, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/transfer-pairs."
+    chain_transfer_pairs(window: String, sort: String, limit: Int): ChainTransferPairs!
+    "Network-wide native-TAO transfer analytics over a 7d/30d window (default 7d): total Balances.Transfer volume and count, distinct senders/receivers, top senders and receivers ranked by volume, and the top senders' share of total volume. limit caps each leaderboard (default 25, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/transfers."
+    chain_transfers(window: String, limit: Int): ChainTransfers!
     "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC (not the Postgres tier). recycled_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/recycled."
     subnet_recycled(netuid: Int!): SubnetRecycled
     "Live current registration/burn cost for one subnet -- the dynamic price between the static min_burn_tao/max_burn_tao bounds, read directly from chain via RPC (not the Postgres tier). burn_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/burn."
@@ -1149,6 +1216,199 @@ export const SDL = `
     sentiment: String!
     "24h volume / market-cap turnover ratio; always null here (no per-subnet market-cap input in scope at the network level)."
     vol_mcap_ratio: Float
+  }
+
+  "Network-wide idle-stake rollup: every subnet's stake on currently-zero-dividends hotkeys, ranked by idle_stake_tao. Mirrors GET /api/v1/chain/idle-stake's data envelope."
+  type ChainIdleStake {
+    schema_version: Int!
+    captured_at: String
+    subnet_count: Int!
+    total_idle_stake_tao: Float!
+    subnets: [ChainIdleStakeSubnet!]!
+  }
+
+  "One subnet's idle-stake scorecard in the network ranking."
+  type ChainIdleStakeSubnet {
+    netuid: Int!
+    neuron_count: Int!
+    idle_neuron_count: Int!
+    idle_stake_tao: Float!
+  }
+
+  "Network-wide cross-subnet capital-flow leaderboard over a lookback window, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/stake-flow's data envelope."
+  type ChainStakeFlow {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    subnet_count: Int!
+    network: ChainStakeFlowNetwork!
+    "Spread of per-subnet net_flow_tao across EVERY subnet with stake events; null when no subnet moved stake."
+    net_flow_distribution: ChainStakeFlowDistribution
+    subnets: [ChainStakeFlowSubnet!]!
+  }
+
+  "Network rollup over every subnet that moved stake in the window."
+  type ChainStakeFlowNetwork {
+    total_staked_tao: Float!
+    total_unstaked_tao: Float!
+    net_flow_tao: Float!
+    gross_flow_tao: Float!
+    stake_events: Int!
+    unstake_events: Int!
+    gaining: Int!
+    losing: Int!
+    flat: Int!
+  }
+
+  "Spread of per-subnet net_flow_tao (can be negative) across EVERY subnet with stake events (not just the returned page)."
+  type ChainStakeFlowDistribution {
+    count: Int!
+    mean: Float!
+    min: Float!
+    p25: Float!
+    median: Float!
+    p75: Float!
+    p90: Float!
+    max: Float!
+  }
+
+  "One subnet's capital-flow scorecard in the window, ranked by net_flow_tao."
+  type ChainStakeFlowSubnet {
+    netuid: Int!
+    total_staked_tao: Float!
+    total_unstaked_tao: Float!
+    net_flow_tao: Float!
+    gross_flow_tao: Float!
+    stake_events: Int!
+    unstake_events: Int!
+    "inflow | outflow | balanced"
+    direction: String!
+  }
+
+  "Network-wide stake-movement (re-delegation) leaderboard over a lookback window, summed live from the account_events StakeMoved stream. Mirrors GET /api/v1/chain/stake-moves's data envelope."
+  type ChainStakeMoves {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    subnet_count: Int!
+    network: ChainStakeMovesNetwork!
+    intensity_distribution: ChainStakeMovesIntensityDistribution
+    subnets: [ChainStakeMovesSubnet!]!
+  }
+
+  "Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a coldkey once even when it moves on several subnets."
+  type ChainStakeMovesNetwork {
+    distinct_movers: Int!
+    movements: Int!
+    "Null when distinct_movers is 0."
+    movements_per_mover: Float
+  }
+
+  "Spread of per-subnet movements-per-mover intensity across EVERY subnet with moves in the window."
+  type ChainStakeMovesIntensityDistribution {
+    count: Int!
+    mean: Float!
+    min: Float!
+    p25: Float!
+    median: Float!
+    p75: Float!
+    p90: Float!
+    max: Float!
+  }
+
+  "One subnet's stake-movement activity in the window, ranked by movements."
+  type ChainStakeMovesSubnet {
+    netuid: Int!
+    distinct_movers: Int!
+    movements: Int!
+    movements_per_mover: Float
+  }
+
+  "Network-wide stake-transfer (between-coldkeys) leaderboard over a lookback window, summed live from the account_events StakeTransferred stream. Mirrors GET /api/v1/chain/stake-transfers's data envelope."
+  type ChainStakeTransfers {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    subnet_count: Int!
+    network: ChainStakeTransfersNetwork!
+    intensity_distribution: ChainStakeTransfersIntensityDistribution
+    subnets: [ChainStakeTransfersSubnet!]!
+  }
+
+  "Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin coldkey once even when it transfers out of several subnets."
+  type ChainStakeTransfersNetwork {
+    distinct_senders: Int!
+    transfers: Int!
+    "Null when distinct_senders is 0."
+    transfers_per_sender: Float
+  }
+
+  "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window."
+  type ChainStakeTransfersIntensityDistribution {
+    count: Int!
+    mean: Float!
+    min: Float!
+    p25: Float!
+    median: Float!
+    p75: Float!
+    p90: Float!
+    max: Float!
+  }
+
+  "One subnet's stake-transfer activity in the window, ranked by transfers."
+  type ChainStakeTransfersSubnet {
+    netuid: Int!
+    distinct_senders: Int!
+    transfers: Int!
+    transfers_per_sender: Float
+  }
+
+  "Network-wide directed native-TAO transfer-corridor leaderboard over a lookback window. Mirrors GET /api/v1/chain/transfer-pairs's data envelope."
+  type ChainTransferPairs {
+    schema_version: Int!
+    window: String
+    "The rank order actually applied: volume or count."
+    sort: String!
+    observed_at: String
+    total_volume_tao: Float!
+    transfer_count: Int!
+    unique_pairs: Int!
+    pair_count: Int!
+    "Highest-volume corridor's share of total pairable volume; null when the window has no pairable volume."
+    top_pair_share: Float
+    pairs: [ChainTransferPair!]!
+  }
+
+  "One directed sender -> receiver corridor on the transfer-pairs leaderboard."
+  type ChainTransferPair {
+    from: String!
+    to: String!
+    volume_tao: Float!
+    transfer_count: Int!
+    last_block: Int
+    last_observed_at: String
+  }
+
+  "Network-wide native-TAO transfer analytics over a lookback window. Mirrors GET /api/v1/chain/transfers's data envelope."
+  type ChainTransfers {
+    schema_version: Int!
+    window: String
+    observed_at: String
+    total_volume_tao: Float!
+    transfer_count: Int!
+    unique_senders: Int!
+    unique_receivers: Int!
+    "Top senders' combined share of total volume; null when total volume is 0."
+    top_sender_share: Float
+    top_senders: [ChainTransferParty!]!
+    top_receivers: [ChainTransferParty!]!
+  }
+
+  "One account on a chain-transfers sender/receiver leaderboard."
+  type ChainTransferParty {
+    address: String!
+    volume_tao: Float!
+    transfer_count: Int!
   }
 
   "Network-wide weight-setter leaderboard over a lookback window, summed live from the account_events WeightsSet stream. The setter-level drill-in behind ChainWeights. Mirrors GET /api/v1/chain/weights/setters."
@@ -2069,6 +2329,82 @@ export const SDL = `
     source: String
     "Per operational surface: its sample count, uptime_ratio, incident_count, total downtime_ms, and gap-island incident list (started_at/ended_at/duration_ms/failed_samples, epoch-ms). Opaque JSON passed through verbatim, matching the get_subnet_health_incidents MCP/REST shape (like SubnetHealthTrends.windows)."
     surfaces: JSON!
+  }
+
+  "One subnet's rolling 24h alpha trading volume (#6979). Mirrors GET /api/v1/subnets/{netuid}/volume' data envelope."
+  type SubnetVolume {
+    schema_version: Int!
+    netuid: Int!
+    "The rolling window label this card covers (24h)."
+    window: String
+    buy_volume_alpha: Float!
+    sell_volume_alpha: Float!
+    total_volume_alpha: Float!
+    buy_volume_tao: Float!
+    sell_volume_tao: Float!
+    total_volume_tao: Float!
+    buy_count: Int!
+    sell_count: Int!
+    net_volume_alpha: Float!
+    "Buy share of total volume (0-1); null when there was no volume."
+    sentiment_ratio: Float
+    "Bucketed reading of sentiment_ratio (buying/selling/neutral)."
+    sentiment: String
+    "Total TAO volume over alpha market cap; null when market cap is unknown."
+    vol_mcap_ratio: Float
+  }
+
+  type SubnetOhlcCandle {
+    "Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int."
+    bucket_start: Float!
+    bucket_start_iso: String
+    open: Float
+    high: Float
+    low: Float
+    close: Float
+    volume_alpha: Float
+    volume_tao: Float
+    event_count: Int!
+  }
+
+  "One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope."
+  type SubnetOhlc {
+    schema_version: Int!
+    netuid: Int!
+    "The resolved bucket interval (1h/1d)."
+    interval: String
+    candles: [SubnetOhlcCandle!]!
+    "True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted."
+    root_excluded: Boolean!
+  }
+
+  "A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
+  type SubnetStakeQuote {
+    schema_version: Int!
+    netuid: Int!
+    "stake (spends TAO for alpha) or unstake (spends alpha for TAO)."
+    direction: String
+    amount: Float
+    expected_out: Float
+    expected_out_unit: String
+    spot_price_tao: Float
+    effective_price_tao: Float
+    price_impact_pct: Float
+    tao_in_pool_tao: Float
+    alpha_in_pool: Float
+    "True for root (netuid 0), which quotes 1:1 with no price impact."
+    is_root: Boolean
+  }
+
+  "One subnet's current validator set (#6979). Mirrors GET /api/v1/subnets/{netuid}/validators' data envelope."
+  type SubnetValidatorList {
+    schema_version: Int!
+    netuid: Int!
+    validator_count: Int!
+    captured_at: String
+    block_number: Int
+    "Each permitted validator's live metagraph row -- the same NeuronState shape the neuron field returns."
+    validators: [NeuronState!]!
   }
 
   "One subnet's per-surface success-only latency percentiles (#6980). Mirrors GET /api/v1/subnets/{netuid}/health/percentiles' data envelope."
@@ -3137,6 +3473,10 @@ export const FIELD_COMPLEXITY = {
   subnet_uptime: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_percentiles: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_volume: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_ohlc: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_stake_quote: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_validators: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_event_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_gaps: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_evidence: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3182,6 +3522,12 @@ export const FIELD_COMPLEXITY = {
   chain_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_concentration: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_alpha_volume: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_idle_stake: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_stake_transfers: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_transfer_pairs: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_transfers: RELATIONSHIP_FIELD_COMPLEXITY,
   account_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
   account_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
   account_position_history: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4718,6 +5064,156 @@ const rootValue = {
       source: data.source ?? null,
       summary: data.summary ?? null,
       surfaces: data.surfaces ?? [],
+    };
+  },
+
+  async subnet_volume({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // The vol/mcap ratio needs the subnet's alpha market cap, which lives in the
+    // economics artifact rather than the trade stream -- same two-source shape
+    // the REST route and get_subnet_volume MCP tool use.
+    const economics = await loadSubnetEconomics(context, netuid);
+    const marketCapTao =
+      typeof economics?.alpha_market_cap_tao === "number" &&
+      Number.isFinite(economics.alpha_market_cap_tao)
+        ? economics.alpha_market_cap_tao
+        : null;
+    // The tier serves this route inside a { data } envelope (unlike the flat
+    // cards), so unwrap it before falling back to the zeroed build.
+    const tier = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(context, `/api/v1/subnets/${netuid}/volume`),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
+    const data = tier?.data ?? buildAlphaVolume([], netuid, { marketCapTao });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? null,
+      buy_volume_alpha: data.buy_volume_alpha ?? 0,
+      sell_volume_alpha: data.sell_volume_alpha ?? 0,
+      total_volume_alpha: data.total_volume_alpha ?? 0,
+      buy_volume_tao: data.buy_volume_tao ?? 0,
+      sell_volume_tao: data.sell_volume_tao ?? 0,
+      total_volume_tao: data.total_volume_tao ?? 0,
+      buy_count: data.buy_count ?? 0,
+      sell_count: data.sell_count ?? 0,
+      net_volume_alpha: data.net_volume_alpha ?? 0,
+      sentiment_ratio: data.sentiment_ratio ?? null,
+      sentiment: data.sentiment ?? null,
+      vol_mcap_ratio: data.vol_mcap_ratio ?? null,
+    };
+  },
+
+  async subnet_ohlc({ netuid, interval, days }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same interval/days validation the REST route + get_subnet_ohlc MCP tool
+    // apply -- out-of-contract input is a GraphQL BAD_USER_INPUT error rather
+    // than a silently-clamped card.
+    const intervalParam = interval ?? OHLC_INTERVAL_DEFAULT;
+    if (!Object.hasOwn(OHLC_INTERVALS, intervalParam)) {
+      throw new GraphQLError(
+        `interval must be one of: ${Object.keys(OHLC_INTERVALS).join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const daysParam = days ?? DEFAULT_OHLC_WINDOW_DAYS;
+    if (!Number.isInteger(daysParam) || daysParam < 1) {
+      throw new GraphQLError("days must be a positive integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (daysParam > MAX_OHLC_WINDOW_DAYS) {
+      throw new GraphQLError(`days must be at most ${MAX_OHLC_WINDOW_DAYS}.`, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("interval", intervalParam);
+    params.set("days", String(daysParam));
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, `/api/v1/subnets/${netuid}/ohlc`, params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildSubnetOhlc([], netuid, {
+        interval: intervalParam,
+        days: daysParam,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      interval: data.interval ?? intervalParam,
+      candles: data.candles ?? [],
+      root_excluded: data.root_excluded ?? false,
+    };
+  },
+
+  async subnet_stake_quote({ netuid, amount, direction }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const directionParam = direction ?? "stake";
+    if (!STAKE_QUOTE_DIRECTIONS.includes(directionParam)) {
+      throw new GraphQLError(
+        `direction must be one of: ${STAKE_QUOTE_DIRECTIONS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same pure computeStakeQuote over the live pool reserves the REST route +
+    // get_subnet_stake_quote MCP tool run -- no economics logic duplicated, and
+    // still strictly read-only (nothing is built, signed, or submitted).
+    const economics = await loadSubnetEconomics(context, netuid);
+    const result = computeStakeQuote({
+      netuid,
+      taoInPool: economics?.tao_in_pool_tao,
+      alphaInPool: economics?.alpha_in_pool,
+      amount,
+      direction: directionParam,
+    });
+    if (!result.ok) {
+      // The shared calculator's own contract errors (bad amount, dead pool)
+      // surface as BAD_USER_INPUT rather than a partially-filled card.
+      throw new GraphQLError(result.error, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return { schema_version: 1, ...result.quote };
+  },
+
+  async subnet_validators({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetValidators([])
+    // empty-snapshot fallback the REST route and list_subnet_validators share.
+    // REST takes no filter params here, so neither does this mirror.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, `/api/v1/subnets/${netuid}/validators`),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildSubnetValidators([], netuid);
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      validator_count: data.validator_count ?? 0,
+      captured_at: data.captured_at ?? null,
+      block_number: data.block_number ?? null,
+      validators: data.validators ?? [],
     };
   },
 
@@ -7021,6 +7517,264 @@ const rootValue = {
       },
       volume_distribution: data.volume_distribution ?? null,
       subnets: data.subnets || [],
+    };
+  },
+
+  async chain_idle_stake(_args, context) {
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainIdleStake([])
+    // cold fallback contract handleChainIdleStake / MCP get_chain_idle_stake
+    // use: a cold/absent tier yields a schema-stable empty ranking, never a
+    // GraphQL error. No window/limit args -- current snapshot only.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/idle-stake"),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildChainIdleStake([]);
+    return {
+      schema_version: data.schema_version ?? 1,
+      captured_at: data.captured_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      total_idle_stake_tao: data.total_idle_stake_tao ?? 0,
+      subnets: data.subnets || [],
+    };
+  },
+
+  async chain_stake_flow({ window, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_FLOW_WINDOW;
+    if (!Object.hasOwn(CHAIN_STAKE_FLOW_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, CHAIN_STAKE_FLOW_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+      maxLimit: CHAIN_STAKE_FLOW_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // buildChainStakeFlow empty-card fallback REST's handleChainStakeFlow
+    // uses. #4909 D1 retirement: never a live D1 read.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/stake-flow", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildChainStakeFlow([], {
+        window: requestedWindow,
+        limit: safeLimit,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      observed_at: data.observed_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      network: data.network ?? {
+        total_staked_tao: 0,
+        total_unstaked_tao: 0,
+        net_flow_tao: 0,
+        gross_flow_tao: 0,
+        stake_events: 0,
+        unstake_events: 0,
+        gaining: 0,
+        losing: 0,
+        flat: 0,
+      },
+      net_flow_distribution: data.net_flow_distribution ?? null,
+      subnets: data.subnets || [],
+    };
+  },
+
+  async chain_stake_moves({ window, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_MOVES_WINDOW;
+    if (!Object.hasOwn(CHAIN_STAKE_MOVES_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, CHAIN_STAKE_MOVES_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
+      maxLimit: CHAIN_STAKE_MOVES_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // buildChainStakeMoves empty-card fallback REST's handleChainStakeMoves
+    // uses. #4909 D1 retirement: never a live D1 read.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/stake-moves", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildChainStakeMoves([], {
+        window: requestedWindow,
+        limit: safeLimit,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      observed_at: data.observed_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      network: data.network ?? {
+        distinct_movers: 0,
+        movements: 0,
+        movements_per_mover: null,
+      },
+      intensity_distribution: data.intensity_distribution ?? null,
+      subnets: data.subnets || [],
+    };
+  },
+
+  async chain_stake_transfers({ window, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW;
+    if (!Object.hasOwn(CHAIN_STAKE_TRANSFERS_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(
+          requestedWindow,
+          CHAIN_STAKE_TRANSFERS_WINDOWS,
+        ),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
+      maxLimit: CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // buildChainStakeTransfers empty-card fallback REST's
+    // handleChainStakeTransfers uses. #4909 D1 retirement: never a live D1 read.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/stake-transfers", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildChainStakeTransfers([], {
+        window: requestedWindow,
+        limit: safeLimit,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      observed_at: data.observed_at ?? null,
+      subnet_count: data.subnet_count ?? 0,
+      network: data.network ?? {
+        distinct_senders: 0,
+        transfers: 0,
+        transfers_per_sender: null,
+      },
+      intensity_distribution: data.intensity_distribution ?? null,
+      subnets: data.subnets || [],
+    };
+  },
+
+  async chain_transfer_pairs({ window, sort, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
+    if (!Object.hasOwn(CHAIN_TRANSFER_PAIR_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, CHAIN_TRANSFER_PAIR_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same CHAIN_TRANSFER_PAIR_SORTS allow-list REST validates against; sort is
+    // optional (null -> volume default), so only a non-null value is checked.
+    if (sort != null && !CHAIN_TRANSFER_PAIR_SORTS.includes(sort)) {
+      throw new GraphQLError(
+        `"${sort}" is not a supported sort. Supported: ${CHAIN_TRANSFER_PAIR_SORTS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
+      maxLimit: CHAIN_TRANSFER_PAIR_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    if (sort != null) params.set("sort", sort);
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // buildChainTransferPairs empty-card fallback REST uses, including the KV
+    // health:meta observed_at stamp. #4909 D1 retirement: never a live D1 read.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/transfer-pairs", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildChainTransferPairs({
+        window: requestedWindow,
+        sort,
+        observedAt: await loadObservedAt(context),
+        totals: null,
+        pairs: [],
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      sort: data.sort ?? CHAIN_TRANSFER_PAIR_SORTS[0],
+      observed_at: data.observed_at ?? null,
+      total_volume_tao: data.total_volume_tao ?? 0,
+      transfer_count: data.transfer_count ?? 0,
+      unique_pairs: data.unique_pairs ?? 0,
+      pair_count: data.pair_count ?? 0,
+      top_pair_share: data.top_pair_share ?? null,
+      pairs: data.pairs || [],
+    };
+  },
+
+  async chain_transfers({ window, limit }, context) {
+    const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
+    if (!Object.hasOwn(CHAIN_TRANSFER_WINDOWS, requestedWindow)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(requestedWindow, CHAIN_TRANSFER_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_TRANSFER_LIMIT_DEFAULT,
+      maxLimit: CHAIN_TRANSFER_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("window", requestedWindow);
+    params.set("limit", String(safeLimit));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) ->
+    // buildChainTransfers empty-card fallback REST's handleChainTransfers
+    // uses, including the KV health:meta observed_at stamp. #4909 D1
+    // retirement: never a live D1 read.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/chain/transfers", params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildChainTransfers({
+        window: requestedWindow,
+        observedAt: await loadObservedAt(context),
+        totals: null,
+        senders: [],
+        receivers: [],
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      window: data.window ?? requestedWindow,
+      observed_at: data.observed_at ?? null,
+      total_volume_tao: data.total_volume_tao ?? 0,
+      transfer_count: data.transfer_count ?? 0,
+      unique_senders: data.unique_senders ?? 0,
+      unique_receivers: data.unique_receivers ?? 0,
+      top_sender_share: data.top_sender_share ?? null,
+      top_senders: data.top_senders || [],
+      top_receivers: data.top_receivers || [],
     };
   },
 
