@@ -518,12 +518,31 @@ function scanCapturedFixtureBody(relativePath, content) {
     return;
   }
 
+  // "openapi" and "subnet-api" fixture kinds are the subnet operator's own
+  // curated, authored self-description (a formal OpenAPI spec, or a custom
+  // discovery/quick-start doc) — confirmed false positives in production
+  // (2026-07-20): a WalletCreate JSON-Schema's `private_key` property name
+  // (and its sibling `required` array entry) is schema metadata, not prose,
+  // and a quick-start's `Wallet.createRandom()` tutorial snippet demonstrates
+  // generating a brand-new wallet, disclosing nothing. Neither is a
+  // description/summary/title field, so isOpenApiDocumentationField below
+  // doesn't reach them. "data-artifact" fixtures are deliberately excluded
+  // from this broader exemption: they're live OPERATIONAL data (e.g. a
+  // genomics subnet's per-miner submitted scores/logs) that can echo back
+  // arbitrary third-party free text, not the operator's own curated docs, so
+  // they keep the full wallet/key-wording re-check below.
+  const isCuratedDocumentationKind =
+    fixture?.kind === "openapi" || fixture?.kind === "subnet-api";
+
   for (const { valuePath, value, kind } of walkJsonStrings(body)) {
     for (const pattern of patterns) {
       // Keep broad Bittensor terminology exempt for mirrored fixture bodies, but
       // still scan security-sensitive wallet/key phrases that can appear under
       // generic live-response keys after sanitization.
       if (pattern.soft && !pattern.scanFixtureBody) {
+        continue;
+      }
+      if (pattern.soft && isCuratedDocumentationKind) {
         continue;
       }
       // OpenAPI documentation fields (description/summary/title) are human API

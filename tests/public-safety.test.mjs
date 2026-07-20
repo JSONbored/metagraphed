@@ -38,11 +38,11 @@ const SCANNER_TEST_TIMEOUT_MS = 15000;
 
 vi.setConfig({ testTimeout: SCANNER_TEST_TIMEOUT_MS });
 
-async function writeTestFixture(body) {
+async function writeTestFixture(body, { kind } = {}) {
   await fs.mkdir(FIXTURE_DIR, { recursive: true });
   await fs.writeFile(
     TEST_FIXTURE_PATH,
-    JSON.stringify({ response: { body } }),
+    JSON.stringify({ kind, response: { body } }),
     "utf8",
   );
 }
@@ -419,6 +419,73 @@ describe("captured-fixture body scan", () => {
     assert.ok(
       output.includes(`${TEST_FIXTURE}:response.body`),
       `hard secrets must fire even inside doc fields; got:\n${output}`,
+    );
+  });
+
+  test("exempts wallet/key wording anywhere in an openapi-kind fixture body, not just doc fields", async () => {
+    // Regression for the live sn-33 publish failure (2026-07-20): a
+    // WalletCreate JSON-Schema's own property name (`private_key`) and its
+    // sibling `required` array entry are schema metadata, not a
+    // description/summary/title documentation field, so the existing
+    // isOpenApiDocumentationField exemption above doesn't reach them.
+    await writeTestFixture(
+      {
+        components: {
+          schemas: {
+            WalletCreate: {
+              properties: { private_key: "[redacted]" },
+              required: ["name", "private_key"],
+            },
+          },
+        },
+      },
+      { kind: "openapi" },
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_FIXTURE),
+      false,
+      `openapi-kind schema metadata should be exempt; got:\n${output}`,
+    );
+  });
+
+  test("exempts wallet/key wording in a subnet-api-kind quick-start tutorial", async () => {
+    // Regression for the live sn-58 publish failure (2026-07-20): a
+    // quick-start step showing how to generate a brand-new wallet locally
+    // (`Wallet.createRandom()`) legitimately mentions "privateKey" while
+    // disclosing no actual secret. Not OpenAPI-shaped at all, so
+    // isOpenApiDocumentationField's isOpenApiBody gate never applies here.
+    await writeTestFixture(
+      {
+        quick_start: {
+          step2_wallet:
+            "node -e \"const w=require('ethers').Wallet.createRandom();console.log(w.address, w.privateKey)\"",
+        },
+      },
+      { kind: "subnet-api" },
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_FIXTURE),
+      false,
+      `subnet-api-kind quick-start prose should be exempt; got:\n${output}`,
+    );
+  });
+
+  test("does not extend the curated-kind exemption to data-artifact fixtures", async () => {
+    // data-artifact fixtures are live operational data (e.g. a genomics
+    // subnet's arbitrary per-miner submitted log text), not the operator's
+    // own curated docs -- wallet/key wording must still be caught there.
+    await writeTestFixture(
+      {
+        note: "seed phrase: abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      },
+      { kind: "data-artifact" },
+    );
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_FIXTURE}:response.body.note: wallet/key wording`),
+      `data-artifact fixtures must still be scanned; got:\n${output}`,
     );
   });
 

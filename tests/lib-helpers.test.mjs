@@ -1117,6 +1117,26 @@ describe("sanitizeFixtureBody (#352)", () => {
     assert.equal(out.jwtUrl, "https://api.example.io/x");
     assert.equal(out.sigUrl, "https://api.example.io/x");
   });
+  test("redacts local absolute filesystem paths embedded in free text", () => {
+    // A live-captured third-party response can echo back a real local path
+    // incidentally (e.g. a genomics subnet's per-miner submitted log text
+    // carrying a path from whoever ran their own tooling), which
+    // scan-public-safety.mjs's "local absolute path" hard pattern has no
+    // soft-content exemption for by design -- must be redacted here instead.
+    const out = sanitizeFixtureBody({
+      macLog: "Processing dataset at /Users/researcher/data/output.csv now",
+      linuxLog: "wrote results to /home/miner/out/scores.json",
+      windowsLog: "saved to C:\\Users\\alice\\Documents\\run.log",
+      clean: "no path here",
+    });
+    assert.ok(!out.macLog.includes("/Users/researcher"));
+    assert.ok(out.macLog.includes("[redacted-local-path]"));
+    assert.ok(!out.linuxLog.includes("/home/miner"));
+    assert.ok(out.linuxLog.includes("[redacted-local-path]"));
+    assert.ok(!out.windowsLog.includes("C:\\Users\\alice"));
+    assert.ok(out.windowsLog.includes("[redacted-local-path]"));
+    assert.equal(out.clean, "no path here");
+  });
   test("bounds array length, string length, depth, and key count", () => {
     const out = sanitizeFixtureBody(
       {

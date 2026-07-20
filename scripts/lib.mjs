@@ -942,6 +942,21 @@ const schemaDroppedContentKeys = new Set([
   "examples",
 ]);
 const schemaAbsoluteUrlPattern = /\b(?:https?|wss?):\/\/[^\s<>"'`)}\]]+/gi;
+// Local absolute filesystem paths, scheme-less so distinct from the URL
+// pattern above. Mirrors scan-public-safety.mjs's "local absolute path" hard
+// pattern, which has no soft-content exemption for mirrored/captured fixture
+// bodies by design (a real leak shape, not terminology) -- a live-captured
+// third-party response can echo one back regardless (e.g. a genomics
+// subnet's per-miner submitted log text carrying a real path from whoever
+// ran their own tooling locally, live-confirmed 2026-07-20), so it must be
+// redacted here at capture time rather than relied on to be caught/allowed
+// downstream.
+const localAbsolutePathPattern =
+  /\/Users\/[^\s"'`<>]+|\/home\/[^\s"'`<>]+|C:\\Users\\[^\s"'`<>]+/g;
+
+function redactLocalAbsolutePaths(value) {
+  return value.replace(localAbsolutePathPattern, "[redacted-local-path]");
+}
 
 function isSchemaExtensionKey(key) {
   return String(key || "")
@@ -966,10 +981,13 @@ function sanitizeSchemaUrlString(value) {
 }
 
 function sanitizeSchemaText(value) {
-  return value.replace(schemaAbsoluteUrlPattern, (match) => {
-    const sanitized = sanitizeSchemaUrlString(match);
-    return sanitized || "[redacted-unsafe-url]";
-  });
+  return redactLocalAbsolutePaths(value).replace(
+    schemaAbsoluteUrlPattern,
+    (match) => {
+      const sanitized = sanitizeSchemaUrlString(match);
+      return sanitized || "[redacted-unsafe-url]";
+    },
+  );
 }
 
 function sanitizeSchemaKey(key) {
