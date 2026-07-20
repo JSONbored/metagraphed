@@ -7009,6 +7009,166 @@ describe("graphql — agent_resources (#6987, baked AI-resources index)", () => 
   });
 });
 
+describe("graphql — candidates / fixtures / agent_catalog / freshness / top_holders (#6991)", () => {
+  const CANDIDATES = {
+    candidates: [
+      { id: "c1", netuid: 1, kind: "docs", provider: "acme", state: "new" },
+      { id: "c2", netuid: 2, kind: "api", provider: "beta", state: "verified" },
+    ],
+  };
+
+  test("candidates resolves the ledger with total and next_cursor", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { status, body } = await gql("{ candidates }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.candidates.total, 2);
+    assert.equal(body.data.candidates.items.length, 2);
+  });
+
+  test("candidates applies the netuid/kind/provider/state filters", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql(
+      '{ candidates(netuid: 2, kind: "api", provider: "beta", state: "verified") }',
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.candidates.total, 1);
+    assert.equal(body.data.candidates.items[0].id, "c2");
+  });
+
+  test("candidates pages with limit and hands back a next_cursor", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql("{ candidates(limit: 1) }", env);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.candidates.items.length, 1);
+    assert.equal(body.data.candidates.total, 2);
+    assert.equal(body.data.candidates.next_cursor, "c1");
+  });
+
+  test("candidates resolves an empty ledger when the artifact is cold", async () => {
+    const { body } = await gql("{ candidates }");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.candidates, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("fixtures resolves the baked fixture index", async () => {
+    const env = fixtureEnv({
+      "/metagraph/fixtures.json": {
+        schema_version: 1,
+        fixtures: [{ id: "f1" }],
+      },
+    });
+    const { body } = await gql("{ fixtures }", env);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.fixtures.fixtures[0].id, "f1");
+  });
+
+  test("fixtures degrades to null when not baked", async () => {
+    const { body } = await gql("{ fixtures }");
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.fixtures, null);
+  });
+
+  test("agent_catalog resolves the global index", async () => {
+    const env = fixtureEnv({
+      "/metagraph/agent-catalog.json": {
+        schema_version: 1,
+        subnets: [{ netuid: 1 }],
+      },
+    });
+    const { body } = await gql("{ agent_catalog }", env);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.agent_catalog.subnets[0].netuid, 1);
+  });
+
+  test("agent_catalog resolves one subnet's per-service detail", async () => {
+    const env = fixtureEnv({
+      "/metagraph/agent-catalog/7.json": {
+        netuid: 7,
+        services: [{ id: "s1" }],
+      },
+    });
+    const { body } = await gql("{ agent_catalog(netuid: 7) }", env);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.agent_catalog.services[0].id, "s1");
+  });
+
+  test("agent_catalog degrades to null when not baked", async () => {
+    const { body } = await gql("{ agent_catalog }");
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.agent_catalog, null);
+  });
+
+  test("freshness resolves the baked artifact", async () => {
+    const env = fixtureEnv({
+      "/metagraph/freshness.json": {
+        schema_version: 1,
+        artifacts: [{ path: "/x.json" }],
+      },
+    });
+    const { body } = await gql("{ freshness }", env);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.freshness.artifacts[0].path, "/x.json");
+  });
+
+  test("freshness degrades to null when not baked", async () => {
+    const { body } = await gql("{ freshness }");
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.freshness, null);
+  });
+
+  test("top_holders resolves the postgres tier payload", async () => {
+    let url;
+    const env = {
+      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          url = new URL(r.url);
+          return Response.json({
+            schema_version: 1,
+            holders: [{ ss58: "5A" }],
+          });
+        },
+      },
+    };
+    const { body } = await gql("{ top_holders(limit: 5) }", env);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.top_holders.holders[0].ss58, "5A");
+    assert.equal(url.pathname, "/api/v1/accounts/top-holders");
+    assert.equal(url.searchParams.get("limit"), "5");
+    assert.equal(url.searchParams.get("sort"), "total_tao");
+  });
+
+  test("top_holders falls back to a schema-stable empty list when the tier is cold", async () => {
+    const { body } = await gql("{ top_holders }");
+    assert.equal(body.errors, undefined);
+    assert.ok(body.data.top_holders);
+    assert.deepEqual(body.data.top_holders.holders ?? [], []);
+  });
+
+  test("top_holders rejects an unknown sort with BAD_USER_INPUT", async () => {
+    const { body } = await gql('{ top_holders(sort: "nope") }');
+    assert.equal(body.errors?.[0]?.extensions?.code, "BAD_USER_INPUT");
+  });
+
+  test("the five fields are weighted as fan-out fields", () => {
+    for (const f of [
+      "candidates",
+      "fixtures",
+      "agent_catalog",
+      "freshness",
+      "top_holders",
+    ]) {
+      assert.equal(FIELD_COMPLEXITY[f], 5, `${f} should be weighted`);
+    }
+  });
+});
+
 // #7168: GraphQL parity for the registry-summary / source-health / lineage /
 // rpc-endpoints REST routes, each reusing the same baked artifact its MCP tool
 // (registry_summary / get_source_health / get_lineage / list_rpc_endpoints)

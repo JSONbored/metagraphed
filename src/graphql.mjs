@@ -145,11 +145,21 @@ import {
   formatLeaderboards,
   LEADERBOARD_BOARDS,
   loadSubnetTrajectory,
+  mergeFreshness,
   mergeRpcEndpoints,
+  overlayCatalogDetail,
+  overlayCatalogIndex,
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
 } from "./health-serving.mjs";
+import {
+  buildTopHoldersList,
+  DEFAULT_TOP_HOLDERS_SORT,
+  TOP_HOLDERS_LIMIT_DEFAULT,
+  TOP_HOLDERS_LIMIT_MAX,
+  TOP_HOLDERS_SORTS,
+} from "./top-holders.mjs";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.mjs";
 import {
   COMPARE_VALIDATORS_MAX,
@@ -449,6 +459,16 @@ export const SDL = `
     subnet_volume(netuid: Int!): SubnetVolume!
     "The machine-readable AI-resources index: the copyable agent prompt (/agent.md), MCP server install metadata and tool listing, the Bittensor skill, llms.txt, OpenAPI, and links to the agent-facing APIs. Use it to bootstrap an agent integration before calling the catalog/search fields. Null when the index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_agent_resources MCP/REST shape. Mirrors GET /api/v1/agent-resources."
     agent_resources: JSON
+    "The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state and page with limit/cursor, exactly like the REST route. Resolves to {items,total,next_cursor} as opaque JSON. Mirrors GET /api/v1/candidates."
+    candidates(netuid: Int, kind: String, provider: String, state: String, limit: Int, cursor: String): JSON
+    "The recorded response fixtures for registered surfaces, used to replay/verify a surface without calling it. Null when no fixture index has been baked in this environment. Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures."
+    fixtures: JSON
+    "The agent-callable service catalog: without a netuid, the global index of subnets exposing callable services; with one, that subnet's full per-service catalog. Both are overlaid with live health exactly as REST composes them. Null when the catalog has not been baked. Opaque JSON, matching the get_agent_catalog MCP/REST shape. Mirrors GET /api/v1/agent-catalog."
+    agent_catalog(netuid: Int): JSON
+    "Artifact freshness: each published artifact's generated_at/age, merged with the live cron snapshot stamp when the health store is warm. Null when no freshness artifact has been baked. Opaque JSON, matching the get_freshness MCP/REST shape. Mirrors GET /api/v1/freshness."
+    freshness: JSON
+    "The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when the holders tier is cold, never null. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders."
+    top_holders(sort: String, limit: Int): JSON
     "The full compact search index: one document per subnet/surface/provider/doc, each with its id, type, title, subtitle, url, and the per-document token blob that widens server-side recall. Documents are heterogeneous by type, so each is passed through as opaque JSON. Mirrors GET /api/v1/search."
     search(limit: Int, cursor: String): SearchDocumentList!
     "The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Mirrors GET /api/v1/search-index."
@@ -3872,6 +3892,11 @@ export const FIELD_COMPLEXITY = {
   subnet_health_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_percentiles: RELATIONSHIP_FIELD_COMPLEXITY,
   agent_resources: RELATIONSHIP_FIELD_COMPLEXITY,
+  candidates: RELATIONSHIP_FIELD_COMPLEXITY,
+  fixtures: RELATIONSHIP_FIELD_COMPLEXITY,
+  agent_catalog: RELATIONSHIP_FIELD_COMPLEXITY,
+  freshness: RELATIONSHIP_FIELD_COMPLEXITY,
+  top_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   search: RELATIONSHIP_FIELD_COMPLEXITY,
   search_index: RELATIONSHIP_FIELD_COMPLEXITY,
   domains: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4624,6 +4649,85 @@ const rootValue = {
       next_cursor: data.next_cursor ?? null,
       entries: data.entries ?? [],
     };
+  },
+
+  // #6991: five registry-meta routes that had an MCP tool but no GraphQL
+  // field. Each reads the same baked artifact (and applies the same overlay /
+  // builder) its MCP tool does, so REST, MCP, and GraphQL can't drift.
+  async candidates({ netuid, kind, provider, state, limit, cursor }, context) {
+    const data = await loadArtifact(context, "/metagraph/candidates.json");
+    const all = Array.isArray(data?.candidates) ? data.candidates : [];
+    const filtered = all.filter(
+      (c) =>
+        (netuid == null || c.netuid === netuid) &&
+        (kind == null || c.kind === kind) &&
+        (provider == null || c.provider === provider) &&
+        (state == null || c.state === state),
+    );
+    const { page, total, nextCursor } = paginate(
+      filtered,
+      limit,
+      cursor,
+      (c) => c.id ?? c.key,
+    );
+    return { items: page, total, next_cursor: nextCursor };
+  },
+
+  fixtures(_args, context) {
+    return loadArtifact(context, "/metagraph/fixtures.json");
+  },
+
+  async agent_catalog({ netuid }, context) {
+    const live = await loadLiveHealth(context);
+    if (netuid == null) {
+      const index = await loadArtifact(
+        context,
+        "/metagraph/agent-catalog.json",
+      );
+      return index && (overlayCatalogIndex(index, live) || index);
+    }
+    const detail = await loadArtifact(
+      context,
+      `/metagraph/agent-catalog/${netuid}.json`,
+    );
+    return detail && (overlayCatalogDetail(detail, live, netuid) || detail);
+  },
+
+  async freshness(_args, context) {
+    // Same baked-artifact + live KV meta merge loadFreshness performs for MCP.
+    const base = await loadArtifact(context, "/metagraph/freshness.json");
+    if (!base) return null;
+    const meta = await readHealthKv(context.env, KV_HEALTH_META);
+    return mergeFreshness(base, meta) ?? base;
+  },
+
+  async top_holders({ sort, limit }, context) {
+    // Same allowlist REST enforces -- an unknown sort is BAD_USER_INPUT rather
+    // than silently falling back, mirroring the route's invalid_query 400.
+    if (sort != null && !TOP_HOLDERS_SORTS.includes(sort)) {
+      throw new GraphQLError(
+        `sort must be one of: ${TOP_HOLDERS_SORTS.join(", ")}.`,
+        {
+          extensions: { code: "BAD_USER_INPUT" },
+        },
+      );
+    }
+    const safeSort = sort ?? DEFAULT_TOP_HOLDERS_SORT;
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: TOP_HOLDERS_LIMIT_DEFAULT,
+      maxLimit: TOP_HOLDERS_LIMIT_MAX,
+    });
+    const params = new URLSearchParams({
+      sort: safeSort,
+      limit: String(safeLimit),
+    });
+    return (
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/accounts/top-holders", params),
+        "METAGRAPH_TOP_HOLDERS_SOURCE",
+      )) ?? buildTopHoldersList([], { sort: safeSort, limit: safeLimit })
+    );
   },
 
   async subnet_trajectory({ netuid }, context) {
