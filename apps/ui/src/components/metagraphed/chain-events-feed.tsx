@@ -5,9 +5,10 @@ import { API_BASE } from "@/lib/metagraphed/config";
 import { ResetFiltersButton, SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo, ListShell, LoadMore } from "@jsonbored/ui-kit";
 import { chainEventsInfiniteQuery } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import type { ChainEvent } from "@/lib/metagraphed/types";
+import { chainStreamEventMatchesFilters, useChainStream } from "@/hooks/use-chain-stream";
 
 const TH = "px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
 
@@ -48,6 +49,11 @@ interface Props {
  * pallet/method filters. Rendered both as an embedded section on /explorer and
  * as the standalone /events route, so it lives here as one shared component to
  * keep the two in sync.
+ *
+ * #7008: also listens to `GET /api/v1/chain/stream` (SSE) so matching
+ * `chain_events` frames trigger a refetch — EventSource auto-reconnects, and
+ * the existing manual/stale-refresh path remains the gap-cover when the stream
+ * is down.
  */
 export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
   const baseParams = chainEventsBaseParams(pallet, method);
@@ -64,11 +70,28 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
     refetch,
   } = useInfiniteQuery(chainEventsInfiniteQuery(baseParams, cursor));
 
+  const { status: streamStatus } = useChainStream({
+    topics: ["chain_events"],
+    matches: (payload) => chainStreamEventMatchesFilters(payload, pallet, method),
+    onEvent: () => {
+      void refetch();
+    },
+  });
+
   const pages = data?.pages ?? [];
   const lastPage = pages[pages.length - 1];
   const cursorInvalid = !!(lastPage as { cursorInvalid?: boolean } | undefined)?.cursorInvalid;
   const events = pages.flatMap((p) => (p.data ?? []) as ChainEvent[]);
   const filtersActive = !!(pallet.trim() || method.trim());
+
+  const streamLabel =
+    streamStatus === "open"
+      ? "Live"
+      : streamStatus === "connecting"
+        ? "Connecting"
+        : streamStatus === "error"
+          ? "Polling"
+          : null;
 
   const filters = (
     <>
@@ -98,6 +121,28 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
         active={filtersActive}
         onReset={() => onFilter({ pallet: "", method: "" })}
       />
+      {streamLabel ? (
+        <span
+          className={classNames(
+            "inline-flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em]",
+            streamStatus === "open"
+              ? "border-accent/40 bg-accent/10 text-accent-text"
+              : "border-border bg-surface text-ink-muted",
+          )}
+          title={
+            streamStatus === "open"
+              ? "Connected to /api/v1/chain/stream — new matching events refresh this feed"
+              : streamStatus === "error"
+                ? "Chain stream unavailable — refresh manually or wait for reconnect"
+                : "Opening /api/v1/chain/stream"
+          }
+          data-testid="chain-events-stream-status"
+          data-stream-status={streamStatus}
+        >
+          {streamStatus === "open" ? <span className="mg-live-dot" aria-hidden /> : null}
+          {streamLabel}
+        </span>
+      ) : null}
     </>
   );
 

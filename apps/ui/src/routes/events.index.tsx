@@ -70,7 +70,9 @@ function EventsPage() {
         cursor={search.cursor}
         onFilter={onFilter}
       />
-      <ApiSourceFooter paths={["/api/v1/chain-events", "/api/v1/chain-events/stats"]} />
+      <ApiSourceFooter
+        paths={["/api/v1/chain-events", "/api/v1/chain-events/stats", "/api/v1/chain/stream"]}
+      />
     </AppShell>
   );
 }
