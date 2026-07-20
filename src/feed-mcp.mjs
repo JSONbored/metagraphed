@@ -35,7 +35,7 @@ export function feedMcpError(code, message) {
   return error;
 }
 
-function requireKind(args) {
+export function requireKind(args) {
   const value = args?.kind;
   if (typeof value !== "string" || !FEED_KINDS.includes(value)) {
     throw feedMcpError(
@@ -50,7 +50,7 @@ function requireKind(args) {
 // and meaningless for the other three kinds, which have no per-subnet REST
 // variant -- reject it there rather than silently ignoring a param the caller
 // thinks is doing something.
-function resolveNetuid(args, kind) {
+export function resolveNetuid(args, kind) {
   const value = args?.netuid;
   if (kind === "subnet") {
     if (!Number.isInteger(value) || value < 0) {
@@ -72,7 +72,7 @@ function resolveNetuid(args, kind) {
 
 // Same strict ISO-8601 contract as the REST feed's ?since=/?until= (a bare
 // calendar date for `until` is inclusive of the whole UTC day).
-function optionalTimestampMs(args, key) {
+export function optionalTimestampMs(args, key) {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string") {
@@ -91,7 +91,7 @@ function optionalTimestampMs(args, key) {
   return ms;
 }
 
-function optionalTag(args) {
+export function optionalTag(args) {
   const value = args?.tag;
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string") {
@@ -100,7 +100,7 @@ function optionalTag(args) {
   return value;
 }
 
-function resolveLimit(args) {
+export function resolveLimit(args) {
   const value = args?.limit;
   if (value === undefined || value === null) return FEED_MAX_ITEMS;
   if (!Number.isInteger(value) || value < 1) {
