@@ -3222,6 +3222,77 @@ async function loadSubnetTempos(sql) {
   }
 }
 
+// Lookback (days) for each realized-return window (#7228), keyed by the
+// baseline-object field buildGlobalValidators/buildValidatorDetail read
+// (realized_return_1d/1w/1m). Mirrors the neuron_daily HISTORY_WINDOWS map --
+// the rollup's snapshot_date is a native DATE, so each cutoff is computed the
+// same way windowCutoffDate does.
+const REALIZED_RETURN_WINDOWS = { d1: 1, d7: 7, d30: 30 };
+
+// Per-hotkey baseline total_stake_tao ~1d/1w/1m back from the neuron_daily
+// rollup, for the realized_return_* fields (#7228). For each window it takes
+// each hotkey's newest snapshot on-or-before (today − N days) and sums that
+// day's stake across every subnet membership (rao-precision is re-applied in
+// the builder); a hotkey whose oldest snapshot is newer than that cutoff is
+// simply absent, so its realized return for that window resolves to null ("no
+// figure", not "zero"). Same savepoint-isolated-failure shape as
+// loadSubnetTempos above: a neuron_daily read failure degrades every
+// realized_return_* to null rather than failing /api/v1/validators or
+// /api/v1/validators/:hotkey, or rolling back the enclosing transaction's
+// other queries. `hotkey` scopes the scan to the single-validator detail route.
+async function loadRealizedStakeBaselines(sql, { hotkey = null } = {}) {
+  const windows = Object.entries(REALIZED_RETURN_WINDOWS);
+  try {
+    const perWindow = await sql.savepoint((sql) =>
+      Promise.all(
+        windows.map(([, days]) => {
+          const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
+            .toISOString()
+            .slice(0, 10);
+          return hotkey
+            ? sql`
+            WITH daily AS (
+              SELECT hotkey, snapshot_date, SUM(stake_tao) AS stake_tao
+              FROM neuron_daily
+              WHERE validator_permit = TRUE AND hotkey = ${hotkey}
+                AND snapshot_date <= ${cutoff}
+              GROUP BY hotkey, snapshot_date
+            )
+            SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao
+            FROM daily ORDER BY hotkey, snapshot_date DESC`
+            : sql`
+            WITH daily AS (
+              SELECT hotkey, snapshot_date, SUM(stake_tao) AS stake_tao
+              FROM neuron_daily
+              WHERE validator_permit = TRUE AND snapshot_date <= ${cutoff}
+              GROUP BY hotkey, snapshot_date
+            )
+            SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao
+            FROM daily ORDER BY hotkey, snapshot_date DESC`;
+        }),
+      ),
+    );
+    const byHotkey = new Map();
+    windows.forEach(([key], i) => {
+      for (const row of perWindow[i]) {
+        if (row?.hotkey == null) continue;
+        const entry = byHotkey.get(row.hotkey) ?? {
+          d1: null,
+          d7: null,
+          d30: null,
+        };
+        entry[key] = numberOrNull(row.baseline_stake_tao);
+        byHotkey.set(row.hotkey, entry);
+      }
+    });
+    return byHotkey;
+  } catch (err) {
+    console.error("neuron_daily realized-return baseline query failed:", err);
+    captureDataApiError(err, "realized-return-baseline-query");
+    return new Map();
+  }
+}
+
 // One netuid's live immunity_period hyperparameter (#6640) -- never
 // hardcoded, mirrors the MaxDelegateTake/TxDelegateTakeRateLimit convention
 // (#5229). Same savepoint-isolated-failure shape as loadSubnetTempos just
@@ -7744,16 +7815,22 @@ export default {
             limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
               ? limitParam
               : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
-          const [rows, featuredHotkeys, nominatorCounts, tempoByNetuid] =
-            await Promise.all([
-              sql`
+          const [
+            rows,
+            featuredHotkeys,
+            nominatorCounts,
+            tempoByNetuid,
+            realizedStakeByHotkey,
+          ] = await Promise.all([
+            sql`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
-              loadFeaturedHotkeys(sql),
-              loadValidatorNominatorCounts(sql),
-              loadSubnetTempos(sql),
-            ]);
+            loadFeaturedHotkeys(sql),
+            loadValidatorNominatorCounts(sql),
+            loadSubnetTempos(sql),
+            loadRealizedStakeBaselines(sql),
+          ]);
           // Identity join (#5234): needs `rows` resolved first to know which
           // coldkeys to look up, so it can't join the Promise.all above.
           const identityByColdkey = await loadAccountIdentitiesByColdkey(
@@ -7768,6 +7845,7 @@ export default {
               identityByColdkey,
               nominatorCounts,
               tempoByNetuid,
+              realizedStakeByHotkey,
             }),
           );
         }
@@ -7779,14 +7857,16 @@ export default {
         );
         if (validatorDetail) {
           const hotkey = decodeURIComponent(validatorDetail[1]);
-          const [rows, nominatorCounts, tempoByNetuid] = await Promise.all([
-            sql`
+          const [rows, nominatorCounts, tempoByNetuid, realizedByHotkey] =
+            await Promise.all([
+              sql`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take, netuid
           FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
           ORDER BY netuid ASC, uid ASC`,
-            loadValidatorNominatorCounts(sql),
-            loadSubnetTempos(sql),
-          ]);
+              loadValidatorNominatorCounts(sql),
+              loadSubnetTempos(sql),
+              loadRealizedStakeBaselines(sql, { hotkey }),
+            ]);
           // Identity join (#5234): see the /api/v1/validators comment above.
           const identityByColdkey = await loadAccountIdentitiesByColdkey(
             sql,
@@ -7797,6 +7877,7 @@ export default {
               identityByColdkey,
               nominatorCount: nominatorCounts.get(hotkey) ?? null,
               tempoByNetuid,
+              realizedStake: realizedByHotkey.get(hotkey) ?? null,
             }),
           );
         }

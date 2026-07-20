@@ -2199,6 +2199,9 @@
           "nominator_count",
           "apy_estimate",
           "apy_estimate_eligible_subnet_count",
+          "realized_return_1d",
+          "realized_return_1w",
+          "realized_return_1m",
           "stake_dominance",
           "avg_validator_trust",
           "max_validator_trust",
@@ -2250,6 +2253,18 @@
             "type": "integer",
             "minimum": 0,
             "description": "Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0."
+          },
+          "realized_return_1d": {
+            "type": ["number", "null"],
+            "description": "Realized 1-day return on staked capital (#7228): the rao-exact fractional change in this validator's total_stake_tao between now and its neuron_daily rollup snapshot ~1 day ago (that day's stake summed across every subnet membership). Backward-looking over an actually-elapsed window, unlike the forward-looking apy_estimate -- it captures both emission-driven compounding and net delegation flow, since a two-snapshot comparison cannot separate them. Expressed as a decimal fraction (0.01 = +1% over the day; negative when stake shrank). Null (never 0) when no neuron_daily row exists far enough back, or the baseline stake was non-positive -- 'no realized figure', not 'zero return'."
+          },
+          "realized_return_1w": {
+            "type": ["number", "null"],
+            "description": "Realized 1-week return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~7 days ago. Null when no rollup row exists that far back."
+          },
+          "realized_return_1m": {
+            "type": ["number", "null"],
+            "description": "Realized 1-month return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~30 days ago. Null when no rollup row exists that far back."
           },
           "stake_dominance": {
             "type": ["number", "null"],
@@ -2504,6 +2519,9 @@
           "nominator_count",
           "apy_estimate",
           "apy_estimate_eligible_subnet_count",
+          "realized_return_1d",
+          "realized_return_1w",
+          "realized_return_1m",
           "avg_validator_trust",
           "max_validator_trust",
           "captured_at",
@@ -2553,6 +2571,18 @@
             "type": "integer",
             "minimum": 0,
             "description": "Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0."
+          },
+          "realized_return_1d": {
+            "type": ["number", "null"],
+            "description": "Realized 1-day return on staked capital (#7228): the rao-exact fractional change in this validator's total_stake_tao between now and its neuron_daily rollup snapshot ~1 day ago (that day's stake summed across every subnet membership). Backward-looking over an actually-elapsed window, unlike the forward-looking apy_estimate -- it captures both emission-driven compounding and net delegation flow, since a two-snapshot comparison cannot separate them. Expressed as a decimal fraction (0.01 = +1% over the day; negative when stake shrank). Null (never 0) when no neuron_daily row exists far enough back, or the baseline stake was non-positive -- 'no realized figure', not 'zero return'."
+          },
+          "realized_return_1w": {
+            "type": ["number", "null"],
+            "description": "Realized 1-week return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~7 days ago. Null when no rollup row exists that far back."
+          },
+          "realized_return_1m": {
+            "type": ["number", "null"],
+            "description": "Realized 1-month return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~30 days ago. Null when no rollup row exists that far back."
           },
           "avg_validator_trust": { "type": ["number", "null"] },
           "max_validator_trust": { "type": ["number", "null"] },

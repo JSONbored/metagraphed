@@ -110,6 +110,12 @@ const validatorNominatorCountsQueryFailure = vi.hoisted(() => ({
 // isolation purpose as validatorNominatorCountsQueryFailure above, but for
 // loadSubnetTempos' own SELECT.
 const subnetTemposQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for the neuron_daily realized-return baseline READs (#7228) only --
+// same isolation as subnetTemposQueryFailure above. `queue` feeds the three
+// per-window baseline queries in issue order (1d, 1w, 1m); `error`, when set,
+// rejects every baseline query so the savepoint-isolated failure path degrades
+// realized_return_* to null.
+const realizedBaselineState = vi.hoisted(() => ({ queue: [], error: null }));
 // State for the nominator-positions-sync WRITE (#5233) tests only.
 const nominatorPositionsSyncFailure = vi.hoisted(() => ({ error: null }));
 // State for the account-balances-sync WRITE (#6742) tests only.
@@ -285,6 +291,12 @@ vi.mock("postgres", () => ({
       ) {
         return Promise.reject(subnetTemposQueryFailure.error);
       }
+      if (/AS baseline_stake_tao\b/.test(text)) {
+        if (realizedBaselineState.error) {
+          return Promise.reject(realizedBaselineState.error);
+        }
+        return Promise.resolve(realizedBaselineState.queue.shift() ?? []);
+      }
       if (
         healthUptimeRollupSyncFailure.error &&
         /INSERT INTO surface_uptime_daily\b/.test(text)
@@ -441,6 +453,8 @@ beforeEach(() => {
   validatorNominatorCountsSyncFailure.error = null;
   validatorNominatorCountsQueryFailure.error = null;
   subnetTemposQueryFailure.error = null;
+  realizedBaselineState.queue = [];
+  realizedBaselineState.error = null;
   nominatorPositionsSyncFailure.error = null;
   nominatorPositionsQueryFailure.error = null;
   accountBalancesSyncFailure.error = null;
@@ -1899,6 +1913,101 @@ test("GET /api/v1/validators falls back to the default sort/limit on invalid val
   const body = await res.json();
   expect(body.sort).toBe("subnet_count");
   expect(body.limit).toBe(20);
+});
+
+test("GET /api/v1/validators carries realized_return_* from the neuron_daily baselines (#7228)", async () => {
+  mockRows.current = [
+    {
+      netuid: 7,
+      uid: 3,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      validator_trust: "0.8",
+      emission_tao: "1.23",
+      stake_tao: "1000",
+      block_number: "5000000",
+      captured_at: "1780000000000",
+    },
+  ];
+  // The three baseline queries resolve in issue order (1d, 1w, 1m); the 1m
+  // window has no row far enough back, so it resolves to null, not an error.
+  // A defensive null-hotkey row (should never happen for a permit-holder, but
+  // neuron_daily allows it) is skipped, never mapped under a null key.
+  realizedBaselineState.queue = [
+    [
+      { hotkey: "5Hot", baseline_stake_tao: 800 },
+      { hotkey: null, baseline_stake_tao: 999 },
+    ],
+    [{ hotkey: "5Hot", baseline_stake_tao: 500 }],
+    [],
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  const v = body.validators.find((x) => x.hotkey === "5Hot");
+  expect(v.realized_return_1d).toBe(0.25); // (1000-800)/800
+  expect(v.realized_return_1w).toBe(1); // (1000-500)/500
+  expect(v.realized_return_1m).toBeNull();
+  // The baseline scan is anchored on validator_permit rows from neuron_daily.
+  expect(queryText()).toMatch(/FROM neuron_daily/);
+  expect(queryText()).toMatch(/AS baseline_stake_tao/);
+});
+
+test("GET /api/v1/validators degrades realized_return_* to null when the neuron_daily baseline query fails (#7228)", async () => {
+  mockRows.current = [
+    {
+      netuid: 7,
+      uid: 3,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      validator_trust: "0.8",
+      emission_tao: "1.23",
+      stake_tao: "1000",
+      block_number: "5000000",
+      captured_at: "1780000000000",
+    },
+  ];
+  realizedBaselineState.error = new Error("neuron_daily unavailable");
+  const res = await req("/api/v1/validators");
+  // Same savepoint-isolated degradation as the featured/tempo reads: the
+  // primary leaderboard still serves, every realized_return_* just goes null.
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validator_count).toBe(1);
+  const v = body.validators.find((x) => x.hotkey === "5Hot");
+  expect(v.realized_return_1d).toBeNull();
+  expect(v.realized_return_1w).toBeNull();
+  expect(v.realized_return_1m).toBeNull();
+});
+
+test("GET /api/v1/validators/:hotkey carries realized_return_* scoped to that hotkey (#7228)", async () => {
+  mockRows.current = [
+    {
+      netuid: 7,
+      uid: 3,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      validator_permit: true,
+      validator_trust: "0.8",
+      emission_tao: "1.23",
+      stake_tao: "1500",
+      block_number: "5000000",
+      captured_at: "1780000000000",
+    },
+  ];
+  realizedBaselineState.queue = [
+    [{ hotkey: "5Hot", baseline_stake_tao: 1200 }],
+    [],
+    [{ hotkey: "5Hot", baseline_stake_tao: 1500 }],
+  ];
+  const res = await req("/api/v1/validators/5Hot");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.realized_return_1d).toBe(0.25); // (1500-1200)/1200
+  expect(body.realized_return_1w).toBeNull();
+  expect(body.realized_return_1m).toBe(0); // (1500-1500)/1500 -- confirmed zero
+  // The detail route scopes the baseline scan to the requested hotkey.
+  expect(queryText()).toMatch(/AND hotkey = \?/);
 });
 
 const IDENTITY_ROW = {

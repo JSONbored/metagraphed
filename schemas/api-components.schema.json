@@ -10572,6 +10572,27 @@
               "null"
             ]
           },
+          "realized_return_1d": {
+            "description": "Realized 1-day return on staked capital (#7228): the rao-exact fractional change in this validator's total_stake_tao between now and its neuron_daily rollup snapshot ~1 day ago (that day's stake summed across every subnet membership). Backward-looking over an actually-elapsed window, unlike the forward-looking apy_estimate -- it captures both emission-driven compounding and net delegation flow, since a two-snapshot comparison cannot separate them. Expressed as a decimal fraction (0.01 = +1% over the day; negative when stake shrank). Null (never 0) when no neuron_daily row exists far enough back, or the baseline stake was non-positive -- 'no realized figure', not 'zero return'.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "realized_return_1m": {
+            "description": "Realized 1-month return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~30 days ago. Null when no rollup row exists that far back.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "realized_return_1w": {
+            "description": "Realized 1-week return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~7 days ago. Null when no rollup row exists that far back.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "root_stake_tao": {
             "description": "Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao.",
             "minimum": 0,
@@ -10632,6 +10653,9 @@
           "nominator_count",
           "apy_estimate",
           "apy_estimate_eligible_subnet_count",
+          "realized_return_1d",
+          "realized_return_1w",
+          "realized_return_1m",
           "stake_dominance",
           "avg_validator_trust",
           "max_validator_trust",
@@ -22630,6 +22654,27 @@
               "null"
             ]
           },
+          "realized_return_1d": {
+            "description": "Realized 1-day return on staked capital (#7228): the rao-exact fractional change in this validator's total_stake_tao between now and its neuron_daily rollup snapshot ~1 day ago (that day's stake summed across every subnet membership). Backward-looking over an actually-elapsed window, unlike the forward-looking apy_estimate -- it captures both emission-driven compounding and net delegation flow, since a two-snapshot comparison cannot separate them. Expressed as a decimal fraction (0.01 = +1% over the day; negative when stake shrank). Null (never 0) when no neuron_daily row exists far enough back, or the baseline stake was non-positive -- 'no realized figure', not 'zero return'.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "realized_return_1m": {
+            "description": "Realized 1-month return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~30 days ago. Null when no rollup row exists that far back.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "realized_return_1w": {
+            "description": "Realized 1-week return on staked capital (#7228): same rao-exact stake-delta as realized_return_1d, measured against the neuron_daily snapshot ~7 days ago. Null when no rollup row exists that far back.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "root_stake_tao": {
             "description": "Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao.",
             "minimum": 0,
@@ -22679,6 +22724,9 @@
           "nominator_count",
           "apy_estimate",
           "apy_estimate_eligible_subnet_count",
+          "realized_return_1d",
+          "realized_return_1w",
+          "realized_return_1m",
           "avg_validator_trust",
           "max_validator_trust",
           "captured_at",

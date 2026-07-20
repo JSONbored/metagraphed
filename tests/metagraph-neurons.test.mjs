@@ -44,7 +44,7 @@ const NEURON_CSV_HEADER =
 const MOVERS_CSV_HEADER =
   "netuid,stake_start_tao,stake_end_tao,stake_delta_tao,stake_pct_change,emission_start_tao,emission_end_tao,emission_delta_tao,emission_pct_change,validators_start,validators_end,validators_delta,neurons_start,neurons_end,neurons_delta";
 const GLOBAL_VALIDATOR_CSV_HEADER =
-  "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,root_stake_tao,alpha_stake_tao,total_emission_tao,nominator_count,apy_estimate,apy_estimate_eligible_subnet_count,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
+  "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,root_stake_tao,alpha_stake_tao,total_emission_tao,nominator_count,apy_estimate,apy_estimate_eligible_subnet_count,realized_return_1d,realized_return_1w,realized_return_1m,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
 
 describe("metagraph-neurons builders", () => {
   test("formatNeuron coerces 0/1 INTEGER flags to real booleans", () => {
@@ -793,6 +793,96 @@ describe("metagraph-neurons builders", () => {
     assert.equal(entry.subnets.length, 10);
     assert.equal(entry.apy_estimate_eligible_subnet_count, 15);
     assert.ok(entry.apy_estimate > 0);
+  });
+
+  test("buildGlobalValidators computes realized_return_* from the per-hotkey neuron_daily baselines (#7228)", () => {
+    // Current total stake is 1000 (single membership); baselines are the
+    // summed neuron_daily stake ~1d/1w ago. 1d: (1000-800)/800 = 0.25; 1w:
+    // (1000-500)/500 = 1.0; 1m has no baseline row far enough back -> null.
+    const data = buildGlobalValidators(
+      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
+      {
+        realizedStakeByHotkey: new Map([
+          ["hk-a", { d1: 800, d7: 500, d30: null }],
+        ]),
+      },
+    );
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(entry.realized_return_1d, 0.25);
+    assert.equal(entry.realized_return_1w, 1);
+    assert.equal(entry.realized_return_1m, null);
+  });
+
+  test("buildGlobalValidators sums current stake across memberships in rao before the realized-return ratio (#7228)", () => {
+    // Two memberships -> current total 1500; a 1200 baseline gives
+    // (1500-1200)/1200 = 0.25, computed from the rao-BigInt stake sum.
+    const data = buildGlobalValidators(
+      [
+        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 },
+        { ...ROW, netuid: 8, uid: 1, hotkey: "hk-a", stake_tao: 500 },
+      ],
+      {
+        realizedStakeByHotkey: new Map([["hk-a", { d7: 1200 }]]),
+      },
+    );
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(entry.realized_return_1w, 0.25);
+    // Windows with no baseline key stay null, never fabricated.
+    assert.equal(entry.realized_return_1d, null);
+    assert.equal(entry.realized_return_1m, null);
+  });
+
+  test("buildGlobalValidators reports a negative realized_return_* when stake shrank (#7228)", () => {
+    const data = buildGlobalValidators(
+      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 800 }],
+      { realizedStakeByHotkey: new Map([["hk-a", { d30: 1000 }]]) },
+    );
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(entry.realized_return_1m, -0.2);
+  });
+
+  test("buildGlobalValidators nulls realized_return_* when the baseline stake is non-positive (#7228)", () => {
+    const data = buildGlobalValidators(
+      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
+      { realizedStakeByHotkey: new Map([["hk-a", { d1: 0 }]]) },
+    );
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(entry.realized_return_1d, null);
+  });
+
+  test("buildGlobalValidators defaults every realized_return_* to null when no baseline map is passed (D1 fallback) (#7228)", () => {
+    const data = buildGlobalValidators([
+      { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 },
+    ]);
+    const entry = data.validators[0];
+    assert.equal(entry.realized_return_1d, null);
+    assert.equal(entry.realized_return_1w, null);
+    assert.equal(entry.realized_return_1m, null);
+  });
+
+  test("buildValidatorDetail carries realized_return_* from the per-hotkey baseline, null where absent (#7228)", () => {
+    const detail = buildValidatorDetail(
+      [
+        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 },
+        { ...ROW, netuid: 8, uid: 1, hotkey: "hk-a", stake_tao: 500 },
+      ],
+      "hk-a",
+      { realizedStake: { d1: 1200, d7: null, d30: 1500 } },
+    );
+    // current total = 1500; 1d: (1500-1200)/1200 = 0.25; 1m: (1500-1500)/1500 = 0.
+    assert.equal(detail.realized_return_1d, 0.25);
+    assert.equal(detail.realized_return_1w, null);
+    assert.equal(detail.realized_return_1m, 0);
+  });
+
+  test("buildValidatorDetail defaults realized_return_* to null with no baseline (D1 fallback) (#7228)", () => {
+    const detail = buildValidatorDetail(
+      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
+      "hk-a",
+    );
+    assert.equal(detail.realized_return_1d, null);
+    assert.equal(detail.realized_return_1w, null);
+    assert.equal(detail.realized_return_1m, null);
   });
 
   test("buildGlobalValidators takes the first non-null take per hotkey and ignores later rows (#2548)", () => {

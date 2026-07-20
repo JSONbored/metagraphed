@@ -3299,6 +3299,12 @@ export const SDL = `
     nominator_count: Int
     apy_estimate: Float
     apy_estimate_eligible_subnet_count: Int
+    "Realized 1-day return on staked capital: the fractional change in total_stake_tao vs the neuron_daily snapshot ~1 day ago. Backward-looking over an elapsed window (captures compounding + net delegation flow), unlike the forward-looking apy_estimate; null when no rollup row exists that far back. Mirrors realized_return_1d in the REST/MCP shape (#7228)."
+    realized_return_1d: Float
+    "Realized 7-day return on staked capital vs the neuron_daily snapshot ~1 week ago; null when no rollup row exists that far back (#7228)."
+    realized_return_1w: Float
+    "Realized 30-day return on staked capital vs the neuron_daily snapshot ~1 month ago; null when no rollup row exists that far back (#7228)."
+    realized_return_1m: Float
     avg_validator_trust: Float
     max_validator_trust: Float
     captured_at: String
