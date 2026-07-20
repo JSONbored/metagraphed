@@ -3,6 +3,12 @@ import { createReadStream, promises as fs } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { repoRoot } from "./lib.mjs";
+import {
+  pathPatterns,
+  contentPatterns,
+  isAllowedContentMention,
+  isBinaryOrGenerated,
+} from "./private-boundary-patterns.mjs";
 
 const trackedFiles = execFileSync("git", ["ls-files"], {
   cwd: repoRoot,
@@ -10,37 +16,6 @@ const trackedFiles = execFileSync("git", ["ls-files"], {
 })
   .split("\n")
   .filter(Boolean);
-
-const pathPatterns = [
-  {
-    name: "private submission-gate implementation path",
-    regex:
-      /(^|\/)(?:private-reviewer|review-corpus|review-fixtures|private-prompts|accepted-rejected-examples|metagraphed-submission-gate-private)(?:\/|$)/i,
-  },
-];
-
-const contentPatterns = [
-  {
-    name: "real Discord webhook URL",
-    regex:
-      /https:\/\/(?:discord\.com|discordapp\.com|canary\.discord\.com|ptb\.discord\.com)\/api\/webhooks\/\d+\/[A-Za-z0-9._-]{20,}/,
-  },
-  {
-    name: "private AI scoring internals",
-    regex:
-      /\b(?:private prompt|private rubric|private score|private threshold|corpus weight|accepted rejected example|accepted\/rejected example)\b/i,
-  },
-  {
-    name: "provider-specific private model route",
-    regex: /\b(?:AI_GATEWAY|WORKERS_AI|@cf\/openai\/|gpt-oss-)\b/i,
-  },
-];
-
-const allowedContentMentions = new Set([
-  "CONTRIBUTING.md",
-  // This file defines the boundary patterns themselves, so it self-matches.
-  "scripts/validate-private-boundary.mjs",
-]);
 
 const findings = [];
 
@@ -83,10 +58,7 @@ for (const file of trackedFiles) {
       if (!pattern.regex.test(linkTarget)) {
         continue;
       }
-      if (
-        pattern.name !== "real Discord webhook URL" &&
-        allowedContentMentions.has(file)
-      ) {
+      if (isAllowedContentMention(file, pattern.name)) {
         continue;
       }
       findings.push(`${file}: symlink target: ${pattern.name}`);
@@ -112,10 +84,7 @@ for (const file of trackedFiles) {
         if (!pattern.regex.test(line)) {
           continue;
         }
-        if (
-          pattern.name !== "real Discord webhook URL" &&
-          allowedContentMentions.has(file)
-        ) {
+        if (isAllowedContentMention(file, pattern.name)) {
           continue;
         }
         findings.push(`${file}:${lineNumber}: ${pattern.name}`);
@@ -143,15 +112,3 @@ if (findings.length > 0) {
 }
 
 console.log("Private-boundary validation passed.");
-
-function isBinaryOrGenerated(file) {
-  return (
-    file.endsWith(".png") ||
-    file.endsWith(".jpg") ||
-    file.endsWith(".jpeg") ||
-    file.endsWith(".gif") ||
-    file.endsWith(".webp") ||
-    file.endsWith(".ico") ||
-    file.startsWith("public/metagraph/")
-  );
-}
