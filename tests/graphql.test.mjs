@@ -3715,6 +3715,43 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
       assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
     }
   });
+
+  test("an out-of-range or negative netuid is BAD_USER_INPUT and never reaches the tier", async () => {
+    for (const { query, field } of [
+      {
+        query: "{ subnet_ownership_history(netuid: 99999) { count } }",
+        field: "subnet_ownership_history",
+      },
+      {
+        query: "{ subnet_conviction(netuid: -1) { count } }",
+        field: "subnet_conviction",
+      },
+      {
+        query: "{ subnet_lease_history(netuid: 99999) { count } }",
+        field: "subnet_lease_history",
+      },
+    ]) {
+      let called = false;
+      const env = {
+        DATA_API: {
+          fetch: async () => {
+            called = true;
+            return Response.json({});
+          },
+        },
+      };
+      const { status, body } = await gql(query, env);
+      assert.equal(status, 200);
+      // Non-null field type (SubnetOwnershipHistory!/etc.) -- an error nulls
+      // the whole response, not just this field.
+      assert.equal(body.data, null, `${field} should null the response`);
+      assert.ok(
+        body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+        `${field} should be BAD_USER_INPUT`,
+      );
+      assert.equal(called, false, `${field} should never reach DATA_API`);
+    }
+  });
 });
 
 // #6978: subnet_lease is the live-RPC counterpart (current state, not the
