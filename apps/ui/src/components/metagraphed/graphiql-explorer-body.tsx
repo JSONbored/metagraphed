@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { GraphiQL } from "graphiql";
 import { createGraphiQLFetcher } from "@graphiql/toolkit";
+import { createClient, type Client } from "graphql-ws";
 import { useTheme } from "@/lib/theme";
 import { classNames } from "@/lib/metagraphed/format";
 import "graphiql/style.css";
@@ -47,12 +48,45 @@ const DEFAULT_QUERY = `{
 
 export interface GraphiqlExplorerBodyProps {
   endpoint: string;
+  /**
+   * WebSocket URL for `graphql-transport-ws` subscriptions (#7009 / #4983).
+   * Same path as the HTTP GraphQL endpoint (`/api/v1/graphql`), with
+   * `https`→`wss` / `http`→`ws`. When omitted, subscriptions stay unsupported.
+   */
+  subscriptionUrl?: string;
   heightClassName: string;
 }
 
-export function GraphiqlExplorerBody({ endpoint, heightClassName }: GraphiqlExplorerBodyProps) {
+export function GraphiqlExplorerBody({
+  endpoint,
+  subscriptionUrl,
+  heightClassName,
+}: GraphiqlExplorerBodyProps) {
   const { resolved } = useTheme();
-  const fetcher = useMemo(() => createGraphiQLFetcher({ url: endpoint }), [endpoint]);
+
+  const wsClient = useMemo<Client | undefined>(() => {
+    if (!subscriptionUrl) return undefined;
+    return createClient({
+      url: subscriptionUrl,
+      // Open the socket only when a subscription actually runs.
+      lazy: true,
+    });
+  }, [subscriptionUrl]);
+
+  useEffect(() => {
+    return () => {
+      wsClient?.dispose();
+    };
+  }, [wsClient]);
+
+  const fetcher = useMemo(
+    () =>
+      createGraphiQLFetcher({
+        url: endpoint,
+        ...(wsClient ? { wsClient } : {}),
+      }),
+    [endpoint, wsClient],
+  );
 
   return (
     <div

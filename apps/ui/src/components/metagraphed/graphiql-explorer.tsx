@@ -10,16 +10,30 @@ const DEFAULT_HEIGHT_CLASSNAME = "h-[460px] md:h-[540px] lg:h-[640px]";
 
 export interface GraphiqlExplorerProps {
   endpoint: string;
+  /**
+   * WebSocket URL for live GraphQL subscriptions (`graphql-transport-ws` on
+   * the same `/api/v1/graphql` path — #7009 / #4983). Optional so embedded
+   * callers can stay query-only.
+   */
+  subscriptionUrl?: string;
   /** Tailwind height classes; overrides the compact docs-embed default. */
   heightClassName?: string;
 }
 
-export function GraphiqlExplorer({ endpoint, heightClassName }: GraphiqlExplorerProps) {
+export function GraphiqlExplorer({
+  endpoint,
+  subscriptionUrl,
+  heightClassName,
+}: GraphiqlExplorerProps) {
   const height = heightClassName ?? DEFAULT_HEIGHT_CLASSNAME;
   return (
     <ClientOnly fallback={<ExplorerFallback heightClassName={height} />}>
       <Suspense fallback={<ExplorerFallback heightClassName={height} />}>
-        <GraphiqlExplorerBody endpoint={endpoint} heightClassName={height} />
+        <GraphiqlExplorerBody
+          endpoint={endpoint}
+          subscriptionUrl={subscriptionUrl}
+          heightClassName={height}
+        />
       </Suspense>
     </ClientOnly>
   );
