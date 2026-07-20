@@ -93,6 +93,13 @@ pub async fn run_loop(rpc_url: String, db_url: String, interval: Duration) {
         ticker.tick().await;
         let t0 = std::time::Instant::now();
         let result = run(&chain, &mut pg).await;
+        if result.is_err() {
+            // See subnet_ownership::run_loop's own comment on this exact
+            // pattern -- a dead single-lifetime connection (e.g. after a
+            // Postgres restart) fails every query forever with no
+            // self-healing otherwise.
+            pg = backfill_rs::connect_pg_retrying("account-balances", &db_url).await;
+        }
         crate::log_job_outcome("account-balances", &result, t0.elapsed(), interval);
     }
 }

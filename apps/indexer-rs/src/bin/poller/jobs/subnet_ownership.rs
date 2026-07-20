@@ -94,6 +94,21 @@ pub async fn run_loop(rpc_url: String, db_url: String, interval: Duration) {
         ticker.tick().await;
         let t0 = std::time::Instant::now();
         let result = run(&chain, &mut pg).await;
+        if result.is_err() {
+            // This loop holds ONE Postgres connection for its entire
+            // lifetime (see this function's own doc comment) -- if it dies
+            // (e.g. a Postgres restart, confirmed live 2026-07-20 via
+            // metagraphed-infra's own schema-ref-bump-triggered restarts:
+            // every subsequent tick failed forever with "connection
+            // closed", caught only once indexer-rs-poller-health-poll.sh's
+            // per-job freshness metric existed to notice the silence), every
+            // query on it fails forever with no self-healing. Reconnect on
+            // ANY tick failure, not just ones that look connection-related
+            // -- a fresh connect is cheap and harmless even when the error
+            // was unrelated to connectivity, and distinguishing error kinds
+            // here isn't worth the complexity for a 30s-backoff reconnect.
+            pg = backfill_rs::connect_pg_retrying("subnet-ownership", &db_url).await;
+        }
         crate::log_job_outcome("subnet-ownership", &result, t0.elapsed(), interval);
     }
 }
