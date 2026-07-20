@@ -103,6 +103,71 @@ pub fn rao_to_tao_exact(rao: u128) -> String {
     format!("{whole}.{frac_str}")
 }
 
+/// POSTs `body` (already-serialized JSON) to `url` via curl, matching
+/// main.rs's own alert_stuck_block() convention (a single, rare, non-hot-path
+/// POST doesn't earn a new HTTP client dependency) -- shared by every poller
+/// job that syncs via an existing HTTP route rather than writing Postgres
+/// directly (subnet-hyperparams, metagraph, account-identity).
+///
+/// Pipes `body` through curl's stdin (`-d @-`) rather than passing it as a
+/// `-d <string>` argv element: confirmed live 2026-07-20 that metagraph's
+/// ~30k-row/~7MB payload blew past the OS's ARG_MAX as a command-line
+/// argument ("Argument list too long", os error 7) the very first time this
+/// job ran against production data -- every prior dry-run test skipped the
+/// real curl call entirely, so this never surfaced until then. `-d @-` has
+/// no such limit; the body flows through a pipe instead of exec's argv/
+/// environment block.
+pub async fn post_sync_json(
+    url: &str,
+    token_header: &str,
+    secret: &str,
+    body: &str,
+    timeout_secs: &str,
+) -> Result<()> {
+    use tokio::io::AsyncWriteExt;
+    let header = format!("{token_header}: {secret}");
+    let mut child = tokio::process::Command::new("curl")
+        .args([
+            "-fsS",
+            "-m",
+            timeout_secs,
+            "-X",
+            "POST",
+            url,
+            "-H",
+            "content-type: application/json",
+            "-H",
+            &header,
+            "-d",
+            "@-",
+        ])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .context("spawn curl")?;
+    // curl (with `-d @-`) reads all of stdin to compute Content-Length
+    // before sending anything, so this write completes without curl
+    // blocking on stdout/stderr in the meantime -- no separate writer task
+    // needed for a body this shape (matches every other job's convention
+    // of one straightforward, non-streaming POST per tick).
+    child
+        .stdin
+        .take()
+        .context("curl stdin")?
+        .write_all(body.as_bytes())
+        .await
+        .context("write curl stdin")?;
+    let output = child.wait_with_output().await.context("wait for curl")?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "sync POST failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 pub fn redact_rpc_url(url: &str) -> String {
     let scheme_end = url.find("://").map(|idx| idx + 3).unwrap_or(0);
     let after_scheme = &url[scheme_end..];
@@ -360,6 +425,33 @@ mod tests {
     #[test]
     fn rao_to_tao_exact_zero_is_zero() {
         assert_eq!(rao_to_tao_exact(0), "0");
+    }
+
+    // Regression test for the live 2026-07-20 finding: a `-d <body>` argv
+    // element blows past the OS's ARG_MAX for a large body ("Argument list
+    // too long", os error 7) BEFORE curl even attempts to connect. Posting
+    // an oversized (5MB) body against a port nothing listens on must fail
+    // with a curl-level connection error, not a process-spawn error --
+    // proving the body traveled through stdin, not argv, regardless of size.
+    #[tokio::test]
+    async fn post_sync_json_handles_a_body_far_larger_than_argv_limits() {
+        let big_body = "x".repeat(5 * 1024 * 1024);
+        // 192.0.2.1 (TEST-NET-1, RFC 5737): reserved by IANA for exactly
+        // this -- documentation/testing -- guaranteed non-routable, so curl
+        // fails fast on a connection error, never a real request.
+        let result = post_sync_json(
+            "http://192.0.2.1:1/",
+            "x-test-token",
+            "secret",
+            &big_body,
+            "2",
+        )
+        .await;
+        let err = result.unwrap_err().to_string();
+        assert!(
+            !err.contains("Argument list too long") && !err.contains("spawn curl"),
+            "expected a curl-level connection error, got: {err}"
+        );
     }
 
     #[tokio::test]

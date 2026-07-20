@@ -287,37 +287,12 @@ fn hyperparam_number(value: &Value) -> Option<f64> {
 
 /// POSTs the whole batch (one request per tick, well under
 /// SUBNET_HYPERPARAMS_SYNC_MAX_ROWS/_BODY_BYTES for ~129 subnets) to the
-/// existing sync route via curl, matching main.rs's own alert_stuck_block()
-/// convention (a single, rare, non-hot-path POST doesn't earn a new HTTP
-/// client dependency).
+/// existing sync route -- see backfill_rs::post_sync_json for the shared
+/// implementation and why this pipes the body through curl's stdin rather
+/// than argv.
 async fn post_sync(sync_url: &str, sync_secret: &str, rows: &[Json]) -> Result<()> {
     let body = serde_json::to_string(&json!({ "rows": rows }))?;
-    let header = format!("{SYNC_TOKEN_HEADER}: {sync_secret}");
-    let output = tokio::process::Command::new("curl")
-        .args([
-            "-fsS",
-            "-m",
-            "30",
-            "-X",
-            "POST",
-            sync_url,
-            "-H",
-            "content-type: application/json",
-            "-H",
-            &header,
-            "-d",
-            &body,
-        ])
-        .output()
-        .await
-        .context("spawn curl")?;
-    if !output.status.success() {
-        anyhow::bail!(
-            "sync POST failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    Ok(())
+    backfill_rs::post_sync_json(sync_url, SYNC_TOKEN_HEADER, sync_secret, &body, "30").await
 }
 
 #[cfg(test)]
