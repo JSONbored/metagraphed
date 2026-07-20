@@ -1557,6 +1557,35 @@ export interface Compare {
   source?: string;
 }
 
+/** One validator in a /api/v1/compare/validators side-by-side (#6998). Mirrors
+ *  composeValidatorComparison's per-validator shape (metagraph-neurons.mjs). */
+export interface ValidatorComparisonEntry {
+  hotkey: string;
+  coldkey?: string | null;
+  coldkey_identity?: ColdkeyIdentity | null;
+  /** Take rate as a 0..1 fraction. */
+  take?: number | null;
+  /** Estimated APY as a 0..1 fraction. */
+  apy_estimate?: number | null;
+  apy_estimate_eligible_subnet_count?: number | null;
+  nominator_count?: number | null;
+  total_stake_tao?: number | null;
+  total_emission_tao?: number | null;
+  avg_validator_trust?: number | null;
+  max_validator_trust?: number | null;
+  subnet_count?: number | null;
+  /** Populated only when a ?netuid context is requested; the membership row. */
+  subnet_context?: Record<string, unknown> | null;
+}
+
+/** Composed side-by-side comparison for 1–16 validator hotkeys (#6998). */
+export interface ValidatorComparison {
+  schema_version?: number;
+  netuid: number | null;
+  validator_count: number;
+  validators: ValidatorComparisonEntry[];
+}
+
 /** One daily on-chain snapshot from /subnets/{n}/history. */
 export interface SubnetHistoryPoint {
   snapshot_date: string;

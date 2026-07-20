@@ -3,6 +3,7 @@ import { CopyButton } from "@jsonbored/ui-kit";
 
 import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import { AccountAddress } from "@/components/metagraphed/account-address";
+import { ValidatorCompareToggle } from "@/components/metagraphed/validators-compare-drawer";
 import { resolveValidatorCard } from "@/lib/metagraphed/validator-card-fields";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 
@@ -40,6 +41,9 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
                 {f.hotkeyShort}
               </Link>
               <CopyButton value={v.hotkey} label="hotkey" compact />
+              <span className="ml-auto shrink-0">
+                <ValidatorCompareToggle hotkey={v.hotkey} />
+              </span>
             </div>
             {/* Mirrors the hotkey row above: a flex row so the copy button's 44px
                 touch target centers against the value. `compact` folds that height

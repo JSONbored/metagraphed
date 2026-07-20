@@ -122,6 +122,8 @@ import type {
   Candidate,
   Compare,
   CompareSubnet,
+  ValidatorComparison,
+  ValidatorComparisonEntry,
   BlockEvent,
   BlockEvents,
   BlockChainEvents,
@@ -6767,6 +6769,85 @@ export const compareQuery = (netuids: number[]) =>
       return { data: normalizeCompare(res.data), meta: res.meta, url: res.url };
     },
     enabled: netuids.length > 0,
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeValidatorComparisonEntry(raw: unknown): ValidatorComparisonEntry | undefined {
+  if (!isRecord(raw)) return undefined;
+  const hotkey = optionalString(raw.hotkey);
+  if (!hotkey) return undefined;
+  const id = raw.coldkey_identity;
+  const coldkey_identity = isRecord(id)
+    ? {
+        has_identity: id.has_identity === true,
+        name: optionalString(id.name) ?? null,
+        url: optionalString(id.url) ?? null,
+        github: optionalString(id.github) ?? null,
+        image: optionalString(id.image) ?? null,
+        discord: optionalString(id.discord) ?? null,
+        description: optionalString(id.description) ?? null,
+        additional: optionalString(id.additional) ?? null,
+        captured_at: optionalString(id.captured_at) ?? null,
+      }
+    : null;
+  return {
+    hotkey,
+    coldkey: optionalString(raw.coldkey) ?? null,
+    coldkey_identity,
+    take: optionalNumber(raw.take) ?? null,
+    apy_estimate: optionalNumber(raw.apy_estimate) ?? null,
+    apy_estimate_eligible_subnet_count:
+      optionalNumber(raw.apy_estimate_eligible_subnet_count) ?? null,
+    nominator_count: optionalNumber(raw.nominator_count) ?? null,
+    total_stake_tao: optionalNumber(raw.total_stake_tao) ?? null,
+    total_emission_tao: optionalNumber(raw.total_emission_tao) ?? null,
+    avg_validator_trust: optionalNumber(raw.avg_validator_trust) ?? null,
+    max_validator_trust: optionalNumber(raw.max_validator_trust) ?? null,
+    subnet_count: optionalNumber(raw.subnet_count) ?? null,
+    subnet_context: isRecord(raw.subnet_context) ? raw.subnet_context : null,
+  };
+}
+
+export function normalizeValidatorComparison(raw: unknown): ValidatorComparison {
+  const d = isRecord(raw) ? raw : {};
+  const validators = Array.isArray(d.validators)
+    ? d.validators.flatMap((v) => {
+        const normalized = normalizeValidatorComparisonEntry(v);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: optionalNumber(d.schema_version),
+    netuid: optionalNumber(d.netuid) ?? null,
+    validator_count: optionalNumber(d.validator_count) ?? validators.length,
+    validators,
+  };
+}
+
+/**
+ * Composed side-by-side comparison for 1–16 validator hotkeys in one request
+ * (#6998, the validator-side sibling of compareQuery). Fuses take rate, APY
+ * estimate, nominator counts, on-chain identity, and cross-subnet
+ * stake/emission/trust so the validator compare drawer renders from one call.
+ */
+export const validatorCompareQuery = (hotkeys: string[], netuid?: number) =>
+  queryOptions({
+    queryKey: k("compare-validators", [...hotkeys].sort(), netuid ?? null),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/compare/validators", {
+        params: {
+          hotkeys: hotkeys.join(","),
+          ...(netuid != null ? { netuid } : {}),
+        },
+        signal,
+      });
+      return {
+        data: normalizeValidatorComparison(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    enabled: hotkeys.length > 0,
     staleTime: STALE_SHORT,
   });
 
