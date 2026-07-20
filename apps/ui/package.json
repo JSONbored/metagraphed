@@ -58,7 +58,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
-    "@lovable.dev/vite-tanstack-config": "^2.7.2",
+    "@lovable.dev/vite-tanstack-config": "^2.7.6",
     "@playwright/test": "^1.61.1",
     "@sentry/vite-plugin": "^5.4.0",
     "@types/node": "^22.20.1",
@@ -74,7 +74,7 @@
     "nitro": "3.0.260603-beta",
     "prettier": "^3.9.5",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.63.0",
+    "typescript-eslint": "^8.64.0",
     "vite": "^7.3.6",
     "vitest": "^3.2.7"
   },
