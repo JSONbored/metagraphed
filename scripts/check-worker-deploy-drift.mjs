@@ -1,21 +1,35 @@
 #!/usr/bin/env node
-// Scheduled drift guard (issue #5538, parent epic #4651): the Worker CODE deploys
-// via Cloudflare Workers Builds on push to main (a Cloudflare-side git integration,
-// not a GitHub Actions step -- see publish-cloudflare.yml's header), so nothing in
-// this repo previously verified that a Builds deploy actually landed. A stuck build
-// leaves the live Worker silently drifting stale vs. main with no signal here. This
-// compares the live deployment's Workers-Builds-linked commit against origin/main
-// HEAD and fails the scheduled job once the drift has persisted across a prior
-// scheduled run (see evaluateDeployDrift below for the grace-window rule).
+// Scheduled drift guard (issue #5538, parent epic #4651; corrected by #7224):
+// the Worker CODE deploys via Cloudflare Workers Builds on push to main (a
+// Cloudflare-side git integration, not a GitHub Actions step -- see
+// publish-cloudflare.yml's header), so nothing in this repo previously
+// verified that a Builds deploy actually landed. A stuck build leaves the
+// live Worker silently drifting stale vs. main with no signal here. This
+// compares the live deployment's commit -- read from the workers/message
+// annotation that scripts/deploy-worker-with-sourcemaps.sh's `--message
+// "$(git rev-parse HEAD)"` sets on every deploy -- against origin/main HEAD,
+// falling back to Sentry's release tracking if that annotation is ever
+// absent (e.g. a deployment predating the #7224 fix), and fails the
+// scheduled job once the drift has persisted across a prior scheduled run
+// (see evaluateDeployDrift below for the grace-window rule).
+//
+// #7224: this previously read a `workers/commit_hash` annotation that never
+// existed for Cloudflare Workers deployments (confirmed against wrangler's
+// own CLI source and Cloudflare's List Deployments API reference -- only
+// `workers/message`, `workers/tag`, and `workers/triggered_by` are real;
+// `commit_hash` is exclusively a Cloudflare Pages deploy-command concept, a
+// different product). Nothing was ever going to populate it.
 import { fileURLToPath } from "node:url";
 
 const DEPLOYMENTS_PATH_TEMPLATE =
   "https://api.cloudflare.com/client/v4/accounts/{accountId}/workers/scripts/{scriptName}/deployments";
 const SENTRY_RELEASES_PATH_TEMPLATE =
   "https://sentry.io/api/0/projects/{org}/{project}/releases/";
-// A bare 40-hex-char git SHA is a real production release's version (see
-// workers/api.sentry.mjs's `release: env.SENTRY_RELEASE || ...`). PR-preview
-// deploys (apps/ui/.github/workflows/ui-preview-deploy.yml) tag releases
+// A bare 40-hex-char git SHA is what both a real deployment's workers/message
+// annotation (deploy-worker-with-sourcemaps.sh's --message) and a real
+// production Sentry release's version (workers/api.sentry.mjs's
+// `release: env.SENTRY_RELEASE || ...`) should contain. PR-preview deploys
+// (apps/ui/.github/workflows/ui-preview-deploy.yml) tag Sentry releases
 // "<sha>-preview" -- excluded so a preview build is never mistaken for what's
 // actually live in production.
 const PRODUCTION_RELEASE_VERSION_PATTERN = /^[0-9a-f]{40}$/i;
@@ -28,22 +42,22 @@ export function extractDeployedCommitSha(deploymentsJson) {
     );
   }
   const active = deployments[0];
-  const commitSha = active?.annotations?.["workers/commit_hash"];
-  if (!commitSha) {
+  const message = active?.annotations?.["workers/message"];
+  if (!message || !PRODUCTION_RELEASE_VERSION_PATTERN.test(message)) {
     throw new Error(
-      `Active deployment ${active?.id ?? "(unknown id)"} has no workers/commit_hash annotation -- Workers Builds may not be linked to git for this script`,
+      `Active deployment ${active?.id ?? "(unknown id)"} has no workers/message annotation containing a git commit SHA -- scripts/deploy-worker-with-sourcemaps.sh may not have deployed it (or it predates the --message fix, #7224)`,
     );
   }
-  return commitSha;
+  return message;
 }
 
-// Fallback for when Cloudflare's Deployments API doesn't populate the
-// workers/commit_hash annotation even though Workers Builds is genuinely
-// deploying on every push (confirmed live, 2026-07-20): @sentry/cloudflare's
-// withSentry() (workers/api.sentry.mjs) already tags every production error
-// event with the real deployed commit SHA as its Sentry release, independent
-// of Cloudflare's own deployment bookkeeping. Sorts by dateCreated rather than
-// trusting response order, since that isn't documented/guaranteed.
+// Fallback for a deployment whose workers/message annotation is absent or
+// not SHA-shaped (e.g. one predating the #7224 --message fix): @sentry/
+// cloudflare's withSentry() (workers/api.sentry.mjs) already tags every
+// production error event with the real deployed commit SHA as its Sentry
+// release, independent of Cloudflare's own deployment bookkeeping. Sorts by
+// dateCreated rather than trusting response order, since that isn't
+// documented/guaranteed.
 export function selectLatestProductionRelease(releases) {
   if (!Array.isArray(releases)) {
     return null;

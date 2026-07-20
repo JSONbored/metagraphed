@@ -35,6 +35,17 @@
 # Variable/Secret -- sentry-cli only runs during the build, never reaches the
 # deployed Worker) on each of the 3 Worker projects.
 #
+# --message also passed on the wrangler call itself (metagraphed#7224): the
+# deployed commit SHA needs to land in the deployment's own real
+# `workers/message` annotation (confirmed against Cloudflare's List
+# Deployments API reference + wrangler's own CLI source -- `workers/message`/
+# `workers/tag`/`workers/triggered_by` are the only Workers deployment
+# annotations that actually exist; `workers/commit_hash` scripts/check-worker-
+# deploy-drift.mjs previously checked was never a real one, that key only
+# exists on Cloudflare Pages' unrelated deploy command) so that scheduled
+# drift check can read the live commit directly instead of relying solely on
+# its Sentry-release fallback.
+#
 # Usage: scripts/deploy-worker-with-sourcemaps.sh <wrangler-config.jsonc> [--preview]
 set -euo pipefail
 
@@ -59,13 +70,15 @@ RELEASE=$(npx sentry-cli releases propose-version)
 if [[ "$ENVIRONMENT" == "preview" ]]; then
   RELEASE="$RELEASE-preview"
 fi
+COMMIT_SHA=$(git rev-parse HEAD)
 
 npx wrangler "${WRANGLER_SUBCOMMAND[@]}" \
   --config "$CONFIG" \
   --outdir "$OUTDIR" \
   --upload-source-maps \
   --var "SENTRY_RELEASE:$RELEASE" \
-  --var "SENTRY_ENVIRONMENT:$ENVIRONMENT"
+  --var "SENTRY_ENVIRONMENT:$ENVIRONMENT" \
+  --message "$COMMIT_SHA"
 
 npx sentry-cli releases new "$RELEASE"
 # --auto reads the linked GitHub repo's commit range since the last release

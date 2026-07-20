@@ -8,16 +8,22 @@ import {
 } from "../scripts/check-worker-deploy-drift.mjs";
 
 describe("extractDeployedCommitSha", () => {
-  test("reads the commit hash annotation off the active (first) deployment", () => {
+  const shaA = "a".repeat(40);
+  const shaB = "b".repeat(40);
+
+  test("reads the git commit SHA from the workers/message annotation off the active (first) deployment", () => {
+    // #7224: workers/message (set by deploy-worker-with-sourcemaps.sh's
+    // --message "$(git rev-parse HEAD)"), not workers/commit_hash -- that key
+    // was never a real Cloudflare Workers deployment annotation.
     const sha = extractDeployedCommitSha({
       result: {
         deployments: [
-          { id: "dep-2", annotations: { "workers/commit_hash": "abc123" } },
-          { id: "dep-1", annotations: { "workers/commit_hash": "old999" } },
+          { id: "dep-2", annotations: { "workers/message": shaA } },
+          { id: "dep-1", annotations: { "workers/message": shaB } },
         ],
       },
     });
-    assert.equal(sha, "abc123");
+    assert.equal(sha, shaA);
   });
 
   test("throws when there are no deployments", () => {
@@ -27,13 +33,30 @@ describe("extractDeployedCommitSha", () => {
     );
   });
 
-  test("throws when the active deployment has no commit_hash annotation", () => {
+  test("throws when the active deployment has no workers/message annotation", () => {
     assert.throws(
       () =>
         extractDeployedCommitSha({
           result: { deployments: [{ id: "dep-1", annotations: {} }] },
         }),
-      /no workers\/commit_hash annotation/,
+      /no workers\/message annotation containing a git commit SHA/,
+    );
+  });
+
+  test("throws when workers/message isn't SHA-shaped (e.g. a deployment predating the --message fix)", () => {
+    assert.throws(
+      () =>
+        extractDeployedCommitSha({
+          result: {
+            deployments: [
+              {
+                id: "dep-1",
+                annotations: { "workers/message": "not-a-commit-sha" },
+              },
+            ],
+          },
+        }),
+      /no workers\/message annotation containing a git commit SHA/,
     );
   });
 });

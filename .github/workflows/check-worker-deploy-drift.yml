@@ -14,12 +14,13 @@ name: Check Worker Deploy Drift
 # normal in-flight deploy).
 #
 # SENTRY_AUTH_TOKEN (same repo secret ui-sentry-release.yml already uses) is a
-# fallback: if the Cloudflare Deployments API doesn't have a workers/commit_hash
-# annotation for the active deployment, the script falls back to the deployed
-# commit SHA that @sentry/cloudflare's withSentry() already tags every production
-# error event with (workers/api.sentry.mjs), which is independent of Cloudflare's
-# own deployment bookkeeping. Optional: omitting the secret just removes the
-# fallback, not the primary check.
+# fallback: if the active deployment's workers/message annotation (set by
+# scripts/deploy-worker-with-sourcemaps.sh's --message, #7224) is ever absent
+# -- e.g. a deployment predating that fix -- the script falls back to the
+# deployed commit SHA that @sentry/cloudflare's withSentry() already tags
+# every production error event with (workers/api.sentry.mjs), independent of
+# Cloudflare's own deployment bookkeeping. Optional: omitting the secret just
+# removes the fallback, not the primary check.
 on:
   schedule:
     - cron: "53 8 * * *"
