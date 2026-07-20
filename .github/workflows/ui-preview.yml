@@ -1,0 +1,98 @@
+name: UI Preview Build
+
+# Build half of the fork-safe per-PR preview pipeline. Runs for EVERY PR — including forks — and
+# deliberately WITHOUT secrets (fork PRs get a read-only token): it only produces the built `.output`
+# artifact. The trusted `ui-preview-deploy.yml` (triggered on workflow_run) then deploys that artifact
+# WITH secrets and records the GitHub Deployment that loopover's review bot reads for the "after"
+# screenshot in a PR's visual-preview table.
+#
+# Why this exists: apps/ui deploys to production via Cloudflare Workers Builds (a dashboard-configured
+# git integration on push to main — see apps/ui/vite.config.ts's own header comment), which never
+# surfaces a GitHub-visible signal (no check-run, no deployment, no PR comment) for a branch/PR build,
+# even though it does build one. loopover's preview-discovery chain (Deployments API → commit-check
+# scan → bot PR-comment scan) has nothing to find there, so "after" screenshots never render. This
+# workflow pair mirrors JSONbored/loopover's own identical `ui-preview.yml` / `ui-preview-deploy.yml`
+# pattern (same author, same TanStack Start + Nitro cloudflare-module stack, same problem, already
+# proven in production) rather than depending on Cloudflare's own preview mechanism at all.
+#
+# Why split into two workflows: a preview requires building the PR's UI, and building runs the PR's
+# (possibly fork-authored) code. Doing that here with no secret access — and deploying the resulting
+# bundle in a separate trusted step that never executes fork code — is the standard way to give fork
+# PRs previews without exposing Cloudflare credentials to untrusted code.
+
+on:
+  pull_request:
+    # Explicit list because the default (opened/synchronize/reopened) omits ready_for_review — once the
+    # build job below skips draft PRs, marking a PR ready must itself trigger a real preview build, not
+    # wait for the next push. Mirrors validate.yml's own pull_request.types list.
+    types: [opened, synchronize, reopened, ready_for_review]
+    # Matches validate.yml's own `run_ui_validation` path filter reasoning: apps/ui consumes
+    # packages/client and packages/ui-kit as live workspace links, whose committed dist/ bundles are
+    # what actually ends up in the built output.
+    paths:
+      - "apps/ui/**"
+      - "packages/client/**"
+      - "packages/ui-kit/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-preview-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build UI preview artifact
+    # Skip draft PRs (anti-abuse): a full npm ci + UI build on every push to a PR nobody has marked
+    # ready for review yet. Mirrors validate.yml's own draft-skip convention for the `ui` job.
+    if: ${{ github.event.pull_request.draft != true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # Installs the whole workspace tree from the one root lockfile — there is no way to `npm ci` a
+      # single workspace in isolation. packages/client/dist and packages/ui-kit/dist are COMMITTED
+      # runtime bundles (see their own .gitignore comments), so this never rebuilds either sibling
+      # package — identical to what Cloudflare Workers Builds' own production deploy does.
+      - name: Install
+        run: npm ci
+
+      # Builds apps/ui only. Nitro's cloudflare-module preset writes the SSR worker entry + static
+      # assets to apps/ui/.output/{server,public} (NOT dist/ — verified against a real local build,
+      # this repo's own build output directory differs from loopover-ui's). VITE_METAGRAPH_API_BASE is
+      # a public URL (apps/ui/.env.example's own documented default), not a secret — points the preview
+      # at the real production API, same as loopover's own preview build does for its own backend.
+      - name: Build UI
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
+          VITE_METAGRAPH_API_BASE: https://api.metagraph.sh
+        run: npm run build --workspace=apps/ui
+
+      # The trusted deploy workflow downloads this by name + run-id. It contains only the built bundle
+      # (server/ + public/) — no secrets, no source needed downstream. Deliberately does NOT upload
+      # apps/ui/.output/server/wrangler.json: that file is generated from the untrusted checkout (a
+      # malicious PR could edit apps/ui/wrangler.jsonc to smuggle bindings/vars/routes into it), so the
+      # trusted deploy step writes its own wrangler config from scratch instead of trusting this one.
+      - name: Upload built UI artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ui-preview-dist
+          path: |
+            apps/ui/.output/server
+            apps/ui/.output/public
+            !apps/ui/.output/server/wrangler.json
+          if-no-files-found: error
+          retention-days: 1

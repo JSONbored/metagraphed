@@ -8,6 +8,17 @@ const workflows = (await fs.readdir(workflowRoot))
   .sort();
 const errors = [];
 
+// Deploy-only workflows that intentionally never check out repo content are exempt from the
+// "missing checkout action" rule below. ui-preview-deploy.yml (workflow_run-triggered, holds
+// CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID) downloads a PRE-BUILT artifact from the separate,
+// checkout-less "UI Preview Build" job and deploys it -- checking out ANY code, even the trusted
+// default branch, in a job that also holds Cloudflare secrets would be a step backward from the
+// "never combine repo content with secrets in the same job" split this pair of workflows exists to
+// enforce, not a step forward. A narrow, named exception here (not a heuristic that could silently
+// exempt a future workflow that SHOULD have a checkout) is the correct fix, not a decorative
+// checkout added purely to satisfy this check.
+const NO_CHECKOUT_BY_DESIGN = new Set(["ui-preview-deploy.yml"]);
+
 for (const workflow of workflows) {
   const content = await fs.readFile(path.join(workflowRoot, workflow), "utf8");
   check(
@@ -45,7 +56,8 @@ for (const workflow of workflows) {
     "Discord notifications must be sent by the private Cloudflare gate, not GitHub Actions",
   );
   check(
-    /uses:\s+actions\/checkout@/.test(content),
+    NO_CHECKOUT_BY_DESIGN.has(workflow) ||
+      /uses:\s+actions\/checkout@/.test(content),
     workflow,
     "missing checkout action",
   );

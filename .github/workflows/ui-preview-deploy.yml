@@ -1,0 +1,302 @@
+name: UI Preview Deploy
+
+# Deploy half of the fork-safe per-PR preview pipeline (see "UI Preview Build"'s own header for the
+# full rationale — mirrors JSONbored/loopover's identical ui-preview-deploy.yml). Triggered when "UI
+# Preview Build" completes. Because it runs on `workflow_run`, GitHub always executes the workflow
+# definition from the DEFAULT BRANCH (never the fork's), so it is trusted and may use secrets. It
+# downloads the built artifact (it never checks out or runs PR/fork source — it only uploads the
+# already-built bundle), deploys a transient preview version, and records the GitHub Deployment +
+# status that loopover's review bot reads to render the "after" screenshot.
+#
+# Security boundary: the BUILD ran fork code with NO secrets; this DEPLOY has secrets but runs NO fork
+# code (wrangler only uploads the bundle — fork code executes solely inside the isolated workers.dev
+# preview when the URL is later visited). This is what makes fork-PR previews safe.
+#
+# Required repo secrets (already present — used by publish-cloudflare.yml / check-worker-deploy-drift.yml):
+#   CLOUDFLARE_API_TOKEN   — token with "Workers Scripts:Edit" on the account
+#   CLOUDFLARE_ACCOUNT_ID  — the Cloudflare account id that owns metagraphed-ui
+
+on:
+  workflow_run:
+    workflows: ["UI Preview Build"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read # download the build artifact from the triggering run
+  deployments: write # record the preview Deployment loopover's review bot reads
+  pull-requests: read # resolve the (often fork) PR for this build by matching head SHA
+
+concurrency:
+  group: ui-preview-deploy-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy UI preview version
+    # Bind the ONE job that holds Cloudflare credentials to a GitHub deployment environment, so the org
+    # can attach approval gating and/or environment-scoped secrets to it. Unprotected by default (so
+    # previews stay automatic); add required reviewers in Settings → Environments → preview to require a
+    # manual approval before any (fork) preview deploys.
+    environment:
+      name: preview
+      url: ${{ steps.upload.outputs.preview_url }}
+    # Only successful build runs that originated from a pull_request (incl forks). A path-skipped or
+    # failed build still fires workflow_run with a non-success conclusion — ignore those.
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check Cloudflare secrets
+        id: cfg
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set — skipping preview deploy (before-only screenshots)."
+          fi
+
+      - name: Setup Node
+        if: steps.cfg.outputs.ready == 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+
+      # Pinned to this repo's own root wrangler devDependency version, installed globally since this
+      # job never checks out the repo (only the artifact) so node_modules/wrangler isn't available.
+      - name: Install trusted Wrangler
+        if: steps.cfg.outputs.ready == 'true'
+        run: npm install --global wrangler@4.110.0
+
+      # Cross-run download: the artifact lives on the triggering build run, not this one.
+      - name: Download built UI artifact
+        if: steps.cfg.outputs.ready == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ui-preview-dist
+          path: preview-dist
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      # The artifact was produced by the UNTRUSTED build (fork code). Validate it before handing it to
+      # wrangler: reject symlinks (a path-traversal / exfil vector when the bundle is processed), require
+      # the expected SSR build structure, and allowlist file extensions so a malicious build can't smuggle
+      # scripts/binaries/unexpected paths into the deploy.
+      - name: Validate downloaded artifact
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          cd preview-dist
+          # 1) No symlinks anywhere in the bundle.
+          symlinks="$(find . -type l)"
+          if [ -n "$symlinks" ]; then
+            echo "::error::Artifact contains symlinks — refusing to deploy:"
+            printf '%s\n' "$symlinks"
+            exit 1
+          fi
+          # 2) Required SSR build structure (server worker entry + public assets dir — apps/ui's own
+          #    Nitro cloudflare-module output names it "public", not "client").
+          test -f server/index.mjs || { echo "::error::artifact missing server/index.mjs"; exit 1; }
+          test -d public || { echo "::error::artifact missing public/ assets dir"; exit 1; }
+          # 3) Allowlist file extensions — fail on anything that isn't a normal web/build output (blocks
+          #    smuggled scripts/binaries). A few extensionless CF asset files are explicitly permitted.
+          unexpected="$(find . -regextype posix-extended -type f \
+            -not -iregex '.*\.(mjs|js|cjs|map|json|css|html?|txt|svg|png|jpe?g|gif|webp|avif|ico|bmp|woff2?|ttf|otf|eot|wasm|xml|webmanifest|md|csv|zip|wgsl|glb|gltf)$' \
+            -not -name '_headers' -not -name '_redirects' -not -name '_routes.json' -not -name '.assetsignore')"
+          if [ -n "$unexpected" ]; then
+            echo "::error::Artifact contains unexpected file types — refusing to deploy:"
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+          echo "Artifact validated: no symlinks, expected SSR structure, allowlisted file types only."
+
+      # The Wrangler config is written HERE (trusted) — never taken from the PR — so a fork cannot
+      # control bindings, routes, or vars. It points at the downloaded built bundle. It deliberately
+      # OMITS the production custom-domain route (metagraph.sh): `wrangler versions upload` creates a
+      # 0%-traffic preview version (a workers.dev URL) and applies no routes, so the route is unused
+      # here — and omitting it guarantees that even a future switch to `wrangler deploy` could never
+      # point fork-built code at the production domain. Do not add a `routes` block to this preview
+      # config. Deliberately NOT the wrangler.json the untrusted build step generated (excluded from
+      # the uploaded artifact) — a malicious PR could otherwise smuggle bindings/vars through
+      # apps/ui/wrangler.jsonc.
+      - name: Write trusted preview Wrangler config
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          cat > preview-dist/server/wrangler.preview.json <<'JSON'
+          {
+            "compatibility_date": "2026-07-17",
+            "name": "metagraphed-ui",
+            "workers_dev": true,
+            "preview_urls": true,
+            "compatibility_flags": ["nodejs_compat"],
+            "placement": {
+              "mode": "smart"
+            },
+            "observability": {
+              "enabled": true,
+              "logs": {
+                "enabled": true,
+                "head_sampling_rate": 1
+              },
+              "traces": {
+                "enabled": true,
+                "head_sampling_rate": 1
+              }
+            },
+            "vars": {
+              "VITE_METAGRAPH_API_BASE": "https://api.metagraph.sh"
+            },
+            "main": "index.mjs",
+            "assets": {
+              "binding": "ASSETS",
+              "directory": "../public"
+            },
+            "no_bundle": true,
+            "rules": [
+              {
+                "type": "ESModule",
+                "globs": ["**/*.mjs", "**/*.js"]
+              }
+            ]
+          }
+          JSON
+
+      - name: Upload preview version
+        id: upload
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -o pipefail
+          out=$(wrangler versions upload --config preview-dist/server/wrangler.preview.json 2>&1 | tee /dev/stderr)
+          # Take a workers.dev URL that belongs to the metagraphed-ui worker, so any other URL in the
+          # logs (or a changed output format) can't be recorded as the preview by mistake. Tolerant of
+          # the version-alias prefix (`<alias>-metagraphed-ui.<sub>.workers.dev`).
+          url=$(printf '%s\n' "$out" | grep -oiE 'https://[a-z0-9.-]+\.workers\.dev' | grep -i 'metagraphed-ui' | head -n1)
+          if [ -z "$url" ]; then
+            echo "::error::Could not parse an expected metagraphed-ui preview URL from wrangler output"
+            exit 1
+          fi
+          echo "preview_url=$url" >> "$GITHUB_OUTPUT"
+          echo "Preview: $url"
+
+      - name: Record deployment for loopover
+        if: steps.cfg.outputs.ready == 'true' && steps.upload.outputs.preview_url != ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const url = ${{ toJSON(steps.upload.outputs.preview_url) }};
+            // Trust only the GitHub-set head_sha — never fork-supplied data.
+            const sha = context.payload.workflow_run.head_sha;
+            const slug = `${context.repo.owner}/${context.repo.repo}`;
+            // Resolve the PR for this build. Both signals below are EMPTY for fork PRs (the common case
+            // here): workflow_run.pull_requests is empty for cross-repo runs, and the commit→PR
+            // association API doesn't index a fork-head commit from the base repo. So we ALSO match the
+            // open PR whose head points at this exact build SHA — head.sha is GitHub-set (the base repo
+            // tracks the fork head as refs/pull/N/head), so it's safe to trust even for forks.
+            let prNumber = context.payload.workflow_run.pull_requests?.[0]?.number;
+            if (!prNumber) {
+              const assoc = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: sha,
+              });
+              prNumber = assoc.data.find((p) => p.state === "open" && p.base.repo.full_name === slug)?.number;
+            }
+            if (!prNumber) {
+              // Fork-safe fallback: scan open PRs for the one whose head is this build's commit.
+              const openPrs = await github.paginate(github.rest.pulls.list, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: "open",
+                per_page: 100,
+              });
+              prNumber = openPrs.find((p) => p.head.sha === sha)?.number;
+            }
+            if (!prNumber) {
+              core.setFailed(`Could not resolve an open PR for ${sha} — skipping deployment record.`);
+              return;
+            }
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha,
+              environment: `preview/pr-${prNumber}`,
+              auto_merge: false,
+              required_contexts: [],
+              transient_environment: true,
+              description: "metagraphed UI preview",
+              // loopover's review bot reads `pr` here to re-review this exact PR once the preview is live.
+              payload: JSON.stringify({ pr: prNumber, head_sha: sha }),
+            });
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: "success",
+              environment: `preview/pr-${prNumber}`,
+              environment_url: url,
+              description: "Preview ready",
+            });
+            core.notice(`Preview deployment recorded for PR #${prNumber}: ${url}`);
+
+      - name: Record FAILED deployment for loopover
+        # Runs when an earlier step in this job failed (artifact validation rejected the bundle, the
+        # wrangler upload errored, etc.) — i.e. a deploy was attempted but never produced a preview.
+        # Record a `failure` deployment_status so loopover's review bot flips the "after" cell from an
+        # eternal spinner to a terminal "preview deploy failed" card, instead of waiting forever for a
+        # success event that will never come. Gated on CF creds so a credential-less skip records nothing.
+        if: failure() && steps.cfg.outputs.ready == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const sha = context.payload.workflow_run.head_sha; // GitHub-set; never fork-supplied
+            const slug = `${context.repo.owner}/${context.repo.repo}`;
+            // Same fork-safe PR resolution as the success step above.
+            let prNumber = context.payload.workflow_run.pull_requests?.[0]?.number;
+            if (!prNumber) {
+              const assoc = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: sha,
+              });
+              prNumber = assoc.data.find((p) => p.state === "open" && p.base.repo.full_name === slug)?.number;
+            }
+            if (!prNumber) {
+              const openPrs = await github.paginate(github.rest.pulls.list, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: "open",
+                per_page: 100,
+              });
+              prNumber = openPrs.find((p) => p.head.sha === sha)?.number;
+            }
+            if (!prNumber) {
+              core.warning(`Preview deploy failed but could not resolve a PR for ${sha} — no failure status recorded.`);
+              return;
+            }
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha,
+              environment: `preview/pr-${prNumber}`,
+              auto_merge: false,
+              required_contexts: [],
+              transient_environment: true,
+              description: "metagraphed UI preview (failed)",
+              payload: JSON.stringify({ pr: prNumber, head_sha: sha }),
+            });
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: "failure",
+              environment: `preview/pr-${prNumber}`,
+              description: "Preview deploy failed",
+            });
+            core.notice(`Recorded FAILED preview deployment for PR #${prNumber}.`);
