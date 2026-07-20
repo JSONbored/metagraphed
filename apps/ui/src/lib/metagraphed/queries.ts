@@ -123,6 +123,8 @@ import type {
   Candidate,
   Compare,
   CompareSubnet,
+  CompareValidator,
+  ValidatorComparison,
   BlockEvent,
   BlockEvents,
   BlockChainEvents,
@@ -6952,6 +6954,49 @@ export function normalizeCompare(raw: unknown): Compare {
   };
 }
 
+function normalizeCompareValidator(raw: unknown): CompareValidator | undefined {
+  if (!isRecord(raw)) return undefined;
+  const hotkey = optionalString(raw.hotkey);
+  if (!hotkey) return undefined;
+  return {
+    hotkey,
+    coldkey: optionalString(raw.coldkey) ?? null,
+    // Identity + subnet_context are opaque nested blocks the endpoint already
+    // shapes; pass through (or null) rather than re-deriving.
+    coldkey_identity: isRecord(raw.coldkey_identity)
+      ? (raw.coldkey_identity as unknown as CompareValidator["coldkey_identity"])
+      : null,
+    take: optionalNumber(raw.take) ?? null,
+    apy_estimate: optionalNumber(raw.apy_estimate) ?? null,
+    apy_estimate_eligible_subnet_count:
+      optionalNumber(raw.apy_estimate_eligible_subnet_count) ?? null,
+    nominator_count: optionalNumber(raw.nominator_count) ?? null,
+    total_stake_tao: optionalNumber(raw.total_stake_tao) ?? null,
+    total_emission_tao: optionalNumber(raw.total_emission_tao) ?? null,
+    avg_validator_trust: optionalNumber(raw.avg_validator_trust) ?? null,
+    max_validator_trust: optionalNumber(raw.max_validator_trust) ?? null,
+    subnet_count: optionalNumber(raw.subnet_count) ?? null,
+    subnet_context: isRecord(raw.subnet_context)
+      ? (raw.subnet_context as unknown as CompareValidator["subnet_context"])
+      : null,
+  };
+}
+
+export function normalizeValidatorComparison(raw: unknown): ValidatorComparison {
+  const d = isRecord(raw) ? raw : {};
+  const validators = Array.isArray(d.validators)
+    ? d.validators.flatMap((v) => {
+        const normalized = normalizeCompareValidator(v);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: optionalNumber(d.netuid) ?? null,
+    validator_count: optionalNumber(d.validator_count) ?? validators.length,
+    validators,
+  };
+}
+
 /**
  * Composed side-by-side comparison for up to 128 netuids in one request. Fuses
  * registry structure + on-chain economics + live probe health per subnet, so the
@@ -6972,6 +7017,29 @@ export const compareQuery = (netuids: number[]) =>
       return { data: normalizeCompare(res.data), meta: res.meta, url: res.url };
     },
     enabled: netuids.length > 0,
+    staleTime: STALE_SHORT,
+  });
+
+/**
+ * Side-by-side comparison of up to 16 validators by hotkey — the validator
+ * equivalent of compareQuery (#6035/#6325). Fans out one neurons-tier read per
+ * hotkey server-side, so the compare drawer renders its grid from a single call.
+ */
+export const validatorCompareQuery = (hotkeys: string[]) =>
+  queryOptions({
+    queryKey: k("compare-validators", [...hotkeys].sort()),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/compare/validators", {
+        params: { hotkeys: hotkeys.join(",") },
+        signal,
+      });
+      return {
+        data: normalizeValidatorComparison(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    enabled: hotkeys.length > 0,
     staleTime: STALE_SHORT,
   });
 

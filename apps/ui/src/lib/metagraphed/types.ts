@@ -1569,6 +1569,36 @@ export interface Compare {
   source?: string;
 }
 
+/**
+ * One validator projected down to the stake/delegate-decision fields from
+ * GET /api/v1/compare/validators (#6035/#6325) — the take rate, estimated APY,
+ * nominator count, on-chain identity, and cross-subnet aggregates, plus the
+ * optional single-subnet membership context.
+ */
+export interface CompareValidator {
+  hotkey: string;
+  coldkey: string | null;
+  coldkey_identity: ColdkeyIdentity | null;
+  take: number | null;
+  apy_estimate: number | null;
+  apy_estimate_eligible_subnet_count: number | null;
+  nominator_count: number | null;
+  total_stake_tao: number | null;
+  total_emission_tao: number | null;
+  avg_validator_trust: number | null;
+  max_validator_trust: number | null;
+  subnet_count: number | null;
+  /** This validator's membership row in the context subnet, when a netuid was supplied; null otherwise or when it holds no permit there. */
+  subnet_context: GlobalValidatorSubnet | null;
+}
+
+/** Response shape of GET /api/v1/compare/validators. */
+export interface ValidatorComparison {
+  netuid: number | null;
+  validator_count: number;
+  validators: CompareValidator[];
+}
+
 /** One daily on-chain snapshot from /subnets/{n}/history. */
 export interface SubnetHistoryPoint {
   snapshot_date: string;
