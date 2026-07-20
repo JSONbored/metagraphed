@@ -9,6 +9,12 @@ import {
 import { readArtifact, readHealthKv } from "../workers/storage.mjs";
 import { contractVersion } from "../workers/responses.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+// #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
+// routes, reusing the same shaping functions list_endpoint_pools/list_rpc_pools/
+// list_endpoint_incidents already call for MCP parity -- not a reimplementation.
+import { loadEndpointPoolsList } from "./endpoint-pools-mcp.mjs";
+import { loadRpcPoolsList } from "./rpc-pools-mcp.mjs";
+import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.mjs";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_WINDOWS,
@@ -372,6 +378,12 @@ export const SDL = `
     surfaces(netuid: Int, limit: Int, cursor: String): SurfaceList!
     "Endpoint/resource registry, optionally scoped to one subnet."
     endpoints(netuid: Int, limit: Int, cursor: String): EndpointList!
+    "Generalized endpoint pool scores -- each pool's kind, eligible/total endpoint count, and probe-derived routing score. Filter by id/kind, threshold with min_/max_eligible_count and min_/max_endpoint_count, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-pools."
+    endpoint_pools(id: String, kind: String, min_eligible_count: Float, max_eligible_count: Float, min_endpoint_count: Float, max_endpoint_count: Float, sort: String, order: String, fields: String, limit: Int, cursor: Int): PoolList!
+    "The load-balanced Bittensor RPC pool scores -- the RPC-specific predecessor of endpoint_pools (#6570): same pools[] row shape and filter/sort/page surface, with a live 15-minute cron eligibility overlay applied before filtering/sorting. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/rpc/pools."
+    rpc_pools(id: String, kind: String, min_eligible_count: Float, max_eligible_count: Float, min_endpoint_count: Float, max_endpoint_count: Float, sort: String, order: String, fields: String, limit: Int, cursor: Int): PoolList!
+    "Probe-derived endpoint incident feed -- active endpoint failures/degradations with severity, state, provider, and subnet. Filter by netuid/kind/provider/status/severity/state, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-incidents."
+    endpoint_incidents(netuid: Int, kind: String, provider: String, status: String, severity: String, state: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): IncidentList!
     "Global operational health rollup with per-subnet summaries."
     health: GlobalHealth
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
@@ -1363,6 +1375,36 @@ export const SDL = `
     subnet_name: String
     subnet_slug: String
     source_urls: [String!]
+  }
+
+  "Shared by endpoint_pools and rpc_pools -- same pools[] row shape, filter/sort/page surface, and pagination-metadata fields (#6570); rpc_pools additionally populates source/operational_observed_at from its live cron overlay, which endpoint_pools leaves null."
+  type PoolList {
+    generated_at: String
+    notes: JSON
+    source: String
+    operational_observed_at: String
+    pools: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type IncidentList {
+    generated_at: String
+    notes: JSON
+    summary: JSON
+    incidents: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
   }
 
   type GlobalHealth {
@@ -2987,6 +3029,9 @@ export const FIELD_COMPLEXITY = {
   economics: RELATIONSHIP_FIELD_COMPLEXITY,
   surfaces: RELATIONSHIP_FIELD_COMPLEXITY,
   endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
+  endpoint_pools: RELATIONSHIP_FIELD_COMPLEXITY,
+  rpc_pools: RELATIONSHIP_FIELD_COMPLEXITY,
+  endpoint_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4449,6 +4494,32 @@ const rootValue = {
       netuid,
       keyFn: (e) => e.id ?? e.surface_id,
     });
+  },
+
+  // #6985: reuse list_endpoint_pools's/list_rpc_pools's/list_endpoint_incidents's
+  // own loaders unchanged (same artifact read, filter, sort, and page logic REST
+  // and MCP already use) rather than re-deriving a GraphQL-only filterFn. Each
+  // loader validates its own args and throws on an invalid one -- that throw
+  // (inside these async functions) becomes a rejected promise, which the graphql
+  // executor surfaces as a normal GraphQL error, matching every other field's
+  // "an unsupported filter/sort is a GraphQL error, not a silently substituted
+  // default" convention.
+  endpoint_pools(args, context) {
+    return loadEndpointPoolsList(context, args, { readArtifact });
+  },
+
+  rpc_pools(args, context) {
+    // rpc-pools' loader additionally reads ctx.readHealthKv for its live
+    // 15-minute cron eligibility overlay (rpc-pools-mcp.mjs) -- graphql.mjs's
+    // own context has no such property, so it's supplied here from the same
+    // module-level import loadLiveHealth/loadEconomics already use.
+    return loadRpcPoolsList({ ...context, readHealthKv }, args, {
+      readArtifact,
+    });
+  },
+
+  endpoint_incidents(args, context) {
+    return loadEndpointIncidentsList(context, args, { readArtifact });
   },
 
   async health(_args, context) {

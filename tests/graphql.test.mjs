@@ -33,6 +33,7 @@ import {
   KV_ECONOMICS_CURRENT,
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
+  KV_HEALTH_RPC_POOL,
 } from "../src/kv-keys.mjs";
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
@@ -1298,6 +1299,188 @@ describe("graphql — surfaces / endpoints / health roots", () => {
     const { status, body } = await gql("{ health { status } }", emptyEnv);
     assert.equal(status, 200);
     assert.equal(body.data.health, null);
+  });
+});
+
+// #6985: GraphQL parity for endpoint-pools/rpc-pools/endpoint-incidents, reusing
+// list_endpoint_pools'/list_rpc_pools'/list_endpoint_incidents' own loaders
+// unchanged (same filter/sort/page + error behavior as REST and MCP) rather than
+// a GraphQL-only reimplementation.
+describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
+  const POOLS_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: "test",
+    pools: [
+      {
+        id: "finney-rpc",
+        kind: "subtensor-rpc",
+        eligible_count: 2,
+        endpoint_count: 5,
+      },
+      {
+        id: "finney-wss",
+        kind: "subtensor-wss",
+        eligible_count: 8,
+        endpoint_count: 10,
+      },
+      {
+        id: "finney-archive",
+        kind: "archive",
+        eligible_count: 0,
+        endpoint_count: 3,
+      },
+    ],
+  };
+
+  const INCIDENTS_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: ["probe-derived only"],
+    summary: { incident_count: 2, active_count: 2 },
+    incidents: [
+      {
+        id: "incident-a",
+        endpoint_id: "a",
+        netuid: 7,
+        kind: "subnet-api",
+        provider: "allways",
+        status: "failed",
+        severity: "critical",
+        state: "active",
+      },
+      {
+        id: "incident-b",
+        endpoint_id: "b",
+        netuid: 31,
+        kind: "openapi",
+        provider: "candles",
+        status: "degraded",
+        severity: "warning",
+        state: "active",
+      },
+    ],
+  };
+
+  test("endpoint_pools filters by kind and paginates", async () => {
+    const env = fixtureEnv({ "/metagraph/endpoint-pools.json": POOLS_BLOB });
+    const filtered = await gql(
+      '{ endpoint_pools(kind: "archive") { pools total } }',
+      env,
+    );
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.data.endpoint_pools.total, 1);
+    assert.equal(
+      filtered.body.data.endpoint_pools.pools[0].id,
+      "finney-archive",
+    );
+
+    const paged = await gql(
+      "{ endpoint_pools(limit: 1) { pools total returned next_cursor } }",
+      env,
+    );
+    assert.equal(paged.body.data.endpoint_pools.pools.length, 1);
+    assert.equal(paged.body.data.endpoint_pools.total, 3);
+    assert.equal(paged.body.data.endpoint_pools.returned, 1);
+    assert.ok(paged.body.data.endpoint_pools.next_cursor != null);
+  });
+
+  test("endpoint_pools surfaces an invalid kind as a GraphQL error, not a silent default", async () => {
+    const env = fixtureEnv({ "/metagraph/endpoint-pools.json": POOLS_BLOB });
+    const { body } = await gql(
+      '{ endpoint_pools(kind: "bogus") { total } }',
+      env,
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("endpoint_pools surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ endpoint_pools { total } }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("rpc_pools returns the same pools[] row shape via its own artifact", async () => {
+    const env = fixtureEnv({ "/metagraph/rpc/pools.json": POOLS_BLOB });
+    const { status, body } = await gql(
+      '{ rpc_pools(sort: "eligible_count", order: "desc") { pools total } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.rpc_pools.total, 3);
+    assert.equal(body.data.rpc_pools.pools[0].id, "finney-wss");
+  });
+
+  test("rpc_pools applies the live 15-minute cron eligibility overlay before filtering", async () => {
+    const env = fixtureEnv(
+      { "/metagraph/rpc/pools.json": POOLS_BLOB },
+      {
+        kv: {
+          [KV_HEALTH_RPC_POOL]: {
+            endpoints: [],
+            last_run_at: "2026-07-20T12:00:00.000Z",
+          },
+        },
+      },
+    );
+    const { body } = await gql(
+      "{ rpc_pools { source operational_observed_at } }",
+      env,
+    );
+    assert.equal(body.data.rpc_pools.source, "live-cron-prober");
+    assert.equal(
+      body.data.rpc_pools.operational_observed_at,
+      "2026-07-20T12:00:00.000Z",
+    );
+  });
+
+  test("rpc_pools leaves source/operational_observed_at null with no live overlay", async () => {
+    const env = fixtureEnv({ "/metagraph/rpc/pools.json": POOLS_BLOB });
+    const { body } = await gql(
+      "{ rpc_pools { source operational_observed_at } }",
+      env,
+    );
+    assert.equal(body.data.rpc_pools.source, null);
+    assert.equal(body.data.rpc_pools.operational_observed_at, null);
+  });
+
+  test("endpoint_incidents filters by severity and netuid", async () => {
+    const env = fixtureEnv({
+      "/metagraph/endpoint-incidents.json": INCIDENTS_BLOB,
+    });
+    const { status, body } = await gql(
+      '{ endpoint_incidents(severity: "critical") { incidents total summary } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.endpoint_incidents.total, 1);
+    assert.equal(body.data.endpoint_incidents.incidents[0].id, "incident-a");
+    assert.equal(body.data.endpoint_incidents.summary.incident_count, 2);
+
+    const byNetuid = await gql(
+      "{ endpoint_incidents(netuid: 31) { incidents total } }",
+      env,
+    );
+    assert.equal(byNetuid.body.data.endpoint_incidents.total, 1);
+    assert.equal(
+      byNetuid.body.data.endpoint_incidents.incidents[0].id,
+      "incident-b",
+    );
+  });
+
+  test("endpoint_incidents surfaces an invalid severity as a GraphQL error", async () => {
+    const env = fixtureEnv({
+      "/metagraph/endpoint-incidents.json": INCIDENTS_BLOB,
+    });
+    const { body } = await gql(
+      '{ endpoint_incidents(severity: "bogus") { total } }',
+      env,
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("FIELD_COMPLEXITY weights all three new fields like their sibling relationship fields", () => {
+    for (const field of ["endpoint_pools", "rpc_pools", "endpoint_incidents"]) {
+      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+    }
   });
 });
 
