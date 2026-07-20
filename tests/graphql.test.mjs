@@ -2064,6 +2064,29 @@ describe("graphql — accounts_top_holders (#6991, GraphQL parity, Postgres-tier
     assert.equal(item.net_flow_7d, -10);
   });
 
+  test("a Postgres-tier response missing fields falls back to the requested/computed defaults, matching accounts' own shaping", async () => {
+    const env = {
+      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
+      DATA_API: {
+        // Deliberately omits schema_version/sort/limit/account_count/accounts
+        // to exercise the ?? / || fallbacks below.
+        fetch: async () => Response.json({}),
+      },
+    };
+    const { status, body } = await gql(
+      '{ accounts_top_holders(sort: "net_flow_30d", limit: 7) { schema_version sort limit account_count accounts { ss58 } captured_at } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.accounts_top_holders.schema_version, 1);
+    assert.equal(body.data.accounts_top_holders.sort, "net_flow_30d");
+    assert.equal(body.data.accounts_top_holders.limit, 7);
+    assert.equal(body.data.accounts_top_holders.account_count, 0);
+    assert.deepEqual(body.data.accounts_top_holders.accounts, []);
+    assert.equal(body.data.accounts_top_holders.captured_at, null);
+  });
+
   test("sort and limit args are forwarded as query params to the Postgres tier", async () => {
     let capturedUrl;
     const env = {
