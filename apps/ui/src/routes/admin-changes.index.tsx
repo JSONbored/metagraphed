@@ -7,13 +7,7 @@ import { Scale, Coins, Timer } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import {
-  PageHero,
-  ShareButton,
-  DownloadCsvButton,
-  ActionBar,
-  StatTile,
-} from "@jsonbored/ui-kit";
+import { PageHero, ShareButton, DownloadCsvButton, ActionBar, StatTile } from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { governanceConfigChangesQuery, networkParametersQuery } from "@/lib/metagraphed/queries";
