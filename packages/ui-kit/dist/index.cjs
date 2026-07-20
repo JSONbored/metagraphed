@@ -2631,6 +2631,12 @@ var OPTIONS = [
     label: "Matrix",
     Icon: lucideReact.Grid3x3,
     ariaLabel: "Switch to matrix view"
+  },
+  {
+    value: "bubble",
+    label: "Bubble",
+    Icon: lucideReact.ScatterChart,
+    ariaLabel: "Switch to bubble view"
   }
 ];
 function ViewModeToggle({

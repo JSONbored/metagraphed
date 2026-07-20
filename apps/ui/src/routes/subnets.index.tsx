@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Network, Radio, Layers, Activity, Coins } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { SubnetsBubbleView } from "@/components/metagraphed/subnets-bubble-view";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import {
   BrandIcon,
@@ -184,7 +185,11 @@ function SubnetsPage() {
         description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
         actions={
           <>
-            <ViewModeToggle value={search.view} onChange={setView} />
+            <ViewModeToggle
+              value={search.view}
+              onChange={setView}
+              options={["table", "grid", "matrix", "bubble"]}
+            />
             {search.view === "table" ? (
               <DensityToggle value={effectiveDensity} onChange={setDensity} />
             ) : null}
@@ -641,6 +646,19 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
       cursorInvalid={cursorInvalid}
     />
   );
+
+  // #6884: bubble view — an alternate scatter over the same filtered rows.
+  if (view === "bubble") {
+    return (
+      <div>
+        <div className="sticky top-14 z-20 -mx-4 md:mx-0 mb-3 bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80 border-b border-border md:border md:rounded md:bg-card px-3 py-2 md:p-2.5">
+          <div className="flex flex-wrap items-center gap-2">{filters}</div>
+        </div>
+        {rows.length === 0 && !hasNextPage ? emptyNode : <SubnetsBubbleView rows={rows} />}
+        <div className="mt-3">{footerNode}</div>
+      </div>
+    );
+  }
 
   // Grid / matrix views skip ListShell so they're not boxed in a table card.
   if (view === "grid" || view === "matrix") {
