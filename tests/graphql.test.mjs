@@ -7109,6 +7109,484 @@ describe("graphql — registry_summary / source_health / lineage / rpc_endpoints
   });
 });
 
+// #7172: GraphQL parity for the subnet idle-stake / stake-flow / events /
+// history / prometheus REST routes, each reusing the same shaping fn its MCP
+// tool + REST handler use (buildSubnetIdleStake / buildStakeFlow /
+// buildSubnetEvents / buildSubnetHistory / buildSubnetPrometheus) rather than a
+// GraphQL-only reimplementation. A cold tier degrades to a schema-stable card.
+describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7172)", () => {
+  const tierEnv = (source, payload, captured) => ({
+    [source]: "postgres",
+    DATA_API: {
+      fetch: async (req) => {
+        if (captured) captured.url = new URL(req.url);
+        return Response.json(payload);
+      },
+    },
+  });
+
+  test("subnet_idle_stake cold store returns a schema-stable zeroed card", async () => {
+    const { status, body } = await gql(
+      "{ subnet_idle_stake(netuid: 5) { schema_version netuid captured_at neuron_count idle_neuron_count idle_stake_tao } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const c = body.data.subnet_idle_stake;
+    assert.equal(c.schema_version, 1);
+    assert.equal(c.netuid, 5);
+    assert.equal(c.neuron_count, 0);
+    assert.equal(c.idle_neuron_count, 0);
+    assert.equal(c.idle_stake_tao, 0);
+    assert.equal(c.captured_at, null);
+  });
+
+  test("subnet_idle_stake returns the tier card", async () => {
+    const captured = {};
+    const env = tierEnv(
+      "METAGRAPH_NEURONS_SOURCE",
+      {
+        schema_version: 1,
+        netuid: 7,
+        captured_at: "2026-07-01T00:00:00.000Z",
+        neuron_count: 200,
+        idle_neuron_count: 30,
+        idle_stake_tao: 1234.5,
+      },
+      captured,
+    );
+    const { body } = await gql(
+      "{ subnet_idle_stake(netuid: 7) { netuid idle_neuron_count idle_stake_tao captured_at } }",
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.ok(captured.url.pathname.endsWith("/subnets/7/idle-stake"));
+    assert.equal(body.data.subnet_idle_stake.idle_neuron_count, 30);
+    assert.equal(body.data.subnet_idle_stake.idle_stake_tao, 1234.5);
+  });
+
+  test("subnet_stake_flow cold store returns a schema-stable zeroed card", async () => {
+    const { status, body } = await gql(
+      "{ subnet_stake_flow(netuid: 5) { schema_version netuid window net_flow_tao stake_events unstake_events } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const f = body.data.subnet_stake_flow;
+    assert.equal(f.schema_version, 1);
+    assert.equal(f.net_flow_tao, 0);
+    assert.equal(f.window, "30d");
+  });
+
+  test("subnet_stake_flow forwards window/direction and unwraps { data }", async () => {
+    const captured = {};
+    const env = tierEnv(
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      {
+        data: {
+          schema_version: 1,
+          netuid: 7,
+          window: "7d",
+          total_staked_tao: 10,
+          total_unstaked_tao: 4,
+          net_flow_tao: 6,
+          stake_events: 3,
+          unstake_events: 1,
+        },
+      },
+      captured,
+    );
+    const { body } = await gql(
+      '{ subnet_stake_flow(netuid: 7, window: "7d", direction: "in") { window net_flow_tao stake_events } }',
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.ok(captured.url.pathname.endsWith("/subnets/7/stake-flow"));
+    assert.equal(captured.url.searchParams.get("window"), "7d");
+    assert.equal(captured.url.searchParams.get("direction"), "in");
+    assert.equal(body.data.subnet_stake_flow.net_flow_tao, 6);
+  });
+
+  test("subnet_stake_flow rejects an invalid window or direction", async () => {
+    const bad1 = await gql(
+      '{ subnet_stake_flow(netuid: 7, window: "bogus") { netuid } }',
+    );
+    assert.ok(bad1.body.errors?.length);
+    const bad2 = await gql(
+      '{ subnet_stake_flow(netuid: 7, direction: "sideways") { netuid } }',
+    );
+    assert.ok(bad2.body.errors?.length);
+  });
+
+  test("subnet_events cold store returns a schema-stable empty feed", async () => {
+    const { status, body } = await gql(
+      "{ subnet_events(netuid: 5) { schema_version netuid event_count limit offset next_cursor events { event_kind } } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const f = body.data.subnet_events;
+    assert.equal(f.event_count, 0);
+    assert.deepEqual(f.events, []);
+    assert.equal(f.limit, 100);
+  });
+
+  test("subnet_events forwards kind/block bounds/pagination and maps rows", async () => {
+    const captured = {};
+    const env = tierEnv(
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      {
+        schema_version: 1,
+        netuid: 7,
+        event_count: 1,
+        limit: 50,
+        offset: 0,
+        next_cursor: null,
+        events: [
+          {
+            block_number: 100,
+            event_index: 2,
+            event_kind: "StakeAdded",
+            hotkey: "5F",
+            coldkey: "5G",
+            netuid: 7,
+            uid: 3,
+            amount_tao: 1.5,
+            alpha_amount: 2.5,
+            observed_at: "2026-07-01T00:00:00.000Z",
+            extrinsic_index: 4,
+          },
+        ],
+      },
+      captured,
+    );
+    const { body } = await gql(
+      '{ subnet_events(netuid: 7, kind: "StakeAdded", block_start: 10, block_end: 200, limit: 50) { event_count events { event_kind amount_tao uid } } }',
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.ok(captured.url.pathname.endsWith("/subnets/7/events"));
+    assert.equal(captured.url.searchParams.get("kind"), "StakeAdded");
+    assert.equal(captured.url.searchParams.get("block_start"), "10");
+    assert.equal(captured.url.searchParams.get("block_end"), "200");
+    assert.equal(captured.url.searchParams.get("limit"), "50");
+    assert.equal(body.data.subnet_events.events[0].event_kind, "StakeAdded");
+    assert.equal(body.data.subnet_events.events[0].amount_tao, 1.5);
+  });
+
+  test("subnet_history cold store returns a schema-stable empty series", async () => {
+    const { status, body } = await gql(
+      "{ subnet_history(netuid: 5) { schema_version netuid window point_count points { snapshot_date } } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const h = body.data.subnet_history;
+    assert.equal(h.point_count, 0);
+    assert.deepEqual(h.points, []);
+    assert.equal(h.window, "30d");
+  });
+
+  test("subnet_history forwards window and maps points", async () => {
+    const captured = {};
+    const env = tierEnv(
+      "METAGRAPH_NEURONS_SOURCE",
+      {
+        schema_version: 1,
+        netuid: 7,
+        window: "7d",
+        point_count: 1,
+        points: [
+          {
+            snapshot_date: "2026-06-30",
+            neuron_count: 200,
+            validator_count: 64,
+            total_stake_tao: 1000.5,
+            total_emission_tao: 12.25,
+          },
+        ],
+      },
+      captured,
+    );
+    const { body } = await gql(
+      '{ subnet_history(netuid: 7, window: "7d") { window point_count points { snapshot_date neuron_count total_stake_tao } } }',
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.ok(captured.url.pathname.endsWith("/subnets/7/history"));
+    assert.equal(captured.url.searchParams.get("window"), "7d");
+    assert.equal(body.data.subnet_history.points[0].total_stake_tao, 1000.5);
+  });
+
+  test("subnet_history rejects an invalid window", async () => {
+    const { body } = await gql(
+      '{ subnet_history(netuid: 7, window: "bogus") { netuid } }',
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("subnet_prometheus cold store returns a schema-stable zeroed card", async () => {
+    const { status, body } = await gql(
+      "{ subnet_prometheus(netuid: 5) { schema_version netuid window observed_at distinct_exporters announcements announcements_per_exporter } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const p = body.data.subnet_prometheus;
+    assert.equal(p.distinct_exporters, 0);
+    assert.equal(p.announcements, 0);
+    assert.equal(p.announcements_per_exporter, null);
+    assert.equal(p.window, "7d");
+  });
+
+  test("subnet_prometheus forwards window and returns the tier card", async () => {
+    const captured = {};
+    const env = tierEnv(
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      {
+        schema_version: 1,
+        netuid: 7,
+        window: "30d",
+        observed_at: "2026-07-01T00:00:00.000Z",
+        distinct_exporters: 5,
+        announcements: 12,
+        announcements_per_exporter: 2.4,
+      },
+      captured,
+    );
+    const { body } = await gql(
+      '{ subnet_prometheus(netuid: 7, window: "30d") { window distinct_exporters announcements announcements_per_exporter } }',
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(captured.url.searchParams.get("window"), "30d");
+    assert.equal(body.data.subnet_prometheus.announcements_per_exporter, 2.4);
+  });
+
+  test("subnet_prometheus rejects an invalid window", async () => {
+    const { body } = await gql(
+      '{ subnet_prometheus(netuid: 7, window: "bogus") { netuid } }',
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("subnet_idle_stake degrades a partial tier body to defaults", async () => {
+    const { body } = await gql(
+      "{ subnet_idle_stake(netuid: 9) { schema_version netuid captured_at neuron_count idle_neuron_count idle_stake_tao } }",
+      tierEnv("METAGRAPH_NEURONS_SOURCE", {}, {}),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_idle_stake, {
+      schema_version: 1,
+      netuid: 9,
+      captured_at: null,
+      neuron_count: 0,
+      idle_neuron_count: 0,
+      idle_stake_tao: 0,
+    });
+  });
+
+  test("subnet_stake_flow degrades a partial tier body to defaults", async () => {
+    const { body } = await gql(
+      '{ subnet_stake_flow(netuid: 9, window: "7d") { schema_version netuid window total_staked_tao total_unstaked_tao net_flow_tao stake_events unstake_events } }',
+      tierEnv("METAGRAPH_ACCOUNT_EVENTS_SOURCE", { data: {} }, {}),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_stake_flow, {
+      schema_version: 1,
+      netuid: 9,
+      window: "7d",
+      total_staked_tao: 0,
+      total_unstaked_tao: 0,
+      net_flow_tao: 0,
+      stake_events: 0,
+      unstake_events: 0,
+    });
+  });
+
+  test("subnet_events maps a full tier row through every field", async () => {
+    const { body } = await gql(
+      "{ subnet_events(netuid: 9, limit: 50) { event_count limit offset next_cursor events { block_number event_index event_kind hotkey coldkey netuid uid amount_tao alpha_amount observed_at extrinsic_index } } }",
+      tierEnv(
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        {
+          event_count: 1,
+          limit: 50,
+          offset: 0,
+          next_cursor: "cur-1",
+          events: [
+            {
+              block_number: 10,
+              event_index: 1,
+              event_kind: "StakeAdded",
+              hotkey: "hk",
+              coldkey: "ck",
+              netuid: 9,
+              uid: 3,
+              amount_tao: 1.5,
+              alpha_amount: 2.5,
+              observed_at: "2026-07-01T00:00:00.000Z",
+              extrinsic_index: 4,
+            },
+          ],
+        },
+        {},
+      ),
+    );
+    assert.equal(body.errors, undefined);
+    const f = body.data.subnet_events;
+    assert.equal(f.event_count, 1);
+    assert.equal(f.next_cursor, "cur-1");
+    assert.deepEqual(f.events[0], {
+      block_number: 10,
+      event_index: 1,
+      event_kind: "StakeAdded",
+      hotkey: "hk",
+      coldkey: "ck",
+      netuid: 9,
+      uid: 3,
+      amount_tao: 1.5,
+      alpha_amount: 2.5,
+      observed_at: "2026-07-01T00:00:00.000Z",
+      extrinsic_index: 4,
+    });
+  });
+
+  test("subnet_events maps a sparse tier row to nulled fields and defaults", async () => {
+    const { body } = await gql(
+      "{ subnet_events(netuid: 9) { schema_version netuid event_count next_cursor events { block_number event_index event_kind hotkey coldkey netuid uid amount_tao alpha_amount observed_at extrinsic_index } } }",
+      tierEnv("METAGRAPH_ACCOUNT_EVENTS_SOURCE", { events: [{}] }, {}),
+    );
+    assert.equal(body.errors, undefined);
+    const f = body.data.subnet_events;
+    assert.equal(f.schema_version, 1);
+    assert.equal(f.netuid, 9);
+    assert.equal(f.event_count, 0);
+    assert.equal(f.next_cursor, null);
+    assert.equal(f.events.length, 1);
+    assert.deepEqual(f.events[0], {
+      block_number: null,
+      event_index: null,
+      event_kind: null,
+      hotkey: null,
+      coldkey: null,
+      netuid: null,
+      uid: null,
+      amount_tao: null,
+      alpha_amount: null,
+      observed_at: null,
+      extrinsic_index: null,
+    });
+  });
+
+  test("subnet_events defaults an absent events array to an empty feed", async () => {
+    const { body } = await gql(
+      "{ subnet_events(netuid: 9) { event_count events { event_kind } } }",
+      tierEnv("METAGRAPH_ACCOUNT_EVENTS_SOURCE", {}, {}),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_events.event_count, 0);
+    assert.deepEqual(body.data.subnet_events.events, []);
+  });
+
+  test("subnet_history maps a full tier point through every field", async () => {
+    const { body } = await gql(
+      '{ subnet_history(netuid: 9, window: "7d") { point_count points { snapshot_date neuron_count validator_count total_stake_tao total_emission_tao } } }',
+      tierEnv(
+        "METAGRAPH_NEURONS_SOURCE",
+        {
+          point_count: 1,
+          points: [
+            {
+              snapshot_date: "2026-07-01",
+              neuron_count: 5,
+              validator_count: 2,
+              total_stake_tao: 1000.5,
+              total_emission_tao: 3.3,
+            },
+          ],
+        },
+        {},
+      ),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_history.points[0], {
+      snapshot_date: "2026-07-01",
+      neuron_count: 5,
+      validator_count: 2,
+      total_stake_tao: 1000.5,
+      total_emission_tao: 3.3,
+    });
+  });
+
+  test("subnet_history maps a sparse tier point to nulled fields and defaults", async () => {
+    const { body } = await gql(
+      "{ subnet_history(netuid: 9) { schema_version netuid point_count points { snapshot_date neuron_count validator_count total_stake_tao total_emission_tao } } }",
+      tierEnv("METAGRAPH_NEURONS_SOURCE", { points: [{}] }, {}),
+    );
+    assert.equal(body.errors, undefined);
+    const h = body.data.subnet_history;
+    assert.equal(h.schema_version, 1);
+    assert.equal(h.netuid, 9);
+    assert.equal(h.point_count, 0);
+    assert.equal(h.points.length, 1);
+    assert.deepEqual(h.points[0], {
+      snapshot_date: null,
+      neuron_count: null,
+      validator_count: null,
+      total_stake_tao: null,
+      total_emission_tao: null,
+    });
+  });
+
+  test("subnet_history defaults an absent points array to an empty series", async () => {
+    const { body } = await gql(
+      "{ subnet_history(netuid: 9) { point_count points { snapshot_date } } }",
+      tierEnv("METAGRAPH_NEURONS_SOURCE", {}, {}),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_history.point_count, 0);
+    assert.deepEqual(body.data.subnet_history.points, []);
+  });
+
+  test("subnet_prometheus degrades a partial tier body to defaults", async () => {
+    const { body } = await gql(
+      '{ subnet_prometheus(netuid: 9, window: "7d") { schema_version netuid window observed_at distinct_exporters announcements announcements_per_exporter } }',
+      tierEnv("METAGRAPH_ACCOUNT_EVENTS_SOURCE", {}, {}),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_prometheus, {
+      schema_version: 1,
+      netuid: 9,
+      window: "7d",
+      observed_at: null,
+      distinct_exporters: 0,
+      announcements: 0,
+      announcements_per_exporter: null,
+    });
+  });
+
+  test("all five reject a negative netuid as BAD_USER_INPUT", async () => {
+    for (const q of [
+      "{ subnet_idle_stake(netuid: -1) { netuid } }",
+      "{ subnet_stake_flow(netuid: -1) { netuid } }",
+      "{ subnet_events(netuid: -1) { netuid } }",
+      "{ subnet_history(netuid: -1) { netuid } }",
+      "{ subnet_prometheus(netuid: -1) { netuid } }",
+    ]) {
+      const { body } = await gql(q);
+      assert.ok(body.errors?.length, q);
+    }
+  });
+
+  test("FIELD_COMPLEXITY weights all five new fields like their sibling relationship fields", () => {
+    for (const field of [
+      "subnet_idle_stake",
+      "subnet_stake_flow",
+      "subnet_events",
+      "subnet_history",
+      "subnet_prometheus",
+    ]) {
+      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+    }
+  });
+});
+
 describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
