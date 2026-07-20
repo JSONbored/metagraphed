@@ -5911,6 +5911,269 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
   });
 });
 
+describe("graphql — subnet_health_percentiles (#6980, live latency percentiles)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty surfaces list, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_health_percentiles(netuid: 5) {
+          schema_version netuid window surfaces
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const p = body.data.subnet_health_percentiles;
+    assert.equal(p.schema_version, 1);
+    assert.equal(p.netuid, 5);
+    assert.equal(p.window, "7d");
+    assert.deepEqual(p.surfaces, []);
+  });
+
+  test("resolves the Postgres-tier per-surface percentiles", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          window: "30d",
+          observed_at: "2026-07-19T00:00:00.000Z",
+          source: "live-cron-prober",
+          surfaces: [
+            {
+              surface: "api",
+              latency_sample_count: 120,
+              p50_ms: 88,
+              p90_ms: 210,
+              p95_ms: 280,
+              p99_ms: 640,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      '{ subnet_health_percentiles(netuid: 7, window: "30d") { netuid window observed_at source surfaces } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const p = body.data.subnet_health_percentiles;
+    assert.equal(p.netuid, 7);
+    assert.equal(p.window, "30d");
+    assert.equal(p.source, "live-cron-prober");
+    assert.equal(p.surfaces[0].p95_ms, 280);
+  });
+
+  test("forwards the window to the health/percentiles Postgres path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ subnet_health_percentiles(netuid: 3, window: "30d") { netuid } }',
+      env,
+    );
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/health/percentiles"));
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ subnet_health_percentiles(netuid: 5, window: "5d") { netuid } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.equal(body.data?.subnet_health_percentiles ?? null, null);
+  });
+
+  test("subnet_health_percentiles is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_health_percentiles, 5);
+  });
+});
+
+describe("graphql — subnet_event_summary (#6980, chain-event activity summary)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_event_summary(netuid: 5) {
+          schema_version netuid window total_events kind_count category_count
+          recent_event_count limit categories event_kinds recent_events
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_event_summary, {
+      schema_version: 1,
+      netuid: 5,
+      window: "30d",
+      total_events: 0,
+      kind_count: 0,
+      category_count: 0,
+      recent_event_count: 0,
+      limit: 10,
+      categories: [],
+      event_kinds: [],
+      recent_events: [],
+    });
+  });
+
+  test("resolves the Postgres-tier summary", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          window: "7d",
+          observed_at: "2026-07-19T00:00:00.000Z",
+          total_events: 42,
+          kind_count: 3,
+          category_count: 2,
+          recent_event_count: 2,
+          limit: 10,
+          categories: [{ category: "stake", event_count: 30 }],
+          event_kinds: [{ event_kind: "StakeAdded", event_count: 30 }],
+          recent_events: [{ event_kind: "StakeAdded", block_number: 91 }],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      '{ subnet_event_summary(netuid: 7, window: "7d") { netuid window total_events kind_count categories event_kinds recent_events } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const s = body.data.subnet_event_summary;
+    assert.equal(s.total_events, 42);
+    assert.equal(s.kind_count, 3);
+    assert.equal(s.categories[0].category, "stake");
+    assert.equal(s.recent_events[0].block_number, 91);
+  });
+
+  test("clamps the recent-event limit into 1..50 and forwards it", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ subnet_event_summary(netuid: 3, window: "90d", limit: 999) { netuid } }',
+      env,
+    );
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/event-summary"));
+    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "50");
+  });
+
+  test("clamps a below-range limit up to 1", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql("{ subnet_event_summary(netuid: 3, limit: 0) { netuid } }", env);
+    assert.equal(capturedUrl.searchParams.get("limit"), "1");
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { body } = await gql(
+      '{ subnet_event_summary(netuid: 5, window: "5d") { netuid } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_event_summary ?? null, null);
+  });
+
+  test("a negative netuid is a GraphQL error", async () => {
+    const { body } = await gql(
+      "{ subnet_event_summary(netuid: -1) { netuid } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+  });
+
+  test("subnet_event_summary is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_event_summary, 5);
+  });
+});
+
+describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifacts)", () => {
+  test("subnet_gaps resolves the baked gap report", async () => {
+    const env = fixtureEnv({
+      "/metagraph/review/gaps/5.json": {
+        netuid: 5,
+        gaps: [{ kind: "api", missing: true }],
+      },
+    });
+    const { status, body } = await gql("{ subnet_gaps(netuid: 5) }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_gaps.netuid, 5);
+    assert.equal(body.data.subnet_gaps.gaps[0].kind, "api");
+  });
+
+  test("subnet_gaps degrades to null when no report is baked, never an error", async () => {
+    const { status, body } = await gql("{ subnet_gaps(netuid: 999) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_gaps, null);
+  });
+
+  test("subnet_evidence resolves the baked evidence record", async () => {
+    const env = fixtureEnv({
+      "/metagraph/evidence/5.json": {
+        netuid: 5,
+        sources: ["https://example.com"],
+      },
+    });
+    const { status, body } = await gql("{ subnet_evidence(netuid: 5) }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_evidence.netuid, 5);
+  });
+
+  test("subnet_evidence degrades to null when no record is baked", async () => {
+    const { status, body } = await gql("{ subnet_evidence(netuid: 999) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_evidence, null);
+  });
+
+  test("a negative netuid is a GraphQL error on both artifact fields", async () => {
+    for (const field of ["subnet_gaps", "subnet_evidence"]) {
+      const { body } = await gql(`{ ${field}(netuid: -1) }`);
+      assert.ok(body.errors, `expected a GraphQL error for ${field}`);
+      assert.ok(/netuid/i.test(body.errors[0].message));
+    }
+  });
+
+  test("both artifact fields are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_gaps, 5);
+    assert.equal(FIELD_COMPLEXITY.subnet_evidence, 5);
+  });
+});
+
 describe("graphql — subnet_performance_history (#6981, neuron_daily reward-distribution trend)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

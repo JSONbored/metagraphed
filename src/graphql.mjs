@@ -123,6 +123,7 @@ import { composeLeaderboardsData } from "../workers/request-handlers/analytics-r
 import {
   loadCompareSubnets,
   loadSubnetHealthTrends,
+  loadSubnetPercentiles,
   loadSubnetUptime,
   loadSubnetIncidents,
   parseCompareDimensionList,
@@ -166,7 +167,12 @@ import {
   buildAccountSubnets,
   buildAccountSummary,
   buildAccountTransfers,
+  buildSubnetEventSummary,
   loadAccountHistory,
+  DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
+  SUBNET_EVENT_SUMMARY_WINDOWS,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
 } from "./account-events.mjs";
 import {
   DEFAULT_PROMETHEUS_WINDOW,
@@ -330,6 +336,14 @@ export const SDL = `
     subnet_uptime(netuid: Int!, window: String, min_samples: Int): SubnetUptime!
     "One subnet's per-surface SLA (uptime ratio) and reconstructed downtime incidents over a 7d/30d window (default 7d), computed live from the health-probe history: each surface's sample count, uptime_ratio, incident_count, total downtime_ms, and the gap-island incident list. A subnet with no probe history resolves to a schema-stable empty surfaces list, never null. Mirrors GET /api/v1/subnets/{netuid}/health/incidents."
     subnet_health_incidents(netuid: Int!, window: String): SubnetHealthIncidents!
+    "One subnet's per-surface latency percentiles (p50/p90/p95/p99) over a 7d/30d window (default 7d), computed live from the success-only health-probe history. The latency-distribution companion of subnet_health_incidents' availability view. A subnet with no probe history resolves to a schema-stable empty surfaces list, never null. Mirrors GET /api/v1/subnets/{netuid}/health/percentiles."
+    subnet_health_percentiles(netuid: Int!, window: String): SubnetHealthPercentiles!
+    "One subnet's chain-event activity summary over a 7d/30d/90d window (default 30d): total events, the per-kind and per-category breakdowns with hotkey/coldkey participation and TAO/alpha amounts, and a bounded newest-first recent-event list (limit 1-50, default 10). A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/event-summary."
+    subnet_event_summary(netuid: Int!, window: String, limit: Int): SubnetEventSummary!
+    "One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_gaps MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/gaps."
+    subnet_gaps(netuid: Int!): JSON
+    "One subnet's curation evidence record — the provenance trail (source URLs, checks, reviewer notes) behind its registry entry. Null when no evidence record has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_evidence MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/evidence."
+    subnet_evidence(netuid: Int!): JSON
     "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
     subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
     "Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights."
@@ -1988,6 +2002,38 @@ export const SDL = `
     surfaces: JSON!
   }
 
+  "One subnet's per-surface success-only latency percentiles (#6980). Mirrors GET /api/v1/subnets/{netuid}/health/percentiles' data envelope."
+  type SubnetHealthPercentiles {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    source: String
+    "Per operational surface: its success-only latency sample count and p50/p90/p95/p99 latency percentiles in ms. Opaque JSON passed through verbatim, matching the get_subnet_health_percentiles MCP/REST shape (like SubnetHealthIncidents.surfaces)."
+    surfaces: JSON!
+  }
+
+  "One subnet's chain-event activity summary over a window (#6980). Mirrors GET /api/v1/subnets/{netuid}/event-summary' data envelope."
+  type SubnetEventSummary {
+    schema_version: Int!
+    netuid: Int!
+    "The resolved window label (7d/30d/90d)."
+    window: String
+    observed_at: String
+    total_events: Int!
+    kind_count: Int!
+    category_count: Int!
+    recent_event_count: Int!
+    "The resolved recent-event cap actually applied (1-50, default 10)."
+    limit: Int!
+    "Per event category: its kind list and rolled-up counts. Opaque JSON passed through verbatim, matching the get_subnet_event_summary MCP/REST shape."
+    categories: JSON!
+    "Per event kind: event_count, hotkey/coldkey participation counts, TAO/alpha amounts, and first/last block + observed_at. Opaque JSON passed through verbatim."
+    event_kinds: JSON!
+    "The bounded newest-first recent-event list. Opaque JSON passed through verbatim."
+    recent_events: JSON!
+  }
+
   type ExtrinsicList {
     items: [Extrinsic!]!
     "Page count -- this feed has no cheap grand total, matching REST's extrinsic_count."
@@ -3000,6 +3046,10 @@ export const FIELD_COMPLEXITY = {
   subnet_health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_uptime: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_health_percentiles: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_event_summary: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_gaps: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_evidence: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4531,6 +4581,134 @@ const rootValue = {
       summary: data.summary ?? null,
       surfaces: data.surfaces ?? [],
     };
+  },
+
+  async subnet_health_percentiles({ netuid, window }, context) {
+    // Reuse the exact analyticsWindow parse/validate REST's percentiles handler
+    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
+    // BAD_USER_INPUT error, not a silent empty result, matching
+    // subnet_health_incidents.
+    const windowUrl = new URL(context.request.url);
+    windowUrl.search = "";
+    if (window != null) windowUrl.searchParams.set("window", window);
+    const { label, error } = analyticsWindow(windowUrl);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetPercentiles
+    // fallback the REST route and the get_subnet_health_percentiles MCP tool
+    // share -- the tier owns the percentile computation, so nothing is
+    // duplicated here, and a subnet with no probe history yields a
+    // schema-stable empty surfaces list, never a GraphQL error.
+    const params = new URLSearchParams();
+    params.set("window", label);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/health/percentiles`,
+          params,
+        ),
+        "METAGRAPH_HEALTH_SOURCE",
+      )) ??
+      (await loadSubnetPercentiles(netuid, {
+        window: label,
+        observedAt: await loadObservedAt(context),
+      }));
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? label,
+      observed_at: data.observed_at ?? null,
+      source: data.source ?? null,
+      surfaces: data.surfaces ?? [],
+    };
+  },
+
+  async subnet_event_summary({ netuid, window, limit }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same 7d/30d/90d window set the REST route + get_subnet_event_summary MCP
+    // tool accept (default 30d) -- an unsupported window is a GraphQL
+    // BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
+    if (!Object.hasOwn(SUBNET_EVENT_SUMMARY_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SUBNET_EVENT_SUMMARY_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same 1..50 clamp (default 10) the REST route + MCP tool apply to the
+    // recent-event list, so an out-of-range limit is bounded rather than
+    // rejected -- matching their contract exactly.
+    const limitParam =
+      limit == null
+        ? SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT
+        : Math.min(
+            Math.max(Math.trunc(limit), 1),
+            SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+          );
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    params.set("limit", String(limitParam));
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/event-summary`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildSubnetEventSummary([], [], netuid, {
+        window: windowParam,
+        limit: limitParam,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      observed_at: data.observed_at ?? null,
+      total_events: data.total_events ?? 0,
+      kind_count: data.kind_count ?? 0,
+      category_count: data.category_count ?? 0,
+      recent_event_count: data.recent_event_count ?? 0,
+      limit: data.limit ?? limitParam,
+      categories: data.categories ?? [],
+      event_kinds: data.event_kinds ?? [],
+      recent_events: data.recent_events ?? [],
+    };
+  },
+
+  async subnet_gaps({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same baked review-gaps artifact the REST route + get_subnet_gaps MCP tool
+    // read. The MCP tool raises not_found for a netuid with no report; GraphQL
+    // degrades to null instead, matching how every other artifact-backed
+    // resolver here treats a cold/absent artifact.
+    return loadArtifact(context, `/metagraph/review/gaps/${netuid}.json`);
+  },
+
+  async subnet_evidence({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same baked evidence artifact the REST route + get_subnet_evidence MCP
+    // tool read; null when no record has been baked for this netuid.
+    return loadArtifact(context, `/metagraph/evidence/${netuid}.json`);
   },
 
   async subnet_health_incidents({ netuid, window }, context) {
