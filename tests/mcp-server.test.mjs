@@ -3239,7 +3239,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
   test("list_chain_events errors cleanly when the DATA_API binding is absent", async () => {
     const res = await callTool("list_chain_events", {}, { env: {} });
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /chain-events tier/);
+    assert.match(res.body.result.content[0].text, /all-events data tier/);
   });
 
   test("list_chain_events applies the data API limiter before fetching", async () => {
@@ -3293,7 +3293,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
       { env: { DATA_API: dataApi } },
     );
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /chain-events tier/);
+    assert.match(res.body.result.content[0].text, /all-events data tier/);
     assert.match(res.body.result.content[0].text, /503/);
   });
 
