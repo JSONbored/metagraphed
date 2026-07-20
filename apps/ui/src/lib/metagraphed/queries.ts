@@ -157,6 +157,8 @@ import type {
   LeaderboardBoardKey,
   LeaderboardRow,
   Leaderboards,
+  DomainSummary,
+  DomainsOverview,
   Lineage,
   LineageLink,
   PrimaryAppSurface,
@@ -888,6 +890,72 @@ export const leaderboardsQuery = () =>
         signal,
       });
       return { data: normalizeLeaderboards(res.data?.boards), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #6996: per-domain capability-tag rollups from GET /api/v1/domains (+ /{tag}/summary).
+// Pure composition over the subnets index + economics — no separate capture tier.
+export function normalizeDomainSummary(raw: unknown): DomainSummary | null {
+  if (!isRecord(raw)) return null;
+  const domain = coerceString(raw.domain)?.trim().toLowerCase();
+  if (!domain) return null;
+  const netuids = Array.isArray(raw.netuids)
+    ? raw.netuids
+        .map((n) => coerceFiniteNumber(n))
+        .filter((n): n is number => n != null && Number.isInteger(n) && n >= 0)
+    : [];
+  return {
+    domain,
+    subnet_count: coerceFiniteNumber(raw.subnet_count) ?? netuids.length,
+    netuids,
+    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? null,
+    total_emission_share: coerceFiniteNumber(raw.total_emission_share) ?? null,
+    emission_concentration: normalizeConcentrationMetricsOrNull(raw.emission_concentration),
+    schema_version: coerceFiniteNumber(raw.schema_version) ?? 1,
+  };
+}
+
+export function normalizeDomainsOverview(raw: unknown): DomainsOverview {
+  const d = isRecord(raw) ? raw : {};
+  const domains = Array.isArray(d.domains)
+    ? d.domains.flatMap((row) => {
+        const normalized = normalizeDomainSummary(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    domain_count: coerceFiniteNumber(d.domain_count) ?? domains.length,
+    domains,
+    schema_version: coerceFiniteNumber(d.schema_version) ?? 1,
+  };
+}
+
+export const domainsQuery = () =>
+  queryOptions({
+    queryKey: k("domains"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/domains", { signal });
+      return {
+        ...res,
+        data: normalizeDomainsOverview(res.data),
+      } as ApiResult<DomainsOverview>;
+    },
+    staleTime: STALE_MED,
+  });
+
+export const domainSummaryQuery = (tag: string) =>
+  queryOptions({
+    queryKey: k("domain-summary", tag),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/domains/${encodeURIComponent(tag)}/summary`, {
+        signal,
+      });
+      const normalized = normalizeDomainSummary(res.data);
+      if (!normalized) {
+        throw new Error(`Invalid domain summary payload for tag "${tag}"`);
+      }
+      return { ...res, data: normalized } as ApiResult<DomainSummary>;
     },
     staleTime: STALE_MED,
   });

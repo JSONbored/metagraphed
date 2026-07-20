@@ -3644,3 +3644,46 @@ export interface AlertTriggerCreated {
   match_count: number;
   owner_token: string;
 }
+
+/* ===================== Domain / capability-tag rollups (#6996) ===================== */
+
+/**
+ * Fixed 14-tag capability taxonomy shared with the Worker (`src/domain-tags.mjs`)
+ * and validated by `?domain=` on `/api/v1/subnets` plus `/api/v1/domains/{tag}/summary`.
+ */
+export const DOMAIN_TAGS = [
+  "agents",
+  "compute",
+  "data",
+  "finance",
+  "inference",
+  "media",
+  "prediction",
+  "privacy",
+  "robotics",
+  "science",
+  "search",
+  "security",
+  "storage",
+  "training",
+] as const;
+
+export type DomainTag = (typeof DOMAIN_TAGS)[number];
+
+/** One domain rollup from GET /api/v1/domains or /api/v1/domains/{tag}/summary. */
+export interface DomainSummary {
+  domain: DomainTag | string;
+  subnet_count: number;
+  netuids: number[];
+  total_stake_tao: number | null;
+  total_emission_share: number | null;
+  emission_concentration: ConcentrationMetrics | null;
+  schema_version: number;
+}
+
+/** Overview envelope from GET /api/v1/domains. */
+export interface DomainsOverview {
+  domain_count: number;
+  domains: DomainSummary[];
+  schema_version: number;
+}

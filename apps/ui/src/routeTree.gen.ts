@@ -27,6 +27,7 @@ import { Route as SudoIndexRouteImport } from './routes/sudo.index'
 import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
 import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
+import { Route as DomainsIndexRouteImport } from './routes/domains.index'
 import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
@@ -36,6 +37,7 @@ import { Route as ValidatorsHotkeyRouteImport } from './routes/validators.$hotke
 import { Route as ToolsSs58RouteImport } from './routes/tools.ss58'
 import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
+import { Route as DomainsTagRouteImport } from './routes/domains.$tag'
 import { Route as GraphqlExplorerRouteImport } from './routes/graphql.explorer'
 import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
 import { Route as DocsLlmsDottxtRouteImport } from './routes/docs.llms[.]txt'
@@ -135,6 +137,11 @@ const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
   path: '/providers/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DomainsIndexRoute = DomainsIndexRouteImport.update({
+  id: '/domains/',
+  path: '/domains/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExtrinsicsIndexRoute = ExtrinsicsIndexRouteImport.update({
   id: '/extrinsics/',
   path: '/extrinsics/',
@@ -178,6 +185,11 @@ const SubnetsNetuidRoute = SubnetsNetuidRouteImport.update({
 const ProvidersSlugRoute = ProvidersSlugRouteImport.update({
   id: '/providers/$slug',
   path: '/providers/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DomainsTagRoute = DomainsTagRouteImport.update({
+  id: '/domains/$tag',
+  path: '/domains/$tag',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GraphqlExplorerRoute = GraphqlExplorerRouteImport.update({
@@ -243,6 +255,7 @@ export interface FileRoutesByFullPath {
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
+  '/domains/$tag': typeof DomainsTagRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/tools/ss58': typeof ToolsSs58Route
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
@@ -252,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/events/': typeof EventsIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
+  '/domains/': typeof DomainsIndexRoute
   '/runtime/': typeof RuntimeIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
   '/sudo/': typeof SudoIndexRoute
@@ -280,6 +294,7 @@ export interface FileRoutesByTo {
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
+  '/domains/$tag': typeof DomainsTagRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/tools/ss58': typeof ToolsSs58Route
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
@@ -289,6 +304,7 @@ export interface FileRoutesByTo {
   '/events': typeof EventsIndexRoute
   '/extrinsics': typeof ExtrinsicsIndexRoute
   '/providers': typeof ProvidersIndexRoute
+  '/domains': typeof DomainsIndexRoute
   '/runtime': typeof RuntimeIndexRoute
   '/subnets': typeof SubnetsIndexRoute
   '/sudo': typeof SudoIndexRoute
@@ -318,6 +334,7 @@ export interface FileRoutesById {
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
+  '/domains/$tag': typeof DomainsTagRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/tools/ss58': typeof ToolsSs58Route
   '/validators/$hotkey': typeof ValidatorsHotkeyRoute
@@ -327,6 +344,7 @@ export interface FileRoutesById {
   '/events/': typeof EventsIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
+  '/domains/': typeof DomainsIndexRoute
   '/runtime/': typeof RuntimeIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
   '/sudo/': typeof SudoIndexRoute
@@ -357,6 +375,7 @@ export interface FileRouteTypes {
     | '/extrinsics/$hash'
     | '/graphql/explorer'
     | '/providers/$slug'
+    | '/domains/$tag'
     | '/subnets/$netuid'
     | '/tools/ss58'
     | '/validators/$hotkey'
@@ -366,6 +385,7 @@ export interface FileRouteTypes {
     | '/events/'
     | '/extrinsics/'
     | '/providers/'
+    | '/domains/'
     | '/runtime/'
     | '/subnets/'
     | '/sudo/'
@@ -394,6 +414,7 @@ export interface FileRouteTypes {
     | '/extrinsics/$hash'
     | '/graphql/explorer'
     | '/providers/$slug'
+    | '/domains/$tag'
     | '/subnets/$netuid'
     | '/tools/ss58'
     | '/validators/$hotkey'
@@ -403,6 +424,7 @@ export interface FileRouteTypes {
     | '/events'
     | '/extrinsics'
     | '/providers'
+    | '/domains'
     | '/runtime'
     | '/subnets'
     | '/sudo'
@@ -431,6 +453,7 @@ export interface FileRouteTypes {
     | '/extrinsics/$hash'
     | '/graphql/explorer'
     | '/providers/$slug'
+    | '/domains/$tag'
     | '/subnets/$netuid'
     | '/tools/ss58'
     | '/validators/$hotkey'
@@ -440,6 +463,7 @@ export interface FileRouteTypes {
     | '/events/'
     | '/extrinsics/'
     | '/providers/'
+    | '/domains/'
     | '/runtime/'
     | '/subnets/'
     | '/sudo/'
@@ -469,6 +493,7 @@ export interface RootRouteChildren {
   ExtrinsicsHashRoute: typeof ExtrinsicsHashRoute
   GraphqlExplorerRoute: typeof GraphqlExplorerRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
+  DomainsTagRoute: typeof DomainsTagRoute
   SubnetsNetuidRoute: typeof SubnetsNetuidRoute
   ToolsSs58Route: typeof ToolsSs58Route
   ValidatorsHotkeyRoute: typeof ValidatorsHotkeyRoute
@@ -478,6 +503,7 @@ export interface RootRouteChildren {
   EventsIndexRoute: typeof EventsIndexRoute
   ExtrinsicsIndexRoute: typeof ExtrinsicsIndexRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
+  DomainsIndexRoute: typeof DomainsIndexRoute
   RuntimeIndexRoute: typeof RuntimeIndexRoute
   SubnetsIndexRoute: typeof SubnetsIndexRoute
   SudoIndexRoute: typeof SudoIndexRoute
@@ -613,6 +639,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProvidersIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/domains/': {
+      id: '/domains/'
+      path: '/domains'
+      fullPath: '/domains/'
+      preLoaderRoute: typeof DomainsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/extrinsics/': {
       id: '/extrinsics/'
       path: '/extrinsics'
@@ -674,6 +707,13 @@ declare module '@tanstack/react-router' {
       path: '/providers/$slug'
       fullPath: '/providers/$slug'
       preLoaderRoute: typeof ProvidersSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/domains/$tag': {
+      id: '/domains/$tag'
+      path: '/domains/$tag'
+      fullPath: '/domains/$tag'
+      preLoaderRoute: typeof DomainsTagRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/graphql/explorer': {
@@ -757,6 +797,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExtrinsicsHashRoute: ExtrinsicsHashRoute,
   GraphqlExplorerRoute: GraphqlExplorerRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
+  DomainsTagRoute: DomainsTagRoute,
   SubnetsNetuidRoute: SubnetsNetuidRoute,
   ToolsSs58Route: ToolsSs58Route,
   ValidatorsHotkeyRoute: ValidatorsHotkeyRoute,
@@ -766,6 +807,7 @@ const rootRouteChildren: RootRouteChildren = {
   EventsIndexRoute: EventsIndexRoute,
   ExtrinsicsIndexRoute: ExtrinsicsIndexRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
+  DomainsIndexRoute: DomainsIndexRoute,
   RuntimeIndexRoute: RuntimeIndexRoute,
   SubnetsIndexRoute: SubnetsIndexRoute,
   SudoIndexRoute: SudoIndexRoute,

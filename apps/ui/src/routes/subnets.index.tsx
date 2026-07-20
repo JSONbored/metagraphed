@@ -70,6 +70,7 @@ import {
 } from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
+import { DOMAIN_TAGS } from "@/lib/metagraphed/types";
 
 // #9: a list row enriched with its agent-catalog capability fields (flattened
 // from the netuid-keyed catalog map so client-side sort/filter can read them).
@@ -128,11 +129,16 @@ export const Route = createFileRoute("/subnets/")({
 
 type SubnetsSearch = z.infer<typeof tableSearchSchema>;
 
-/** Server-backed params only — sort/curation/health filters are client-side. */
-function subnetsQueryParams(search: SubnetsSearch): { q?: string; limit: number } {
+/** Server-backed params — q, limit, and domain. Sort/curation/health are client-side. */
+function subnetsQueryParams(search: SubnetsSearch): {
+  q?: string;
+  limit: number;
+  domain?: string;
+} {
   return {
     q: search.q || undefined,
     limit: search.limit,
+    domain: search.domain || undefined,
   };
 }
 
@@ -144,6 +150,7 @@ function SubnetsPage() {
     !!search.sort ||
     !!search.curation ||
     !!search.health ||
+    !!search.domain ||
     !!search.serviceKind ||
     !!search.readiness ||
     !!search.kind ||
@@ -350,9 +357,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
-  // /api/v1/subnets supports only q + cursor/limit. `sort` returns HTTP 400, and
-  // `curation`/`health` are ignored server-side — so those are applied
-  // client-side (filtered/sorted over the fetched pages) and must NOT be sent.
+  // /api/v1/subnets supports q + cursor/limit + domain (#6996). `sort` returns
+  // HTTP 400, and `curation`/`health` are ignored server-side — so those are
+  // applied client-side (filtered/sorted over the fetched pages) and must NOT
+  // be sent.
   const baseParams = subnetsQueryParams(search);
 
   const {
@@ -451,6 +459,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     search.q ||
     search.curation ||
     search.health ||
+    search.domain ||
     search.serviceKind ||
     search.readiness ||
     search.kind ||
@@ -461,7 +470,8 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     !search.includeRoot
   );
 
-  // Client-side filter + sort (the list API only honors q + cursor/limit).
+  // Client-side filter + sort (domain is server-backed via baseParams; the rest
+  // of these are applied over the fetched pages).
   // Both are memoized on the joined rows and the exact search params they read,
   // so they only recompute when one of those actually changes — not on every
   // keystroke-driven re-render.
@@ -572,6 +582,12 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           { value: "down", label: "down" },
           { value: "unknown", label: "unknown" },
         ]}
+      />
+      <SelectFilter
+        label="domain"
+        value={search.domain}
+        onChange={(v) => setSearch({ domain: v })}
+        options={DOMAIN_TAGS.map((tag) => ({ value: tag, label: tag }))}
       />
       <SelectFilter
         label="service"

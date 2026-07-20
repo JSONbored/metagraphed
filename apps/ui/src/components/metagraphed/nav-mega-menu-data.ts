@@ -30,6 +30,11 @@ export const MEGA_PANELS: MegaPanel[] = [
     browse: [
       { to: "/subnets", label: "All subnets", hint: "Browse every active netuid" },
       {
+        to: "/domains",
+        label: "Domains",
+        hint: "Capability-tag rollups",
+      },
+      {
         to: "/subnets",
         search: { curation: "maintainer-reviewed" },
         label: "Curated",
@@ -50,6 +55,8 @@ export const MEGA_PANELS: MegaPanel[] = [
       { to: "/subnets", search: { kind: "docs" }, label: "Has docs" },
       { to: "/subnets", search: { kind: "sse" }, label: "Has SSE" },
       { to: "/subnets", search: { stale: "1" }, label: "Stale > 24h" },
+      { to: "/subnets", search: { domain: "inference" }, label: "Inference" },
+      { to: "/subnets", search: { domain: "storage" }, label: "Storage" },
     ],
   },
   {

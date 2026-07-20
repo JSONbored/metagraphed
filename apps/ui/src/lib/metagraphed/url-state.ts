@@ -19,6 +19,10 @@ export const tableSearchSchema = z.object({
   stale: fallback(z.string(), "").default(""),
   provider: fallback(z.string(), "").default(""),
   netuid: fallback(z.string(), "").default(""),
+  // #6996: server-backed domain/capability-tag filter (`?domain=` on
+  // /api/v1/subnets). Empty string = no filter. Valid values are the fixed
+  // 14-tag taxonomy in DOMAIN_TAGS; the Worker rejects unknown tags with 400.
+  domain: fallback(z.string(), "").default(""),
   // #9: agent-catalog capability filters (applied client-side over joined rows).
   serviceKind: fallback(z.string(), "").default(""),
   readiness: fallback(z.string(), "").default(""),
