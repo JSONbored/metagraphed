@@ -135,7 +135,18 @@ import {
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
+  overlayCatalogIndex,
+  overlayCatalogDetail,
+  mergeFreshness,
 } from "./health-serving.mjs";
+import { applyQueryFilters } from "../workers/list-query.mjs";
+import {
+  buildTopHoldersList,
+  TOP_HOLDERS_SORTS,
+  DEFAULT_TOP_HOLDERS_SORT,
+  TOP_HOLDERS_LIMIT_DEFAULT,
+  TOP_HOLDERS_LIMIT_MAX,
+} from "./top-holders.mjs";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.mjs";
 import {
   loadCompareSubnets,
@@ -471,6 +482,16 @@ export const SDL = `
     endpoint_incidents(netuid: Int, kind: String, provider: String, status: String, severity: String, state: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): IncidentList!
     "Per-source input-hash ledger -- each registry data source's captured input hash and record count at ingest time, for detecting hash drift or seeing per-source contribution volume. Filter with q (keyword search across id/kind/path), sort with sort/order, and page with limit (1-100)/cursor. An invalid sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/source-snapshots."
     source_snapshots(q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): SourceSnapshotList!
+    "Registry candidate surfaces (discovered-but-unpromoted): every subnet's candidate surfaces, filtered by netuid/kind/provider/state and paged with limit (1-100)/cursor. An invalid filter/limit/cursor is a GraphQL error; a cold store degrades to null. Opaque JSON (mirrors the REST/MCP artifact 1:1). Mirrors GET /api/v1/candidates."
+    candidates(netuid: Int, kind: String, provider: String, state: String, limit: Int, cursor: Int): JSON
+    "The captured surface-fixtures index -- schema-validated request/response snapshots plus per-surface coverage. Takes no args; a cold store degrades to null. Opaque JSON. Mirrors GET /api/v1/fixtures."
+    fixtures: JSON
+    "The AI agent catalog: per-subnet callable-service readiness with the live health overlay applied. Pass netuid to drill into one subnet's detail; omit for the network index. A cold store degrades to null. Opaque JSON. Mirrors GET /api/v1/agent-catalog[/{netuid}]."
+    agent_catalog(netuid: Int): JSON
+    "Per-source freshness/staleness ledger -- each registry data source's captured-at + status -- with the live health:meta overlay merged in. Takes no args; a cold store degrades to null. Opaque JSON. Mirrors GET /api/v1/freshness."
+    freshness: JSON
+    "Network-wide top TAO-holders leaderboard from the Postgres tier: each account's free/delegated/total stake and 7d/30d/90d net flow, ranked by sort (total_tao default; also free_tao/delegated_tao/net_flow_7d|30d|90d), limit 1-100 (default 20). An invalid sort is a GraphQL error; a cold tier degrades to a schema-stable empty leaderboard. Opaque JSON. Mirrors GET /api/v1/accounts/top-holders."
+    accounts_top_holders(sort: String, limit: Int): JSON
     "Public-safe subnet profile index -- completeness scores, surface/interface counts, curation level, review state, and confidence for every registered subnet. Filter by netuid/subnet_type/curation_level/review_state/confidence/profile_level, search name/slug/project/team/categories with q, sort with sort/order, and page with limit (1-1000)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/profiles."
     profiles(netuid: Int, subnet_type: String, curation_level: String, review_state: String, confidence: String, profile_level: String, q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ProfileList!
     "Global operational health rollup with per-subnet summaries."
@@ -3478,6 +3499,11 @@ export const FIELD_COMPLEXITY = {
   rpc_pools: RELATIONSHIP_FIELD_COMPLEXITY,
   endpoint_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   source_snapshots: RELATIONSHIP_FIELD_COMPLEXITY,
+  candidates: RELATIONSHIP_FIELD_COMPLEXITY,
+  fixtures: RELATIONSHIP_FIELD_COMPLEXITY,
+  agent_catalog: RELATIONSHIP_FIELD_COMPLEXITY,
+  freshness: RELATIONSHIP_FIELD_COMPLEXITY,
+  accounts_top_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   profiles: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5012,6 +5038,85 @@ const rootValue = {
   // convention.
   source_snapshots(args, context) {
     return loadSourceSnapshotsList(context, args, { readArtifact });
+  },
+
+  // #6991: registry-meta parity fields. These REST routes' MCP handlers are
+  // inline (no reusable *-mcp loader), so the read/shape logic is replicated with
+  // graphql.mjs's own helpers -- degrading a cold artifact to null (the sibling
+  // convention for agent_resources/subnet_gaps/subnet_evidence), not throwing.
+  // Nested payloads stay the opaque JSON scalar, mirroring the artifact 1:1.
+  async candidates({ netuid, kind, provider, state, limit, cursor }, context) {
+    const data = await loadArtifact(context, "/metagraph/candidates.json");
+    if (!data) return null;
+    const url = new URL("https://internal/candidates");
+    if (netuid != null) url.searchParams.set("netuid", String(netuid));
+    if (kind) url.searchParams.set("kind", kind);
+    if (provider) url.searchParams.set("provider", provider);
+    if (state) url.searchParams.set("state", state);
+    if (limit != null) url.searchParams.set("limit", String(limit));
+    if (cursor != null) url.searchParams.set("cursor", String(cursor));
+    const result = applyQueryFilters(data, url, "candidates", []);
+    if (result.error) {
+      throw new GraphQLError(result.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return { ...result.data, ...(result.meta?.pagination ?? {}) };
+  },
+
+  fixtures(_args, context) {
+    return loadArtifact(context, "/metagraph/fixtures.json");
+  },
+
+  async agent_catalog({ netuid }, context) {
+    const live = await loadLiveHealth(context);
+    if (netuid == null) {
+      const index = await loadArtifact(
+        context,
+        "/metagraph/agent-catalog.json",
+      );
+      return index ? (overlayCatalogIndex(index, live) ?? index) : null;
+    }
+    const detail = await loadArtifact(
+      context,
+      `/metagraph/agent-catalog/${netuid}.json`,
+    );
+    return detail
+      ? (overlayCatalogDetail(detail, live, netuid) ?? detail)
+      : null;
+  },
+
+  async freshness(_args, context) {
+    const base = await loadArtifact(context, "/metagraph/freshness.json");
+    if (!base) return null;
+    const meta = await readHealthKv(context.env, KV_HEALTH_META);
+    return mergeFreshness(base, meta) ?? base;
+  },
+
+  // Postgres-tier (METAGRAPH_TOP_HOLDERS_SOURCE) -> schema-stable empty leaderboard
+  // fallback, matching REST/MCP. An unsupported sort is a GraphQL error (not a
+  // silent default), the convention validators/source_snapshots already use.
+  async accounts_top_holders({ sort, limit }, context) {
+    const requestedSort = sort ?? DEFAULT_TOP_HOLDERS_SORT;
+    if (!TOP_HOLDERS_SORTS.includes(requestedSort)) {
+      throw new GraphQLError(
+        `"${requestedSort}" is not a supported sort. Supported: ${TOP_HOLDERS_SORTS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(TOP_HOLDERS_LIMIT_MAX, Math.floor(limit)))
+      : TOP_HOLDERS_LIMIT_DEFAULT;
+    const params = new URLSearchParams();
+    params.set("sort", requestedSort);
+    params.set("limit", String(safeLimit));
+    return (
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/accounts/top-holders", params),
+        "METAGRAPH_TOP_HOLDERS_SOURCE",
+      )) ?? buildTopHoldersList([], { sort: requestedSort, limit: safeLimit })
+    );
   },
 
   // #6992: reuse list_profiles' own loader unchanged. Its readOptionalArtifact

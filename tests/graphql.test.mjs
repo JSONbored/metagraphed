@@ -1666,6 +1666,167 @@ describe("graphql — profiles", () => {
   });
 });
 
+// #6991: registry-meta parity (candidates/fixtures/agent_catalog/freshness/
+// accounts_top_holders). Artifact-backed fields degrade a cold store to null;
+// accounts_top_holders is Postgres-tier with a schema-stable empty fallback.
+describe("graphql — registry-meta parity (#6991)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  const CANDIDATES_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    schema_version: 1,
+    notes: "test",
+    candidates: [
+      {
+        id: "c1",
+        netuid: 7,
+        kind: "openapi",
+        provider: "allways",
+        state: "verified",
+      },
+      { id: "c2", netuid: 31, kind: "docs", provider: "other", state: "stale" },
+    ],
+  };
+
+  test("candidates: filters by netuid/kind/provider/state and pages", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES_BLOB });
+    const { status, body } = await gql(
+      '{ candidates(netuid: 7, kind: "openapi", provider: "allways", state: "verified", limit: 10, cursor: 0) }',
+      env,
+    );
+    assert.equal(status, 200);
+    const out = body.data.candidates;
+    assert.equal(out.candidates.length, 1);
+    assert.equal(out.candidates[0].id, "c1");
+    assert.equal(out.total, 1);
+  });
+
+  test("candidates: cold store degrades to null", async () => {
+    const { body } = await gql("{ candidates }", emptyEnv);
+    assert.equal(body.data.candidates, null);
+  });
+
+  test("candidates: an out-of-range limit is a GraphQL error", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES_BLOB });
+    const { body } = await gql("{ candidates(limit: 99999) }", env);
+    assert.ok(body.errors?.length);
+  });
+
+  test("fixtures: resolves the index; cold store degrades to null", async () => {
+    const BLOB = {
+      schema_version: 1,
+      generated_at: "2026-07-01T00:00:00.000Z",
+      fixture_count: 2,
+      coverage: [{ surface_id: "s1", captured: true }],
+      fixtures: [{ surface_id: "s1", kind: "openapi" }],
+    };
+    const env = fixtureEnv({ "/metagraph/fixtures.json": BLOB });
+    const hit = await gql("{ fixtures }", env);
+    assert.equal(hit.body.data.fixtures.fixture_count, 2);
+    assert.equal(hit.body.data.fixtures.fixtures[0].surface_id, "s1");
+    const cold = await gql("{ fixtures }", emptyEnv);
+    assert.equal(cold.body.data.fixtures, null);
+  });
+
+  test("agent_catalog: resolves the network index and a per-subnet detail; cold -> null", async () => {
+    const INDEX = {
+      schema_version: 1,
+      generated_at: "2026-07-01T00:00:00.000Z",
+      subnet_count: 1,
+      subnets: [{ netuid: 7, name: "Allways", callable_service_count: 3 }],
+    };
+    const DETAIL = {
+      schema_version: 1,
+      netuid: 7,
+      services: [{ kind: "subnet-api" }],
+    };
+    const idx = await gql(
+      "{ agent_catalog }",
+      fixtureEnv({ "/metagraph/agent-catalog.json": INDEX }),
+    );
+    assert.equal(idx.body.data.agent_catalog.subnet_count, 1);
+    assert.equal(idx.body.data.agent_catalog.subnets[0].netuid, 7);
+    const det = await gql(
+      "{ agent_catalog(netuid: 7) }",
+      fixtureEnv({ "/metagraph/agent-catalog/7.json": DETAIL }),
+    );
+    assert.equal(det.body.data.agent_catalog.netuid, 7);
+    const cold = await gql("{ agent_catalog }", emptyEnv);
+    assert.equal(cold.body.data.agent_catalog, null);
+  });
+
+  test("freshness: resolves the source ledger; cold -> null", async () => {
+    const BLOB = {
+      schema_version: 1,
+      contract_version: "v1",
+      generated_at: "2026-07-01T00:00:00.000Z",
+      summary: { blocking_source_count: 0 },
+      sources: [{ id: "chain-events", status: "current" }],
+    };
+    const env = fixtureEnv({ "/metagraph/freshness.json": BLOB });
+    const hit = await gql("{ freshness }", env);
+    assert.equal(hit.body.data.freshness.sources[0].id, "chain-events");
+    const cold = await gql("{ freshness }", emptyEnv);
+    assert.equal(cold.body.data.freshness, null);
+  });
+
+  test("accounts_top_holders: cold tier degrades to a schema-stable empty leaderboard (default sort/limit)", async () => {
+    const { status, body } = await gql("{ accounts_top_holders }", emptyEnv);
+    assert.equal(status, 200);
+    const out = body.data.accounts_top_holders;
+    assert.equal(out.account_count, 0);
+    assert.deepEqual(out.accounts, []);
+    assert.equal(out.sort, "total_tao");
+  });
+
+  test("accounts_top_holders: resolves Postgres-tier rows with an explicit sort + limit", async () => {
+    const env = {
+      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          sort: "free_tao",
+          limit: 5,
+          captured_at: "2026-07-15T00:00:00.000Z",
+          account_count: 1,
+          accounts: [{ ss58: "5Holder", free_tao: 100, total_tao: 150 }],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      '{ accounts_top_holders(sort: "free_tao", limit: 5) }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.accounts_top_holders.account_count, 1);
+    assert.equal(body.data.accounts_top_holders.accounts[0].ss58, "5Holder");
+  });
+
+  test("accounts_top_holders: an unsupported sort is a GraphQL error, not a silent default", async () => {
+    const { body } = await gql(
+      '{ accounts_top_holders(sort: "bogus") }',
+      emptyEnv,
+    );
+    assert.ok(body.errors?.length);
+    // Nullable JSON field, so the error nullifies the field, not the whole root.
+    assert.equal(body.data.accounts_top_holders, null);
+  });
+
+  test("all five fields are weighted in the complexity map", () => {
+    for (const field of [
+      "candidates",
+      "fixtures",
+      "agent_catalog",
+      "freshness",
+      "accounts_top_holders",
+    ]) {
+      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+    }
+  });
+});
+
 describe("graphql — economics pagination", () => {
   const env = () =>
     fixtureEnv({
