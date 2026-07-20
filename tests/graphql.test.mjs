@@ -1703,6 +1703,24 @@ describe("graphql — registry-meta parity (#6991)", () => {
     assert.equal(out.total, 1);
   });
 
+  test("candidates: unpaged listing returns every row with no page window", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES_BLOB });
+    const { status, body } = await gql("{ candidates }", env);
+    assert.equal(status, 200);
+    assert.equal(body.data.candidates.candidates.length, 2);
+    assert.equal(body.data.candidates.total, 2);
+  });
+
+  test("candidates: a listless artifact is passed through without a page window", async () => {
+    const env = fixtureEnv({
+      "/metagraph/candidates.json": { schema_version: 1, candidates: null },
+    });
+    const { status, body } = await gql("{ candidates }", env);
+    assert.equal(status, 200);
+    assert.equal(body.data.candidates.schema_version, 1);
+    assert.equal(body.data.candidates.total, undefined);
+  });
+
   test("candidates: cold store degrades to null", async () => {
     const { body } = await gql("{ candidates }", emptyEnv);
     assert.equal(body.data.candidates, null);
@@ -1755,6 +1773,11 @@ describe("graphql — registry-meta parity (#6991)", () => {
     assert.equal(det.body.data.agent_catalog.netuid, 7);
     const cold = await gql("{ agent_catalog }", emptyEnv);
     assert.equal(cold.body.data.agent_catalog, null);
+    const missingDetail = await gql(
+      "{ agent_catalog(netuid: 99) }",
+      fixtureEnv({ "/metagraph/agent-catalog.json": INDEX }),
+    );
+    assert.equal(missingDetail.body.data.agent_catalog, null);
   });
 
   test("freshness: resolves the source ledger; cold -> null", async () => {
