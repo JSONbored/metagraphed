@@ -1198,6 +1198,48 @@ describe("graphql — broadened Subnet + nested relationships", () => {
     assert.equal(body.data.provider.subnets[0].netuid, 2);
     assert.equal(body.data.provider.subnets[1].name, "A");
   });
+
+  test("provider.endpoints returns the provider's full baked endpoint list", async () => {
+    const env = fixtureEnv({
+      "/metagraph/providers/acme.json": {
+        provider: { id: "acme", name: "Acme", netuids: [] },
+      },
+      "/metagraph/providers/acme/endpoints.json": {
+        endpoints: [
+          { id: "acme-e1", kind: "rpc", status: "ok", netuid: 1 },
+          { id: "acme-e2", kind: "subnet-api", status: "degraded", netuid: 2 },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ provider(id: "acme") { id endpoints { id kind status netuid } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.provider.endpoints.length, 2);
+    assert.deepEqual(body.data.provider.endpoints[0], {
+      id: "acme-e1",
+      kind: "rpc",
+      status: "ok",
+      netuid: 1,
+    });
+    assert.equal(body.data.provider.endpoints[1].id, "acme-e2");
+  });
+
+  test("provider.endpoints degrades to an empty list when the artifact is absent", async () => {
+    const env = fixtureEnv({
+      "/metagraph/providers/acme.json": {
+        provider: { id: "acme", name: "Acme", netuids: [] },
+      },
+      // no /metagraph/providers/acme/endpoints.json fixture
+    });
+    const { status, body } = await gql(
+      '{ provider(id: "acme") { id endpoints { id } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.provider.endpoints, []);
+  });
 });
 
 describe("graphql — surfaces / endpoints / health roots", () => {
