@@ -848,7 +848,7 @@ test("GET /api/v1/blocks returns a block feed shaped like the D1 route", async (
   expect(body.blocks[0].block_number).toBe(8586300);
   expect(typeof body.blocks[0].block_number).toBe("number");
   expect(body.blocks[0].author).toBe("5Author");
-  expect(body.next_cursor).toBe("8586300"); // rows.length === limit
+  expect(body.next_cursor).toBe("1783600000000.8586300"); // rows.length === limit
 });
 
 test("GET /api/v1/blocks applies the same filter set as loadBlocks", async () => {
@@ -869,10 +869,20 @@ test("GET /api/v1/blocks applies the same filter set as loadBlocks", async () =>
 
 test("GET /api/v1/blocks uses a cursor seek instead of OFFSET when cursor is present", async () => {
   mockRows.current = [BLOCK_ROW];
+  await req("/api/v1/blocks?cursor=1783600000000.8586300");
+  const text = queryText();
+  expect(text).toContain("AND (observed_at, block_number) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/blocks ignores an old single-part cursor (pre-METAGRAPHED-6 format)", async () => {
+  // decodeCursor's arity check makes a stale 1-part cursor a clean
+  // "ignored, no next-page" miss rather than a crash.
+  mockRows.current = [BLOCK_ROW];
   await req("/api/v1/blocks?cursor=8586300");
   const text = queryText();
-  expect(text).toContain("AND block_number <");
-  expect(text).not.toContain("OFFSET");
+  expect(text).not.toContain("AND (observed_at, block_number) <");
+  expect(text).toContain("OFFSET");
 });
 
 test("GET /api/v1/blocks clamps page size and offset before querying Postgres", async () => {
@@ -940,8 +950,31 @@ test("GET /api/v1/blocks/:ref retries once with a fresh client after a Hyperdriv
   expect(body.next_block_number).toBe(8586301);
 });
 
-test("GET /api/v1/blocks/:ref falls through to the generic 502 when the retry also hits a connection error (METAGRAPHED-7)", async () => {
-  blockDetailConnectionFailure.remainingFailures = 2; // fails the original attempt AND the retry
+test("GET /api/v1/blocks/:ref retries a SECOND time when the first retry's fresh connection also gets recycled, then succeeds (METAGRAPHED-7 regression)", async () => {
+  // The original single-retry fix regressed under sustained load: Hyperdrive can recycle the
+  // retry's own freshly created connection too. 5 slots: SET+failed-lookup (attempt 1), SET+
+  // failed-lookup (attempt 2, the first retry), SET (attempt 3, the second retry), the
+  // block-lookup row (attempt 3, the one that finally succeeds), the neighbor lookup.
+  blockDetailConnectionFailure.remainingFailures = 2;
+  mockQueue.current = [
+    [],
+    [],
+    [],
+    [BLOCK_ROW],
+    [{ prev: 8586299, next: 8586301 }],
+  ];
+  const res = await req("/api/v1/blocks/8586300");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.block.block_number).toBe(8586300);
+  expect(body.prev_block_number).toBe(8586299);
+  expect(body.next_block_number).toBe(8586301);
+});
+
+test("GET /api/v1/blocks/:ref falls through to the generic 502 once every retry is exhausted (METAGRAPHED-7)", async () => {
+  // 3 total attempts allowed (1 original + MAX_CONNECTION_RETRY_ATTEMPTS retries) -- all 3
+  // hitting a connection error must still surface as a 502, not retry indefinitely.
+  blockDetailConnectionFailure.remainingFailures = 3;
   const res = await req("/api/v1/blocks/8586300");
   expect(res.status).toBe(502);
   const body = await res.json();
@@ -965,7 +998,9 @@ test("GET /api/v1/blocks/summary is matched before /blocks/:ref (never treats 's
   const body = await res.json();
   expect(body.block_count).toBe(1);
   expect(body.last_block).toBe(8586300);
-  expect(queryText()).toContain("FROM blocks ORDER BY block_number DESC LIMIT");
+  expect(queryText()).toContain(
+    "FROM blocks ORDER BY observed_at DESC, block_number DESC LIMIT",
+  );
 });
 
 test("GET /api/v1/blocks/summary with no rows returns the zeroed card, not a throw", async () => {
@@ -1414,10 +1449,18 @@ test("GET /api/v1/accounts/:ss58/events caps oversized offsets before Postgres",
 
 test("GET /api/v1/accounts/:ss58/events uses a composite cursor seek instead of OFFSET", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
+  await req(`/api/v1/accounts/${SS58}/events?cursor=1783600000000.8586300.0`);
+  const text = queryText();
+  expect(text).toContain("AND (observed_at, block_number, event_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/accounts/:ss58/events ignores an old 2-part cursor (pre-METAGRAPHED-6 format)", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
   await req(`/api/v1/accounts/${SS58}/events?cursor=8586300.0`);
   const text = queryText();
-  expect(text).toContain("AND (block_number, event_index) <");
-  expect(text).not.toContain("OFFSET");
+  expect(text).not.toContain("AND (observed_at, block_number, event_index) <");
+  expect(text).toContain("OFFSET");
 });
 
 test("GET /api/v1/accounts/:ss58/events with no matching rows returns a schema-stable empty feed", async () => {
@@ -1494,17 +1537,29 @@ test("GET /api/v1/accounts/:ss58/extrinsics with an inverted block range short-c
 
 test("GET /api/v1/accounts/:ss58/extrinsics uses a composite cursor seek instead of OFFSET", async () => {
   mockRows.current = [EXTRINSIC_ROW];
+  await req(
+    `/api/v1/accounts/${SS58}/extrinsics?cursor=1783600000000.8586300.2`,
+  );
+  const text = queryText();
+  expect(text).toContain("AND (observed_at, block_number, extrinsic_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/accounts/:ss58/extrinsics ignores an old 2-part cursor (pre-METAGRAPHED-6 format)", async () => {
+  mockRows.current = [EXTRINSIC_ROW];
   await req(`/api/v1/accounts/${SS58}/extrinsics?cursor=8586300.2`);
   const text = queryText();
-  expect(text).toContain("AND (block_number, extrinsic_index) <");
-  expect(text).not.toContain("OFFSET");
+  expect(text).not.toContain(
+    "AND (observed_at, block_number, extrinsic_index) <",
+  );
+  expect(text).toContain("OFFSET");
 });
 
 test("GET /api/v1/accounts/:ss58/extrinsics returns a next_cursor when the page is full", async () => {
   mockRows.current = [EXTRINSIC_ROW];
   const res = await req(`/api/v1/accounts/${SS58}/extrinsics?limit=1`);
   const body = await res.json();
-  expect(body.next_cursor).toBe("8586300.2");
+  expect(body.next_cursor).toBe("1783600000000.8586300.2");
 });
 
 test("GET /api/v1/sudo filters to call_module='Sudo' and never exposes signer/call_module params", async () => {
@@ -3811,17 +3866,25 @@ test("GET /api/v1/subnets/:netuid/events returns the per-subnet feed and applies
 
 test("GET /api/v1/subnets/:netuid/events uses a composite cursor seek instead of OFFSET", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
+  await req("/api/v1/subnets/4/events?cursor=1783600000000.8586300.0");
+  const text = queryText();
+  expect(text).toContain("AND (observed_at, block_number, event_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/subnets/:netuid/events ignores an old 2-part cursor (pre-METAGRAPHED-6 format)", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
   await req("/api/v1/subnets/4/events?cursor=8586300.0");
   const text = queryText();
-  expect(text).toContain("AND (block_number, event_index) <");
-  expect(text).not.toContain("OFFSET");
+  expect(text).not.toContain("AND (observed_at, block_number, event_index) <");
+  expect(text).toContain("OFFSET");
 });
 
 test("GET /api/v1/subnets/:netuid/events returns a next_cursor when the page is full", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
   const res = await req("/api/v1/subnets/4/events?limit=1");
   const body = await res.json();
-  expect(body.next_cursor).toBe("8586300.0");
+  expect(body.next_cursor).toBe("1783600000000.8586300.0");
 });
 
 test("GET /api/v1/subnets/:netuid/event-summary shapes kind/category aggregates + recent evidence", async () => {
@@ -4176,17 +4239,27 @@ test("GET /api/v1/accounts/:ss58/transfers applies block_start/block_end bounds"
 
 test("GET /api/v1/accounts/:ss58/transfers uses a composite cursor seek instead of OFFSET", async () => {
   mockRows.current = [];
+  await req(
+    `/api/v1/accounts/${SS58}/transfers?cursor=1783600000000.8586300.0`,
+  );
+  const text = queryText();
+  expect(text).toContain("AND (observed_at, block_number, event_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/accounts/:ss58/transfers ignores an old 2-part cursor (pre-METAGRAPHED-6 format)", async () => {
+  mockRows.current = [];
   await req(`/api/v1/accounts/${SS58}/transfers?cursor=8586300.0`);
   const text = queryText();
-  expect(text).toContain("AND (block_number, event_index) <");
-  expect(text).not.toContain("OFFSET");
+  expect(text).not.toContain("AND (observed_at, block_number, event_index) <");
+  expect(text).toContain("OFFSET");
 });
 
 test("GET /api/v1/accounts/:ss58/transfers returns a next_cursor when the page is full", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
   const res = await req(`/api/v1/accounts/${SS58}/transfers?limit=1`);
   const body = await res.json();
-  expect(body.next_cursor).toBe("8586300.0");
+  expect(body.next_cursor).toBe("1783600000000.8586300.0");
 });
 
 test("GET /api/v1/accounts/:ss58/counterparties returns a counterparty leaderboard", async () => {

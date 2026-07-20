@@ -388,15 +388,20 @@ const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 // surfaces this as one of these three `error.code`s (Errors.connection in cf/src/errors.js),
 // all transport-layer, never a query-correctness problem: CONNECTION_CLOSED (socket closed
 // mid-query), CONNECTION_DESTROYED (pool tore the connection down), CONNECT_TIMEOUT (the
-// initial handshake itself timed out). Retried once below, only for the read-only route
-// dispatcher (already scoped to a single sql.begin() transaction, so nothing can have
-// partially committed) -- never for the write/sync routes, where blindly retrying a batch
-// that may have partially applied would risk double-writes.
+// initial handshake itself timed out). Retried below (MAX_CONNECTION_RETRY_ATTEMPTS times),
+// only for the read-only route dispatcher (already scoped to a single sql.begin()
+// transaction, so nothing can have partially committed) -- never for the write/sync routes,
+// where blindly retrying a batch that may have partially applied would risk double-writes.
 const RETRYABLE_CONNECTION_ERROR_CODES = new Set([
   "CONNECTION_CLOSED",
   "CONNECTION_DESTROYED",
   "CONNECT_TIMEOUT",
 ]);
+// A single retry (the original METAGRAPHED-7 fix) regressed: under sustained load,
+// Hyperdrive can recycle the retry's own freshly created connection too, so the retry
+// itself hits the same error class and the request still fails. 2 retries (3 total
+// attempts) gives a second freshly created client a chance before giving up.
+const MAX_CONNECTION_RETRY_ATTEMPTS = 2;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
 // `Date.now() - days*DAY_MS` exactly. An unrecognized label falls back to the
@@ -4620,7 +4625,12 @@ export default {
         if (url.pathname === "/api/v1/blocks") {
           const limit = clampBlockLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
-          const cursor = decodeCursor(url.searchParams.get("cursor"), 1);
+          // METAGRAPHED-6-class fix: 2-part cursor (observed_at, block_number)
+          // matching the observed_at-leading ORDER BY below -- same fix as the
+          // /api/v1/extrinsics list route's own cursor. decodeCursor's arity
+          // check makes an old 1-part cursor a clean "ignored, no next-page"
+          // miss rather than a crash.
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
           const author = url.searchParams.get("author") || null;
           const specVersion = nonNegativeIntegerParam(
             url.searchParams,
@@ -4656,13 +4666,16 @@ export default {
             ${to != null ? sql`AND observed_at <= ${to}` : sql``}
             ${minExtrinsics != null ? sql`AND extrinsic_count >= ${minExtrinsics}` : sql``}
             ${minEvents != null ? sql`AND event_count >= ${minEvents}` : sql``}
-            ${cursor ? sql`AND block_number < ${cursor[0]}` : sql``}
-          ORDER BY block_number DESC
+            ${cursor ? sql`AND (observed_at, block_number) < (${cursor[0]}, ${cursor[1]})` : sql``}
+          ORDER BY observed_at DESC, block_number DESC
           LIMIT ${limit}
           ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
           const last = rows.length === limit ? rows[rows.length - 1] : null;
           const nextCursor = last
-            ? encodeCursor([numberOrNull(last.block_number)])
+            ? encodeCursor([
+                numberOrNull(last.observed_at),
+                numberOrNull(last.block_number),
+              ])
             : null;
           return json(buildBlockFeed(rows, { limit, offset, nextCursor }));
         }
@@ -4670,11 +4683,13 @@ export default {
         // GET /api/v1/blocks/summary — block-production health over the most
         // recent BLOCKS_SUMMARY_SCAN_CAP blocks, mirroring src/blocks-summary.mjs's
         // loadBlocksSummary. Checked BEFORE the /blocks/:ref match below --
-        // "summary" would otherwise parse as a (invalid) ref.
+        // "summary" would otherwise parse as a (invalid) ref. ORDER BY leads
+        // with observed_at (the hypertable's partition column) for the same
+        // chunk-exclusion reason as the /api/v1/extrinsics list route above.
         if (url.pathname === "/api/v1/blocks/summary") {
           const rows = await sql`
           SELECT block_number, author, extrinsic_count, event_count, spec_version, observed_at
-          FROM blocks ORDER BY block_number DESC LIMIT ${BLOCKS_SUMMARY_SCAN_CAP}`;
+          FROM blocks ORDER BY observed_at DESC, block_number DESC LIMIT ${BLOCKS_SUMMARY_SCAN_CAP}`;
           return json(buildBlocksSummary(rows));
         }
 
@@ -4934,10 +4949,16 @@ export default {
           const isHash = HASH_RE.test(ref);
           let rows;
           if (isHash) {
+            // METAGRAPHED-5: ORDER BY must lead with observed_at (the
+            // hypertable's partition column) same as the /api/v1/extrinsics
+            // list route above -- block_number DESC alone forces a
+            // Parallel Append + Sort across every chunk (no chunk
+            // exclusion), which measured well past this route's 3000ms
+            // statement_timeout in production.
             rows = await sql`
             SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
             FROM extrinsics WHERE extrinsic_hash = ${ref.toLowerCase()}
-            ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`;
+            ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC LIMIT 1`;
           } else {
             const composite = COMPOSITE_REF_RE.exec(ref);
             const blockNumber = composite ? Number(composite[1]) : NaN;
@@ -5041,14 +5062,20 @@ export default {
         );
         if (acctSummary) {
           const ss58 = decodeURIComponent(acctSummary[1]);
+          // Both scans lead ORDER BY with observed_at (the hypertable's
+          // partition column, same chunk-exclusion fix as the
+          // /api/v1/extrinsics list route) -- the JS merge/re-sort below
+          // already re-derives the true block_number/event_index order
+          // afterward, so which order SQL fetches the top CAP+1 rows in
+          // doesn't change the final output (METAGRAPHED-6-class fix).
           const hotkeyScanRows = await sql`
           SELECT block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index
           FROM account_events WHERE hotkey = ${ss58}
-          ORDER BY block_number DESC, event_index DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
+          ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
           const coldkeyScanRows = await sql`
           SELECT block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index
           FROM account_events WHERE coldkey = ${ss58} AND (hotkey IS NULL OR hotkey <> ${ss58})
-          ORDER BY block_number DESC, event_index DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
+          ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
           // Each branch is already the account's own newest CAP+1 rows on its
           // key, so the union's true newest CAP+1 rows are guaranteed to be
           // present in this merged set -- re-sort by the same feed order and
@@ -5068,13 +5095,18 @@ export default {
           const regRows = await sql`
           SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
           WHERE hotkey = ${ss58} ORDER BY stake_tao DESC, netuid ASC`;
+          // Both subqueries lead ORDER BY with observed_at (same chunk-
+          // exclusion fix as above) -- each caps to the most recent 1000
+          // extrinsics before aggregating, so which 1000 rows SQL fetches
+          // is what matters, not their fetch order (the outer aggregates
+          // don't care about row order at all).
           const activityRows = await sql`
           SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao
-          FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ${ss58} ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1000) sub`;
+          FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ${ss58} ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC LIMIT 1000) sub`;
           const moduleRows = await sql`
           SELECT call_module, COUNT(*) AS count FROM (
             SELECT call_module FROM extrinsics WHERE signer = ${ss58}
-            ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1000
+            ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC LIMIT 1000
           ) sub GROUP BY call_module ORDER BY count DESC, call_module ASC LIMIT 10`;
           const scanned = scanRows.length;
           const capped = scanRows.slice(0, ACCOUNT_EVENT_SUMMARY_SCAN_CAP);
@@ -5154,7 +5186,12 @@ export default {
           const ss58 = decodeURIComponent(acctEvents[1]);
           const limit = clampEventsLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
-          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          // METAGRAPHED-6: 3-part cursor (observed_at, block_number,
+          // event_index) matching the observed_at-leading ORDER BY below --
+          // same fix as the /api/v1/extrinsics list route's own cursor.
+          // decodeCursor's arity check makes an old 2-part cursor a clean
+          // "ignored, no next-page" miss rather than a crash.
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 3);
           const kind = url.searchParams.get("kind") || null;
           const netuid = nonNegativeIntegerParam(url.searchParams, "netuid");
           const blockStart = nonNegativeIntegerParam(
@@ -5165,6 +5202,11 @@ export default {
             url.searchParams,
             "block_end",
           );
+          // ORDER BY must lead with observed_at (the hypertable's partition
+          // column), same fix as the /api/v1/extrinsics list route above --
+          // block_number DESC alone forces a scan/sort across every chunk
+          // (no chunk exclusion), which is what tripped this route's
+          // statement_timeout in production (METAGRAPHED-6).
           const rows = await sql`
           SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
           FROM account_events
@@ -5173,13 +5215,14 @@ export default {
             ${netuid != null ? sql`AND netuid = ${netuid}` : sql``}
             ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
             ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
-            ${cursor ? sql`AND (block_number, event_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
-          ORDER BY block_number DESC, event_index DESC
+            ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
+          ORDER BY observed_at DESC, block_number DESC, event_index DESC
           LIMIT ${limit}
           ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
           const last = rows.length === limit ? rows[rows.length - 1] : null;
           const nextCursor = last
             ? encodeCursor([
+                numberOrNull(last.observed_at),
                 numberOrNull(last.block_number),
                 numberOrNull(last.event_index),
               ])
@@ -5202,7 +5245,9 @@ export default {
           const netuid = Number(subnetEventsRoute[1]);
           const limit = clampEventsLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
-          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          // METAGRAPHED-6-class fix: 3-part cursor (observed_at, block_number,
+          // event_index) matching the observed_at-leading ORDER BY below.
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 3);
           const kind = url.searchParams.get("kind") || null;
           const blockStart = nonNegativeIntegerParam(
             url.searchParams,
@@ -5219,13 +5264,14 @@ export default {
             ${kind ? sql`AND event_kind = ${kind}` : sql``}
             ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
             ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
-            ${cursor ? sql`AND (block_number, event_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
-          ORDER BY block_number DESC, event_index DESC
+            ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
+          ORDER BY observed_at DESC, block_number DESC, event_index DESC
           LIMIT ${limit}
           ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
           const last = rows.length === limit ? rows[rows.length - 1] : null;
           const nextCursor = last
             ? encodeCursor([
+                numberOrNull(last.observed_at),
                 numberOrNull(last.block_number),
                 numberOrNull(last.event_index),
               ])
@@ -5321,7 +5367,9 @@ export default {
           const ss58 = decodeURIComponent(acctExtrinsics[1]);
           const limit = clampLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
-          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          // METAGRAPHED-6-class fix: 3-part cursor (observed_at, block_number,
+          // extrinsic_index) matching the observed_at-leading ORDER BY below.
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 3);
           const blockStart = nonNegativeIntegerParam(
             url.searchParams,
             "block_start",
@@ -5339,13 +5387,14 @@ export default {
               WHERE signer = ${ss58}
                 ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
                 ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
-                ${cursor ? sql`AND (block_number, extrinsic_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
-              ORDER BY block_number DESC, extrinsic_index DESC
+                ${cursor ? sql`AND (observed_at, block_number, extrinsic_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
+              ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC
               LIMIT ${limit}
               ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
           const last = rows.length === limit ? rows[rows.length - 1] : null;
           const nextCursor = last
             ? encodeCursor([
+                numberOrNull(last.observed_at),
                 numberOrNull(last.block_number),
                 numberOrNull(last.extrinsic_index),
               ])
@@ -7440,7 +7489,9 @@ export default {
           const ss58 = decodeURIComponent(acctTransfers[1]);
           const limit = clampLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
-          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          // METAGRAPHED-6-class fix: 3-part cursor (observed_at, block_number,
+          // event_index) matching the observed_at-leading ORDER BY below.
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 3);
           const direction = url.searchParams.get("direction");
           const blockStart = nonNegativeIntegerParam(
             url.searchParams,
@@ -7457,13 +7508,14 @@ export default {
             ${direction === "sent" ? sql`AND hotkey = ${ss58}` : direction === "received" ? sql`AND coldkey = ${ss58}` : sql`AND (hotkey = ${ss58} OR coldkey = ${ss58})`}
             ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
             ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
-            ${cursor ? sql`AND (block_number, event_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
-          ORDER BY block_number DESC, event_index DESC
+            ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
+          ORDER BY observed_at DESC, block_number DESC, event_index DESC
           LIMIT ${limit}
           ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
           const last = rows.length === limit ? rows[rows.length - 1] : null;
           const nextCursor = last
             ? encodeCursor([
+                numberOrNull(last.observed_at),
                 numberOrNull(last.block_number),
                 numberOrNull(last.event_index),
               ])
@@ -7497,12 +7549,16 @@ export default {
             100,
           );
           if (counterparty) {
+            // ORDER BY leads with observed_at (same chunk-exclusion fix as
+            // the /api/v1/extrinsics list route) -- not selected, since
+            // buildCounterpartyRelationship only reads the columns above,
+            // but a valid ORDER BY key doesn't need to be in the SELECT list.
             const rows = await sql`
             SELECT hotkey, coldkey, amount_tao, block_number, event_index
             FROM account_events
             WHERE event_kind = 'Transfer'
               AND ((hotkey = ${ss58} AND coldkey = ${counterparty}) OR (hotkey = ${counterparty} AND coldkey = ${ss58}))
-            ORDER BY block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP}`;
+            ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP}`;
             const relationship = buildCounterpartyRelationship(
               rows,
               ss58,
@@ -7534,11 +7590,13 @@ export default {
               relationship,
             });
           }
+          // ORDER BY leads with observed_at, same reasoning as the
+          // counterparty-drilldown query above.
           const rows = await sql`
           SELECT hotkey, coldkey, amount_tao, block_number, event_index
           FROM account_events
           WHERE event_kind = 'Transfer' AND (hotkey = ${ss58} OR coldkey = ${ss58})
-          ORDER BY block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP}`;
+          ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP}`;
           return json(buildCounterparties(rows, ss58, { limit }));
         }
 
@@ -8559,12 +8617,15 @@ export default {
         return json({ error: "not found" }, 404);
       };
 
-      // METAGRAPHED-7: retry once, with a freshly created client, when Hyperdrive closed or
-      // destroyed the pooled connection out from under this transaction (see
+      // METAGRAPHED-7: retry with a freshly created client, up to
+      // MAX_CONNECTION_RETRY_ATTEMPTS times, when Hyperdrive closed or destroyed the
+      // pooled connection out from under this transaction (see
       // RETRYABLE_CONNECTION_ERROR_CODES's own header for why this is safe here specifically
       // -- read-only dispatcher, one sql.begin() transaction, nothing can have partially
-      // committed). Any other error (a real query/schema problem, an unrecoverable retry)
-      // falls through to the outer catch below unchanged.
+      // committed). A single retry regressed (#METAGRAPHED-7 reoccurred): under sustained
+      // load Hyperdrive can recycle the retry's own fresh connection too, so one retry
+      // isn't always enough. Any other error (a real query/schema problem, or every retry
+      // exhausted) falls through to the outer catch below unchanged.
       let activeSql = sql;
       for (let attempt = 0; ; attempt += 1) {
         try {
@@ -8573,7 +8634,10 @@ export default {
             dispatchReadRoutes,
           );
         } catch (err) {
-          if (attempt > 0 || !RETRYABLE_CONNECTION_ERROR_CODES.has(err?.code))
+          if (
+            attempt >= MAX_CONNECTION_RETRY_ATTEMPTS ||
+            !RETRYABLE_CONNECTION_ERROR_CODES.has(err?.code)
+          )
             throw err;
           activeSql = postgres(
             env.HYPERDRIVE.connectionString,
