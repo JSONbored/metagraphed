@@ -376,6 +376,41 @@ export function computeBackoffDelayMs(
   return Math.min(baseMs * 2 ** attempt, maxMs);
 }
 
+// Codes worth retrying a poll iteration in-process for, rather than crashing the whole relay (#7157):
+// postgres.js's own connection-lifecycle codes (mirrors workers/data-api.mjs's
+// RETRYABLE_CONNECTION_ERROR_CODES -- same underlying Postgres instance, same failure shapes), the raw
+// Node socket codes a dead TCP connection surfaces with on THIS build (this is plain `postgres`, not
+// postgres/cf's Cloudflare polyfill -- a socket 'error' event's native code passes through un-wrapped,
+// which is what a real `Error: read ECONNRESET` event showed), and the Postgres "operator intervention"
+// SQLSTATE class 57 (admin shutdown / crash / cannot connect now -- a real `PostgresError: the database
+// system is shutting down` event was 57P03). Anything outside this set (a syntax error, a constraint
+// violation) is a real bug, not a blip, and should still surface/crash rather than retry forever.
+const CHAIN_FIREHOSE_RETRYABLE_POLL_ERROR_CODES = new Set([
+  "CONNECTION_CLOSED",
+  "CONNECTION_DESTROYED",
+  "CONNECT_TIMEOUT",
+  "CONNECTION_ENDED",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "EPIPE",
+  "57P01", // admin_shutdown
+  "57P02", // crash_shutdown
+  "57P03", // cannot_connect_now
+]);
+
+export function isRetryablePollError(error) {
+  return (
+    typeof error?.code === "string" &&
+    CHAIN_FIREHOSE_RETRYABLE_POLL_ERROR_CODES.has(error.code)
+  );
+}
+
+// A transient blip retries indefinitely-ish but bounded per burst -- this many CONSECUTIVE retryable
+// failures (reset by any successful poll) still exits the process, preserving the container-restart
+// safety net for a genuinely stuck connection rather than looping forever.
+export const CHAIN_FIREHOSE_MAX_CONSECUTIVE_POLL_FAILURES = 5;
+
 // Ceiling on how long a single retry-after value can pause the relay for --
 // protects against a pathological/misconfigured server value stalling the
 // relay indefinitely (a real incident's own root cause was the OPPOSITE
@@ -679,13 +714,38 @@ async function main() {
   }
 
   let lastCleanupAt = Date.now();
+  let consecutivePollFailures = 0; // reset on any successful poll -- see CHAIN_FIREHOSE_MAX_CONSECUTIVE_POLL_FAILURES's own comment
   touchHeartbeat(); // write once at startup so HEALTHCHECK's --start-period grace doesn't immediately expire on a quiet first poll
   console.log(
     `[chain-firehose-relay] polling chain_firehose_outbox every ${CHAIN_FIREHOSE_POLL_INTERVAL_MS}ms, forwarding to ${config.ingestUrl}`,
   );
   while (!shuttingDown) {
     const pollStartedAt = Date.now();
-    const { claimed, requestCount, rateLimitedForMs } = await pollOnce();
+    let claimed, requestCount, rateLimitedForMs;
+    try {
+      ({ claimed, requestCount, rateLimitedForMs } = await pollOnce());
+      consecutivePollFailures = 0;
+    } catch (err) {
+      // #7157: a transient connection blip (the Postgres instance restarting, a dropped TCP socket) used
+      // to crash the whole process on the very next query -- retry it in-process with backoff instead,
+      // the same way forwardWithRetry already does for the outbound HTTP leg. A non-retryable error (a
+      // real bug) or a burst that outlasts CHAIN_FIREHOSE_MAX_CONSECUTIVE_POLL_FAILURES still falls
+      // through to the crash+container-restart safety net below.
+      if (
+        !isRetryablePollError(err) ||
+        consecutivePollFailures >= CHAIN_FIREHOSE_MAX_CONSECUTIVE_POLL_FAILURES
+      ) {
+        throw err;
+      }
+      consecutivePollFailures += 1;
+      console.error(
+        `[chain-firehose-relay] poll failed (${err.code}), retrying in-process (${consecutivePollFailures}/${CHAIN_FIREHOSE_MAX_CONSECUTIVE_POLL_FAILURES}): ${err.message}`,
+      );
+      await new Promise((r) =>
+        setTimeout(r, computeBackoffDelayMs(consecutivePollFailures - 1)),
+      );
+      continue;
+    }
     touchHeartbeat(); // tracks poll-loop liveness, independent of claim/forward outcome -- see HEARTBEAT_FILE's own comment
     if (Date.now() - lastCleanupAt >= CHAIN_FIREHOSE_CLEANUP_INTERVAL_MS) {
       await cleanupOnce();

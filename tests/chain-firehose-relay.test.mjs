@@ -45,6 +45,7 @@ import {
   CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS,
   CHAIN_FIREHOSE_INGEST_BATCH_SIZE,
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
+  CHAIN_FIREHOSE_MAX_CONSECUTIVE_POLL_FAILURES,
   CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS,
   CHAIN_FIREHOSE_MAX_RATE_LIMIT_PAUSE_MS,
   CHAIN_FIREHOSE_POLL_BATCH_SIZE,
@@ -59,6 +60,7 @@ import {
   forwardWithRetry,
   initSentry,
   isHeartbeatFresh,
+  isRetryablePollError,
   mapBounded,
   parseRelayConfig,
   parseRetryAfterMs,
@@ -175,6 +177,48 @@ test("computeBackoffDelayMs: doubles per attempt, capped at maxMs", () => {
 test("computeBackoffDelayMs: honors custom baseMs/maxMs", () => {
   assert.equal(computeBackoffDelayMs(1, { baseMs: 100, maxMs: 1000 }), 200);
   assert.equal(computeBackoffDelayMs(10, { baseMs: 100, maxMs: 1000 }), 1000);
+});
+
+// --- isRetryablePollError -----------------------------------------------------
+
+test("isRetryablePollError: true for postgres.js's own connection-lifecycle codes", () => {
+  assert.equal(isRetryablePollError({ code: "CONNECTION_CLOSED" }), true);
+  assert.equal(isRetryablePollError({ code: "CONNECTION_DESTROYED" }), true);
+  assert.equal(isRetryablePollError({ code: "CONNECT_TIMEOUT" }), true);
+  assert.equal(isRetryablePollError({ code: "CONNECTION_ENDED" }), true);
+});
+
+test("isRetryablePollError: true for a raw Node socket error code (e.g. read ECONNRESET)", () => {
+  assert.equal(
+    isRetryablePollError({ code: "ECONNRESET", errno: -104, syscall: "read" }),
+    true,
+  );
+  assert.equal(isRetryablePollError({ code: "ECONNREFUSED" }), true);
+  assert.equal(isRetryablePollError({ code: "ETIMEDOUT" }), true);
+  assert.equal(isRetryablePollError({ code: "EPIPE" }), true);
+});
+
+test("isRetryablePollError: true for Postgres SQLSTATE class 57 (operator intervention)", () => {
+  assert.equal(isRetryablePollError({ code: "57P01" }), true);
+  assert.equal(isRetryablePollError({ code: "57P02" }), true);
+  // real event: PostgresError "the database system is shutting down"
+  assert.equal(isRetryablePollError({ code: "57P03" }), true);
+});
+
+test("isRetryablePollError: false for a real bug (e.g. a syntax error), not just anything thrown", () => {
+  assert.equal(isRetryablePollError({ code: "42601" }), false);
+  assert.equal(isRetryablePollError(new Error("boom")), false); // no .code at all
+});
+
+test("isRetryablePollError: false when error is null/undefined or .code isn't a string", () => {
+  assert.equal(isRetryablePollError(undefined), false);
+  assert.equal(isRetryablePollError(null), false);
+  assert.equal(isRetryablePollError({ code: 42 }), false);
+});
+
+test("CHAIN_FIREHOSE_MAX_CONSECUTIVE_POLL_FAILURES is a positive bound, not unlimited", () => {
+  assert.ok(Number.isInteger(CHAIN_FIREHOSE_MAX_CONSECUTIVE_POLL_FAILURES));
+  assert.ok(CHAIN_FIREHOSE_MAX_CONSECUTIVE_POLL_FAILURES > 0);
 });
 
 // --- computeBatchPaceDelayMs -------------------------------------------------
