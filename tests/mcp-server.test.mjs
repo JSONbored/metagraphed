@@ -20423,3 +20423,40 @@ describe("MCP health-tier analytics tools — Postgres tier wiring", () => {
     }
   });
 });
+
+describe("get_coverage_depth MCP tool (#6983)", () => {
+  test("is registered as a no-arg read-only tool", () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_coverage_depth");
+    assert.ok(tool, "get_coverage_depth should be registered");
+    assert.equal(typeof tool.description, "string");
+    assert.deepEqual(tool.inputSchema, {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    });
+  });
+
+  test("returns the coverage-depth artifact verbatim", async () => {
+    const deps = makeDeps({
+      "/metagraph/coverage-depth.json": {
+        schema_version: 1,
+        rows: [{ netuid: 1, tier: "core", score: 0.9 }],
+        ranked_queue: [{ rank: 1, netuid: 5, severity: "high" }],
+      },
+    });
+    const res = await callTool("get_coverage_depth", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.rows[0].netuid, 1);
+    assert.equal(out.ranked_queue[0].severity, "high");
+  });
+
+  test("maps a missing artifact to a clean not_found", async () => {
+    const res = await callTool(
+      "get_coverage_depth",
+      {},
+      { deps: makeDeps({}) },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+});
