@@ -49,6 +49,7 @@ import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-char
 import { SubnetOhlcChart } from "@/components/metagraphed/subnet-ohlc-chart";
 import { SubnetConvictionLeaderboard } from "@/components/metagraphed/subnet-conviction-leaderboard";
 import { SubnetOwnershipHistory } from "@/components/metagraphed/subnet-ownership-history";
+import { SubnetLeasePanel } from "@/components/metagraphed/subnet-lease-panel";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
 import { DistributionPanel } from "@/components/metagraphed/concentration-panel";
@@ -373,6 +374,8 @@ function ProfileShell({ netuid }: { netuid: number }) {
             `/api/v1/subnets/${netuid}/profile`,
             `/api/v1/subnets/${netuid}/overview`,
             `/api/v1/subnets/${netuid}/identity-history`,
+            `/api/v1/subnets/${netuid}/lease`,
+            `/api/v1/subnets/${netuid}/lease/history`,
           ]}
         />
       </SubnetFilterProvider>
@@ -528,6 +531,20 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
       >
         <QueryErrorBoundary>
           <SubnetOwnershipHistory netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      {/* 5a6 — Subnet lease state + history (#6993, backend #6719/#6813,
+          part of leasing epic #6717): live lease terms + created/terminated
+          event log. Sibling of the ownership-contest panels above. */}
+      <SectionAnchor
+        id="lease"
+        title="Subnet lease"
+        subtitle="Live lease status, terms, and created/terminated history."
+        info="GET /api/v1/subnets/{netuid}/lease and /lease/history — live RPC for current lease state (leased null = RPC failure, distinct from not leased) plus the SubnetLeaseCreated/Terminated event log."
+      >
+        <QueryErrorBoundary>
+          <SubnetLeasePanel netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
 

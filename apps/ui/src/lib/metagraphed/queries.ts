@@ -207,6 +207,10 @@ import type {
   SubnetConviction,
   SubnetConvictionEntry,
   SubnetOwnershipHistory,
+  SubnetLeaseState,
+  SubnetLeaseTerms,
+  SubnetLeaseHistory,
+  SubnetLeaseEvent,
   SubnetOwnershipChange,
   SubnetMovers,
   SubnetMover,
@@ -4896,6 +4900,105 @@ export const subnetOwnershipHistoryQuery = (netuid: number) =>
       );
       return {
         data: normalizeSubnetOwnershipHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeSubnetLeaseTerms(raw: unknown): SubnetLeaseTerms | null {
+  if (!isRecord(raw)) return null;
+  const leaseId = firstFiniteNumber(raw.lease_id);
+  const beneficiary = firstString(raw.beneficiary);
+  const coldkey = firstString(raw.coldkey);
+  const hotkey = firstString(raw.hotkey);
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (leaseId == null || !beneficiary || !coldkey || !hotkey || netuid == null) return null;
+  return {
+    lease_id: leaseId,
+    beneficiary,
+    coldkey,
+    hotkey,
+    emissions_share_percent: firstFiniteNumber(raw.emissions_share_percent) ?? 0,
+    end_block: firstFiniteNumber(raw.end_block) ?? null,
+    netuid,
+    cost_tao: coerceFiniteNumber(raw.cost_tao) ?? 0,
+    // Preserve null (sub-read failure) — never coerce to 0.
+    accumulated_dividends_alpha: coerceFiniteNumber(raw.accumulated_dividends_alpha) ?? null,
+  };
+}
+
+// #6993: live lease state. `leased: null` means RPC failure (distinct from
+// confirmed no-lease). Missing/junk `leased` also degrades to null so we
+// never invent a "not leased" signal from a broken payload.
+export function normalizeSubnetLeaseState(netuid: number, raw: unknown): SubnetLeaseState {
+  const d = isRecord(raw) ? raw : {};
+  const leasedRaw = d.leased;
+  const leased: boolean | null = leasedRaw === true || leasedRaw === false ? leasedRaw : null;
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    leased,
+    lease: normalizeSubnetLeaseTerms(d.lease),
+    queried_at: firstString(d.queried_at) ?? null,
+  };
+}
+
+export const subnetLeaseQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-lease", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetLeaseState>>(`/api/v1/subnets/${netuid}/lease`, {
+        signal,
+      });
+      return {
+        data: normalizeSubnetLeaseState(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeSubnetLeaseEvent(raw: unknown): SubnetLeaseEvent | null {
+  if (!isRecord(raw)) return null;
+  return {
+    event_kind: firstString(raw.event_kind) ?? null,
+    beneficiary: firstString(raw.beneficiary) ?? null,
+    block_number: firstFiniteNumber(raw.block_number) ?? null,
+    observed_at: firstString(raw.observed_at) ?? null,
+  };
+}
+
+export function normalizeSubnetLeaseHistory(netuid: number, raw: unknown): SubnetLeaseHistory {
+  const d = isRecord(raw) ? raw : {};
+  const events = Array.isArray(d.lease_events)
+    ? d.lease_events.map(normalizeSubnetLeaseEvent).filter((e): e is SubnetLeaseEvent => e != null)
+    : [];
+  const kinds = Array.isArray(d.event_kinds)
+    ? d.event_kinds.filter((k): k is string => typeof k === "string" && k.length > 0)
+    : [];
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    event_pallet: firstString(d.event_pallet) ?? "SubtensorModule",
+    event_kinds: kinds,
+    count: firstFiniteNumber(d.count) ?? events.length,
+    lease_events: events,
+  };
+}
+
+export const subnetLeaseHistoryQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-lease-history", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetLeaseHistory>>(
+        `/api/v1/subnets/${netuid}/lease/history`,
+        { signal },
+      );
+      return {
+        data: normalizeSubnetLeaseHistory(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };

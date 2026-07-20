@@ -2044,6 +2044,58 @@ export interface SubnetOwnershipHistory {
   ownership_changes: SubnetOwnershipChange[];
 }
 
+/**
+ * Terms of one active subnet lease from GET /api/v1/subnets/{netuid}/lease
+ * (#6993 / #6719). beneficiary/coldkey/hotkey are SS58. end_block is null
+ * for a perpetual lease. accumulated_dividends_alpha is null only when that
+ * sub-read failed independently.
+ */
+export interface SubnetLeaseTerms {
+  lease_id: number;
+  beneficiary: string;
+  coldkey: string;
+  hotkey: string;
+  emissions_share_percent: number;
+  end_block: number | null;
+  netuid: number;
+  cost_tao: number;
+  accumulated_dividends_alpha: number | null;
+}
+
+/**
+ * Live subnet-lease state (#6993). `leased: null` is RPC failure — distinct
+ * from confirmed no-lease (`leased: false`). `lease` may be null while
+ * `leased: true` when terms couldn't be decoded this request (retry).
+ */
+export interface SubnetLeaseState {
+  schema_version: number;
+  netuid: number;
+  leased: boolean | null;
+  lease: SubnetLeaseTerms | null;
+  queried_at: string | null;
+}
+
+/** One SubnetLeaseCreated/SubnetLeaseTerminated event (#6718). */
+export interface SubnetLeaseEvent {
+  event_kind: string | null;
+  beneficiary: string | null;
+  block_number: number | null;
+  observed_at: string | null;
+}
+
+/**
+ * Lease-created/terminated event log from
+ * GET /api/v1/subnets/{netuid}/lease/history (#6993). Never-leased → empty list.
+ */
+export interface SubnetLeaseHistory {
+  schema_version: number;
+  netuid: number;
+  event_pallet: string;
+  event_kinds: string[];
+  count: number;
+  lease_events: SubnetLeaseEvent[];
+}
+
 /** One subnet's movement over the comparison window on the /subnets/movers board. */
 export interface SubnetMover {
   netuid: number;
