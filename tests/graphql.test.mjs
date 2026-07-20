@@ -3499,6 +3499,311 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
   });
 });
 
+// #6978: GraphQL parity for the conviction/ownership-contest (#4302) and
+// subnet-leasing (#6717) epics. ownership_history/conviction/lease_history
+// reach the Postgres-only all-events tier unconditionally (no per-table flag,
+// unlike subnet_turnover above), mirroring MCP's get_subnet_ownership_history/
+// get_subnet_conviction/get_subnet_lease_history proxies byte-for-byte.
+describe("graphql — subnet_ownership_history / subnet_conviction / subnet_lease_history", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("subnet_ownership_history returns the decoded ownership-change list", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          count: 1,
+          ownership_changes: [
+            {
+              netuid: 7,
+              old_coldkey: "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
+              new_coldkey: "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+              block_number: 8587754,
+              observed_at: "2026-07-09T12:26:40.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ subnet_ownership_history(netuid: 7) { schema_version netuid count ownership_changes } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.subnet_ownership_history;
+    assert.equal(r.netuid, 7);
+    assert.equal(r.count, 1);
+    assert.equal(
+      r.ownership_changes[0].old_coldkey,
+      "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
+    );
+  });
+
+  test("subnet_conviction returns the leaderboard and live-rolled rates", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          queried_at_block: 5000000,
+          unlock_rate: 0.001,
+          maturity_rate: 0.002,
+          king: { coldkey: "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i" },
+          count: 1,
+          leaderboard: [
+            {
+              coldkey: "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
+              conviction: 1000,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ subnet_conviction(netuid: 7) { schema_version netuid queried_at_block unlock_rate maturity_rate king count leaderboard } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.subnet_conviction;
+    assert.equal(r.netuid, 7);
+    assert.equal(r.unlock_rate, 0.001);
+    assert.equal(
+      r.king.coldkey,
+      "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
+    );
+    assert.equal(r.leaderboard[0].conviction, 1000);
+  });
+
+  test("subnet_lease_history returns the decoded lease-lifecycle event list", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 9,
+          count: 1,
+          lease_events: [
+            {
+              event_kind: "SubnetLeaseCreated",
+              beneficiary: "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
+              block_number: 8000000,
+              observed_at: "2026-07-01T00:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ subnet_lease_history(netuid: 9) { schema_version netuid count lease_events } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.subnet_lease_history;
+    assert.equal(r.netuid, 9);
+    assert.equal(r.count, 1);
+    assert.equal(r.lease_events[0].event_kind, "SubnetLeaseCreated");
+  });
+
+  test("a subnet with no recorded events returns an empty list, not an error", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 4,
+          count: 0,
+          ownership_changes: [],
+        }),
+      ),
+    };
+    const { body } = await gql(
+      "{ subnet_ownership_history(netuid: 4) { count ownership_changes } }",
+      env,
+    );
+    assert.equal(body.data.subnet_ownership_history.count, 0);
+    assert.deepEqual(body.data.subnet_ownership_history.ownership_changes, []);
+  });
+
+  test("a fully empty tier body degrades every field to its resolver default", async () => {
+    // A fresh Response per fetch call (unlike the shared-instance dataApi()
+    // helper above) since this test reuses `env` across three requests and a
+    // Response body can only be consumed once.
+    const env = { DATA_API: { fetch: async () => Response.json({}) } };
+
+    const ownership = await gql(
+      "{ subnet_ownership_history(netuid: 4) { schema_version netuid count ownership_changes } }",
+      env,
+    );
+    assert.deepEqual(ownership.body.data.subnet_ownership_history, {
+      schema_version: 1,
+      netuid: 4,
+      count: 0,
+      ownership_changes: [],
+    });
+
+    const conviction = await gql(
+      "{ subnet_conviction(netuid: 4) { schema_version netuid queried_at_block unlock_rate maturity_rate king count leaderboard } }",
+      env,
+    );
+    assert.deepEqual(conviction.body.data.subnet_conviction, {
+      schema_version: 1,
+      netuid: 4,
+      queried_at_block: null,
+      unlock_rate: null,
+      maturity_rate: null,
+      king: null,
+      count: 0,
+      leaderboard: [],
+    });
+
+    const leaseHistory = await gql(
+      "{ subnet_lease_history(netuid: 4) { schema_version netuid count lease_events } }",
+      env,
+    );
+    assert.deepEqual(leaseHistory.body.data.subnet_lease_history, {
+      schema_version: 1,
+      netuid: 4,
+      count: 0,
+      lease_events: [],
+    });
+  });
+
+  test("surfaces a missing DATA_API binding as a GraphQL error", async () => {
+    const { body } = await gql(
+      "{ subnet_ownership_history(netuid: 7) { count } }",
+    );
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("surfaces a non-OK DATA_API response as a GraphQL error", async () => {
+    const env = { DATA_API: dataApi(new Response("err", { status: 502 })) };
+    const { body } = await gql(
+      "{ subnet_conviction(netuid: 7) { count } }",
+      env,
+    );
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("surfaces a DATA_API fetch failure as a GraphQL error", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("network unreachable");
+        },
+      },
+    };
+    const { body } = await gql(
+      "{ subnet_lease_history(netuid: 9) { count } }",
+      env,
+    );
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("FIELD_COMPLEXITY weights all three like their sibling Postgres-tier fields", () => {
+    for (const field of [
+      "subnet_ownership_history",
+      "subnet_conviction",
+      "subnet_lease_history",
+    ]) {
+      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+    }
+  });
+});
+
+// #6978: subnet_lease is the live-RPC counterpart (current state, not the
+// event log) -- same schema-stable-null-on-RPC-failure shape as
+// subnet_recycled/subnet_burn above, reusing loadSubnetLease unchanged.
+describe("graphql — subnet_lease (#6719, live chain RPC via subnet-lease.mjs)", () => {
+  function withFetchStub(stub, fn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  test("returns leased:false for a confirmed no-lease result", async () => {
+    await withFetchStub(
+      async () => ({
+        ok: true,
+        json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+      }),
+      async () => {
+        const { status, body } = await gql(
+          "{ subnet_lease(netuid: 7) { schema_version netuid leased lease queried_at } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.subnet_lease;
+        assert.equal(r.netuid, 7);
+        assert.equal(r.leased, false);
+        assert.equal(r.lease, null);
+        assert.ok(r.queried_at);
+      },
+    );
+  });
+
+  test("RPC failure degrades leased to null, never a GraphQL error", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("network unreachable");
+      },
+      async () => {
+        const { status, body } = await gql(
+          "{ subnet_lease(netuid: 7) { leased } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.subnet_lease.leased, null);
+      },
+    );
+  });
+
+  test("an out-of-range netuid is BAD_USER_INPUT and never reaches the RPC", async () => {
+    let called = false;
+    await withFetchStub(
+      async () => {
+        called = true;
+        return { ok: true, json: async () => ({ result: null }) };
+      },
+      async () => {
+        const { status, body } = await gql(
+          "{ subnet_lease(netuid: 99999) { leased } }",
+        );
+        assert.equal(status, 200);
+        assert.equal(body.data.subnet_lease, null);
+        assert.ok(
+          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+        );
+        assert.equal(called, false);
+      },
+    );
+  });
+
+  test("a negative netuid is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      "{ subnet_lease(netuid: -1) { leased } }",
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("subnet_lease is weighted like its live-RPC siblings", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_lease, 10);
+    assert.equal(
+      FIELD_COMPLEXITY.subnet_lease,
+      FIELD_COMPLEXITY.subnet_recycled,
+    );
+  });
+});
+
 describe("graphql — validator_history (#5710, Postgres-tier + empty-points fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

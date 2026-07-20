@@ -156,6 +156,7 @@ import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import { buildChainYield } from "./chain-yield.mjs";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
 import { loadSubnetBurn } from "./subnet-burn.mjs";
+import { loadSubnetLease } from "./subnet-lease.mjs";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
 import { loadNetworkParameters } from "./network-parameters.mjs";
@@ -600,6 +601,14 @@ export const SDL = `
     subnet_burn(netuid: Int!): SubnetBurn
     "One subnet's validator/neuron-set turnover (entered/exited/retention/0-100 stability) between the boundary snapshots of a 7d/30d/90d/1y/all window (default 30d), from neuron_daily. comparable is false and the churn metrics zeroed on a single-snapshot or cold store, never null. Mirrors GET /api/v1/subnets/{netuid}/turnover."
     subnet_turnover(netuid: Int!, window: String): SubnetTurnover!
+    "Every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream -- Bittensor subnet ownership is a permissionless, conviction-weighted contest that transfers automatically once a challenger's conviction overtakes the incumbent owner's, no vote required. A subnet that has never changed hands returns an empty list. Reaches the Postgres-only all-events tier directly (no D1 predecessor); unavailable is a GraphQL error, never a silent empty list. Mirrors GET /api/v1/subnets/{netuid}/ownership-history."
+    subnet_ownership_history(netuid: Int!): SubnetOwnershipHistory!
+    "Live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) -- who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to subnet_ownership_history (that's the event log of past flips; this is the current standings). A subnet with no active challengers/owner lock returns an empty leaderboard. Reaches the Postgres-only all-events tier directly; unavailable is a GraphQL error, never a silent empty leaderboard. Mirrors GET /api/v1/subnets/{netuid}/conviction."
+    subnet_conviction(netuid: Int!): SubnetConviction!
+    "Live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) -- whether a subnet is currently under a lease (a crowdfunded, time-boxed primary market for new subnets) and, if so, its terms and accumulated-but-undistributed alpha dividends, read directly from chain via RPC (not the Postgres tier). leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false); schema-stable, never a GraphQL error except for an out-of-range netuid. Mirrors GET /api/v1/subnets/{netuid}/lease."
+    subnet_lease(netuid: Int!): SubnetLease
+    "Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717), decoded from the account_events stream. Companion to subnet_lease (that's the current state; this is the event log). A subnet that has never been leased returns an empty list. Reaches the Postgres-only all-events tier directly; unavailable is a GraphQL error, never a silent empty list. Mirrors GET /api/v1/subnets/{netuid}/lease/history."
+    subnet_lease_history(netuid: Int!): SubnetLeaseHistory!
     "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached, not the Postgres tier). balance_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/accounts/{ss58}/balance."
     account_balance(ss58: String!): AccountBalance
     "The network's on-chain sudo (superuser) key hotkey, read live from chain via RPC (not the Postgres tier). hotkey is null on RPC failure or a renounced sudo, schema-stable, never a GraphQL error. Mirrors GET /api/v1/sudo/key."
@@ -2569,6 +2578,43 @@ export const SDL = `
     stability_score: Int
   }
 
+  "Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history."
+  type SubnetOwnershipHistory {
+    schema_version: Int!
+    netuid: Int!
+    count: Int!
+    ownership_changes: [JSON!]!
+  }
+
+  "Live per-subnet conviction leaderboard -- who currently holds the most rolled conviction, rolled forward from a periodically-captured snapshot using the current live-queried unlock_rate/maturity_rate. Mirrors GET /api/v1/subnets/{netuid}/conviction."
+  type SubnetConviction {
+    schema_version: Int!
+    netuid: Int!
+    queried_at_block: Int
+    unlock_rate: Float
+    maturity_rate: Float
+    king: JSON
+    count: Int!
+    leaderboard: [JSON!]!
+  }
+
+  "Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had, decoded from the account_events stream. Mirrors GET /api/v1/subnets/{netuid}/lease/history."
+  type SubnetLeaseHistory {
+    schema_version: Int!
+    netuid: Int!
+    count: Int!
+    lease_events: [JSON!]!
+  }
+
+  "Live subnet-lease state -- whether a subnet is currently under a lease and, if so, its terms (beneficiary, coldkey, hotkey, emissions_share_percent, end_block, cost_tao) and accumulated-but-undistributed alpha dividends. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). Mirrors GET /api/v1/subnets/{netuid}/lease."
+  type SubnetLease {
+    schema_version: Int!
+    netuid: Int!
+    leased: Boolean
+    lease: JSON
+    queried_at: String!
+  }
+
   "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached). balance_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/balance."
   type AccountBalance {
     schema_version: Int!
@@ -3526,6 +3572,9 @@ export const FIELD_COMPLEXITY = {
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_ownership_history: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_conviction: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_lease_history: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_calls: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_fees: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_activity: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3561,6 +3610,7 @@ export const FIELD_COMPLEXITY = {
   registry_leaderboards: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_recycled: LIVE_RPC_FIELD_COMPLEXITY,
   subnet_burn: LIVE_RPC_FIELD_COMPLEXITY,
+  subnet_lease: LIVE_RPC_FIELD_COMPLEXITY,
   account_balance: LIVE_RPC_FIELD_COMPLEXITY,
   sudo_key: LIVE_RPC_FIELD_COMPLEXITY,
   network_parameters: LIVE_RPC_FIELD_COMPLEXITY,
@@ -3874,6 +3924,38 @@ function postgresTierRequest(context, pathname, params) {
   pgUrl.pathname = pathname;
   pgUrl.search = params ? params.toString() : "";
   return new Request(pgUrl);
+}
+
+// #6978: the ownership-history/conviction/lease-history routes are
+// Postgres-only all-events tier -- unlike every tryPostgresTier(flagName)
+// call above, there is no D1 predecessor and so no per-table flag to gate on
+// (workers/api.mjs forwards these three paths to DATA_API unconditionally).
+// Mirrors MCP's own loadSubnetOwnershipHistory/loadSubnetConviction/
+// loadSubnetLeaseHistory proxies (src/mcp-server.mjs) byte-for-byte;
+// reimplemented here rather than imported since mcp-server.mjs already
+// imports this file's handleGraphQLRequest and importing back would be
+// circular.
+async function fetchAllEventsTier(context, pathname) {
+  const dataApi = context.env?.DATA_API;
+  if (!dataApi?.fetch) {
+    throw new GraphQLError(
+      "The chain-events tier is unavailable (the all-events data Worker is not bound to this deployment). Try again against the production endpoint.",
+    );
+  }
+  let response;
+  try {
+    response = await dataApi.fetch(postgresTierRequest(context, pathname));
+  } catch {
+    throw new GraphQLError(
+      "The chain-events tier could not be reached. Try again shortly.",
+    );
+  }
+  if (!response.ok) {
+    throw new GraphQLError(
+      `The chain-events tier returned an error (status ${response.status}). Try again shortly.`,
+    );
+  }
+  return response.json();
 }
 
 // --- Node builders (attach lazy relationship resolvers to artifact rows) ---
@@ -8179,6 +8261,65 @@ const rootValue = {
       neuron_retention: data.neuron_retention ?? null,
       stability_score: data.stability_score ?? null,
     };
+  },
+
+  async subnet_ownership_history({ netuid }, context) {
+    const data = await fetchAllEventsTier(
+      context,
+      `/api/v1/subnets/${netuid}/ownership-history`,
+    );
+    return {
+      schema_version: data?.schema_version ?? 1,
+      netuid,
+      count: data?.count ?? 0,
+      ownership_changes: Array.isArray(data?.ownership_changes)
+        ? data.ownership_changes
+        : [],
+    };
+  },
+
+  async subnet_conviction({ netuid }, context) {
+    const data = await fetchAllEventsTier(
+      context,
+      `/api/v1/subnets/${netuid}/conviction`,
+    );
+    return {
+      schema_version: data?.schema_version ?? 1,
+      netuid,
+      queried_at_block: data?.queried_at_block ?? null,
+      unlock_rate: data?.unlock_rate ?? null,
+      maturity_rate: data?.maturity_rate ?? null,
+      king: data?.king ?? null,
+      count: data?.count ?? 0,
+      leaderboard: Array.isArray(data?.leaderboard) ? data.leaderboard : [],
+    };
+  },
+
+  async subnet_lease_history({ netuid }, context) {
+    const data = await fetchAllEventsTier(
+      context,
+      `/api/v1/subnets/${netuid}/lease/history`,
+    );
+    return {
+      schema_version: data?.schema_version ?? 1,
+      netuid,
+      count: data?.count ?? 0,
+      lease_events: Array.isArray(data?.lease_events) ? data.lease_events : [],
+    };
+  },
+
+  async subnet_lease({ netuid }, context) {
+    if (!isU16Netuid(netuid)) {
+      throw new GraphQLError(
+        "netuid must be an integer in the u16 range 0..65535.",
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Live chain RPC, not the Postgres tier -- reuses loadSubnetLease's own
+    // KV cache/TTL, matching REST's handleSubnetLease and MCP's
+    // get_subnet_lease exactly. leased/lease stay null on RPC failure
+    // (schema-stable), never a GraphQL error.
+    return loadSubnetLease(context.env, netuid);
   },
 
   async account_balance({ ss58 }, context) {
