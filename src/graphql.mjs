@@ -436,6 +436,8 @@ export const SDL = `
     subnet_volume(netuid: Int!): SubnetVolume!
     "The machine-readable AI-resources index: the copyable agent prompt (/agent.md), MCP server install metadata and tool listing, the Bittensor skill, llms.txt, OpenAPI, and links to the agent-facing APIs. Use it to bootstrap an agent integration before calling the catalog/search fields. Null when the index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_agent_resources MCP/REST shape. Mirrors GET /api/v1/agent-resources."
     agent_resources: JSON
+    "Curation states by subnet — each subnet's registry curation level and review state. Null when the artifact has not been baked. Opaque JSON passed through verbatim, matching the list_curation MCP/REST shape. Mirrors GET /api/v1/curation."
+    curation: JSON
     "The full compact search index: one document per subnet/surface/provider/doc, each with its id, type, title, subtitle, url, and the per-document token blob that widens server-side recall. Documents are heterogeneous by type, so each is passed through as opaque JSON. Mirrors GET /api/v1/search."
     search(limit: Int, cursor: String): SearchDocumentList!
     "The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Mirrors GET /api/v1/search-index."
@@ -3799,6 +3801,7 @@ export const FIELD_COMPLEXITY = {
   subnet_health_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_percentiles: RELATIONSHIP_FIELD_COMPLEXITY,
   agent_resources: RELATIONSHIP_FIELD_COMPLEXITY,
+  curation: RELATIONSHIP_FIELD_COMPLEXITY,
   search: RELATIONSHIP_FIELD_COMPLEXITY,
   search_index: RELATIONSHIP_FIELD_COMPLEXITY,
   domains: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5580,6 +5583,12 @@ const rootValue = {
     // The MCP tool raises not_found when it is absent; GraphQL degrades to
     // null instead, matching every other artifact-backed resolver here.
     return loadArtifact(context, AGENT_RESOURCES_ARTIFACT);
+  },
+
+  async curation(_args, context) {
+    // Same baked artifact the REST /api/v1/curation route + list_curation MCP
+    // tool read; opaque-JSON passthrough degrading to null on cold.
+    return loadArtifact(context, "/metagraph/curation.json");
   },
 
   async subnet_volume({ netuid }, context) {
