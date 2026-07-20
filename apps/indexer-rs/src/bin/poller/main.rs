@@ -126,6 +126,17 @@ async fn main() -> Result<()> {
         Duration::from_secs(env_u64("SUBNET_HYPERPARAMS_POLL_SECS").unwrap_or(3600));
     let self_stake_interval =
         Duration::from_secs(env_u64("SELF_STAKE_POLL_SECS").unwrap_or(7 * 24 * 3600));
+    // 900s (15min): matches the retired metagraphed-refresh.timer's own
+    // metagraph schedule (roles/data-refresh-cron/vars/main.yml,
+    // "*-*-* *:0/15:00 UTC") -- a full 129-subnet/~30k-neuron tick (via the
+    // bulk get_all_metagraphs() call, see metagraph.rs's own module doc
+    // comment) measured live at ~30-130s end-to-end, nothing justifying a
+    // wider window.
+    let metagraph_interval = Duration::from_secs(env_u64("METAGRAPH_POLL_SECS").unwrap_or(900));
+    // 86400s (24h): matches the retired job's own daily cadence -- an
+    // account's on-chain identity changes far less often than neuron state.
+    let account_identity_interval =
+        Duration::from_secs(env_u64("ACCOUNT_IDENTITY_POLL_SECS").unwrap_or(24 * 3600));
 
     let only: Option<Vec<String>> = std::env::var("POLLER_ONLY")
         .ok()
@@ -186,6 +197,22 @@ async fn main() -> Result<()> {
             rpc_url.clone(),
             db_url.clone(),
             self_stake_interval,
+        )));
+    }
+    if enabled("metagraph") {
+        names.push("metagraph");
+        // No db_url -- POSTs to the existing sync route instead of writing
+        // Postgres directly (see the job's own module doc comment for why).
+        handles.push(tokio::spawn(jobs::metagraph::run_loop(
+            rpc_url.clone(),
+            metagraph_interval,
+        )));
+    }
+    if enabled("account-identity") {
+        names.push("account-identity");
+        handles.push(tokio::spawn(jobs::account_identity::run_loop(
+            rpc_url.clone(),
+            account_identity_interval,
         )));
     }
     if handles.is_empty() {

@@ -156,8 +156,19 @@ CREATE TABLE IF NOT EXISTS neurons (
   axon             TEXT,
   block_number     BIGINT,
   captured_at      BIGINT NOT NULL,
+  take             REAL,
   PRIMARY KEY (netuid, uid)
 );
+-- Schema-drift fix (found 2026-07-19 while building the neurons poller job):
+-- handleNeuronsSync (workers/data-api.mjs) has upserted `take` into `neurons`
+-- since the metagraph-depth epic shipped, and the live table has carried the
+-- column since then -- CREATE TABLE IF NOT EXISTS above never added it,
+-- since it's a no-op against an already-existing table, so this file's own
+-- source of truth silently drifted from what's actually deployed. Safe on an
+-- already-deployed table (CREATE TABLE above now includes the column for a
+-- fresh deploy; this is a no-op there), same convention as
+-- api_keys.account_id/unkey_key_id below.
+ALTER TABLE neurons ADD COLUMN IF NOT EXISTS take REAL;
 CREATE INDEX IF NOT EXISTS idx_neurons_netuid_permit ON neurons (netuid, validator_permit, stake_tao DESC);
 CREATE INDEX IF NOT EXISTS idx_neurons_hotkey        ON neurons (hotkey);
 
