@@ -39,6 +39,10 @@ import { loadProviderEndpointsList } from "./provider-endpoints-mcp.mjs";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.mjs";
+// #6982: GraphQL parity for GET /api/v1/curation, reusing list_curation's own
+// loader unchanged (same artifact read, filter, sort, and page logic REST and
+// MCP already use) -- not a reimplementation.
+import { loadCurationList } from "./curation-mcp.mjs";
 // #7170: GraphQL parity for the changelog/contracts/health-history REST routes,
 // reusing the same loaders MCP get_changelog/get_contracts/get_health_history
 // already call -- not a reimplementation.
@@ -542,6 +546,8 @@ export const SDL = `
     evidence(q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): EvidenceList!
     "Public-safe subnet profile index -- completeness scores, surface/interface counts, curation level, review state, and confidence for every registered subnet. Filter by netuid/subnet_type/curation_level/review_state/confidence/profile_level, search name/slug/project/team/categories with q, sort with sort/order, and page with limit (1-1000)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/profiles."
     profiles(netuid: Int, subnet_type: String, curation_level: String, review_state: String, confidence: String, profile_level: String, q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ProfileList!
+    "Per-subnet curation states -- coverage_level, curation_level, source counts, and review posture for every active subnet. Filter by netuid/coverage_level/curation_level, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/curation."
+    curation(netuid: Int, coverage_level: String, curation_level: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): CurationList!
     "The registry-wide summary: overall subnet count, coverage/curation-level/profile-level counts, recent registry changes, and the most-complete top subnets. A fast orientation for the whole Bittensor application layer. Null when the summary has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the registry_summary MCP/REST shape. Mirrors GET /api/v1/registry/summary."
     registry_summary: JSON
     "The per-provider source-health rollup: for each provider/source, the candidate-surface count and its live/redirected/dead classification, endpoint and RPC-endpoint counts, verification-result count, and an overall status. Null when the rollup has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_source_health MCP/REST shape. Mirrors GET /api/v1/source-health."
@@ -1928,6 +1934,19 @@ export const SDL = `
     date: String
     summary: JSON
     surfaces: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type CurationList {
+    generated_at: String
+    notes: String
+    curation: [JSON!]!
     total: Int!
     returned: Int!
     limit: Int!
@@ -3886,6 +3905,7 @@ export const FIELD_COMPLEXITY = {
   block_events: RELATIONSHIP_FIELD_COMPLEXITY,
   block_chain_events: RELATIONSHIP_FIELD_COMPLEXITY,
   profiles: RELATIONSHIP_FIELD_COMPLEXITY,
+  curation: RELATIONSHIP_FIELD_COMPLEXITY,
   registry_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   source_health: RELATIONSHIP_FIELD_COMPLEXITY,
   lineage: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5634,6 +5654,10 @@ const rootValue = {
   // unsupported filter/sort is a GraphQL error, not a silent default".
   health_history(args, context) {
     return loadHealthHistory(context, args, { readArtifact: loadArtifact });
+  },
+
+  curation(args, context) {
+    return loadCurationList(context, args, { readArtifact });
   },
 
   async health(_args, context) {
