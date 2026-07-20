@@ -152,8 +152,10 @@ import {
   buildAccountExtrinsics,
   buildExtrinsic,
   buildExtrinsicFeed,
+  buildBlockExtrinsics,
 } from "./extrinsics.mjs";
 import { buildBlock, buildBlockFeed } from "./blocks.mjs";
+import { loadBlockChainEvents } from "./data-api-mcp.mjs";
 import { buildBlocksSummary } from "./blocks-summary.mjs";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import { buildChainYield } from "./chain-yield.mjs";
@@ -203,6 +205,7 @@ import {
   SUBNET_EVENT_SUMMARY_WINDOWS,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+  buildBlockEvents,
 } from "./account-events.mjs";
 import {
   DEFAULT_PROMETHEUS_WINDOW,
@@ -491,6 +494,12 @@ export const SDL = `
     blocks(limit: Int, offset: Int, cursor: String): BlockList!
     "One block by numeric height or 0x block hash; block is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/{ref}."
     block(ref: String!): BlockDetail
+    "The extrinsics in one block by ref (numeric block_number or 0x hash), in natural read order (extrinsic_index ASC), paginated with limit (1-100, default 50)/offset. Returns block_number:null + extrinsics:[] for an unknown ref or cold store, never a GraphQL error. Mirrors GET /api/v1/blocks/{ref}/extrinsics."
+    block_extrinsics(ref: String!, limit: Int, offset: Int): BlockExtrinsics!
+    "The decoded, account-attributed chain events in one block by ref, in read order (event_index ASC), paginated with limit (1-1000, default 100)/offset. Returns block_number:null + events:[] for an unknown ref or cold store, never a GraphQL error. Mirrors GET /api/v1/blocks/{ref}/events."
+    block_events(ref: String!, limit: Int, offset: Int): BlockEvents!
+    "Every raw pallet.method event in one block from the Postgres all-events tier (ADR 0013), by numeric block_number, in read order. Distinct from block_events (the curated account-attributed D1 stream); requires the all-events data Worker, so it is a GraphQL error where that tier is unavailable (e.g. preview deploys). Mirrors GET /api/v1/blocks/{block_number}/chain-events."
+    block_chain_events(block_number: Int!): BlockChainEvents!
     "Block-production summary over the recent-block window -- counts, inter-block timing, throughput, and author-concentration. Every aggregate is null (never a GraphQL error) when the retired-D1 store is cold. Mirrors GET /api/v1/blocks/summary."
     blocks_summary: BlocksSummary!
     "Site-wide runtime spec-version transition timeline: the earliest known block at each distinct spec_version observed (ascending), the current spec_version, and where coverage starts. The empty shape (transition_count 0, current_spec_version null) is schema-stable, never a GraphQL error, when the store has no reading yet. Mirrors GET /api/v1/runtime."
@@ -2699,6 +2708,36 @@ export const SDL = `
     entropy_normalized: Float
   }
 
+  "One block's extrinsics list (#6977). Rows are the opaque JSON extrinsic shape the extrinsics feed uses; block_number is null for an unknown ref."
+  type BlockExtrinsics {
+    schema_version: Int
+    ref: String
+    block_number: Int
+    extrinsic_count: Int!
+    limit: Int
+    offset: Int
+    extrinsics: [JSON!]!
+  }
+
+  "One block's decoded, account-attributed events list (#6977). Rows are opaque JSON; block_number is null for an unknown ref."
+  type BlockEvents {
+    schema_version: Int
+    ref: String
+    block_number: Int
+    event_count: Int!
+    limit: Int
+    offset: Int
+    events: [JSON!]!
+  }
+
+  "One block's raw all-events-tier events (#6977) -- every pallet.method event, distinct from the curated block_events stream. Rows are opaque JSON."
+  type BlockChainEvents {
+    schema_version: Int
+    block_number: Int
+    event_count: Int!
+    events: [JSON!]!
+  }
+
   type BlockDetail {
     ref: String
     block: Block
@@ -3478,6 +3517,9 @@ export const FIELD_COMPLEXITY = {
   rpc_pools: RELATIONSHIP_FIELD_COMPLEXITY,
   endpoint_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   source_snapshots: RELATIONSHIP_FIELD_COMPLEXITY,
+  block_extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
+  block_events: RELATIONSHIP_FIELD_COMPLEXITY,
+  block_chain_events: RELATIONSHIP_FIELD_COMPLEXITY,
   profiles: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5701,6 +5743,71 @@ const rootValue = {
       prev_block_number: data.prev_block_number ?? null,
       next_block_number: data.next_block_number ?? null,
     };
+  },
+
+  // #6977: block-scoped extrinsics/events/chain-events lists, mirroring the same
+  // Postgres tier + schema-stable fallback builder REST and MCP already use. The
+  // /blocks/:ref/{extrinsics,events} routes wrap their body in `{ data }` (unlike
+  // the flat /blocks/:ref route), so the tier result is destructured accordingly.
+  async block_extrinsics({ ref, limit, offset }, context) {
+    const safeLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(100, Math.floor(limit)))
+      : 50;
+    const safeOffset = Number.isFinite(offset)
+      ? Math.max(0, Math.floor(offset))
+      : 0;
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    const { data } = (await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/blocks/${encodeURIComponent(ref)}/extrinsics`,
+        params,
+      ),
+      "METAGRAPH_EXTRINSICS_SOURCE",
+    )) ?? {
+      data: buildBlockExtrinsics([], ref, null, {
+        limit: safeLimit,
+        offset: safeOffset,
+      }),
+    };
+    return data;
+  },
+
+  async block_events({ ref, limit, offset }, context) {
+    const safeLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(1000, Math.floor(limit)))
+      : 100;
+    const safeOffset = Number.isFinite(offset)
+      ? Math.max(0, Math.floor(offset))
+      : 0;
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    const { data } = (await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/blocks/${encodeURIComponent(ref)}/events`,
+        params,
+      ),
+      "METAGRAPH_EXTRINSICS_SOURCE",
+    )) ?? {
+      data: buildBlockEvents([], ref, null, {
+        limit: safeLimit,
+        offset: safeOffset,
+      }),
+    };
+    return data;
+  },
+
+  // Reuses loadBlockChainEvents unchanged (the get_block_chain_events tool's own
+  // loader); it throws invalid_params on a bad block_number and tier_unavailable
+  // where the all-events Worker is absent -- both surface as normal GraphQL errors.
+  block_chain_events({ block_number: blockNumber }, context) {
+    return loadBlockChainEvents(context, blockNumber);
   },
 
   async validators({ sort, limit }, context) {

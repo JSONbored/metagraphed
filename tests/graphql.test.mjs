@@ -1666,6 +1666,144 @@ describe("graphql — profiles", () => {
   });
 });
 
+// #6977: block-scoped extrinsics/events/chain-events lists mirror the same
+// Postgres tier + schema-stable fallback the block/extrinsics feeds already use.
+describe("graphql — block_extrinsics / block_events / block_chain_events (#6977)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("block_extrinsics: cold store returns a schema-stable empty list, never an error", async () => {
+    const { status, body } = await gql(
+      '{ block_extrinsics(ref: "9") { block_number extrinsic_count extrinsics } }',
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.block_extrinsics.block_number, null);
+    assert.equal(body.data.block_extrinsics.extrinsic_count, 0);
+    assert.deepEqual(body.data.block_extrinsics.extrinsics, []);
+  });
+
+  test("block_extrinsics: resolves Postgres-tier rows (the /blocks/:ref/extrinsics { data } envelope)", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          data: {
+            schema_version: 1,
+            ref: "9",
+            block_number: 9,
+            extrinsic_count: 1,
+            limit: 50,
+            offset: 0,
+            extrinsics: [
+              {
+                block_number: 9,
+                extrinsic_index: 0,
+                call_module: "Timestamp",
+                call_function: "set",
+                success: true,
+              },
+            ],
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      '{ block_extrinsics(ref: "9", limit: 10, offset: 2) { block_number extrinsic_count extrinsics } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.block_extrinsics.block_number, 9);
+    assert.equal(body.data.block_extrinsics.extrinsic_count, 1);
+    assert.equal(
+      body.data.block_extrinsics.extrinsics[0].call_module,
+      "Timestamp",
+    );
+  });
+
+  test("block_events: cold store returns a schema-stable empty list, never an error", async () => {
+    const { status, body } = await gql(
+      '{ block_events(ref: "9") { block_number event_count events } }',
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.block_events.event_count, 0);
+    assert.deepEqual(body.data.block_events.events, []);
+  });
+
+  test("block_events: resolves Postgres-tier rows (the /blocks/:ref/events { data } envelope)", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          data: {
+            schema_version: 1,
+            ref: "9",
+            block_number: 9,
+            event_count: 1,
+            limit: 100,
+            offset: 0,
+            events: [
+              { block_number: 9, event_index: 0, kind: "Balances.Transfer" },
+            ],
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      '{ block_events(ref: "9", limit: 20, offset: 3) { block_number event_count events } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.block_events.event_count, 1);
+    assert.equal(body.data.block_events.events[0].kind, "Balances.Transfer");
+  });
+
+  test("block_chain_events: resolves the all-events tier by block_number", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({
+          block_number: 9,
+          event_count: 2,
+          events: [
+            { event_index: 0, pallet: "System", method: "ExtrinsicSuccess" },
+            { event_index: 1, pallet: "Balances", method: "Transfer" },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ block_chain_events(block_number: 9) { block_number event_count events } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.block_chain_events.block_number, 9);
+    assert.equal(body.data.block_chain_events.event_count, 2);
+    assert.equal(body.data.block_chain_events.events[1].method, "Transfer");
+  });
+
+  test("block_chain_events: an absent all-events tier is a GraphQL error, not null-degrade", async () => {
+    const { body } = await gql(
+      "{ block_chain_events(block_number: 9) { event_count } }",
+      emptyEnv,
+    );
+    assert.ok(
+      body.errors?.length,
+      "expected a GraphQL error when the tier is unavailable",
+    );
+    assert.equal(body.data, null);
+  });
+
+  test("all three fields are weighted in the complexity map", () => {
+    for (const field of [
+      "block_extrinsics",
+      "block_events",
+      "block_chain_events",
+    ]) {
+      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+    }
+  });
+});
+
 describe("graphql — economics pagination", () => {
   const env = () =>
     fixtureEnv({
