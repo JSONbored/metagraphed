@@ -23,6 +23,10 @@ import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import { loadEndpointPoolsList } from "./endpoint-pools-mcp.mjs";
 import { loadRpcPoolsList } from "./rpc-pools-mcp.mjs";
 import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.mjs";
+// #7175: GraphQL parity for GET /api/v1/providers/{slug}/endpoints, reusing the
+// same loadProviderEndpointsList that MCP list_provider_endpoints already calls
+// (#3289) -- not a reimplementation.
+import { loadProviderEndpointsList } from "./provider-endpoints-mcp.mjs";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.mjs";
@@ -680,6 +684,8 @@ export const SDL = `
     netuids: [Int]!
     "The subnets this provider operates surfaces on."
     subnets: [Subnet!]!
+    "This provider's endpoint/resource registry rows -- the nested companion to endpoint_count, mirroring GET /api/v1/providers/{slug}/endpoints."
+    endpoints: [Endpoint!]!
   }
 
   "One adapter-backed public metrics snapshot. snapshot and extensions are opaque JSON -- their shape is adapter-specific. Mirrors GET /api/v1/adapters/{slug}'s data envelope."
@@ -3986,7 +3992,29 @@ function providerNode(provider) {
     ...provider,
     netuids,
     subnets: (_args, context) => loadProviderSubnets(context, netuids),
+    endpoints: (_args, context) => loadProviderEndpoints(context, provider.id),
   };
+}
+
+// #7175: a provider's endpoint rows, reusing loadProviderEndpointsList (the same
+// loader MCP list_provider_endpoints / REST /api/v1/providers/{slug}/endpoints
+// call) unchanged over the baked per-provider artifact. Called with no page/
+// filter args so it returns the provider's full endpoint list, matching
+// Subnet.endpoints' unbounded [Endpoint!]! shape. A cold/absent per-provider
+// artifact (the loader's not_found throw) degrades to an empty list rather than
+// erroring the parent query -- the same schema-stable convention Subnet.endpoints
+// and the provider node's own cold-artifact paths follow.
+async function loadProviderEndpoints(context, slug) {
+  try {
+    const result = await loadProviderEndpointsList(
+      context,
+      { slug },
+      { readArtifact },
+    );
+    return result.endpoints;
+  } catch {
+    return [];
+  }
 }
 
 async function loadSubnetHealth(context, netuid) {
