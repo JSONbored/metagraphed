@@ -49,6 +49,7 @@ import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-char
 import { SubnetOhlcChart } from "@/components/metagraphed/subnet-ohlc-chart";
 import { SubnetConvictionLeaderboard } from "@/components/metagraphed/subnet-conviction-leaderboard";
 import { SubnetOwnershipHistory } from "@/components/metagraphed/subnet-ownership-history";
+import { SubnetLeasePanel } from "@/components/metagraphed/subnet-lease-panel";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
 import { DistributionPanel } from "@/components/metagraphed/concentration-panel";
@@ -209,6 +210,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   economics: "overview",
   "volume-24h": "overview",
   "stake-quote": "overview",
+  lease: "overview",
   reliability: "overview",
   lineage: "overview",
   // #6434: the Overview embed is a preview and owns `evidence-preview`; the
@@ -528,6 +530,21 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
       >
         <QueryErrorBoundary>
           <SubnetOwnershipHistory netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      {/* 5a6 — Subnet lease (#6717 crowdfunded-leasing epic, routes #6719/#6813):
+          whether this subnet is operated under a lease, its terms + accrued
+          dividends, and the lease-created/terminated event history. Most subnets
+          are not leased -- rendered as an empty state, not an error. */}
+      <SectionAnchor
+        id="lease"
+        title="Subnet lease"
+        subtitle="Whether this subnet is currently operated under a crowdfunded lease, and its terms."
+        info="GET /api/v1/subnets/{netuid}/lease — live chain state (leased is a tri-state: leased / not leased / unavailable). GET /api/v1/subnets/{netuid}/lease/history — the SubnetLeaseCreated/Terminated event log."
+      >
+        <QueryErrorBoundary>
+          <SubnetLeasePanel netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
 

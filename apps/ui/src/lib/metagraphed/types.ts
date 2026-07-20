@@ -2044,6 +2044,49 @@ export interface SubnetOwnershipHistory {
   ownership_changes: SubnetOwnershipChange[];
 }
 
+/** Terms of an active subnet lease (#6993). Present only when leased === true
+ *  and the detail read succeeded; can be null even while leased (retry). */
+export interface SubnetLeaseTerms {
+  lease_id: number;
+  beneficiary: string;
+  coldkey: string;
+  hotkey: string;
+  emissions_share_percent: number;
+  end_block: number | null;
+  netuid: number;
+  cost_tao: number;
+  accumulated_dividends_alpha: number | null;
+}
+
+/** Live subnet-lease state (GET /api/v1/subnets/{netuid}/lease). `leased` is a
+ *  tri-state: true (leased), false (confirmed not leased), null (RPC failure —
+ *  distinct from "not leased"). */
+export interface SubnetLease {
+  schema_version: number;
+  netuid: number;
+  leased: boolean | null;
+  lease: SubnetLeaseTerms | null;
+  queried_at: string | null;
+}
+
+/** One lease lifecycle event (SubnetLeaseCreated / SubnetLeaseTerminated). */
+export interface SubnetLeaseEvent {
+  event_kind: string;
+  beneficiary: string | null;
+  block_number: number | null;
+  observed_at: string | null;
+}
+
+/** Lease event log (GET /api/v1/subnets/{netuid}/lease/history). */
+export interface SubnetLeaseHistory {
+  schema_version: number;
+  netuid: number;
+  event_pallet: string;
+  event_kinds: string[];
+  count: number;
+  lease_events: SubnetLeaseEvent[];
+}
+
 /** One subnet's movement over the comparison window on the /subnets/movers board. */
 export interface SubnetMover {
   netuid: number;

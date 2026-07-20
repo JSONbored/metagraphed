@@ -207,6 +207,10 @@ import type {
   SubnetConviction,
   SubnetConvictionEntry,
   SubnetOwnershipHistory,
+  SubnetLease,
+  SubnetLeaseTerms,
+  SubnetLeaseHistory,
+  SubnetLeaseEvent,
   SubnetOwnershipChange,
   SubnetMovers,
   SubnetMover,
@@ -4896,6 +4900,96 @@ export const subnetOwnershipHistoryQuery = (netuid: number) =>
       );
       return {
         data: normalizeSubnetOwnershipHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeSubnetLeaseTerms(raw: unknown): SubnetLeaseTerms | null {
+  if (!isRecord(raw)) return null;
+  return {
+    lease_id: firstFiniteNumber(raw.lease_id) ?? 0,
+    beneficiary: firstString(raw.beneficiary) ?? "",
+    coldkey: firstString(raw.coldkey) ?? "",
+    hotkey: firstString(raw.hotkey) ?? "",
+    emissions_share_percent: firstFiniteNumber(raw.emissions_share_percent) ?? 0,
+    end_block: firstFiniteNumber(raw.end_block) ?? null,
+    netuid: firstFiniteNumber(raw.netuid) ?? 0,
+    cost_tao: coerceFiniteNumber(raw.cost_tao) ?? 0,
+    accumulated_dividends_alpha: coerceFiniteNumber(raw.accumulated_dividends_alpha) ?? null,
+  };
+}
+
+export function normalizeSubnetLease(netuid: number, raw: unknown): SubnetLease {
+  const d = isRecord(raw) ? raw : {};
+  // Preserve the leased tri-state — true / false / null (RPC failure). Never
+  // coerce, or the RPC-failure state collapses into "not leased".
+  const leased = d.leased === true ? true : d.leased === false ? false : null;
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    leased,
+    lease: leased === true ? normalizeSubnetLeaseTerms(d.lease) : null,
+    queried_at: firstString(d.queried_at) ?? null,
+  };
+}
+
+/** Live subnet-lease state (#6993). */
+export const subnetLeaseQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-lease", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetLease>>(`/api/v1/subnets/${netuid}/lease`, {
+        signal,
+      });
+      return { data: normalizeSubnetLease(netuid, res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeSubnetLeaseEvent(raw: unknown): SubnetLeaseEvent | null {
+  if (!isRecord(raw)) return null;
+  const kind = firstString(raw.event_kind);
+  if (!kind) return null;
+  return {
+    event_kind: kind,
+    beneficiary: firstString(raw.beneficiary) ?? null,
+    block_number: firstFiniteNumber(raw.block_number) ?? null,
+    observed_at: firstString(raw.observed_at) ?? null,
+  };
+}
+
+export function normalizeSubnetLeaseHistory(netuid: number, raw: unknown): SubnetLeaseHistory {
+  const d = isRecord(raw) ? raw : {};
+  const events = Array.isArray(d.lease_events)
+    ? d.lease_events.map(normalizeSubnetLeaseEvent).filter((e): e is SubnetLeaseEvent => e != null)
+    : [];
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    event_pallet: firstString(d.event_pallet) ?? "SubtensorModule",
+    event_kinds: Array.isArray(d.event_kinds)
+      ? d.event_kinds.filter((x): x is string => typeof x === "string")
+      : [],
+    count: firstFiniteNumber(d.count) ?? events.length,
+    lease_events: events,
+  };
+}
+
+/** Lease event log (#6993) — SubnetLeaseCreated/Terminated, empty (not 404) for
+ *  a never-leased subnet. */
+export const subnetLeaseHistoryQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-lease-history", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetLeaseHistory>>(
+        `/api/v1/subnets/${netuid}/lease/history`,
+        { signal },
+      );
+      return {
+        data: normalizeSubnetLeaseHistory(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };
