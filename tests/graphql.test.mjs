@@ -17400,3 +17400,53 @@ describe("graphql — adapter (#6984, reuses loadAdapter / MCP get_adapter)", ()
     assert.equal(FIELD_COMPLEXITY.adapter, FIELD_COMPLEXITY.provider);
   });
 });
+
+// --- coverage + coverage_depth (#6983, artifact-backed passthrough parity) ---
+describe("graphql — coverage + coverage_depth", () => {
+  test("coverage resolves the baked registry-coverage artifact", async () => {
+    const env = fixtureEnv({
+      "/metagraph/coverage.json": {
+        generated_at: "2026-07-20T00:00:00.000Z",
+        surface_count: 128,
+        completeness: { level: "broad", pct: 0.62 },
+      },
+    });
+    const { status, body } = await gql("{ coverage }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.coverage.surface_count, 128);
+    assert.equal(body.data.coverage.completeness.level, "broad");
+  });
+
+  test("coverage_depth resolves the baked coverage-depth artifact", async () => {
+    const env = fixtureEnv({
+      "/metagraph/coverage-depth.json": {
+        schema_version: 1,
+        generated_at: "2026-07-20T00:00:00.000Z",
+        rows: [{ netuid: 1, tier: "core", score: 0.9 }],
+        ranked_queue: [{ rank: 1, netuid: 5, severity: "high" }],
+      },
+    });
+    const { status, body } = await gql("{ coverage_depth }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.coverage_depth.rows[0].netuid, 1);
+    assert.equal(body.data.coverage_depth.ranked_queue[0].severity, "high");
+  });
+
+  test("both degrade to null when their artifact has not been baked, never an error", async () => {
+    const { status, body } = await gql("{ coverage coverage_depth }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.coverage, null);
+    assert.equal(body.data.coverage_depth, null);
+  });
+
+  test("both are weighted as fan-out fields like their sibling artifact resolvers", () => {
+    assert.equal(FIELD_COMPLEXITY.coverage, FIELD_COMPLEXITY.agent_resources);
+    assert.equal(
+      FIELD_COMPLEXITY.coverage_depth,
+      FIELD_COMPLEXITY.agent_resources,
+    );
+  });
+});

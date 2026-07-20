@@ -446,6 +446,10 @@ export const SDL = `
     domain_summary(tag: String!): DomainSummary!
     "Several validators side by side for a stake/delegate decision: each hotkey's take, estimated APY, nominator count, identity, and cross-subnet stake/emission/trust aggregates. hotkeys takes 1-16 distinct SS58 addresses (a real GraphQL list, like the sibling compare field's netuids, rather than REST's comma-separated string); the optional netuid adds each validator's membership row in that subnet. The validator equivalent of the compare field. Mirrors GET /api/v1/compare/validators."
     compare_validators(hotkeys: [String!]!, netuid: Int): ValidatorComparison!
+    "The registry coverage summary: surface/subnet counts, domain coverage, and overall completeness across the whole Bittensor application layer. Null when the coverage artifact has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_coverage MCP/REST shape. Mirrors GET /api/v1/coverage."
+    coverage: JSON
+    "The machine-usable coverage-depth scorecard and ranked enrichment queue: per-subnet tier/score/priority rows plus the ranked queue of enrichment targets. Null when the coverage-depth artifact has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the /api/v1/coverage-depth REST shape. Mirrors GET /api/v1/coverage-depth."
+    coverage_depth: JSON
     "One subnet's alpha-price OHLC candles bucketed by interval (1h or 1d, default 1h) over the trailing days window (default 90, max 365), from the same executed-trade stream subnet_volume reads. A subnet with no trades resolves to a schema-stable empty candle list, never null. Mirrors GET /api/v1/subnets/{netuid}/ohlc."
     subnet_ohlc(netuid: Int!, interval: String, days: Int): SubnetOhlc!
     "A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
@@ -3804,6 +3808,8 @@ export const FIELD_COMPLEXITY = {
   domains: RELATIONSHIP_FIELD_COMPLEXITY,
   domain_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   compare_validators: RELATIONSHIP_FIELD_COMPLEXITY,
+  coverage: RELATIONSHIP_FIELD_COMPLEXITY,
+  coverage_depth: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_volume: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_ohlc: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_quote: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5580,6 +5586,18 @@ const rootValue = {
     // The MCP tool raises not_found when it is absent; GraphQL degrades to
     // null instead, matching every other artifact-backed resolver here.
     return loadArtifact(context, AGENT_RESOURCES_ARTIFACT);
+  },
+
+  async coverage(_args, context) {
+    // Same baked artifact the REST /api/v1/coverage route + get_coverage MCP
+    // tool read; GraphQL degrades to null when cold, like agent_resources.
+    return loadArtifact(context, "/metagraph/coverage.json");
+  },
+
+  async coverage_depth(_args, context) {
+    // Raw passthrough of the /api/v1/coverage-depth artifact (the same one the
+    // list_enrichment_targets MCP tool shapes); degrades to null when cold.
+    return loadArtifact(context, "/metagraph/coverage-depth.json");
   },
 
   async subnet_volume({ netuid }, context) {
