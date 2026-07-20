@@ -502,6 +502,24 @@ CREATE TABLE IF NOT EXISTS subnet_ownership (
   PRIMARY KEY (netuid)
 );
 
+-- Ownership-change history (metagraphed#6970): append-only, diff-based --
+-- one row per netuid per DISTINCT (owner_hotkey, owner_coldkey) observed,
+-- not one row per poll tick (same convention as subnet_hyperparams_history/
+-- neuron_daily: subnet_ownership.rs compares against the current row before
+-- writing here, so a run of ticks with an unchanged owner produces exactly
+-- one history row, not one every 5 minutes). The first-ever observation of
+-- a netuid is also recorded (not just changes after tracking began), so
+-- this table doubles as "when did we first see this subnet's owner" even
+-- before any transfer has happened.
+CREATE TABLE IF NOT EXISTS subnet_ownership_history (
+  id            BIGSERIAL PRIMARY KEY,
+  netuid        INTEGER NOT NULL,
+  owner_hotkey  TEXT NOT NULL,
+  owner_coldkey TEXT NOT NULL,
+  captured_at   BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_subnet_ownership_history_netuid ON subnet_ownership_history (netuid, captured_at DESC);
+
 -- Personal (coldkey) chain identity, latest-only (#4832 gap-closure Phase B;
 -- mirrors D1 migrations/0039_account_identity.sql). One row per account,
 -- upserted by the refresh-account-identity workflow's direct POST to

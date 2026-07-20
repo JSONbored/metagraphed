@@ -43,7 +43,18 @@
 // single stateless call, and a whole-tick failure just retries on the next
 // scheduled interval -- an acceptable cost for a periodic poller, unlike
 // main.rs's live-follow hot path this same reasoning would NOT apply to.
+//
+// subnet_ownership_history (metagraphed#6970): subnet_ownership above is
+// latest-only -- an ownership change just overwrites the previous row with
+// no trace. Every tick now also fetches the CURRENT state of
+// subnet_ownership before writing (one query, not per-netuid) and appends a
+// subnet_ownership_history row only when a netuid's resolved owner differs
+// from what's already stored, or has never been stored at all -- same
+// diff-based-append convention as subnet_hyperparams_history/neuron_daily,
+// so a subnet whose ownership never changes accumulates exactly one history
+// row (its first observation), not one per poll tick forever.
 
+use std::collections::HashMap;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -131,7 +142,10 @@ async fn run(chain: &ChainClient, pg: &mut tokio_postgres::Client) -> Result<Job
     }
 
     let captured_at = now_ms();
-    let written = upsert(pg, &rows, captured_at)
+    let previous = fetch_current_owners(pg)
+        .await
+        .context("fetch current subnet_ownership")?;
+    let written = upsert(pg, &rows, captured_at, &previous)
         .await
         .context("upsert subnet_ownership")?;
 
@@ -140,6 +154,36 @@ async fn run(chain: &ChainClient, pg: &mut tokio_postgres::Client) -> Result<Job
         written,
         errors,
     })
+}
+
+/// The current (pre-this-tick) state of `subnet_ownership`, one query for
+/// the whole table rather than a per-netuid lookup -- `upsert` below diffs
+/// each resolved row against this map to decide whether a
+/// `subnet_ownership_history` row is warranted.
+async fn fetch_current_owners(
+    pg: &tokio_postgres::Client,
+) -> Result<HashMap<i32, (String, String)>> {
+    let rows = pg
+        .query(
+            "SELECT netuid, owner_hotkey, owner_coldkey FROM subnet_ownership",
+            &[],
+        )
+        .await
+        .context("select current subnet_ownership")?;
+    Ok(rows
+        .into_iter()
+        .map(|row| (row.get::<_, i32>(0), (row.get(1), row.get(2))))
+        .collect())
+}
+
+/// True when `hotkey`/`coldkey` differ from `previous`'s stored values for
+/// this netuid, or `previous` has no entry at all (first-ever observation).
+/// Pure/sync so it's directly unit-testable without a database.
+fn owner_changed(previous: Option<&(String, String)>, hotkey: &str, coldkey: &str) -> bool {
+    match previous {
+        Some((prev_hotkey, prev_coldkey)) => prev_hotkey != hotkey || prev_coldkey != coldkey,
+        None => true,
+    }
 }
 
 /// SubnetOwnerHotkey(netuid) -> Owner(hotkey) -> owning account. Returns `None`
@@ -183,14 +227,20 @@ async fn resolve_ownership(at: &AtBlock, netuid: u16) -> Result<Option<Ownership
     }))
 }
 
-/// Upserts every resolved row, then prunes rows for netuids no longer in
-/// this tick's active/resolved set (deregistered subnets, or ones whose
-/// owner hotkey/coldkey resolved to the zero account) -- upsert-before-prune
-/// so an active subnet is never even transiently missing from the table.
+/// Upserts every resolved row (always -- `captured_at` bumps every tick
+/// regardless of whether the owner changed, same freshness-signal contract
+/// as before this table grew a history sibling), appends a
+/// `subnet_ownership_history` row only for netuids whose owner actually
+/// changed (`owner_changed`, checked against `previous`), then prunes rows
+/// for netuids no longer in this tick's active/resolved set (deregistered
+/// subnets, or ones whose owner hotkey/coldkey resolved to the zero
+/// account) -- upsert-before-prune so an active subnet is never even
+/// transiently missing from the table.
 async fn upsert(
     pg: &tokio_postgres::Client,
     rows: &[OwnershipRow],
     captured_at: i64,
+    previous: &HashMap<i32, (String, String)>,
 ) -> Result<u64> {
     let mut written = 0u64;
     for row in rows {
@@ -211,6 +261,29 @@ async fn upsert(
         .await
         .with_context(|| format!("upsert netuid={}", row.netuid))?;
         written += 1;
+
+        if owner_changed(
+            previous.get(&row.netuid),
+            &row.owner_hotkey,
+            &row.owner_coldkey,
+        ) {
+            pg.execute(
+                "INSERT INTO subnet_ownership_history (netuid, owner_hotkey, owner_coldkey, captured_at)
+                 VALUES ($1, $2, $3, $4)",
+                &[
+                    &row.netuid,
+                    &row.owner_hotkey,
+                    &row.owner_coldkey,
+                    &captured_at,
+                ],
+            )
+            .await
+            .with_context(|| format!("insert subnet_ownership_history netuid={}", row.netuid))?;
+            eprintln!(
+                "subnet-ownership: netuid={} owner changed, recorded in history",
+                row.netuid
+            );
+        }
     }
 
     let active: Vec<i32> = rows.iter().map(|r| r.netuid).collect();
@@ -235,5 +308,28 @@ mod tests {
     #[test]
     fn zero_account_is_the_all_zero_bytes() {
         assert_eq!(ZERO_ACCOUNT.0, [0u8; 32]);
+    }
+
+    #[test]
+    fn owner_changed_is_true_on_first_observation() {
+        assert!(owner_changed(None, "hot", "cold"));
+    }
+
+    #[test]
+    fn owner_changed_is_false_when_both_keys_match() {
+        let previous = ("hot".to_string(), "cold".to_string());
+        assert!(!owner_changed(Some(&previous), "hot", "cold"));
+    }
+
+    #[test]
+    fn owner_changed_is_true_when_hotkey_differs() {
+        let previous = ("old-hot".to_string(), "cold".to_string());
+        assert!(owner_changed(Some(&previous), "new-hot", "cold"));
+    }
+
+    #[test]
+    fn owner_changed_is_true_when_coldkey_differs() {
+        let previous = ("hot".to_string(), "old-cold".to_string());
+        assert!(owner_changed(Some(&previous), "hot", "new-cold"));
     }
 }
