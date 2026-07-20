@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@sentry/node": "^10.66.0",
-    "ws": "^8.21.0"
+    "ws": "^8.21.1"
   },
   "engines": {
     "node": ">=20.20.2"
