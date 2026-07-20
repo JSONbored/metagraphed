@@ -4541,10 +4541,8 @@ function loadEconomics(context) {
     }
     if (!data) return null;
     // #7227: same serve-time enrichment REST applies (null fields when cold).
-    const request =
-      context.request ||
-      new Request("https://metagraph.internal/api/v1/economics");
-    return withAlphaPriceChanges(context.env, request, data);
+    // Request may be unset in unit fixtures; enrichment synthesizes a URL.
+    return withAlphaPriceChanges(context.env, context.request, data);
   });
 }
 

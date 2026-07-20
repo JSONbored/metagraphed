@@ -555,6 +555,54 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.source, "live-kv");
     assert.equal(body.data.subnets[0].netuid, 7);
     assert.equal(body.data.summary.with_economics_count, 1);
+    // #7227: cold Postgres history → null change fields (schema-stable).
+    assert.equal(body.data.subnets[0].alpha_price_change_1d, null);
+    assert.equal(body.data.subnets[0].alpha_price_change_1h, null);
+  });
+
+  test("/api/v1/subnets/:netuid overlays live economics with alpha_price_change_* (#7227)", async () => {
+    const liveBlob = {
+      schema_version: 1,
+      contract_version: CONTRACT_VERSION,
+      generated_at: "1970-01-01T00:00:00.000Z",
+      captured_at: new Date(Date.now() - 60_000).toISOString(),
+      network: "finney",
+      summary: { subnet_count: 1, with_economics_count: 1 },
+      subnets: [
+        {
+          netuid: 7,
+          slug: "x",
+          name: "X",
+          emission_share: 1,
+          alpha_price_tao: 2,
+          validator_count: 4,
+          miner_count: 10,
+        },
+      ],
+    };
+    const liveEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key, options) {
+          if (key === "economics:current") {
+            assert.equal(options?.type, "json");
+            return liveBlob;
+          }
+          return null;
+        },
+      },
+    };
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7"),
+      liveEnv,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.data.economics.netuid, 7);
+    assert.equal(body.data.economics.alpha_price_tao, 2);
+    assert.equal(body.data.economics.alpha_price_change_1d, null);
+    assert.equal(body.data.economics.alpha_price_change_7d, null);
   });
 
   test("/api/v1/economics falls back to the R2 artifact when KV is cold (meta.source: r2-fallback)", async () => {

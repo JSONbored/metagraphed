@@ -1285,9 +1285,9 @@ async function loadSubnetEconomics(ctx, netuid) {
   let blob =
     live?.data || (await loadArtifactData(ctx, "/metagraph/economics.json"));
   if (blob) {
-    const request =
-      ctx.request || new Request("https://metagraph.internal/api/v1/economics");
-    blob = await withAlphaPriceChanges(ctx.env, request, blob);
+    // Request may be absent on MCP tool calls; enrichment synthesizes a
+    // stable URL for the Postgres history fetch when needed.
+    blob = await withAlphaPriceChanges(ctx.env, ctx.request, blob);
   }
   return {
     netuid,
@@ -1608,13 +1608,12 @@ async function loadEconomicsSubnetRows(ctx) {
   });
   let blob = Array.isArray(live?.data?.subnets) ? live.data : null;
   if (!blob) {
-    blob = await loadArtifactData(ctx, "/metagraph/economics.json");
+    // Optional: cold registry tools prefer empty boards over not_found.
+    blob = await loadOptionalArtifact(ctx, "/metagraph/economics.json");
   }
-  if (!blob) return [];
-  const request =
-    ctx.request || new Request("https://metagraph.internal/api/v1/economics");
-  const enriched = await withAlphaPriceChanges(ctx.env, request, blob);
-  return Array.isArray(enriched?.subnets) ? enriched.subnets : [];
+  if (!blob || !Array.isArray(blob.subnets)) return [];
+  const enriched = await withAlphaPriceChanges(ctx.env, ctx.request, blob);
+  return enriched.subnets;
 }
 
 // AI-dependent tools (semantic_search, ask) need the VECTORIZE + AI bindings and
@@ -10652,7 +10651,8 @@ export const MCP_TOOLS = [
       const limit = clampLimit(args?.limit, 10, 100);
       // Same enriched economics rows as REST/GraphQL so alpha_price_change_* is
       // present when Postgres history is available; ranking stays identical to
-      // /api/v1/registry/leaderboards.
+      // /api/v1/registry/leaderboards. Missing economics → empty boards (not
+      // not_found) so cold MCP sandboxes still return a usable shape.
       const live = await resolveLiveEconomics({
         readHealthKv: ctx.readHealthKv,
         env: ctx.env,
@@ -10660,15 +10660,12 @@ export const MCP_TOOLS = [
       });
       let blob = Array.isArray(live?.data?.subnets) ? live.data : null;
       if (!blob) {
-        blob = await loadArtifactData(ctx, "/metagraph/economics.json");
+        blob = await loadOptionalArtifact(ctx, "/metagraph/economics.json");
       }
-      const request =
-        ctx.request ||
-        new Request("https://metagraph.internal/api/v1/economics");
-      const enriched = blob
-        ? await withAlphaPriceChanges(ctx.env, request, blob)
-        : null;
-      const rows = Array.isArray(enriched?.subnets) ? enriched.subnets : [];
+      const rows =
+        blob && Array.isArray(blob.subnets)
+          ? (await withAlphaPriceChanges(ctx.env, ctx.request, blob)).subnets
+          : [];
       // No health/rpc inputs — only economic boards populate; operational
       // boards come back empty and are dropped below.
       const ranked = formatLeaderboards({

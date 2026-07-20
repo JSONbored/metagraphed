@@ -2961,8 +2961,18 @@ describe("MCP tools (injected deps)", () => {
       {},
       { deps: makeDeps({}) },
     );
-    assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /No resource/);
+    // Cold economics → empty boards (schema-stable), not a not_found error —
+    // matches REST/GraphQL leaderboard cold-tier behavior after #7227.
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.with_economics_count, 0);
+    assert.equal(out.observed_at, null);
+    assert.deepEqual(Object.keys(out.boards).sort(), [
+      "cheapest-registration",
+      "highest-emission",
+      "open-slots",
+      "validator-headroom",
+    ]);
   });
 
   test("find_subnet_opportunities tolerates an economics artifact with no subnets", async () => {

@@ -461,12 +461,10 @@ async function resolveEconomicsRows(env, request = null) {
         : null;
   }
   if (!blob) return [];
-  const enriched = await withAlphaPriceChanges(
-    env,
-    request || new Request("https://metagraph.internal/api/v1/economics"),
-    blob,
-  );
-  return Array.isArray(enriched?.subnets) ? enriched.subnets : [];
+  // Request may be null (GraphQL composeLeaderboardsData); enrichment
+  // synthesizes a stable URL for the Postgres history fetch when needed.
+  const enriched = await withAlphaPriceChanges(env, request, blob);
+  return enriched.subnets;
 }
 
 /**
