@@ -34,7 +34,13 @@
       "id": "sn-105-beam-openapi",
       "kind": "openapi",
       "name": "BeamCore API OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.0 schema for the BeamCore control-plane HTTP API (title: BeamCore API). Served publicly at beamcore.b1m.ai; documents orchestrator, worker, validator, and health routes for SN105 Beam.",
+      "notes": "Machine-readable OpenAPI 3.0 schema for the BeamCore control-plane HTTP API (title: BeamCore API). Served publicly at beamcore.b1m.ai; documents orchestrator, worker, validator, and health routes for SN105 Beam. Live-verified 2026-07-20: GET returns OpenAPI 3.0 JSON (~10 KB).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "beam",
       "public_safe": true,
       "review": {
@@ -55,7 +61,13 @@
       "id": "sn-105-beam-health",
       "kind": "subnet-api",
       "name": "BeamCore API health",
-      "notes": "Public no-auth GET /health on beamcore.b1m.ai returning control-plane liveness JSON (ok, db, schema, metagraph sync). Documented in the subnet OpenAPI spec on the same host; beamcore.b1m.ai is the CORE_SERVER_URL configured in the official Beam README.",
+      "notes": "Public no-auth GET /health on beamcore.b1m.ai returning control-plane liveness JSON (ok, db, schema, metagraph sync). Documented in the subnet OpenAPI spec on the same host; beamcore.b1m.ai is the CORE_SERVER_URL configured in the official Beam README. Live-verified 2026-07-20: HTTP 200 JSON; note assignment_dispatch can be multi-MB so MCP execute callers may prefer the smaller routing/worker-capacity surfaces for smoke tests.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "beam",
       "public_safe": true,
       "review": {
