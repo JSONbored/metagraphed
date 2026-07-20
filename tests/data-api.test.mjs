@@ -110,6 +110,13 @@ const validatorNominatorCountsQueryFailure = vi.hoisted(() => ({
 // isolation purpose as validatorNominatorCountsQueryFailure above, but for
 // loadSubnetTempos' own SELECT.
 const subnetTemposQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for the neuron_daily realized-stake READ (#7228) tests only -- same
+// isolation purpose as subnetTemposQueryFailure above, but for
+// loadValidatorRealizedStake's own SELECT. Dispatched by its own text match
+// (below), never via the shared mockQueue, so priming it never shifts any
+// existing /api/v1/validators test's mockQueue-ordering assumptions.
+const validatorRealizedStakeQueryFailure = vi.hoisted(() => ({ error: null }));
+const validatorRealizedStakeRows = vi.hoisted(() => ({ current: [] }));
 // State for the nominator-positions-sync WRITE (#5233) tests only.
 const nominatorPositionsSyncFailure = vi.hoisted(() => ({ error: null }));
 // State for the account-balances-sync WRITE (#6742) tests only.
@@ -285,6 +292,12 @@ vi.mock("postgres", () => ({
       ) {
         return Promise.reject(subnetTemposQueryFailure.error);
       }
+      if (/FROM neuron_daily nd CROSS JOIN/.test(text)) {
+        if (validatorRealizedStakeQueryFailure.error) {
+          return Promise.reject(validatorRealizedStakeQueryFailure.error);
+        }
+        return Promise.resolve(validatorRealizedStakeRows.current);
+      }
       if (
         healthUptimeRollupSyncFailure.error &&
         /INSERT INTO surface_uptime_daily\b/.test(text)
@@ -441,6 +454,8 @@ beforeEach(() => {
   validatorNominatorCountsSyncFailure.error = null;
   validatorNominatorCountsQueryFailure.error = null;
   subnetTemposQueryFailure.error = null;
+  validatorRealizedStakeQueryFailure.error = null;
+  validatorRealizedStakeRows.current = [];
   nominatorPositionsSyncFailure.error = null;
   nominatorPositionsQueryFailure.error = null;
   accountBalancesSyncFailure.error = null;
@@ -2072,6 +2087,77 @@ test("GET /api/v1/validators still serves the primary rows when the validator_no
   const body = await res.json();
   expect(body.validators[0].hotkey).toBe("5Hot");
   expect(body.validators[0].nominator_count).toBe(null);
+});
+
+test("GET /api/v1/validators derives realized_return_* from the neuron_daily history, nulling a window with no anchor row (#7228)", async () => {
+  mockRows.current = [
+    {
+      netuid: 7,
+      uid: 3,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      validator_trust: "0.8",
+      emission_tao: "1.23",
+      stake_tao: "456.7",
+      block_number: "5000000",
+      captured_at: "1780000000000",
+    },
+  ];
+  // Current total stake is 456.7. tao1m is null (no 30d-ago anchor) -> that
+  // window resolves null; the malformed non-string-hotkey row is skipped.
+  validatorRealizedStakeRows.current = [
+    { hotkey: "5Hot", tao1d: "440", tao1w: "400", tao1m: null },
+    { hotkey: null, tao1d: "1", tao1w: "1", tao1m: "1" },
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const v = (await res.json()).validators[0];
+  expect(v.realized_return_1d).toBeCloseTo(16.7 / 440, 8);
+  expect(v.realized_return_1w).toBeCloseTo(56.7 / 400, 8);
+  expect(v.realized_return_1m).toBe(null);
+  expect(queryText()).toMatch(/FROM neuron_daily nd CROSS JOIN/);
+});
+
+test("GET /api/v1/validators/:hotkey carries realized_return_*, nulling a zero-stake or absent anchor and reading negative when stake shed (#7228)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
+  // tao1d "0" -> pastRao 0 -> null (never a divide-by-zero); tao1w null ->
+  // null; tao1m 500 > current 456.7 -> a negative realized return.
+  validatorRealizedStakeRows.current = [
+    { hotkey: "5Hot", tao1d: "0", tao1w: null, tao1m: "500" },
+  ];
+  const res = await req("/api/v1/validators/5Hot");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.realized_return_1d).toBe(null);
+  expect(body.realized_return_1w).toBe(null);
+  expect(body.realized_return_1m).toBeCloseTo(-43.3 / 500, 8);
+  // The detail branch narrows the read to the one hotkey.
+  expect(queryText()).toMatch(/AND nd\.hotkey = /);
+});
+
+test("GET /api/v1/validators degrades realized_return_* to null when the neuron_daily read fails (#7228)", async () => {
+  mockRows.current = [
+    {
+      netuid: 7,
+      uid: 3,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      validator_trust: "0.8",
+      emission_tao: "1.23",
+      stake_tao: "456.7",
+      block_number: "5000000",
+      captured_at: "1780000000000",
+    },
+  ];
+  validatorRealizedStakeQueryFailure.error = new Error(
+    'relation "neuron_daily" does not exist',
+  );
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const v = (await res.json()).validators[0];
+  expect(v.realized_return_1d).toBe(null);
+  expect(v.realized_return_1w).toBe(null);
+  expect(v.realized_return_1m).toBe(null);
 });
 
 test("GET /api/v1/validators/:hotkey joins nominator_count from validator_nominator_counts (#2549)", async () => {

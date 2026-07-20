@@ -5522,6 +5522,12 @@ export interface components {
             max_validator_trust: number | null;
             /** @description Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan (see validator_nominator_counts) than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0. */
             nominator_count: number | null;
+            /** @description Realized trailing 1-day return (#7228): the proportional change in this validator's total_stake_tao over the last day -- current live stake vs its neuron_daily total from the snapshot 1 day before the latest daily snapshot, rao-exact. The backward-looking counterpart to the forward-annualized apy_estimate: a raw window return (0.02 = +2% over the window), deliberately NOT annualized, positive when stake grew via auto-compounded emissions and negative when it shed stake. Null (never 0) when no neuron_daily anchor row exists that far back for this hotkey -- 'no realized-return opinion', not 'confirmed zero'. Its once-per-day source cadence is why a sub-daily 1h window is deferred (see #7003). */
+            realized_return_1d: number | null;
+            /** @description Realized trailing 30-day return (#7228): as realized_return_1d, but current live stake vs the neuron_daily total 30 days before the latest daily snapshot. Raw window return, not annualized; null when no anchor row exists that far back. */
+            realized_return_1m: number | null;
+            /** @description Realized trailing 7-day return (#7228): as realized_return_1d, but current live stake vs the neuron_daily total 7 days before the latest daily snapshot. Raw window return, not annualized; null when no anchor row exists that far back. */
+            realized_return_1w: number | null;
             /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
             root_stake_tao: number;
             stake_dominance: number | null;
@@ -8485,6 +8491,12 @@ export interface components {
             max_validator_trust: number | null;
             /** @description Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0. */
             nominator_count: number | null;
+            /** @description Realized trailing 1-day return (#7228): the proportional change in this validator's total_stake_tao over the last day -- current live stake vs its neuron_daily total from the snapshot 1 day before the latest daily snapshot, rao-exact. The backward-looking counterpart to the forward-annualized apy_estimate: a raw window return (0.02 = +2% over the window), deliberately NOT annualized, positive when stake grew via auto-compounded emissions and negative when it shed stake. Null (never 0) when no neuron_daily anchor row exists that far back for this hotkey -- 'no realized-return opinion', not 'confirmed zero'. Its once-per-day source cadence is why a sub-daily 1h window is deferred (see #7003). */
+            realized_return_1d: number | null;
+            /** @description Realized trailing 30-day return (#7228): as realized_return_1d, but current live stake vs the neuron_daily total 30 days before the latest daily snapshot. Raw window return, not annualized; null when no anchor row exists that far back. */
+            realized_return_1m: number | null;
+            /** @description Realized trailing 7-day return (#7228): as realized_return_1d, but current live stake vs the neuron_daily total 7 days before the latest daily snapshot. Raw window return, not annualized; null when no anchor row exists that far back. */
+            realized_return_1w: number | null;
             /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
             root_stake_tao: number;
             schema_version: number;
@@ -31738,6 +31750,9 @@ export interface operations {
                      *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
                      *             "max_validator_trust": 0.5,
                      *             "nominator_count": 1,
+                     *             "realized_return_1d": 0.5,
+                     *             "realized_return_1m": 0.5,
+                     *             "realized_return_1w": 0.5,
                      *             "root_stake_tao": 0.5,
                      *             "stake_dominance": 0.5,
                      *             "subnet_count": 1,
@@ -31883,6 +31898,9 @@ export interface operations {
                      *         "hotkey": "example",
                      *         "max_validator_trust": 0.5,
                      *         "nominator_count": 1,
+                     *         "realized_return_1d": 0.5,
+                     *         "realized_return_1m": 0.5,
+                     *         "realized_return_1w": 0.5,
                      *         "root_stake_tao": 0.5,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,

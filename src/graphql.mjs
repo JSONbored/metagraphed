@@ -3299,6 +3299,12 @@ export const SDL = `
     nominator_count: Int
     apy_estimate: Float
     apy_estimate_eligible_subnet_count: Int
+    "Realized trailing 1-day return (#7228): the proportional change in total_stake_tao over the last day (current live stake vs the neuron_daily total 1 day before the latest daily snapshot), the backward-looking counterpart to the forward-annualized apy_estimate. A raw window return (0.02 = +2%), not annualized; null when no neuron_daily anchor row exists that far back for this hotkey."
+    realized_return_1d: Float
+    "Realized trailing 7-day return (#7228): as realized_return_1d, over the last 7 days. Raw window return, not annualized; null when no anchor row exists that far back."
+    realized_return_1w: Float
+    "Realized trailing 30-day return (#7228): as realized_return_1d, over the last 30 days. Raw window return, not annualized; null when no anchor row exists that far back."
+    realized_return_1m: Float
     avg_validator_trust: Float
     max_validator_trust: Float
     captured_at: String

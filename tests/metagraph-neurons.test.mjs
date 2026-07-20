@@ -44,7 +44,7 @@ const NEURON_CSV_HEADER =
 const MOVERS_CSV_HEADER =
   "netuid,stake_start_tao,stake_end_tao,stake_delta_tao,stake_pct_change,emission_start_tao,emission_end_tao,emission_delta_tao,emission_pct_change,validators_start,validators_end,validators_delta,neurons_start,neurons_end,neurons_delta";
 const GLOBAL_VALIDATOR_CSV_HEADER =
-  "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,root_stake_tao,alpha_stake_tao,total_emission_tao,nominator_count,apy_estimate,apy_estimate_eligible_subnet_count,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
+  "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,root_stake_tao,alpha_stake_tao,total_emission_tao,nominator_count,apy_estimate,apy_estimate_eligible_subnet_count,realized_return_1d,realized_return_1w,realized_return_1m,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
 
 describe("metagraph-neurons builders", () => {
   test("formatNeuron coerces 0/1 INTEGER flags to real booleans", () => {
@@ -648,6 +648,61 @@ describe("metagraph-neurons builders", () => {
       { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a" },
     ]);
     assert.equal(data.validators[0].nominator_count, null);
+  });
+
+  test("buildGlobalValidators wires realized_return_* from the realizedStake map, nulling a hotkey with no entry and a window with no anchor (#7228)", () => {
+    const data = buildGlobalValidators(
+      [
+        { ...ROW, netuid: 1, uid: 0, hotkey: "hk-known", stake_tao: 500 },
+        { ...ROW, netuid: 1, uid: 1, hotkey: "hk-absent", stake_tao: 500 },
+      ],
+      {
+        realizedStake: new Map([
+          ["hk-known", { tao1d: 400, tao1w: 250, tao1m: null }],
+        ]),
+      },
+    );
+    const known = data.validators.find((v) => v.hotkey === "hk-known");
+    const absent = data.validators.find((v) => v.hotkey === "hk-absent");
+    // (500-400)/400 = 0.25 ; (500-250)/250 = 1 ; 1m null (no anchor row).
+    assert.equal(known.realized_return_1d, 0.25);
+    assert.equal(known.realized_return_1w, 1);
+    assert.equal(known.realized_return_1m, null);
+    // hk-absent has no realizedStake entry -> every window null.
+    assert.equal(absent.realized_return_1d, null);
+    assert.equal(absent.realized_return_1w, null);
+    assert.equal(absent.realized_return_1m, null);
+  });
+
+  test("buildGlobalValidators defaults realized_return_* to null on every entry when no realizedStake map is passed (#7228)", () => {
+    const data = buildGlobalValidators([
+      { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a" },
+    ]);
+    assert.equal(data.validators[0].realized_return_1d, null);
+    assert.equal(data.validators[0].realized_return_1w, null);
+    assert.equal(data.validators[0].realized_return_1m, null);
+  });
+
+  test("buildValidatorDetail wires realized_return_*, nulling a zero-stake anchor (never dividing by zero) (#7228)", () => {
+    const detail = buildValidatorDetail(
+      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 800 }],
+      "hk-a",
+      { realizedStake: { tao1d: 640, tao1w: 0, tao1m: null } },
+    );
+    // (800-640)/640 = 0.25 ; tao1w 0 -> null ; tao1m null -> null.
+    assert.equal(detail.realized_return_1d, 0.25);
+    assert.equal(detail.realized_return_1w, null);
+    assert.equal(detail.realized_return_1m, null);
+  });
+
+  test("buildValidatorDetail defaults realized_return_* to null when no realizedStake is passed (#7228)", () => {
+    const detail = buildValidatorDetail(
+      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a" }],
+      "hk-a",
+    );
+    assert.equal(detail.realized_return_1d, null);
+    assert.equal(detail.realized_return_1w, null);
+    assert.equal(detail.realized_return_1m, null);
   });
 
   test("buildGlobalValidators computes apy_estimate for a single eligible membership (#2551)", () => {

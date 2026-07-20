@@ -395,10 +395,49 @@ function finalizeApy(acc) {
   };
 }
 
+// Realized trailing return (#7228): the actual proportional change in this
+// validator's total stake over a real elapsed window (1D/1W/1M), the
+// backward-looking counterpart to the forward-annualized apy_estimate above.
+// `currentTotalRao` is the live snapshot's stake sum (rao-BigInt, exact);
+// `historical` is { tao1d, tao1w, tao1m } -- this hotkey's total stake from the
+// neuron_daily row 1/7/30 days before the latest daily snapshot (loaded by the
+// caller, see loadValidatorRealizedStake -- this function has no DB access of
+// its own, mirroring nominator_count). Each window is (current - past) / past,
+// computed in rao-BigInt space (matching accumulateApyRow/finalizeApy's
+// accumulate-then-divide-once precision) so a validator whose stake grew via
+// auto-compounded emissions reads positive and one that shed stake reads
+// negative. Null (never 0) for any window whose neuron_daily anchor row is
+// missing -- "no realized-return opinion" rather than "confirmed zero return",
+// mirroring apy_estimate's own null convention. This is a raw window return,
+// deliberately NOT annualized (contrast apy_estimate); annualizing it and the
+// sub-daily 1H window are deferred follow-ups (see #7003) that need finer
+// capture than neuron_daily's once-per-day cadence.
+function finalizeRealizedReturn(currentTotalRao, historical) {
+  const windows = [
+    ["realized_return_1d", historical?.tao1d],
+    ["realized_return_1w", historical?.tao1w],
+    ["realized_return_1m", historical?.tao1m],
+  ];
+  const out = {};
+  for (const [field, pastTao] of windows) {
+    if (pastTao == null) {
+      out[field] = null;
+      continue;
+    }
+    const pastRao = toRaoBig(pastTao);
+    out[field] =
+      pastRao > 0n
+        ? round9(raoBigToTao(currentTotalRao - pastRao) / raoBigToTao(pastRao))
+        : null;
+  }
+  return out;
+}
+
 function buildGlobalValidatorEntry(
   entry,
   identityByColdkey,
   nominatorCounts = new Map(),
+  realizedStake = new Map(),
 ) {
   const avgTrust =
     entry.validatorTrustCount > 0
@@ -444,6 +483,10 @@ function buildGlobalValidatorEntry(
     // nominators" as opposed to "unknown."
     nominator_count: nominatorCounts.get(entry.hotkey) ?? null,
     ...finalizeApy(entry),
+    ...finalizeRealizedReturn(
+      entry.stakeTotalRao,
+      realizedStake.get(entry.hotkey) ?? null,
+    ),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(entry.maxValidatorTrust),
     latest_captured_at: toIso(entry.latestCapturedAt),
@@ -492,6 +535,12 @@ export function buildGlobalValidators(
     // excluded rather than defaulted. A cold/absent map leaves every entry's
     // apy_estimate null, never throws.
     tempoByNetuid = new Map(),
+    // hotkey -> { tao1d, tao1w, tao1m } (#7228), this hotkey's total stake
+    // from the neuron_daily rows 1/7/30 days back (loaded by the caller, see
+    // loadValidatorRealizedStake). A cold/absent map -- or a hotkey/window with
+    // no anchor row -- leaves that window's realized_return_* null, never
+    // throws. See finalizeRealizedReturn.
+    realizedStake = new Map(),
   } = {},
 ) {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
@@ -607,7 +656,12 @@ export function buildGlobalValidators(
     // index arg never lands in buildGlobalValidatorEntry's identityByColdkey
     // parameter -- same landmine formatNeuron's own header comment documents.
     [...validatorsByHotkey.values()].map((entry) =>
-      buildGlobalValidatorEntry(entry, identityByColdkey, nominatorCounts),
+      buildGlobalValidatorEntry(
+        entry,
+        identityByColdkey,
+        nominatorCounts,
+        realizedStake,
+      ),
     ),
   ).sort(
     (a, b) =>
@@ -757,6 +811,11 @@ export function buildValidatorDetail(
     // accumulateApyRow's own comment. A cold/absent map leaves apy_estimate
     // null, never throws.
     tempoByNetuid = new Map(),
+    // { tao1d, tao1w, tao1m } (#7228) -- this hotkey's total stake from the
+    // neuron_daily rows 1/7/30 days back (looked up by the caller, since this
+    // function has no DB access of its own). Null, or a null window, leaves
+    // that window's realized_return_* null. See finalizeRealizedReturn.
+    realizedStake = null,
   } = {},
 ) {
   const coldkeys = new Map();
@@ -850,6 +909,7 @@ export function buildValidatorDetail(
     total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
     nominator_count: nominatorCount,
     ...finalizeApy(apyAcc),
+    ...finalizeRealizedReturn(stakeTotalRao, realizedStake),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(maxValidatorTrust),
     captured_at: toIso(latestCapturedAt),
