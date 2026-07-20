@@ -1484,6 +1484,97 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
   });
 });
 
+// #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
+// own loader unchanged (same filter/sort/page + error behavior as REST and
+// MCP) rather than a GraphQL-only reimplementation.
+describe("graphql — source_snapshots", () => {
+  const SNAPSHOTS_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    schema_version: 1,
+    summary: { source_count: 2 },
+    sources: [
+      {
+        id: "chain-events",
+        kind: "db",
+        path: "chain_events",
+        record_count: 100,
+        input_hash: "abc",
+      },
+      {
+        id: "economics",
+        kind: "kv",
+        path: "economics.json",
+        record_count: 50,
+        input_hash: "def",
+      },
+    ],
+  };
+
+  test("filters by keyword across id/kind/path and paginates", async () => {
+    const env = fixtureEnv({
+      "/metagraph/source-snapshots.json": SNAPSHOTS_BLOB,
+    });
+    const filtered = await gql(
+      '{ source_snapshots(q: "chain") { sources total generated_at } }',
+      env,
+    );
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.data.source_snapshots.total, 1);
+    assert.equal(
+      filtered.body.data.source_snapshots.sources[0].id,
+      "chain-events",
+    );
+    assert.equal(
+      filtered.body.data.source_snapshots.generated_at,
+      "2026-07-01T00:00:00.000Z",
+    );
+
+    const paged = await gql(
+      "{ source_snapshots(limit: 1) { sources total returned next_cursor } }",
+      env,
+    );
+    assert.equal(paged.body.data.source_snapshots.sources.length, 1);
+    assert.equal(paged.body.data.source_snapshots.total, 2);
+    assert.equal(paged.body.data.source_snapshots.returned, 1);
+    assert.ok(paged.body.data.source_snapshots.next_cursor != null);
+  });
+
+  test("sorts by record_count and exposes summary/schema_version", async () => {
+    const env = fixtureEnv({
+      "/metagraph/source-snapshots.json": SNAPSHOTS_BLOB,
+    });
+    const { status, body } = await gql(
+      '{ source_snapshots(sort: "record_count", order: "desc") { sources summary schema_version } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.source_snapshots.sources[0].id, "chain-events");
+    assert.equal(body.data.source_snapshots.summary.source_count, 2);
+    assert.equal(body.data.source_snapshots.schema_version, "1");
+  });
+
+  test("surfaces an invalid sort as a GraphQL error, not a silent default", async () => {
+    const env = fixtureEnv({
+      "/metagraph/source-snapshots.json": SNAPSHOTS_BLOB,
+    });
+    const { body } = await gql(
+      '{ source_snapshots(sort: "bogus") { total } }',
+      env,
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ source_snapshots { total } }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.source_snapshots, 5);
+  });
+});
+
 describe("graphql — economics pagination", () => {
   const env = () =>
     fixtureEnv({

@@ -7,6 +7,10 @@ import {
   validate,
 } from "graphql";
 import { readArtifact, readHealthKv } from "../workers/storage.mjs";
+// #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
+// own loader unchanged (same artifact read, filter, sort, and page logic REST
+// and MCP already use) -- not a reimplementation.
+import { loadSourceSnapshotsList } from "./source-snapshots-mcp.mjs";
 import { contractVersion } from "../workers/responses.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 // #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
@@ -398,6 +402,8 @@ export const SDL = `
     rpc_pools(id: String, kind: String, min_eligible_count: Float, max_eligible_count: Float, min_endpoint_count: Float, max_endpoint_count: Float, sort: String, order: String, fields: String, limit: Int, cursor: Int): PoolList!
     "Probe-derived endpoint incident feed -- active endpoint failures/degradations with severity, state, provider, and subnet. Filter by netuid/kind/provider/status/severity/state, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-incidents."
     endpoint_incidents(netuid: Int, kind: String, provider: String, status: String, severity: String, state: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): IncidentList!
+    "Per-source input-hash ledger -- each registry data source's captured input hash and record count at ingest time, for detecting hash drift or seeing per-source contribution volume. Filter with q (keyword search across id/kind/path), sort with sort/order, and page with limit (1-100)/cursor. An invalid sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/source-snapshots."
+    source_snapshots(q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): SourceSnapshotList!
     "Global operational health rollup with per-subnet summaries."
     health: GlobalHealth
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
@@ -1412,6 +1418,20 @@ export const SDL = `
     notes: JSON
     summary: JSON
     incidents: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type SourceSnapshotList {
+    generated_at: String
+    schema_version: String
+    summary: JSON
+    sources: [JSON!]!
     total: Int!
     returned: Int!
     limit: Int!
@@ -3078,6 +3098,7 @@ export const FIELD_COMPLEXITY = {
   endpoint_pools: RELATIONSHIP_FIELD_COMPLEXITY,
   rpc_pools: RELATIONSHIP_FIELD_COMPLEXITY,
   endpoint_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
+  source_snapshots: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4570,6 +4591,16 @@ const rootValue = {
 
   endpoint_incidents(args, context) {
     return loadEndpointIncidentsList(context, args, { readArtifact });
+  },
+
+  // #6986: reuse list_source_snapshots' own loader unchanged. It validates its
+  // own args and throws on an invalid one -- that throw (inside this async
+  // function) becomes a rejected promise, which the graphql executor surfaces
+  // as a normal GraphQL error, matching every other field's "an unsupported
+  // filter/sort is a GraphQL error, not a silently substituted default"
+  // convention.
+  source_snapshots(args, context) {
+    return loadSourceSnapshotsList(context, args, { readArtifact });
   },
 
   async health(_args, context) {
