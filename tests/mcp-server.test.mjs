@@ -15694,23 +15694,45 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  test("list_profile_completeness returns the profile-completeness artifact", async () => {
+  test("list_profile_completeness returns filtered profile-completeness rows", async () => {
     const deps = makeDeps({
       "/metagraph/review/profile-completeness.json": {
         generated_at: "2026-01-01T00:00:00Z",
-        profiles: [{ netuid: 7, profile_level: "partial" }],
-        summary: { profile_count: 1 },
+        profiles: [
+          { netuid: 7, profile_level: "partial", identity_level: "partial" },
+          {
+            netuid: 12,
+            profile_level: "directory-only",
+            identity_level: "none",
+          },
+        ],
+        summary: { profile_count: 2 },
       },
     });
-    const res = await callTool("list_profile_completeness", {}, { deps });
+    const res = await callTool(
+      "list_profile_completeness",
+      { identity_level: "partial" },
+      { deps },
+    );
     const out = res.body.result.structuredContent;
+    assert.equal(out.profiles.length, 1);
     assert.equal(out.profiles[0].netuid, 7);
-    assert.equal(out.summary.profile_count, 1);
+    assert.equal(out.total, 1);
+    assert.equal(out.summary.profile_count, 2);
     assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
   });
 
-  test("list_profile_completeness rejects an unexpected argument", async () => {
-    const res = await callTool("list_profile_completeness", { netuid: 7 });
+  test("list_profile_completeness rejects an invalid identity_level", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        profiles: [{ netuid: 7, identity_level: "partial" }],
+      },
+    });
+    const res = await callTool(
+      "list_profile_completeness",
+      { identity_level: "bogus" },
+      { deps },
+    );
     assert.equal(res.body.result.isError, true);
   });
 

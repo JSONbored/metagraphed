@@ -36,6 +36,15 @@ import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.mjs";
 // same loadProviderEndpointsList that MCP list_provider_endpoints already calls
 // (#3289) -- not a reimplementation.
 import { loadProviderEndpointsList } from "./provider-endpoints-mcp.mjs";
+// #7167: GraphQL parity for the /api/v1/review/* contributor-review family,
+// reusing each list_* MCP loader unchanged (same artifact read, filter, sort,
+// and page logic REST and MCP already use) -- not a reimplementation.
+import { loadAdapterCandidatesList } from "./adapter-candidates-mcp.mjs";
+import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.mjs";
+import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.mjs";
+import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.mjs";
+import { loadReviewGapsList } from "./review-gaps-mcp.mjs";
+import { loadProfileCompletenessList } from "./profile-completeness-mcp.mjs";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.mjs";
@@ -586,6 +595,18 @@ export const SDL = `
     evidence(q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): EvidenceList!
     "Public-safe subnet profile index -- completeness scores, surface/interface counts, curation level, review state, and confidence for every registered subnet. Filter by netuid/subnet_type/curation_level/review_state/confidence/profile_level, search name/slug/project/team/categories with q, sort with sort/order, and page with limit (1-1000)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/profiles."
     profiles(netuid: Int, subnet_type: String, curation_level: String, review_state: String, confidence: String, profile_level: String, q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ProfileList!
+    "Subnets worth deeper adapter work -- recommended_adapter_kind, operational and candidate API kinds, priority_score, and reason_codes. Filter by netuid/curation_level/candidate_api_kinds/operational_kinds/recommended_adapter_kind/reason_codes, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/review/adapter-candidates."
+    review_adapter_candidates(netuid: Int, curation_level: String, candidate_api_kinds: String, operational_kinds: String, recommended_adapter_kind: String, reason_codes: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ReviewAdapterCandidateList!
+    "Detailed candidate evidence behind the enrichment queue -- evidence_action, lane, missing kinds, and priority_score per subnet. Filter by netuid/lane/evidence_action/direct_submission_kinds/missing_kinds, search with q, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/review/enrichment-evidence."
+    review_enrichment_evidence(q: String, netuid: Int, lane: String, evidence_action: String, direct_submission_kinds: String, missing_kinds: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ReviewEnrichmentEvidenceList!
+    "Prioritized all-subnet enrichment queue -- lane, priority_score, missing kinds, and recommended_action per subnet. Filter by netuid/lane/evidence_action/identity_level/curation_level/profile_level/direct_submission_kinds/missing_kinds/manual_review_required/reason_codes/review_state, search with q, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/review/enrichment-queue."
+    review_enrichment_queue(q: String, netuid: Int, lane: String, evidence_action: String, identity_level: String, curation_level: String, profile_level: String, direct_submission_kinds: String, missing_kinds: String, manual_review_required: String, reason_codes: String, review_state: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ReviewEnrichmentQueueList!
+    "Contributor-facing enrichment targets -- target_type, target_action, lane, priority_score, and submission_route. Filter by netuid/target_type/target_action/kind/lane/evidence_action/identity_level/profile_level/submission_route/auto_review_candidate/manual_review_required/missing_kinds/reason_codes, search with q, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/review/enrichment-targets."
+    review_enrichment_targets(q: String, netuid: Int, target_type: String, target_action: String, kind: String, lane: String, evidence_action: String, identity_level: String, profile_level: String, submission_route: String, auto_review_candidate: String, manual_review_required: String, missing_kinds: String, reason_codes: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ReviewEnrichmentTargetList!
+    "Contributor-targeted review gap priorities -- priority_score, missing surface kinds, curation_level, and review_state. Distinct from the per-subnet subnet_gaps field and the global gaps ledger. Filter by netuid/curation_level/missing_kinds/review_state, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/review/gaps."
+    review_gaps(netuid: Int, curation_level: String, missing_kinds: String, review_state: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ReviewGapPriorityList!
+    "Contributor review queue of subnet profile-completeness gaps -- identity, native name, confidence, and promotion signals. Filter by netuid/profile_level/confidence/identity_level/identity_promotion_kinds/native_name_quality, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/review/profile-completeness."
+    review_profile_completeness(netuid: Int, profile_level: String, confidence: String, identity_level: String, identity_promotion_kinds: String, native_name_quality: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ReviewProfileCompletenessList!
     "The registry-wide summary: overall subnet count, coverage/curation-level/profile-level counts, recent registry changes, and the most-complete top subnets. A fast orientation for the whole Bittensor application layer. Null when the summary has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the registry_summary MCP/REST shape. Mirrors GET /api/v1/registry/summary."
     registry_summary: JSON
     "The per-provider source-health rollup: for each provider/source, the candidate-surface count and its live/redirected/dead classification, endpoint and RPC-endpoint counts, verification-result count, and an overall status. Null when the rollup has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_source_health MCP/REST shape. Mirrors GET /api/v1/source-health."
@@ -1980,6 +2001,86 @@ export const SDL = `
     sort: String
     order: String
   }
+
+  type ReviewAdapterCandidateList {
+    generated_at: String
+    notes: JSON
+    candidates: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type ReviewEnrichmentEvidenceList {
+    generated_at: String
+    notes: JSON
+    entries: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type ReviewEnrichmentQueueList {
+    generated_at: String
+    notes: JSON
+    queue: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type ReviewEnrichmentTargetList {
+    generated_at: String
+    notes: JSON
+    targets: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type ReviewGapPriorityList {
+    generated_at: String
+    notes: JSON
+    priorities: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type ReviewProfileCompletenessList {
+    generated_at: String
+    notes: JSON
+    summary: JSON
+    profiles: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
 
   type GlobalHealth {
     status: String
@@ -3992,6 +4093,12 @@ export const FIELD_COMPLEXITY = {
   block_events: RELATIONSHIP_FIELD_COMPLEXITY,
   block_chain_events: RELATIONSHIP_FIELD_COMPLEXITY,
   profiles: RELATIONSHIP_FIELD_COMPLEXITY,
+  review_adapter_candidates: RELATIONSHIP_FIELD_COMPLEXITY,
+  review_enrichment_evidence: RELATIONSHIP_FIELD_COMPLEXITY,
+  review_enrichment_queue: RELATIONSHIP_FIELD_COMPLEXITY,
+  review_enrichment_targets: RELATIONSHIP_FIELD_COMPLEXITY,
+  review_gaps: RELATIONSHIP_FIELD_COMPLEXITY,
+  review_profile_completeness: RELATIONSHIP_FIELD_COMPLEXITY,
   registry_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   source_health: RELATIONSHIP_FIELD_COMPLEXITY,
   lineage: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -6043,6 +6150,37 @@ const rootValue = {
   // unsupported filter/sort is a GraphQL error, not a silent default".
   health_history(args, context) {
     return loadHealthHistory(context, args, { readArtifact: loadArtifact });
+  },
+
+  // #7167: reuse each review-family list_* MCP loader unchanged. Each validates
+  // its own args and throws on an invalid one -- that throw (inside these async
+  // functions) becomes a rejected promise, which the graphql executor surfaces
+  // as a normal GraphQL error, matching every other field's "an unsupported
+  // filter/sort is a GraphQL error, not a silently substituted default"
+  // convention. A cold/missing artifact is also a GraphQL error (matches
+  // REST 404 / MCP not_found); an empty filtered page is a success with total 0.
+  review_adapter_candidates(args, context) {
+    return loadAdapterCandidatesList(context, args, { readArtifact });
+  },
+
+  review_enrichment_evidence(args, context) {
+    return loadEnrichmentEvidenceList(context, args, { readArtifact });
+  },
+
+  review_enrichment_queue(args, context) {
+    return loadEnrichmentQueueList(context, args, { readArtifact });
+  },
+
+  review_enrichment_targets(args, context) {
+    return loadReviewEnrichmentTargetsList(context, args, { readArtifact });
+  },
+
+  review_gaps(args, context) {
+    return loadReviewGapsList(context, args, { readArtifact });
+  },
+
+  review_profile_completeness(args, context) {
+    return loadProfileCompletenessList(context, args, { readArtifact });
   },
 
   async health(_args, context) {
