@@ -1320,6 +1320,77 @@ export interface AccountCounterparties {
   counterparties: AccountCounterparty[];
   [key: string]: unknown;
 }
+/** One child-hotkey entry in /api/v1/accounts/{ss58}/children (#6723). */
+export interface ChildDelegationEntry {
+  child: string | null;
+  proportion: string;
+  proportion_fraction: number;
+}
+/** One subnet's children for an account (#6723). */
+export interface ChildDelegationSubnet {
+  netuid: number;
+  entries: ChildDelegationEntry[];
+}
+/**
+ * #6999 / #6723: live child-hotkey delegation graph from
+ * /api/v1/accounts/{ss58}/children. `subnets: null` means RPC failure;
+ * `subnets: []` is a confirmed empty graph.
+ */
+export interface AccountChildren {
+  account: string;
+  schema_version: number;
+  subnets: ChildDelegationSubnet[] | null;
+  queried_at: string | null;
+  [key: string]: unknown;
+}
+/** One parent-hotkey entry in /api/v1/accounts/{ss58}/parents (#6723). */
+export interface ParentDelegationEntry {
+  parent: string | null;
+  proportion: string;
+  proportion_fraction: number;
+}
+/** One subnet's parents for an account (#6723). */
+export interface ParentDelegationSubnet {
+  netuid: number;
+  entries: ParentDelegationEntry[];
+}
+/**
+ * #6999 / #6723: live parent-hotkey delegation graph from
+ * /api/v1/accounts/{ss58}/parents. Same null-vs-empty semantics as children.
+ */
+export interface AccountParents {
+  account: string;
+  schema_version: number;
+  subnets: ParentDelegationSubnet[] | null;
+  queried_at: string | null;
+  [key: string]: unknown;
+}
+/** One community-contributed entity label (#6737/#6738). */
+export interface EntityLabel {
+  name: string | null;
+  category: "exchange" | "foundation" | "operator" | "other" | null;
+  notes: string | null;
+  source_urls: string[];
+}
+/** One SubnetOwnerChanged ownership-transfer tie for an address (#6740). */
+export interface AccountOwnershipTie {
+  netuid: number | null;
+  role: "gained_ownership" | "lost_ownership";
+  block_number: number | null;
+  observed_at: string | null;
+}
+/**
+ * #6999 / #6740: entity labels + ownership ties from
+ * /api/v1/accounts/{ss58}/entities.
+ */
+export interface AccountEntities {
+  ss58: string;
+  schema_version: number;
+  labels: EntityLabel[];
+  ownership_tie_count: number;
+  ownership_ties: AccountOwnershipTie[];
+  [key: string]: unknown;
+}
 /** One per-subnet stake/unstake flow row in /accounts/{ss58}/stake-flow. */
 export interface AccountStakeFlowSubnet {
   netuid: number;

@@ -46,8 +46,17 @@ import type {
   AccountDay,
   AccountEvent,
   AccountEventsPage,
+  AccountChildren,
   AccountCounterparties,
   AccountCounterparty,
+  AccountEntities,
+  AccountOwnershipTie,
+  AccountParents,
+  ChildDelegationEntry,
+  ChildDelegationSubnet,
+  EntityLabel,
+  ParentDelegationEntry,
+  ParentDelegationSubnet,
   AccountStakeFlow,
   AccountStakeFlowSubnet,
   AccountHistory,
@@ -2672,6 +2681,195 @@ export const accountCounterpartiesQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountCounterparties>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #6999 / #6723: live child-hotkey delegation graph from ChildKeys storage.
+// `subnets: null` is an RPC failure (distinct from a confirmed empty `[]`).
+function normalizeChildDelegationEntry(raw: unknown): ChildDelegationEntry | null {
+  if (!isRecord(raw)) return null;
+  const proportion = firstString(raw.proportion);
+  const proportionFraction = firstFiniteNumber(raw.proportion_fraction);
+  if (proportion == null || proportionFraction == null) return null;
+  return {
+    child: firstString(raw.child) ?? null,
+    proportion,
+    proportion_fraction: proportionFraction,
+  };
+}
+
+function normalizeChildDelegationSubnet(raw: unknown): ChildDelegationSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  const entries = Array.isArray(raw.entries)
+    ? raw.entries.flatMap((row) => {
+        const entry = normalizeChildDelegationEntry(row);
+        return entry ? [entry] : [];
+      })
+    : [];
+  if (entries.length === 0) return null;
+  return { netuid, entries };
+}
+
+export const accountChildrenQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-children", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/children`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      // Preserve explicit null (RPC failure) vs missing/junk → empty array.
+      const subnets =
+        d.subnets === null
+          ? null
+          : Array.isArray(d.subnets)
+            ? d.subnets.flatMap((row) => {
+                const subnet = normalizeChildDelegationSubnet(row);
+                return subnet ? [subnet] : [];
+              })
+            : [];
+      return {
+        data: {
+          account: firstString(d.account) ?? ss58,
+          schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+          subnets,
+          queried_at: firstString(d.queried_at) ?? null,
+        } as AccountChildren,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountChildren>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #6999 / #6723: live parent-hotkey delegation graph from ParentKeys storage.
+function normalizeParentDelegationEntry(raw: unknown): ParentDelegationEntry | null {
+  if (!isRecord(raw)) return null;
+  const proportion = firstString(raw.proportion);
+  const proportionFraction = firstFiniteNumber(raw.proportion_fraction);
+  if (proportion == null || proportionFraction == null) return null;
+  return {
+    parent: firstString(raw.parent) ?? null,
+    proportion,
+    proportion_fraction: proportionFraction,
+  };
+}
+
+function normalizeParentDelegationSubnet(raw: unknown): ParentDelegationSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  const entries = Array.isArray(raw.entries)
+    ? raw.entries.flatMap((row) => {
+        const entry = normalizeParentDelegationEntry(row);
+        return entry ? [entry] : [];
+      })
+    : [];
+  if (entries.length === 0) return null;
+  return { netuid, entries };
+}
+
+export const accountParentsQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-parents", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/parents`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const subnets =
+        d.subnets === null
+          ? null
+          : Array.isArray(d.subnets)
+            ? d.subnets.flatMap((row) => {
+                const subnet = normalizeParentDelegationSubnet(row);
+                return subnet ? [subnet] : [];
+              })
+            : [];
+      return {
+        data: {
+          account: firstString(d.account) ?? ss58,
+          schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+          subnets,
+          queried_at: firstString(d.queried_at) ?? null,
+        } as AccountParents,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountParents>;
+    },
+    staleTime: STALE_MED,
+  });
+
+const ENTITY_LABEL_CATEGORIES = new Set(["exchange", "foundation", "operator", "other"]);
+
+function normalizeEntityLabel(raw: unknown): EntityLabel | null {
+  if (!isRecord(raw)) return null;
+  const categoryRaw = firstString(raw.category);
+  const category =
+    categoryRaw && ENTITY_LABEL_CATEGORIES.has(categoryRaw)
+      ? (categoryRaw as EntityLabel["category"])
+      : null;
+  const sourceUrls = Array.isArray(raw.source_urls)
+    ? raw.source_urls.flatMap((url) => {
+        const s = firstString(url);
+        return s ? [s] : [];
+      })
+    : [];
+  return {
+    name: firstString(raw.name) ?? null,
+    category,
+    notes: firstString(raw.notes) ?? null,
+    source_urls: sourceUrls,
+  };
+}
+
+function normalizeOwnershipTie(raw: unknown): AccountOwnershipTie | null {
+  if (!isRecord(raw)) return null;
+  const role = firstString(raw.role);
+  if (role !== "gained_ownership" && role !== "lost_ownership") return null;
+  return {
+    netuid: firstFiniteNumber(raw.netuid) ?? null,
+    role,
+    block_number: firstFiniteNumber(raw.block_number) ?? null,
+    observed_at: firstString(raw.observed_at) ?? null,
+  };
+}
+
+// #6999 / #6740: community entity labels + SubnetOwnerChanged ownership ties.
+export const accountEntitiesQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-entities", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/entities`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const labels = Array.isArray(d.labels)
+        ? d.labels.flatMap((row) => {
+            const label = normalizeEntityLabel(row);
+            return label ? [label] : [];
+          })
+        : [];
+      const ownershipTies = Array.isArray(d.ownership_ties)
+        ? d.ownership_ties.flatMap((row) => {
+            const tie = normalizeOwnershipTie(row);
+            return tie ? [tie] : [];
+          })
+        : [];
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+          labels,
+          ownership_tie_count: firstFiniteNumber(d.ownership_tie_count) ?? ownershipTies.length,
+          ownership_ties: ownershipTies,
+        } as AccountEntities,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountEntities>;
     },
     staleTime: STALE_MED,
   });

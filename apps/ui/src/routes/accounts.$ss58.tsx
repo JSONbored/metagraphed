@@ -15,12 +15,14 @@ import {
   Fingerprint,
   Gauge,
   Github,
+  GitBranch,
   Globe,
   MessageCircle,
   Radar,
   RefreshCw,
   Rows3,
   Scale,
+  Tags,
   Unplug,
   UserMinus,
   UserPlus,
@@ -49,7 +51,10 @@ import { AccountHistoryChart } from "@/components/metagraphed/account-history-ch
 import { AccountPositionHistoryChart } from "@/components/metagraphed/account-position-history-chart";
 import {
   accountAxonRemovalsQuery,
+  accountChildrenQuery,
   accountCounterpartiesQuery,
+  accountEntitiesQuery,
+  accountParentsQuery,
   accountStakeFlowQuery,
   accountPortfolioQuery,
   accountStakeMovesQuery,
@@ -77,6 +82,9 @@ import { subnetPositionSearch } from "@/lib/metagraphed/subnet-position-link";
 import { entityNotFoundMeta } from "@/lib/metagraphed/entity-not-found-meta";
 import type {
   AccountCounterparty,
+  ChildDelegationSubnet,
+  EntityLabel,
+  ParentDelegationSubnet,
   AccountStakeFlowSubnet,
   AccountRegistration,
   AccountSummary,
@@ -398,6 +406,10 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       />
       {/* #3340: the aggregated fund-flow view over the same transfer data. */}
       <AccountCounterpartiesSection ss58={ss58} />
+      {/* #6999: live child/parent-hotkey delegation graph (#6723). */}
+      <AccountDelegationSection ss58={ss58} />
+      {/* #6999: community entity labels + SubnetOwnerChanged ownership ties (#6740). */}
+      <AccountEntitiesSection ss58={ss58} />
 
       {/* #6432: deliberately NOT "← All accounts" like the other detail pages'
           back-links. /accounts is a lookup form, not an index -- there is no
@@ -427,6 +439,9 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
             { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
             { label: "counterparties", path: `/api/v1/accounts/${sourceRef}/counterparties` },
+            { label: "children", path: `/api/v1/accounts/${sourceRef}/children` },
+            { label: "parents", path: `/api/v1/accounts/${sourceRef}/parents` },
+            { label: "entities", path: `/api/v1/accounts/${sourceRef}/entities` },
             { label: "stake-flow", path: `/api/v1/accounts/${sourceRef}/stake-flow` },
             { label: "serving", path: `/api/v1/accounts/${sourceRef}/serving` },
             { label: "prometheus", path: `/api/v1/accounts/${sourceRef}/prometheus` },
@@ -442,6 +457,9 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           `/api/v1/accounts/${sourceRef}/events`,
           `/api/v1/accounts/${sourceRef}/subnets`,
           `/api/v1/accounts/${sourceRef}/counterparties`,
+          `/api/v1/accounts/${sourceRef}/children`,
+          `/api/v1/accounts/${sourceRef}/parents`,
+          `/api/v1/accounts/${sourceRef}/entities`,
           `/api/v1/accounts/${sourceRef}/stake-flow`,
           `/api/v1/accounts/${sourceRef}/serving`,
           `/api/v1/accounts/${sourceRef}/prometheus`,
@@ -1061,6 +1079,412 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
         <p className="mt-3 font-mono text-[10px] text-ink-muted">
           Showing the {rows.length} highest-volume of {formatNumber(parties.length)} counterparties.
         </p>
+      ) : null}
+    </SectionAnchor>
+  );
+}
+
+function fmtProportion(fraction: number): string {
+  return `${(fraction * 100).toFixed(2)}%`;
+}
+
+function flattenChildRows(subnets: ChildDelegationSubnet[]) {
+  return subnets.flatMap((subnet) =>
+    subnet.entries.map((entry, i) => ({
+      key: `${subnet.netuid}-${entry.child ?? "null"}-${i}`,
+      netuid: subnet.netuid,
+      hotkey: entry.child,
+      proportion: entry.proportion,
+      proportion_fraction: entry.proportion_fraction,
+    })),
+  );
+}
+
+function flattenParentRows(subnets: ParentDelegationSubnet[]) {
+  return subnets.flatMap((subnet) =>
+    subnet.entries.map((entry, i) => ({
+      key: `${subnet.netuid}-${entry.parent ?? "null"}-${i}`,
+      netuid: subnet.netuid,
+      hotkey: entry.parent,
+      proportion: entry.proportion,
+      proportion_fraction: entry.proportion_fraction,
+    })),
+  );
+}
+
+function DelegationEdgeTable({
+  rows,
+  hotkeyHeader,
+}: {
+  rows: Array<{
+    key: string;
+    netuid: number;
+    hotkey: string | null;
+    proportion: string;
+    proportion_fraction: number;
+  }>;
+  hotkeyHeader: string;
+}) {
+  if (rows.length === 0) {
+    return <p className="font-mono text-[11px] text-ink-muted">No entries on any subnet.</p>;
+  }
+  return (
+    <DataPanel>
+      <table className="w-full text-left text-sm">
+        <thead className="bg-surface/50">
+          <tr>
+            <th className={TH}>Subnet</th>
+            <th className={TH}>{hotkeyHeader}</th>
+            <th className={`${TH} text-right`}>Share</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {rows.map((row) => (
+            <tr key={row.key} className="hover:bg-surface/30">
+              <td className="px-5 py-4 font-mono text-[12px]">
+                <Link
+                  to="/subnets/$netuid"
+                  params={{ netuid: row.netuid }}
+                  className="text-ink-strong hover:text-accent hover:underline"
+                >
+                  SN{row.netuid}
+                </Link>
+              </td>
+              <td
+                className="px-5 py-4 font-mono text-[11px] text-ink-muted"
+                title={row.hotkey ?? undefined}
+              >
+                {row.hotkey ? (
+                  <Link
+                    to="/accounts/$ss58"
+                    params={{ ss58: row.hotkey }}
+                    className="hover:text-accent hover:underline"
+                  >
+                    {shortHash(row.hotkey)}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </td>
+              <td
+                className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink"
+                title={row.proportion}
+              >
+                {fmtProportion(row.proportion_fraction)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </DataPanel>
+  );
+}
+
+// #6999: live child/parent-hotkey delegation graph from /children + /parents
+// (#6723). Self-contained + non-blocking like AccountCounterpartiesSection —
+// most accounts have an empty graph and render nothing; RPC failure
+// (`subnets: null`) is shown as a soft error for that half only.
+function AccountDelegationSection({ ss58 }: { ss58: string }) {
+  const childrenResult = useQuery(accountChildrenQuery(ss58));
+  const parentsResult = useQuery(accountParentsQuery(ss58));
+  const children = childrenResult.data?.data;
+  const parents = parentsResult.data?.data;
+  const SUBTITLE =
+    "Live child and parent hotkey relationships from on-chain ChildKeys / ParentKeys — who this account delegates stake-weight to, and who delegates to it, per subnet.";
+
+  const childrenPending = childrenResult.isPending && !children;
+  const parentsPending = parentsResult.isPending && !parents;
+  if (childrenPending && parentsPending) {
+    return (
+      <AccountFeedSectionSkeleton id="delegation" title="Delegation graph" subtitle={SUBTITLE} />
+    );
+  }
+
+  const childrenUnavailable = childrenResult.isError || children?.subnets === null;
+  const parentsUnavailable = parentsResult.isError || parents?.subnets === null;
+  const childRows = children?.subnets ? flattenChildRows(children.subnets) : [];
+  const parentRows = parents?.subnets ? flattenParentRows(parents.subnets) : [];
+  const childSubnetCount = children?.subnets?.length ?? 0;
+  const parentSubnetCount = parents?.subnets?.length ?? 0;
+  const hasAnyRows = childRows.length > 0 || parentRows.length > 0;
+  const bothConfirmedEmpty =
+    !childrenUnavailable &&
+    !parentsUnavailable &&
+    Array.isArray(children?.subnets) &&
+    Array.isArray(parents?.subnets) &&
+    !hasAnyRows;
+
+  if (bothConfirmedEmpty) return null;
+  if (
+    !hasAnyRows &&
+    !childrenUnavailable &&
+    !parentsUnavailable &&
+    (childrenPending || parentsPending)
+  ) {
+    return (
+      <AccountFeedSectionSkeleton id="delegation" title="Delegation graph" subtitle={SUBTITLE} />
+    );
+  }
+  if (!hasAnyRows && !childrenUnavailable && !parentsUnavailable) return null;
+
+  const badgeCount = childRows.length + parentRows.length;
+
+  return (
+    <SectionAnchor
+      id="delegation"
+      title="Delegation graph"
+      subtitle={SUBTITLE}
+      tone="accent"
+      info="Live ChildKeys / ParentKeys snapshot from /api/v1/accounts/{ss58}/children and /parents. Share is proportion_fraction (0..1 of u64::MAX). subnets: null means the RPC lookup failed for that side."
+      right={
+        badgeCount > 0 ? (
+          <SectionBadge tone="accent">{formatNumber(badgeCount)} edges</SectionBadge>
+        ) : undefined
+      }
+    >
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          icon={GitBranch}
+          eyebrow="Child edges"
+          tone="accent"
+          value={childrenUnavailable ? "—" : formatNumber(childRows.length)}
+          hint={childrenUnavailable ? "lookup unavailable" : "delegated to"}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={GitBranch}
+          eyebrow="Child subnets"
+          value={childrenUnavailable ? "—" : formatNumber(childSubnetCount)}
+          hint="with ≥1 child"
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Users}
+          eyebrow="Parent edges"
+          value={parentsUnavailable ? "—" : formatNumber(parentRows.length)}
+          hint={parentsUnavailable ? "lookup unavailable" : "delegating in"}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Users}
+          eyebrow="Parent subnets"
+          value={parentsUnavailable ? "—" : formatNumber(parentSubnetCount)}
+          hint="with ≥1 parent"
+          className={KPI_TILE}
+        />
+      </div>
+
+      <div className="space-y-8">
+        <div>
+          <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Children — stake-weight this account delegates out
+          </h3>
+          {childrenUnavailable ? (
+            <TableState
+              variant="error"
+              title="Couldn't load child hotkeys"
+              description="The children lookup is optional enrichment — parents (if any) still render below."
+              error={childrenResult.error}
+              onRetry={() => void childrenResult.refetch()}
+            />
+          ) : (
+            <DelegationEdgeTable rows={childRows} hotkeyHeader="Child hotkey" />
+          )}
+        </div>
+        <div>
+          <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Parents — hotkeys delegating stake-weight to this account
+          </h3>
+          {parentsUnavailable ? (
+            <TableState
+              variant="error"
+              title="Couldn't load parent hotkeys"
+              description="The parents lookup is optional enrichment — children (if any) still render above."
+              error={parentsResult.error}
+              onRetry={() => void parentsResult.refetch()}
+            />
+          ) : (
+            <DelegationEdgeTable rows={parentRows} hotkeyHeader="Parent hotkey" />
+          )}
+        </div>
+      </div>
+      {(children?.queried_at || parents?.queried_at) && (
+        <p className="mt-3 font-mono text-[10px] text-ink-muted">
+          Queried <TimeAgo at={children?.queried_at ?? parents?.queried_at ?? undefined} />
+        </p>
+      )}
+    </SectionAnchor>
+  );
+}
+
+function entityCategoryLabel(category: EntityLabel["category"]): string {
+  if (!category) return "unlabeled";
+  return category;
+}
+
+// #6999: community entity labels + SubnetOwnerChanged ownership ties from
+// /api/v1/accounts/{ss58}/entities (#6737/#6740). Same non-blocking pattern —
+// unlabeled addresses with no ownership-transfer history render nothing.
+function AccountEntitiesSection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountEntitiesQuery(ss58));
+  const data = result.data?.data;
+  const SUBTITLE =
+    "Community-contributed entity labels for this address, plus every SubnetOwnerChanged ownership-transfer tie it appears in.";
+
+  if (result.isPending && !data) {
+    return <AccountFeedSectionSkeleton id="entities" title="Entity labels" subtitle={SUBTITLE} />;
+  }
+  if (result.isError) {
+    return (
+      <SectionAnchor id="entities" title="Entity labels" subtitle={SUBTITLE} tone="accent">
+        <TableState
+          variant="error"
+          title="Couldn't load entity labels"
+          description="Entity labels are optional enrichment — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+
+  const labels = data?.labels ?? [];
+  const ties = data?.ownership_ties ?? [];
+  if (!data || (labels.length === 0 && ties.length === 0)) return null;
+
+  return (
+    <SectionAnchor
+      id="entities"
+      title="Entity labels"
+      subtitle={SUBTITLE}
+      tone="accent"
+      info="From /api/v1/accounts/{ss58}/entities — curated entity labels joined with SubnetOwnerChanged ownership-transfer ties. Genesis ownership with no transfer event does not appear here."
+      right={
+        <SectionBadge tone="accent">
+          {formatNumber(labels.length)} labels · {formatNumber(data.ownership_tie_count)} ties
+        </SectionBadge>
+      }
+    >
+      <div className="mb-4 grid gap-4 sm:grid-cols-2">
+        <StatTile
+          icon={Tags}
+          eyebrow="Labels"
+          tone="accent"
+          value={formatNumber(labels.length)}
+          hint="community-contributed"
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Fingerprint}
+          eyebrow="Ownership ties"
+          value={formatNumber(data.ownership_tie_count)}
+          hint="SubnetOwnerChanged"
+          className={KPI_TILE}
+        />
+      </div>
+
+      {labels.length > 0 ? (
+        <div className="mb-6 space-y-3">
+          <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Labels
+          </h3>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {labels.map((label, i) => (
+              <li
+                key={`${label.name ?? "label"}-${i}`}
+                className="rounded-2xl border border-border/80 bg-card/95 p-4"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-ink-strong">
+                    {label.name ?? "Unnamed label"}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                    {entityCategoryLabel(label.category)}
+                  </span>
+                </div>
+                {label.notes ? <p className="mt-2 text-sm text-ink-muted">{label.notes}</p> : null}
+                {label.source_urls.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {label.source_urls.map((url) => (
+                      <ExternalLink
+                        key={url}
+                        href={url}
+                        className="font-mono text-[11px] text-accent-text hover:underline"
+                      >
+                        source
+                      </ExternalLink>
+                    ))}
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {ties.length > 0 ? (
+        <div>
+          <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Ownership ties
+          </h3>
+          <DataPanel>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-surface/50">
+                <tr>
+                  <th className={TH}>Subnet</th>
+                  <th className={TH}>Role</th>
+                  <th className={`${TH} text-right`}>Block</th>
+                  <th className={`${TH} text-right`}>Observed</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {ties.map((tie, i) => (
+                  <tr
+                    key={`${tie.netuid ?? "x"}-${tie.role}-${tie.block_number ?? i}`}
+                    className="hover:bg-surface/30"
+                  >
+                    <td className="px-5 py-4 font-mono text-[12px]">
+                      {tie.netuid != null ? (
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: tie.netuid }}
+                          className="text-ink-strong hover:text-accent hover:underline"
+                        >
+                          SN{tie.netuid}
+                        </Link>
+                      ) : (
+                        <span className="text-ink-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 font-mono text-[11px] text-ink">
+                      {tie.role === "gained_ownership" ? (
+                        <span className="text-health-ok">gained ownership</span>
+                      ) : (
+                        <span className="text-health-warn-text">lost ownership</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right font-mono text-[12px]">
+                      {tie.block_number != null ? (
+                        <Link
+                          to="/blocks/$ref"
+                          params={{ ref: String(tie.block_number) }}
+                          className="text-ink hover:text-accent hover:underline"
+                        >
+                          #{formatNumber(tie.block_number)}
+                        </Link>
+                      ) : (
+                        <span className="text-ink-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
+                      {tie.observed_at ? <TimeAgo at={tie.observed_at} /> : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </DataPanel>
+        </div>
       ) : null}
     </SectionAnchor>
   );
