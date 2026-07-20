@@ -6094,6 +6094,335 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
   });
 });
 
+describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+  const POOL = {
+    "/metagraph/economics.json": {
+      subnets: [
+        {
+          netuid: 64,
+          tao_in_pool_tao: 201959.938748425,
+          alpha_in_pool: 2730860.150574127,
+          alpha_market_cap_tao: 5000,
+        },
+      ],
+    },
+  };
+
+  test("subnet_volume cold store returns a schema-stable zeroed card", async () => {
+    const { status, body } = await gql(
+      "{ subnet_volume(netuid: 5) { schema_version netuid total_volume_tao buy_count sentiment sentiment_ratio vol_mcap_ratio } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const v = body.data.subnet_volume;
+    assert.equal(v.schema_version, 1);
+    assert.equal(v.netuid, 5);
+    assert.equal(v.total_volume_tao, 0);
+    assert.equal(v.buy_count, 0);
+    assert.equal(v.sentiment, "neutral");
+    assert.equal(v.sentiment_ratio, null);
+    assert.equal(v.vol_mcap_ratio, null);
+  });
+
+  test("subnet_volume unwraps the tier's { data } envelope", async () => {
+    const env = {
+      ...fixtureEnv(POOL),
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          data: {
+            schema_version: 1,
+            netuid: 64,
+            window: "24h",
+            buy_volume_tao: 12,
+            sell_volume_tao: 8,
+            total_volume_tao: 20,
+            buy_count: 3,
+            sell_count: 2,
+            sentiment: "buying",
+            sentiment_ratio: 0.6,
+          },
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ subnet_volume(netuid: 64) { netuid window total_volume_tao buy_count sentiment sentiment_ratio } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const v = body.data.subnet_volume;
+    assert.equal(v.window, "24h");
+    assert.equal(v.total_volume_tao, 20);
+    assert.equal(v.sentiment, "buying");
+    assert.equal(v.sentiment_ratio, 0.6);
+  });
+
+  test("subnet_ohlc cold store returns an empty candle list", async () => {
+    const { status, body } = await gql(
+      "{ subnet_ohlc(netuid: 5) { schema_version netuid interval root_excluded candles { bucket_start open close } } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const o = body.data.subnet_ohlc;
+    assert.equal(o.interval, "1h");
+    assert.deepEqual(o.candles, []);
+    assert.equal(o.root_excluded, false);
+  });
+
+  test("subnet_ohlc forwards interval + days and returns tier candles", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: 7,
+            interval: "1d",
+            root_excluded: false,
+            candles: [
+              {
+                bucket_start: 1770000000000,
+                bucket_start_iso: "2026-02-02T00:00:00.000Z",
+                open: 0.1,
+                high: 0.2,
+                low: 0.09,
+                close: 0.15,
+                volume_alpha: 100,
+                volume_tao: 12,
+                event_count: 4,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      '{ subnet_ohlc(netuid: 7, interval: "1d", days: 30) { interval candles { bucket_start close event_count } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/7/ohlc"));
+    assert.equal(capturedUrl.searchParams.get("interval"), "1d");
+    assert.equal(capturedUrl.searchParams.get("days"), "30");
+    const o = body.data.subnet_ohlc;
+    assert.equal(o.interval, "1d");
+    assert.equal(o.candles[0].bucket_start, 1770000000000);
+    assert.equal(o.candles[0].event_count, 4);
+  });
+
+  test("subnet_ohlc rejects an unsupported interval", async () => {
+    const { body } = await gql(
+      '{ subnet_ohlc(netuid: 5, interval: "5m") { interval } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/interval/i.test(body.errors[0].message));
+  });
+
+  test("subnet_ohlc rejects days above the maximum window", async () => {
+    const { body } = await gql(
+      "{ subnet_ohlc(netuid: 5, days: 9999) { interval } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/days/i.test(body.errors[0].message));
+  });
+
+  test("subnet_ohlc rejects a non-positive days", async () => {
+    const { body } = await gql(
+      "{ subnet_ohlc(netuid: 5, days: 0) { interval } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/days/i.test(body.errors[0].message));
+  });
+
+  test("subnet_stake_quote quotes against the live pool reserves", async () => {
+    const { status, body } = await gql(
+      "{ subnet_stake_quote(netuid: 64, amount: 1000) { schema_version netuid direction amount expected_out expected_out_unit spot_price_tao effective_price_tao price_impact_pct is_root } }",
+      fixtureEnv(POOL),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const q = body.data.subnet_stake_quote;
+    assert.equal(q.schema_version, 1);
+    assert.equal(q.netuid, 64);
+    assert.equal(q.direction, "stake");
+    assert.equal(q.expected_out_unit, "alpha");
+    assert.ok(q.expected_out > 0);
+    assert.ok(q.price_impact_pct > 0);
+    assert.equal(q.is_root, false);
+  });
+
+  test("subnet_stake_quote quotes an unstake (alpha in, TAO out)", async () => {
+    const { body } = await gql(
+      '{ subnet_stake_quote(netuid: 64, amount: 500, direction: "unstake") { direction expected_out_unit expected_out } }',
+      fixtureEnv(POOL),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_stake_quote.direction, "unstake");
+    assert.equal(body.data.subnet_stake_quote.expected_out_unit, "tao");
+  });
+
+  test("subnet_stake_quote rejects an unsupported direction", async () => {
+    const { body } = await gql(
+      '{ subnet_stake_quote(netuid: 64, amount: 1, direction: "swap") { direction } }',
+      fixtureEnv(POOL),
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/direction/i.test(body.errors[0].message));
+  });
+
+  test("subnet_stake_quote surfaces the calculator's error for a subnet with no pool", async () => {
+    const { body } = await gql(
+      "{ subnet_stake_quote(netuid: 999, amount: 1) { expected_out } }",
+      fixtureEnv(POOL),
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.equal(body.data?.subnet_stake_quote ?? null, null);
+  });
+
+  test("subnet_validators cold store returns a schema-stable empty list", async () => {
+    const { status, body } = await gql(
+      "{ subnet_validators(netuid: 5) { schema_version netuid validator_count captured_at block_number validators { uid hotkey } } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const v = body.data.subnet_validators;
+    assert.equal(v.validator_count, 0);
+    assert.equal(v.captured_at, null);
+    assert.deepEqual(v.validators, []);
+  });
+
+  test("subnet_validators resolves the Postgres-tier validator set", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: 7,
+            validator_count: 1,
+            captured_at: "2026-07-19T00:00:00.000Z",
+            block_number: 91,
+            validators: [
+              {
+                uid: 3,
+                hotkey: "5Hotkey",
+                stake_tao: 1234.5,
+                validator_permit: true,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      "{ subnet_validators(netuid: 7) { netuid validator_count block_number validators { uid hotkey stake_tao validator_permit } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/7/validators"));
+    const v = body.data.subnet_validators;
+    assert.equal(v.validator_count, 1);
+    assert.equal(v.block_number, 91);
+    assert.equal(v.validators[0].hotkey, "5Hotkey");
+    assert.equal(v.validators[0].stake_tao, 1234.5);
+  });
+
+  test("a negative netuid is a GraphQL error on every market-data field", async () => {
+    for (const q of [
+      "{ subnet_volume(netuid: -1) { netuid } }",
+      "{ subnet_ohlc(netuid: -1) { netuid } }",
+      "{ subnet_stake_quote(netuid: -1, amount: 1) { netuid } }",
+      "{ subnet_validators(netuid: -1) { netuid } }",
+    ]) {
+      const { body } = await gql(q);
+      assert.ok(body.errors, `expected a GraphQL error for ${q}`);
+      assert.ok(/netuid/i.test(body.errors[0].message));
+    }
+  });
+
+  test("a partial tier body falls back to defaults on every market-data field", async () => {
+    // Exercises the `?? default` branches: a tier that answers with an empty
+    // body must still yield the schema-stable card, never nulls or an error.
+    const volumeEnv = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: dataApi(Response.json({ data: {} })),
+    };
+    const vol = await gql(
+      "{ subnet_volume(netuid: 9) { schema_version netuid window total_volume_alpha total_volume_tao buy_volume_alpha sell_volume_alpha buy_volume_tao sell_volume_tao buy_count sell_count net_volume_alpha sentiment sentiment_ratio vol_mcap_ratio } }",
+      volumeEnv,
+    );
+    assert.equal(vol.body.errors, undefined);
+    assert.deepEqual(vol.body.data.subnet_volume, {
+      schema_version: 1,
+      netuid: 9,
+      window: null,
+      total_volume_alpha: 0,
+      total_volume_tao: 0,
+      buy_volume_alpha: 0,
+      sell_volume_alpha: 0,
+      buy_volume_tao: 0,
+      sell_volume_tao: 0,
+      buy_count: 0,
+      sell_count: 0,
+      net_volume_alpha: 0,
+      sentiment: null,
+      sentiment_ratio: null,
+      vol_mcap_ratio: null,
+    });
+
+    // A fresh Response per fetch -- a single Response body can only be consumed
+    // once, so reusing one would make the second query silently miss the tier.
+    const emptyTier = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const ohlc = await gql(
+      "{ subnet_ohlc(netuid: 9) { schema_version netuid interval candles { open } root_excluded } }",
+      emptyTier,
+    );
+    assert.equal(ohlc.body.errors, undefined);
+    assert.deepEqual(ohlc.body.data.subnet_ohlc, {
+      schema_version: 1,
+      netuid: 9,
+      interval: "1h",
+      candles: [],
+      root_excluded: false,
+    });
+
+    const vals = await gql(
+      "{ subnet_validators(netuid: 9) { schema_version netuid validator_count captured_at block_number validators { uid } } }",
+      emptyTier,
+    );
+    assert.equal(vals.body.errors, undefined);
+    assert.deepEqual(vals.body.data.subnet_validators, {
+      schema_version: 1,
+      netuid: 9,
+      validator_count: 0,
+      captured_at: null,
+      block_number: null,
+      validators: [],
+    });
+  });
+
+  test("the market-data fields are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_volume, 5);
+    assert.equal(FIELD_COMPLEXITY.subnet_ohlc, 5);
+    assert.equal(FIELD_COMPLEXITY.subnet_stake_quote, 5);
+    assert.equal(FIELD_COMPLEXITY.subnet_validators, 5);
+  });
+});
+
 describe("graphql — subnet_health_percentiles (#6980, live latency percentiles)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

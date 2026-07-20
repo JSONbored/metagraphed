@@ -160,9 +160,19 @@ import {
   GLOBAL_VALIDATOR_SORTS,
   buildGlobalValidators,
   buildNeuronDetail,
+  buildSubnetValidators,
   buildValidatorDetail,
   overlayFeaturedValidators,
 } from "./metagraph-neurons.mjs";
+import { buildAlphaVolume } from "./alpha-volume.mjs";
+import {
+  buildSubnetOhlc,
+  OHLC_INTERVALS,
+  OHLC_INTERVAL_DEFAULT,
+  DEFAULT_OHLC_WINDOW_DAYS,
+  MAX_OHLC_WINDOW_DAYS,
+} from "./subnet-ohlc.mjs";
+import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
@@ -346,6 +356,14 @@ export const SDL = `
     subnet_health_incidents(netuid: Int!, window: String): SubnetHealthIncidents!
     "One subnet's per-surface latency percentiles (p50/p90/p95/p99) over a 7d/30d window (default 7d), computed live from the success-only health-probe history. The latency-distribution companion of subnet_health_incidents' availability view. A subnet with no probe history resolves to a schema-stable empty surfaces list, never null. Mirrors GET /api/v1/subnets/{netuid}/health/percentiles."
     subnet_health_percentiles(netuid: Int!, window: String): SubnetHealthPercentiles!
+    "One subnet's rolling 24h alpha trading volume from the StakeAdded/StakeRemoved trade stream: buy/sell volume in alpha and TAO, trade counts, net flow, a buy-vs-sell sentiment ratio, and volume-to-market-cap ratio. A subnet with no trades resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/volume."
+    subnet_volume(netuid: Int!): SubnetVolume!
+    "One subnet's alpha-price OHLC candles bucketed by interval (1h or 1d, default 1h) over the trailing days window (default 90, max 365), from the same executed-trade stream subnet_volume reads. A subnet with no trades resolves to a schema-stable empty candle list, never null. Mirrors GET /api/v1/subnets/{netuid}/ohlc."
+    subnet_ohlc(netuid: Int!, interval: String, days: Int): SubnetOhlc!
+    "A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
+    subnet_stake_quote(netuid: Int!, amount: Float!, direction: String): SubnetStakeQuote!
+    "One subnet's current validator set (permitted neurons) from the live metagraph snapshot, with each validator's full neuron record. A subnet with no snapshot resolves to a schema-stable empty list, never null. Mirrors GET /api/v1/subnets/{netuid}/validators."
+    subnet_validators(netuid: Int!): SubnetValidatorList!
     "One subnet's chain-event activity summary over a 7d/30d/90d window (default 30d): total events, the per-kind and per-category breakdowns with hotkey/coldkey participation and TAO/alpha amounts, and a bounded newest-first recent-event list (limit 1-50, default 10). A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/event-summary."
     subnet_event_summary(netuid: Int!, window: String, limit: Int): SubnetEventSummary!
     "One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_gaps MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/gaps."
@@ -2050,6 +2068,82 @@ export const SDL = `
     surfaces: JSON!
   }
 
+  "One subnet's rolling 24h alpha trading volume (#6979). Mirrors GET /api/v1/subnets/{netuid}/volume' data envelope."
+  type SubnetVolume {
+    schema_version: Int!
+    netuid: Int!
+    "The rolling window label this card covers (24h)."
+    window: String
+    buy_volume_alpha: Float!
+    sell_volume_alpha: Float!
+    total_volume_alpha: Float!
+    buy_volume_tao: Float!
+    sell_volume_tao: Float!
+    total_volume_tao: Float!
+    buy_count: Int!
+    sell_count: Int!
+    net_volume_alpha: Float!
+    "Buy share of total volume (0-1); null when there was no volume."
+    sentiment_ratio: Float
+    "Bucketed reading of sentiment_ratio (buying/selling/neutral)."
+    sentiment: String
+    "Total TAO volume over alpha market cap; null when market cap is unknown."
+    vol_mcap_ratio: Float
+  }
+
+  type SubnetOhlcCandle {
+    "Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int."
+    bucket_start: Float!
+    bucket_start_iso: String
+    open: Float
+    high: Float
+    low: Float
+    close: Float
+    volume_alpha: Float
+    volume_tao: Float
+    event_count: Int!
+  }
+
+  "One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope."
+  type SubnetOhlc {
+    schema_version: Int!
+    netuid: Int!
+    "The resolved bucket interval (1h/1d)."
+    interval: String
+    candles: [SubnetOhlcCandle!]!
+    "True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted."
+    root_excluded: Boolean!
+  }
+
+  "A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
+  type SubnetStakeQuote {
+    schema_version: Int!
+    netuid: Int!
+    "stake (spends TAO for alpha) or unstake (spends alpha for TAO)."
+    direction: String
+    amount: Float
+    expected_out: Float
+    expected_out_unit: String
+    spot_price_tao: Float
+    effective_price_tao: Float
+    price_impact_pct: Float
+    tao_in_pool_tao: Float
+    alpha_in_pool: Float
+    "True for root (netuid 0), which quotes 1:1 with no price impact."
+    is_root: Boolean
+  }
+
+  "One subnet's current validator set (#6979). Mirrors GET /api/v1/subnets/{netuid}/validators' data envelope."
+  type SubnetValidatorList {
+    schema_version: Int!
+    netuid: Int!
+    validator_count: Int!
+    captured_at: String
+    block_number: Int
+    "Each permitted validator's live metagraph row -- the same NeuronState shape the neuron field returns."
+    validators: [NeuronState!]!
+  }
+
   "One subnet's per-surface success-only latency percentiles (#6980). Mirrors GET /api/v1/subnets/{netuid}/health/percentiles' data envelope."
   type SubnetHealthPercentiles {
     schema_version: Int!
@@ -3115,6 +3209,10 @@ export const FIELD_COMPLEXITY = {
   subnet_uptime: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_percentiles: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_volume: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_ohlc: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_stake_quote: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_validators: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_event_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_gaps: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_evidence: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4676,6 +4774,156 @@ const rootValue = {
       source: data.source ?? null,
       summary: data.summary ?? null,
       surfaces: data.surfaces ?? [],
+    };
+  },
+
+  async subnet_volume({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // The vol/mcap ratio needs the subnet's alpha market cap, which lives in the
+    // economics artifact rather than the trade stream -- same two-source shape
+    // the REST route and get_subnet_volume MCP tool use.
+    const economics = await loadSubnetEconomics(context, netuid);
+    const marketCapTao =
+      typeof economics?.alpha_market_cap_tao === "number" &&
+      Number.isFinite(economics.alpha_market_cap_tao)
+        ? economics.alpha_market_cap_tao
+        : null;
+    // The tier serves this route inside a { data } envelope (unlike the flat
+    // cards), so unwrap it before falling back to the zeroed build.
+    const tier = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(context, `/api/v1/subnets/${netuid}/volume`),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
+    const data = tier?.data ?? buildAlphaVolume([], netuid, { marketCapTao });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? null,
+      buy_volume_alpha: data.buy_volume_alpha ?? 0,
+      sell_volume_alpha: data.sell_volume_alpha ?? 0,
+      total_volume_alpha: data.total_volume_alpha ?? 0,
+      buy_volume_tao: data.buy_volume_tao ?? 0,
+      sell_volume_tao: data.sell_volume_tao ?? 0,
+      total_volume_tao: data.total_volume_tao ?? 0,
+      buy_count: data.buy_count ?? 0,
+      sell_count: data.sell_count ?? 0,
+      net_volume_alpha: data.net_volume_alpha ?? 0,
+      sentiment_ratio: data.sentiment_ratio ?? null,
+      sentiment: data.sentiment ?? null,
+      vol_mcap_ratio: data.vol_mcap_ratio ?? null,
+    };
+  },
+
+  async subnet_ohlc({ netuid, interval, days }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same interval/days validation the REST route + get_subnet_ohlc MCP tool
+    // apply -- out-of-contract input is a GraphQL BAD_USER_INPUT error rather
+    // than a silently-clamped card.
+    const intervalParam = interval ?? OHLC_INTERVAL_DEFAULT;
+    if (!Object.hasOwn(OHLC_INTERVALS, intervalParam)) {
+      throw new GraphQLError(
+        `interval must be one of: ${Object.keys(OHLC_INTERVALS).join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const daysParam = days ?? DEFAULT_OHLC_WINDOW_DAYS;
+    if (!Number.isInteger(daysParam) || daysParam < 1) {
+      throw new GraphQLError("days must be a positive integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (daysParam > MAX_OHLC_WINDOW_DAYS) {
+      throw new GraphQLError(`days must be at most ${MAX_OHLC_WINDOW_DAYS}.`, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("interval", intervalParam);
+    params.set("days", String(daysParam));
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, `/api/v1/subnets/${netuid}/ohlc`, params),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildSubnetOhlc([], netuid, {
+        interval: intervalParam,
+        days: daysParam,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      interval: data.interval ?? intervalParam,
+      candles: data.candles ?? [],
+      root_excluded: data.root_excluded ?? false,
+    };
+  },
+
+  async subnet_stake_quote({ netuid, amount, direction }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const directionParam = direction ?? "stake";
+    if (!STAKE_QUOTE_DIRECTIONS.includes(directionParam)) {
+      throw new GraphQLError(
+        `direction must be one of: ${STAKE_QUOTE_DIRECTIONS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same pure computeStakeQuote over the live pool reserves the REST route +
+    // get_subnet_stake_quote MCP tool run -- no economics logic duplicated, and
+    // still strictly read-only (nothing is built, signed, or submitted).
+    const economics = await loadSubnetEconomics(context, netuid);
+    const result = computeStakeQuote({
+      netuid,
+      taoInPool: economics?.tao_in_pool_tao,
+      alphaInPool: economics?.alpha_in_pool,
+      amount,
+      direction: directionParam,
+    });
+    if (!result.ok) {
+      // The shared calculator's own contract errors (bad amount, dead pool)
+      // surface as BAD_USER_INPUT rather than a partially-filled card.
+      throw new GraphQLError(result.error, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return { schema_version: 1, ...result.quote };
+  },
+
+  async subnet_validators({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetValidators([])
+    // empty-snapshot fallback the REST route and list_subnet_validators share.
+    // REST takes no filter params here, so neither does this mirror.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, `/api/v1/subnets/${netuid}/validators`),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildSubnetValidators([], netuid);
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      validator_count: data.validator_count ?? 0,
+      captured_at: data.captured_at ?? null,
+      block_number: data.block_number ?? null,
+      validators: data.validators ?? [],
     };
   },
 
