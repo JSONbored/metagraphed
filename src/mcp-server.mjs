@@ -10521,6 +10521,23 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_coverage_depth",
+    title: "Get the coverage-depth scorecard",
+    description:
+      "Fetch the machine-usable coverage-depth scorecard and ranked " +
+      "enrichment queue: per-subnet tier/score/priority rows plus the ranked " +
+      "queue of enrichment targets. The raw passthrough companion of the " +
+      "filtered list_enrichment_targets tool. Mirrors GET /api/v1/coverage-depth.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadArtifactData(ctx, "/metagraph/coverage-depth.json");
+    },
+  },
+  {
     name: "list_enrichment_targets",
     title: "List ranked enrichment targets",
     description:
@@ -15120,6 +15137,17 @@ const TOOL_OUTPUT_SCHEMAS = {
     },
   },
   get_coverage: GET_COVERAGE_OUTPUT_SCHEMA,
+  get_coverage_depth: {
+    type: "object",
+    additionalProperties: true,
+    properties: {
+      schema_version: { type: "integer" },
+      generated_at: NULLABLE_STRING,
+      coverage_depth_version: { type: ["string", "null"] },
+      rows: { type: "array", items: { type: "object" } },
+      ranked_queue: { type: "array", items: { type: "object" } },
+    },
+  },
   list_enrichment_targets: {
     type: "object",
     additionalProperties: true,
