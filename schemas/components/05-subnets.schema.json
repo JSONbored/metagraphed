@@ -1461,6 +1461,22 @@
             "type": ["number", "null"],
             "description": "Fully-diluted valuation proxy: alpha_price_tao multiplied by the fixed per-subnet alpha max supply (21,000,000). Null when alpha price is missing or non-finite."
           },
+          "alpha_price_change_1h": {
+            "type": ["number", "null"],
+            "description": "Signed %-change in alpha_price_tao over ~1 hour. Always null while listings derive from daily subnet_snapshots (intraday OHLC is a separate source); kept for a stable schema shape (#7227)."
+          },
+          "alpha_price_change_1d": {
+            "type": ["number", "null"],
+            "description": "Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots. Null when history is insufficient (#7227)."
+          },
+          "alpha_price_change_7d": {
+            "type": ["number", "null"],
+            "description": "Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots. Null when history is insufficient (#7227)."
+          },
+          "alpha_price_change_1m": {
+            "type": ["number", "null"],
+            "description": "Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (same window as trajectory's 30d delta). Null when history is insufficient (#7227)."
+          },
           "total_stake_tao": { "type": ["number", "null"] },
           "max_stake_tao": { "type": ["number", "null"] },
           "tao_in_pool_tao": { "type": ["number", "null"] },

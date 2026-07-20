@@ -4,6 +4,8 @@
 // the output is byte-identical to the in-lib.mjs originals. Re-exported from
 // scripts/lib.mjs so existing importers keep their import paths unchanged.
 
+import { withAlphaPriceChanges } from "../../src/alpha-price-change.mjs";
+
 // #1009: per-subnet validator + economic entity, derived from the chain
 // snapshot's `economics` block (validator/miner counts, stake, registration
 // cost, alpha price). dTAO emission is price-weighted, so each subnet's
@@ -127,6 +129,8 @@ export function buildEconomicsArtifact({
   generatedAt,
   network = null,
   capturedAt = null,
+  /** Optional Map<netuid, snapshot rows> for #7227 alpha_price_change_* fields. */
+  priceHistoryByNetuid = null,
 }) {
   const numericOrZero = (value) => (typeof value === "number" ? value : 0);
   const round = (value, places) => {
@@ -162,21 +166,33 @@ export function buildEconomicsArtifact({
       economics.total_stake_tao,
     );
     const alphaFdvTao = computeAlphaFdvTao(price);
+    const history =
+      priceHistoryByNetuid instanceof Map
+        ? priceHistoryByNetuid.get(subnet.netuid)
+        : null;
+    // #7227: always attach the four change keys (null when history is missing
+    // or too short) so the listing shape stays schema-stable.
+    const withChanges = withAlphaPriceChanges(
+      {
+        ...economics,
+        alpha_market_cap_tao: alphaMarketCapTao,
+        alpha_fdv_tao: alphaFdvTao,
+        emission_share: emissionShare,
+        open_slots: openSlots,
+        miner_readiness: computeMinerReadiness(
+          economics,
+          openSlots,
+          emissionShare,
+        ),
+      },
+      history,
+    );
     return {
       netuid: subnet.netuid,
       slug: subnet.slug,
       name: subnet.name,
       block: subnet.block ?? null,
-      ...economics,
-      alpha_market_cap_tao: alphaMarketCapTao,
-      alpha_fdv_tao: alphaFdvTao,
-      emission_share: emissionShare,
-      open_slots: openSlots,
-      miner_readiness: computeMinerReadiness(
-        economics,
-        openSlots,
-        emissionShare,
-      ),
+      ...withChanges,
     };
   });
   // Highest emission share first (the "top subnets by emission" view); stable

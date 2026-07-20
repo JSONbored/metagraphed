@@ -34,7 +34,8 @@ export const SAVED_QUERY_TEMPLATES = [
     description:
       "One registry leaderboard board (healthiest, fastest-rpc, most-complete, " +
       "most-enriched, fastest-growing, most-reliable, open-slots, " +
-      "cheapest-registration, highest-emission, validator-headroom), or every " +
+      "cheapest-registration, highest-emission, validator-headroom, " +
+      "biggest-alpha-gain-1d, biggest-alpha-gain-7d), or every " +
       "board when omitted. Same projection as GET /api/v1/registry/leaderboards " +
       "and get_registry_leaderboards.",
     category: "leaderboard",

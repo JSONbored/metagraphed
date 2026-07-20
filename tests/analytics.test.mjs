@@ -493,7 +493,7 @@ describe("formatLeaderboards", () => {
     },
   ];
 
-  test("ranks the four economic boards from the economics tier", () => {
+  test("ranks the economic boards from the economics tier", () => {
     const out = formatLeaderboards({
       ...inputs,
       economicsRows,
@@ -527,6 +527,58 @@ describe("formatLeaderboards", () => {
       [10, 11],
     );
     assert.equal(out.boards["validator-headroom"][0].validator_headroom, 54);
+    // #7227 gain boards: empty without alpha_price_change_* on the rows.
+    assert.deepEqual(out.boards["biggest-alpha-gain-1d"], []);
+    assert.deepEqual(out.boards["biggest-alpha-gain-7d"], []);
+  });
+
+  test("biggest-alpha-gain boards rank positive 1d/7d price changes", () => {
+    const out = formatLeaderboards({
+      ...inputs,
+      board: null,
+      limit: 10,
+      economicsRows: [
+        {
+          netuid: 10,
+          slug: "ten",
+          name: "Ten",
+          alpha_price_tao: 2,
+          alpha_price_change_1d: 50,
+          alpha_price_change_7d: 10,
+          emission_share: 0.1,
+        },
+        {
+          netuid: 11,
+          slug: "eleven",
+          name: "Eleven",
+          alpha_price_tao: 3,
+          alpha_price_change_1d: 80,
+          alpha_price_change_7d: 5,
+          emission_share: 0.2,
+        },
+        {
+          netuid: 12,
+          slug: "twelve",
+          name: "Twelve",
+          alpha_price_tao: 1,
+          alpha_price_change_1d: -20,
+          alpha_price_change_7d: 40,
+          emission_share: 0.05,
+        },
+      ],
+    });
+    assert.deepEqual(
+      out.boards["biggest-alpha-gain-1d"].map((e) => e.netuid),
+      [11, 10],
+    );
+    assert.equal(
+      out.boards["biggest-alpha-gain-1d"][0].alpha_price_change_1d,
+      80,
+    );
+    assert.deepEqual(
+      out.boards["biggest-alpha-gain-7d"].map((e) => e.netuid),
+      [12, 10, 11],
+    );
   });
 
   test("economic boards are null-safe when the economics tier is cold", () => {
@@ -536,6 +588,8 @@ describe("formatLeaderboards", () => {
       "cheapest-registration",
       "highest-emission",
       "validator-headroom",
+      "biggest-alpha-gain-1d",
+      "biggest-alpha-gain-7d",
     ]) {
       assert.deepEqual(out.boards[key], [], `${key} must be empty, not absent`);
     }
@@ -1362,6 +1416,8 @@ describe("analytics routes (cold local D1)", () => {
       "cheapest-registration",
       "highest-emission",
       "validator-headroom",
+      "biggest-alpha-gain-1d",
+      "biggest-alpha-gain-7d",
     ]) {
       assert.ok(Array.isArray(body.data.boards[key]), key);
     }

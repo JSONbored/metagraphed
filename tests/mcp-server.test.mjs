@@ -2917,8 +2917,10 @@ describe("MCP tools (injected deps)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.with_economics_count, 2);
     assert.equal(out.observed_at, "2026-06-20T00:00:00Z");
-    // Only the four economic boards are returned (no operational boards).
+    // Economic boards are returned (operational boards stay empty without D1).
     assert.deepEqual(Object.keys(out.boards).sort(), [
+      "biggest-alpha-gain-1d",
+      "biggest-alpha-gain-7d",
       "cheapest-registration",
       "highest-emission",
       "open-slots",
@@ -2984,6 +2986,8 @@ describe("MCP tools (injected deps)", () => {
       "cheapest-registration",
       "highest-emission",
       "validator-headroom",
+      "biggest-alpha-gain-1d",
+      "biggest-alpha-gain-7d",
     ]) {
       assert.deepEqual(out.boards[key], []);
     }

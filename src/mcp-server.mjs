@@ -5032,8 +5032,8 @@ export const MCP_TOOLS = [
       "registry completeness and the economics tier: healthiest, fastest-rpc, " +
       "most-complete, most-enriched, fastest-growing, plus the economic " +
       "opportunity boards (open-slots, cheapest-registration, highest-emission, " +
-      "validator-headroom). Omit board for all boards. Mirrors " +
-      "GET /api/v1/registry/leaderboards.",
+      "validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d). Omit " +
+      "board for all boards. Mirrors GET /api/v1/registry/leaderboards.",
     inputSchema: {
       type: "object",
       properties: {
@@ -10611,12 +10611,14 @@ export const MCP_TOOLS = [
       "Compare subnets across the network by the economics a miner or validator " +
       "actually weighs, as ranked boards: open-slots (most room to register), " +
       "cheapest-registration (lowest cost to join, registration open), " +
-      "highest-emission (where the emission/yield is concentrated), and " +
-      "validator-headroom (open validator permits). Each entry carries the " +
-      "decision fields — open_slots, registration_cost_tao, emission_share, " +
-      "validator/miner counts. Omit `board` for all four. Economics is refreshed " +
-      "periodically, not live-by-the-second; use get_subnet for one subnet's full " +
-      "current economics.",
+      "highest-emission (where the emission/yield is concentrated), " +
+      "validator-headroom (open validator permits), biggest-alpha-gain-1d / " +
+      "biggest-alpha-gain-7d (largest positive alpha-price %-change). Each entry " +
+      "carries the decision fields — open_slots, registration_cost_tao, " +
+      "emission_share, validator/miner counts, and for gain boards the " +
+      "alpha_price_change_* values. Omit `board` for all economic boards. " +
+      "Economics is refreshed periodically, not live-by-the-second; use " +
+      "get_subnet for one subnet's full current economics.",
     inputSchema: {
       type: "object",
       properties: {

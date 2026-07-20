@@ -1694,7 +1694,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards. */
+        /** Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d. Omit `board` for all boards. */
         get: operations["registryLeaderboards"];
         put?: never;
         post?: never;
@@ -7211,6 +7211,14 @@ export interface components {
             /** @description Derived market-cap proxy: alpha_price_tao multiplied by total_stake_tao, where total_stake_tao is the circulating-alpha proxy. Null when either input is missing. */
             alpha_market_cap_tao: number | null;
             alpha_out_pool: number | null;
+            /** @description Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots. Null when history is insufficient (#7227). */
+            alpha_price_change_1d?: number | null;
+            /** @description Signed %-change in alpha_price_tao over ~1 hour. Always null while listings derive from daily subnet_snapshots (intraday OHLC is a separate source); kept for a stable schema shape (#7227). */
+            alpha_price_change_1h?: number | null;
+            /** @description Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (same window as trajectory's 30d delta). Null when history is insufficient (#7227). */
+            alpha_price_change_1m?: number | null;
+            /** @description Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots. Null when history is insufficient (#7227). */
+            alpha_price_change_7d?: number | null;
             alpha_price_tao: number | null;
             /** @description Block height at which this subnet was registered on-chain — the same field the subnets collection exposes for sorting and range filters. */
             block?: number | null;
@@ -18037,7 +18045,7 @@ export interface operations {
                 limit?: number;
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
-                sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
+                sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
                 /** @description Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope. */
@@ -21552,7 +21560,7 @@ export interface operations {
     registryLeaderboards: {
         parameters: {
             query?: {
-                board?: "healthiest" | "fastest-rpc" | "most-complete" | "most-enriched" | "fastest-growing" | "most-reliable" | "open-slots" | "cheapest-registration" | "highest-emission" | "validator-headroom";
+                board?: "healthiest" | "fastest-rpc" | "most-complete" | "most-enriched" | "fastest-growing" | "most-reliable" | "open-slots" | "cheapest-registration" | "highest-emission" | "validator-headroom" | "biggest-alpha-gain-1d" | "biggest-alpha-gain-7d";
                 limit?: number;
             };
             header?: never;
@@ -24287,6 +24295,10 @@ export interface operations {
                      *           "alpha_in_pool": 0.5,
                      *           "alpha_market_cap_tao": 0.5,
                      *           "alpha_out_pool": 0.5,
+                     *           "alpha_price_change_1d": 0.5,
+                     *           "alpha_price_change_1h": 0.5,
+                     *           "alpha_price_change_1m": 0.5,
+                     *           "alpha_price_change_7d": 0.5,
                      *           "alpha_price_tao": 0.5,
                      *           "block": 5000000,
                      *           "emission_share": 0.5,

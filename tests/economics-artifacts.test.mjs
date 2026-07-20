@@ -295,6 +295,11 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(row.open_slots, 47); // 256 − 9 − 200
     // 40 registration + 30 open slots + 20 cost≤1 + 10 active.
     assert.equal(row.miner_readiness, 100);
+    // #7227: change fields always present; null without price history.
+    assert.equal(row.alpha_price_change_1h, null);
+    assert.equal(row.alpha_price_change_1d, null);
+    assert.equal(row.alpha_price_change_7d, null);
+    assert.equal(row.alpha_price_change_1m, null);
     assert.equal(row.netuid, 1);
     assert.equal(row.slug, "sn-1");
     assert.equal(artifact.summary.subnet_count, 1);
@@ -460,5 +465,27 @@ describe("buildEconomicsArtifact", () => {
       generatedAt: "2026-06-25T00:00:00.000Z",
     });
     assert.equal(artifact.summary.registration_open_count, 1);
+  });
+
+  test("attaches alpha_price_change_* from priceHistoryByNetuid (#7227)", () => {
+    const artifact = buildEconomicsArtifact({
+      subnets: [econSubnet(1)],
+      economicsByNetuid: new Map([[1, { alpha_price_tao: 1.5 }]]),
+      generatedAt: "2026-06-25T00:00:00.000Z",
+      priceHistoryByNetuid: new Map([
+        [
+          1,
+          [
+            { snapshot_date: "2026-06-20", alpha_price_tao: 1 },
+            { snapshot_date: "2026-06-21", alpha_price_tao: 1.5 },
+          ],
+        ],
+      ]),
+    });
+    const row = artifact.subnets[0];
+    assert.equal(row.alpha_price_change_1h, null);
+    assert.equal(row.alpha_price_change_1d, 50);
+    assert.equal(row.alpha_price_change_7d, null);
+    assert.equal(row.alpha_price_change_1m, null);
   });
 });

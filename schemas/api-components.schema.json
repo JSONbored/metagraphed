@@ -17389,6 +17389,34 @@
               "null"
             ]
           },
+          "alpha_price_change_1d": {
+            "description": "Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots. Null when history is insufficient (#7227).",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_change_1h": {
+            "description": "Signed %-change in alpha_price_tao over ~1 hour. Always null while listings derive from daily subnet_snapshots (intraday OHLC is a separate source); kept for a stable schema shape (#7227).",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_change_1m": {
+            "description": "Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (same window as trajectory's 30d delta). Null when history is insufficient (#7227).",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_change_7d": {
+            "description": "Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots. Null when history is insufficient (#7227).",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "alpha_price_tao": {
             "type": [
               "number",

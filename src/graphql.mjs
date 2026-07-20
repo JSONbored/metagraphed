@@ -709,7 +709,7 @@ export const SDL = `
     account_history(ss58: String!, netuid: Int, from: String, to: String, limit: Int, offset: Int, cursor: String): AccountHistory!
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
-    "Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom), composed live from the registry profiles projection plus D1 health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards."
+    "Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d), composed live from the registry profiles projection plus D1 health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards."
     registry_leaderboards(board: String, limit: Int): RegistryLeaderboards!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
     subnet_movers(window: String, sort: String, limit: Int): SubnetMovers!
@@ -906,6 +906,14 @@ export const SDL = `
     alpha_price_tao: Float
     alpha_market_cap_tao: Float
     alpha_fdv_tao: Float
+    "Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227)."
+    alpha_price_change_1h: Float
+    "Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227)."
+    alpha_price_change_1d: Float
+    "Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227)."
+    alpha_price_change_7d: Float
+    "Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227)."
+    alpha_price_change_1m: Float
     registration_allowed: Boolean
     registration_cost_tao: Float
     open_slots: Int
@@ -2127,6 +2135,8 @@ export const SDL = `
     cheapest_registration: [OpportunityEntry!]!
     highest_emission: [OpportunityEntry!]!
     validator_headroom: [OpportunityEntry!]!
+    biggest_alpha_gain_1d: [OpportunityEntry!]!
+    biggest_alpha_gain_7d: [OpportunityEntry!]!
   }
 
   type OpportunityEntry {
@@ -2143,6 +2153,9 @@ export const SDL = `
     miner_count: Int
     validator_headroom: Int
     max_validators: Int
+    alpha_price_tao: Float
+    alpha_price_change_1d: Float
+    alpha_price_change_7d: Float
   }
 
   type Compare {
@@ -6225,6 +6238,8 @@ const rootValue = {
       cheapest_registration: boards["cheapest-registration"] || [],
       highest_emission: boards["highest-emission"] || [],
       validator_headroom: boards["validator-headroom"] || [],
+      biggest_alpha_gain_1d: boards["biggest-alpha-gain-1d"] || [],
+      biggest_alpha_gain_7d: boards["biggest-alpha-gain-7d"] || [],
     };
   },
 

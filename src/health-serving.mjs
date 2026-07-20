@@ -866,6 +866,33 @@ const ECONOMIC_BOARD_SPECS = [
     // More emission per open permit breaks ties.
     tiebreak: (a, b) => (b.emission_share ?? -1) - (a.emission_share ?? -1),
   },
+  {
+    // Biggest 1-day alpha-price gainers (#7227) — sort key for "which subnet
+    // moved most today" without a per-subnet /trajectory round-trip.
+    key: "biggest-alpha-gain-1d",
+    direction: "desc",
+    metric: (row) => finiteOrNull(row.alpha_price_change_1d),
+    project: (row, change) => ({
+      alpha_price_change_1d: change,
+      alpha_price_tao: finiteOrNull(row.alpha_price_tao),
+      emission_share: finiteOrNull(row.emission_share),
+    }),
+    eligible: (entry) => entry.alpha_price_change_1d > 0,
+    tiebreak: (a, b) => (b.alpha_price_tao ?? -1) - (a.alpha_price_tao ?? -1),
+  },
+  {
+    // Biggest 7-day alpha-price gainers (#7227).
+    key: "biggest-alpha-gain-7d",
+    direction: "desc",
+    metric: (row) => finiteOrNull(row.alpha_price_change_7d),
+    project: (row, change) => ({
+      alpha_price_change_7d: change,
+      alpha_price_tao: finiteOrNull(row.alpha_price_tao),
+      emission_share: finiteOrNull(row.emission_share),
+    }),
+    eligible: (entry) => entry.alpha_price_change_7d > 0,
+    tiebreak: (a, b) => (b.alpha_price_tao ?? -1) - (a.alpha_price_tao ?? -1),
+  },
 ];
 
 export const ECONOMIC_LEADERBOARD_BOARDS = ECONOMIC_BOARD_SPECS.map(

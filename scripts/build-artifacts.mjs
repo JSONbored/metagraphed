@@ -1338,12 +1338,18 @@ await writeJson(artifactFile("coverage.json"), coverage);
 const economicsByNetuid = new Map(
   chainSubnets.map((subnet) => [subnet.netuid, subnet.economics || null]),
 );
+// #7227: optional alpha-price history for inline %-change fields (null when
+// DATABASE_URL is unset, e.g. CI without the indexer Postgres).
+const { loadAlphaPriceHistoryByNetuid } =
+  await import("./lib/load-alpha-price-history.mjs");
+const priceHistoryByNetuid = await loadAlphaPriceHistoryByNetuid();
 const economics = buildEconomicsArtifact({
   subnets: mergedSubnets,
   economicsByNetuid,
   generatedAt,
   network: nativeSnapshot.network,
   capturedAt: nativeSnapshot.captured_at,
+  priceHistoryByNetuid,
 });
 economics.contract_version = contractVersion;
 await writeJson(artifactFile("economics.json"), economics);

@@ -3633,6 +3633,10 @@
             "enum": [
               "alpha_fdv_tao",
               "alpha_market_cap_tao",
+              "alpha_price_change_1d",
+              "alpha_price_change_1h",
+              "alpha_price_change_1m",
+              "alpha_price_change_7d",
               "alpha_price_tao",
               "block",
               "emission_share",
@@ -9067,7 +9071,7 @@
     {
       "artifact_path": "/metagraph/registry/leaderboards.json",
       "cache": "standard",
-      "description": "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
+      "description": "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d. Omit `board` for all boards.",
       "id": "registry-leaderboards",
       "method": "GET",
       "path": "/api/v1/registry/leaderboards",
@@ -9088,7 +9092,9 @@
               "open-slots",
               "cheapest-registration",
               "highest-emission",
-              "validator-headroom"
+              "validator-headroom",
+              "biggest-alpha-gain-1d",
+              "biggest-alpha-gain-7d"
             ],
             "type": "string"
           }

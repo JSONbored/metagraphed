@@ -23,6 +23,7 @@ import {
   repoRoot,
   stableStringify,
 } from "./lib.mjs";
+import { loadAlphaPriceHistoryByNetuid } from "./lib/load-alpha-price-history.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
 import { shouldPublishEconomics } from "./economics-floor.mjs";
@@ -40,12 +41,17 @@ for (const subnet of native.subnets || []) {
   if (subnet.economics) economicsByNetuid.set(subnet.netuid, subnet.economics);
 }
 
+// #7227: bake alpha_price_change_* from subnet_snapshots when DATABASE_URL is
+// present (indexer box). Missing DB → null change fields (schema-stable).
+const priceHistoryByNetuid = await loadAlphaPriceHistoryByNetuid();
+
 const economics = buildEconomicsArtifact({
   subnets,
   economicsByNetuid,
   generatedAt: buildTimestamp(),
   network: native.network,
   capturedAt: native.captured_at,
+  priceHistoryByNetuid,
 });
 // Match build-artifacts: economics.json carries the contract stamp, and
 // resolveLiveEconomics rejects an off-contract blob (→ R2 fallback).
