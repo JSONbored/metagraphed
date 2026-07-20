@@ -147,6 +147,9 @@ export const R2_ONLY_PATTERNS = [
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/subnets\/(?:\d+|\{netuid\})\/history\.json$/,
   // Live TAO balance query (#1818): computed from RPC at request time, never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/balance\.json$/,
+  // Live root-claim current state (#7229): computed from RPC at request time,
+  // never a static file.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/root-claim\.json$/,
   // Live child-hotkey delegation graph (#6723): computed from RPC at request
   // time, never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/children\.json$/,

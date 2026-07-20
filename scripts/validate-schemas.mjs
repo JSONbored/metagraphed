@@ -91,6 +91,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "account-positions",
   "account-subnet-position-history",
   "account-balance",
+  "account-root-claim",
   "account-children",
   "account-parents",
   "account-identity",
