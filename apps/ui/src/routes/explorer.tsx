@@ -39,6 +39,7 @@ import {
   chainTurnoverQuery,
   chainStakeTransfersQuery,
   chainAxonRemovalsQuery,
+  chainIdleStakeQuery,
   chainTransferPairsQuery,
   chainTransfersQuery,
   economicsTrendsQuery,
@@ -54,6 +55,7 @@ import type {
   ChainTurnover,
   EconomicsTrends,
   ChainAxonRemovals,
+  ChainIdleStake,
   ChainRegistrations,
   ChainServing,
   ChainPrometheus,
@@ -813,6 +815,98 @@ function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
 }
 
 /**
+ * Network-wide idle-stake rollup (#6994) — subnets ranked by stake delegated to
+ * hotkeys currently earning zero dividends (no permit / zero-weight outcome).
+ * Chain-direct: GET /api/v1/chain/idle-stake.
+ */
+function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
+  const totalIdleHotkeys = idleStake.subnets.reduce(
+    (sum, s) => sum + (s.idle_neuron_count ?? 0),
+    0,
+  );
+  return (
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Idle stake
+          </h2>
+          <p className="mt-1 font-mono text-[11px] text-ink-muted">
+            Stake delegated to hotkeys currently earning zero dividends
+          </p>
+        </div>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(idleStake.subnet_count)} subnets
+        </span>
+      </div>
+
+      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+        <StatTile
+          icon={Coins}
+          eyebrow="Total idle stake"
+          value={formatTao(idleStake.total_idle_stake_tao)}
+          hint="network-wide, zero-dividend"
+          tone="accent"
+        />
+        <StatTile
+          icon={Coins}
+          eyebrow="Idle subnets"
+          value={formatNumber(idleStake.subnet_count)}
+          hint="with idle stake"
+        />
+        <StatTile
+          icon={Coins}
+          eyebrow="Idle hotkeys"
+          value={formatNumber(totalIdleHotkeys)}
+          hint="earning zero dividends"
+        />
+      </div>
+
+      {idleStake.subnets.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Subnet</th>
+                <th className={`${TH} text-right`}>Idle stake</th>
+                <th className={`${TH} text-right`}>Idle hotkeys</th>
+                <th className={`${TH} text-right`}>Neurons</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {idleStake.subnets.map((s) => (
+                <tr key={s.netuid} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: s.netuid }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      SN{s.netuid}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatTao(s.idle_stake_tao)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatNumber(s.idle_neuron_count)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(s.neuron_count)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title="No idle stake in this snapshot yet." />
+      )}
+    </section>
+  );
+}
+
+/**
  * Network-wide neuron-registration leaderboard (#3465) — subnets ranked by
  * NeuronRegistered volume over the window. Chain-direct: GET /api/v1/chain/registrations.
  */
@@ -1242,6 +1336,7 @@ function ExplorerDashboard() {
     { data: eventMixRes },
     { data: trendsRes },
     { data: transfersRes },
+    { data: idleStakeRes },
   ] = useSuspenseQueries({
     queries: [
       chainActivityQuery(win),
@@ -1260,6 +1355,7 @@ function ExplorerDashboard() {
       chainEventsStatsQuery(),
       economicsTrendsQuery(win),
       chainTransfersQuery(win),
+      chainIdleStakeQuery(),
     ],
   });
   const activity = activityRes.data;
@@ -1278,6 +1374,7 @@ function ExplorerDashboard() {
   const eventMix = eventMixRes.data;
   const trends = trendsRes.data;
   const transfers = transfersRes.data;
+  const idleStake = idleStakeRes.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -1626,6 +1723,7 @@ function ExplorerDashboard() {
           <TransferPairsSection win={win} />
           <StakeFlowSection flow={stakeFlow} />
           <StakeMovesSection moves={stakeMoves} />
+          <NetworkIdleStakeSection idleStake={idleStake} />
           {/* stake-transfer leaderboard */}
           <section className="min-w-0 rounded-lg border border-border bg-card p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">

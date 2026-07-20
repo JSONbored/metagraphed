@@ -1711,6 +1711,35 @@ export interface SubnetRecycled {
   queried_at: string | null;
 }
 
+/** Idle stake for one subnet (#6789 backend, #6994 UI): stake delegated to a
+ *  hotkey currently earning zero dividends. idle_stake_tao is null only on a
+ *  cold/absent snapshot; a real 0 means no idle stake. */
+export interface SubnetIdleStake {
+  schema_version: number;
+  netuid: number;
+  captured_at: string | null;
+  neuron_count: number;
+  idle_neuron_count: number;
+  idle_stake_tao: number | null;
+}
+
+/** One subnet's row in the network-wide idle-stake rollup. */
+export interface ChainIdleStakeSubnet {
+  netuid: number;
+  neuron_count: number;
+  idle_neuron_count: number;
+  idle_stake_tao: number | null;
+}
+
+/** Network-wide idle-stake rollup (GET /api/v1/chain/idle-stake). */
+export interface ChainIdleStake {
+  schema_version: number;
+  captured_at: string | null;
+  subnet_count: number;
+  total_idle_stake_tao: number | null;
+  subnets: ChainIdleStakeSubnet[];
+}
+
 /** Append-only on-chain identity timeline for one subnet (#1647), newest first. */
 export interface SubnetIdentityHistory {
   schema_version: number;

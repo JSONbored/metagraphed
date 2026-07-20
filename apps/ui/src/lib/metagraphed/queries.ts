@@ -186,6 +186,9 @@ import type {
   SubnetHyperparamsHistoryEntry,
   SubnetStakeQuote,
   SubnetRecycled,
+  SubnetIdleStake,
+  ChainIdleStake,
+  ChainIdleStakeSubnet,
   SubnetIdentityHistory,
   SubnetWeightSetter,
   SubnetWeightSetters,
@@ -5241,6 +5244,78 @@ export const subnetRecycledQuery = (netuid: number) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetRecycled>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Per-subnet idle stake (#6994): stake delegated to a hotkey earning zero
+ *  dividends. Flat snapshot, no window param. */
+export const subnetIdleStakeQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-idle-stake", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/idle-stake`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+          netuid: firstFiniteNumber(d.netuid) ?? netuid,
+          captured_at: firstString(d.captured_at) ?? null,
+          neuron_count: firstFiniteNumber(d.neuron_count) ?? 0,
+          idle_neuron_count: firstFiniteNumber(d.idle_neuron_count) ?? 0,
+          idle_stake_tao: coerceFiniteNumber(d.idle_stake_tao) ?? null,
+        } as SubnetIdleStake,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetIdleStake>;
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeChainIdleStakeSubnet(raw: unknown): ChainIdleStakeSubnet | undefined {
+  if (!isRecord(raw)) return undefined;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return undefined;
+  return {
+    netuid,
+    neuron_count: firstFiniteNumber(raw.neuron_count) ?? 0,
+    idle_neuron_count: firstFiniteNumber(raw.idle_neuron_count) ?? 0,
+    idle_stake_tao: coerceFiniteNumber(raw.idle_stake_tao) ?? null,
+  };
+}
+
+export function normalizeChainIdleStake(raw: unknown): ChainIdleStake {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((s) => {
+        const normalized = normalizeChainIdleStakeSubnet(s);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    captured_at: firstString(rec.captured_at) ?? null,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    total_idle_stake_tao: coerceFiniteNumber(rec.total_idle_stake_tao) ?? null,
+    subnets,
+  };
+}
+
+/** Network-wide idle-stake rollup (#6994), sorted by idle_stake_tao desc. */
+export const chainIdleStakeQuery = () =>
+  queryOptions({
+    queryKey: k("chain-idle-stake"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainIdleStake>>("/api/v1/chain/idle-stake", {
+        signal,
+      });
+      return {
+        data: normalizeChainIdleStake(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
     },
     staleTime: STALE_MED,
   });

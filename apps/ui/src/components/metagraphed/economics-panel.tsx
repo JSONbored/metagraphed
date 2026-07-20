@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   economicsQuery,
   subnetRecycledQuery,
+  subnetIdleStakeQuery,
   subnetStakeMovesQuery,
   subnetStakeTransfersQuery,
   subnetTrajectoryQuery,
@@ -129,6 +130,33 @@ function RecycledTaoTile({ netuid }: { netuid: number }) {
   return <StatTile eyebrow="Recycled TAO" value={value} hint="cumulative · live RPC" />;
 }
 
+// #6994: stake delegated to hotkeys currently earning zero dividends (no permit
+// or zero-weight outcome) — idle capital a delegator could redeploy. idle_stake_tao
+// stays "—" (not "0") on a cold snapshot, since 0 is a real, distinct value.
+function IdleStakeTile({ netuid }: { netuid: number }) {
+  const { data: res, isPending, isError } = useQuery(subnetIdleStakeQuery(netuid));
+  const idle = res?.data.idle_stake_tao;
+  const count = res?.data.idle_neuron_count;
+  const value = isError
+    ? "—"
+    : isPending && idle == null
+      ? "…"
+      : idle == null
+        ? "—"
+        : formatTao(idle);
+  return (
+    <StatTile
+      eyebrow="Idle stake"
+      value={value}
+      hint={
+        count != null
+          ? `zero-dividend · ${formatNumber(count)} idle hotkey${count === 1 ? "" : "s"}`
+          : "zero-dividend delegated stake"
+      }
+    />
+  );
+}
+
 export function EconomicsPanel({ netuid }: { netuid: number }) {
   const { data: res, isPending } = useQuery(economicsQuery());
   const e = res?.data.find((x) => x.netuid === netuid);
@@ -202,6 +230,7 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
           hint={e.registration_allowed === false ? "closed" : "open"}
         />
         <RecycledTaoTile netuid={netuid} />
+        <IdleStakeTile netuid={netuid} />
         <StakeMovesTile netuid={netuid} />
         <StakeTransfersTile netuid={netuid} />
       </div>
