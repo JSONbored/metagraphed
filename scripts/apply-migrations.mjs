@@ -37,9 +37,10 @@
 //       normal apply path from then on).
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { repoRoot } from "./lib.mjs";
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const opts = { dryRun: false, databaseUrl: process.env.DATABASE_URL };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -51,8 +52,9 @@ function parseArgs(argv) {
   return opts;
 }
 
-async function loadMigrationFiles() {
-  const migrationsRoot = path.join(repoRoot, "migrations");
+export async function loadMigrationFiles(
+  migrationsRoot = path.join(repoRoot, "migrations"),
+) {
   const names = (await fs.readdir(migrationsRoot))
     .filter((name) => name.endsWith(".sql"))
     .sort();
@@ -63,6 +65,16 @@ async function loadMigrationFiles() {
       sql: await fs.readFile(path.join(migrationsRoot, name), "utf8"),
     })),
   );
+}
+
+// The idempotency guard: the migrations whose version isn't already recorded in
+// schema_migrations, preserving loadMigrationFiles' order. Applying twice is a
+// no-op because the second run sees every version already applied and returns
+// []. Pulled out of main() as a pure function so the "what runs on this pass"
+// decision is testable without a live database.
+export function pendingMigrations(migrations, appliedVersions) {
+  const applied = new Set(appliedVersions);
+  return migrations.filter((m) => !applied.has(m.version));
 }
 
 async function main() {
@@ -133,8 +145,10 @@ async function main() {
     }
 
     const appliedRows = await sql`SELECT version FROM schema_migrations`;
-    const applied = new Set(appliedRows.map((r) => r.version));
-    const pending = migrations.filter((m) => !applied.has(m.version));
+    const pending = pendingMigrations(
+      migrations,
+      appliedRows.map((r) => r.version),
+    );
 
     if (pending.length === 0) {
       console.log(
@@ -167,7 +181,14 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
-});
+// Only run the apply when invoked as a CLI (node scripts/apply-migrations.mjs),
+// not when imported for unit testing — importing must not open a DB connection.
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
+}
