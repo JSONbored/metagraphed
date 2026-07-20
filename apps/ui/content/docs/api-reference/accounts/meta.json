@@ -17,6 +17,7 @@
     "account-positions",
     "account-prometheus",
     "account-registrations",
+    "account-root-claim",
     "account-serving",
     "account-stake-flow",
     "account-stake-moves",
