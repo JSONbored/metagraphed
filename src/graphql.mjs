@@ -26,6 +26,7 @@ import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.mjs";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.mjs";
+import { providerEndpointsArtifactPath } from "./provider-endpoints-mcp.mjs";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_WINDOWS,
@@ -680,6 +681,8 @@ export const SDL = `
     netuids: [Int]!
     "The subnets this provider operates surfaces on."
     subnets: [Subnet!]!
+    "Endpoint/resource registry rows this provider operates, with their probe-derived status/latency. Resolves to an empty list (never null) when the provider has no baked endpoint catalog. Mirrors GET /api/v1/providers/{slug}/endpoints."
+    endpoints: [Endpoint!]!
   }
 
   "One adapter-backed public metrics snapshot. snapshot and extensions are opaque JSON -- their shape is adapter-specific. Mirrors GET /api/v1/adapters/{slug}'s data envelope."
@@ -3986,6 +3989,7 @@ function providerNode(provider) {
     ...provider,
     netuids,
     subnets: (_args, context) => loadProviderSubnets(context, netuids),
+    endpoints: (_args, context) => loadProviderEndpoints(context, provider?.id),
   };
 }
 
@@ -4014,6 +4018,18 @@ async function loadProviderSubnets(context, netuids) {
     .map((netuid) => byNetuid.get(netuid))
     .filter(Boolean)
     .map((row) => subnetNode(row));
+}
+
+// #7175: one provider's endpoint catalog. Unlike Subnet.endpoints (which
+// filters the global endpoints artifact by netuid), providers have their own
+// baked per-slug artifact -- the same one GET /api/v1/providers/{slug}/endpoints
+// and the list_provider_endpoints MCP tool read, via the shared path helper. A
+// missing or cold artifact resolves to an empty list, never null, matching the
+// non-null [Endpoint!]! contract and provider's schema-stable convention.
+async function loadProviderEndpoints(context, slug) {
+  if (typeof slug !== "string" || !slug) return [];
+  const data = await loadArtifact(context, providerEndpointsArtifactPath(slug));
+  return Array.isArray(data?.endpoints) ? data.endpoints : [];
 }
 
 // --- Resolvers ---

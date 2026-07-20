@@ -6304,6 +6304,66 @@ describe("graphql — agent_resources (#6987, baked AI-resources index)", () => 
   });
 });
 
+describe("graphql — provider.endpoints (#7175, per-provider endpoint catalog)", () => {
+  const providerFixture = {
+    "/metagraph/providers/acme.json": {
+      provider: { id: "acme", name: "Acme", netuids: [] },
+    },
+  };
+
+  test("resolves the provider's endpoint rows from its baked artifact", async () => {
+    const env = fixtureEnv({
+      ...providerFixture,
+      "/metagraph/providers/acme/endpoints.json": {
+        generated_at: "2026-07-20T00:00:00.000Z",
+        endpoints: [
+          { id: "ep-1", kind: "subtensor-rpc", status: "ok", netuid: 1 },
+          { id: "ep-2", kind: "docs", status: "warn", netuid: 2 },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ provider(id: "acme") { id endpoint_count endpoints { id kind status netuid } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.provider.endpoints, [
+      { id: "ep-1", kind: "subtensor-rpc", status: "ok", netuid: 1 },
+      { id: "ep-2", kind: "docs", status: "warn", netuid: 2 },
+    ]);
+  });
+
+  test("resolves to an empty list (never null) when no endpoint catalog is baked", async () => {
+    const env = fixtureEnv(providerFixture);
+    const { status, body } = await gql(
+      '{ provider(id: "acme") { endpoints { id } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.provider.endpoints, []);
+  });
+
+  test("ignores a malformed endpoints payload rather than erroring", async () => {
+    const env = fixtureEnv({
+      ...providerFixture,
+      "/metagraph/providers/acme/endpoints.json": { endpoints: "not-an-array" },
+    });
+    const { status, body } = await gql(
+      '{ provider(id: "acme") { endpoints { id } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.provider.endpoints, []);
+  });
+
+  test("provider.endpoints is weighted as a relationship fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.endpoints, 5);
+  });
+});
+
 describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
