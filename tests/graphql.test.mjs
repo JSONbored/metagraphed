@@ -6185,6 +6185,189 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
   });
 });
 
+describe("graphql — discovery parity (#6989, search/domains/compare_validators)", () => {
+  const HOTKEY_A = "5FnPunMdSFTr8swMhMTdSGFqiZAJTBEDaAgTmrKfSpvRQyaR";
+  const HOTKEY_B = "5CXRfP2ZfvGCe8EQoZnjuBVUkado1RyfHf1zPTMhVpvSJHnp";
+
+  test("search pages the baked full index", async () => {
+    const env = fixtureEnv({
+      "/metagraph/search.json": {
+        documents: [
+          { id: "subnet:1", type: "subnet", title: "Alpha", tokens: "a b" },
+          { id: "subnet:2", type: "subnet", title: "Beta", tokens: "c d" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      "{ search(limit: 1) { documents total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const s = body.data.search;
+    assert.equal(s.total, 2);
+    assert.equal(s.documents.length, 1);
+    assert.equal(s.documents[0].id, "subnet:1");
+    // The full index keeps the per-document token blob.
+    assert.equal(s.documents[0].tokens, "a b");
+    assert.ok(s.next_cursor);
+  });
+
+  test("search_index serves the slim artifact (documents without tokens)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/search-index.json": {
+        documents: [
+          { id: "subnet:1", type: "subnet", title: "Alpha" },
+          { id: "subnet:2", type: "subnet", title: "Beta" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      "{ search_index(limit: 1) { documents total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.search_index.total, 2);
+    assert.equal(body.data.search_index.documents.length, 1);
+    // The slim index drops the per-document token blob the full index keeps.
+    assert.equal(body.data.search_index.documents[0].tokens, undefined);
+    assert.ok(body.data.search_index.next_cursor);
+  });
+
+  test("search degrades to an empty page on a cold artifact", async () => {
+    const { status, body } = await gql("{ search { documents total } }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.search, { documents: [], total: 0 });
+  });
+
+  test("domains rolls up every tag in the fixed taxonomy", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 1, name: "A", categories: ["agents"] }],
+      },
+      "/metagraph/economics.json": {
+        subnets: [{ netuid: 1, total_stake_tao: 100, emission_share: 0.5 }],
+      },
+    });
+    const { status, body } = await gql(
+      "{ domains { schema_version domain_count domains { domain subnet_count netuids total_stake_tao } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const d = body.data.domains;
+    assert.equal(d.schema_version, 1);
+    assert.equal(d.domain_count, 14);
+    assert.equal(d.domains.length, 14);
+    const agents = d.domains.find((row) => row.domain === "agents");
+    assert.ok(agents, "expected an agents rollup");
+  });
+
+  test("domain_summary rolls up one tag", async () => {
+    const { status, body } = await gql(
+      '{ domain_summary(tag: "agents") { schema_version domain subnet_count netuids total_stake_tao total_emission_share emission_concentration } }',
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const s = body.data.domain_summary;
+    assert.equal(s.domain, "agents");
+    assert.equal(s.subnet_count, 0);
+    assert.deepEqual(s.netuids, []);
+    assert.equal(s.emission_concentration, null);
+  });
+
+  test("domain_summary rejects a tag outside the fixed taxonomy", async () => {
+    const { body } = await gql(
+      '{ domain_summary(tag: "not-a-domain") { domain } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/tag must be one of/i.test(body.errors[0].message));
+    assert.equal(body.data?.domain_summary ?? null, null);
+  });
+
+  test("compare_validators places validators side by side (cold tier)", async () => {
+    const { status, body } = await gql(
+      `{ compare_validators(hotkeys: ["${HOTKEY_A}", "${HOTKEY_B}"]) {
+          schema_version netuid validator_count
+          validators { hotkey total_stake_tao subnet_count subnet_context }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const c = body.data.compare_validators;
+    assert.equal(c.netuid, null);
+    assert.equal(c.validator_count, 2);
+    assert.equal(c.validators[0].hotkey, HOTKEY_A);
+    assert.equal(c.validators[1].hotkey, HOTKEY_B);
+    assert.equal(c.validators[0].subnet_context, null);
+  });
+
+  test("compare_validators fetches each hotkey from the Postgres tier", async () => {
+    const paths = [];
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          paths.push(new URL(req.url).pathname);
+          return Response.json({
+            schema_version: 1,
+            hotkey: HOTKEY_A,
+            total_stake_tao: 42,
+            subnets: [],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ compare_validators(hotkeys: ["${HOTKEY_A}"], netuid: 3) { netuid validator_count validators { hotkey total_stake_tao } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(paths.length, 1);
+    assert.ok(paths[0].endsWith(`/validators/${HOTKEY_A}`));
+    assert.equal(body.data.compare_validators.netuid, 3);
+    assert.equal(
+      body.data.compare_validators.validators[0].total_stake_tao,
+      42,
+    );
+  });
+
+  test("compare_validators rejects a malformed hotkey list", async () => {
+    const { body } = await gql(
+      '{ compare_validators(hotkeys: ["nope"]) { validator_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/hotkeys must be/i.test(body.errors[0].message));
+  });
+
+  test("compare_validators rejects an empty hotkey list", async () => {
+    const { body } = await gql(
+      "{ compare_validators(hotkeys: []) { validator_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/hotkeys must be/i.test(body.errors[0].message));
+  });
+
+  test("compare_validators rejects a negative netuid", async () => {
+    const { body } = await gql(
+      `{ compare_validators(hotkeys: ["${HOTKEY_A}"], netuid: -1) { validator_count } }`,
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+  });
+
+  test("the discovery fields are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.search, 5);
+    assert.equal(FIELD_COMPLEXITY.search_index, 5);
+    assert.equal(FIELD_COMPLEXITY.domains, 5);
+    assert.equal(FIELD_COMPLEXITY.domain_summary, 5);
+    assert.equal(FIELD_COMPLEXITY.compare_validators, 5);
+  });
+});
+
 describe("graphql — agent_resources (#6987, baked AI-resources index)", () => {
   test("resolves the baked AI-resources index", async () => {
     const env = fixtureEnv({

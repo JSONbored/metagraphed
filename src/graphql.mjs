@@ -131,8 +131,10 @@ import {
 } from "./health-serving.mjs";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.mjs";
 import {
+  COMPARE_VALIDATORS_MAX,
   loadCompareSubnets,
   loadSubnetHealthTrends,
+  parseCompareHotkeyList,
   loadSubnetPercentiles,
   loadSubnetUptime,
   loadSubnetIncidents,
@@ -166,10 +168,13 @@ import {
   buildNeuronDetail,
   buildSubnetValidators,
   buildValidatorDetail,
+  composeValidatorComparison,
   overlayFeaturedValidators,
 } from "./metagraph-neurons.mjs";
 import { buildAlphaVolume } from "./alpha-volume.mjs";
 import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.mjs";
+import { buildDomainOverview, buildDomainSummary } from "./domain-summary.mjs";
+import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import {
   buildSubnetOhlc,
   OHLC_INTERVALS,
@@ -402,6 +407,16 @@ export const SDL = `
     subnet_volume(netuid: Int!): SubnetVolume!
     "The machine-readable AI-resources index: the copyable agent prompt (/agent.md), MCP server install metadata and tool listing, the Bittensor skill, llms.txt, OpenAPI, and links to the agent-facing APIs. Use it to bootstrap an agent integration before calling the catalog/search fields. Null when the index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_agent_resources MCP/REST shape. Mirrors GET /api/v1/agent-resources."
     agent_resources: JSON
+    "The full compact search index: one document per subnet/surface/provider/doc, each with its id, type, title, subtitle, url, and the per-document token blob that widens server-side recall. Documents are heterogeneous by type, so each is passed through as opaque JSON. Mirrors GET /api/v1/search."
+    search(limit: Int, cursor: String): SearchDocumentList!
+    "The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Mirrors GET /api/v1/search-index."
+    search_index(limit: Int, cursor: String): SearchDocumentList!
+    "The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains."
+    domains: DomainOverview!
+    "One domain/capability tag's own rollup. tag must be one of the 14 fixed domain tags (the same enum ?domain= validates on subnets); an unknown tag is a BAD_USER_INPUT error. Mirrors GET /api/v1/domains/{tag}/summary."
+    domain_summary(tag: String!): DomainSummary!
+    "Several validators side by side for a stake/delegate decision: each hotkey's take, estimated APY, nominator count, identity, and cross-subnet stake/emission/trust aggregates. hotkeys takes 1-16 distinct SS58 addresses (a real GraphQL list, like the sibling compare field's netuids, rather than REST's comma-separated string); the optional netuid adds each validator's membership row in that subnet. The validator equivalent of the compare field. Mirrors GET /api/v1/compare/validators."
+    compare_validators(hotkeys: [String!]!, netuid: Int): ValidatorComparison!
     "One subnet's alpha-price OHLC candles bucketed by interval (1h or 1d, default 1h) over the trailing days window (default 90, max 365), from the same executed-trade stream subnet_volume reads. A subnet with no trades resolves to a schema-stable empty candle list, never null. Mirrors GET /api/v1/subnets/{netuid}/ohlc."
     subnet_ohlc(netuid: Int!, interval: String, days: Int): SubnetOhlc!
     "A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
@@ -2333,6 +2348,59 @@ export const SDL = `
     surfaces: JSON!
   }
 
+  type SearchDocumentList {
+    "Heterogeneous per-type documents (subnet/surface/provider/doc), passed through verbatim as opaque JSON."
+    documents: [JSON!]!
+    total: Int!
+    next_cursor: String
+  }
+
+  "One domain/capability tag's rollup (#6989). Mirrors GET /api/v1/domains/{tag}/summary."
+  type DomainSummary {
+    schema_version: Int!
+    domain: String!
+    subnet_count: Int!
+    netuids: [Int!]!
+    total_stake_tao: Float!
+    total_emission_share: Float!
+    "Within-domain emission HHI; null when the domain has no members."
+    emission_concentration: Float
+  }
+
+  "The per-domain rollup overview across the fixed capability taxonomy (#6989). Mirrors GET /api/v1/domains."
+  type DomainOverview {
+    schema_version: Int!
+    domain_count: Int!
+    domains: [DomainSummary!]!
+  }
+
+  type ComparedValidator {
+    hotkey: String!
+    coldkey: String
+    "The coldkey's self-declared on-chain identity; opaque JSON, matching the REST/MCP shape."
+    coldkey_identity: JSON
+    take: Float
+    apy_estimate: Float
+    apy_estimate_eligible_subnet_count: Int!
+    nominator_count: Int
+    total_stake_tao: Float!
+    total_emission_tao: Float!
+    avg_validator_trust: Float
+    max_validator_trust: Float
+    subnet_count: Int!
+    "This validator's membership row in the requested netuid; null when netuid was omitted or it has no permit there. Opaque JSON, matching the REST/MCP shape."
+    subnet_context: JSON
+  }
+
+  "Several validators placed side by side (#6989). Mirrors GET /api/v1/compare/validators."
+  type ValidatorComparison {
+    schema_version: Int!
+    "The optional subnet context the comparison was scoped to."
+    netuid: Int
+    validator_count: Int!
+    validators: [ComparedValidator!]!
+  }
+
   "One subnet's rolling 24h alpha trading volume (#6979). Mirrors GET /api/v1/subnets/{netuid}/volume' data envelope."
   type SubnetVolume {
     schema_version: Int!
@@ -3476,6 +3544,11 @@ export const FIELD_COMPLEXITY = {
   subnet_health_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_percentiles: RELATIONSHIP_FIELD_COMPLEXITY,
   agent_resources: RELATIONSHIP_FIELD_COMPLEXITY,
+  search: RELATIONSHIP_FIELD_COMPLEXITY,
+  search_index: RELATIONSHIP_FIELD_COMPLEXITY,
+  domains: RELATIONSHIP_FIELD_COMPLEXITY,
+  domain_summary: RELATIONSHIP_FIELD_COMPLEXITY,
+  compare_validators: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_volume: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_ohlc: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_quote: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3770,6 +3843,8 @@ const ARTIFACT = {
   surfaces: "/metagraph/surfaces.json",
   endpoints: "/metagraph/endpoints.json",
   profiles: "/metagraph/profiles.json",
+  search: "/metagraph/search.json",
+  searchIndex: "/metagraph/search-index.json",
 };
 const LIVE_HEALTH_KEY = "live:health";
 const LIVE_ECONOMICS_KEY = "live:economics";
@@ -5058,6 +5133,89 @@ const rootValue = {
       summary: data.summary ?? null,
       surfaces: data.surfaces ?? [],
     };
+  },
+
+  search({ limit, cursor }, context) {
+    // Same baked search artifact + list-window the REST route serves, paged
+    // through the shared listPage helper the other artifact lists use.
+    return listPage(context, ARTIFACT.search, "documents", {
+      limit,
+      cursor,
+      resultKey: "documents",
+      keyFn: (d) => d.id,
+    });
+  },
+
+  search_index({ limit, cursor }, context) {
+    // The slim companion: identical documents minus the per-document token
+    // blobs, served from its own artifact exactly as REST serves it.
+    return listPage(context, ARTIFACT.searchIndex, "documents", {
+      limit,
+      cursor,
+      resultKey: "documents",
+      keyFn: (d) => d.id,
+    });
+  },
+
+  async domains(_args, context) {
+    // Composed live from the subnets index + economics tier (no static file),
+    // via the same buildDomainOverview the REST route calls.
+    const [subnetRows, economicsRows] = await Promise.all([
+      loadRows(context, ARTIFACT.subnets, "subnets"),
+      loadEconomicsRows(context),
+    ]);
+    return buildDomainOverview(subnetRows, economicsRows);
+  },
+
+  async domain_summary({ tag }, context) {
+    // The same fixed 14-tag enum ?domain= validates on subnets -- an unknown
+    // tag is a GraphQL BAD_USER_INPUT error, not an empty rollup.
+    if (!DOMAIN_TAGS.includes(tag)) {
+      throw new GraphQLError(`tag must be one of: ${DOMAIN_TAGS.join(", ")}.`, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const [subnetRows, economicsRows] = await Promise.all([
+      loadRows(context, ARTIFACT.subnets, "subnets"),
+      loadEconomicsRows(context),
+    ]);
+    return buildDomainSummary(tag, subnetRows, economicsRows);
+  },
+
+  async compare_validators({ hotkeys, netuid }, context) {
+    // Same parse/validate contract the REST route + compare_validators MCP
+    // tool share: 1..COMPARE_VALIDATORS_MAX distinct SS58 addresses.
+    const parsed = parseCompareHotkeyList(hotkeys);
+    if (!parsed) {
+      throw new GraphQLError(
+        `hotkeys must be a non-empty list of 1-${COMPARE_VALIDATORS_MAX} distinct valid SS58 validator addresses.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (netuid != null && (!Number.isInteger(netuid) || netuid < 0)) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // One detail load per hotkey via the exact Postgres-tier-or-empty path the
+    // validator detail field uses -- no new data source, just the same
+    // cross-subnet aggregate fetched per compared validator, then projected
+    // side by side. Sequential to keep the request pattern identical to the
+    // REST/MCP fan-out.
+    const details = [];
+    for (const hotkey of parsed) {
+      details.push(
+        (await tryPostgresTier(
+          context.env,
+          postgresTierRequest(
+            context,
+            `/api/v1/validators/${encodeURIComponent(hotkey)}`,
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildValidatorDetail([], hotkey),
+      );
+    }
+    return composeValidatorComparison(details, { netuid: netuid ?? null });
   },
 
   async agent_resources(_args, context) {
