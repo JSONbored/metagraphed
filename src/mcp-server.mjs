@@ -405,6 +405,7 @@ import {
   SURFACE_ID_PATTERN,
 } from "./surface-verify.mjs";
 import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
+import { callSubnetSurface } from "./call-subnet-surface.mjs";
 import {
   ECONOMIC_LEADERBOARD_BOARDS,
   formatLeaderboards,
@@ -10983,6 +10984,90 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "call_subnet_surface",
+    title: "Call a subnet's live API and return its response",
+    description:
+      "Actually call a catalogued no-auth surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. Only the curated catalogued URL is ever fetched (never an arbitrary URL), using the surface's own declared probe method (GET/HEAD). Restricted to surfaces with auth_required:false; an authenticated surface is rejected outright (Phase 3, not yet built). The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. This is MCP execute Phase 1 (#7014) -- path/method beyond the surface's own declared url is Phase 2, not yet built.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        surface_id: {
+          type: "string",
+          description:
+            'Surface id, stable surface_key, or deprecated surface_id alias to call, e.g. "7:subnet-api:x", "nodies-finney-rpc", or "srf-4d92fe6304cbb843".',
+        },
+        query: {
+          type: "object",
+          description:
+            "Optional query parameters merged onto the surface's curated URL, for surfaces whose notes/schema indicate they accept them.",
+          additionalProperties: { type: ["string", "number", "boolean"] },
+        },
+      },
+      required: ["surface_id"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      if (typeof args?.surface_id !== "string" || !args.surface_id) {
+        throw toolError("invalid_params", "surface_id is required.");
+      }
+      if (!SURFACE_ID_PATTERN.test(args.surface_id)) {
+        throw toolError("invalid_params", "Invalid surface_id format.");
+      }
+      const surface = await findCataloguedSurface(ctx, args.surface_id);
+      if (!surface) {
+        throw toolError(
+          "not_found",
+          `No catalogued surface with id, key, or deprecated id "${args.surface_id}".`,
+        );
+      }
+      if (surface.auth_required) {
+        throw toolError(
+          "auth_required",
+          "This surface requires a credential this tool does not yet support (MCP execute Phase 3). Use list_subnet_apis / how_do_i_call to see how to call it directly.",
+        );
+      }
+      if (surface.probe?.enabled === false) {
+        throw toolError(
+          "surface_unavailable",
+          "This surface is flagged as not safe to call automatically (probe.enabled:false).",
+        );
+      }
+      const result = await callSubnetSurface(surface, {
+        query:
+          args.query && typeof args.query === "object" ? args.query : undefined,
+        fetchImpl: globalThis.fetch,
+        isUnsafeUrl: workerResolvedUrlSafetyGuard({
+          fetchImpl: globalThis.fetch,
+        }),
+      });
+      if (!result.ok) {
+        if (result.unsafe_url || result.private_redirect_blocked) {
+          throw toolError(
+            "forbidden",
+            "This surface's URL is not safe to call (private/loopback address or an unsafe redirect target).",
+          );
+        }
+        if (result.error?.startsWith("unsupported content-type")) {
+          throw toolError("unsupported_content_type", result.error);
+        }
+        throw toolError(
+          "upstream_unavailable",
+          result.error || "The surface could not be reached.",
+        );
+      }
+      return {
+        surface_id: surface.surface_id,
+        url: result.url,
+        status_code: result.status_code,
+        content_type: result.content_type,
+        latency_ms: result.latency_ms,
+        body: result.body,
+        truncated: result.truncated,
+        ...(result.parse_error ? { parse_error: result.parse_error } : {}),
+      };
+    },
+  },
+  {
     name: "run_saved_query",
     title: "Run a curated saved query",
     description:
@@ -15205,6 +15290,21 @@ const TOOL_OUTPUT_SCHEMAS = {
       error: NULLABLE_STRING,
       probed_at: NULLABLE_STRING,
       from_cache: { type: "boolean" },
+    },
+  },
+  call_subnet_surface: {
+    type: "object",
+    additionalProperties: true,
+    required: ["surface_id", "url", "status_code", "truncated"],
+    properties: {
+      surface_id: { type: "string" },
+      url: { type: "string" },
+      status_code: { type: "integer" },
+      content_type: NULLABLE_STRING,
+      latency_ms: NULLABLE_INT,
+      body: {},
+      truncated: { type: "boolean" },
+      parse_error: NULLABLE_STRING,
     },
   },
 };
