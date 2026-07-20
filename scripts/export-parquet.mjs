@@ -87,7 +87,7 @@ function requireEnv(name) {
 // Minimal libpq escaping (backslash, single-quote) for robustness; this
 // project's generated passwords are alphanumeric-only in practice, but the
 // escaping costs nothing.
-function libpqConnString({ host, port, dbname, user, password }) {
+export function libpqConnString({ host, port, dbname, user, password }) {
   const esc = (value) => String(value).replace(/([\\'])/g, "\\$1");
   return `host=${esc(host)} port=${esc(port)} dbname=${esc(dbname)} user=${esc(user)} password=${esc(password)}`;
 }
@@ -97,7 +97,7 @@ function libpqConnString({ host, port, dbname, user, password }) {
 // during local testing printed the plaintext password to stderr). Never let
 // that reach a log/journal: attach with a scrubbed error on failure instead
 // of letting DuckDB's own message propagate.
-async function attachPostgres(connection, alias, conn) {
+export async function attachPostgres(connection, alias, conn) {
   try {
     await connection.run(
       `ATTACH '${libpqConnString(conn)}' AS ${alias} (TYPE postgres, READ_ONLY)`,
@@ -244,5 +244,9 @@ function summarize(manifest) {
   };
 }
 
-await main();
-await endSessionAndFlush();
+// Only auto-run when invoked as the CLI entry point, not when imported by the unit
+// tests (which exercise the exported libpqConnString / attachPostgres directly).
+if (import.meta.url === `file://${process.argv[1]}`) {
+  await main();
+  await endSessionAndFlush();
+}
