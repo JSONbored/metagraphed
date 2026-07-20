@@ -26,6 +26,12 @@ import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.mjs";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.mjs";
+// #7170: GraphQL parity for the changelog/contracts/health-history REST routes,
+// reusing the same loaders MCP get_changelog/get_contracts/get_health_history
+// already call -- not a reimplementation.
+import { loadChangelog } from "./changelog-mcp.mjs";
+import { loadContracts } from "./contracts-mcp.mjs";
+import { loadHealthHistory } from "./health-history-mcp.mjs";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_WINDOWS,
@@ -518,6 +524,12 @@ export const SDL = `
     lineage: JSON
     "The full catalog of monitored Bittensor base-layer RPC endpoints and their status (each endpoint's URL, network, and probe-derived health/latency), with the same live 15-minute cron RPC-pool overlay REST and MCP apply before serving. Null when the catalog has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the list_rpc_endpoints MCP/REST shape. Mirrors GET /api/v1/rpc/endpoints."
     rpc_endpoints: JSON
+    "The latest generated registry changelog: artifact added/modified/removed rows, subnet added/removed/renamed events, and coverage deltas since the previous publish. Resolves to a GraphQL error (not null) when the changelog artifact has not been baked in this environment, matching the REST route's 404 and the get_changelog MCP tool. Mirrors GET /api/v1/changelog."
+    changelog: Changelog
+    "The registry's public artifact contract metadata: every baked artifact path, storage tier, schema reference, and consumer notes. Resolves to a GraphQL error (not null) when the contracts artifact has not been baked in this environment, matching the REST route's 404 and the get_contracts MCP tool. Mirrors GET /api/v1/contracts."
+    contracts: Contracts
+    "A compact daily operational health snapshot for one UTC date (YYYY-MM-DD): per-surface status/latency plus summary incident counts from the archived health/history tier. Filter by netuid/kind/provider/status/classification, sort with sort/order, and page with limit (1-1000)/cursor. An invalid date/filter/sort/limit/cursor or a missing snapshot is a GraphQL error, not a silently substituted default. Distinct from the live health rollup and health_trends. Mirrors GET /api/v1/health/history/{date}."
+    health_history(date: String!, netuid: Int, kind: String, provider: String, status: String, classification: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): HealthHistory!
     "Global operational health rollup with per-subnet summaries."
     health: GlobalHealth
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
@@ -1801,6 +1813,42 @@ export const SDL = `
   type ProfileList {
     captured_at: String
     profiles: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type Changelog {
+    generated_at: String
+    source: String
+    notes: JSON
+    summary: JSON
+    artifacts: JSON
+    subnets: JSON
+    coverage_delta: JSON
+  }
+
+  type Contracts {
+    schema_version: Int
+    contract_version: String
+    generated_at: String
+    name: String
+    base_path: String
+    primary_domain: String
+    openapi_url: String
+    type_definitions_url: String
+    notes: JSON
+    artifacts: [JSON!]!
+  }
+
+  type HealthHistory {
+    date: String
+    summary: JSON
+    surfaces: [JSON!]!
     total: Int!
     returned: Int!
     limit: Int!
@@ -3761,6 +3809,9 @@ export const FIELD_COMPLEXITY = {
   source_health: RELATIONSHIP_FIELD_COMPLEXITY,
   lineage: RELATIONSHIP_FIELD_COMPLEXITY,
   rpc_endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
+  changelog: RELATIONSHIP_FIELD_COMPLEXITY,
+  contracts: RELATIONSHIP_FIELD_COMPLEXITY,
+  health_history: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5383,6 +5434,31 @@ const rootValue = {
     );
     const pool = await readHealthKv(context.env, KV_HEALTH_RPC_POOL);
     return pool ? mergeRpcEndpoints(staticData, pool) : staticData;
+  },
+
+  // #7170: reuse get_changelog's/get_contracts's own loaders unchanged (the same
+  // baked artifact read REST and MCP already use). Each takes { readArtifact }
+  // as the module-level storage reader -- exactly what MCP's own registrations
+  // pass. A cold/absent artifact makes the loader throw, which the graphql
+  // executor surfaces as a normal GraphQL error, matching REST's 404 and the
+  // source_snapshots convention for a missing artifact.
+  changelog(_args, context) {
+    return loadChangelog(context, { readArtifact });
+  },
+
+  contracts(_args, context) {
+    return loadContracts(context, { readArtifact });
+  },
+
+  // #7170: reuse get_health_history's own loader unchanged. It takes deps as
+  // { readArtifact } called (ctx, path) returning data-or-null -- this file's
+  // own loadArtifact has exactly that shape, so it's reused directly (like
+  // profiles' readOptionalArtifact). The loader validates its date + filters
+  // and throws invalid_params on a bad one / not_found on a missing snapshot;
+  // that throw becomes a GraphQL error, matching every other field's "an
+  // unsupported filter/sort is a GraphQL error, not a silent default".
+  health_history(args, context) {
+    return loadHealthHistory(context, args, { readArtifact: loadArtifact });
   },
 
   async health(_args, context) {

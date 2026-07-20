@@ -1575,6 +1575,215 @@ describe("graphql — source_snapshots", () => {
   });
 });
 
+// #7170: GraphQL parity for changelog/contracts/health-history, reusing the same
+// loaders MCP get_changelog/get_contracts/get_health_history already call (same
+// artifact read + error behavior as REST and MCP) rather than a GraphQL-only
+// reimplementation.
+describe("graphql — changelog", () => {
+  const CHANGELOG_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    source: "publish",
+    notes: ["one", "two"],
+    summary: { artifacts_changed: 3, subnets_changed: 1 },
+    artifacts: { added: ["adapters.json"], modified: [], removed: [] },
+    subnets: { added: [], removed: [], renamed: ["sn-7"] },
+    coverage_delta: { surfaces: 4 },
+  };
+
+  test("serves the baked changelog artifact verbatim", async () => {
+    const env = fixtureEnv({ "/metagraph/changelog.json": CHANGELOG_BLOB });
+    const { status, body } = await gql(
+      "{ changelog { generated_at source notes summary artifacts subnets coverage_delta } }",
+      env,
+    );
+    assert.equal(status, 200);
+    const changelog = body.data.changelog;
+    assert.equal(changelog.generated_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(changelog.source, "publish");
+    assert.deepEqual(changelog.notes, ["one", "two"]);
+    assert.equal(changelog.summary.artifacts_changed, 3);
+    assert.deepEqual(changelog.artifacts.added, ["adapters.json"]);
+    assert.deepEqual(changelog.subnets.renamed, ["sn-7"]);
+    assert.equal(changelog.coverage_delta.surfaces, 4);
+  });
+
+  test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ changelog { generated_at } }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data.changelog, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.changelog, 5);
+  });
+});
+
+describe("graphql — contracts", () => {
+  const CONTRACTS_BLOB = {
+    schema_version: 2,
+    contract_version: "abc123",
+    generated_at: "2026-07-01T00:00:00.000Z",
+    name: "metagraph",
+    base_path: "/metagraph",
+    primary_domain: "api.metagraph.sh",
+    openapi_url: "https://api.metagraph.sh/openapi.json",
+    type_definitions_url: "https://api.metagraph.sh/types.d.ts",
+    notes: ["read-only"],
+    artifacts: [
+      { path: "/metagraph/subnets.json", tier: "r2", schema_ref: "subnets" },
+      {
+        path: "/metagraph/changelog.json",
+        tier: "r2",
+        schema_ref: "changelog",
+      },
+    ],
+  };
+
+  test("serves the baked contracts artifact verbatim", async () => {
+    const env = fixtureEnv({ "/metagraph/contracts.json": CONTRACTS_BLOB });
+    const { status, body } = await gql(
+      "{ contracts { schema_version contract_version generated_at name base_path primary_domain openapi_url type_definitions_url notes artifacts } }",
+      env,
+    );
+    assert.equal(status, 200);
+    const contracts = body.data.contracts;
+    assert.equal(contracts.schema_version, 2);
+    assert.equal(contracts.contract_version, "abc123");
+    assert.equal(contracts.name, "metagraph");
+    assert.equal(contracts.base_path, "/metagraph");
+    assert.equal(contracts.primary_domain, "api.metagraph.sh");
+    assert.equal(
+      contracts.openapi_url,
+      "https://api.metagraph.sh/openapi.json",
+    );
+    assert.deepEqual(contracts.notes, ["read-only"]);
+    assert.equal(contracts.artifacts.length, 2);
+    assert.equal(contracts.artifacts[0].path, "/metagraph/subnets.json");
+  });
+
+  test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ contracts { schema_version } }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data.contracts, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.contracts, 5);
+  });
+});
+
+describe("graphql — health_history", () => {
+  const SURFACE_ROW = {
+    netuid: 7,
+    surface_id: "sn-7-example",
+    kind: "openapi",
+    provider: "allways",
+    status: "ok",
+    classification: "live",
+    latency_ms: 120,
+  };
+  const HISTORY_BLOB = {
+    date: "2026-07-01",
+    summary: { incident_count: 0, surface_count: 2 },
+    surfaces: [
+      SURFACE_ROW,
+      {
+        ...SURFACE_ROW,
+        netuid: 1,
+        surface_id: "sn-1-example",
+        latency_ms: 300,
+      },
+    ],
+  };
+
+  test("serves a dated snapshot and paginates its surfaces", async () => {
+    const env = fixtureEnv({
+      "/metagraph/health/history/2026-07-01.json": HISTORY_BLOB,
+    });
+    const { status, body } = await gql(
+      '{ health_history(date: "2026-07-01") { date summary surfaces total returned limit cursor next_cursor } }',
+      env,
+    );
+    assert.equal(status, 200);
+    const history = body.data.health_history;
+    assert.equal(history.date, "2026-07-01");
+    assert.equal(history.summary.surface_count, 2);
+    assert.equal(history.total, 2);
+    assert.equal(history.surfaces.length, 2);
+
+    const paged = await gql(
+      '{ health_history(date: "2026-07-01", limit: 1) { surfaces total returned next_cursor } }',
+      env,
+    );
+    assert.equal(paged.body.data.health_history.surfaces.length, 1);
+    assert.equal(paged.body.data.health_history.total, 2);
+    assert.equal(paged.body.data.health_history.returned, 1);
+    assert.ok(paged.body.data.health_history.next_cursor != null);
+  });
+
+  test("filters surfaces by netuid and sorts by latency", async () => {
+    const env = fixtureEnv({
+      "/metagraph/health/history/2026-07-01.json": HISTORY_BLOB,
+    });
+    const filtered = await gql(
+      '{ health_history(date: "2026-07-01", netuid: 1) { total surfaces } }',
+      env,
+    );
+    assert.equal(filtered.body.data.health_history.total, 1);
+    assert.equal(
+      filtered.body.data.health_history.surfaces[0].surface_id,
+      "sn-1-example",
+    );
+
+    const sorted = await gql(
+      '{ health_history(date: "2026-07-01", sort: "latency_ms", order: "desc") { surfaces sort order } }',
+      env,
+    );
+    assert.equal(sorted.body.data.health_history.surfaces[0].netuid, 1);
+    assert.equal(sorted.body.data.health_history.sort, "latency_ms");
+    assert.equal(sorted.body.data.health_history.order, "desc");
+  });
+
+  test("an invalid date is a GraphQL error, not a silent default", async () => {
+    const env = fixtureEnv({
+      "/metagraph/health/history/2026-07-01.json": HISTORY_BLOB,
+    });
+    const { body } = await gql(
+      '{ health_history(date: "not-a-day") { total } }',
+      env,
+    );
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("an unsupported filter is a GraphQL error, not a silent default", async () => {
+    const env = fixtureEnv({
+      "/metagraph/health/history/2026-07-01.json": HISTORY_BLOB,
+    });
+    const { body } = await gql(
+      '{ health_history(date: "2026-07-01", status: "alive") { total } }',
+      env,
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("surfaces a missing snapshot as a GraphQL error, matching REST/MCP", async () => {
+    const env = fixtureEnv({
+      "/metagraph/health/history/2026-07-01.json": HISTORY_BLOB,
+    });
+    const { body } = await gql(
+      '{ health_history(date: "2026-07-02") { total } }',
+      env,
+    );
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.health_history, 5);
+  });
+});
+
 // #6992: GraphQL parity for profiles, reusing list_profiles' own loader
 // unchanged (same filter/sort/page + error behavior as REST and MCP) rather
 // than a GraphQL-only reimplementation.
