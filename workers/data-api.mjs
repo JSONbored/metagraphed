@@ -7025,6 +7025,39 @@ export default {
           );
         }
 
+        // GET /api/v1/economics/alpha-price-history?days= (#7227): bulk daily
+        // alpha_price_tao series used to derive listing %-change fields. Forwarded
+        // only via tryPostgresTier from the economics serve path — not a public
+        // contract surface. days defaults to 35 (covers 1m + pad).
+        if (url.pathname === "/api/v1/economics/alpha-price-history") {
+          const daysRaw = Number(url.searchParams.get("days"));
+          const days =
+            Number.isFinite(daysRaw) && daysRaw > 0
+              ? Math.min(Math.floor(daysRaw), 120)
+              : 35;
+          const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
+            .toISOString()
+            .slice(0, 10);
+          const rows = await sql`
+          SELECT netuid, snapshot_date::text AS snapshot_date, alpha_price_tao
+          FROM subnet_snapshots
+          WHERE snapshot_date >= ${cutoff}::date
+            AND alpha_price_tao IS NOT NULL
+          ORDER BY netuid ASC, snapshot_date ASC`;
+          return json({
+            days,
+            cutoff,
+            rows: rows.map((row) => ({
+              netuid: row.netuid,
+              snapshot_date: row.snapshot_date,
+              alpha_price_tao:
+                row.alpha_price_tao === null
+                  ? null
+                  : Number(row.alpha_price_tao),
+            })),
+          });
+        }
+
         // GET /api/v1/rpc/usage?window= (#4832 gap-closure): RPC
         // reverse-proxy usage analytics -- request volume, latency p50/p95,
         // failover + error rate, cache-hit rate, per-endpoint/network

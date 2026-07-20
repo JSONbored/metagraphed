@@ -264,6 +264,7 @@ import {
   resolveLiveEconomics,
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
+import { withAlphaPriceChanges } from "../src/economics-alpha-price-enrichment.mjs";
 import {
   deriveNetuidGroupedAliases,
   derivePreviouslyKnownAs,
@@ -4041,6 +4042,16 @@ async function handleApiRequest(
   }
 
   let baseData = live ? live.data : artifact.data;
+  // #7227: attach inline alpha_price_change_* from subnet_snapshots history
+  // when the Postgres tier is available; otherwise ensure null fields.
+  if (
+    network.isDefault &&
+    matched.id === "economics" &&
+    baseData &&
+    typeof baseData === "object"
+  ) {
+    baseData = await withAlphaPriceChanges(env, request, baseData);
+  }
   // Per-subnet economics overlay (#1308): attach the live economics row so
   // /api/v1/subnets/{netuid} carries validator/miner counts, registration, stake
   // and alpha price in one call. Null-safe — a cold/stale economics tier leaves
@@ -4056,9 +4067,13 @@ async function handleApiRequest(
       env,
       contractVersion: contractVersion(env),
     });
+    let economicsBlob = liveEconomics?.data ?? null;
+    if (economicsBlob) {
+      economicsBlob = await withAlphaPriceChanges(env, request, economicsBlob);
+    }
     baseData = overlaySubnetEconomics(
       baseData,
-      liveEconomics?.data,
+      economicsBlob,
       Number(matched.params.netuid),
     );
     const aliasTarget =

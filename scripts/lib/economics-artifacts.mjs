@@ -4,6 +4,8 @@
 // the output is byte-identical to the in-lib.mjs originals. Re-exported from
 // scripts/lib.mjs so existing importers keep their import paths unchanged.
 
+import { attachAlphaPriceChanges } from "../../src/alpha-price-change.mjs";
+
 // #1009: per-subnet validator + economic entity, derived from the chain
 // snapshot's `economics` block (validator/miner counts, stake, registration
 // cost, alpha price). dTAO emission is price-weighted, so each subnet's
@@ -127,6 +129,9 @@ export function buildEconomicsArtifact({
   generatedAt,
   network = null,
   capturedAt = null,
+  // Optional Map|object of netuid → snapshot price rows for #7227 inline
+  // alpha_price_change_*; when omitted every change field is null.
+  priceHistoryByNetuid = null,
 }) {
   const numericOrZero = (value) => (typeof value === "number" ? value : 0);
   const round = (value, places) => {
@@ -186,8 +191,10 @@ export function buildEconomicsArtifact({
       (b.emission_share ?? -1) - (a.emission_share ?? -1) ||
       a.netuid - b.netuid,
   );
+  // #7227: inline multi-window alpha-price %-change (null when no history).
+  const withChanges = attachAlphaPriceChanges(rows, priceHistoryByNetuid);
   const sumField = (field) =>
-    rows.reduce((sum, row) => sum + numericOrZero(row[field]), 0);
+    withChanges.reduce((sum, row) => sum + numericOrZero(row[field]), 0);
   return {
     schema_version: 1,
     generated_at: generatedAt,
@@ -195,14 +202,15 @@ export function buildEconomicsArtifact({
     captured_at: capturedAt,
     summary: {
       subnet_count: subnets.length,
-      with_economics_count: rows.length,
-      total_stake_tao: sumFieldTaoString(rows, "total_stake_tao"),
+      with_economics_count: withChanges.length,
+      total_stake_tao: sumFieldTaoString(withChanges, "total_stake_tao"),
       total_validators: sumField("validator_count"),
       total_miners: sumField("miner_count"),
-      registration_open_count: rows.filter((row) => row.registration_allowed)
-        .length,
-      ...computeNetworkValueSummary(rows),
+      registration_open_count: withChanges.filter(
+        (row) => row.registration_allowed,
+      ).length,
+      ...computeNetworkValueSummary(withChanges),
     },
-    subnets: rows,
+    subnets: withChanges,
   };
 }

@@ -3569,7 +3569,7 @@
     {
       "artifact_path": "/metagraph/economics.json",
       "cache": "standard",
-      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token.",
+      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, registration block height, and inline alpha-price %-change over 1h/1d/7d/1m). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_price_change_1d&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token.",
       "id": "economics",
       "method": "GET",
       "path": "/api/v1/economics",
@@ -3633,6 +3633,10 @@
             "enum": [
               "alpha_fdv_tao",
               "alpha_market_cap_tao",
+              "alpha_price_change_1d",
+              "alpha_price_change_1h",
+              "alpha_price_change_1m",
+              "alpha_price_change_7d",
               "alpha_price_tao",
               "block",
               "emission_share",

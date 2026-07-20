@@ -50,6 +50,7 @@ import {
   LEADERBOARD_BOARDS,
   resolveLiveEconomics,
 } from "../../src/health-serving.mjs";
+import { withAlphaPriceChanges } from "../../src/economics-alpha-price-enrichment.mjs";
 import { DOMAIN_TAGS } from "../../src/domain-tags.mjs";
 import {
   buildDomainOverview,
@@ -445,17 +446,27 @@ async function leaderboardProfilesProjection(env, now = Date.now()) {
   return projection;
 }
 
-async function resolveEconomicsRows(env) {
+async function resolveEconomicsRows(env, request = null) {
   const live = await resolveLiveEconomics({
     readHealthKv: (e) => readEconomicsCurrentKv(e),
     env,
     contractVersion: contractVersion(env),
   });
-  if (Array.isArray(live?.data?.subnets)) return live.data.subnets;
-  const artifact = await readArtifact(env, "/metagraph/economics.json");
-  return artifact.ok && Array.isArray(artifact.data?.subnets)
-    ? artifact.data.subnets
-    : [];
+  let blob = Array.isArray(live?.data?.subnets) ? live.data : null;
+  if (!blob) {
+    const artifact = await readArtifact(env, "/metagraph/economics.json");
+    blob =
+      artifact.ok && Array.isArray(artifact.data?.subnets)
+        ? artifact.data
+        : null;
+  }
+  if (!blob) return [];
+  const enriched = await withAlphaPriceChanges(
+    env,
+    request || new Request("https://metagraph.internal/api/v1/economics"),
+    blob,
+  );
+  return Array.isArray(enriched?.subnets) ? enriched.subnets : [];
 }
 
 /**
@@ -474,10 +485,10 @@ async function resolveEconomicsRows(env) {
  */
 export async function composeLeaderboardsData(
   env,
-  { board = null, limit = 20 } = {},
+  { board = null, limit = 20, request = null } = {},
 ) {
   const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
-  const economicsRows = await resolveEconomicsRows(env);
+  const economicsRows = await resolveEconomicsRows(env, request);
 
   const meta = await readHealthMetaKv(env);
   const data = formatLeaderboards({
@@ -514,6 +525,7 @@ export async function handleLeaderboards(request, env, url) {
   const { data } = await composeLeaderboardsData(env, {
     board: requestedBoard || null,
     limit: parsedLimit.limit,
+    request,
   });
   const response = await envelopeResponse(
     request,
@@ -703,7 +715,9 @@ export async function handleCompare(request, env, url) {
       })()
     : null;
   const [economicsRows, healthRows] = await Promise.all([
-    dimensions.includes("economics") ? resolveEconomicsRows(env) : null,
+    dimensions.includes("economics")
+      ? resolveEconomicsRows(env, request)
+      : null,
     healthPromise,
   ]);
 

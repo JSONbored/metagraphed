@@ -2349,6 +2349,28 @@ describe("graphql — economics pagination", () => {
     assert.equal(second.body.data.economics.next_cursor, null);
   });
 
+  test("exposes alpha_price_change_* fields (null when snapshot history is cold)", async () => {
+    const { status, body } = await gql(
+      `{ economics(limit: 1) {
+          subnets {
+            netuid
+            alpha_price_change_1h
+            alpha_price_change_1d
+            alpha_price_change_7d
+            alpha_price_change_1m
+          }
+        } }`,
+      env(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const row = body.data.economics.subnets[0];
+    assert.equal(row.alpha_price_change_1h, null);
+    assert.equal(row.alpha_price_change_1d, null);
+    assert.equal(row.alpha_price_change_7d, null);
+    assert.equal(row.alpha_price_change_1m, null);
+  });
+
   test("prefers the fresh KV economics tier over the committed artifact", async () => {
     const env = fixtureEnv(
       // Stale committed copy — must NOT be served while the KV tier is fresh.

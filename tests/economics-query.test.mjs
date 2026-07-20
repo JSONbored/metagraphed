@@ -57,6 +57,25 @@ test("economics collection sorts by alpha_market_cap_tao with nulls last", () =>
   );
 });
 
+test("economics collection sorts by alpha_price_change_1d (#7227)", () => {
+  const changeBlob = {
+    subnets: [
+      { netuid: 1, alpha_price_change_1d: 5 },
+      { netuid: 2, alpha_price_change_1d: null },
+      { netuid: 3, alpha_price_change_1d: 20 },
+    ],
+  };
+  const url = new URL(
+    "https://x/api/v1/economics?sort=alpha_price_change_1d&order=desc",
+  );
+  const { data, error } = applyQueryFilters(changeBlob, url, "economics", []);
+  assert.equal(error, undefined);
+  assert.deepEqual(
+    data.subnets.map((s) => s.netuid),
+    [3, 1, 2],
+  );
+});
+
 test("economics collection searches by name", () => {
   const url = new URL("https://x/api/v1/economics?q=gamma");
   const { data } = applyQueryFilters(blob, url, "economics", []);

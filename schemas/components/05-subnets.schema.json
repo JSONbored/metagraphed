@@ -1485,6 +1485,22 @@
             "minimum": 0,
             "maximum": 100,
             "description": "0-100 heuristic for how easy it is for a new miner to join and earn here (registration open, free slots, low cost, active subnet). Display/ranking signal only (#1306)."
+          },
+          "alpha_price_change_1h": {
+            "type": ["number", "null"],
+            "description": "Signed %-change in alpha_price_tao over ~1 hour (#7227). Null when sub-daily snapshot history is unavailable (daily subnet_snapshots cannot resolve a 1h lookback) or the current price is missing."
+          },
+          "alpha_price_change_1d": {
+            "type": ["number", "null"],
+            "description": "Signed %-change in alpha_price_tao over ~1 day (#7227), from subnet_snapshots lookback vs the live listing price. Null on insufficient history or a zero/missing start price."
+          },
+          "alpha_price_change_7d": {
+            "type": ["number", "null"],
+            "description": "Signed %-change in alpha_price_tao over ~7 days (#7227). Null on insufficient history."
+          },
+          "alpha_price_change_1m": {
+            "type": ["number", "null"],
+            "description": "Signed %-change in alpha_price_tao over ~30 days (#7227). Null on insufficient history."
           }
         },
         "additionalProperties": false

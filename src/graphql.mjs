@@ -169,6 +169,7 @@ import {
   resolveLiveHealth,
   subnetBadgeStatus,
 } from "./health-serving.mjs";
+import { withAlphaPriceChanges } from "./economics-alpha-price-enrichment.mjs";
 import { loadSubnetProfile } from "./profiles-mcp.mjs";
 import {
   buildTopHoldersList,
@@ -906,6 +907,14 @@ export const SDL = `
     alpha_price_tao: Float
     alpha_market_cap_tao: Float
     alpha_fdv_tao: Float
+    "Signed %-change in alpha_price_tao over ~1 hour (#7227). Null when sub-daily history is unavailable."
+    alpha_price_change_1h: Float
+    "Signed %-change in alpha_price_tao over ~1 day (#7227). Null on insufficient snapshot history."
+    alpha_price_change_1d: Float
+    "Signed %-change in alpha_price_tao over ~7 days (#7227). Null on insufficient snapshot history."
+    alpha_price_change_7d: Float
+    "Signed %-change in alpha_price_tao over ~30 days (#7227). Null on insufficient snapshot history."
+    alpha_price_change_1m: Float
     registration_allowed: Boolean
     registration_cost_tao: Float
     open_slots: Int
@@ -4525,9 +4534,17 @@ function loadEconomics(context) {
       env: context.env,
       contractVersion: contractVersion(context.env),
     });
-    if (Array.isArray(live?.data?.subnets)) return live.data;
-    const res = await readArtifact(context.env, ARTIFACT.economics);
-    return res.ok ? res.data : null;
+    let data = Array.isArray(live?.data?.subnets) ? live.data : null;
+    if (!data) {
+      const res = await readArtifact(context.env, ARTIFACT.economics);
+      data = res.ok ? res.data : null;
+    }
+    if (!data) return null;
+    // #7227: same serve-time enrichment REST applies (null fields when cold).
+    const request =
+      context.request ||
+      new Request("https://metagraph.internal/api/v1/economics");
+    return withAlphaPriceChanges(context.env, request, data);
   });
 }
 

@@ -7537,6 +7537,33 @@ test("GET /api/v1/economics/trends: aggregates daily rows network-wide", async (
   expect(body.days[0].snapshot_date).toBe("2026-06-01");
 });
 
+test("GET /api/v1/economics/alpha-price-history: returns bulk daily prices (#7227)", async () => {
+  mockRows.current = [
+    { netuid: 1, snapshot_date: "2026-07-01", alpha_price_tao: "0.25" },
+    { netuid: 1, snapshot_date: "2026-07-10", alpha_price_tao: null },
+  ];
+  const res = await req("/api/v1/economics/alpha-price-history?days=40");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.days).toBe(40);
+  expect(body.cutoff).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  expect(body.rows).toEqual([
+    { netuid: 1, snapshot_date: "2026-07-01", alpha_price_tao: 0.25 },
+    { netuid: 1, snapshot_date: "2026-07-10", alpha_price_tao: null },
+  ]);
+  expect(queryText()).toMatch(/FROM subnet_snapshots/);
+});
+
+test("GET /api/v1/economics/alpha-price-history: defaults days and clamps bogus values", async () => {
+  mockRows.current = [];
+  const def = await req("/api/v1/economics/alpha-price-history");
+  expect((await def.json()).days).toBe(35);
+  const clamped = await req("/api/v1/economics/alpha-price-history?days=999");
+  expect((await clamped.json()).days).toBe(120);
+  const bogus = await req("/api/v1/economics/alpha-price-history?days=-3");
+  expect((await bogus.json()).days).toBe(35);
+});
+
 test("GET /api/v1/economics/trends: unrecognized window degrades to all", async () => {
   mockRows.current = [];
   const res = await req("/api/v1/economics/trends?window=bogus");

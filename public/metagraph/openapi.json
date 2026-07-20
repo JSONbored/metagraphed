@@ -17411,6 +17411,34 @@
               "null"
             ]
           },
+          "alpha_price_change_1d": {
+            "description": "Signed %-change in alpha_price_tao over ~1 day (#7227), from subnet_snapshots lookback vs the live listing price. Null on insufficient history or a zero/missing start price.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_change_1h": {
+            "description": "Signed %-change in alpha_price_tao over ~1 hour (#7227). Null when sub-daily snapshot history is unavailable (daily subnet_snapshots cannot resolve a 1h lookback) or the current price is missing.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_change_1m": {
+            "description": "Signed %-change in alpha_price_tao over ~30 days (#7227). Null on insufficient history.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_change_7d": {
+            "description": "Signed %-change in alpha_price_tao over ~7 days (#7227). Null on insufficient history.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "alpha_price_tao": {
             "type": [
               "number",
@@ -36025,6 +36053,10 @@
               "enum": [
                 "alpha_fdv_tao",
                 "alpha_market_cap_tao",
+                "alpha_price_change_1d",
+                "alpha_price_change_1h",
+                "alpha_price_change_1m",
+                "alpha_price_change_7d",
                 "alpha_price_tao",
                 "block",
                 "emission_share",
@@ -36224,7 +36256,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token.",
+        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, registration block height, and inline alpha-price %-change over 1h/1d/7d/1m). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_price_change_1d&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token.",
         "tags": [
           "subnets"
         ]
@@ -46496,6 +46528,10 @@
                       "alpha_in_pool": 0.5,
                       "alpha_market_cap_tao": 0.5,
                       "alpha_out_pool": 0.5,
+                      "alpha_price_change_1d": 0.5,
+                      "alpha_price_change_1h": 0.5,
+                      "alpha_price_change_1m": 0.5,
+                      "alpha_price_change_7d": 0.5,
                       "alpha_price_tao": 0.5,
                       "block": 5000000,
                       "emission_share": 0.5,
