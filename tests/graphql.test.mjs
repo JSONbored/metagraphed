@@ -1575,6 +1575,97 @@ describe("graphql — source_snapshots", () => {
   });
 });
 
+// #6992: GraphQL parity for profiles, reusing list_profiles' own loader
+// unchanged (same filter/sort/page + error behavior as REST and MCP) rather
+// than a GraphQL-only reimplementation.
+describe("graphql — profiles", () => {
+  const PROFILE_ROW = {
+    netuid: 7,
+    slug: "allways",
+    name: "Allways",
+    completeness_score: 82,
+    curation_level: "machine-verified",
+    review_state: "verified",
+    confidence: "high",
+    profile_level: "operational",
+    surface_count: 5,
+  };
+
+  const PROFILES_BLOB = {
+    captured_at: "2026-06-20T00:00:00Z",
+    profiles: [
+      PROFILE_ROW,
+      {
+        ...PROFILE_ROW,
+        netuid: 1,
+        slug: "alpha",
+        name: "Alpha",
+        completeness_score: 60,
+        confidence: "medium",
+      },
+    ],
+  };
+
+  test("filters by netuid and paginates", async () => {
+    const env = fixtureEnv({ "/metagraph/profiles.json": PROFILES_BLOB });
+    const filtered = await gql(
+      "{ profiles(netuid: 7) { profiles total captured_at } }",
+      env,
+    );
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.data.profiles.total, 1);
+    assert.equal(filtered.body.data.profiles.profiles[0].slug, "allways");
+    assert.equal(
+      filtered.body.data.profiles.captured_at,
+      "2026-06-20T00:00:00Z",
+    );
+
+    const paged = await gql(
+      "{ profiles(limit: 1) { profiles total returned next_cursor } }",
+      env,
+    );
+    assert.equal(paged.body.data.profiles.profiles.length, 1);
+    assert.equal(paged.body.data.profiles.total, 2);
+    assert.equal(paged.body.data.profiles.returned, 1);
+    assert.ok(paged.body.data.profiles.next_cursor != null);
+  });
+
+  test("searches by q and sorts by completeness_score", async () => {
+    const env = fixtureEnv({ "/metagraph/profiles.json": PROFILES_BLOB });
+    const searched = await gql(
+      '{ profiles(q: "alpha") { profiles total } }',
+      env,
+    );
+    assert.equal(searched.body.data.profiles.total, 1);
+    assert.equal(searched.body.data.profiles.profiles[0].slug, "alpha");
+
+    const sorted = await gql(
+      '{ profiles(sort: "completeness_score", order: "desc") { profiles } }',
+      env,
+    );
+    assert.equal(sorted.body.data.profiles.profiles[0].slug, "allways");
+  });
+
+  test("surfaces an invalid curation_level as a GraphQL error, not a silent default", async () => {
+    const env = fixtureEnv({ "/metagraph/profiles.json": PROFILES_BLOB });
+    const { body } = await gql(
+      '{ profiles(curation_level: "bogus") { total } }',
+      env,
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ profiles { total } }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.profiles, 5);
+  });
+});
+
 describe("graphql — economics pagination", () => {
   const env = () =>
     fixtureEnv({
