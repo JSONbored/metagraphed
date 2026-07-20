@@ -592,44 +592,53 @@ describe("formatLeaderboards", () => {
   });
 
   test("biggest-alpha-gain boards break ties on alpha_price_tao (null last)", () => {
-    const out = formatLeaderboards({
-      ...inputs,
-      board: "biggest-alpha-gain-1d",
-      limit: 10,
-      economicsRows: [
-        {
-          netuid: 20,
-          slug: "a",
-          name: "A",
-          alpha_price_change_1d: 10,
-          alpha_price_tao: null,
-          emission_share: null,
-        },
-        {
-          netuid: 21,
-          slug: "b",
-          name: "B",
-          alpha_price_change_1d: 10,
-          alpha_price_tao: 5,
-          emission_share: 0.1,
-        },
-        {
-          netuid: 22,
-          slug: "c",
-          name: "C",
-          alpha_price_change_1d: 10,
-          // missing alpha_price_tao → null via finiteOrNull
-          emission_share: 0.2,
-        },
-      ],
-    });
-    assert.deepEqual(
-      out.boards["biggest-alpha-gain-1d"].map((e) => e.netuid),
-      [21, 20, 22],
-    );
-    assert.equal(out.boards["biggest-alpha-gain-1d"][0].alpha_price_tao, 5);
-    assert.equal(out.boards["biggest-alpha-gain-1d"][1].alpha_price_tao, null);
-    assert.equal(out.boards["biggest-alpha-gain-1d"][2].alpha_price_tao, null);
+    const ranked = (board) =>
+      formatLeaderboards({
+        ...inputs,
+        board,
+        limit: 10,
+        economicsRows: [
+          {
+            netuid: 20,
+            slug: "a",
+            name: "A",
+            alpha_price_change_1d: 10,
+            alpha_price_change_7d: 10,
+            alpha_price_tao: null,
+            emission_share: null,
+          },
+          {
+            netuid: 21,
+            slug: "b",
+            name: "B",
+            alpha_price_change_1d: 10,
+            alpha_price_change_7d: 10,
+            alpha_price_tao: 5,
+            emission_share: 0.1,
+          },
+          {
+            netuid: 22,
+            slug: "c",
+            name: "C",
+            alpha_price_change_1d: 10,
+            alpha_price_change_7d: 10,
+            // missing alpha_price_tao → null via finiteOrNull
+            emission_share: 0.2,
+          },
+        ],
+      }).boards[board];
+
+    for (const board of ["biggest-alpha-gain-1d", "biggest-alpha-gain-7d"]) {
+      const entries = ranked(board);
+      assert.deepEqual(
+        entries.map((e) => e.netuid),
+        [21, 20, 22],
+        board,
+      );
+      assert.equal(entries[0].alpha_price_tao, 5, board);
+      assert.equal(entries[1].alpha_price_tao, null, board);
+      assert.equal(entries[2].alpha_price_tao, null, board);
+    }
   });
 
   test("economic boards are null-safe when the economics tier is cold", () => {

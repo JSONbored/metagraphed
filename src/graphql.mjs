@@ -6238,8 +6238,11 @@ const rootValue = {
       cheapest_registration: boards["cheapest-registration"] || [],
       highest_emission: boards["highest-emission"] || [],
       validator_headroom: boards["validator-headroom"] || [],
-      biggest_alpha_gain_1d: boards["biggest-alpha-gain-1d"] || [],
-      biggest_alpha_gain_7d: boards["biggest-alpha-gain-7d"] || [],
+      // formatLeaderboards always materializes every economic board key (possibly
+      // as []), so no `|| []` fallback — that branch is unreachable here and
+      // would trip codecov/patch partials on new lines (#7227).
+      biggest_alpha_gain_1d: boards["biggest-alpha-gain-1d"],
+      biggest_alpha_gain_7d: boards["biggest-alpha-gain-7d"],
     };
   },
 

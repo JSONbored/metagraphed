@@ -790,6 +790,12 @@ function finiteOrNull(value) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+// Shared by the alpha-gain boards (#7227): higher current price breaks a tied
+// %-change; unknown price ranks last.
+function alphaGainTiebreak(a, b) {
+  return (b.alpha_price_tao ?? -1) - (a.alpha_price_tao ?? -1);
+}
+
 // Cross-subnet economic opportunity boards: where the open slots are, what they
 // cost, where the emission is, and where a validator permit is still attainable.
 // Each board is a spec run through the shared `economicBoard` pipeline below, so
@@ -878,7 +884,7 @@ const ECONOMIC_BOARD_SPECS = [
       emission_share: finiteOrNull(row.emission_share),
     }),
     eligible: (entry) => entry.alpha_price_change_1d > 0,
-    tiebreak: (a, b) => (b.alpha_price_tao ?? -1) - (a.alpha_price_tao ?? -1),
+    tiebreak: alphaGainTiebreak,
   },
   {
     // Biggest 7-day alpha-price gainers (#7227).
@@ -891,7 +897,7 @@ const ECONOMIC_BOARD_SPECS = [
       emission_share: finiteOrNull(row.emission_share),
     }),
     eligible: (entry) => entry.alpha_price_change_7d > 0,
-    tiebreak: (a, b) => (b.alpha_price_tao ?? -1) - (a.alpha_price_tao ?? -1),
+    tiebreak: alphaGainTiebreak,
   },
 ];
 
