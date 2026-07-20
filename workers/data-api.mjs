@@ -4540,7 +4540,10 @@ export default {
         },
       },
     };
-    const sql = postgres(env.HYPERDRIVE.connectionString, hyperdriveConnectionOptions);
+    const sql = postgres(
+      env.HYPERDRIVE.connectionString,
+      hyperdriveConnectionOptions,
+    );
 
     try {
       // sql.begin() reserves ONE physical connection for every query below,
@@ -8513,10 +8516,17 @@ export default {
       let activeSql = sql;
       for (let attempt = 0; ; attempt += 1) {
         try {
-          return await activeSql.begin(DATA_API_READ_TRANSACTION, dispatchReadRoutes);
+          return await activeSql.begin(
+            DATA_API_READ_TRANSACTION,
+            dispatchReadRoutes,
+          );
         } catch (err) {
-          if (attempt > 0 || !RETRYABLE_CONNECTION_ERROR_CODES.has(err?.code)) throw err;
-          activeSql = postgres(env.HYPERDRIVE.connectionString, hyperdriveConnectionOptions);
+          if (attempt > 0 || !RETRYABLE_CONNECTION_ERROR_CODES.has(err?.code))
+            throw err;
+          activeSql = postgres(
+            env.HYPERDRIVE.connectionString,
+            hyperdriveConnectionOptions,
+          );
         }
       }
     } catch (err) {
