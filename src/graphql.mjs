@@ -132,6 +132,7 @@ import {
   formatLeaderboards,
   LEADERBOARD_BOARDS,
   loadSubnetTrajectory,
+  mergeRpcEndpoints,
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
@@ -252,7 +253,7 @@ import {
   buildCounterparties,
   buildCounterpartyRelationship,
 } from "./counterparties.mjs";
-import { KV_HEALTH_META } from "./kv-keys.mjs";
+import { KV_HEALTH_META, KV_HEALTH_RPC_POOL } from "./kv-keys.mjs";
 import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
@@ -473,6 +474,14 @@ export const SDL = `
     source_snapshots(q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): SourceSnapshotList!
     "Public-safe subnet profile index -- completeness scores, surface/interface counts, curation level, review state, and confidence for every registered subnet. Filter by netuid/subnet_type/curation_level/review_state/confidence/profile_level, search name/slug/project/team/categories with q, sort with sort/order, and page with limit (1-1000)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/profiles."
     profiles(netuid: Int, subnet_type: String, curation_level: String, review_state: String, confidence: String, profile_level: String, q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ProfileList!
+    "The registry-wide summary: overall subnet count, coverage/curation-level/profile-level counts, recent registry changes, and the most-complete top subnets. A fast orientation for the whole Bittensor application layer. Null when the summary has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the registry_summary MCP/REST shape. Mirrors GET /api/v1/registry/summary."
+    registry_summary: JSON
+    "The per-provider source-health rollup: for each provider/source, the candidate-surface count and its live/redirected/dead classification, endpoint and RPC-endpoint counts, verification-result count, and an overall status. Null when the rollup has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_source_health MCP/REST shape. Mirrors GET /api/v1/source-health."
+    source_health: JSON
+    "The maintainer-approved cross-network subnet lineage: which testnet subnets have graduated to mainnet (mainnet <-> testnet pairs with match evidence), plus any flagged broken links. Null when the lineage has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_lineage MCP/REST shape. Mirrors GET /api/v1/lineage."
+    lineage: JSON
+    "The full catalog of monitored Bittensor base-layer RPC endpoints and their status (each endpoint's URL, network, and probe-derived health/latency), with the same live 15-minute cron RPC-pool overlay REST and MCP apply before serving. Null when the catalog has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the list_rpc_endpoints MCP/REST shape. Mirrors GET /api/v1/rpc/endpoints."
+    rpc_endpoints: JSON
     "Global operational health rollup with per-subnet summaries."
     health: GlobalHealth
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
@@ -3479,6 +3488,10 @@ export const FIELD_COMPLEXITY = {
   endpoint_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   source_snapshots: RELATIONSHIP_FIELD_COMPLEXITY,
   profiles: RELATIONSHIP_FIELD_COMPLEXITY,
+  registry_summary: RELATIONSHIP_FIELD_COMPLEXITY,
+  source_health: RELATIONSHIP_FIELD_COMPLEXITY,
+  lineage: RELATIONSHIP_FIELD_COMPLEXITY,
+  rpc_endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5023,6 +5036,37 @@ const rootValue = {
     return loadProfilesList(context, args, {
       readOptionalArtifact: loadArtifact,
     });
+  },
+
+  registry_summary(_args, context) {
+    // Same baked artifact the REST route + registry_summary MCP tool read.
+    // Degrades to null when cold instead of erroring, matching every other
+    // artifact-backed resolver here.
+    return loadArtifact(context, "/metagraph/registry-summary.json");
+  },
+
+  source_health(_args, context) {
+    // Same baked artifact the REST route + get_source_health MCP tool read.
+    return loadArtifact(context, "/metagraph/source-health.json");
+  },
+
+  lineage(_args, context) {
+    // Same baked artifact the REST route + get_lineage MCP tool read.
+    return loadArtifact(context, "/metagraph/lineage.json");
+  },
+
+  async rpc_endpoints(_args, context) {
+    // Same baked catalog the REST route + list_rpc_endpoints MCP tool read,
+    // with the same live overlay: the 15-minute cron RPC-pool KV snapshot
+    // replaces the stale build-time health/latency (mergeRpcEndpoints). With no
+    // live snapshot the static catalog passes through; a cold artifact degrades
+    // to null instead of erroring, matching the other artifact-backed resolvers.
+    const staticData = await loadArtifact(
+      context,
+      "/metagraph/rpc-endpoints.json",
+    );
+    const pool = await readHealthKv(context.env, KV_HEALTH_RPC_POOL);
+    return pool ? mergeRpcEndpoints(staticData, pool) : staticData;
   },
 
   async health(_args, context) {

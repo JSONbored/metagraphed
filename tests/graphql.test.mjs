@@ -6304,6 +6304,148 @@ describe("graphql — agent_resources (#6987, baked AI-resources index)", () => 
   });
 });
 
+// #7168: GraphQL parity for the registry-summary / source-health / lineage /
+// rpc-endpoints REST routes, each reusing the same baked artifact its MCP tool
+// (registry_summary / get_source_health / get_lineage / list_rpc_endpoints)
+// reads -- a cold artifact degrades to null (schema-stable), never a GraphQL
+// error, matching agent_resources and the other artifact-backed resolvers.
+describe("graphql — registry_summary / source_health / lineage / rpc_endpoints (#7168)", () => {
+  test("registry_summary resolves the baked summary artifact", async () => {
+    const env = fixtureEnv({
+      "/metagraph/registry-summary.json": {
+        subnet_count: 128,
+        counts: { verified: 40 },
+        generated_at: "2026-07-01T00:00:00.000Z",
+      },
+    });
+    const { status, body } = await gql("{ registry_summary }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.registry_summary.subnet_count, 128);
+    assert.equal(body.data.registry_summary.counts.verified, 40);
+  });
+
+  test("source_health resolves the baked per-provider rollup", async () => {
+    const env = fixtureEnv({
+      "/metagraph/source-health.json": {
+        providers: [{ provider: "gittensor", status: "healthy" }],
+        generated_at: "2026-07-01T00:00:00.000Z",
+      },
+    });
+    const { status, body } = await gql("{ source_health }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.source_health.providers[0].provider, "gittensor");
+  });
+
+  test("lineage resolves the baked cross-network lineage", async () => {
+    const env = fixtureEnv({
+      "/metagraph/lineage.json": {
+        link_count: 3,
+        links: [{ mainnet_netuid: 64, testnet_netuid: 165 }],
+        generated_at: "2026-07-01T00:00:00.000Z",
+      },
+    });
+    const { status, body } = await gql("{ lineage }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.lineage.link_count, 3);
+    assert.equal(body.data.lineage.links[0].mainnet_netuid, 64);
+  });
+
+  const RPC_ENDPOINTS_BLOB = {
+    schema_version: 1,
+    generated_at: "2026-07-01T00:00:00.000Z",
+    summary: { endpoint_count: 2 },
+    endpoints: [
+      {
+        id: "finney-wss",
+        url: "wss://entrypoint-finney.opentensor.ai",
+        network: "finney",
+        status: "degraded",
+        archive_support: false,
+      },
+      {
+        id: "subvortex",
+        url: "wss://subvortex.example",
+        network: "finney",
+        status: "degraded",
+        archive_support: true,
+      },
+    ],
+  };
+
+  test("rpc_endpoints resolves the static catalog with no live overlay", async () => {
+    const env = fixtureEnv({
+      "/metagraph/rpc-endpoints.json": RPC_ENDPOINTS_BLOB,
+    });
+    const { status, body } = await gql("{ rpc_endpoints }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.rpc_endpoints.endpoints.length, 2);
+    assert.equal(body.data.rpc_endpoints.endpoints[0].id, "finney-wss");
+    // No live snapshot -> the static catalog passes through unchanged.
+    assert.equal(body.data.rpc_endpoints.source, undefined);
+  });
+
+  test("rpc_endpoints applies the live 15-minute RPC-pool overlay", async () => {
+    const env = fixtureEnv(
+      { "/metagraph/rpc-endpoints.json": RPC_ENDPOINTS_BLOB },
+      {
+        kv: {
+          [KV_HEALTH_RPC_POOL]: {
+            last_run_at: "2026-07-20T12:00:00.000Z",
+            endpoints: [
+              {
+                id: "finney-wss",
+                status: "healthy",
+                classification: "live",
+                latency_ms: 42,
+              },
+            ],
+          },
+        },
+      },
+    );
+    const { body } = await gql("{ rpc_endpoints }", env);
+    assert.equal(body.data.rpc_endpoints.source, "live-cron-prober");
+    assert.equal(
+      body.data.rpc_endpoints.operational_observed_at,
+      "2026-07-20T12:00:00.000Z",
+    );
+    const overlaid = body.data.rpc_endpoints.endpoints.find(
+      (e) => e.id === "finney-wss",
+    );
+    assert.equal(overlaid.latency_ms, 42);
+    assert.equal(overlaid.health_source, "probe-derived");
+  });
+
+  test("each field degrades to null on a cold artifact, never a GraphQL error", async () => {
+    for (const field of [
+      "registry_summary",
+      "source_health",
+      "lineage",
+      "rpc_endpoints",
+    ]) {
+      const { status, body } = await gql(`{ ${field} }`);
+      assert.equal(status, 200, `${field} should not error`);
+      assert.equal(body.errors, undefined, `${field} should not error`);
+      assert.equal(body.data[field], null, `${field} should degrade to null`);
+    }
+  });
+
+  test("FIELD_COMPLEXITY weights all four new fields like their sibling relationship fields", () => {
+    for (const field of [
+      "registry_summary",
+      "source_health",
+      "lineage",
+      "rpc_endpoints",
+    ]) {
+      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+    }
+  });
+});
+
 describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
