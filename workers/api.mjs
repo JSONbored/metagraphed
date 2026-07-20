@@ -151,6 +151,7 @@ import {
   handleAccountBalance,
   handleAccountChildren,
   handleAccountParents,
+  handleAccountRootClaim,
   handleAccountEntities,
   handleAccountEvents,
   handleAccountExtrinsics,
@@ -303,6 +304,7 @@ import {
   ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_CHILDREN_PATH_PATTERN,
   ACCOUNT_PARENTS_PATH_PATTERN,
+  ACCOUNT_ROOT_CLAIM_PATH_PATTERN,
   ACCOUNT_ENTITIES_PATH_PATTERN,
   ACCOUNT_EVENTS_PATH_PATTERN,
   ACCOUNT_HISTORY_PATH_PATTERN,
@@ -2903,6 +2905,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (accountParentsMatch) {
       return handleAccountParents(request, env, accountParentsMatch[1]);
     }
+    const accountRootClaimMatch = ACCOUNT_ROOT_CLAIM_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountRootClaimMatch) {
+      return handleAccountRootClaim(request, env, accountRootClaimMatch[1]);
+    }
     const accountMatch = ACCOUNT_PATH_PATTERN.exec(resolved.url.pathname);
     if (accountMatch) {
       return handleAccount(request, env, accountMatch[1]);
@@ -3260,6 +3268,7 @@ function isMainnetOnlyApiPath(pathname) {
     ACCOUNT_BALANCE_PATH_PATTERN.test(pathname) ||
     ACCOUNT_CHILDREN_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PARENTS_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_ROOT_CLAIM_PATH_PATTERN.test(pathname) ||
     BLOCKS_FEED_PATH_PATTERN.test(pathname) ||
     BLOCK_DETAIL_PATH_PATTERN.test(pathname) ||
     BLOCK_EXTRINSICS_PATH_PATTERN.test(pathname) ||

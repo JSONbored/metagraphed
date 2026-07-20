@@ -593,6 +593,7 @@ import {
   loadAccountChildren,
   loadAccountParents,
 } from "./child-hotkey-delegation.mjs";
+import { loadRootClaim } from "./root-claim.mjs";
 import { buildBlockFeed, buildBlock } from "./blocks.mjs";
 import {
   buildExtrinsic,
@@ -6595,6 +6596,57 @@ export const MCP_TOOLS = [
         }
       }
       return loadAccountParents(ctx.env, ss58);
+    },
+  },
+  {
+    name: "get_account_root_claim",
+    title: "Get a coldkey's live root-claim current state",
+    description:
+      "Fetch one coldkey's current root-claim state (#7229, the read-only " +
+      "piece of the maintainer-only umbrella #7002) -- its claim-behavior " +
+      "setting (claim_type: swap/keep/keep_subnets), the hotkeys it owns, " +
+      "and per (hotkey, netuid) the currently-claimable root dividend, the " +
+      "cumulative already-claimed (u128 string), and the subnet's dust-floor " +
+      "threshold, plus coldkey-level aggregates -- queried directly from the " +
+      "chain's RootClaimType/OwnedHotkeys/RootClaimable/RootClaimableThreshold/" +
+      "RootClaimed storage at request time (not a rollup). Read-only display: " +
+      "no claim execution, this never signs or submits transactions. " +
+      "claim_type/hotkeys/entries are each null on an RPC failure, distinct " +
+      "from a confirmed empty result. Mirrors GET " +
+      "/api/v1/accounts/{ss58}/root-claim.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The coldkey's SS58 address (finney network), base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      if (!isFinneySs58Address(ss58)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `ss58` must be a valid finney SS58 account address.",
+        );
+      }
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `root-claim:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live root-claim requests from this client; slow down.",
+          );
+        }
+      }
+      return loadRootClaim(ctx.env, ss58);
     },
   },
   {
@@ -13719,6 +13771,43 @@ const TOOL_OUTPUT_SCHEMAS = {
           },
         },
       },
+      queried_at: NULLABLE_STRING,
+    },
+  },
+  get_account_root_claim: {
+    type: "object",
+    additionalProperties: true,
+    required: ["account"],
+    properties: {
+      schema_version: { type: "integer" },
+      account: { type: "string" },
+      claim_type: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        properties: {
+          type: { type: "string" },
+          subnets: { type: ["array", "null"], items: { type: "integer" } },
+        },
+      },
+      hotkeys: { type: ["array", "null"], items: { type: "string" } },
+      hotkeys_truncated: { type: "boolean" },
+      entries: {
+        type: ["array", "null"],
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            hotkey: { type: "string" },
+            netuid: { type: "integer" },
+            claimable: { type: "number" },
+            claimed: { type: "string" },
+            threshold: { type: "number" },
+            actionable: { type: "boolean" },
+          },
+        },
+      },
+      total_claimable: { type: ["number", "null"] },
+      total_claimed: { type: ["string", "null"] },
       queried_at: NULLABLE_STRING,
     },
   },

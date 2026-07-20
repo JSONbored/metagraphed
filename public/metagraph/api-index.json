@@ -1040,6 +1040,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-root-claim",
+      "path": "/metagraph/accounts/{ss58}/root-claim.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/RootClaimArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "evm-address-mapping",
       "path": "/metagraph/evm/address/{h160}.json",
       "retirement": null,
@@ -7417,6 +7426,18 @@
       "id": "account-parents",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/parents",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/root-claim.json",
+      "cache": "short",
+      "description": "Fetch the live root-claim current state for one coldkey (#7229, the read-only piece of umbrella #7002) — its claim-behavior setting (claim_type), owned hotkeys, and per (hotkey, netuid) currently-claimable root dividend, cumulative already-claimed (u128 string), and dust-floor threshold, plus coldkey-level aggregates, queried from the chain's own RootClaimType/OwnedHotkeys/RootClaimable/RootClaimableThreshold/RootClaimed storage at request time with 120s KV cache. Read-only display, no claim execution. claim_type/hotkeys/entries are each null on RPC failure, distinct from a confirmed empty result.",
+      "id": "account-root-claim",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/root-claim",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

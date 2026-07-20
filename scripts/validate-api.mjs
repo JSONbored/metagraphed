@@ -860,6 +860,17 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/root-claim",
+    (body) => {
+      assert.equal(
+        body.data.account,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.ok(body.data.entries === null || Array.isArray(body.data.entries));
+      assert.equal(typeof body.data.hotkeys_truncated, "boolean");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/identity",
     (body) => {
       assert.equal(

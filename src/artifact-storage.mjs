@@ -151,6 +151,9 @@ export const R2_ONLY_PATTERNS = [
   // time, never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/children\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/parents\.json$/,
+  // Live root-claim current state (#7229): computed from RPC at request time,
+  // never a static file.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/root-claim\.json$/,
   // Personal chain identity (epic #4301/5.4), computed live from the
   // account_identity D1 tier at /api/v1/accounts/{ss58}/identity — never a file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/identity\.json$/,

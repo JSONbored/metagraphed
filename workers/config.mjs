@@ -275,6 +275,13 @@ export const ACCOUNT_CHILDREN_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/children$/;
 export const ACCOUNT_PARENTS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/parents$/;
+// Live root-claim current state (#7229, the read-only piece of the maintainer-
+// only umbrella #7002): one coldkey's claimable root dividends, claim-behavior
+// setting, and cumulative already-claimed — queried from the chain's own
+// RootClaimType/OwnedHotkeys/RootClaimable/RootClaimableThreshold/RootClaimed
+// storage at request time, no static file. Mirrors ACCOUNT_CHILDREN_PATH_PATTERN.
+export const ACCOUNT_ROOT_CLAIM_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/root-claim$/;
 // Block-explorer routes (#1345): recent feed + per-block detail, computed live
 // from the `blocks` D1 tier. {ref} is a numeric block_number OR a 0x block_hash
 // (32-byte hex = 64 chars).

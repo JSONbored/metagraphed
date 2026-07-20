@@ -205,6 +205,7 @@ import { buildChainYield } from "./chain-yield.mjs";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
 import { loadSubnetBurn } from "./subnet-burn.mjs";
 import { loadSubnetLease } from "./subnet-lease.mjs";
+import { loadRootClaim } from "./root-claim.mjs";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.mjs";
 // #6976: GraphQL parity for the children/parents/weight-setters/entities account
 // relationship routes, reusing the same loaders/builders REST + MCP already call.
@@ -783,6 +784,8 @@ export const SDL = `
     account_children(ss58: String!): AccountChildren
     "Live parent-hotkey delegation graph (#6723) for one Finney ss58 account -- every hotkey currently delegating stake-weight to it, per subnet -- read directly from chain via RPC (KV-cached, not the Postgres tier). subnets is null on RPC failure, distinct from a confirmed-empty [] (the account genuinely has no parents on any subnet). Companion to account_children. Mirrors GET /api/v1/accounts/{ss58}/parents."
     account_parents(ss58: String!): AccountParents
+    "Live root-claim current state (#7229) for one Finney coldkey ss58 -- its claim-behavior setting (claim_type), owned hotkeys, and per (hotkey, netuid) currently-claimable root dividend, cumulative already-claimed (u128 string), and dust-floor threshold, plus coldkey-level aggregates -- read directly from chain via RPC (KV-cached, not the Postgres tier). Read-only, no claim execution. claim_type/hotkeys/entries are each null on RPC failure, distinct from a confirmed-empty result. Mirrors GET /api/v1/accounts/{ss58}/root-claim."
+    root_claim(ss58: String!): RootClaim
     "The network's on-chain sudo (superuser) key hotkey, read live from chain via RPC (not the Postgres tier). hotkey is null on RPC failure or a renounced sudo, schema-stable, never a GraphQL error. Mirrors GET /api/v1/sudo/key."
     sudo_key: SudoKey
     "Live global Subtensor protocol/governance parameters (TaoWeight, StakeThreshold, PendingChildKeyCooldown), read directly from chain via RPC (not the Postgres tier). Each field is independently null on its own RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/network/parameters."
@@ -3135,6 +3138,35 @@ export const SDL = `
     proportion_fraction: Float!
   }
 
+  "Live root-claim current state (#7229) for one Finney coldkey, read directly from chain via RPC (KV-cached). Read-only, no claim execution. claim_type/hotkeys/entries are each null on RPC failure, distinct from a confirmed-empty result (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/root-claim."
+  type RootClaim {
+    schema_version: Int!
+    account: String!
+    claim_type: RootClaimType
+    hotkeys: [String!]
+    hotkeys_truncated: Boolean!
+    entries: [RootClaimEntry!]
+    total_claimable: Float
+    total_claimed: String
+    queried_at: String!
+  }
+
+  "A coldkey's per-coldkey root-claim behavior setting (RootClaimTypeEnum): swap (auto-convert claimed alpha to TAO, the default), keep (keep alpha as-is), or keep_subnets (keep alpha for the listed subnets, swap the rest -- subnets is populated only for keep_subnets)."
+  type RootClaimType {
+    type: String!
+    subnets: [Int!]
+  }
+
+  "One (hotkey, netuid) root-claim entry: the currently-pending claimable root dividend for that hotkey on that subnet, the running cumulative already-claimed (u128 string) for the (netuid, hotkey, coldkey) triple, the subnet's dust-floor threshold, and whether the claimable amount clears that threshold."
+  type RootClaimEntry {
+    hotkey: String!
+    netuid: Int!
+    claimable: Float!
+    claimed: String!
+    threshold: Float!
+    actionable: Boolean!
+  }
+
   "The network's on-chain sudo (superuser) key, read live from chain via RPC. hotkey is null on RPC failure or a renounced sudo (schema-stable). Mirrors GET /api/v1/sudo/key's data envelope."
   type SudoKey {
     schema_version: Int!
@@ -4245,6 +4277,7 @@ export const FIELD_COMPLEXITY = {
   account_balance: LIVE_RPC_FIELD_COMPLEXITY,
   account_children: LIVE_RPC_FIELD_COMPLEXITY,
   account_parents: LIVE_RPC_FIELD_COMPLEXITY,
+  root_claim: LIVE_RPC_FIELD_COMPLEXITY,
   sudo_key: LIVE_RPC_FIELD_COMPLEXITY,
   network_parameters: LIVE_RPC_FIELD_COMPLEXITY,
   network_randomness: LIVE_RPC_FIELD_COMPLEXITY,
@@ -9807,6 +9840,21 @@ const rootValue = {
     // loadAccountParents always sets schema_version/account/queried_at
     // unconditionally, so no `??` fallback is needed for those.
     return loadAccountParents(context.env, ss58);
+  },
+
+  async root_claim({ ss58 }, context) {
+    if (!isFinneySs58Address(ss58)) {
+      throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Live chain RPC, not the Postgres tier -- reuses loadRootClaim's own KV
+    // cache/TTL, matching REST's handleAccountRootClaim and MCP's
+    // get_account_root_claim exactly. claim_type/hotkeys/entries stay null on
+    // RPC failure (schema-stable), distinct from a confirmed-empty result.
+    // loadRootClaim always sets schema_version/account/hotkeys_truncated/
+    // queried_at unconditionally, so no `??` fallback is needed for those.
+    return loadRootClaim(context.env, ss58);
   },
 
   async sudo_key(_args, context) {

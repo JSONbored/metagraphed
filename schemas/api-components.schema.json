@@ -14760,6 +14760,149 @@
           "stale"
         ]
       },
+      "RootClaimArtifact": {
+        "additionalProperties": true,
+        "description": "Live root-claim current state for one coldkey (#7229, the read-only piece of the maintainer-only umbrella #7002), queried from the chain's own RootClaimType/OwnedHotkeys/RootClaimable/RootClaimableThreshold/RootClaimed storage at request time and cached for 120s. Read-only display -- no claim execution. claim_type, hotkeys, and entries are each independently null on their own RPC/decode failure, distinct from a confirmed-empty result (a coldkey owning no hotkeys, or none with pending claims). total_claimable (sum of claimable) and total_claimed (sum of claimed, a u128 string) are null whenever entries is.",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "claim_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootClaimType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entries": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RootClaimEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hotkeys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hotkeys_truncated": {
+            "type": "boolean"
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "total_claimable": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_claimed": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "account"
+        ],
+        "type": "object"
+      },
+      "RootClaimEntry": {
+        "additionalProperties": false,
+        "description": "One (hotkey, netuid) root-claim entry in a coldkey's live root-claim state (#7229): the currently-pending claimable root dividend for that hotkey on that subnet, the running cumulative already-claimed for the (netuid, hotkey, coldkey) triple, the subnet's dust-floor threshold, and whether the claimable amount clears that threshold.",
+        "properties": {
+          "actionable": {
+            "type": "boolean"
+          },
+          "claimable": {
+            "type": "number"
+          },
+          "claimed": {
+            "type": "string"
+          },
+          "hotkey": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "threshold": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "hotkey",
+          "netuid",
+          "claimable",
+          "claimed",
+          "threshold",
+          "actionable"
+        ],
+        "type": "object"
+      },
+      "RootClaimType": {
+        "additionalProperties": false,
+        "description": "A coldkey's per-coldkey root-claim behavior setting (RootClaimTypeEnum): swap (auto-convert claimed alpha to TAO, the default), keep (keep the alpha as-is), or keep_subnets (keep alpha for the listed subnets, swap the rest).",
+        "properties": {
+          "subnets": {
+            "anyOf": [
+              {
+                "items": {
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "enum": [
+              "swap",
+              "keep",
+              "keep_subnets"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
       "RpcEndpoint": {
         "additionalProperties": false,
         "properties": {

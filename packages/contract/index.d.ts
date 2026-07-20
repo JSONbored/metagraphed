@@ -327,6 +327,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/root-claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the live root-claim current state for one coldkey (#7229, the read-only piece of umbrella #7002) — its claim-behavior setting (claim_type), owned hotkeys, and per (hotkey, netuid) currently-claimable root dividend, cumulative already-claimed (u128 string), and dust-floor threshold, plus coldkey-level aggregates, queried from the chain's own RootClaimType/OwnedHotkeys/RootClaimable/RootClaimableThreshold/RootClaimed storage at request time with 120s KV cache. Read-only display, no claim execution. claim_type/hotkeys/entries are each null on RPC failure, distinct from a confirmed empty result. */
+        get: operations["accountRootClaim"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/serving": {
         parameters: {
             query?: never;
@@ -6573,6 +6590,36 @@ export interface components {
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
         /** @enum {unknown} */
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
+        /** @description Live root-claim current state for one coldkey (#7229, the read-only piece of the maintainer-only umbrella #7002), queried from the chain's own RootClaimType/OwnedHotkeys/RootClaimable/RootClaimableThreshold/RootClaimed storage at request time and cached for 120s. Read-only display -- no claim execution. claim_type, hotkeys, and entries are each independently null on their own RPC/decode failure, distinct from a confirmed-empty result (a coldkey owning no hotkeys, or none with pending claims). total_claimable (sum of claimable) and total_claimed (sum of claimed, a u128 string) are null whenever entries is. */
+        RootClaimArtifact: {
+            account: string;
+            claim_type?: components["schemas"]["RootClaimType"] | null;
+            entries?: components["schemas"]["RootClaimEntry"][] | null;
+            hotkeys?: string[] | null;
+            hotkeys_truncated?: boolean;
+            /** Format: date-time */
+            queried_at?: string | null;
+            schema_version: number;
+            total_claimable?: number | null;
+            total_claimed?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One (hotkey, netuid) root-claim entry in a coldkey's live root-claim state (#7229): the currently-pending claimable root dividend for that hotkey on that subnet, the running cumulative already-claimed for the (netuid, hotkey, coldkey) triple, the subnet's dust-floor threshold, and whether the claimable amount clears that threshold. */
+        RootClaimEntry: {
+            actionable: boolean;
+            claimable: number;
+            claimed: string;
+            hotkey: string;
+            netuid: number;
+            threshold: number;
+        };
+        /** @description A coldkey's per-coldkey root-claim behavior setting (RootClaimTypeEnum): swap (auto-convert claimed alpha to TAO, the default), keep (keep the alpha as-is), or keep_subnets (keep alpha for the listed subnets, swap the rest). */
+        RootClaimType: {
+            subnets?: number[] | null;
+            /** @enum {string} */
+            type: "swap" | "keep" | "keep_subnets";
+        };
         RpcEndpoint: {
             archive_support?: boolean | null;
             auth_required?: boolean;
@@ -10943,6 +10990,131 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountRegistrationsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountRootClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "account": "example",
+                     *         "claim_type": {
+                     *           "subnets": [
+                     *             1
+                     *           ],
+                     *           "type": "swap"
+                     *         },
+                     *         "entries": [
+                     *           {
+                     *             "actionable": false,
+                     *             "claimable": 0.5,
+                     *             "claimed": "example",
+                     *             "hotkey": "example",
+                     *             "netuid": 7,
+                     *             "threshold": 0.5
+                     *           }
+                     *         ],
+                     *         "hotkeys": [
+                     *           "example"
+                     *         ],
+                     *         "hotkeys_truncated": false,
+                     *         "queried_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "total_claimable": 0.5,
+                     *         "total_claimed": "example"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["RootClaimArtifact"];
                     };
                 };
             };

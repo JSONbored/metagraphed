@@ -107,6 +107,7 @@ import {
   loadAccountChildren,
   loadAccountParents,
 } from "../../src/child-hotkey-delegation.mjs";
+import { loadRootClaim } from "../../src/root-claim.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
 import {
   H160_PATTERN,
@@ -3919,6 +3920,50 @@ export async function handleAccountParents(request, env, ss58) {
   }
 
   const data = await loadAccountParents(env, ss58);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/root-claim (#7229, the read-only piece split out
+// of the maintainer-only umbrella #7002): one coldkey's current root-claim
+// state — its claim-behavior setting, owned hotkeys, per (hotkey, netuid)
+// currently-claimable dividend + cumulative already-claimed + dust-floor
+// threshold, and coldkey-level aggregates. Live RPC + KV-cache route, same
+// shape as handleAccountChildren just above — see src/root-claim.mjs's header
+// for the on-chain storage details. Read-only display: no claim execution.
+export async function handleAccountRootClaim(request, env, ss58) {
+  if (!isFinneySs58Address(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must be a valid finney SS58 account address.",
+      400,
+    );
+  }
+
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: `root-claim:${resolveClientIp(request)}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "root_claim_rate_limited",
+        "Too many live root-claim requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(BALANCE_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(BALANCE_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${BALANCE_RATE_LIMIT.limit};w=${BALANCE_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
+  }
+
+  const data = await loadRootClaim(env, ss58);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

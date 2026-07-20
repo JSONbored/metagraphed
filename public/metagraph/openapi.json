@@ -14782,6 +14782,149 @@
           "stale"
         ]
       },
+      "RootClaimArtifact": {
+        "additionalProperties": true,
+        "description": "Live root-claim current state for one coldkey (#7229, the read-only piece of the maintainer-only umbrella #7002), queried from the chain's own RootClaimType/OwnedHotkeys/RootClaimable/RootClaimableThreshold/RootClaimed storage at request time and cached for 120s. Read-only display -- no claim execution. claim_type, hotkeys, and entries are each independently null on their own RPC/decode failure, distinct from a confirmed-empty result (a coldkey owning no hotkeys, or none with pending claims). total_claimable (sum of claimable) and total_claimed (sum of claimed, a u128 string) are null whenever entries is.",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "claim_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RootClaimType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entries": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RootClaimEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hotkeys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hotkeys_truncated": {
+            "type": "boolean"
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "total_claimable": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_claimed": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "account"
+        ],
+        "type": "object"
+      },
+      "RootClaimEntry": {
+        "additionalProperties": false,
+        "description": "One (hotkey, netuid) root-claim entry in a coldkey's live root-claim state (#7229): the currently-pending claimable root dividend for that hotkey on that subnet, the running cumulative already-claimed for the (netuid, hotkey, coldkey) triple, the subnet's dust-floor threshold, and whether the claimable amount clears that threshold.",
+        "properties": {
+          "actionable": {
+            "type": "boolean"
+          },
+          "claimable": {
+            "type": "number"
+          },
+          "claimed": {
+            "type": "string"
+          },
+          "hotkey": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "threshold": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "hotkey",
+          "netuid",
+          "claimable",
+          "claimed",
+          "threshold",
+          "actionable"
+        ],
+        "type": "object"
+      },
+      "RootClaimType": {
+        "additionalProperties": false,
+        "description": "A coldkey's per-coldkey root-claim behavior setting (RootClaimTypeEnum): swap (auto-convert claimed alpha to TAO, the default), keep (keep the alpha as-is), or keep_subnets (keep alpha for the listed subnets, swap the rest).",
+        "properties": {
+          "subnets": {
+            "anyOf": [
+              {
+                "items": {
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "enum": [
+              "swap",
+              "keep",
+              "keep_subnets"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
       "RpcEndpoint": {
         "additionalProperties": false,
         "properties": {
@@ -26397,6 +26540,156 @@
         "tags": [
           "accounts",
           "analytics"
+        ]
+      }
+    },
+    "/api/v1/accounts/{ss58}/root-claim": {
+      "get": {
+        "operationId": "accountRootClaim",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ss58",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "account": "example",
+                    "claim_type": {
+                      "subnets": [
+                        1
+                      ],
+                      "type": "swap"
+                    },
+                    "entries": [
+                      {
+                        "actionable": false,
+                        "claimable": 0.5,
+                        "claimed": "example",
+                        "hotkey": "example",
+                        "netuid": 7,
+                        "threshold": 0.5
+                      }
+                    ],
+                    "hotkeys": [
+                      "example"
+                    ],
+                    "hotkeys_truncated": false,
+                    "queried_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "total_claimable": 0.5,
+                    "total_claimed": "example"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RootClaimArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the live root-claim current state for one coldkey (#7229, the read-only piece of umbrella #7002) — its claim-behavior setting (claim_type), owned hotkeys, and per (hotkey, netuid) currently-claimable root dividend, cumulative already-claimed (u128 string), and dust-floor threshold, plus coldkey-level aggregates, queried from the chain's own RootClaimType/OwnedHotkeys/RootClaimable/RootClaimableThreshold/RootClaimed storage at request time with 120s KV cache. Read-only display, no claim execution. claim_type/hotkeys/entries are each null on RPC failure, distinct from a confirmed empty result.",
+        "tags": [
+          "accounts"
         ]
       }
     },

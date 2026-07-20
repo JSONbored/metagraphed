@@ -11256,6 +11256,102 @@ describe("graphql — account_children / account_parents (#6976, live chain RPC 
   });
 });
 
+describe("graphql — root_claim (#7229, live chain RPC via root-claim.mjs)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const HOTKEY = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  function stubFetch(handler) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = handler;
+    return () => {
+      globalThis.fetch = orig;
+    };
+  }
+
+  const QUERY = (argsClause) => `{ root_claim${argsClause} {
+    schema_version account hotkeys_truncated total_claimable total_claimed queried_at
+    claim_type { type subnets }
+    hotkeys
+    entries { hotkey netuid claimable claimed threshold actionable }
+  } }`;
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the RPC", async () => {
+    let called = false;
+    const restore = stubFetch(async () => {
+      called = true;
+      return { ok: false };
+    });
+    try {
+      const { status, body } = await gql(QUERY('(ss58: "not-an-address")'));
+      assert.equal(status, 200);
+      assert.equal(body.data.root_claim, null);
+      assert.ok(
+        body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+      );
+      assert.equal(called, false);
+    } finally {
+      restore();
+    }
+  });
+
+  test("claim_type/hotkeys/entries are null on an RPC failure, schema-stable", async () => {
+    const restore = stubFetch(async () => ({ ok: false }));
+    try {
+      const { status, body } = await gql(QUERY(`(ss58: "${SS58}")`));
+      assert.equal(status, 200);
+      assert.equal(body.errors, undefined);
+      assert.equal(body.data.root_claim.claim_type, null);
+      assert.equal(body.data.root_claim.hotkeys, null);
+      assert.equal(body.data.root_claim.entries, null);
+      assert.equal(body.data.root_claim.hotkeys_truncated, false);
+    } finally {
+      restore();
+    }
+  });
+
+  test("happy path resolves every field from a KV-cached payload", async () => {
+    const cached = {
+      schema_version: 1,
+      account: SS58,
+      claim_type: { type: "keep_subnets", subnets: [5] },
+      hotkeys: [HOTKEY],
+      hotkeys_truncated: false,
+      entries: [
+        {
+          hotkey: HOTKEY,
+          netuid: 5,
+          claimable: 3.5,
+          claimed: "100",
+          threshold: 1,
+          actionable: true,
+        },
+      ],
+      total_claimable: 3.5,
+      total_claimed: "100",
+      queried_at: "2026-07-19T00:00:00.000Z",
+    };
+    const env = fixtureEnv({}, { kv: { [`root-claim:${SS58}`]: cached } });
+    let fetchCalled = false;
+    const restore = stubFetch(async () => {
+      fetchCalled = true;
+      return { ok: false };
+    });
+    try {
+      const { status, body } = await gql(QUERY(`(ss58: "${SS58}")`), env);
+      assert.equal(status, 200);
+      assert.equal(body.errors, undefined);
+      assert.deepEqual(body.data.root_claim, cached);
+      assert.equal(fetchCalled, false);
+    } finally {
+      restore();
+    }
+  });
+
+  test("root_claim is weighted at the live-RPC complexity", () => {
+    assert.equal(FIELD_COMPLEXITY.root_claim, 10);
+  });
+});
+
 describe("graphql — account_weight_setters (#6976, Postgres-tier { data, generatedAt } + zeroed-card fallback)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
