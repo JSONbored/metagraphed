@@ -25,6 +25,23 @@ pub type Api = OnlineClient<PolkadotConfig>;
 /// slower against a public RPC).
 pub type AtBlock = subxt::client::OnlineClientAtBlock<PolkadotConfig>;
 
+/// Every currently-registered netuid, per SubtensorModule::NetworksAdded
+/// (the runtime's own subnet-existence flag) -- not a hardcoded upper bound,
+/// so newly-registered/deregistered subnets need no code change here. Shared
+/// by every poller job that needs "the active subnet set" (subnet-ownership,
+/// subnet-hyperparams, ...) rather than each reimplementing the same scan.
+pub async fn discover_netuids(at: &AtBlock) -> Result<Vec<u16>> {
+    let addr = subxt::dynamic::storage::<(u16,), bool>("SubtensorModule", "NetworksAdded");
+    let mut iter = at.storage().iter(addr, ()).await?;
+    let mut netuids = Vec::new();
+    while let Some(entry) = iter.next().await {
+        let (netuid,) = entry?.key()?.decode()?;
+        netuids.push(netuid);
+    }
+    netuids.sort_unstable();
+    Ok(netuids)
+}
+
 /// Retries `f` up to `attempts` times with a short linear backoff -- for
 /// transient failures on a single stateless call against an already-
 /// resolved `AtBlock` snapshot. Lighter weight than `ChainClient::call`
@@ -156,6 +173,50 @@ pub async fn connect_pg(url: &str) -> Result<tokio_postgres::Client> {
         }
     });
     Ok(client)
+}
+
+const POLLER_CONNECT_RETRY_DELAY: Duration = Duration::from_secs(30);
+
+/// Retries `ChainClient::connect` forever (30s backoff) instead of giving
+/// up after one failed attempt. Every poller job's `run_loop` uses this for
+/// its startup connection: `main.rs`'s scheduler waits on the FIRST job
+/// task to return via `futures::select_all` (so it can report which job
+/// panicked) -- live-tested 2026-07-19 and confirmed that a `run_loop`
+/// which just `return`s on a connect failure makes the WHOLE poller
+/// process exit as soon as that one job's startup fails, even though every
+/// OTHER job is healthy and still running. A transient/misconfigured
+/// connection should keep retrying (systemd's own restart_policy is the
+/// right tool for "give up and restart everything," not one job's own
+/// first-attempt failure).
+pub async fn connect_chain_retrying(job_name: &str, url: String) -> ChainClient {
+    loop {
+        match ChainClient::connect(url.clone()).await {
+            Ok(c) => return c,
+            Err(e) => {
+                eprintln!(
+                    "{job_name}: chain connect failed ({e:#}), retrying in {POLLER_CONNECT_RETRY_DELAY:?}"
+                );
+                tokio::time::sleep(POLLER_CONNECT_RETRY_DELAY).await;
+            }
+        }
+    }
+}
+
+/// Retries `connect_pg` forever (30s backoff) -- see
+/// `connect_chain_retrying`'s own doc comment for why every poller job's
+/// `run_loop` needs this instead of giving up after one failed attempt.
+pub async fn connect_pg_retrying(job_name: &str, url: &str) -> tokio_postgres::Client {
+    loop {
+        match connect_pg(url).await {
+            Ok(c) => return c,
+            Err(e) => {
+                eprintln!(
+                    "{job_name}: postgres connect failed ({e:#}), retrying in {POLLER_CONNECT_RETRY_DELAY:?}"
+                );
+                tokio::time::sleep(POLLER_CONNECT_RETRY_DELAY).await;
+            }
+        }
+    }
 }
 
 // KNOWN ISSUE (2026-07-03, MITIGATED by ChainClient below): against our own

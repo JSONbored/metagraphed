@@ -85,20 +85,8 @@ struct BalanceRow {
 /// forever -- see subnet_ownership::run_loop's doc comment for why every
 /// job owns its connections rather than sharing one.
 pub async fn run_loop(rpc_url: String, db_url: String, interval: Duration) {
-    let chain = match ChainClient::connect(rpc_url).await {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("account-balances: chain connect failed, job will not run: {e:#}");
-            return;
-        }
-    };
-    let mut pg = match backfill_rs::connect_pg(&db_url).await {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("account-balances: postgres connect failed, job will not run: {e:#}");
-            return;
-        }
-    };
+    let chain = backfill_rs::connect_chain_retrying("account-balances", rpc_url).await;
+    let mut pg = backfill_rs::connect_pg_retrying("account-balances", &db_url).await;
     let mut ticker = tokio::time::interval(interval);
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {

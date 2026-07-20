@@ -75,20 +75,8 @@ struct OwnershipRow {
 /// own doc comment for why) and ticks `run` on `interval` forever, reporting
 /// through the shared `crate::log_job_outcome`.
 pub async fn run_loop(rpc_url: String, db_url: String, interval: Duration) {
-    let chain = match ChainClient::connect(rpc_url).await {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("subnet-ownership: chain connect failed, job will not run: {e:#}");
-            return;
-        }
-    };
-    let mut pg = match backfill_rs::connect_pg(&db_url).await {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("subnet-ownership: postgres connect failed, job will not run: {e:#}");
-            return;
-        }
-    };
+    let chain = backfill_rs::connect_chain_retrying("subnet-ownership", rpc_url).await;
+    let mut pg = backfill_rs::connect_pg_retrying("subnet-ownership", &db_url).await;
     let mut ticker = tokio::time::interval(interval);
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
@@ -105,7 +93,9 @@ async fn run(chain: &ChainClient, pg: &mut tokio_postgres::Client) -> Result<Job
         .await
         .context("at_current_block")?;
 
-    let netuids = discover_netuids(&at).await.context("discover netuids")?;
+    let netuids = backfill_rs::discover_netuids(&at)
+        .await
+        .context("discover netuids")?;
     let scanned = netuids.len() as u64;
     eprintln!("subnet-ownership: discovered {scanned} netuid(s), resolving owners");
 
@@ -150,21 +140,6 @@ async fn run(chain: &ChainClient, pg: &mut tokio_postgres::Client) -> Result<Job
         written,
         errors,
     })
-}
-
-/// Every currently-registered netuid, per SubtensorModule::NetworksAdded
-/// (the runtime's own subnet-existence flag) -- not a hardcoded upper bound,
-/// so newly-registered/deregistered subnets need no code change here.
-async fn discover_netuids(at: &AtBlock) -> Result<Vec<u16>> {
-    let addr = dynamic::storage::<(u16,), bool>("SubtensorModule", "NetworksAdded");
-    let mut iter = at.storage().iter(addr, ()).await?;
-    let mut netuids = Vec::new();
-    while let Some(entry) = iter.next().await {
-        let (netuid,) = entry?.key()?.decode()?;
-        netuids.push(netuid);
-    }
-    netuids.sort_unstable();
-    Ok(netuids)
 }
 
 /// SubnetOwnerHotkey(netuid) -> Owner(hotkey) -> owning account. Returns `None`

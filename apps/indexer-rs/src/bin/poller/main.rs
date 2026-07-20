@@ -51,6 +51,16 @@
 //   DATABASE_URL                postgres connection (the same sink ../main.rs writes)
 //   EVENTS_RPC_URL               chain RPC ws(s) url (default: the public archive)
 //   SUBNET_OWNERSHIP_POLL_SECS   how often to re-poll subnet ownership (default 300)
+//   POLLER_ONLY                  comma-separated job names (e.g. "subnet-hyperparams")
+//                                 to run in isolation -- unset runs every job (the
+//                                 normal/production mode). Genuinely useful beyond
+//                                 debugging, not just a throwaway test knob: live-tested
+//                                 2026-07-19 that running every job concurrently against
+//                                 a contended RPC endpoint makes it hard to tell "this
+//                                 job has a real bug" from "every job is fighting the
+//                                 same connection for bandwidth" -- isolating one job
+//                                 removes that confound whenever it matters (this env,
+//                                 or a fresh deploy of just one job's worth of changes).
 
 mod jobs;
 
@@ -112,43 +122,117 @@ async fn main() -> Result<()> {
         Duration::from_secs(env_u64("ACCOUNT_BALANCES_POLL_SECS").unwrap_or(6 * 3600));
     let validator_nominators_interval =
         Duration::from_secs(env_u64("VALIDATOR_NOMINATORS_POLL_SECS").unwrap_or(24 * 3600));
+    let subnet_hyperparams_interval =
+        Duration::from_secs(env_u64("SUBNET_HYPERPARAMS_POLL_SECS").unwrap_or(3600));
+    let self_stake_interval =
+        Duration::from_secs(env_u64("SELF_STAKE_POLL_SECS").unwrap_or(7 * 24 * 3600));
 
-    // One tokio task per job, each with its own name so a panic reports
-    // which job died rather than an anonymous "a job panicked". Add a new
-    // job here (spawn + push) as each one lands -- no other wiring needed,
-    // matching the "config/decode delta, not a new scheduler" goal from
-    // main.rs's own module doc comment above.
-    let names = [
-        "subnet-ownership",
-        "account-balances",
-        "validator-nominators",
-    ];
-    let handles = vec![
-        tokio::spawn(jobs::subnet_ownership::run_loop(
+    let only: Option<Vec<String>> = std::env::var("POLLER_ONLY")
+        .ok()
+        .map(|s| s.split(',').map(|j| j.trim().to_string()).collect());
+    let enabled = |name: &str| {
+        only.as_ref()
+            .is_none_or(|list| list.iter().any(|j| j == name))
+    };
+    if let Some(list) = &only {
+        eprintln!("poller: POLLER_ONLY set, running only: {}", list.join(", "));
+    }
+
+    // One tokio task per ENABLED job, each with its own name so a panic
+    // reports which job died rather than an anonymous "a job panicked".
+    // Add a new job here (name + spawn, gated by `enabled`) as each one
+    // lands -- no other wiring needed, matching the "config/decode delta,
+    // not a new scheduler" goal from main.rs's own module doc comment
+    // above.
+    let mut names = Vec::new();
+    let mut handles = Vec::new();
+    if enabled("subnet-ownership") {
+        names.push("subnet-ownership");
+        handles.push(tokio::spawn(jobs::subnet_ownership::run_loop(
             rpc_url.clone(),
             db_url.clone(),
             subnet_ownership_interval,
-        )),
-        tokio::spawn(jobs::account_balances::run_loop(
+        )));
+    }
+    if enabled("account-balances") {
+        names.push("account-balances");
+        handles.push(tokio::spawn(jobs::account_balances::run_loop(
             rpc_url.clone(),
             db_url.clone(),
             account_balances_interval,
-        )),
-        tokio::spawn(jobs::validator_nominators::run_loop(
+        )));
+    }
+    if enabled("validator-nominators") {
+        names.push("validator-nominators");
+        handles.push(tokio::spawn(jobs::validator_nominators::run_loop(
             rpc_url.clone(),
             db_url.clone(),
             validator_nominators_interval,
-        )),
-    ];
+        )));
+    }
+    if enabled("subnet-hyperparams") {
+        names.push("subnet-hyperparams");
+        // No db_url -- subnet-hyperparams POSTs to the existing sync route
+        // instead of writing Postgres directly (see the job's own module
+        // doc comment for why).
+        handles.push(tokio::spawn(jobs::subnet_hyperparams::run_loop(
+            rpc_url.clone(),
+            subnet_hyperparams_interval,
+        )));
+    }
+    if enabled("self-stake") {
+        names.push("self-stake");
+        handles.push(tokio::spawn(jobs::self_stake::run_loop(
+            rpc_url.clone(),
+            db_url.clone(),
+            self_stake_interval,
+        )));
+    }
+    if handles.is_empty() {
+        anyhow::bail!("POLLER_ONLY matched no known job -- nothing to run");
+    }
 
-    // Every job's `run_loop` runs forever -- select_all (NOT a sequential
-    // await, which would block on handles[0] forever and never notice a
-    // later job panicking) resolves as soon as ANY one of them returns,
-    // which only happens on a panic. That's a real bug and should take the
-    // process down (systemd's restart_policy: unless-stopped brings it
-    // back), rather than silently leaving a job dead while the process
-    // looks alive.
-    let (result, index, _remaining) = futures::future::select_all(handles).await;
-    result.with_context(|| format!("{} job task panicked", names[index]))?;
+    // Every job's `run_loop` runs forever UNLESS it's permanently
+    // misconfigured (e.g. subnet-hyperparams with no sync secret set),
+    // in which case it logs why and returns -- that's a "this one job is
+    // disabled" state, not a process-wide failure, and must not take down
+    // every OTHER healthy job. Transient connection failures don't count:
+    // connect_chain_retrying/connect_pg_retrying (src/lib.rs) retry with
+    // backoff forever rather than returning, precisely so a bad DB/RPC
+    // blip doesn't masquerade as "permanently disabled" here.
+    //
+    // select_all resolves as soon as ANY ONE future completes (NOT a
+    // sequential await, which would block on the first one forever and
+    // never notice any other job finishing) -- live-tested 2026-07-19 and
+    // confirmed the naive "exit on the first completion, panic or not"
+    // version made the whole process exit as soon as one job's startup
+    // failed, even with every other job still healthy. Loop instead: log
+    // and drop each completed job (crashing the process on a genuine
+    // panic, since that's an actual bug worth systemd restarting for), and
+    // keep waiting on whatever's left. Each handle is wrapped so its name
+    // travels with its own result -- select_all's own `index` is relative
+    // to whatever's left in THIS call, not the original handles list, so
+    // it can't be used to look a name back up in `names` once any earlier
+    // handle has already been removed.
+    let mut remaining: Vec<_> = names
+        .into_iter()
+        .zip(handles)
+        .map(|(name, handle)| Box::pin(async move { (name, handle.await) }))
+        .collect();
+    while !remaining.is_empty() {
+        let ((name, result), _index, rest) = futures::future::select_all(remaining).await;
+        remaining = rest;
+        match result {
+            Ok(()) => {
+                eprintln!(
+                    "poller: {name} job stopped running (see its own log line above for why) -- other jobs continue"
+                );
+            }
+            Err(panic) => {
+                return Err(panic).with_context(|| format!("{name} job task panicked"));
+            }
+        }
+    }
+    eprintln!("poller: every job has stopped running, nothing left to do");
     Ok(())
 }
