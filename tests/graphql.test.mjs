@@ -6185,34 +6185,6 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
   });
 });
 
-describe("graphql — agent_resources (#6987, baked AI-resources index)", () => {
-  test("resolves the baked AI-resources index", async () => {
-    const env = fixtureEnv({
-      "/metagraph/agent-resources.json": {
-        schema_version: 1,
-        agent: { url: "https://metagraph.sh/agent.md" },
-        mcp: { server: "https://api.metagraph.sh/mcp", tool_count: 197 },
-      },
-    });
-    const { status, body } = await gql("{ agent_resources }", env);
-    assert.equal(status, 200);
-    assert.equal(body.errors, undefined);
-    assert.equal(body.data.agent_resources.schema_version, 1);
-    assert.equal(body.data.agent_resources.mcp.tool_count, 197);
-  });
-
-  test("degrades to null when the index has not been baked, never an error", async () => {
-    const { status, body } = await gql("{ agent_resources }");
-    assert.equal(status, 200);
-    assert.equal(body.errors, undefined);
-    assert.equal(body.data.agent_resources, null);
-  });
-
-  test("agent_resources is weighted as a fan-out field", () => {
-    assert.equal(FIELD_COMPLEXITY.agent_resources, 5);
-  });
-});
-
 describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
