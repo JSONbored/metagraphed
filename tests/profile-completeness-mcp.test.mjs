@@ -90,6 +90,80 @@ describe("profile-completeness-mcp", () => {
     );
   });
 
+  test("profileCompletenessQueryUrl rejects non-string fields and invalid order", () => {
+    assert.throws(
+      () => profileCompletenessQueryUrl({ fields: 42 }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => profileCompletenessQueryUrl({ order: "sideways" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl rejects empty fields projection", () => {
+    assert.throws(
+      () => profileCompletenessQueryUrl({ fields: "   " }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl rejects a non-string enum filter", () => {
+    assert.throws(
+      () => profileCompletenessQueryUrl({ confidence: 42 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl trims and forwards a fields projection", () => {
+    const url = profileCompletenessQueryUrl({
+      fields: " netuid,priority_score ",
+    });
+    assert.equal(url.searchParams.get("fields"), "netuid,priority_score");
+  });
+
+  test("profileCompletenessQueryUrl clamps a non-numeric limit to the default", () => {
+    const url = profileCompletenessQueryUrl({ limit: "lots" });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("profileCompletenessQueryUrl clamps a sub-minimum numeric limit to the default", () => {
+    const url = profileCompletenessQueryUrl({ limit: 0 });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("profileCompletenessQueryUrl clamps a non-finite numeric limit to the default", () => {
+    const url = profileCompletenessQueryUrl({ limit: Number.POSITIVE_INFINITY });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("profileCompletenessQueryUrl clamps limit above the MCP maximum", () => {
+    const url = profileCompletenessQueryUrl({ limit: 500 });
+    assert.equal(url.searchParams.get("limit"), "100");
+  });
+
+  test("profileCompletenessQueryUrl rejects a fractional netuid and cursor", () => {
+    assert.throws(
+      () => profileCompletenessQueryUrl({ netuid: 1.5 }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => profileCompletenessQueryUrl({ cursor: 1.5 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl omits empty optional string/enum filters", () => {
+    const url = profileCompletenessQueryUrl({
+      fields: "",
+      confidence: "",
+      identity_level: null,
+    });
+    assert.equal(url.searchParams.get("fields"), null);
+    assert.equal(url.searchParams.get("confidence"), null);
+    assert.equal(url.searchParams.get("identity_level"), null);
+  });
+
   test("profileCompletenessQueryUrl rejects invalid netuid and cursor", () => {
     assert.throws(
       () => profileCompletenessQueryUrl({ netuid: -1 }),
