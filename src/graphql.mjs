@@ -441,6 +441,16 @@ export const SDL = `
     domain_summary(tag: String!): DomainSummary!
     "Several validators side by side for a stake/delegate decision: each hotkey's take, estimated APY, nominator count, identity, and cross-subnet stake/emission/trust aggregates. hotkeys takes 1-16 distinct SS58 addresses (a real GraphQL list, like the sibling compare field's netuids, rather than REST's comma-separated string); the optional netuid adds each validator's membership row in that subnet. The validator equivalent of the compare field. Mirrors GET /api/v1/compare/validators."
     compare_validators(hotkeys: [String!]!, netuid: Int): ValidatorComparison!
+    "Unpromoted candidate surfaces — discovered/proposed surfaces not yet curated. With no argument returns the global candidate catalog (/api/v1/candidates); with a netuid returns that subnet's candidates (/api/v1/subnets/{netuid}/candidates). Null when the artifact has not been baked. Opaque JSON passed through verbatim, matching the list_candidates/get_subnet_candidates MCP shape."
+    candidates(netuid: Int): JSON
+    "The captured-fixtures index — recorded upstream API responses used for reproducible testing. Null when the artifact has not been baked. Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures."
+    fixtures: JSON
+    "The machine-readable agent capability catalog. With no argument returns the global index of subnets exposing callable services; with a netuid returns that subnet's full per-service catalog. Null when the artifact has not been baked. Opaque JSON passed through verbatim, matching the get_agent_catalog MCP shape. Mirrors GET /api/v1/agent-catalog and /api/v1/agent-catalog/{netuid}."
+    agent_catalog(netuid: Int): JSON
+    "The registry freshness report — per-surface and per-pipeline last-verified/last-built timestamps and staleness. Null when the artifact has not been baked. Opaque JSON passed through verbatim, matching the get_freshness MCP/REST shape. Mirrors GET /api/v1/freshness."
+    freshness: JSON
+    "The balance-based top-holder leaderboard: every coldkey with a nonzero free balance and/or delegated stake, with free/delegated/total TAO columns, sortable (default total_tao) and limited (1-100, default 20). Opaque JSON passed through verbatim, matching the get_top_holders MCP shape. Mirrors GET /api/v1/accounts/top-holders."
+    accounts_top_holders(sort: String, limit: Int): JSON
     "One subnet's alpha-price OHLC candles bucketed by interval (1h or 1d, default 1h) over the trailing days window (default 90, max 365), from the same executed-trade stream subnet_volume reads. A subnet with no trades resolves to a schema-stable empty candle list, never null. Mirrors GET /api/v1/subnets/{netuid}/ohlc."
     subnet_ohlc(netuid: Int!, interval: String, days: Int): SubnetOhlc!
     "A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
@@ -3703,6 +3713,11 @@ export const FIELD_COMPLEXITY = {
   domains: RELATIONSHIP_FIELD_COMPLEXITY,
   domain_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   compare_validators: RELATIONSHIP_FIELD_COMPLEXITY,
+  candidates: RELATIONSHIP_FIELD_COMPLEXITY,
+  fixtures: RELATIONSHIP_FIELD_COMPLEXITY,
+  agent_catalog: RELATIONSHIP_FIELD_COMPLEXITY,
+  freshness: RELATIONSHIP_FIELD_COMPLEXITY,
+  accounts_top_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_volume: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_ohlc: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_quote: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5412,6 +5427,62 @@ const rootValue = {
     // The MCP tool raises not_found when it is absent; GraphQL degrades to
     // null instead, matching every other artifact-backed resolver here.
     return loadArtifact(context, AGENT_RESOURCES_ARTIFACT);
+  },
+
+  async candidates({ netuid }, context) {
+    // No netuid -> global candidate catalog; a netuid -> that subnet's
+    // candidates, mirroring list_candidates / get_subnet_candidates. Opaque
+    // JSON passthrough degrading to null on cold, like agent_resources.
+    if (netuid === undefined || netuid === null) {
+      return loadArtifact(context, "/metagraph/candidates.json");
+    }
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return loadArtifact(context, `/metagraph/candidates/${netuid}.json`);
+  },
+
+  async fixtures(_args, context) {
+    return loadArtifact(context, "/metagraph/fixtures.json");
+  },
+
+  async agent_catalog({ netuid }, context) {
+    // No netuid -> global capability index; a netuid -> that subnet's per-service
+    // catalog, mirroring the dual-mode get_agent_catalog MCP tool.
+    if (netuid === undefined || netuid === null) {
+      return loadArtifact(context, "/metagraph/agent-catalog.json");
+    }
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return loadArtifact(context, `/metagraph/agent-catalog/${netuid}.json`);
+  },
+
+  async freshness(_args, context) {
+    return loadArtifact(context, "/metagraph/freshness.json");
+  },
+
+  async accounts_top_holders({ sort, limit }, context) {
+    // The balance-based top-holder leaderboard lives only in the Postgres tier
+    // (no baked artifact) — forward sort/limit to the same DATA_API route the
+    // get_top_holders MCP tool reads; the data-api validates + clamps them.
+    // Degrades to null when the tier is unreachable, per the resolver convention.
+    const params = new URLSearchParams();
+    if (sort !== undefined && sort !== null) params.set("sort", String(sort));
+    if (limit !== undefined && limit !== null) {
+      params.set("limit", String(limit));
+    }
+    return (
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/accounts/top-holders", params),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? null
+    );
   },
 
   async subnet_volume({ netuid }, context) {

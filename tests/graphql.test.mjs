@@ -16778,3 +16778,111 @@ describe("graphql — adapter (#6984, reuses loadAdapter / MCP get_adapter)", ()
     assert.equal(FIELD_COMPLEXITY.adapter, FIELD_COMPLEXITY.provider);
   });
 });
+
+// --- registry-meta parity (#6991: candidates/fixtures/agent_catalog/freshness/top-holders) ---
+describe("graphql — registry-meta parity (#6991)", () => {
+  test("candidates resolves the global catalog and scopes by netuid", async () => {
+    const env = fixtureEnv({
+      "/metagraph/candidates.json": {
+        candidates: [{ netuid: 1, kind: "openapi" }],
+      },
+      "/metagraph/candidates/7.json": {
+        netuid: 7,
+        candidates: [{ kind: "sdk" }],
+      },
+    });
+    const all = await gql("{ candidates }", env);
+    assert.equal(all.body.errors, undefined);
+    assert.equal(all.body.data.candidates.candidates[0].kind, "openapi");
+    const one = await gql("{ candidates(netuid: 7) }", env);
+    assert.equal(one.body.data.candidates.netuid, 7);
+  });
+
+  test("candidates rejects a negative netuid; degrades to null when cold", async () => {
+    const bad = await gql("{ candidates(netuid: -1) }");
+    assert.ok(bad.body.errors?.length > 0);
+    assert.equal(bad.body.errors[0].extensions.code, "BAD_USER_INPUT");
+    const cold = await gql("{ candidates }");
+    assert.equal(cold.body.data.candidates, null);
+  });
+
+  test("fixtures resolves the captured-fixtures index; null when cold", async () => {
+    const env = fixtureEnv({
+      "/metagraph/fixtures.json": { fixtures: [{ surface_id: "sn-1-api" }] },
+    });
+    const hot = await gql("{ fixtures }", env);
+    assert.equal(hot.body.data.fixtures.fixtures[0].surface_id, "sn-1-api");
+    const cold = await gql("{ fixtures }");
+    assert.equal(cold.body.data.fixtures, null);
+  });
+
+  test("agent_catalog resolves index + per-subnet detail; rejects a negative netuid", async () => {
+    const env = fixtureEnv({
+      "/metagraph/agent-catalog.json": { subnets: [{ netuid: 3 }] },
+      "/metagraph/agent-catalog/3.json": {
+        netuid: 3,
+        services: [{ name: "chat" }],
+      },
+    });
+    const idx = await gql("{ agent_catalog }", env);
+    assert.equal(idx.body.data.agent_catalog.subnets[0].netuid, 3);
+    const detail = await gql("{ agent_catalog(netuid: 3) }", env);
+    assert.equal(detail.body.data.agent_catalog.services[0].name, "chat");
+    const bad = await gql("{ agent_catalog(netuid: -2) }");
+    assert.equal(bad.body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("freshness resolves the report; null when cold", async () => {
+    const env = fixtureEnv({
+      "/metagraph/freshness.json": { summary: { stale_count: 0 } },
+    });
+    const hot = await gql("{ freshness }", env);
+    assert.equal(hot.body.data.freshness.summary.stale_count, 0);
+    const cold = await gql("{ freshness }");
+    assert.equal(cold.body.data.freshness, null);
+  });
+
+  test("accounts_top_holders forwards sort/limit to the Postgres tier and passes the body through", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            sort: "free_tao",
+            account_count: 1,
+            accounts: [{ coldkey: "5Abc", total_tao: 10 }],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      '{ accounts_top_holders(sort: "free_tao", limit: 5) }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.accounts_top_holders.accounts[0].coldkey, "5Abc");
+    assert.equal(capturedUrl.pathname, "/api/v1/accounts/top-holders");
+    assert.equal(capturedUrl.searchParams.get("sort"), "free_tao");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+  });
+
+  test("accounts_top_holders degrades to null when the Postgres tier is unreachable", async () => {
+    const { body } = await gql("{ accounts_top_holders }");
+    assert.equal(body.data.accounts_top_holders, null);
+  });
+
+  test("all five parity fields are weighted as fan-out fields", () => {
+    for (const f of [
+      "candidates",
+      "fixtures",
+      "agent_catalog",
+      "freshness",
+      "accounts_top_holders",
+    ]) {
+      assert.equal(FIELD_COMPLEXITY[f], FIELD_COMPLEXITY.agent_resources);
+    }
+  });
+});
