@@ -285,6 +285,10 @@ import { handleOgImage } from "../src/og-image.mjs";
 import { handleIconProxy } from "../src/icon-proxy.mjs";
 import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
+  handleAuthorizeRequest,
+  handleGithubOAuthCallback,
+} from "../src/github-oauth.mjs";
+import {
   handleSavedQueryRequest,
   SAVED_QUERIES_PATH_PREFIX,
 } from "./request-handlers/saved-queries.mjs";
@@ -1551,6 +1555,18 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   }
   if (url.pathname.startsWith("/api/v1/keys")) {
     return handleAccountKeysProxy(request, env);
+  }
+
+  // GitHub OAuth (metagraphed#7151): the two routes @cloudflare/workers-
+  // oauth-provider's own authorizeEndpoint deliberately leaves to
+  // application code (see src/github-oauth.mjs's header). GET-only --
+  // both are browser-redirect targets, never called by a client library
+  // directly.
+  if (request.method === "GET" && url.pathname === "/authorize") {
+    return handleAuthorizeRequest(request, env);
+  }
+  if (request.method === "GET" && url.pathname === "/oauth/callback/github") {
+    return handleGithubOAuthCallback(request, env);
   }
 
   // Remote MCP server, for AI agents: stateless JSON-RPC over POST, plus GET

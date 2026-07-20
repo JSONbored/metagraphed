@@ -1021,6 +1021,31 @@ CREATE INDEX IF NOT EXISTS idx_rpc_accounts_ss58 ON rpc_accounts (ss58);
 ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS account_id BIGINT REFERENCES rpc_accounts (id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_account_id ON api_keys (account_id) WHERE account_id IS NOT NULL;
 
+-- ---------------------------------------------------------------------------
+-- GitHub OAuth accounts for the MCP/API (metagraphed#7151) -- second
+-- user-account system in this codebase, parallel to rpc_accounts above
+-- (wallet-signature login) rather than merged into it: the identity proof is
+-- structurally different (GitHub's own OAuth authorization-code exchange vs.
+-- an sr25519 wallet signature), and a single human could plausibly want
+-- both, so this stays its own row/table rather than overloading ss58.
+-- github_user_id is GitHub's own stable numeric account id (immutable even
+-- across a username/login rename) -- the identity key. github_login is
+-- denormalized/cached purely for display and support tickets; it is NOT
+-- authoritative and must be refreshed from GitHub on login, never used to
+-- look up the account.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS github_accounts (
+  id             BIGSERIAL PRIMARY KEY,
+  github_user_id BIGINT NOT NULL UNIQUE,
+  github_login   TEXT NOT NULL,
+  tier           TEXT NOT NULL DEFAULT 'free',
+  created_at     BIGINT NOT NULL,
+  last_login_at  BIGINT
+);
+-- Already covered by the UNIQUE constraint's implicit index; explicit only
+-- for readability/documentation (matches idx_rpc_accounts_ss58's convention).
+CREATE INDEX IF NOT EXISTS idx_github_accounts_github_user_id ON github_accounts (github_user_id);
+
 -- Freemium API on Unkey (2026-07-19): Unkey is now the actual key store --
 -- it mints/hashes/verifies/revokes every key; this table keeps only a thin
 -- (account_id, unkey_key_id) mapping for listing/ownership checks.

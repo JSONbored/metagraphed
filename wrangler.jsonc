@@ -336,6 +336,14 @@
     // this remains a single-flag revert (D1's copy is frozen from this point
     // on, not actively wrong).
     "METAGRAPH_HEALTH_SOURCE": "postgres",
+    // GitHub OAuth App for MCP/API auth (metagraphed#7151) -- identity check
+    // only (no repo-scoped permissions requested), plugged into our own
+    // OAuth 2.1 authorization server (@cloudflare/workers-oauth-provider) as
+    // the upstream provider behind its consent screen. Not secret -- a
+    // GitHub OAuth Client ID is meant to appear in the authorize URL a
+    // browser is redirected to, same as any public OAuth client_id.
+    // GITHUB_OAUTH_CLIENT_SECRET is a wrangler secret, set separately.
+    "GITHUB_OAUTH_CLIENT_ID": "Ov23liz4NzqUvC8YrKMS",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the
@@ -365,6 +373,16 @@
     {
       "binding": "METAGRAPH_CONTROL",
       "id": "9c5577a3454d4830b2ffd2f83775efb1",
+    },
+    // Required by @cloudflare/workers-oauth-provider (metagraphed#7151):
+    // token metadata (hashed, not raw), authorization grants, and client
+    // registrations for our own OAuth 2.1 authorization server. Separate
+    // namespace from METAGRAPH_CONTROL so the library owns its own
+    // key-space/TTL behavior rather than sharing one with unrelated control
+    // data.
+    {
+      "binding": "OAUTH_KV",
+      "id": "76c8cd99795b46bf98b42fd151c1f362",
     },
   ],
   "r2_buckets": [

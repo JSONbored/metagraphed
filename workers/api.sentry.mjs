@@ -40,7 +40,9 @@
 // nothing does today (tests import the raw file only; only wrangler's
 // build ever loads this wrapper).
 import { withSentry } from "@sentry/cloudflare";
+import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
 import handler from "./api.mjs";
+import { buildOAuthProviderOptions } from "../src/github-oauth.mjs";
 // wrangler.jsonc's "main" now points at THIS file, so wrangler looks for
 // every Durable Object binding's class as a named export from here, not
 // from api.mjs -- confirmed by a real `wrangler deploy --dry-run` failure
@@ -52,6 +54,29 @@ export {
   AlerterHub,
   SubnetStatusHub,
 } from "./api.mjs";
+
+// GitHub OAuth (metagraphed#7151): OAuthProvider owns top-level fetch
+// dispatch (its own /oauth/token + /oauth/register endpoints, plus routing
+// /mcp to apiHandler with ctx.props populated when a valid Bearer token is
+// present, falling through to defaultHandler -- the real, unmodified
+// `handler` -- for everything else, INCLUDING /mcp with no/invalid token).
+// Anonymous/IP-rate-limited access is therefore completely unaffected; see
+// src/github-oauth.mjs's own header for the full flow.
+//
+// OAuthProvider instances expose ONLY .fetch(), not .scheduled() -- this
+// Worker has four live cron triggers (wrangler.jsonc "triggers.crons": the
+// 15-min health probe, two hourly rollups, the daily embedding sync) that
+// dispatch to handler.scheduled (handleScheduled in api.mjs). Swapping the
+// top-level export for a bare OAuthProvider instance would silently drop
+// every one of those -- Cloudflare would just never find a .scheduled to
+// call. This composed object keeps .scheduled pointed at the ORIGINAL,
+// untouched handler so cron behavior is byte-for-byte unaffected by this
+// change; only .fetch is rerouted through OAuthProvider.
+const oauthProvider = new OAuthProvider(buildOAuthProviderOptions(handler));
+const handlerWithOAuth = {
+  fetch: (request, env, ctx) => oauthProvider.fetch(request, env, ctx),
+  scheduled: (controller, env, ctx) => handler.scheduled(controller, env, ctx),
+};
 
 export default withSentry(
   (env) => ({
@@ -75,5 +100,5 @@ export default withSentry(
     // calibrate that against, rather than guessing now.
     tracesSampleRate: 0.05,
   }),
-  handler,
+  handlerWithOAuth,
 );

@@ -4044,6 +4044,51 @@ async function handleWalletVerify(request, env) {
   });
 }
 
+// GitHub OAuth account upsert (metagraphed#7151) -- reached ONLY via the
+// DATA_API service binding from src/github-oauth.mjs's callback handler,
+// never directly from a browser/MCP client (this Worker has no public route
+// or workers.dev subdomain -- wrangler.data.jsonc's own "workers_dev": false,
+// same posture the wallet routes above already rely on). The GitHub identity
+// itself was already established by the caller's own code/token exchange
+// with GitHub before this call is made; this route's only job is the
+// Postgres write, mirroring handleWalletVerify's shape immediately above
+// (upsert, return the account row) minus the session-token minting -- the
+// caller mints ITS OWN grant/token via OAuthHelpers.completeAuthorization,
+// which needs OAUTH_KV (a binding only the caller's Worker has).
+async function handleGithubAccountUpsert(request, env) {
+  const { body, error } = await readAccountRouteBody(request);
+  if (error) return error;
+  const githubUserId = body?.github_user_id;
+  const githubLogin = body?.github_login;
+  if (
+    !Number.isInteger(githubUserId) ||
+    typeof githubLogin !== "string" ||
+    !githubLogin
+  ) {
+    return writeJson(
+      {
+        error:
+          "github_user_id (integer) and github_login (string) are required",
+      },
+      400,
+    );
+  }
+  return withAccountsSql(env, async (sql) => {
+    const now = Date.now();
+    const [account] = await sql`
+      INSERT INTO github_accounts (github_user_id, github_login, created_at, last_login_at)
+      VALUES (${githubUserId}, ${githubLogin}, ${now}, ${now})
+      ON CONFLICT (github_user_id) DO UPDATE
+        SET github_login = ${githubLogin}, last_login_at = ${now}
+      RETURNING id, github_login, tier`;
+    return writeJson({
+      id: account.id,
+      github_login: account.github_login,
+      tier: account.tier,
+    });
+  });
+}
+
 // Shared by every /api/v1/keys route: resolves the Authorization header to
 // { accountId, ss58 }, or a ready-to-return error response. A missing
 // WALLET_SESSION_SECRET is a deployment-config gap (503), distinct from a
@@ -4476,6 +4521,12 @@ export default {
       url.pathname === "/api/v1/auth/wallet/verify"
     ) {
       return handleWalletVerify(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/auth/github/upsert-account"
+    ) {
+      return handleGithubAccountUpsert(request, env);
     }
     if (url.pathname.startsWith("/api/v1/keys")) {
       return handleAccountKeysRoute(request, env, url);
