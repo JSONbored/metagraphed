@@ -11,6 +11,14 @@ import { fileURLToPath } from "node:url";
 
 const DEPLOYMENTS_PATH_TEMPLATE =
   "https://api.cloudflare.com/client/v4/accounts/{accountId}/workers/scripts/{scriptName}/deployments";
+const SENTRY_RELEASES_PATH_TEMPLATE =
+  "https://sentry.io/api/0/projects/{org}/{project}/releases/";
+// A bare 40-hex-char git SHA is a real production release's version (see
+// workers/api.sentry.mjs's `release: env.SENTRY_RELEASE || ...`). PR-preview
+// deploys (apps/ui/.github/workflows/ui-preview-deploy.yml) tag releases
+// "<sha>-preview" -- excluded so a preview build is never mistaken for what's
+// actually live in production.
+const PRODUCTION_RELEASE_VERSION_PATTERN = /^[0-9a-f]{40}$/i;
 
 export function extractDeployedCommitSha(deploymentsJson) {
   const deployments = deploymentsJson?.result?.deployments;
@@ -27,6 +35,52 @@ export function extractDeployedCommitSha(deploymentsJson) {
     );
   }
   return commitSha;
+}
+
+// Fallback for when Cloudflare's Deployments API doesn't populate the
+// workers/commit_hash annotation even though Workers Builds is genuinely
+// deploying on every push (confirmed live, 2026-07-20): @sentry/cloudflare's
+// withSentry() (workers/api.sentry.mjs) already tags every production error
+// event with the real deployed commit SHA as its Sentry release, independent
+// of Cloudflare's own deployment bookkeeping. Sorts by dateCreated rather than
+// trusting response order, since that isn't documented/guaranteed.
+export function selectLatestProductionRelease(releases) {
+  if (!Array.isArray(releases)) {
+    return null;
+  }
+  const candidates = releases.filter(
+    (release) =>
+      typeof release?.version === "string" &&
+      PRODUCTION_RELEASE_VERSION_PATTERN.test(release.version),
+  );
+  if (candidates.length === 0) {
+    return null;
+  }
+  return candidates.sort(
+    (a, b) =>
+      new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime(),
+  )[0];
+}
+
+export async function findLatestProductionReleaseCommit({
+  sentryAuthToken,
+  sentryOrg,
+  sentryProject,
+}) {
+  const releasesUrl = SENTRY_RELEASES_PATH_TEMPLATE.replace(
+    "{org}",
+    sentryOrg,
+  ).replace("{project}", sentryProject);
+  const res = await fetch(releasesUrl, {
+    headers: { Authorization: `Bearer ${sentryAuthToken}` },
+  });
+  if (!res.ok) {
+    throw new Error(
+      `Sentry releases API returned HTTP ${res.status}: ${await res.text()}`,
+    );
+  }
+  const latest = selectLatestProductionRelease(await res.json());
+  return latest?.version ?? null;
 }
 
 export function findPreviousScheduledRunAt(runsJson, currentRunId) {
@@ -135,9 +189,38 @@ async function main() {
   let deployedCommitSha;
   try {
     deployedCommitSha = extractDeployedCommitSha(await deploymentsRes.json());
-  } catch (error) {
-    console.error(`::error::${error.message}`);
-    return 1;
+  } catch (cfError) {
+    // Fall back to Sentry's release tracking (see findLatestProductionReleaseCommit
+    // above) rather than failing outright -- this is what actually let a maintainer
+    // confirm live code was current while this annotation gap was unresolved.
+    const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
+    if (!sentryAuthToken) {
+      console.error(`::error::${cfError.message}`);
+      return 1;
+    }
+    console.error(
+      `::warning::${cfError.message} -- falling back to Sentry's latest release commit.`,
+    );
+    try {
+      deployedCommitSha = await findLatestProductionReleaseCommit({
+        sentryAuthToken,
+        sentryOrg: process.env.SENTRY_ORG || "jsonbored",
+        sentryProject: process.env.SENTRY_PROJECT || "metagraphed",
+      });
+    } catch (sentryError) {
+      console.error(`::error::${cfError.message}`);
+      console.error(
+        `::error::Sentry fallback also failed: ${sentryError.message}`,
+      );
+      return 1;
+    }
+    if (!deployedCommitSha) {
+      console.error(`::error::${cfError.message}`);
+      console.error(
+        "::error::Sentry fallback found no production release either.",
+      );
+      return 1;
+    }
   }
 
   let previousScheduledRunAt = null;

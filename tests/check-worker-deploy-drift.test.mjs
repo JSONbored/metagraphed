@@ -4,6 +4,7 @@ import {
   evaluateDeployDrift,
   extractDeployedCommitSha,
   findPreviousScheduledRunAt,
+  selectLatestProductionRelease,
 } from "../scripts/check-worker-deploy-drift.mjs";
 
 describe("extractDeployedCommitSha", () => {
@@ -34,6 +35,54 @@ describe("extractDeployedCommitSha", () => {
         }),
       /no workers\/commit_hash annotation/,
     );
+  });
+});
+
+describe("selectLatestProductionRelease", () => {
+  const shaA = "a".repeat(40);
+  const shaB = "b".repeat(40);
+
+  test("picks the most recently created bare-SHA release", () => {
+    const release = selectLatestProductionRelease([
+      { version: shaA, dateCreated: "2026-07-19T00:00:00Z" },
+      { version: shaB, dateCreated: "2026-07-20T00:00:00Z" },
+    ]);
+    assert.equal(release.version, shaB);
+  });
+
+  test("excludes PR-preview releases even if more recent", () => {
+    // apps/ui's ui-preview-deploy.yml tags preview deploys "<sha>-preview" --
+    // a preview build must never be mistaken for what's live in production.
+    const release = selectLatestProductionRelease([
+      { version: shaA, dateCreated: "2026-07-19T00:00:00Z" },
+      { version: `${shaB}-preview`, dateCreated: "2026-07-20T00:00:00Z" },
+    ]);
+    assert.equal(release.version, shaA);
+  });
+
+  test("excludes non-SHA-shaped versions (e.g. a Cloudflare version UUID)", () => {
+    const release = selectLatestProductionRelease([
+      {
+        version: "c40c4e0e-5143-4207-ac02-7b94edebb4d2",
+        dateCreated: "2026-07-20T00:00:00Z",
+      },
+      { version: shaA, dateCreated: "2026-07-19T00:00:00Z" },
+    ]);
+    assert.equal(release.version, shaA);
+  });
+
+  test("returns null when no release is a bare production SHA", () => {
+    assert.equal(
+      selectLatestProductionRelease([
+        { version: `${shaA}-preview`, dateCreated: "2026-07-20T00:00:00Z" },
+      ]),
+      null,
+    );
+  });
+
+  test("tolerates a non-array input", () => {
+    assert.equal(selectLatestProductionRelease(undefined), null);
+    assert.equal(selectLatestProductionRelease(null), null);
   });
 });
 
