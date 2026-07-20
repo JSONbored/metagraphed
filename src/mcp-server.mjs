@@ -35,6 +35,7 @@
 // exists to prevent for a human clicking through a browser. Revisit only via
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
+import * as Sentry from "@sentry/cloudflare";
 import {
   isUsageTelemetryConfigured,
   recordUsageEvent,
@@ -15839,7 +15840,15 @@ async function dispatchTool(params, ctx) {
   }
   try {
     const args = validateToolArguments(tool, params?.arguments);
-    const data = await tool.handler(args, ctx);
+    // Per-tool span (metagraphed#7152) so the existing 5%-sampled perf trace
+    // (workers/api.sentry.mjs's withSentry() wrap, already live for the whole
+    // /mcp route) can break down latency by tool, not just by worker. Scoped
+    // to the handler call only -- argument validation stays outside the span,
+    // it's not the cost anyone building this needs visibility into.
+    const data = await Sentry.startSpan(
+      { name: `mcp.tool/${name}`, op: "mcp.tool" },
+      () => tool.handler(args, ctx),
+    );
     return {
       content: [{ type: "text", text: JSON.stringify(data) }],
       structuredContent: data,
@@ -15864,6 +15873,13 @@ async function dispatchTool(params, ctx) {
     // reach the unauthenticated public /mcp client. Log server-side; return a
     // sanitized isError result that still honors the structuredContent.error
     // fallback contract clients branch on.
+    //
+    // Tagged with mcp_tool (metagraphed#7152) so this is findable per-tool in
+    // Sentry, matching the existing workers/data-api.mjs:380 route-tagged
+    // pattern. A handled toolError above is an expected outcome (rate limit,
+    // AI degraded to fallback, etc.) and deliberately NOT captured here --
+    // only genuinely unexpected faults should page/alert.
+    Sentry.captureException(error, { tags: { mcp_tool: name } });
     console.error("MCP tool handler failed:", error);
     return {
       content: [
