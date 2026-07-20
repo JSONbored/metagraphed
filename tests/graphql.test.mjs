@@ -5911,6 +5911,264 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
   });
 });
 
+describe("graphql — subnet_performance_history (#6981, neuron_daily reward-distribution trend)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty series, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_performance_history(netuid: 5) {
+          schema_version netuid window point_count points { snapshot_date incentive_gini }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_performance_history, {
+      schema_version: 1,
+      netuid: 5,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("resolves the Postgres-tier per-day trend points", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          window: "7d",
+          point_count: 2,
+          points: [
+            {
+              snapshot_date: "2026-07-02",
+              neuron_count: 4,
+              validator_count: 2,
+              active_count: 3,
+              incentive_gini: 0.42,
+              incentive_nakamoto_coefficient: 2,
+              incentive_top_10pct_share: 0.55,
+              dividends_gini: 0.3,
+              dividends_nakamoto_coefficient: 1,
+              dividends_top_10pct_share: 0.7,
+              trust_mean: 0.61,
+              trust_median: 0.6,
+              consensus_mean: 0.5,
+              consensus_median: 0.49,
+              validator_trust_mean: 0.8,
+              validator_trust_median: 0.79,
+            },
+            {
+              snapshot_date: "2026-07-01",
+              neuron_count: 3,
+              validator_count: 1,
+              active_count: 2,
+              incentive_gini: 0.4,
+              incentive_nakamoto_coefficient: 2,
+              incentive_top_10pct_share: 0.5,
+              dividends_gini: 0.28,
+              dividends_nakamoto_coefficient: 1,
+              dividends_top_10pct_share: 0.68,
+              trust_mean: 0.58,
+              trust_median: 0.57,
+              consensus_mean: 0.47,
+              consensus_median: 0.46,
+              validator_trust_mean: 0.77,
+              validator_trust_median: 0.76,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_performance_history(netuid: 7, window: "7d") {
+          netuid window point_count
+          points { snapshot_date neuron_count validator_count incentive_gini dividends_top_10pct_share trust_median validator_trust_mean }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const h = body.data.subnet_performance_history;
+    assert.equal(h.netuid, 7);
+    assert.equal(h.window, "7d");
+    assert.equal(h.point_count, 2);
+    assert.equal(h.points.length, 2);
+    assert.equal(h.points[0].snapshot_date, "2026-07-02");
+    assert.equal(h.points[0].incentive_gini, 0.42);
+    assert.equal(h.points[0].validator_count, 2);
+    assert.equal(h.points[1].dividends_top_10pct_share, 0.68);
+    assert.equal(h.points[1].trust_median, 0.57);
+  });
+
+  test("forwards the window to the performance/history Postgres path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ subnet_performance_history(netuid: 3, window: "90d") { point_count } }',
+      env,
+    );
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/performance/history"));
+    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent series", async () => {
+    const { body } = await gql(
+      '{ subnet_performance_history(netuid: 5, window: "5d") { point_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_performance_history ?? null, null);
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty series", async () => {
+    const { body } = await gql(
+      "{ subnet_performance_history(netuid: -1) { point_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_performance_history ?? null, null);
+  });
+
+  test("subnet_performance_history is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_performance_history, 5);
+  });
+});
+
+describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-stake trend)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable empty series, never null", async () => {
+    const { status, body } = await gql(
+      `{ subnet_yield_history(netuid: 5) {
+          schema_version netuid window point_count points { snapshot_date subnet_yield }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_yield_history, {
+      schema_version: 1,
+      netuid: 5,
+      window: "30d",
+      point_count: 0,
+      points: [],
+    });
+  });
+
+  test("resolves the Postgres-tier per-day trend points", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 7,
+          window: "7d",
+          point_count: 2,
+          points: [
+            {
+              snapshot_date: "2026-07-02",
+              neuron_count: 4,
+              validator_count: 2,
+              yield_count: 4,
+              subnet_yield: 0.0123,
+              mean_yield: 0.0131,
+              median_yield: 0.0129,
+              p25_yield: 0.011,
+              p75_yield: 0.015,
+              p90_yield: 0.017,
+            },
+            {
+              snapshot_date: "2026-07-01",
+              neuron_count: 3,
+              validator_count: 1,
+              yield_count: 3,
+              subnet_yield: 0.0119,
+              mean_yield: 0.0125,
+              median_yield: 0.0124,
+              p25_yield: 0.0105,
+              p75_yield: 0.0145,
+              p90_yield: 0.0166,
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ subnet_yield_history(netuid: 7, window: "7d") {
+          netuid window point_count
+          points { snapshot_date neuron_count validator_count yield_count subnet_yield median_yield p90_yield }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const h = body.data.subnet_yield_history;
+    assert.equal(h.netuid, 7);
+    assert.equal(h.window, "7d");
+    assert.equal(h.point_count, 2);
+    assert.equal(h.points.length, 2);
+    assert.equal(h.points[0].snapshot_date, "2026-07-02");
+    assert.equal(h.points[0].subnet_yield, 0.0123);
+    assert.equal(h.points[0].yield_count, 4);
+    assert.equal(h.points[1].median_yield, 0.0124);
+    assert.equal(h.points[1].p90_yield, 0.0166);
+  });
+
+  test("forwards the window to the yield/history Postgres path", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({});
+        },
+      },
+    };
+    await gql(
+      '{ subnet_yield_history(netuid: 3, window: "90d") { point_count } }',
+      env,
+    );
+    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/yield/history"));
+    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent series", async () => {
+    const { body } = await gql(
+      '{ subnet_yield_history(netuid: 5, window: "5d") { point_count } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_yield_history ?? null, null);
+  });
+
+  test("a negative netuid is a GraphQL error, not an empty series", async () => {
+    const { body } = await gql(
+      "{ subnet_yield_history(netuid: -1) { point_count } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+    assert.equal(body.data?.subnet_yield_history ?? null, null);
+  });
+
+  test("subnet_yield_history is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_yield_history, 5);
+  });
+});
+
 describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

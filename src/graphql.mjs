@@ -79,8 +79,18 @@ import {
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
 } from "./subnet-weight-setters.mjs";
-import { buildSubnetYield } from "./subnet-yield.mjs";
-import { buildSubnetPerformance } from "./subnet-performance.mjs";
+import {
+  buildSubnetYield,
+  buildSubnetYieldHistory,
+  YIELD_HISTORY_WINDOWS,
+  DEFAULT_YIELD_HISTORY_WINDOW,
+} from "./subnet-yield.mjs";
+import {
+  buildSubnetPerformance,
+  buildSubnetPerformanceHistory,
+  PERFORMANCE_HISTORY_WINDOWS,
+  DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+} from "./subnet-performance.mjs";
 import {
   buildConcentration,
   buildConcentrationHistory,
@@ -332,8 +342,12 @@ export const SDL = `
     subnet_weight_setters(netuid: Int!, window: String): SubnetWeightSetters!
     "Per-subnet emission-per-stake yield over the current metagraph snapshot: each UID's yield plus the subnet-wide aggregate and p25/median/p75/p90 distribution; a subnet with no neurons resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/yield."
     subnet_yield(netuid: Int!): SubnetYield!
+    "Per-subnet per-day emission-per-stake yield trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's subnet-wide yield plus the mean/median/p25/p75/p90 distribution across UIDs, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/yield/history."
+    subnet_yield_history(netuid: Int!, window: String): SubnetYieldHistory!
     "Per-subnet reward-distribution and score-spread card over the current neurons snapshot: incentive/dividends concentration plus p10–p90 trust/consensus/validator_trust; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/performance."
     subnet_performance(netuid: Int!): SubnetPerformance!
+    "Per-subnet per-day reward-distribution and score-spread trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's incentive/dividends Gini, Nakamoto coefficient, and top-10% share plus mean/median trust, consensus, and validator_trust, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/performance/history."
+    subnet_performance_history(netuid: Int!, window: String): SubnetPerformanceHistory!
     "Per-subnet stake and emission concentration over the current neurons snapshot: raw-UID and per-entity Gini/HHI/Nakamoto/top-K share for stake and emission, validator-only stake concentration, and a uids-per-entity Sybil signal; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration."
     subnet_concentration(netuid: Int!): SubnetConcentration!
     "Per-subnet per-day stake and emission concentration trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's stake/emission Gini, Nakamoto coefficient, and top-10% share, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration/history."
@@ -1851,6 +1865,58 @@ export const SDL = `
   }
 
   "One day's point in a subnet's concentration trend (#5901). Flattened (not nested) stake/emission metrics keep the series trivial to plot; each is null on a cold/empty day."
+  type SubnetPerformanceHistoryPoint {
+    snapshot_date: String!
+    neuron_count: Int!
+    validator_count: Int!
+    active_count: Int!
+    incentive_gini: Float
+    incentive_nakamoto_coefficient: Int
+    incentive_top_10pct_share: Float
+    dividends_gini: Float
+    dividends_nakamoto_coefficient: Int
+    dividends_top_10pct_share: Float
+    trust_mean: Float
+    trust_median: Float
+    consensus_mean: Float
+    consensus_median: Float
+    validator_trust_mean: Float
+    validator_trust_median: Float
+  }
+
+  "Per-subnet per-day reward-distribution trend (#6981) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. The history twin of subnet_performance, mirroring GET /api/v1/subnets/{netuid}/performance/history."
+  type SubnetPerformanceHistory {
+    schema_version: Int!
+    netuid: Int!
+    "The resolved window label (7d/30d/90d)."
+    window: String
+    point_count: Int!
+    points: [SubnetPerformanceHistoryPoint!]!
+  }
+
+  type SubnetYieldHistoryPoint {
+    snapshot_date: String!
+    neuron_count: Int!
+    validator_count: Int!
+    yield_count: Int!
+    subnet_yield: Float
+    mean_yield: Float
+    median_yield: Float
+    p25_yield: Float
+    p75_yield: Float
+    p90_yield: Float
+  }
+
+  "Per-subnet per-day emission-per-stake yield trend (#6981) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. The history twin of subnet_yield, mirroring GET /api/v1/subnets/{netuid}/yield/history."
+  type SubnetYieldHistory {
+    schema_version: Int!
+    netuid: Int!
+    "The resolved window label (7d/30d/90d)."
+    window: String
+    point_count: Int!
+    points: [SubnetYieldHistoryPoint!]!
+  }
+
   type SubnetConcentrationHistoryPoint {
     snapshot_date: String!
     neuron_count: Int!
@@ -2940,7 +3006,9 @@ export const FIELD_COMPLEXITY = {
   subnet_stake_transfers: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_yield: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_yield_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_performance: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_performance_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_concentration: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_concentration_history: RELATIONSHIP_FIELD_COMPLEXITY,
   neuron: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3908,6 +3976,92 @@ const rootValue = {
       entity_stake: data.entity_stake ?? null,
       entity_emission: data.entity_emission ?? null,
       validator_stake: data.validator_stake ?? null,
+    };
+  },
+
+  async subnet_performance_history({ netuid, window }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same 7d/30d/90d window validation the REST route + MCP
+    // get_subnet_performance_history use -- an unsupported window is a GraphQL
+    // BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_PERFORMANCE_HISTORY_WINDOW;
+    if (!Object.hasOwn(PERFORMANCE_HISTORY_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, PERFORMANCE_HISTORY_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetPerformanceHistory([])
+    // empty-series fallback the neuron_daily-derived REST route + MCP tool use.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/performance/history`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ??
+      buildSubnetPerformanceHistory([], netuid, {
+        window: windowParam,
+        capped: false,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      point_count: data.point_count ?? 0,
+      points: data.points ?? [],
+    };
+  },
+
+  async subnet_yield_history({ netuid, window }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same 7d/30d/90d window validation the REST route + MCP
+    // get_subnet_yield_history use -- an unsupported window is a GraphQL
+    // BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_YIELD_HISTORY_WINDOW;
+    if (!Object.hasOwn(YIELD_HISTORY_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, YIELD_HISTORY_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetYieldHistory([])
+    // empty-series fallback the neuron_daily-derived REST route + MCP tool use.
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/yield/history`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ??
+      buildSubnetYieldHistory([], netuid, {
+        window: windowParam,
+        capped: false,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      point_count: data.point_count ?? 0,
+      points: data.points ?? [],
     };
   },
 
