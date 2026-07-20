@@ -152,6 +152,31 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
     assert.match(result.content[0].text, /upstream_unavailable/);
   });
 
+  test("an upstream error with no message falls back to a generic message", async () => {
+    const result = await callTool({ surface_id: "x:api:1" }, async () => {
+      throw new Error("");
+    });
+    assert.equal(result.isError, true);
+    assert.match(
+      result.content[0].text,
+      /upstream_unavailable: The surface could not be reached\./,
+    );
+  });
+
+  test("a malformed JSON body is still returned, with parse_error set", async () => {
+    const result = await callTool(
+      { surface_id: "x:api:1" },
+      async () =>
+        new Response("{not valid json", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    assert.equal(result.isError, false);
+    assert.equal(result.structuredContent.body, "{not valid json");
+    assert.ok(result.structuredContent.parse_error);
+  });
+
   test("a binary content-type maps to unsupported_content_type", async () => {
     const result = await callTool(
       { surface_id: "x:api:1" },
