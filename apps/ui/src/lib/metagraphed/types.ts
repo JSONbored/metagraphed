@@ -1320,6 +1320,53 @@ export interface AccountCounterparties {
   counterparties: AccountCounterparty[];
   [key: string]: unknown;
 }
+
+/** One child/parent delegation entry (#6999). `hotkey` is normalized from the
+ *  route's `child` / `parent` key so children and parents share one shape. */
+export interface AccountDelegationEntry {
+  hotkey: string;
+  proportion: string | null;
+  proportion_fraction: number | null;
+}
+
+export interface AccountDelegationSubnet {
+  netuid: number;
+  entries: AccountDelegationEntry[];
+}
+
+/** Child- or parent-hotkey delegation graph (#6721/#6723). `subnets` is null on
+ *  an RPC failure (distinct from [] = genuinely none). */
+export interface AccountDelegation {
+  schema_version: number;
+  account: string;
+  subnets: AccountDelegationSubnet[] | null;
+  queried_at: string | null;
+}
+
+/** One community-contributed entity label for an account (#6737-#6740). */
+export interface AccountEntityLabel {
+  name: string | null;
+  category: string | null;
+  notes: string | null;
+  source_urls: string[];
+}
+
+/** One subnet-ownership tie (gained/lost ownership via SubnetOwnerChanged). */
+export interface AccountOwnershipTie {
+  netuid: number | null;
+  role: string;
+  block_number: number | null;
+  observed_at: string | null;
+}
+
+/** Entity labels + subnet-ownership ties for an account (#6999). */
+export interface AccountEntities {
+  schema_version: number;
+  ss58: string;
+  labels: AccountEntityLabel[];
+  ownership_tie_count: number;
+  ownership_ties: AccountOwnershipTie[];
+}
 /** One per-subnet stake/unstake flow row in /accounts/{ss58}/stake-flow. */
 export interface AccountStakeFlowSubnet {
   netuid: number;
