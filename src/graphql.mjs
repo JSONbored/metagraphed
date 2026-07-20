@@ -177,6 +177,9 @@ import {
 } from "./metagraph-neurons.mjs";
 import { buildAlphaVolume } from "./alpha-volume.mjs";
 import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.mjs";
+import { loadChangelog } from "./changelog-mcp.mjs";
+import { loadContracts } from "./contracts-mcp.mjs";
+import { loadHealthHistory } from "./health-history-mcp.mjs";
 import {
   buildSubnetOhlc,
   OHLC_INTERVALS,
@@ -409,6 +412,12 @@ export const SDL = `
     subnet_volume(netuid: Int!): SubnetVolume!
     "The machine-readable AI-resources index: the copyable agent prompt (/agent.md), MCP server install metadata and tool listing, the Bittensor skill, llms.txt, OpenAPI, and links to the agent-facing APIs. Use it to bootstrap an agent integration before calling the catalog/search fields. Null when the index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_agent_resources MCP/REST shape. Mirrors GET /api/v1/agent-resources."
     agent_resources: JSON
+    "The latest publish-time registry change summary: artifact, subnet, and coverage diffs since the previous publish. Null when no changelog has been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_changelog MCP/REST shape. Mirrors GET /api/v1/changelog."
+    changelog: JSON
+    "Public artifact contract metadata: the published artifact paths, their storage tiers, and schema refs. Null when the contract index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_contracts MCP/REST shape. Mirrors GET /api/v1/contracts."
+    contracts: JSON
+    "One day's compact health-history snapshot (summary + per-surface rows) for an ISO date, e.g. \\"2026-07-20\\". Distinct from the live health and health_trends fields: this is a specific-date lookup. A malformed date is a BAD_USER_INPUT error; a date with no snapshot resolves to null. Opaque JSON passed through verbatim, matching the get_health_history MCP/REST shape. Mirrors GET /api/v1/health/history/{date}."
+    health_history(date: String!): JSON
     "One subnet's alpha-price OHLC candles bucketed by interval (1h or 1d, default 1h) over the trailing days window (default 90, max 365), from the same executed-trade stream subnet_volume reads. A subnet with no trades resolves to a schema-stable empty candle list, never null. Mirrors GET /api/v1/subnets/{netuid}/ohlc."
     subnet_ohlc(netuid: Int!, interval: String, days: Int): SubnetOhlc!
     "A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
@@ -3517,6 +3526,9 @@ export const FIELD_COMPLEXITY = {
   subnet_health_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_percentiles: RELATIONSHIP_FIELD_COMPLEXITY,
   agent_resources: RELATIONSHIP_FIELD_COMPLEXITY,
+  changelog: RELATIONSHIP_FIELD_COMPLEXITY,
+  contracts: RELATIONSHIP_FIELD_COMPLEXITY,
+  health_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_volume: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_ohlc: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_quote: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4939,6 +4951,54 @@ const rootValue = {
         });
       }
       if (err?.toolError) return null;
+      throw err;
+    }
+  },
+
+  // #7170: reuse the same loaders get_changelog / get_contracts already call,
+  // unchanged, so GraphQL, MCP, and REST read one artifact path and can't
+  // drift. Any loader miss (not_found / cold R2 / unavailable) resolves to
+  // null rather than a GraphQL error, matching agent_resources' schema-stable
+  // convention for a not-yet-baked index.
+  async changelog(_args, context) {
+    try {
+      return await loadChangelog(context, { readArtifact });
+    } catch (err) {
+      if (err?.toolError) return null;
+      throw err;
+    }
+  },
+
+  async contracts(_args, context) {
+    try {
+      return await loadContracts(context, { readArtifact });
+    } catch (err) {
+      if (err?.toolError) return null;
+      throw err;
+    }
+  },
+
+  // Per-date lookup. loadHealthHistory's deps.readArtifact is called as
+  // (ctx, path) -- exactly loadArtifact's shape -- so passing it reuses the
+  // request-scoped once() cache instead of re-reading R2. A malformed date is
+  // BAD_USER_INPUT (mirroring REST's invalid_params 400); a date with no
+  // snapshot resolves to null.
+  async health_history({ date }, context) {
+    try {
+      return await loadHealthHistory(
+        context,
+        { date },
+        { readArtifact: loadArtifact },
+      );
+    } catch (err) {
+      if (err?.healthHistoryMcp) {
+        if (err.code === "invalid_params") {
+          throw new GraphQLError(err.message, {
+            extensions: { code: "BAD_USER_INPUT" },
+          });
+        }
+        return null;
+      }
       throw err;
     }
   },

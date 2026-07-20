@@ -6304,6 +6304,144 @@ describe("graphql — agent_resources (#6987, baked AI-resources index)", () => 
   });
 });
 
+describe("graphql — changelog / contracts / health_history (#7170, REST parity)", () => {
+  test("changelog resolves the baked publish-time change summary", async () => {
+    const env = fixtureEnv({
+      "/metagraph/changelog.json": {
+        schema_version: 1,
+        generated_at: "2026-07-20T00:00:00.000Z",
+        subnets: { added: 2, removed: 0 },
+      },
+    });
+    const { status, body } = await gql("{ changelog }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.changelog.schema_version, 1);
+    assert.equal(body.data.changelog.subnets.added, 2);
+  });
+
+  test("changelog degrades to null when not baked, never an error", async () => {
+    const { status, body } = await gql("{ changelog }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.changelog, null);
+  });
+
+  test("contracts resolves the baked artifact contract metadata", async () => {
+    const env = fixtureEnv({
+      "/metagraph/contracts.json": {
+        schema_version: 1,
+        artifacts: [{ id: "subnets", path: "/metagraph/subnets.json" }],
+      },
+    });
+    const { status, body } = await gql("{ contracts }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.contracts.artifacts[0].id, "subnets");
+  });
+
+  test("contracts degrades to null when not baked, never an error", async () => {
+    const { status, body } = await gql("{ contracts }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.contracts, null);
+  });
+
+  test("health_history resolves one date's snapshot", async () => {
+    const env = fixtureEnv({
+      "/metagraph/health/history/2026-07-20.json": {
+        date: "2026-07-20",
+        summary: { up: 120, down: 3 },
+        surfaces: [
+          { id: "srf-1", status: "ok" },
+          { id: "srf-2", status: "down" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ health_history(date: "2026-07-20") }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.health_history.date, "2026-07-20");
+    assert.equal(body.data.health_history.summary.up, 120);
+    assert.equal(body.data.health_history.surfaces.length, 2);
+  });
+
+  test("health_history resolves to null when no snapshot exists for the date", async () => {
+    const { status, body } = await gql(
+      '{ health_history(date: "2026-07-20") }',
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.health_history, null);
+  });
+
+  test("health_history rejects a malformed date with BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      '{ health_history(date: "20-07-2026") }',
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors?.[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(body.errors[0].message, /YYYY-MM-DD/);
+  });
+
+  // A loader *miss* is null (above); a genuine fault is not swallowed. An
+  // unparseable artifact body throws out of readR2's .json() as a plain Error
+  // -- not a loader toolError -- so it must surface as a GraphQL error rather
+  // than being silently reported as "not baked".
+  function malformedBodyEnv(artifactPath) {
+    return {
+      METAGRAPH_R2_LATEST_PREFIX: "latest/",
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          const path = "/metagraph/" + key.replace(/^latest\//, "");
+          if (path !== artifactPath) return null;
+          return {
+            async json() {
+              throw new Error("malformed artifact body");
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("changelog surfaces a non-loader fault instead of reporting null", async () => {
+    const { body } = await gql(
+      "{ changelog }",
+      malformedBodyEnv("/metagraph/changelog.json"),
+    );
+    assert.ok(body.errors?.length, "expected a GraphQL error");
+    assert.equal(body.data?.changelog ?? null, null);
+  });
+
+  test("contracts surfaces a non-loader fault instead of reporting null", async () => {
+    const { body } = await gql(
+      "{ contracts }",
+      malformedBodyEnv("/metagraph/contracts.json"),
+    );
+    assert.ok(body.errors?.length, "expected a GraphQL error");
+    assert.equal(body.data?.contracts ?? null, null);
+  });
+
+  test("health_history surfaces a non-loader fault instead of reporting null", async () => {
+    const { body } = await gql(
+      '{ health_history(date: "2026-07-20") }',
+      malformedBodyEnv("/metagraph/health/history/2026-07-20.json"),
+    );
+    assert.ok(body.errors?.length, "expected a GraphQL error");
+    assert.equal(body.data?.health_history ?? null, null);
+  });
+
+  test("the three fields are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.changelog, 5);
+    assert.equal(FIELD_COMPLEXITY.contracts, 5);
+    assert.equal(FIELD_COMPLEXITY.health_history, 5);
+  });
+});
+
 describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
