@@ -758,12 +758,18 @@ export const economicsQuery = () =>
     staleTime: STALE_MED,
   });
 
-const LEADERBOARD_BOARD_KEYS: LeaderboardBoardKey[] = [
+/** Canonical order matching `LEADERBOARD_BOARDS` in src/health-serving.mjs (#6995). */
+export const LEADERBOARD_BOARD_KEYS: LeaderboardBoardKey[] = [
   "healthiest",
   "fastest-rpc",
   "most-complete",
   "most-enriched",
   "fastest-growing",
+  "most-reliable",
+  "open-slots",
+  "cheapest-registration",
+  "highest-emission",
+  "validator-headroom",
 ];
 
 function normalizeLeaderboardRow(raw: unknown): LeaderboardRow | null {
@@ -772,6 +778,7 @@ function normalizeLeaderboardRow(raw: unknown): LeaderboardRow | null {
   if (typeof r.netuid !== "number") return null;
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+  const bool = (v: unknown) => (typeof v === "boolean" ? v : undefined);
   return {
     netuid: r.netuid,
     slug: str(r.slug),
@@ -785,10 +792,25 @@ function normalizeLeaderboardRow(raw: unknown): LeaderboardRow | null {
     surface_count: num(r.surface_count),
     operational_interface_count: num(r.operational_interface_count),
     completeness_delta: num(r.completeness_delta),
+    score: num(r.score),
+    grade: str(r.grade),
+    sample_count: num(r.sample_count),
+    latency_sample_count: num(r.latency_sample_count),
+    open_slots: num(r.open_slots),
+    max_uids: num(r.max_uids),
+    registration_cost_tao: num(r.registration_cost_tao),
+    registration_allowed: bool(r.registration_allowed),
+    emission_share: num(r.emission_share),
+    total_stake_tao: num(r.total_stake_tao),
+    validator_count: num(r.validator_count),
+    miner_count: num(r.miner_count),
+    validator_headroom: num(r.validator_headroom),
+    max_validators: num(r.max_validators),
   };
 }
 
-function normalizeLeaderboards(raw: unknown): Leaderboards {
+/** Normalize the `boards` object from GET /api/v1/registry/leaderboards. */
+export function normalizeLeaderboards(raw: unknown): Leaderboards {
   const boards = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const out = {} as Leaderboards;
   for (const key of LEADERBOARD_BOARD_KEYS) {
@@ -800,9 +822,9 @@ function normalizeLeaderboards(raw: unknown): Leaderboards {
   return out;
 }
 
-// #1111: registry leaderboards — five live, D1-computed boards (healthiest,
-// fastest-rpc, most-complete, most-enriched, fastest-growing). One artifact carries
-// all boards; the homepage discovery module renders the top rows of each.
+// #1111 / #6995: registry leaderboards — ten boards (6 operational + 4 economic).
+// One artifact carries all boards; the homepage module and /leaderboards page
+// each render ranked rows from the same normalized payload.
 function normalizeSubnetMover(raw: unknown): SubnetMover | null {
   if (!isRecord(raw)) return null;
   const netuid = coerceFiniteNumber(raw.netuid);

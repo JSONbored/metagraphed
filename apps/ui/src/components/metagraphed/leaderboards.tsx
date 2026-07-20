@@ -1,79 +1,65 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { leaderboardsQuery } from "@/lib/metagraphed/queries";
+import {
+  ECONOMIC_BOARD_KEYS,
+  OPERATIONAL_BOARD_KEYS,
+  REGISTRY_BOARD_SPECS,
+} from "@/lib/metagraphed/registry-leaderboard-boards";
 import { BrandIcon } from "@jsonbored/ui-kit";
 import type { LeaderboardBoardKey, LeaderboardRow } from "@/lib/metagraphed/types";
 
-// #1111: surface the five live, D1-computed registry leaderboards
-// (/api/v1/registry/leaderboards) as a homepage discovery module. Each board's
-// ranked rows link straight to the subnet detail page. Self-contained: the whole
-// section hides on error/empty so a discovery extra never breaks the homepage.
+// #1111 / #6995: surface live registry leaderboards (/api/v1/registry/leaderboards)
+// as a homepage discovery module. Economic opportunity boards are listed first;
+// operational boards follow. Self-contained: the whole section hides on
+// error/empty so a discovery extra never breaks the homepage.
 
 const ROWS_PER_BOARD = 5;
 
-const BOARDS: Array<{
-  key: LeaderboardBoardKey;
-  label: string;
-  metric: (row: LeaderboardRow) => string | null;
-}> = [
-  {
-    key: "healthiest",
-    label: "Healthiest",
-    metric: (r) => (r.uptime_ratio != null ? `${Math.round(r.uptime_ratio * 100)}% up` : null),
-  },
-  {
-    key: "fastest-rpc",
-    label: "Fastest RPC",
-    metric: (r) => (r.latency_ms != null ? `${Math.round(r.latency_ms)}ms` : null),
-  },
-  {
-    key: "most-complete",
-    label: "Most complete",
-    metric: (r) => (r.completeness_score != null ? `${Math.round(r.completeness_score)}%` : null),
-  },
-  {
-    key: "most-enriched",
-    label: "Most enriched",
-    metric: (r) =>
-      r.surface_count != null
-        ? `${r.surface_count} surface${r.surface_count === 1 ? "" : "s"}`
-        : null,
-  },
-  {
-    key: "fastest-growing",
-    label: "Fastest growing",
-    metric: (r) =>
-      r.completeness_delta != null ? `+${Math.round(r.completeness_delta)} pts` : null,
-  },
+const HOMEPAGE_BOARD_KEYS: LeaderboardBoardKey[] = [
+  ...ECONOMIC_BOARD_KEYS,
+  ...OPERATIONAL_BOARD_KEYS,
 ];
 
 export function LeaderboardsModule() {
   const { data: res, isError } = useQuery(leaderboardsQuery());
   const boards = res?.data;
 
-  // Discovery extra — never break the homepage. Hide entirely on error, and until
-  // at least one board has rows to show.
   if (isError || !boards) return null;
-  const populated = BOARDS.map((board) => ({
-    ...board,
-    rows: (boards[board.key] ?? []).slice(0, ROWS_PER_BOARD),
-  })).filter((board) => board.rows.length > 0);
+  const populated = HOMEPAGE_BOARD_KEYS.map((key) => {
+    const spec = REGISTRY_BOARD_SPECS[key];
+    return {
+      key,
+      label: spec.label,
+      metric: spec.primaryMetric,
+      rows: (boards[key] ?? []).slice(0, ROWS_PER_BOARD),
+    };
+  }).filter((board) => board.rows.length > 0);
   if (populated.length === 0) return null;
 
   return (
     <section className="mt-section-gap">
-      <div className="mb-8 max-w-2xl">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted inline-flex items-center gap-2">
-          <span className="mg-live-dot" />
-          Discover
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div className="max-w-2xl">
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted inline-flex items-center gap-2">
+            <span className="mg-live-dot" />
+            Discover
+          </div>
+          <h2 className="mt-2 font-display text-2xl md:text-3xl font-semibold tracking-tight text-ink-strong">
+            Top subnets, ranked live.
+          </h2>
+          <p className="mt-2 text-sm text-ink-muted leading-relaxed">
+            Registry leaderboards from live data — open slots, registration cost, emission share,
+            validator headroom, uptime, completeness, and more.
+          </p>
         </div>
-        <h2 className="mt-2 font-display text-2xl md:text-3xl font-semibold tracking-tight text-ink-strong">
-          Top subnets, ranked live.
-        </h2>
-        <p className="mt-2 text-sm text-ink-muted leading-relaxed">
-          Five leaderboards computed from live registry data — by uptime, RPC latency, interface
-          completeness, surface coverage, and recent growth.
-        </p>
+        <Link
+          to="/leaderboards"
+          search={{ view: "opportunity", window: "7d" }}
+          className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent-text hover:underline"
+        >
+          View all leaderboards
+        </Link>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {populated.map((board) => (

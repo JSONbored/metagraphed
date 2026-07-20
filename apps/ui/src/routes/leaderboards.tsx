@@ -24,17 +24,34 @@ import {
   chainDeregistrationsQuery,
   chainWeightsQuery,
   economicsQuery,
+  leaderboardsQuery,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
-import type { Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
+import {
+  ECONOMIC_BOARD_KEYS,
+  OPERATIONAL_BOARD_KEYS,
+  REGISTRY_BOARD_SPECS,
+  type RegistryBoardSpec,
+} from "@/lib/metagraphed/registry-leaderboard-boards";
+import type {
+  LeaderboardBoardKey,
+  LeaderboardRow,
+  Subnet,
+  SubnetEconomics,
+} from "@/lib/metagraphed/types";
 
 const leaderboardsSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
+  // #6995: opportunity (economic) first — answers "where should I register/validate".
+  view: fallback(z.enum(["opportunity", "registry", "chain"]), "opportunity").default(
+    "opportunity",
+  ),
 });
 
 type LeaderboardWindow = z.infer<typeof leaderboardsSearchSchema>["window"];
+type LeaderboardView = z.infer<typeof leaderboardsSearchSchema>["view"];
 
 export const Route = createFileRoute("/leaderboards")({
   validateSearch: zodValidator(leaderboardsSearchSchema),
@@ -44,13 +61,13 @@ export const Route = createFileRoute("/leaderboards")({
       {
         name: "description",
         content:
-          "Network-wide Bittensor leaderboards — validator weight-setting activity and neuron deregistrations ranked by subnet over 7d and 30d windows.",
+          "Registry and chain leaderboards — open registration slots, cheapest entry, highest emission, validator headroom, healthiest subnets, and weight-setting / deregistration activity.",
       },
       { property: "og:title", content: "Leaderboards — Metagraphed" },
       {
         property: "og:description",
         content:
-          "Network-wide Bittensor leaderboards — validator weight-setting activity and neuron deregistrations ranked by subnet over 7d and 30d windows.",
+          "Registry and chain leaderboards — open registration slots, cheapest entry, highest emission, validator headroom, healthiest subnets, and weight-setting / deregistration activity.",
       },
     ],
   }),
@@ -85,12 +102,17 @@ function LeaderboardSkeleton() {
   );
 }
 
-// Every board on this route ranks the same 7d/30d window, so the window control lives at the page
-// level and governs both sections rather than each board owning a duplicate toggle.
+const VIEW_OPTIONS: Array<{ id: LeaderboardView; label: string }> = [
+  { id: "opportunity", label: "Opportunity" },
+  { id: "registry", label: "Registry" },
+  { id: "chain", label: "Chain" },
+];
+
 function LeaderboardsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const win = search.window;
+  const view = search.view;
 
   return (
     <AppShell>
@@ -98,50 +120,280 @@ function LeaderboardsPage() {
         eyebrow="Explorer"
         live
         title="Leaderboards"
-        description="Network-wide chain activity boards — ranked by subnet from live chain-direct analytics."
+        description="Economic opportunity, registry health, and chain activity — ranked by subnet from live registry and chain-direct analytics."
         actions={
           <ActionBar>
-            <CsvExportMenu win={win} />
+            {view === "chain" ? <CsvExportMenu win={win} /> : null}
             <ShareButton bare />
           </ActionBar>
         }
       />
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Window
-        </span>
-        {(["7d", "30d"] as const).map((w) => (
-          <button
-            key={w}
-            type="button"
-            onClick={() => navigate({ search: { window: w } })}
-            className={w === win ? WINDOW_BTN_ACTIVE : WINDOW_BTN}
-          >
-            {w}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            View
+          </span>
+          {VIEW_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => navigate({ search: (prev) => ({ ...prev, view: opt.id }) })}
+              className={opt.id === view ? WINDOW_BTN_ACTIVE : WINDOW_BTN}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {view === "chain" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+              Window
+            </span>
+            {(["7d", "30d"] as const).map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => navigate({ search: (prev) => ({ ...prev, window: w }) })}
+                className={w === win ? WINDOW_BTN_ACTIVE : WINDOW_BTN}
+              >
+                {w}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div className="space-y-12">
-        <QueryErrorBoundary>
-          <Suspense fallback={<LeaderboardSkeleton />}>
-            <WeightSettingLeaderboard win={win} />
-          </Suspense>
-        </QueryErrorBoundary>
-        <QueryErrorBoundary>
-          <Suspense fallback={<LeaderboardSkeleton />}>
-            <DeregistrationsLeaderboard win={win} />
-          </Suspense>
-        </QueryErrorBoundary>
-        <QueryErrorBoundary>
-          <Suspense fallback={<LeaderboardSkeleton />}>
-            <EmissionsLeaderboard />
-          </Suspense>
-        </QueryErrorBoundary>
+        {view === "opportunity" ? (
+          <QueryErrorBoundary>
+            <Suspense fallback={<LeaderboardSkeleton />}>
+              <RegistryBoardsGroup
+                title="Economic opportunity"
+                description="Where to register or validate — open slots, cheapest entry, highest emission, and validator headroom."
+                boardKeys={ECONOMIC_BOARD_KEYS}
+              />
+            </Suspense>
+          </QueryErrorBoundary>
+        ) : null}
+        {view === "registry" ? (
+          <QueryErrorBoundary>
+            <Suspense fallback={<LeaderboardSkeleton />}>
+              <RegistryBoardsGroup
+                title="Registry operational"
+                description="Live registry rankings — health, RPC latency, completeness, enrichment, growth, and reliability."
+                boardKeys={OPERATIONAL_BOARD_KEYS}
+              />
+            </Suspense>
+          </QueryErrorBoundary>
+        ) : null}
+        {view === "chain" ? (
+          <>
+            <QueryErrorBoundary>
+              <Suspense fallback={<LeaderboardSkeleton />}>
+                <WeightSettingLeaderboard win={win} />
+              </Suspense>
+            </QueryErrorBoundary>
+            <QueryErrorBoundary>
+              <Suspense fallback={<LeaderboardSkeleton />}>
+                <DeregistrationsLeaderboard win={win} />
+              </Suspense>
+            </QueryErrorBoundary>
+            <QueryErrorBoundary>
+              <Suspense fallback={<LeaderboardSkeleton />}>
+                <EmissionsLeaderboard />
+              </Suspense>
+            </QueryErrorBoundary>
+          </>
+        ) : null}
       </div>
       <ApiSourceFooter
-        paths={["/api/v1/chain/weights", "/api/v1/chain/deregistrations", "/api/v1/economics"]}
+        paths={
+          view === "chain"
+            ? ["/api/v1/chain/weights", "/api/v1/chain/deregistrations", "/api/v1/economics"]
+            : ["/api/v1/registry/leaderboards"]
+        }
       />
     </AppShell>
+  );
+}
+
+function RegistryBoardsGroup({
+  title,
+  description,
+  boardKeys,
+}: {
+  title: string;
+  description: string;
+  boardKeys: readonly LeaderboardBoardKey[];
+}) {
+  const { data: res } = useSuspenseQuery(leaderboardsQuery());
+  const boards = res.data;
+  const subnetById = useSubnetById();
+
+  return (
+    <div className="space-y-12">
+      <div>
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          {title}
+        </h2>
+        <p className="mt-1 text-sm text-ink-muted">{description}</p>
+      </div>
+      {boardKeys.map((key) => (
+        <RegistryBoardTable
+          key={key}
+          spec={REGISTRY_BOARD_SPECS[key]}
+          rows={boards[key] ?? []}
+          subnetById={subnetById}
+        />
+      ))}
+    </div>
+  );
+}
+
+function RegistryBoardTable({
+  spec,
+  rows,
+  subnetById,
+}: {
+  spec: RegistryBoardSpec;
+  rows: LeaderboardRow[];
+  subnetById: Map<number, Subnet>;
+}) {
+  return (
+    <div className="space-y-4" id={`board-${spec.key}`}>
+      <div>
+        <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          {spec.label}
+        </h3>
+        <p className="mt-1 text-sm text-ink-muted">{spec.description}</p>
+      </div>
+      {rows.length === 0 ? (
+        <EmptyState
+          title={`No ${spec.label.toLowerCase()} rankings yet`}
+          description="This board has no ranked subnets in the current registry snapshot."
+        />
+      ) : (
+        <section className="rounded-lg border border-border bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+              Per-subnet rankings
+            </span>
+            <span className="font-mono text-[11px] text-ink-muted">
+              {formatNumber(rows.length)} subnet{rows.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className="md:hidden space-y-2 p-3">
+            {rows.map((row, i) => {
+              const subnet = subnetById.get(row.netuid);
+              const name = subnet?.name ?? row.name ?? `Subnet ${row.netuid}`;
+              const slug =
+                typeof subnet?.slug === "string"
+                  ? subnet.slug
+                  : typeof row.slug === "string"
+                    ? row.slug
+                    : undefined;
+              return (
+                <div key={row.netuid} className="rounded border border-border bg-card p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: row.netuid }}
+                      className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
+                    >
+                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                        {i + 1}
+                      </span>
+                      <BrandIcon
+                        size={18}
+                        name={name}
+                        fallback={row.netuid}
+                        netuid={row.netuid}
+                        subnetSlug={slug}
+                      />
+                      <span className="truncate text-sm text-ink-strong">{name}</span>
+                    </Link>
+                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-strong">
+                      {spec.primaryMetric(row) ?? "—"}
+                    </span>
+                  </div>
+                  {spec.columns.length > 1 ? (
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-ink-muted">
+                      {spec.columns.slice(1).map((col) => (
+                        <span key={col.key}>
+                          {col.label}: {col.format(row)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Rank</th>
+                  <th className={TH}>Subnet</th>
+                  {spec.columns.map((col) => (
+                    <th
+                      key={col.key}
+                      className={`${TH} ${col.align === "right" ? "text-right" : ""}`}
+                    >
+                      {col.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((row, i) => {
+                  const subnet = subnetById.get(row.netuid);
+                  const name = subnet?.name ?? row.name ?? `Subnet ${row.netuid}`;
+                  const slug =
+                    typeof subnet?.slug === "string"
+                      ? subnet.slug
+                      : typeof row.slug === "string"
+                        ? row.slug
+                        : undefined;
+                  return (
+                    <tr key={row.netuid} className="hover:bg-surface/40">
+                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {i + 1}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: row.netuid }}
+                          className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
+                        >
+                          <BrandIcon
+                            size={18}
+                            name={name}
+                            fallback={row.netuid}
+                            netuid={row.netuid}
+                            subnetSlug={slug}
+                          />
+                          <span className="truncate text-sm text-ink-strong">{name}</span>
+                        </Link>
+                      </td>
+                      {spec.columns.map((col) => (
+                        <td
+                          key={col.key}
+                          className={`px-4 py-2.5 font-mono text-[11px] tabular-nums ${
+                            col.align === "right" ? "text-right" : ""
+                          } text-ink-strong`}
+                        >
+                          {col.format(row)}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </div>
   );
 }
 
