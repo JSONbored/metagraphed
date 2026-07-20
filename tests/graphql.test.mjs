@@ -18150,3 +18150,31 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     assert.equal(FIELD_COMPLEXITY.chain_events, FIELD_COMPLEXITY.extrinsics);
   });
 });
+
+// --- curation parity (#6982) ---
+describe("graphql — curation parity (#6982)", () => {
+  test("curation resolves the baked curation-states artifact", async () => {
+    const env = fixtureEnv({
+      "/metagraph/curation.json": {
+        subnets: [
+          { netuid: 1, level: "core", review_state: "maintainer-reviewed" },
+        ],
+      },
+    });
+    const { status, body } = await gql("{ curation }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.curation.subnets[0].level, "core");
+  });
+
+  test("curation degrades to null when the artifact has not been baked", async () => {
+    const { status, body } = await gql("{ curation }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.curation, null);
+  });
+
+  test("curation is weighted as a fan-out field like its sibling artifact resolvers", () => {
+    assert.equal(FIELD_COMPLEXITY.curation, FIELD_COMPLEXITY.agent_resources);
+  });
+});
