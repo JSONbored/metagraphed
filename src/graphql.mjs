@@ -26,6 +26,10 @@ import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.mjs";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.mjs";
+// #6982: GraphQL parity for GET /api/v1/curation, reusing list_curation's own
+// loader unchanged (same artifact read, filter, sort, and page logic REST and
+// MCP already use) -- not a reimplementation.
+import { loadCurationList } from "./curation-mcp.mjs";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_WINDOWS,
@@ -518,6 +522,8 @@ export const SDL = `
     lineage: JSON
     "The full catalog of monitored Bittensor base-layer RPC endpoints and their status (each endpoint's URL, network, and probe-derived health/latency), with the same live 15-minute cron RPC-pool overlay REST and MCP apply before serving. Null when the catalog has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the list_rpc_endpoints MCP/REST shape. Mirrors GET /api/v1/rpc/endpoints."
     rpc_endpoints: JSON
+    "Per-subnet curation states -- coverage_level, curation_level, source counts, and review posture for every active subnet. Filter by netuid/coverage_level/curation_level, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/curation."
+    curation(netuid: Int, coverage_level: String, curation_level: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): CurationList!
     "Global operational health rollup with per-subnet summaries."
     health: GlobalHealth
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
@@ -1801,6 +1807,19 @@ export const SDL = `
   type ProfileList {
     captured_at: String
     profiles: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type CurationList {
+    generated_at: String
+    notes: String
+    curation: [JSON!]!
     total: Int!
     returned: Int!
     limit: Int!
@@ -3761,6 +3780,7 @@ export const FIELD_COMPLEXITY = {
   source_health: RELATIONSHIP_FIELD_COMPLEXITY,
   lineage: RELATIONSHIP_FIELD_COMPLEXITY,
   rpc_endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
+  curation: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5383,6 +5403,10 @@ const rootValue = {
     );
     const pool = await readHealthKv(context.env, KV_HEALTH_RPC_POOL);
     return pool ? mergeRpcEndpoints(staticData, pool) : staticData;
+  },
+
+  curation(args, context) {
+    return loadCurationList(context, args, { readArtifact });
   },
 
   async health(_args, context) {

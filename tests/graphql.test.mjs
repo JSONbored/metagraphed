@@ -1804,6 +1804,92 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
   });
 });
 
+describe("graphql — curation", () => {
+  const CURATION_ROW = {
+    netuid: 7,
+    slug: "allways",
+    name: "Allways",
+    coverage_level: "manifested",
+    curation_level: "maintainer-reviewed",
+    source_count: 3,
+  };
+
+  const CURATION_BLOB = {
+    generated_at: "2026-06-20T00:00:00Z",
+    notes: "test fixture",
+    curation: [
+      CURATION_ROW,
+      {
+        ...CURATION_ROW,
+        netuid: 1,
+        slug: "alpha",
+        name: "Alpha",
+        coverage_level: "probed",
+        source_count: 5,
+      },
+    ],
+  };
+
+  test("filters by netuid and paginates", async () => {
+    const env = fixtureEnv({ "/metagraph/curation.json": CURATION_BLOB });
+    const filtered = await gql(
+      "{ curation(netuid: 7) { curation total generated_at } }",
+      env,
+    );
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.data.curation.total, 1);
+    assert.equal(filtered.body.data.curation.curation[0].slug, "allways");
+    assert.equal(
+      filtered.body.data.curation.generated_at,
+      "2026-06-20T00:00:00Z",
+    );
+
+    const paged = await gql(
+      "{ curation(limit: 1) { curation total returned next_cursor } }",
+      env,
+    );
+    assert.equal(paged.body.data.curation.curation.length, 1);
+    assert.equal(paged.body.data.curation.total, 2);
+    assert.equal(paged.body.data.curation.returned, 1);
+    assert.ok(paged.body.data.curation.next_cursor != null);
+  });
+
+  test("filters by coverage_level and sorts by netuid", async () => {
+    const env = fixtureEnv({ "/metagraph/curation.json": CURATION_BLOB });
+    const filtered = await gql(
+      '{ curation(coverage_level: "probed") { curation total } }',
+      env,
+    );
+    assert.equal(filtered.body.data.curation.total, 1);
+    assert.equal(filtered.body.data.curation.curation[0].slug, "alpha");
+
+    const sorted = await gql(
+      '{ curation(sort: "netuid", order: "desc") { curation } }',
+      env,
+    );
+    assert.equal(sorted.body.data.curation.curation[0].slug, "allways");
+  });
+
+  test("surfaces an invalid coverage_level as a GraphQL error, not a silent default", async () => {
+    const env = fixtureEnv({ "/metagraph/curation.json": CURATION_BLOB });
+    const { body } = await gql(
+      '{ curation(coverage_level: "bogus") { total } }',
+      env,
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ curation { total } }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.curation, 5);
+  });
+});
+
 describe("graphql — economics pagination", () => {
   const env = () =>
     fixtureEnv({
