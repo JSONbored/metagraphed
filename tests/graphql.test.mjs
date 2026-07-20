@@ -1666,6 +1666,444 @@ describe("graphql — profiles", () => {
   });
 });
 
+describe("graphql — candidates / subnet_candidates (#6991, GraphQL parity)", () => {
+  const CANDIDATES_BLOB = {
+    generated_at: "2026-07-01T00:00:00Z",
+    candidates: [
+      {
+        id: "sn-7-taomarketcap-website",
+        netuid: 7,
+        name: "Allways website",
+        kind: "website",
+        provider: "taomarketcap",
+        state: "schema-valid",
+        confidence: "medium",
+      },
+      {
+        id: "sn-1-native-chain-github",
+        netuid: 1,
+        name: "Root GitHub",
+        kind: "source-repo",
+        provider: "native",
+        state: "verified",
+        confidence: "high",
+      },
+    ],
+  };
+
+  test("candidates filters by netuid and paginates like the other listPage collections", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES_BLOB });
+    const filtered = await gql(
+      "{ candidates(netuid: 7) { candidates total } }",
+      env,
+    );
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.errors, undefined);
+    assert.equal(filtered.body.data.candidates.total, 1);
+    assert.equal(
+      filtered.body.data.candidates.candidates[0].id,
+      "sn-7-taomarketcap-website",
+    );
+
+    const paged = await gql(
+      "{ candidates(limit: 1) { candidates total next_cursor } }",
+      env,
+    );
+    assert.equal(paged.body.data.candidates.candidates.length, 1);
+    assert.equal(paged.body.data.candidates.total, 2);
+    assert.equal(
+      paged.body.data.candidates.next_cursor,
+      "sn-7-taomarketcap-website",
+    );
+  });
+
+  test("candidates filters by kind/provider/state, matching list_candidates' own equality filters", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES_BLOB });
+    const byKind = await gql(
+      '{ candidates(kind: "source-repo") { candidates total } }',
+      env,
+    );
+    assert.equal(byKind.body.data.candidates.total, 1);
+    assert.equal(
+      byKind.body.data.candidates.candidates[0].id,
+      "sn-1-native-chain-github",
+    );
+
+    const byProvider = await gql(
+      '{ candidates(provider: "taomarketcap") { total } }',
+      env,
+    );
+    assert.equal(byProvider.body.data.candidates.total, 1);
+
+    const byState = await gql(
+      '{ candidates(state: "verified") { total } }',
+      env,
+    );
+    assert.equal(byState.body.data.candidates.total, 1);
+
+    const noMatch = await gql('{ candidates(state: "bogus") { total } }', env);
+    assert.equal(noMatch.body.data.candidates.total, 0);
+  });
+
+  test("candidates degrades to a schema-stable empty page on a cold artifact, matching subnets/surfaces", async () => {
+    const { status, body } = await gql(
+      "{ candidates { candidates total next_cursor } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.candidates, {
+      candidates: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("subnet_candidates resolves the baked per-subnet artifact unchanged", async () => {
+    const env = fixtureEnv({
+      "/metagraph/candidates/7.json": {
+        netuid: 7,
+        candidates: [{ id: "sn-7-taomarketcap-website", kind: "website" }],
+      },
+    });
+    const { status, body } = await gql("{ subnet_candidates(netuid: 7) }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_candidates.netuid, 7);
+    assert.equal(body.data.subnet_candidates.candidates[0].kind, "website");
+  });
+
+  test("subnet_candidates degrades to null when no artifact is baked for the netuid, never an error", async () => {
+    const { status, body } = await gql("{ subnet_candidates(netuid: 999) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_candidates, null);
+  });
+
+  test("subnet_candidates: a negative netuid is a GraphQL error, matching subnet_gaps/subnet_evidence", async () => {
+    const { body } = await gql("{ subnet_candidates(netuid: -1) }");
+    assert.ok(body.errors?.length);
+    assert.ok(/netuid/i.test(body.errors[0].message));
+  });
+
+  test("FIELD_COMPLEXITY weights both fields like their sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.candidates, 5);
+    assert.equal(FIELD_COMPLEXITY.subnet_candidates, 5);
+  });
+});
+
+describe("graphql — fixtures / fixture (#6991, GraphQL parity)", () => {
+  test("fixtures resolves the captured-fixtures index artifact unchanged", async () => {
+    const env = fixtureEnv({
+      "/metagraph/fixtures.json": {
+        generated_at: "2026-07-01T00:00:00Z",
+        fixtures: [{ surface_id: "allways-docs", status: "captured" }],
+      },
+    });
+    const { status, body } = await gql("{ fixtures }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.fixtures.fixtures[0].surface_id, "allways-docs");
+  });
+
+  test("fixtures degrades to null on a cold artifact, never an error", async () => {
+    const { status, body } = await gql("{ fixtures }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.fixtures, null);
+  });
+
+  test("fixture resolves one captured request/response sample by surface_id", async () => {
+    const env = fixtureEnv({
+      "/metagraph/fixtures/allways-docs.json": {
+        surface_id: "allways-docs",
+        request: { method: "GET" },
+        response: { status: 200 },
+      },
+    });
+    const { status, body } = await gql(
+      '{ fixture(surface_id: "allways-docs") }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.fixture.surface_id, "allways-docs");
+    assert.equal(body.data.fixture.response.status, 200);
+  });
+
+  test("fixture degrades to null when no fixture has been captured for the surface", async () => {
+    const { status, body } = await gql(
+      '{ fixture(surface_id: "never-captured") }',
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.fixture, null);
+  });
+
+  test("fixture: a surface_id with path-escaping characters is a GraphQL error, not a traversal attempt", async () => {
+    const { body } = await gql('{ fixture(surface_id: "../../secrets") }');
+    assert.ok(body.errors?.length);
+    assert.ok(/surface_id/i.test(body.errors[0].message));
+  });
+
+  test("FIELD_COMPLEXITY weights both fields like their sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.fixtures, 5);
+    assert.equal(FIELD_COMPLEXITY.fixture, 5);
+  });
+});
+
+describe("graphql — agent_catalog / subnet_agent_catalog (#6991, GraphQL parity)", () => {
+  test("agent_catalog resolves the static index when no live snapshot is available", async () => {
+    const env = fixtureEnv({
+      "/metagraph/agent-catalog.json": {
+        subnets: [{ netuid: 7, service_count: 2 }],
+      },
+    });
+    const { status, body } = await gql("{ agent_catalog }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.agent_catalog.subnets[0].netuid, 7);
+    assert.equal(body.data.agent_catalog.subnets[0].service_count, 2);
+  });
+
+  test("agent_catalog overlays each subnet's live health status when a live snapshot is available", async () => {
+    const env = fixtureEnv(
+      {
+        "/metagraph/agent-catalog.json": {
+          subnets: [{ netuid: 7, service_count: 2 }],
+        },
+      },
+      {
+        kv: {
+          [KV_HEALTH_CURRENT]: {
+            subnets: [{ netuid: 7, status: "ok" }],
+          },
+        },
+      },
+    );
+    const { status, body } = await gql("{ agent_catalog }", env);
+    assert.equal(status, 200);
+    assert.equal(body.data.agent_catalog.subnets[0].health, "ok");
+  });
+
+  test("agent_catalog degrades to null on a cold artifact with no live snapshot either", async () => {
+    const { status, body } = await gql("{ agent_catalog }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.agent_catalog, null);
+  });
+
+  test("subnet_agent_catalog resolves the static per-subnet catalog when no live snapshot is available", async () => {
+    const env = fixtureEnv({
+      "/metagraph/agent-catalog/7.json": {
+        netuid: 7,
+        services: [{ surface_id: "sn-7-api", name: "Inference API" }],
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnet_agent_catalog(netuid: 7) }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(
+      body.data.subnet_agent_catalog.services[0].name,
+      "Inference API",
+    );
+  });
+
+  test("subnet_agent_catalog overlays live per-service health when a live snapshot is available", async () => {
+    const env = fixtureEnv(
+      {
+        "/metagraph/agent-catalog/7.json": {
+          netuid: 7,
+          services: [{ surface_id: "sn-7-api", name: "Inference API" }],
+        },
+      },
+      {
+        kv: {
+          [KV_HEALTH_CURRENT]: {
+            surfaces: [
+              {
+                netuid: 7,
+                surface_id: "sn-7-api",
+                status: "ok",
+                classification: "healthy",
+              },
+            ],
+          },
+        },
+      },
+    );
+    const { status, body } = await gql(
+      "{ subnet_agent_catalog(netuid: 7) }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(
+      body.data.subnet_agent_catalog.services[0].health.status,
+      "ok",
+    );
+    assert.equal(
+      body.data.subnet_agent_catalog.services[0].eligibility.callable,
+      true,
+    );
+  });
+
+  test("subnet_agent_catalog degrades to null when no catalog is baked for the netuid", async () => {
+    const { status, body } = await gql("{ subnet_agent_catalog(netuid: 999) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_agent_catalog, null);
+  });
+
+  test("subnet_agent_catalog: a negative netuid is a GraphQL error, matching subnet_gaps/subnet_evidence", async () => {
+    const { body } = await gql("{ subnet_agent_catalog(netuid: -1) }");
+    assert.ok(body.errors?.length);
+    assert.ok(/netuid/i.test(body.errors[0].message));
+  });
+
+  test("FIELD_COMPLEXITY weights both fields like their sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.agent_catalog, 5);
+    assert.equal(FIELD_COMPLEXITY.subnet_agent_catalog, 5);
+  });
+});
+
+describe("graphql — freshness (#6991, GraphQL parity)", () => {
+  test("freshness resolves the static artifact when no live prober meta is available", async () => {
+    const env = fixtureEnv({
+      "/metagraph/freshness.json": {
+        sources: [{ id: "surface-health", status: "stale" }],
+      },
+    });
+    const { status, body } = await gql("{ freshness }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.freshness.sources[0].status, "stale");
+  });
+
+  test("freshness overlays the live prober's last run onto the surface-health source", async () => {
+    const env = fixtureEnv(
+      {
+        "/metagraph/freshness.json": {
+          sources: [{ id: "surface-health", status: "stale" }],
+        },
+      },
+      { kv: { [KV_HEALTH_META]: { last_run_at: "2026-07-19T00:00:00Z" } } },
+    );
+    const { status, body } = await gql("{ freshness }", env);
+    assert.equal(status, 200);
+    const source = body.data.freshness.sources[0];
+    assert.equal(source.status, "current");
+    assert.equal(source.as_of, "2026-07-19T00:00:00Z");
+  });
+
+  test("freshness degrades to null on a cold artifact, never an error", async () => {
+    const { status, body } = await gql("{ freshness }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.freshness, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.freshness, 5);
+  });
+});
+
+describe("graphql — accounts_top_holders (#6991, GraphQL parity, Postgres-tier leaderboard)", () => {
+  test("cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
+    const { status, body } = await gql(
+      "{ accounts_top_holders { accounts { ss58 } account_count sort limit captured_at } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.accounts_top_holders, {
+      accounts: [],
+      account_count: 0,
+      sort: "total_tao",
+      limit: 20,
+      captured_at: null,
+    });
+  });
+
+  test("resolves Postgres-tier rows", async () => {
+    const env = {
+      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            sort: "total_tao",
+            limit: 5,
+            captured_at: "2026-07-15T00:00:00.000Z",
+            account_count: 1,
+            accounts: [
+              {
+                ss58: "5Holder",
+                free_tao: 100,
+                delegated_tao: 50,
+                total_tao: 150,
+                net_flow_7d: -10,
+                net_flow_30d: 20,
+                net_flow_90d: 30,
+                last_updated: "2026-07-15T00:00:00.000Z",
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      '{ accounts_top_holders(sort: "total_tao", limit: 5) { account_count accounts { ss58 free_tao delegated_tao total_tao net_flow_7d net_flow_30d net_flow_90d last_updated } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.accounts_top_holders.account_count, 1);
+    const item = body.data.accounts_top_holders.accounts[0];
+    assert.equal(item.ss58, "5Holder");
+    assert.equal(item.total_tao, 150);
+    assert.equal(item.net_flow_7d, -10);
+  });
+
+  test("sort and limit args are forwarded as query params to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            sort: "net_flow_7d",
+            limit: 10,
+            captured_at: null,
+            account_count: 0,
+            accounts: [],
+          });
+        },
+      },
+    };
+    await gql(
+      '{ accounts_top_holders(sort: "net_flow_7d", limit: 10) { account_count } }',
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/accounts/top-holders");
+    assert.equal(capturedUrl.searchParams.get("sort"), "net_flow_7d");
+    assert.equal(capturedUrl.searchParams.get("limit"), "10");
+  });
+
+  test("an unsupported sort is a GraphQL error, not a silently substituted default", async () => {
+    const { body } = await gql(
+      '{ accounts_top_holders(sort: "bogus_sort") { account_count } }',
+    );
+    assert.ok(body.errors?.length);
+    assert.ok(/sort/i.test(body.errors[0].message));
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.accounts_top_holders, 5);
+  });
+});
+
 describe("graphql — economics pagination", () => {
   const env = () =>
     fixtureEnv({

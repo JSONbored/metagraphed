@@ -132,6 +132,9 @@ import {
   formatLeaderboards,
   LEADERBOARD_BOARDS,
   loadSubnetTrajectory,
+  mergeFreshness,
+  overlayCatalogDetail,
+  overlayCatalogIndex,
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
@@ -192,6 +195,13 @@ import {
   DEFAULT_ACCOUNTS_LIST_SORT,
   buildAccountsList,
 } from "./accounts-list.mjs";
+import {
+  buildTopHoldersList,
+  DEFAULT_TOP_HOLDERS_SORT,
+  TOP_HOLDERS_LIMIT_DEFAULT,
+  TOP_HOLDERS_LIMIT_MAX,
+  TOP_HOLDERS_SORTS,
+} from "./top-holders.mjs";
 import {
   buildAccountEvents,
   buildAccountSubnets,
@@ -473,6 +483,22 @@ export const SDL = `
     source_snapshots(q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): SourceSnapshotList!
     "Public-safe subnet profile index -- completeness scores, surface/interface counts, curation level, review state, and confidence for every registered subnet. Filter by netuid/subnet_type/curation_level/review_state/confidence/profile_level, search name/slug/project/team/categories with q, sort with sort/order, and page with limit (1-1000)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/profiles."
     profiles(netuid: Int, subnet_type: String, curation_level: String, review_state: String, confidence: String, profile_level: String, q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ProfileList!
+    "Unpromoted candidate surfaces discovered across all subnets but not yet curated/promoted, each with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state and page with limit/cursor. The network-wide counterpart of subnet_candidates. Mirrors GET /api/v1/candidates."
+    candidates(netuid: Int, kind: String, provider: String, state: String, limit: Int, cursor: String): CandidateList!
+    "Unpromoted candidate surfaces for one subnet -- the per-subnet view of candidates. Opaque JSON passed through verbatim, matching the get_subnet_candidates MCP/REST shape; null when no candidates artifact has been baked for the netuid. Mirrors GET /api/v1/subnets/{netuid}/candidates."
+    subnet_candidates(netuid: Int!): JSON
+    "Index of captured live request/response fixtures: which subnet surfaces carry a sanitized real request/response sample, with capture status and metadata. Fetch one with fixture(surface_id). Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures."
+    fixtures: JSON
+    "A captured, sanitized live request/response sample for one surface by surface_id (from list_subnet_apis / the fixtures index). Credentials/secrets are redacted and large values truncated in the underlying artifact. Opaque JSON passed through verbatim, matching the get_fixture MCP/REST shape; null when no fixture has been captured for the surface. Mirrors GET /api/v1/fixtures/{surface_id}."
+    fixture(surface_id: String!): JSON
+    "The machine-readable agent capability catalog: the global index of subnets exposing callable services, live-overlaid with each subnet's current probe status when available. Opaque JSON passed through verbatim, matching the get_agent_catalog MCP/REST shape. Mirrors GET /api/v1/agent-catalog."
+    agent_catalog: JSON
+    "One subnet's full per-service agent capability catalog, live-overlaid with each service's current health/callability when available. Opaque JSON passed through verbatim, matching the get_agent_catalog(netuid)/REST shape; null when no catalog has been baked for the netuid. Mirrors GET /api/v1/agent-catalog/{netuid}."
+    subnet_agent_catalog(netuid: Int!): JSON
+    "Registry data freshness and staleness state: per-source last-captured timestamps, staleness windows, and current status for each data lane, with the operational surface-health source live-overlaid from the 15-minute prober's last run when available. Opaque JSON passed through verbatim, matching the get_freshness MCP/REST shape. Mirrors GET /api/v1/freshness."
+    freshness: JSON
+    "Balance-based top-holder leaderboard (#6741/#6743): every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO and cross-subnet stake-flow columns. Sortable by total_tao (default), free_tao, delegated_tao, or net_flow_7d/net_flow_30d/net_flow_90d. An unsupported sort is a GraphQL error, not a silently substituted default. The coldkey/balance-centric counterpart to accounts, which is hotkey/neuron-centric. Mirrors GET /api/v1/accounts/top-holders."
+    accounts_top_holders(sort: String, limit: Int): TopHoldersList!
     "Global operational health rollup with per-subnet summaries."
     health: GlobalHealth
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
@@ -1741,6 +1767,34 @@ export const SDL = `
     next_cursor: Int
     sort: String
     order: String
+  }
+
+  "Unpromoted candidate surfaces (#6991); each row's own shape mirrors the get_subnet_candidates MCP/REST candidate object, passed through as opaque JSON like every other JSON-row list type here (PoolList, IncidentList, SourceSnapshotList, ProfileList)."
+  type CandidateList {
+    candidates: [JSON!]!
+    total: Int!
+    next_cursor: String
+  }
+
+  "Balance-based top-holder leaderboard (#6741/#6743/#6886/#6887, same envelope buildTopHoldersList/get_top_holders already produce)."
+  type TopHoldersList {
+    schema_version: Int
+    sort: String!
+    limit: Int!
+    captured_at: String
+    account_count: Int!
+    accounts: [TopHolderAccount!]!
+  }
+
+  type TopHolderAccount {
+    ss58: String!
+    free_tao: Float!
+    delegated_tao: Float!
+    total_tao: Float!
+    net_flow_7d: Float!
+    net_flow_30d: Float!
+    net_flow_90d: Float!
+    last_updated: String
   }
 
   type GlobalHealth {
@@ -3479,6 +3533,14 @@ export const FIELD_COMPLEXITY = {
   endpoint_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   source_snapshots: RELATIONSHIP_FIELD_COMPLEXITY,
   profiles: RELATIONSHIP_FIELD_COMPLEXITY,
+  candidates: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_candidates: RELATIONSHIP_FIELD_COMPLEXITY,
+  fixtures: RELATIONSHIP_FIELD_COMPLEXITY,
+  fixture: RELATIONSHIP_FIELD_COMPLEXITY,
+  agent_catalog: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_agent_catalog: RELATIONSHIP_FIELD_COMPLEXITY,
+  freshness: RELATIONSHIP_FIELD_COMPLEXITY,
+  accounts_top_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3811,6 +3873,7 @@ const ARTIFACT = {
   surfaces: "/metagraph/surfaces.json",
   endpoints: "/metagraph/endpoints.json",
   profiles: "/metagraph/profiles.json",
+  candidates: "/metagraph/candidates.json",
 };
 const LIVE_HEALTH_KEY = "live:health";
 const LIVE_ECONOMICS_KEY = "live:economics";
@@ -5023,6 +5086,150 @@ const rootValue = {
     return loadProfilesList(context, args, {
       readOptionalArtifact: loadArtifact,
     });
+  },
+
+  // #6991: GraphQL parity for candidates/fixtures/agent-catalog/freshness/
+  // top-holders -- reusing the same artifact reads and overlay/shaping
+  // functions REST and MCP already call (loadArtifact for the static
+  // artifacts, mergeFreshness/overlayCatalogIndex/overlayCatalogDetail from
+  // health-serving.mjs, buildTopHoldersList from top-holders.mjs) rather than
+  // reimplementing any of them. candidates follows the same local-filterFn
+  // convention `subnets` already uses (REST's generic filter engine isn't
+  // importable outside an HTTP request, so the trivial equality predicate is
+  // replicated here, matching list_candidates' own filter semantics exactly);
+  // everything else is a verbatim JSON pass-through, matching the
+  // subnet_gaps/subnet_evidence convention for artifacts with no dedicated
+  // GraphQL type.
+  candidates({ netuid, kind, provider, state, limit, cursor }, context) {
+    const hasCategoricalFilters =
+      kind != null || provider != null || state != null;
+    return listPage(context, ARTIFACT.candidates, "candidates", {
+      limit,
+      cursor,
+      netuid,
+      keyFn: (c) => c.id,
+      resultKey: "candidates",
+      filterFn: hasCategoricalFilters
+        ? (row) =>
+            (kind == null || row.kind === kind) &&
+            (provider == null || row.provider === provider) &&
+            (state == null || row.state === state)
+        : undefined,
+    });
+  },
+
+  async subnet_candidates({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same baked per-subnet candidates artifact get_subnet_candidates MCP
+    // tool/REST route read unchanged; null when no candidates have been
+    // baked for the netuid.
+    return loadArtifact(context, `/metagraph/candidates/${netuid}.json`);
+  },
+
+  fixtures(_args, context) {
+    // Same fixtures index artifact list_fixtures MCP tool/REST route read
+    // unchanged.
+    return loadArtifact(context, "/metagraph/fixtures.json");
+  },
+
+  fixture({ surface_id }, context) {
+    // Same safe slug charset guard providers/adapters already use for an
+    // id-bearing artifact path (readArtifact's static-asset tier collapses
+    // "../", so an unvalidated surface_id could escape the fixtures/
+    // namespace). REST's GET /api/v1/fixtures/{surface_id} reads the literal
+    // surface_id with no alias resolution; get_fixture's extra alias-lookup
+    // convenience (resolveArtifactSurfaceId) is an MCP-only affordance, not
+    // part of the underlying shaping/artifact contract, so it is not
+    // replicated here.
+    if (typeof surface_id !== "string" || !VALID_PROVIDER_ID.test(surface_id)) {
+      throw new GraphQLError("surface_id must be a non-empty slug.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return loadArtifact(context, `/metagraph/fixtures/${surface_id}.json`);
+  },
+
+  async agent_catalog(_args, context) {
+    const [index, live] = await Promise.all([
+      loadArtifact(context, "/metagraph/agent-catalog.json"),
+      loadLiveHealth(context),
+    ]);
+    // Same overlayCatalogIndex REST's liveHealthOverlay + get_agent_catalog
+    // MCP tool call; falls back to the raw static index when the live cron
+    // snapshot is cold (overlayCatalogIndex returns null), matching both
+    // callers' own fallback.
+    return (live && overlayCatalogIndex(index, live)) || index;
+  },
+
+  async subnet_agent_catalog({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const [detail, live] = await Promise.all([
+      loadArtifact(context, `/metagraph/agent-catalog/${netuid}.json`),
+      loadLiveHealth(context),
+    ]);
+    // Same overlayCatalogDetail REST's liveHealthOverlay + get_agent_catalog
+    // (netuid) MCP tool call; falls back to the raw static detail when the
+    // live cron snapshot is cold.
+    return (live && overlayCatalogDetail(detail, live, netuid)) || detail;
+  },
+
+  async freshness(_args, context) {
+    const [base, meta] = await Promise.all([
+      loadArtifact(context, "/metagraph/freshness.json"),
+      readHealthKv(context.env, KV_HEALTH_META),
+    ]);
+    // Same mergeFreshness REST's liveHealthOverlay + get_freshness MCP tool
+    // call; falls back to the raw static freshness artifact when the live
+    // prober meta is cold (mergeFreshness returns null on a cold meta or a
+    // cold static artifact).
+    return mergeFreshness(base, meta) ?? base;
+  },
+
+  async accounts_top_holders({ sort, limit }, context) {
+    // Same sort-validate / limit-clamp / tryPostgresTier(METAGRAPH_TOP_HOLDERS_SOURCE)
+    // -> buildTopHoldersList fallback contract get_top_holders MCP tool and
+    // GET /api/v1/accounts/top-holders already use, mirroring the `accounts`
+    // resolver just above (its own Postgres-tier sibling).
+    const requestedSort = sort ?? DEFAULT_TOP_HOLDERS_SORT;
+    if (!TOP_HOLDERS_SORTS.includes(requestedSort)) {
+      throw new GraphQLError(
+        `"${requestedSort}" is not a supported sort. Supported: ${TOP_HOLDERS_SORTS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: TOP_HOLDERS_LIMIT_DEFAULT,
+      maxLimit: TOP_HOLDERS_LIMIT_MAX,
+    });
+    const params = new URLSearchParams();
+    params.set("sort", requestedSort);
+    params.set("limit", String(safeLimit));
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/accounts/top-holders", params),
+        "METAGRAPH_TOP_HOLDERS_SOURCE",
+      )) ??
+      buildTopHoldersList([], {
+        sort: requestedSort,
+        limit: safeLimit,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      sort: data.sort ?? requestedSort,
+      limit: data.limit ?? safeLimit,
+      captured_at: data.captured_at ?? null,
+      account_count: data.account_count ?? 0,
+      accounts: data.accounts || [],
+    };
   },
 
   async health(_args, context) {
