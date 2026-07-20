@@ -142,6 +142,8 @@ import {
   loadSubnetIncidents,
   parseCompareDimensionList,
   parseCompareNetuidList,
+  parseCompareHotkeyList,
+  COMPARE_VALIDATORS_MAX,
   parseUptimeWindow,
 } from "./analytics-live.mjs";
 import { UPTIME_WINDOWS } from "../workers/config.mjs";
@@ -170,8 +172,16 @@ import {
   buildNeuronDetail,
   buildSubnetValidators,
   buildValidatorDetail,
+  composeValidatorComparison,
   overlayFeaturedValidators,
 } from "./metagraph-neurons.mjs";
+// #6989: GraphQL parity for compare/validators, search/search-index, and
+// domains/domain-summary, reusing the exact shaping functions REST + MCP
+// already call -- not a reimplementation.
+import { loadSearchList } from "./search-mcp.mjs";
+import { loadSearchIndexList } from "./search-index-mcp.mjs";
+import { buildDomainOverview, buildDomainSummary } from "./domain-summary.mjs";
+import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { buildAlphaVolume } from "./alpha-volume.mjs";
 import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.mjs";
 import {
@@ -612,6 +622,16 @@ export const SDL = `
     evm_address(h160: String!): EvmAddressMapping
     "Recent Sudo-pallet extrinsic feed (newest first): the chain's superuser governance calls, the same shape as the extrinsics feed with call_module fixed to Sudo (so no signer/call_module args). Mirrors GET /api/v1/sudo."
     sudo(limit: Int, offset: Int, cursor: String, block: Int, call_function: String, success: Boolean): ExtrinsicList!
+    "Place several validators side by side for a stake/delegate decision: for each hotkey, its take rate, estimated APY, nominator count, and on-chain (coldkey) identity, plus the cross-subnet stake/emission/trust aggregates that give those numbers context, in requested order. Pass an optional netuid to add each validator's membership row in that one subnet (subnet_context). Mirrors GET /api/v1/compare/validators."
+    compare_validators(hotkeys: [String!]!, netuid: Int): CompareValidators!
+    "Keyword search across the registry's subnet, surface, and provider documents, WITH the per-document token blobs. Filter with q, sort with sort/order, project with fields, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/search."
+    search(q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): SearchDocumentList!
+    "The slim registry search index -- the same subnet/surface/provider documents as search WITHOUT the per-document token blobs, for fast typeahead/listing. Same filter/sort/page surface as search. Mirrors GET /api/v1/search-index."
+    search_index(q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): SearchDocumentList!
+    "Every domain/category tag's rollup in one call: subnet_count, total_stake_tao, total_emission_share, and within-domain emission_concentration for each of the fixed 14 curated domain tags. Pure composition of the registry + live economics tier, no new capture. Mirrors GET /api/v1/domains."
+    domains: DomainOverview!
+    "One domain tag's own rollup -- subnet_count, total_stake_tao, total_emission_share, and within-domain emission_concentration across just that tag's member subnets. An unknown tag is a GraphQL error (BAD_USER_INPUT), matching the fixed 14-tag enum ?domain= already validates on /api/v1/subnets. Mirrors GET /api/v1/domains/{tag}/summary."
+    domain_summary(tag: String!): DomainSummary!
   }
 
   type SubnetList {
@@ -1822,6 +1842,63 @@ export const SDL = `
     surface_count: Int
     ok_count: Int
     avg_latency_ms: Int
+  }
+
+  "Place several validators side by side for a stake/delegate decision (#6989). Mirrors GET /api/v1/compare/validators / the compare_validators MCP tool."
+  type CompareValidators {
+    schema_version: Int!
+    netuid: Int
+    validator_count: Int!
+    validators: [ComparedValidator!]!
+  }
+
+  "One validator projected down to the decision-relevant fields compare_validators exposes -- take rate, estimated APY, nominator count, on-chain identity, and the cross-subnet stake/emission/trust aggregates that give those numbers context -- plus its membership row in the requested netuid (subnet_context), or null when it holds no permit there / no netuid was requested."
+  type ComparedValidator {
+    hotkey: String
+    coldkey: String
+    coldkey_identity: Identity
+    take: Float
+    apy_estimate: Float
+    apy_estimate_eligible_subnet_count: Int
+    nominator_count: Int
+    total_stake_tao: Float
+    total_emission_tao: Float
+    avg_validator_trust: Float
+    max_validator_trust: Float
+    subnet_count: Int
+    subnet_context: ValidatorSubnet
+  }
+
+  "Paginated envelope shared by search and search_index (#6989). documents is opaque JSON -- subnet/surface/provider rows with heterogeneous fields; search's documents additionally carry a per-document token blob that search_index's slim documents omit."
+  type SearchDocumentList {
+    generated_at: String
+    notes: JSON
+    documents: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  "Every domain/category tag's rollup in one call (#6989). Mirrors GET /api/v1/domains."
+  type DomainOverview {
+    schema_version: Int!
+    domain_count: Int!
+    domains: [DomainSummary!]!
+  }
+
+  "One domain tag's own rollup -- how many subnets carry it, how much of the network's stake/emission they collectively hold, and how concentrated that emission is across just this domain's own subnets (#6989). Mirrors GET /api/v1/domains/{tag}/summary."
+  type DomainSummary {
+    schema_version: Int!
+    domain: String!
+    subnet_count: Int!
+    netuids: [Int!]!
+    total_stake_tao: Float
+    total_emission_share: Float
+    emission_concentration: ConcentrationMetrics
   }
 
   "Append-only on-chain subnet identity timeline (#1647 / #5721). Empty entries on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/identity-history."
@@ -3460,6 +3537,11 @@ export const FIELD_COMPLEXITY = {
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
+  compare_validators: RELATIONSHIP_FIELD_COMPLEXITY,
+  search: RELATIONSHIP_FIELD_COMPLEXITY,
+  search_index: RELATIONSHIP_FIELD_COMPLEXITY,
+  domains: RELATIONSHIP_FIELD_COMPLEXITY,
+  domain_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
   sudo: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5053,6 +5135,97 @@ const rootValue = {
       dimensions: parsedDimensions,
       observedAt: await loadObservedAt(context),
     });
+  },
+
+  // #6989: reuse the exact per-hotkey tryPostgresTier(METAGRAPH_NEURONS_SOURCE)
+  // ?? buildValidatorDetail([], hotkey) fallback the `validator` field above
+  // uses, then composeValidatorComparison's own projection -- the identical
+  // shaping function REST's handleCompareValidators and the compare_validators
+  // MCP tool both call, so all three surfaces never drift. parseCompareHotkeyList
+  // is the same hotkey-list contract (distinctness + SS58 + COMPARE_VALIDATORS_MAX
+  // cap) compare's own parseCompareNetuidList mirrors for netuids.
+  async compare_validators({ hotkeys, netuid }, context) {
+    const parsedHotkeys = parseCompareHotkeyList(hotkeys);
+    if (!parsedHotkeys) {
+      throw new GraphQLError(
+        `hotkeys must be a non-empty array of 1-${COMPARE_VALIDATORS_MAX} distinct valid SS58 validator addresses.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (netuid != null && (!Number.isInteger(netuid) || netuid < 0)) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Sequential, not parallel -- matches compare_validators' own fan-out
+    // pattern exactly (N individual validator-detail-shaped loads) rather than
+    // diverging into a GraphQL-only concurrency strategy.
+    const details = [];
+    for (const hotkey of parsedHotkeys) {
+      details.push(
+        (await tryPostgresTier(
+          context.env,
+          postgresTierRequest(
+            context,
+            `/api/v1/validators/${encodeURIComponent(hotkey)}`,
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildValidatorDetail([], hotkey),
+      );
+    }
+    return composeValidatorComparison(details, { netuid: netuid ?? null });
+  },
+
+  // #6989: reuse list_search's own loader unchanged (same artifact read,
+  // filter, sort, and page logic REST and MCP already use) -- not a
+  // reimplementation. It validates its own args and throws on an invalid one --
+  // that throw (inside this async function) becomes a rejected promise, which
+  // the graphql executor surfaces as a normal GraphQL error, matching every
+  // other field's "an unsupported filter/sort is a GraphQL error, not a
+  // silently substituted default" convention (see endpoint_pools/
+  // source_snapshots above).
+  search(args, context) {
+    return loadSearchList(context, args, { readArtifact });
+  },
+
+  // #6989: search and search-index are genuinely distinct artifacts (full
+  // documents WITH per-document token blobs vs. the slim variant without),
+  // each already a separate REST route/MCP tool with its own loader -- so this
+  // is two fields, not one, mirroring how endpoint_pools/rpc_pools stayed
+  // separate fields despite sharing the PoolList shape.
+  search_index(args, context) {
+    return loadSearchIndexList(context, args, { readArtifact });
+  },
+
+  // #6989: reuse buildDomainOverview unchanged -- pure composition of the
+  // subnets index + live economics tier, the same registry+economics pattern
+  // `compare` above uses for its own inputs, feeding the identical shaping
+  // function REST's handleDomains calls.
+  async domains(_args, context) {
+    const [subnetRows, economicsRows] = await Promise.all([
+      loadRows(context, ARTIFACT.subnets, "subnets"),
+      loadEconomicsRows(context),
+    ]);
+    return buildDomainOverview(subnetRows, economicsRows);
+  },
+
+  // #6989: same subnets + live-economics inputs as `domains` above, feeding
+  // the identical buildDomainSummary shaping function REST's
+  // handleDomainSummary calls for one tag. An unknown tag is a GraphQL error,
+  // not a silently empty rollup -- matching handleDomainSummary's own 400 on
+  // an unrecognized tag against the fixed DOMAIN_TAGS enum.
+  async domain_summary({ tag }, context) {
+    if (!DOMAIN_TAGS.includes(tag)) {
+      throw new GraphQLError(
+        `Unknown domain tag "${tag}". Valid tags: ${DOMAIN_TAGS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const [subnetRows, economicsRows] = await Promise.all([
+      loadRows(context, ARTIFACT.subnets, "subnets"),
+      loadEconomicsRows(context),
+    ]);
+    return buildDomainSummary(tag, subnetRows, economicsRows);
   },
 
   async incidents({ window }, context) {

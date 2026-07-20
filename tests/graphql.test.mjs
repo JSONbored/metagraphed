@@ -27,6 +27,8 @@ import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
 import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.mjs";
 import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.mjs";
 import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.mjs";
+import { COMPARE_VALIDATORS_MAX } from "../src/analytics-live.mjs";
+import { DOMAIN_TAGS } from "../src/domain-tags.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { resolveClientIp, DAY_MS } from "../workers/config.mjs";
 import {
@@ -16086,5 +16088,407 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
       FIELD_COMPLEXITY.chain_transfers,
       FIELD_COMPLEXITY.chain_weights,
     );
+  });
+});
+
+// #6989: GraphQL parity for compare/validators, search/search-index, and
+// domains/domain-summary -- each reuses the exact shaping function REST + MCP
+// already call, not a GraphQL-only reimplementation.
+describe("graphql — compare_validators (#6989, reuse compare_validators' shared shaping)", () => {
+  const HOTKEY_A = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+  const HOTKEY_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+  const BASE58_SAFE =
+    "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+  function dataApiByHotkey(responses) {
+    return {
+      fetch: async (req) => {
+        const url = new URL(req.url);
+        const hotkey = decodeURIComponent(
+          url.pathname.replace("/api/v1/validators/", ""),
+        );
+        return responses[hotkey] ?? Response.json({});
+      },
+    };
+  }
+
+  test("cold store: every hotkey resolves to the same schema-stable zeroed aggregate validator() falls back to", async () => {
+    const { status, body } = await gql(
+      `{ compare_validators(hotkeys: ["${HOTKEY_A}", "${HOTKEY_B}"]) {
+          schema_version netuid validator_count
+          validators { hotkey subnet_count total_stake_tao subnet_context { netuid } }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.compare_validators.schema_version, 1);
+    assert.equal(body.data.compare_validators.netuid, null);
+    assert.equal(body.data.compare_validators.validator_count, 2);
+    assert.deepEqual(
+      body.data.compare_validators.validators.map((v) => v.hotkey),
+      [HOTKEY_A, HOTKEY_B],
+    );
+    for (const v of body.data.compare_validators.validators) {
+      assert.equal(v.subnet_count, 0);
+      assert.equal(v.total_stake_tao, 0);
+      assert.equal(v.subnet_context, null);
+    }
+  });
+
+  test("resolves Postgres-tier detail per hotkey and projects the decision-relevant fields, preserving requested order", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApiByHotkey({
+        [HOTKEY_A]: Response.json({
+          schema_version: 1,
+          hotkey: HOTKEY_A,
+          coldkey: "5ColdA",
+          coldkey_identity: { has_identity: true, name: "Alice" },
+          take: 0.1,
+          apy_estimate: 0.15,
+          apy_estimate_eligible_subnet_count: 3,
+          nominator_count: 10,
+          total_stake_tao: 5000,
+          total_emission_tao: 20,
+          avg_validator_trust: 0.8,
+          max_validator_trust: 0.9,
+          subnet_count: 2,
+          subnets: [
+            {
+              netuid: 1,
+              uid: 5,
+              stake_tao: 2000,
+              emission_tao: 10,
+              validator_trust: 0.85,
+            },
+            {
+              netuid: 3,
+              uid: 9,
+              stake_tao: 3000,
+              emission_tao: 10,
+              validator_trust: 0.75,
+            },
+          ],
+        }),
+        [HOTKEY_B]: Response.json({
+          schema_version: 1,
+          hotkey: HOTKEY_B,
+          coldkey: "5ColdB",
+          take: 0.2,
+          subnet_count: 1,
+          subnets: [{ netuid: 1, uid: 2, stake_tao: 100, emission_tao: 1 }],
+        }),
+      }),
+    };
+    const { status, body } = await gql(
+      `{ compare_validators(hotkeys: ["${HOTKEY_A}", "${HOTKEY_B}"], netuid: 1) {
+          validator_count netuid
+          validators { hotkey coldkey coldkey_identity { name } take nominator_count total_stake_tao subnet_context { netuid uid stake_tao } }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.compare_validators.netuid, 1);
+    const [a, b] = body.data.compare_validators.validators;
+    assert.equal(a.hotkey, HOTKEY_A);
+    assert.equal(a.coldkey, "5ColdA");
+    assert.equal(a.coldkey_identity.name, "Alice");
+    assert.equal(a.take, 0.1);
+    assert.equal(a.nominator_count, 10);
+    assert.equal(a.total_stake_tao, 5000);
+    assert.deepEqual(a.subnet_context, { netuid: 1, uid: 5, stake_tao: 2000 });
+    assert.equal(b.hotkey, HOTKEY_B);
+    assert.deepEqual(b.subnet_context, { netuid: 1, uid: 2, stake_tao: 100 });
+  });
+
+  test("a netuid the validator holds no permit in yields a null subnet_context, not an error", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApiByHotkey({
+        [HOTKEY_A]: Response.json({
+          schema_version: 1,
+          hotkey: HOTKEY_A,
+          subnet_count: 1,
+          subnets: [{ netuid: 1, uid: 5, stake_tao: 100, emission_tao: 1 }],
+        }),
+      }),
+    };
+    const { status, body } = await gql(
+      `{ compare_validators(hotkeys: ["${HOTKEY_A}"], netuid: 99) { validators { subnet_context { netuid } } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(
+      body.data.compare_validators.validators[0].subnet_context,
+      null,
+    );
+  });
+
+  test("an empty hotkeys array is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      "{ compare_validators(hotkeys: []) { validator_count } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("a malformed (non-SS58) hotkey is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("must not be called -- validation happens first");
+        },
+      },
+    };
+    const { status, body } = await gql(
+      '{ compare_validators(hotkeys: ["not-an-ss58"]) { validator_count } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("more than COMPARE_VALIDATORS_MAX distinct hotkeys is BAD_USER_INPUT", async () => {
+    const many = Array.from(
+      { length: COMPARE_VALIDATORS_MAX + 1 },
+      (_, i) => "5" + BASE58_SAFE[i % BASE58_SAFE.length].repeat(47),
+    );
+    const { status, body } = await gql(
+      `{ compare_validators(hotkeys: ${JSON.stringify(many)}) { validator_count } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("a negative netuid is BAD_USER_INPUT", async () => {
+    const { status, body } = await gql(
+      `{ compare_validators(hotkeys: ["${HOTKEY_A}"], netuid: -1) { validator_count } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("is weighted as a fan-out field like compare/validator", () => {
+    assert.equal(FIELD_COMPLEXITY.compare_validators, FIELD_COMPLEXITY.compare);
+  });
+});
+
+describe("graphql — search / search_index (#6989, reuse list_search's/list_search_index's shared loaders)", () => {
+  const SEARCH_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: ["full index"],
+    documents: [
+      {
+        id: "subnet-7",
+        type: "subnet",
+        netuid: 7,
+        slug: "sn-7",
+        title: "Subnet Seven",
+        tokens: ["seven", "sn"],
+      },
+      {
+        id: "surface-7-openapi",
+        type: "surface",
+        netuid: 7,
+        slug: "sn-7-openapi",
+        title: "Seven OpenAPI",
+        tokens: ["openapi", "spec"],
+      },
+      {
+        id: "provider-datura",
+        type: "provider",
+        slug: "datura",
+        title: "Datura",
+        tokens: ["datura", "gpu"],
+      },
+    ],
+  };
+  const SEARCH_INDEX_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: null,
+    documents: [
+      {
+        id: "subnet-7",
+        type: "subnet",
+        netuid: 7,
+        slug: "sn-7",
+        title: "Subnet Seven",
+      },
+      {
+        id: "provider-datura",
+        type: "provider",
+        slug: "datura",
+        title: "Datura",
+      },
+    ],
+  };
+
+  test("search filters by keyword across title/slug/tokens and paginates", async () => {
+    const env = fixtureEnv({ "/metagraph/search.json": SEARCH_BLOB });
+    const filtered = await gql(
+      '{ search(q: "seven") { documents total generated_at notes } }',
+      env,
+    );
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.data.search.total, 2);
+    assert.deepEqual(
+      filtered.body.data.search.documents.map((d) => d.id).sort(),
+      ["subnet-7", "surface-7-openapi"],
+    );
+    assert.equal(
+      filtered.body.data.search.generated_at,
+      "2026-07-01T00:00:00.000Z",
+    );
+    assert.deepEqual(filtered.body.data.search.notes, ["full index"]);
+
+    const paged = await gql(
+      "{ search(limit: 1) { documents total returned next_cursor } }",
+      env,
+    );
+    assert.equal(paged.body.data.search.documents.length, 1);
+    assert.equal(paged.body.data.search.total, 3);
+    assert.equal(paged.body.data.search.returned, 1);
+    assert.ok(paged.body.data.search.next_cursor != null);
+  });
+
+  test("search's documents keep the per-document token blob", async () => {
+    const env = fixtureEnv({ "/metagraph/search.json": SEARCH_BLOB });
+    const { body } = await gql('{ search(q: "datura") { documents } }', env);
+    assert.deepEqual(body.data.search.documents[0].tokens, ["datura", "gpu"]);
+  });
+
+  test("search accepts sort/order and surfaces an invalid sort as a GraphQL error, not a silent default", async () => {
+    const env = fixtureEnv({ "/metagraph/search.json": SEARCH_BLOB });
+    const sorted = await gql(
+      '{ search(sort: "slug", order: "desc") { total } }',
+      env,
+    );
+    assert.equal(sorted.status, 200);
+    assert.equal(sorted.body.data.search.total, 3);
+
+    const bad = await gql('{ search(sort: "bogus") { total } }', env);
+    assert.ok(bad.body.errors?.length);
+  });
+
+  test("search surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ search { total } }", emptyEnv);
+    assert.ok(body.errors?.length);
+  });
+
+  test("search_index reads the SLIM artifact -- a genuinely distinct document set/shape from search, not a re-filter of it", async () => {
+    const env = fixtureEnv({
+      "/metagraph/search.json": SEARCH_BLOB,
+      "/metagraph/search-index.json": SEARCH_INDEX_BLOB,
+    });
+    const { status, body } = await gql(
+      "{ search_index { documents total generated_at } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.search_index.total, 2);
+    assert.equal(body.data.search_index.documents[0].tokens, undefined);
+  });
+
+  test("search_index surfaces a cold/missing artifact as a GraphQL error", async () => {
+    const { body } = await gql("{ search_index { total } }", emptyEnv);
+    assert.ok(body.errors?.length);
+  });
+
+  test("search / search_index are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.search, 5);
+    assert.equal(FIELD_COMPLEXITY.search_index, 5);
+  });
+});
+
+describe("graphql — domains / domain_summary (#6989, reuse buildDomainOverview/buildDomainSummary)", () => {
+  const SUBNETS = [
+    { netuid: 1, categories: ["inference"], derived_categories: [] },
+    { netuid: 2, categories: [], derived_categories: ["inference", "agents"] },
+    { netuid: 3, categories: ["finance"], derived_categories: [] },
+  ];
+  const ECONOMICS = [
+    { netuid: 1, total_stake_tao: 100, emission_share: 0.4 },
+    { netuid: 2, total_stake_tao: 50, emission_share: 0.1 },
+    { netuid: 3, total_stake_tao: 25, emission_share: 0.2 },
+  ];
+  const domainEnv = () =>
+    fixtureEnv({
+      "/metagraph/subnets.json": { subnets: SUBNETS },
+      "/metagraph/economics.json": { subnets: ECONOMICS },
+    });
+
+  test("domains returns one entry per fixed domain tag, matching the taxonomy", async () => {
+    const { status, body } = await gql(
+      "{ domains { schema_version domain_count domains { domain subnet_count netuids total_stake_tao total_emission_share } } }",
+      domainEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.domains.schema_version, 1);
+    assert.equal(body.data.domains.domain_count, DOMAIN_TAGS.length);
+    assert.equal(body.data.domains.domains.length, DOMAIN_TAGS.length);
+    const inference = body.data.domains.domains.find(
+      (d) => d.domain === "inference",
+    );
+    assert.deepEqual(inference.netuids, [1, 2]);
+    assert.equal(inference.total_stake_tao, 150);
+    assert.equal(inference.total_emission_share, 0.5);
+  });
+
+  test("domain_summary returns one tag's own rollup, including within-domain emission_concentration", async () => {
+    const { status, body } = await gql(
+      '{ domain_summary(tag: "inference") { schema_version domain subnet_count netuids total_stake_tao total_emission_share emission_concentration { holders gini } } }',
+      domainEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.domain_summary.domain, "inference");
+    assert.deepEqual(body.data.domain_summary.netuids, [1, 2]);
+    assert.equal(body.data.domain_summary.emission_concentration.holders, 2);
+  });
+
+  test("a tag with zero member subnets returns a schema-stable empty rollup, never null", async () => {
+    const { status, body } = await gql(
+      '{ domain_summary(tag: "security") { subnet_count netuids total_stake_tao emission_concentration { holders } } }',
+      domainEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.domain_summary.subnet_count, 0);
+    assert.deepEqual(body.data.domain_summary.netuids, []);
+    assert.equal(body.data.domain_summary.total_stake_tao, 0);
+    assert.equal(body.data.domain_summary.emission_concentration, null);
+  });
+
+  test("an unknown domain tag is BAD_USER_INPUT, matching handleDomainSummary's 400", async () => {
+    const { status, body } = await gql(
+      '{ domain_summary(tag: "bogus") { subnet_count } }',
+      domainEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("degrades to a schema-stable empty overview when both artifacts are cold, never a GraphQL error", async () => {
+    const { status, body } = await gql(
+      "{ domains { domain_count domains { subnet_count } } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.domains.domain_count, DOMAIN_TAGS.length);
+    for (const d of body.data.domains.domains) {
+      assert.equal(d.subnet_count, 0);
+    }
+  });
+
+  test("domains / domain_summary are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.domains, 5);
+    assert.equal(FIELD_COMPLEXITY.domain_summary, 5);
   });
 });
