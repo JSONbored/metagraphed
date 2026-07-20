@@ -242,6 +242,7 @@ import {
 } from "./accounts-list.mjs";
 import {
   buildAccountEvents,
+  buildSubnetEvents,
   buildAccountSubnets,
   buildAccountSummary,
   buildAccountTransfers,
@@ -267,6 +268,7 @@ import { buildAccountPositionHistory } from "./account-position-history.mjs";
 import {
   DEFAULT_STAKE_FLOW_DIRECTION,
   STAKE_FLOW_DIRECTIONS,
+  buildStakeFlow,
 } from "./stake-flow.mjs";
 import { buildAccountPortfolio } from "./account-portfolio.mjs";
 import { buildAccountPositions } from "./account-nominator-positions.mjs";
@@ -315,6 +317,7 @@ import {
 } from "./chain-query-loaders.mjs";
 import {
   buildNeuronHistory,
+  buildSubnetHistory,
   parseHistoryWindow,
   unsupportedWindowMessage,
 } from "./neuron-history.mjs";
@@ -378,7 +381,15 @@ import {
   CHAIN_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
 } from "./chain-weight-setters.mjs";
-import { buildChainIdleStake } from "./subnet-idle-stake.mjs";
+import {
+  buildChainIdleStake,
+  buildSubnetIdleStake,
+} from "./subnet-idle-stake.mjs";
+import {
+  buildSubnetPrometheus,
+  SUBNET_PROMETHEUS_WINDOWS,
+  DEFAULT_SUBNET_PROMETHEUS_WINDOW,
+} from "./subnet-prometheus.mjs";
 import {
   buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
@@ -488,6 +499,16 @@ export const SDL = `
     subnet_stake_moves(netuid: Int!, window: String): SubnetStakeMoves!
     "Per-subnet stake-transfer activity over a 7d/30d window (distinct senders, StakeTransferred count, and transfers per sender); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers."
     subnet_stake_transfers(netuid: Int!, window: String): SubnetStakeTransfers!
+    "Per-subnet idle-stake scorecard from the current neurons snapshot: stake delegated to a hotkey currently earning zero dividends (no validator permit, or a permitted hotkey whose weight-setting output is zero), plus the neuron and idle-neuron counts; a subnet with no neurons resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/idle-stake."
+    subnet_idle_stake(netuid: Int!): SubnetIdleStake!
+    "Per-subnet net stake flow over a 7d/30d/90d window (default 30d): TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net capital flow, and event counts, summed live from the account_events stream. direction narrows to inflow (in) or outflow (out); all (default) reports both. A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-flow."
+    subnet_stake_flow(netuid: Int!, window: String, direction: String): SubnetStakeFlow!
+    "One subnet's paginated first-party chain-event feed (newest first): each event's kind, block, UID, hot/cold keys, amount, and timestamp. Filter by kind and by block_start/block_end (inclusive block bounds); page with limit (1-1000, default 100)/offset. event_count is the page count, not a grand total. A subnet with no matching events resolves to a schema-stable empty feed, never null. Mirrors GET /api/v1/subnets/{netuid}/events."
+    subnet_events(netuid: Int!, kind: String, block_start: Int, block_end: Int, limit: Int, offset: Int): SubnetEvents!
+    "One subnet's daily history from the neuron_daily rollup over a 7d/30d/90d/1y/all window (default 30d): neuron count, validator count, total stake (TAO), and total emission (TAO) per snapshot_date, newest first. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/history."
+    subnet_history(netuid: Int!, window: String): SubnetHistory!
+    "Per-subnet Prometheus telemetry-endpoint serving activity over a 7d/30d window (default 7d): distinct exporters (hotkeys), PrometheusServed announcement count, and announcements per exporter, summed live from the account_events stream. A subnet with no announcements resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/prometheus."
+    subnet_prometheus(netuid: Int!, window: String): SubnetPrometheus!
     "Per-subnet weight-setter leaderboard over a 7d/30d window (default 7d): the individual validators behind /weights ranked by WeightsSet activity, each with count, share, and first/last set times; a subnet with no events resolves to a schema-stable empty leaderboard, never null. Mirrors GET /api/v1/subnets/{netuid}/weights/setters."
     subnet_weight_setters(netuid: Int!, window: String): SubnetWeightSetters!
     "Per-subnet emission-per-stake yield over the current metagraph snapshot: each UID's yield plus the subnet-wide aggregate and p25/median/p75/p90 distribution; a subnet with no neurons resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/yield."
@@ -2262,6 +2283,68 @@ export const SDL = `
     transfers_per_sender: Float
   }
 
+  "Per-subnet idle-stake scorecard (#7172). Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/idle-stake."
+  type SubnetIdleStake {
+    schema_version: Int!
+    netuid: Int!
+    captured_at: String
+    neuron_count: Int!
+    idle_neuron_count: Int!
+    idle_stake_tao: Float!
+  }
+
+  "Per-subnet net stake flow (#7172) over a 7d/30d/90d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/stake-flow."
+  type SubnetStakeFlow {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    total_staked_tao: Float!
+    total_unstaked_tao: Float!
+    net_flow_tao: Float!
+    stake_events: Int!
+    unstake_events: Int!
+  }
+
+  "One subnet's paginated first-party chain-event feed (#7172), newest first, offset-paginated. event_count is the page count, not a grand total. Mirrors GET /api/v1/subnets/{netuid}/events' data envelope. Each item is an AccountEvent."
+  type SubnetEvents {
+    schema_version: Int!
+    netuid: Int!
+    event_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    events: [AccountEvent!]!
+  }
+
+  "One daily-rollup point on a subnet's history (#7172). Economics fields are null on days captured before those columns existed / when unavailable."
+  type SubnetHistoryPoint {
+    snapshot_date: String
+    neuron_count: Int
+    validator_count: Int
+    total_stake_tao: Float
+    total_emission_tao: Float
+  }
+
+  "One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope."
+  type SubnetHistory {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    point_count: Int!
+    points: [SubnetHistoryPoint!]!
+  }
+
+  "Per-subnet Prometheus-endpoint serving activity (#7172) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/prometheus."
+  type SubnetPrometheus {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    observed_at: String
+    distinct_exporters: Int!
+    announcements: Int!
+    announcements_per_exporter: Float
+  }
+
   "Per-subnet weight-setter leaderboard (#5712). Empty setters on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/weights/setters."
   type SubnetWeightSetters {
     schema_version: Int!
@@ -3948,6 +4031,11 @@ export const FIELD_COMPLEXITY = {
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_transfers: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_idle_stake: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_stake_flow: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_events: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_history: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_prometheus: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weight_setters: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_yield: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_yield_history: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5831,6 +5919,232 @@ const rootValue = {
     // The MCP tool raises not_found when it is absent; GraphQL degrades to
     // null instead, matching every other artifact-backed resolver here.
     return loadArtifact(context, AGENT_RESOURCES_ARTIFACT);
+  },
+
+  async subnet_idle_stake({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetIdleStake([])
+    // zeroed-card fallback the REST route + get_subnet_idle_stake MCP tool use; a
+    // subnet with no neurons is a schema-stable zeroed card, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, `/api/v1/subnets/${netuid}/idle-stake`),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildSubnetIdleStake([], netuid);
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      captured_at: data.captured_at ?? null,
+      neuron_count: data.neuron_count ?? 0,
+      idle_neuron_count: data.idle_neuron_count ?? 0,
+      idle_stake_tao: data.idle_stake_tao ?? 0,
+    };
+  },
+
+  async subnet_stake_flow({ netuid, window, direction }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same window/direction validation get_subnet_stake_flow + the REST route
+    // apply -- an unsupported value is a GraphQL BAD_USER_INPUT error, not a
+    // silent card.
+    const windowParam = window ?? DEFAULT_STAKE_FLOW_WINDOW;
+    if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, STAKE_FLOW_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const directionParam = direction ?? DEFAULT_STAKE_FLOW_DIRECTION;
+    if (!STAKE_FLOW_DIRECTIONS.includes(directionParam)) {
+      throw new GraphQLError(
+        `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    params.set("direction", directionParam);
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } ->
+    // buildStakeFlow([]) zeroed-card fallback the REST route + MCP tool use.
+    // direction only narrows the live query; the fallback builder takes no
+    // direction, so a cold tier degrades to the same zeroed card.
+    const tier = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/subnets/${netuid}/stake-flow`,
+        params,
+      ),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
+    const data =
+      tier?.data ?? buildStakeFlow([], netuid, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      total_staked_tao: data.total_staked_tao ?? 0,
+      total_unstaked_tao: data.total_unstaked_tao ?? 0,
+      net_flow_tao: data.net_flow_tao ?? 0,
+      stake_events: data.stake_events ?? 0,
+      unstake_events: data.unstake_events ?? 0,
+    };
+  },
+
+  async subnet_events(
+    { netuid, kind, block_start, block_end, limit, offset },
+    context,
+  ) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same FEED_PAGINATION bounds the /events route's clampEventsLimit applies,
+    // so a GraphQL caller cannot request a wider page than REST allows;
+    // kind/block_start/block_end are forwarded verbatim for the route to
+    // re-parse, matching account_events and the sibling feeds.
+    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (kind != null) params.set("kind", kind);
+    if (block_start != null) params.set("block_start", String(block_start));
+    if (block_end != null) params.set("block_end", String(block_end));
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) the REST handler and
+    // MCP get_subnet_events tool use; the account_events D1 write path is retired
+    // (#4772), so a tier miss resolves through buildSubnetEvents over an empty
+    // scan -- a schema-stable empty feed, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/events`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      buildSubnetEvents([], netuid, {
+        limit: safeLimit,
+        offset: safeOffset,
+        nextCursor: null,
+      });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      event_count: data.event_count ?? 0,
+      limit: data.limit ?? safeLimit,
+      offset: data.offset ?? safeOffset,
+      next_cursor: data.next_cursor ?? null,
+      events: (data.events ?? []).map((e) => ({
+        block_number: e.block_number ?? null,
+        event_index: e.event_index ?? null,
+        event_kind: e.event_kind ?? null,
+        hotkey: e.hotkey ?? null,
+        coldkey: e.coldkey ?? null,
+        netuid: e.netuid ?? null,
+        uid: e.uid ?? null,
+        amount_tao: e.amount_tao ?? null,
+        alpha_amount: e.alpha_amount ?? null,
+        observed_at: e.observed_at ?? null,
+        extrinsic_index: e.extrinsic_index ?? null,
+      })),
+    };
+  },
+
+  async subnet_history({ netuid, window }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same parseHistoryWindow REST's handleSubnetHistory + loadSubnetHistory (MCP)
+    // use, so accepted window labels (7d/30d/90d/1y/all, default 30d) match exactly.
+    const { label, error } = parseHistoryWindow(window);
+    if (error) {
+      throw new GraphQLError(error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const params = new URLSearchParams();
+    params.set("window", label);
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetHistory([])
+    // empty-series fallback the REST route + loadSubnetHistory use; a subnet with
+    // no daily rollup is a schema-stable point_count:0 series, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/history`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildSubnetHistory([], netuid, { window: label });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? label,
+      point_count: data.point_count ?? 0,
+      points: (data.points ?? []).map((p) => ({
+        snapshot_date: p.snapshot_date ?? null,
+        neuron_count: p.neuron_count ?? null,
+        validator_count: p.validator_count ?? null,
+        total_stake_tao: p.total_stake_tao ?? null,
+        total_emission_tao: p.total_emission_tao ?? null,
+      })),
+    };
+  },
+
+  async subnet_prometheus({ netuid, window }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same 7d/30d window validation get_subnet_prometheus + the REST route use --
+    // an unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
+    const windowParam = window ?? DEFAULT_SUBNET_PROMETHEUS_WINDOW;
+    if (!Object.hasOwn(SUBNET_PROMETHEUS_WINDOWS, windowParam)) {
+      throw new GraphQLError(
+        unsupportedWindowMessage(windowParam, SUBNET_PROMETHEUS_WINDOWS),
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const params = new URLSearchParams();
+    params.set("window", windowParam);
+    // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildSubnetPrometheus(null)
+    // zeroed-card fallback the REST route + MCP tool use; a subnet with no
+    // PrometheusServed events is a schema-stable zeroed card, never a GraphQL error.
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/prometheus`,
+          params,
+        ),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ?? buildSubnetPrometheus(null, netuid, { window: windowParam });
+    return {
+      schema_version: data.schema_version ?? 1,
+      netuid: data.netuid ?? netuid,
+      window: data.window ?? windowParam,
+      observed_at: data.observed_at ?? null,
+      distinct_exporters: data.distinct_exporters ?? 0,
+      announcements: data.announcements ?? 0,
+      announcements_per_exporter: data.announcements_per_exporter ?? null,
+    };
   },
 
   async subnet_volume({ netuid }, context) {
