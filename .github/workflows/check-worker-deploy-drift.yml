@@ -12,6 +12,14 @@ name: Check Worker Deploy Drift
 # prior scheduled run (see scripts/check-worker-deploy-drift.mjs for the exact
 # grace-window rule -- this only needs to catch a genuinely stuck build, not race a
 # normal in-flight deploy).
+#
+# SENTRY_AUTH_TOKEN (same repo secret ui-sentry-release.yml already uses) is a
+# fallback: if the Cloudflare Deployments API doesn't have a workers/commit_hash
+# annotation for the active deployment, the script falls back to the deployed
+# commit SHA that @sentry/cloudflare's withSentry() already tags every production
+# error event with (workers/api.sentry.mjs), which is independent of Cloudflare's
+# own deployment bookkeeping. Optional: omitting the secret just removes the
+# fallback, not the primary check.
 on:
   schedule:
     - cron: "53 8 * * *"
@@ -60,3 +68,6 @@ jobs:
           MAIN_HEAD_SHA: ${{ steps.main-head.outputs.sha }}
           MAIN_HEAD_COMMITTED_AT: ${{ steps.main-head.outputs.committed_at }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: jsonbored
+          SENTRY_PROJECT: metagraphed
