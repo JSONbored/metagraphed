@@ -26,6 +26,10 @@ import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.mjs";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.mjs";
+// #6982: GraphQL parity for GET /api/v1/curation, reusing list_curation's own
+// loader unchanged (same artifact read, filter, sort, and page logic REST and
+// MCP already use) -- not a reimplementation.
+import { loadCurationList } from "./curation-mcp.mjs";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_WINDOWS,
@@ -473,6 +477,8 @@ export const SDL = `
     source_snapshots(q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): SourceSnapshotList!
     "Public-safe subnet profile index -- completeness scores, surface/interface counts, curation level, review state, and confidence for every registered subnet. Filter by netuid/subnet_type/curation_level/review_state/confidence/profile_level, search name/slug/project/team/categories with q, sort with sort/order, and page with limit (1-1000)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/profiles."
     profiles(netuid: Int, subnet_type: String, curation_level: String, review_state: String, confidence: String, profile_level: String, q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ProfileList!
+    "Per-subnet curation states -- coverage_level, curation_level, source counts, and review posture for every active subnet. Filter by netuid/coverage_level/curation_level, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/curation."
+    curation(netuid: Int, coverage_level: String, curation_level: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): CurationList!
     "Global operational health rollup with per-subnet summaries."
     health: GlobalHealth
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
@@ -1734,6 +1740,19 @@ export const SDL = `
   type ProfileList {
     captured_at: String
     profiles: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  type CurationList {
+    generated_at: String
+    notes: String
+    curation: [JSON!]!
     total: Int!
     returned: Int!
     limit: Int!
@@ -3479,6 +3498,7 @@ export const FIELD_COMPLEXITY = {
   endpoint_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   source_snapshots: RELATIONSHIP_FIELD_COMPLEXITY,
   profiles: RELATIONSHIP_FIELD_COMPLEXITY,
+  curation: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -5023,6 +5043,10 @@ const rootValue = {
     return loadProfilesList(context, args, {
       readOptionalArtifact: loadArtifact,
     });
+  },
+
+  curation(args, context) {
+    return loadCurationList(context, args, { readArtifact });
   },
 
   async health(_args, context) {
