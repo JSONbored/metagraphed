@@ -9052,6 +9052,427 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
   });
 });
 
+describe("graphql — account_children / account_parents (#6976, live chain RPC via child-hotkey-delegation.mjs)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const CHILD_SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+
+  function stubFetch(handler) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = handler;
+    return () => {
+      globalThis.fetch = orig;
+    };
+  }
+
+  for (const [field, cacheKeyPrefix, counterpartKey] of [
+    ["account_children", "children", "child"],
+    ["account_parents", "parents", "parent"],
+  ]) {
+    function query(argsClause) {
+      return `{ ${field}${argsClause} {
+        schema_version account queried_at
+        subnets { netuid entries { ${counterpartKey} proportion proportion_fraction } }
+      } }`;
+    }
+
+    test(`${field}: an invalid ss58 is BAD_USER_INPUT and never reaches the RPC`, async () => {
+      let called = false;
+      const restore = stubFetch(async () => {
+        called = true;
+        return { ok: false };
+      });
+      try {
+        const { status, body } = await gql(query('(ss58: "not-an-address")'));
+        assert.equal(status, 200);
+        assert.equal(body.data[field], null);
+        assert.ok(
+          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+        );
+        assert.equal(called, false);
+      } finally {
+        restore();
+      }
+    });
+
+    test(`${field}: subnets is null on an RPC failure, distinct from confirmed-empty`, async () => {
+      const restore = stubFetch(async () => ({ ok: false }));
+      try {
+        const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data[field].subnets, null);
+      } finally {
+        restore();
+      }
+    });
+
+    test(`${field}: subnets:[] when the account genuinely has none, schema-stable`, async () => {
+      const restore = stubFetch(async (_url, init) => {
+        const parsedBody = JSON.parse(init.body);
+        if (parsedBody.method === "state_getKeysPaged") {
+          return { ok: true, json: async () => ({ result: [] }) };
+        }
+        throw new Error("should not reach state_getStorage");
+      });
+      try {
+        const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.deepEqual(body.data[field].subnets, []);
+        assert.equal(body.data[field].account, SS58);
+        assert.equal(body.data[field].schema_version, 1);
+        assert.ok(body.data[field].queried_at);
+      } finally {
+        restore();
+      }
+    });
+
+    test(`${field}: happy path resolves every field from a KV-cached payload`, async () => {
+      const cached = {
+        schema_version: 1,
+        account: SS58,
+        subnets: [
+          {
+            netuid: 3,
+            entries: [
+              {
+                [counterpartKey]: CHILD_SS58,
+                proportion: "9223372036854775807",
+                proportion_fraction: 0.5,
+              },
+            ],
+          },
+        ],
+        queried_at: "2026-07-19T00:00:00.000Z",
+      };
+      const env = fixtureEnv(
+        {},
+        { kv: { [`${cacheKeyPrefix}:${SS58}`]: cached } },
+      );
+      let fetchCalled = false;
+      const restore = stubFetch(async () => {
+        fetchCalled = true;
+        return { ok: false };
+      });
+      try {
+        const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.deepEqual(body.data[field], cached);
+        assert.equal(fetchCalled, false);
+      } finally {
+        restore();
+      }
+    });
+  }
+
+  test("account_children/account_parents are weighted at the live-RPC complexity", () => {
+    assert.equal(FIELD_COMPLEXITY.account_children, 10);
+    assert.equal(FIELD_COMPLEXITY.account_parents, 10);
+  });
+});
+
+describe("graphql — account_weight_setters (#6976, Postgres-tier { data, generatedAt } + zeroed-card fallback)", () => {
+  const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function query(argsClause) {
+    return `{ account_weight_setters${argsClause} {
+      schema_version address window total_weight_sets subnet_count concentration dominant_netuid
+      subnets { netuid weight_sets first_set_at last_set_at }
+    } }`;
+  }
+
+  test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_weight_setters, {
+      schema_version: 1,
+      address: SS58,
+      window: "7d",
+      total_weight_sets: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("resolves the Postgres-tier footprint for the requested window", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: {
+              schema_version: 1,
+              address: SS58,
+              window: "30d",
+              total_weight_sets: 12,
+              subnet_count: 2,
+              concentration: 0.61,
+              dominant_netuid: 5,
+              subnets: [
+                {
+                  netuid: 5,
+                  weight_sets: 9,
+                  first_set_at: "2026-06-01T00:00:00.000Z",
+                  last_set_at: "2026-07-01T00:00:00.000Z",
+                },
+                {
+                  netuid: 11,
+                  weight_sets: 3,
+                  first_set_at: "2026-06-15T00:00:00.000Z",
+                  last_set_at: "2026-06-20T00:00:00.000Z",
+                },
+              ],
+            },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "30d")`),
+      env,
+    );
+    assert.equal(status, 200);
+    const r = body.data.account_weight_setters;
+    assert.equal(r.window, "30d");
+    assert.equal(r.total_weight_sets, 12);
+    assert.equal(r.subnet_count, 2);
+    assert.equal(r.concentration, 0.61);
+    assert.equal(r.dominant_netuid, 5);
+    assert.equal(r.subnets[0].netuid, 5);
+    assert.equal(r.subnets[0].weight_sets, 9);
+    assert.equal(r.subnets[1].netuid, 11);
+  });
+
+  test("window is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            data: { schema_version: 1, address: SS58, subnets: [] },
+            generatedAt: null,
+          });
+        },
+      },
+    };
+    await gql(query(`(ss58: "${SS58}", window: "30d")`), env);
+    assert.equal(
+      capturedUrl.pathname,
+      `/api/v1/accounts/${SS58}/weight-setters`,
+    );
+    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+  });
+
+  test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_weight_setters, {
+      schema_version: 1,
+      address: SS58,
+      window: "7d",
+      total_weight_sets: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("a partial data envelope degrades missing fields to their defaults", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => Response.json({ data: {}, generatedAt: null }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_weight_setters, {
+      schema_version: 1,
+      address: SS58,
+      window: "7d",
+      total_weight_sets: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query('(ss58: "not-a-valid-address")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("an unsupported window is a GraphQL error, not a silent card", async () => {
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "99d")`),
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|7d/i.test(body.errors[0].message));
+    assert.equal(body.data, null);
+  });
+
+  test("account_weight_setters is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_weight_setters, 5);
+  });
+});
+
+describe("graphql — account_entities (#6976, R2 entity labels + Postgres-tier ownership-ties join)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const ENTITIES_ARTIFACT_PATH = "/metagraph/entities.json";
+
+  function query(argsClause) {
+    return `{ account_entities${argsClause} {
+      schema_version ss58 ownership_tie_count
+      labels { name category notes source_urls }
+      ownership_ties { netuid role block_number observed_at }
+    } }`;
+  }
+
+  test("cold store: no artifact, no Postgres flag resolves a schema-stable empty card, never null", async () => {
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_entities, {
+      schema_version: 1,
+      ss58: SS58,
+      ownership_tie_count: 0,
+      labels: [],
+      ownership_ties: [],
+    });
+  });
+
+  test("joins a populated entities.json artifact's labels for this ss58", async () => {
+    const env = fixtureEnv({
+      [ENTITIES_ARTIFACT_PATH]: {
+        schema_version: 1,
+        generated_at: null,
+        entities: [
+          {
+            schema_version: 1,
+            ss58: SS58,
+            name: "Example Foundation",
+            category: "foundation",
+            notes: "Verified operator",
+            source_urls: ["https://example.org/proof"],
+            review: { state: "maintainer-reviewed" },
+          },
+        ],
+      },
+    });
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.account_entities.labels, [
+      {
+        name: "Example Foundation",
+        category: "foundation",
+        notes: "Verified operator",
+        source_urls: ["https://example.org/proof"],
+      },
+    ]);
+  });
+
+  test("resolves ownership ties from the Postgres tier", async () => {
+    const env = {
+      METAGRAPH_SUBNET_OWNERSHIP_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            ss58: SS58,
+            labels: [],
+            ownership_tie_count: 1,
+            ownership_ties: [
+              {
+                netuid: 4,
+                role: "gained_ownership",
+                block_number: 123,
+                observed_at: "2026-07-01T00:00:00.000Z",
+              },
+            ],
+          }),
+      },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    const r = body.data.account_entities;
+    assert.equal(r.ownership_tie_count, 1);
+    assert.equal(r.ownership_ties[0].netuid, 4);
+    assert.equal(r.ownership_ties[0].role, "gained_ownership");
+    assert.equal(r.ownership_ties[0].block_number, 123);
+  });
+
+  test("a malformed Postgres-tier body degrades to a schema-stable empty ownership card", async () => {
+    const env = {
+      METAGRAPH_SUBNET_OWNERSHIP_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account_entities, {
+      schema_version: 1,
+      ss58: SS58,
+      ownership_tie_count: 0,
+      labels: [],
+      ownership_ties: [],
+    });
+  });
+
+  test("an invalid ss58 is BAD_USER_INPUT and never reaches the artifact or Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_SUBNET_OWNERSHIP_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      query('(ss58: "not-a-valid-address")'),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("account_entities is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.account_entities, 5);
+  });
+});
+
 describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 zero card)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
   const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
