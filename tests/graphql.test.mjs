@@ -7109,6 +7109,136 @@ describe("graphql — registry_summary / source_health / lineage / rpc_endpoints
   });
 });
 
+describe("graphql — subnet metagraph / overview / profile (#7169, composed-route parity)", () => {
+  function tierEnv(sourceKey, payload, onUrl) {
+    return {
+      [sourceKey]: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          onUrl?.(new URL(r.url));
+          return Response.json(payload);
+        },
+      },
+    };
+  }
+
+  test("subnet_metagraph resolves the postgres-tier payload", async () => {
+    let url;
+    const env = tierEnv(
+      "METAGRAPH_NEURONS_SOURCE",
+      { schema_version: 1, netuid: 3, neuron_count: 1, neurons: [{ uid: 0 }] },
+      (u) => {
+        url = u;
+      },
+    );
+    const { status, body } = await gql("{ subnet_metagraph(netuid: 3) }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_metagraph.neuron_count, 1);
+    assert.equal(url.pathname, "/api/v1/subnets/3/metagraph");
+    assert.equal(url.searchParams.get("validator_permit"), null);
+  });
+
+  test("subnet_metagraph forwards validator_permit to the tier", async () => {
+    let url;
+    const env = tierEnv(
+      "METAGRAPH_NEURONS_SOURCE",
+      { schema_version: 1, netuid: 3, neuron_count: 0, neurons: [] },
+      (u) => {
+        url = u;
+      },
+    );
+    const { body } = await gql(
+      "{ subnet_metagraph(netuid: 3, validator_permit: true) }",
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(url.searchParams.get("validator_permit"), "true");
+  });
+
+  test("subnet_metagraph falls back to a schema-stable empty metagraph, never null", async () => {
+    const { status, body } = await gql("{ subnet_metagraph(netuid: 3) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_metagraph, {
+      schema_version: 1,
+      netuid: 3,
+      neuron_count: 0,
+      captured_at: null,
+      block_number: null,
+      neurons: [],
+    });
+  });
+
+  test("subnet_overview composes the baked overview with live health", async () => {
+    const env = fixtureEnv({
+      "/metagraph/overview/3.json": { netuid: 3, name: "Three" },
+    });
+    const { status, body } = await gql("{ subnet_overview(netuid: 3) }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_overview.netuid, 3);
+    assert.equal(body.data.subnet_overview.name, "Three");
+  });
+
+  test("subnet_overview resolves to null when no overview is baked", async () => {
+    const { status, body } = await gql("{ subnet_overview(netuid: 3) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_overview, null);
+  });
+
+  test("subnet_profile resolves the baked contributor-review profile", async () => {
+    const env = fixtureEnv({
+      "/metagraph/profiles/3.json": { netuid: 3, completeness_score: 88 },
+    });
+    const { status, body } = await gql("{ subnet_profile(netuid: 3) }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_profile.completeness_score, 88);
+  });
+
+  test("subnet_profile resolves to null when no profile is baked", async () => {
+    const { status, body } = await gql("{ subnet_profile(netuid: 3) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_profile, null);
+  });
+
+  test("subnet_profile rejects a negative netuid with BAD_USER_INPUT", async () => {
+    const { body } = await gql("{ subnet_profile(netuid: -1) }");
+    assert.equal(body.errors?.[0]?.extensions?.code, "BAD_USER_INPUT");
+    assert.match(body.errors[0].message, /non-negative integer/);
+  });
+
+  test("subnet_profile surfaces a non-loader fault instead of reporting null", async () => {
+    // An unparseable artifact body throws out of readR2's .json() as a plain
+    // Error -- not a loader profilesMcp error -- so it must surface rather than
+    // being silently reported as "no profile baked".
+    const env = {
+      METAGRAPH_R2_LATEST_PREFIX: "latest/",
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            async json() {
+              throw new Error("malformed artifact body");
+            },
+          };
+        },
+      },
+    };
+    const { body } = await gql("{ subnet_profile(netuid: 3) }", env);
+    assert.ok(body.errors?.length, "expected a GraphQL error");
+    assert.equal(body.data?.subnet_profile ?? null, null);
+  });
+
+  test("the three fields are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_metagraph, 5);
+    assert.equal(FIELD_COMPLEXITY.subnet_overview, 5);
+    assert.equal(FIELD_COMPLEXITY.subnet_profile, 5);
+  });
+});
+
 describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

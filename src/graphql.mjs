@@ -142,10 +142,12 @@ import {
   LEADERBOARD_BOARDS,
   loadSubnetTrajectory,
   mergeRpcEndpoints,
+  overlayOverviewHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
 } from "./health-serving.mjs";
+import { loadSubnetProfile } from "./profiles-mcp.mjs";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.mjs";
 import {
   COMPARE_VALIDATORS_MAX,
@@ -203,6 +205,7 @@ import {
   GLOBAL_VALIDATOR_SORTS,
   buildGlobalValidators,
   buildNeuronDetail,
+  buildSubnetMetagraph,
   buildSubnetValidators,
   buildValidatorDetail,
   composeValidatorComparison,
@@ -497,6 +500,12 @@ export const SDL = `
     subnet_identity_history(netuid: Int!, limit: Int, offset: Int, cursor: String): SubnetIdentityHistory!
     "One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory."
     subnet_trajectory(netuid: Int!): SubnetTrajectory!
+    "One subnet's live metagraph: every neuron with its uid, keys, stake, trust/consensus/incentive/dividends, emission, and axon, plus the subnet's aggregate counters. Set validator_permit to true to return only permit-holding validators. A subnet with no indexed neurons resolves to a schema-stable empty metagraph, never null. Opaque JSON passed through verbatim, matching the get_subnet_metagraph MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/metagraph."
+    subnet_metagraph(netuid: Int!, validator_permit: Boolean): JSON
+    "One subnet's composed overview card: the baked static subnet record overlaid with live probe-derived health, exactly as the REST route composes it. Null when no overview has been baked for that netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/overview."
+    subnet_overview(netuid: Int!): JSON
+    "One subnet's contributor-review profile: candidate surfaces, contract version, endpoints, and completeness/curation metadata. Null when no profile has been baked for that netuid (rather than a GraphQL error); a negative netuid is a BAD_USER_INPUT error. Opaque JSON passed through verbatim, matching the get_subnet_profile MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/profile."
+    subnet_profile(netuid: Int!): JSON
     "Paginated provider/source registry."
     providers(limit: Int, cursor: String): ProviderList!
     "One provider with its subnets."
@@ -3893,6 +3902,9 @@ export const FIELD_COMPLEXITY = {
   neuron_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_trajectory: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_metagraph: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_overview: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_profile: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4596,6 +4608,61 @@ const rootValue = {
       next_cursor: data.next_cursor ?? null,
       entries: data.entries ?? [],
     };
+  },
+
+  // #7169: the three composed subnet routes that had no GraphQL mirror. Each
+  // reuses exactly what REST/MCP already call, so the three surfaces can't
+  // drift.
+  async subnet_metagraph({ netuid, validator_permit }, context) {
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetMetagraph
+    // fallback contract get_subnet_metagraph uses; a subnet with no indexed
+    // neurons is a schema-stable empty metagraph, never a GraphQL error.
+    const params = new URLSearchParams();
+    if (validator_permit) params.set("validator_permit", "true");
+    return (
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/subnets/${netuid}/metagraph`,
+          params,
+        ),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) ?? buildSubnetMetagraph([], netuid)
+    );
+  },
+
+  async subnet_overview({ netuid }, context) {
+    // Same baked-overview + overlayOverviewHealth composition the REST
+    // "subnet-overview" case and the get_subnet MCP tool perform. An
+    // un-baked netuid resolves to null rather than a GraphQL error.
+    const overview = await loadArtifact(
+      context,
+      `/metagraph/overview/${netuid}.json`,
+    );
+    if (!overview) return null;
+    const live = await loadLiveHealth(context);
+    return overlayOverviewHealth(overview, live, netuid) || overview;
+  },
+
+  async subnet_profile({ netuid }, context) {
+    // Reuse loadSubnetProfile (the loader get_subnet_profile already calls)
+    // unchanged; its deps.readArtifact is invoked as (ctx, path) -- exactly
+    // loadArtifact's shape -- so the read shares the request-scoped once()
+    // cache. Its only throw is an invalid netuid, which becomes BAD_USER_INPUT
+    // (mirroring REST's invalid_params 400); an un-baked profile is null.
+    try {
+      return await loadSubnetProfile(context, netuid, {
+        readArtifact: loadArtifact,
+      });
+    } catch (err) {
+      if (err?.profilesMcp) {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      throw err;
+    }
   },
 
   async subnet_trajectory({ netuid }, context) {
