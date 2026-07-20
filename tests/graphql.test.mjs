@@ -2055,6 +2055,270 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
   });
 });
 
+describe("graphql — review_* contributor-review family", () => {
+  const ADAPTER_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: ["adapter shortlist"],
+    candidates: [
+      {
+        netuid: 7,
+        name: "Allways",
+        priority_score: 88,
+        curation_level: "candidate-discovered",
+        recommended_adapter_kind: "generic-openapi-or-custom",
+      },
+      {
+        netuid: 12,
+        name: "Compute",
+        priority_score: 72,
+        curation_level: "maintainer-reviewed",
+        recommended_adapter_kind: "custom-adapter",
+      },
+    ],
+  };
+
+  const EVIDENCE_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: ["evidence"],
+    entries: [
+      {
+        netuid: 7,
+        name: "Allways",
+        priority_score: 90,
+        lane: "direct-submission",
+        evidence_action: "submit-new-evidence",
+      },
+      {
+        netuid: 12,
+        name: "Compute",
+        priority_score: 40,
+        lane: "monitoring-followup",
+        evidence_action: "monitor",
+      },
+    ],
+  };
+
+  const QUEUE_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: ["queue"],
+    queue: [
+      {
+        netuid: 7,
+        name: "Allways",
+        priority_score: 95,
+        lane: "direct-submission",
+        curation_level: "candidate-discovered",
+      },
+      {
+        netuid: 12,
+        name: "Compute",
+        priority_score: 50,
+        lane: "baseline-monitoring",
+        curation_level: "maintainer-reviewed",
+      },
+    ],
+  };
+
+  const TARGETS_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: ["targets"],
+    targets: [
+      {
+        netuid: 7,
+        name: "Allways",
+        priority_score: 91,
+        target_type: "surface-candidate",
+        lane: "direct-submission",
+      },
+      {
+        netuid: 12,
+        name: "Compute",
+        priority_score: 55,
+        target_type: "monitoring-followup",
+        lane: "monitoring-followup",
+      },
+    ],
+  };
+
+  const GAPS_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: ["gaps"],
+    priorities: [
+      {
+        netuid: 7,
+        name: "Allways",
+        priority_score: 88,
+        curation_level: "candidate-discovered",
+        missing_kinds: ["openapi"],
+      },
+      {
+        netuid: 12,
+        name: "Compute",
+        priority_score: 72,
+        curation_level: "maintainer-reviewed",
+        missing_kinds: ["website"],
+      },
+    ],
+  };
+
+  const PROFILE_BLOB = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: ["profile gaps"],
+    summary: { profile_count: 2 },
+    profiles: [
+      {
+        netuid: 7,
+        name: "Allways",
+        priority_score: 80,
+        profile_level: "identity-partial",
+        identity_level: "partial",
+        confidence: "medium",
+      },
+      {
+        netuid: 12,
+        name: "Compute",
+        priority_score: 40,
+        profile_level: "directory-only",
+        identity_level: "none",
+        confidence: "low",
+      },
+    ],
+  };
+
+  const reviewEnv = () =>
+    fixtureEnv({
+      "/metagraph/review/adapter-candidates.json": ADAPTER_BLOB,
+      "/metagraph/review/enrichment-evidence.json": EVIDENCE_BLOB,
+      "/metagraph/review/enrichment-queue.json": QUEUE_BLOB,
+      "/metagraph/review/enrichment-targets.json": TARGETS_BLOB,
+      "/metagraph/review/gap-priorities.json": GAPS_BLOB,
+      "/metagraph/review/profile-completeness.json": PROFILE_BLOB,
+    });
+
+  test("review_adapter_candidates filters by netuid and paginates", async () => {
+    const env = reviewEnv();
+    const filtered = await gql(
+      "{ review_adapter_candidates(netuid: 7) { candidates total generated_at } }",
+      env,
+    );
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.data.review_adapter_candidates.total, 1);
+    assert.equal(
+      filtered.body.data.review_adapter_candidates.candidates[0].netuid,
+      7,
+    );
+    assert.equal(
+      filtered.body.data.review_adapter_candidates.generated_at,
+      "2026-07-01T00:00:00.000Z",
+    );
+
+    const paged = await gql(
+      "{ review_adapter_candidates(limit: 1) { candidates total returned next_cursor } }",
+      env,
+    );
+    assert.equal(
+      paged.body.data.review_adapter_candidates.candidates.length,
+      1,
+    );
+    assert.equal(paged.body.data.review_adapter_candidates.total, 2);
+    assert.equal(paged.body.data.review_adapter_candidates.returned, 1);
+    assert.ok(paged.body.data.review_adapter_candidates.next_cursor != null);
+  });
+
+  test("review_enrichment_evidence filters by lane and sorts", async () => {
+    const env = reviewEnv();
+    const filtered = await gql(
+      '{ review_enrichment_evidence(lane: "direct-submission") { entries total } }',
+      env,
+    );
+    assert.equal(filtered.body.data.review_enrichment_evidence.total, 1);
+    assert.equal(
+      filtered.body.data.review_enrichment_evidence.entries[0].netuid,
+      7,
+    );
+
+    const sorted = await gql(
+      '{ review_enrichment_evidence(sort: "priority_score", order: "asc") { entries } }',
+      env,
+    );
+    assert.equal(
+      sorted.body.data.review_enrichment_evidence.entries[0].netuid,
+      12,
+    );
+  });
+
+  test("review_enrichment_queue filters by curation_level", async () => {
+    const env = reviewEnv();
+    const { body } = await gql(
+      '{ review_enrichment_queue(curation_level: "maintainer-reviewed") { queue total } }',
+      env,
+    );
+    assert.equal(body.data.review_enrichment_queue.total, 1);
+    assert.equal(body.data.review_enrichment_queue.queue[0].netuid, 12);
+  });
+
+  test("review_enrichment_targets filters by target_type", async () => {
+    const env = reviewEnv();
+    const { body } = await gql(
+      '{ review_enrichment_targets(target_type: "surface-candidate") { targets total } }',
+      env,
+    );
+    assert.equal(body.data.review_enrichment_targets.total, 1);
+    assert.equal(body.data.review_enrichment_targets.targets[0].netuid, 7);
+  });
+
+  test("review_gaps filters by missing_kinds", async () => {
+    const env = reviewEnv();
+    const { body } = await gql(
+      '{ review_gaps(missing_kinds: "openapi") { priorities total } }',
+      env,
+    );
+    assert.equal(body.data.review_gaps.total, 1);
+    assert.equal(body.data.review_gaps.priorities[0].netuid, 7);
+  });
+
+  test("review_profile_completeness filters by identity_level and exposes summary", async () => {
+    const env = reviewEnv();
+    const { body } = await gql(
+      '{ review_profile_completeness(identity_level: "partial") { profiles total summary } }',
+      env,
+    );
+    assert.equal(body.data.review_profile_completeness.total, 1);
+    assert.equal(body.data.review_profile_completeness.profiles[0].netuid, 7);
+    assert.equal(
+      body.data.review_profile_completeness.summary.profile_count,
+      2,
+    );
+  });
+
+  test("surfaces an invalid review filter as a GraphQL error, not a silent default", async () => {
+    const env = reviewEnv();
+    const { body } = await gql(
+      '{ review_adapter_candidates(curation_level: "bogus") { total } }',
+      env,
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("surfaces a cold/missing review artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql(
+      "{ review_adapter_candidates { total } }",
+      emptyEnv,
+    );
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("FIELD_COMPLEXITY weights each review_* field like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.review_adapter_candidates, 5);
+    assert.equal(FIELD_COMPLEXITY.review_enrichment_evidence, 5);
+    assert.equal(FIELD_COMPLEXITY.review_enrichment_queue, 5);
+    assert.equal(FIELD_COMPLEXITY.review_enrichment_targets, 5);
+    assert.equal(FIELD_COMPLEXITY.review_gaps, 5);
+    assert.equal(FIELD_COMPLEXITY.review_profile_completeness, 5);
+  });
+});
+
 describe("graphql — economics pagination", () => {
   const env = () =>
     fixtureEnv({

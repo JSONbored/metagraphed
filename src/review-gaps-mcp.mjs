@@ -10,6 +10,7 @@ export const REVIEW_GAPS_ARTIFACT = "/metagraph/review/gap-priorities.json";
 const PRIORITY_SORT_FIELDS =
   API_QUERY_COLLECTIONS["review-gap-priorities"].sort_fields;
 const CURATION_LEVELS = QUERY_ENUMS.curationLevel;
+const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
 
 export function reviewGapsMcpError(code, message) {
   const error = new Error(message);
@@ -61,6 +62,8 @@ export function reviewGapsQueryUrl(args) {
   }
   const curationLevel = optionalEnum(args, "curation_level", CURATION_LEVELS);
   if (curationLevel) url.searchParams.set("curation_level", curationLevel);
+  const missingKinds = optionalEnum(args, "missing_kinds", SURFACE_KINDS);
+  if (missingKinds) url.searchParams.set("missing_kinds", missingKinds);
   const reviewState = optionalString(args, "review_state");
   if (reviewState) url.searchParams.set("review_state", reviewState);
   const sort = optionalEnum(args, "sort", PRIORITY_SORT_FIELDS);
@@ -145,10 +148,10 @@ export const LIST_REVIEW_GAPS_MCP_TOOL = {
   description:
     "Fetch the contributor-targeted review gap priority board from the registry: " +
     "per-subnet priority_score, missing surface kinds, surface and candidate counts, " +
-    "curation_level, and review_state. Filter by netuid, curation_level, or review_state; " +
-    "sort with sort + order; and page with limit (1-100) / cursor. Distinct from list_gaps " +
-    "(interface facet reports at GET /api/v1/gaps) and get_subnet_gaps (one subnet's " +
-    "detailed gap artifact). Mirrors GET /api/v1/review/gaps.",
+    "curation_level, and review_state. Filter by netuid, curation_level, missing_kinds, " +
+    "or review_state; sort with sort + order; and page with limit (1-100) / cursor. " +
+    "Distinct from list_gaps (interface facet reports at GET /api/v1/gaps) and " +
+    "get_subnet_gaps (one subnet's detailed gap artifact). Mirrors GET /api/v1/review/gaps.",
   inputSchema: {
     type: "object",
     properties: {
@@ -161,6 +164,12 @@ export const LIST_REVIEW_GAPS_MCP_TOOL = {
         type: "string",
         enum: CURATION_LEVELS,
         description: "Filter by curation level.",
+      },
+      missing_kinds: {
+        type: "string",
+        enum: SURFACE_KINDS,
+        description:
+          "Filter rows whose missing_kinds include this surface kind.",
       },
       review_state: {
         type: "string",

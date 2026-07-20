@@ -54,6 +54,7 @@ describe("review-gaps-mcp", () => {
     const url = reviewGapsQueryUrl({
       netuid: 7,
       curation_level: "candidate-discovered",
+      missing_kinds: "openapi",
       review_state: "needs-evidence",
       sort: "priority_score",
       order: "desc",
@@ -66,6 +67,7 @@ describe("review-gaps-mcp", () => {
       url.searchParams.get("curation_level"),
       "candidate-discovered",
     );
+    assert.equal(url.searchParams.get("missing_kinds"), "openapi");
     assert.equal(url.searchParams.get("review_state"), "needs-evidence");
     assert.equal(url.searchParams.get("sort"), "priority_score");
     assert.equal(url.searchParams.get("limit"), "10");
