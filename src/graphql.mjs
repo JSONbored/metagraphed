@@ -3198,6 +3198,12 @@ export const SDL = `
     nominator_count: Int
     apy_estimate: Float
     apy_estimate_eligible_subnet_count: Int
+    "Realized 1-day validator return (#7228): the rao-exact fractional change in aggregate stake vs the neuron_daily snapshot ~1 day ago ((stake_now - stake_1d_ago) / stake_1d_ago; negative when stake shrank). The backward-looking, realized counterpart to apy_estimate, reported alongside it. Reflects accrued emissions AND net delegation flow, not an emission-only yield. Null when no snapshot ~1 day back or the baseline stake was non-positive."
+    realized_return_1d: Float
+    "Realized 1-week validator return (#7228): as realized_return_1d, vs the neuron_daily snapshot ~7 days ago. Null when no snapshot ~7 days back or the baseline stake was non-positive."
+    realized_return_1w: Float
+    "Realized 1-month validator return (#7228): as realized_return_1d, vs the neuron_daily snapshot ~30 days ago. Null when no snapshot ~30 days back or the baseline stake was non-positive."
+    realized_return_1m: Float
     avg_validator_trust: Float
     max_validator_trust: Float
     captured_at: String

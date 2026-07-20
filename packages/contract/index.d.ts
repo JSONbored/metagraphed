@@ -5522,6 +5522,12 @@ export interface components {
             max_validator_trust: number | null;
             /** @description Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan (see validator_nominator_counts) than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0. */
             nominator_count: number | null;
+            /** @description Realized 1-day validator return (#7228): the rao-exact fractional change in this validator's aggregate stake between its neuron_daily snapshot ~1 day ago and the current snapshot, i.e. (total_stake_now - total_stake_1d_ago) / total_stake_1d_ago, expressed as a decimal fraction (0.02 = +2%; negative when stake shrank). This is the backward-looking, realized counterpart to the forward-looking apy_estimate and is reported alongside it, not in place of it. It reflects the net change in staked TAO over the window, which for a validator is driven by accrued emissions AND net delegation flow (delegators staking to or unstaking from the hotkey) -- it is not an emission-only yield. Null when neuron_daily has no snapshot ~1 day back, or the baseline stake was non-positive. */
+            realized_return_1d: number | null;
+            /** @description Realized 1-month validator return (#7228): same computation as realized_return_1d, against the neuron_daily snapshot ~30 days ago. Null when no snapshot ~30 days back, or the baseline stake was non-positive. */
+            realized_return_1m: number | null;
+            /** @description Realized 1-week validator return (#7228): same computation as realized_return_1d, against the neuron_daily snapshot ~7 days ago. Null when no snapshot ~7 days back, or the baseline stake was non-positive. */
+            realized_return_1w: number | null;
             /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
             root_stake_tao: number;
             stake_dominance: number | null;
@@ -8485,6 +8491,12 @@ export interface components {
             max_validator_trust: number | null;
             /** @description Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0. */
             nominator_count: number | null;
+            /** @description Realized 1-day validator return (#7228): the rao-exact fractional change in this validator's aggregate stake between its neuron_daily snapshot ~1 day ago and the current snapshot, i.e. (total_stake_now - total_stake_1d_ago) / total_stake_1d_ago, expressed as a decimal fraction (0.02 = +2%; negative when stake shrank). This is the backward-looking, realized counterpart to the forward-looking apy_estimate and is reported alongside it, not in place of it. It reflects the net change in staked TAO over the window, which for a validator is driven by accrued emissions AND net delegation flow (delegators staking to or unstaking from the hotkey) -- it is not an emission-only yield. Null when neuron_daily has no snapshot ~1 day back, or the baseline stake was non-positive. */
+            realized_return_1d: number | null;
+            /** @description Realized 1-month validator return (#7228): same computation as realized_return_1d, against the neuron_daily snapshot ~30 days ago. Null when no snapshot ~30 days back, or the baseline stake was non-positive. */
+            realized_return_1m: number | null;
+            /** @description Realized 1-week validator return (#7228): same computation as realized_return_1d, against the neuron_daily snapshot ~7 days ago. Null when no snapshot ~7 days back, or the baseline stake was non-positive. */
+            realized_return_1w: number | null;
             /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
             root_stake_tao: number;
             schema_version: number;
@@ -31738,6 +31750,9 @@ export interface operations {
                      *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
                      *             "max_validator_trust": 0.5,
                      *             "nominator_count": 1,
+                     *             "realized_return_1d": 0.5,
+                     *             "realized_return_1m": 0.5,
+                     *             "realized_return_1w": 0.5,
                      *             "root_stake_tao": 0.5,
                      *             "stake_dominance": 0.5,
                      *             "subnet_count": 1,
@@ -31883,6 +31898,9 @@ export interface operations {
                      *         "hotkey": "example",
                      *         "max_validator_trust": 0.5,
                      *         "nominator_count": 1,
+                     *         "realized_return_1d": 0.5,
+                     *         "realized_return_1m": 0.5,
+                     *         "realized_return_1w": 0.5,
                      *         "root_stake_tao": 0.5,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,

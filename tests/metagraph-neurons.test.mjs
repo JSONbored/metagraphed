@@ -986,6 +986,58 @@ describe("metagraph-neurons builders", () => {
     );
   });
 
+  test("buildGlobalValidators computes realized_return_* from the neuron_daily baseline (#7228)", () => {
+    const data = buildGlobalValidators(
+      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1100 }],
+      {
+        dailyBaselineByHotkey: new Map([
+          ["hk-a", { "1d": 1000, "7d": 880, "30d": null }],
+        ]),
+      },
+    );
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    // (1100 - 1000)/1000 = 0.1 ; (1100 - 880)/880 = 0.25 ; no 30d baseline row
+    // -> null (never a fabricated 0).
+    assert.equal(entry.realized_return_1d, 0.1);
+    assert.equal(entry.realized_return_1w, 0.25);
+    assert.equal(entry.realized_return_1m, null);
+  });
+
+  test("buildGlobalValidators realized_return goes negative when stake shrank, and nulls a non-positive or absent baseline (#7228)", () => {
+    const data = buildGlobalValidators(
+      [
+        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 900 },
+        { ...ROW, netuid: 3, uid: 1, hotkey: "hk-b", stake_tao: 500 },
+      ],
+      {
+        dailyBaselineByHotkey: new Map([
+          // hk-a shrank vs 1 day ago; its 7d baseline is a non-positive 0 (can't
+          // divide) -> null; it has no 30d window key at all -> null.
+          ["hk-a", { "1d": 1000, "7d": 0 }],
+          // hk-b: no baseline row -> every window null.
+        ]),
+      },
+    );
+    const a = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(a.realized_return_1d, -0.1); // (900 - 1000)/1000
+    assert.equal(a.realized_return_1w, null); // 0 baseline -> null
+    assert.equal(a.realized_return_1m, null); // absent window -> null
+    const b = data.validators.find((v) => v.hotkey === "hk-b");
+    assert.equal(b.realized_return_1d, null);
+    assert.equal(b.realized_return_1w, null);
+    assert.equal(b.realized_return_1m, null);
+  });
+
+  test("buildGlobalValidators defaults realized_return_* to null when no dailyBaselineByHotkey is passed (#7228)", () => {
+    const data = buildGlobalValidators([
+      { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 },
+    ]);
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(entry.realized_return_1d, null);
+    assert.equal(entry.realized_return_1w, null);
+    assert.equal(entry.realized_return_1m, null);
+  });
+
   test("buildValidatorDetail aggregates one hotkey's validator rows across every subnet", () => {
     const data = buildValidatorDetail(
       [
@@ -1218,6 +1270,23 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.subnets.length, 15);
     assert.equal(data.apy_estimate_eligible_subnet_count, 15);
     assert.ok(data.apy_estimate > 0);
+  });
+
+  test("buildValidatorDetail computes realized_return_* from the dailyBaseline option, and nulls them without it (#7228)", () => {
+    const rows = [
+      { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1200 },
+    ];
+    const withBaseline = buildValidatorDetail(rows, "hk-a", {
+      dailyBaseline: { "1d": 1000, "7d": null, "30d": 1500 },
+    });
+    assert.equal(withBaseline.realized_return_1d, 0.2); // (1200 - 1000)/1000
+    assert.equal(withBaseline.realized_return_1w, null); // no 7d baseline row
+    assert.equal(withBaseline.realized_return_1m, -0.2); // (1200 - 1500)/1500
+    // No dailyBaseline option -> every window null (the default).
+    const withoutBaseline = buildValidatorDetail(rows, "hk-a");
+    assert.equal(withoutBaseline.realized_return_1d, null);
+    assert.equal(withoutBaseline.realized_return_1w, null);
+    assert.equal(withoutBaseline.realized_return_1m, null);
   });
 
   test("buildValidatorDetail: a null latest block_number is beaten by a real one on a captured_at tie, and a null incoming block_number never wins one", () => {

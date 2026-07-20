@@ -110,6 +110,13 @@ const validatorNominatorCountsQueryFailure = vi.hoisted(() => ({
 // isolation purpose as validatorNominatorCountsQueryFailure above, but for
 // loadSubnetTempos' own SELECT.
 const subnetTemposQueryFailure = vi.hoisted(() => ({ error: null }));
+// Canned rows + failure flag for the neuron_daily realized-return baseline
+// READ (#7228) -- loadValidatorDailyBaselines' own SELECT, matched by its
+// distinctive `stake_1d` column alias so it never consumes a mockQueue slot
+// (existing /validators tests are undisturbed; they leave realized_return_*
+// null by default). Same isolation shape as subnetTemposQueryFailure above.
+const validatorDailyBaselineRows = vi.hoisted(() => ({ current: [] }));
+const validatorDailyBaselinesQueryFailure = vi.hoisted(() => ({ error: null }));
 // State for the nominator-positions-sync WRITE (#5233) tests only.
 const nominatorPositionsSyncFailure = vi.hoisted(() => ({ error: null }));
 // State for the account-balances-sync WRITE (#6742) tests only.
@@ -285,6 +292,15 @@ vi.mock("postgres", () => ({
       ) {
         return Promise.reject(subnetTemposQueryFailure.error);
       }
+      // neuron_daily realized-return baseline READ (#7228): matched by its
+      // unique `stake_1d` alias so it's served without consuming a mockQueue
+      // slot -- keeps every existing /validators* test's queue intact.
+      if (/AS stake_1d\b/.test(text)) {
+        if (validatorDailyBaselinesQueryFailure.error) {
+          return Promise.reject(validatorDailyBaselinesQueryFailure.error);
+        }
+        return Promise.resolve(validatorDailyBaselineRows.current);
+      }
       if (
         healthUptimeRollupSyncFailure.error &&
         /INSERT INTO surface_uptime_daily\b/.test(text)
@@ -441,6 +457,8 @@ beforeEach(() => {
   validatorNominatorCountsSyncFailure.error = null;
   validatorNominatorCountsQueryFailure.error = null;
   subnetTemposQueryFailure.error = null;
+  validatorDailyBaselineRows.current = [];
+  validatorDailyBaselinesQueryFailure.error = null;
   nominatorPositionsSyncFailure.error = null;
   nominatorPositionsQueryFailure.error = null;
   accountBalancesSyncFailure.error = null;
@@ -2148,6 +2166,98 @@ test("GET /api/v1/validators/:hotkey computes apy_estimate from a subnet_hyperpa
   const body = await res.json();
   expect(body.apy_estimate).toBe(6.205);
   expect(body.apy_estimate_eligible_subnet_count).toBe(1);
+});
+
+test("GET /api/v1/validators computes realized_return_* from the neuron_daily baseline (#7228)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, hotkey: "5Hot", netuid: 3, stake_tao: "1100" }],
+    [], // loadFeaturedHotkeys
+    [], // loadValidatorNominatorCounts
+    [], // loadSubnetTempos
+  ];
+  // The baseline read is matched by its `AS stake_1d` alias, not the queue.
+  validatorDailyBaselineRows.current = [
+    { hotkey: "5Hot", stake_1d: "1000", stake_7d: "880", stake_30d: null },
+  ];
+  const res = await req("/api/v1/validators");
+  const body = await res.json();
+  expect(body.validators[0].realized_return_1d).toBe(0.1); // (1100-1000)/1000
+  expect(body.validators[0].realized_return_1w).toBe(0.25); // (1100-880)/880
+  expect(body.validators[0].realized_return_1m).toBe(null); // no 30d baseline
+});
+
+test("GET /api/v1/validators still serves the primary rows with realized_return_* null when the neuron_daily baseline read fails (#7228)", async () => {
+  validatorDailyBaselinesQueryFailure.error = new Error(
+    'relation "neuron_daily" does not exist',
+  );
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, hotkey: "5Hot", netuid: 7 }],
+    [], // loadFeaturedHotkeys
+    [], // loadValidatorNominatorCounts
+    [], // loadSubnetTempos
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].hotkey).toBe("5Hot");
+  expect(body.validators[0].realized_return_1d).toBe(null);
+  expect(body.validators[0].realized_return_1w).toBe(null);
+  expect(body.validators[0].realized_return_1m).toBe(null);
+});
+
+test("GET /api/v1/validators/:hotkey computes realized_return_* from the neuron_daily baseline (#7228)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, hotkey: "5Hot", netuid: 3, stake_tao: "1200" }],
+    [], // loadValidatorNominatorCounts
+    [], // loadSubnetTempos
+  ];
+  validatorDailyBaselineRows.current = [
+    { hotkey: "5Hot", stake_1d: "1000", stake_7d: null, stake_30d: "1500" },
+  ];
+  const res = await req("/api/v1/validators/5Hot");
+  const body = await res.json();
+  expect(body.realized_return_1d).toBe(0.2); // (1200-1000)/1000
+  expect(body.realized_return_1w).toBe(null); // no 7d baseline
+  expect(body.realized_return_1m).toBe(-0.2); // (1200-1500)/1500
+});
+
+test("GET /api/v1/validators skips neuron_daily baseline rows with a missing/blank hotkey (#7228)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, hotkey: "5Hot", netuid: 7 }],
+    [], // loadFeaturedHotkeys
+    [], // loadValidatorNominatorCounts
+    [], // loadSubnetTempos
+  ];
+  // A baseline row with no hotkey, and one with a blank hotkey, are both
+  // skipped -- 5Hot gets no baseline, so every window stays null.
+  validatorDailyBaselineRows.current = [
+    { stake_1d: "5", stake_7d: "5", stake_30d: "5" },
+    { hotkey: "", stake_1d: "5", stake_7d: "5", stake_30d: "5" },
+  ];
+  const res = await req("/api/v1/validators");
+  const body = await res.json();
+  expect(body.validators[0].realized_return_1d).toBe(null);
+});
+
+test("GET /api/v1/validators tolerates a non-array neuron_daily baseline result (#7228)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, hotkey: "5Hot", netuid: 7 }],
+    [], // loadFeaturedHotkeys
+    [], // loadValidatorNominatorCounts
+    [], // loadSubnetTempos
+  ];
+  // A malformed (non-array) baseline result degrades to an empty map, never
+  // throws -- every realized_return stays null.
+  validatorDailyBaselineRows.current = null;
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].realized_return_1d).toBe(null);
 });
 
 // #4832 Tier 2: the live-`neurons` routes with no shared D1 loader (the

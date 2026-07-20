@@ -2199,6 +2199,9 @@
           "nominator_count",
           "apy_estimate",
           "apy_estimate_eligible_subnet_count",
+          "realized_return_1d",
+          "realized_return_1w",
+          "realized_return_1m",
           "stake_dominance",
           "avg_validator_trust",
           "max_validator_trust",
@@ -2250,6 +2253,18 @@
             "type": "integer",
             "minimum": 0,
             "description": "Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0."
+          },
+          "realized_return_1d": {
+            "type": ["number", "null"],
+            "description": "Realized 1-day validator return (#7228): the rao-exact fractional change in this validator's aggregate stake between its neuron_daily snapshot ~1 day ago and the current snapshot, i.e. (total_stake_now - total_stake_1d_ago) / total_stake_1d_ago, expressed as a decimal fraction (0.02 = +2%; negative when stake shrank). This is the backward-looking, realized counterpart to the forward-looking apy_estimate and is reported alongside it, not in place of it. It reflects the net change in staked TAO over the window, which for a validator is driven by accrued emissions AND net delegation flow (delegators staking to or unstaking from the hotkey) -- it is not an emission-only yield. Null when neuron_daily has no snapshot ~1 day back, or the baseline stake was non-positive."
+          },
+          "realized_return_1w": {
+            "type": ["number", "null"],
+            "description": "Realized 1-week validator return (#7228): same computation as realized_return_1d, against the neuron_daily snapshot ~7 days ago. Null when no snapshot ~7 days back, or the baseline stake was non-positive."
+          },
+          "realized_return_1m": {
+            "type": ["number", "null"],
+            "description": "Realized 1-month validator return (#7228): same computation as realized_return_1d, against the neuron_daily snapshot ~30 days ago. Null when no snapshot ~30 days back, or the baseline stake was non-positive."
           },
           "stake_dominance": {
             "type": ["number", "null"],
@@ -2504,6 +2519,9 @@
           "nominator_count",
           "apy_estimate",
           "apy_estimate_eligible_subnet_count",
+          "realized_return_1d",
+          "realized_return_1w",
+          "realized_return_1m",
           "avg_validator_trust",
           "max_validator_trust",
           "captured_at",
@@ -2553,6 +2571,18 @@
             "type": "integer",
             "minimum": 0,
             "description": "Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0."
+          },
+          "realized_return_1d": {
+            "type": ["number", "null"],
+            "description": "Realized 1-day validator return (#7228): the rao-exact fractional change in this validator's aggregate stake between its neuron_daily snapshot ~1 day ago and the current snapshot, i.e. (total_stake_now - total_stake_1d_ago) / total_stake_1d_ago, expressed as a decimal fraction (0.02 = +2%; negative when stake shrank). This is the backward-looking, realized counterpart to the forward-looking apy_estimate and is reported alongside it, not in place of it. It reflects the net change in staked TAO over the window, which for a validator is driven by accrued emissions AND net delegation flow (delegators staking to or unstaking from the hotkey) -- it is not an emission-only yield. Null when neuron_daily has no snapshot ~1 day back, or the baseline stake was non-positive."
+          },
+          "realized_return_1w": {
+            "type": ["number", "null"],
+            "description": "Realized 1-week validator return (#7228): same computation as realized_return_1d, against the neuron_daily snapshot ~7 days ago. Null when no snapshot ~7 days back, or the baseline stake was non-positive."
+          },
+          "realized_return_1m": {
+            "type": ["number", "null"],
+            "description": "Realized 1-month validator return (#7228): same computation as realized_return_1d, against the neuron_daily snapshot ~30 days ago. Null when no snapshot ~30 days back, or the baseline stake was non-positive."
           },
           "avg_validator_trust": { "type": ["number", "null"] },
           "max_validator_trust": { "type": ["number", "null"] },

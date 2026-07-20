@@ -395,10 +395,48 @@ function finalizeApy(acc) {
   };
 }
 
+// Realized (backward-looking) validator return over one real elapsed window
+// (#7228): the fractional change in a validator's aggregate stake between its
+// neuron_daily snapshot ~N days ago and the current snapshot, i.e.
+// (stake_now - stake_then) / stake_then. This is the realized counterpart to
+// the forward-looking apy_estimate (this instant's emission-per-stake,
+// annualized via subnet tempo) and is surfaced ALONGSIDE it, never replacing
+// it. `currentStakeRao` is the same rao-BigInt aggregate finalizeApy's callers
+// already carry, and the baseline is converted to rao before the divide, so
+// the ratio is computed in the same integer-rao precision as accumulateApyRow
+// rather than compounding float error. A window with no neuron_daily baseline
+// far enough back (baselineStakeTao == null) or a non-positive baseline stake
+// resolves to null ("no realized-return opinion") rather than a fabricated 0,
+// mirroring finalizeApy's null-never-zero convention.
+function realizedReturn(currentStakeRao, baselineStakeTao) {
+  if (baselineStakeTao == null) return null;
+  const baselineRao = toRaoBig(baselineStakeTao);
+  if (baselineRao <= 0n) return null;
+  return round9(
+    raoBigToTao(currentStakeRao - baselineRao) / raoBigToTao(baselineRao),
+  );
+}
+
+// Emit the three realized-return windows for one validator from its current
+// rao-precision aggregate stake and its per-window neuron_daily baseline --
+// `{ "1d", "7d", "30d" }` of aggregate stake_tao ~N days ago, each window
+// absent/null when the daily history doesn't reach that far back. An
+// absent baseline object (a hotkey the loader returned no row for, or the
+// cold/failed-read fallback) leaves all three windows null.
+function finalizeRealizedReturns(currentStakeRao, baseline) {
+  const windows = baseline || {};
+  return {
+    realized_return_1d: realizedReturn(currentStakeRao, windows["1d"] ?? null),
+    realized_return_1w: realizedReturn(currentStakeRao, windows["7d"] ?? null),
+    realized_return_1m: realizedReturn(currentStakeRao, windows["30d"] ?? null),
+  };
+}
+
 function buildGlobalValidatorEntry(
   entry,
   identityByColdkey,
   nominatorCounts = new Map(),
+  dailyBaselineByHotkey = new Map(),
 ) {
   const avgTrust =
     entry.validatorTrustCount > 0
@@ -444,6 +482,10 @@ function buildGlobalValidatorEntry(
     // nominators" as opposed to "unknown."
     nominator_count: nominatorCounts.get(entry.hotkey) ?? null,
     ...finalizeApy(entry),
+    ...finalizeRealizedReturns(
+      entry.stakeTotalRao,
+      dailyBaselineByHotkey.get(entry.hotkey),
+    ),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(entry.maxValidatorTrust),
     latest_captured_at: toIso(entry.latestCapturedAt),
@@ -492,6 +534,11 @@ export function buildGlobalValidators(
     // excluded rather than defaulted. A cold/absent map leaves every entry's
     // apy_estimate null, never throws.
     tempoByNetuid = new Map(),
+    // hotkey -> { "1d", "7d", "30d" } aggregate stake_tao ~N days ago (#7228),
+    // sourced from the neuron_daily rollup by the caller (this function has no
+    // DB access). A cold/absent map leaves every entry's realized_return_*
+    // null, never throws -- same null-on-missing-history posture as apy above.
+    dailyBaselineByHotkey = new Map(),
   } = {},
 ) {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
@@ -607,7 +654,12 @@ export function buildGlobalValidators(
     // index arg never lands in buildGlobalValidatorEntry's identityByColdkey
     // parameter -- same landmine formatNeuron's own header comment documents.
     [...validatorsByHotkey.values()].map((entry) =>
-      buildGlobalValidatorEntry(entry, identityByColdkey, nominatorCounts),
+      buildGlobalValidatorEntry(
+        entry,
+        identityByColdkey,
+        nominatorCounts,
+        dailyBaselineByHotkey,
+      ),
     ),
   ).sort(
     (a, b) =>
@@ -757,6 +809,11 @@ export function buildValidatorDetail(
     // accumulateApyRow's own comment. A cold/absent map leaves apy_estimate
     // null, never throws.
     tempoByNetuid = new Map(),
+    // { "1d", "7d", "30d" } aggregate stake_tao ~N days ago for THIS hotkey
+    // (#7228), looked up by the caller from neuron_daily. Null/absent (cold or
+    // no history that far back) leaves realized_return_* null, never throws --
+    // same posture as tempoByNetuid above.
+    dailyBaseline = null,
   } = {},
 ) {
   const coldkeys = new Map();
@@ -850,6 +907,7 @@ export function buildValidatorDetail(
     total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
     nominator_count: nominatorCount,
     ...finalizeApy(apyAcc),
+    ...finalizeRealizedReturns(stakeTotalRao, dailyBaseline),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(maxValidatorTrust),
     captured_at: toIso(latestCapturedAt),

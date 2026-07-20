@@ -3429,6 +3429,9 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
               nominator_count: 3,
               apy_estimate: 0.12,
               apy_estimate_eligible_subnet_count: 1,
+              realized_return_1d: 0.02,
+              realized_return_1w: -0.05,
+              realized_return_1m: null,
               avg_validator_trust: 0.9,
               max_validator_trust: 0.9,
               latest_captured_at: "2026-07-14T00:00:00.000Z",
@@ -3448,7 +3451,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
       ),
     };
     const { status, body } = await gql(
-      '{ validators(sort: "total_stake", limit: 5) { items { hotkey featured coldkey nominator_count captured_at block_number subnets { netuid uid stake_tao } } total sort captured_at block_number } }',
+      '{ validators(sort: "total_stake", limit: 5) { items { hotkey featured coldkey nominator_count realized_return_1d realized_return_1w realized_return_1m captured_at block_number subnets { netuid uid stake_tao } } total sort captured_at block_number } }',
       env,
     );
     assert.equal(status, 200);
@@ -3460,6 +3463,10 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     assert.equal(item.hotkey, "5Validator");
     assert.equal(item.featured, true);
     assert.equal(item.nominator_count, 3);
+    // Realized-return fields (#7228) pass through the shared validatorNode.
+    assert.equal(item.realized_return_1d, 0.02);
+    assert.equal(item.realized_return_1w, -0.05);
+    assert.equal(item.realized_return_1m, null);
     assert.equal(item.captured_at, "2026-07-14T00:00:00.000Z");
     assert.equal(item.block_number, 100);
     assert.deepEqual(item.subnets, [{ netuid: 1, uid: 5, stake_tao: 1000 }]);

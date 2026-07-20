@@ -3222,6 +3222,73 @@ async function loadSubnetTempos(sql) {
   }
 }
 
+// Shape one neuron_daily baseline query's rows into hotkey -> { "1d", "7d",
+// "30d" } aggregate stake_tao ~N days ago (#7228). A NULL window sum (no
+// snapshot that far back) coerces to null via numberOrNull, so the builder
+// leaves that window's realized_return null.
+function validatorDailyBaselinesByHotkey(rows) {
+  const map = new Map();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const hotkey =
+      typeof row?.hotkey === "string" && row.hotkey.length > 0
+        ? row.hotkey
+        : null;
+    if (!hotkey) continue;
+    map.set(hotkey, {
+      "1d": numberOrNull(row.stake_1d),
+      "7d": numberOrNull(row.stake_7d),
+      "30d": numberOrNull(row.stake_30d),
+    });
+  }
+  return map;
+}
+
+// Per-hotkey aggregate validator stake at the neuron_daily snapshot ~N days
+// before the latest one, for N in {1, 7, 30} (#7228) -- the baseline the
+// builder's realized_return_1d/_1w/_1m compare the current snapshot against.
+// Anchored to the newest STORED snapshot (not the Worker's wall clock),
+// mirroring the chain-turnover window idiom (native DATE minus an integer day
+// count); each window's baseline is the newest snapshot on/before (latest - N
+// days), so a window with no snapshot that far back yields a NULL sum and the
+// builder leaves that window's realized_return null. validator_permit = TRUE +
+// hotkey IS NOT NULL keeps the baseline on the same basis as the current
+// /api/v1/validators leaderboard it is compared against. `hotkey`, when given,
+// scopes the read to one validator for the detail route. Savepoint-isolated
+// (same shape as loadSubnetTempos above): a read failure degrades every
+// realized_return to null rather than failing the response or poisoning the
+// enclosing transaction.
+async function loadValidatorDailyBaselines(sql, hotkey = null) {
+  try {
+    const rows = await sql.savepoint(
+      (sql) => sql`
+        WITH latest AS (SELECT MAX(snapshot_date) AS d FROM neuron_daily),
+        bounds AS (
+          SELECT
+            (SELECT MAX(snapshot_date) FROM neuron_daily, latest
+               WHERE snapshot_date <= latest.d - 1) AS d1,
+            (SELECT MAX(snapshot_date) FROM neuron_daily, latest
+               WHERE snapshot_date <= latest.d - 7) AS d7,
+            (SELECT MAX(snapshot_date) FROM neuron_daily, latest
+               WHERE snapshot_date <= latest.d - 30) AS d30
+        )
+        SELECT hotkey,
+          SUM(stake_tao) FILTER (WHERE snapshot_date = bounds.d1) AS stake_1d,
+          SUM(stake_tao) FILTER (WHERE snapshot_date = bounds.d7) AS stake_7d,
+          SUM(stake_tao) FILTER (WHERE snapshot_date = bounds.d30) AS stake_30d
+        FROM neuron_daily, bounds
+        WHERE validator_permit = TRUE AND hotkey IS NOT NULL
+          AND (${hotkey}::text IS NULL OR hotkey = ${hotkey})
+          AND snapshot_date IN (bounds.d1, bounds.d7, bounds.d30)
+        GROUP BY hotkey`,
+    );
+    return validatorDailyBaselinesByHotkey(rows);
+  } catch (err) {
+    console.error("neuron_daily validator baselines query failed:", err);
+    captureDataApiError(err, "validator-daily-baselines-query");
+    return new Map();
+  }
+}
+
 // One netuid's live immunity_period hyperparameter (#6640) -- never
 // hardcoded, mirrors the MaxDelegateTake/TxDelegateTakeRateLimit convention
 // (#5229). Same savepoint-isolated-failure shape as loadSubnetTempos just
@@ -7744,16 +7811,22 @@ export default {
             limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
               ? limitParam
               : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
-          const [rows, featuredHotkeys, nominatorCounts, tempoByNetuid] =
-            await Promise.all([
-              sql`
+          const [
+            rows,
+            featuredHotkeys,
+            nominatorCounts,
+            tempoByNetuid,
+            dailyBaselineByHotkey,
+          ] = await Promise.all([
+            sql`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
-              loadFeaturedHotkeys(sql),
-              loadValidatorNominatorCounts(sql),
-              loadSubnetTempos(sql),
-            ]);
+            loadFeaturedHotkeys(sql),
+            loadValidatorNominatorCounts(sql),
+            loadSubnetTempos(sql),
+            loadValidatorDailyBaselines(sql),
+          ]);
           // Identity join (#5234): needs `rows` resolved first to know which
           // coldkeys to look up, so it can't join the Promise.all above.
           const identityByColdkey = await loadAccountIdentitiesByColdkey(
@@ -7768,6 +7841,7 @@ export default {
               identityByColdkey,
               nominatorCounts,
               tempoByNetuid,
+              dailyBaselineByHotkey,
             }),
           );
         }
@@ -7779,14 +7853,16 @@ export default {
         );
         if (validatorDetail) {
           const hotkey = decodeURIComponent(validatorDetail[1]);
-          const [rows, nominatorCounts, tempoByNetuid] = await Promise.all([
-            sql`
+          const [rows, nominatorCounts, tempoByNetuid, dailyBaselineByHotkey] =
+            await Promise.all([
+              sql`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take, netuid
           FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
           ORDER BY netuid ASC, uid ASC`,
-            loadValidatorNominatorCounts(sql),
-            loadSubnetTempos(sql),
-          ]);
+              loadValidatorNominatorCounts(sql),
+              loadSubnetTempos(sql),
+              loadValidatorDailyBaselines(sql, hotkey),
+            ]);
           // Identity join (#5234): see the /api/v1/validators comment above.
           const identityByColdkey = await loadAccountIdentitiesByColdkey(
             sql,
@@ -7797,6 +7873,7 @@ export default {
               identityByColdkey,
               nominatorCount: nominatorCounts.get(hotkey) ?? null,
               tempoByNetuid,
+              dailyBaseline: dailyBaselineByHotkey.get(hotkey) ?? null,
             }),
           );
         }
