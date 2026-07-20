@@ -133,7 +133,9 @@ describe("profile-completeness-mcp", () => {
   });
 
   test("profileCompletenessQueryUrl clamps a non-finite numeric limit to the default", () => {
-    const url = profileCompletenessQueryUrl({ limit: Number.POSITIVE_INFINITY });
+    const url = profileCompletenessQueryUrl({
+      limit: Number.POSITIVE_INFINITY,
+    });
     assert.equal(url.searchParams.get("limit"), "50");
   });
 
