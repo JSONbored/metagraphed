@@ -123,6 +123,8 @@ import type {
   Candidate,
   Compare,
   CompareSubnet,
+  CompareValidator,
+  CompareValidators,
   BlockEvent,
   BlockEvents,
   BlockChainEvents,
@@ -6972,6 +6974,68 @@ export const compareQuery = (netuids: number[]) =>
       return { data: normalizeCompare(res.data), meta: res.meta, url: res.url };
     },
     enabled: netuids.length > 0,
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeCompareValidator(raw: unknown): CompareValidator | null {
+  if (!isRecord(raw)) return null;
+  const hotkey = coerceString(raw.hotkey);
+  if (!hotkey) return null;
+  const nullableNum = (value: unknown): number | null =>
+    value == null ? null : (coerceFiniteNumber(value) ?? null);
+  return {
+    hotkey,
+    coldkey: coerceString(raw.coldkey) ?? null,
+    coldkey_identity: normalizeColdkeyIdentity(raw.coldkey_identity),
+    take: nullableNum(raw.take),
+    apy_estimate: nullableNum(raw.apy_estimate),
+    apy_estimate_eligible_subnet_count: nullableNum(raw.apy_estimate_eligible_subnet_count),
+    nominator_count: nullableNum(raw.nominator_count),
+    total_stake_tao: nullableNum(raw.total_stake_tao),
+    total_emission_tao: nullableNum(raw.total_emission_tao),
+    avg_validator_trust: nullableNum(raw.avg_validator_trust),
+    max_validator_trust: nullableNum(raw.max_validator_trust),
+    subnet_count: nullableNum(raw.subnet_count),
+    subnet_context: normalizeGlobalValidatorSubnet(raw.subnet_context),
+  };
+}
+
+export function normalizeCompareValidators(raw: unknown): CompareValidators {
+  const d = isRecord(raw) ? raw : {};
+  const validators = Array.isArray(d.validators)
+    ? d.validators.flatMap((validator) => {
+        const normalized = normalizeCompareValidator(validator);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: d.netuid == null ? null : (coerceFiniteNumber(d.netuid) ?? null),
+    validator_count: coerceFiniteNumber(d.validator_count) ?? validators.length,
+    validators,
+  };
+}
+
+/**
+ * Validator-side comparison (#6325/#6998): each selected hotkey's take rate,
+ * estimated APY, nominator count, identity, and cross-subnet aggregates in one
+ * request — the validator equivalent of compareQuery above, so the validators
+ * compare drawer renders its grid from a single call instead of a
+ * validator-detail request per selected hotkey. `netuid` is the route's
+ * optional subnet-context parameter: when set, each row also carries that
+ * validator's membership in that one subnet (subnet_context).
+ */
+export const compareValidatorsQuery = (hotkeys: string[], netuid?: number) =>
+  queryOptions({
+    queryKey: k("compare-validators", [...hotkeys].sort(), netuid ?? null),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/compare/validators", {
+        // buildUrl drops undefined params, so netuid only reaches the URL when set.
+        params: { hotkeys: hotkeys.join(","), netuid },
+        signal,
+      });
+      return { data: normalizeCompareValidators(res.data), meta: res.meta, url: res.url };
+    },
+    enabled: hotkeys.length > 0,
     staleTime: STALE_SHORT,
   });
 

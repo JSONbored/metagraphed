@@ -2382,6 +2382,37 @@ export interface GlobalValidators {
   validators: GlobalValidator[];
 }
 
+/**
+ * One validator projected to the stake-decision fields by
+ * /api/v1/compare/validators (#6325/#6998) — take rate, estimated APY,
+ * nominator count, identity, plus the cross-subnet aggregates that give those
+ * numbers context. Every field except hotkey is null when the neurons tier has
+ * no row for that hotkey.
+ */
+export interface CompareValidator {
+  hotkey: string;
+  coldkey: string | null;
+  coldkey_identity: ColdkeyIdentity | null;
+  take: number | null;
+  apy_estimate: number | null;
+  apy_estimate_eligible_subnet_count: number | null;
+  nominator_count: number | null;
+  total_stake_tao: number | null;
+  total_emission_tao: number | null;
+  avg_validator_trust: number | null;
+  max_validator_trust: number | null;
+  subnet_count: number | null;
+  /** Membership row in the optional netuid context, null without one (or no permit there). */
+  subnet_context: GlobalValidatorSubnet | null;
+}
+
+/** Validator-side comparison from GET /api/v1/compare/validators (#6325). */
+export interface CompareValidators {
+  netuid: number | null;
+  validator_count: number;
+  validators: CompareValidator[];
+}
+
 /** One per-subnet membership row from /api/v1/validators/{hotkey} (#4335, 7.1). */
 export interface ValidatorDetailSubnet {
   netuid: number;

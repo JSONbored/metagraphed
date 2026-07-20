@@ -26,6 +26,10 @@ import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-form
 import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { VALIDATOR_COLUMNS } from "@/components/metagraphed/validator-columns";
+import {
+  ValidatorsCompareDrawer,
+  ValidatorCompareToggle,
+} from "@/components/metagraphed/validators-compare-drawer";
 import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
 
@@ -154,6 +158,7 @@ function ValidatorsPage() {
         </QueryErrorBoundary>
       </div>
       <ApiSourceFooter paths={["/api/v1/validators"]} />
+      <ValidatorsCompareDrawer />
     </AppShell>
   );
 }
@@ -204,6 +209,7 @@ function ValidatorsTable({
           >
             <thead className="bg-surface/50">
               <tr>
+                <th className="w-6 px-3 py-2" aria-label="Compare" />
                 {VALIDATOR_COLUMNS.map((col) => (
                   <th
                     key={col.header}
@@ -229,6 +235,9 @@ function ValidatorsTable({
             <tbody className="divide-y divide-border">
               {validators.map((v) => (
                 <tr key={v.hotkey} className="hover:bg-surface/40">
+                  <td className="px-3 py-2 align-middle">
+                    <ValidatorCompareToggle hotkey={v.hotkey} />
+                  </td>
                   {VALIDATOR_COLUMNS.map((col) => (
                     <td key={col.header} className={col.tdClassName}>
                       {col.cell(v)}
