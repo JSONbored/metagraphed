@@ -15694,23 +15694,49 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  test("list_profile_completeness returns the profile-completeness artifact", async () => {
+  test("list_profile_completeness returns filtered profile-completeness rows", async () => {
     const deps = makeDeps({
       "/metagraph/review/profile-completeness.json": {
         generated_at: "2026-01-01T00:00:00Z",
-        profiles: [{ netuid: 7, profile_level: "partial" }],
-        summary: { profile_count: 1 },
+        profiles: [
+          {
+            netuid: 7,
+            profile_level: "directory-only",
+            identity_level: "partial",
+          },
+          {
+            netuid: 31,
+            profile_level: "adapter-backed",
+            identity_level: "complete",
+          },
+        ],
+        summary: { profile_count: 2 },
       },
     });
-    const res = await callTool("list_profile_completeness", {}, { deps });
+    const res = await callTool(
+      "list_profile_completeness",
+      { netuid: 7 },
+      { deps },
+    );
     const out = res.body.result.structuredContent;
+    assert.equal(out.profiles.length, 1);
     assert.equal(out.profiles[0].netuid, 7);
-    assert.equal(out.summary.profile_count, 1);
+    assert.equal(out.summary.profile_count, 2);
     assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
+    assert.equal(out.total, 1);
   });
 
-  test("list_profile_completeness rejects an unexpected argument", async () => {
-    const res = await callTool("list_profile_completeness", { netuid: 7 });
+  test("list_profile_completeness rejects an invalid sort", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        profiles: [{ netuid: 7 }],
+      },
+    });
+    const res = await callTool(
+      "list_profile_completeness",
+      { sort: "not_a_column" },
+      { deps },
+    );
     assert.equal(res.body.result.isError, true);
   });
 
