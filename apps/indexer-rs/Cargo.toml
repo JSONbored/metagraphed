@@ -23,7 +23,7 @@ scale-info = "2.11"
 scale-decode = { version = "0.16.2", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 tokio-postgres = "0.7"
-futures = "0.3"
+futures = "0.3.33"
 hex = "0.4"
 anyhow = "1.0.103"
 blake2 = "0.10.6"      # extrinsic_hash = blake2_256(extrinsic bytes)
