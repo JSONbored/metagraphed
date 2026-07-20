@@ -18,7 +18,11 @@ describe("pctChange", () => {
   test("null when start/end non-finite or start is zero", () => {
     assert.equal(pctChange(0, 1), null);
     assert.equal(pctChange(null, 1), null);
+    assert.equal(pctChange(undefined, 1), null);
+    assert.equal(pctChange(1, null), null);
     assert.equal(pctChange(1, Number.NaN), null);
+    assert.equal(pctChange(Number.POSITIVE_INFINITY, 1), null);
+    assert.equal(pctChange(1, Number.POSITIVE_INFINITY), null);
   });
 });
 
@@ -31,6 +35,15 @@ describe("computeAlphaPriceChanges", () => {
       alpha_price_change_7d: null,
       alpha_price_change_1m: null,
     });
+  });
+
+  test("null for a non-array / missing series", () => {
+    assert.equal(computeAlphaPriceChanges(null).alpha_price_change_1d, null);
+    assert.equal(
+      computeAlphaPriceChanges(undefined).alpha_price_change_1d,
+      null,
+    );
+    assert.equal(computeAlphaPriceChanges("nope").alpha_price_change_1d, null);
   });
 
   test("computes 1d/7d/1m from daily snapshots; insufficient history → null", () => {
@@ -48,6 +61,15 @@ describe("computeAlphaPriceChanges", () => {
     assert.equal(out.alpha_price_change_7d, 36.36);
     // 1m (30d): prior on/before 2026-05-22 — none → null
     assert.equal(out.alpha_price_change_1m, null);
+  });
+
+  test("computes 1m when ≥30d of history exists", () => {
+    const rows = [
+      { snapshot_date: "2026-05-20", alpha_price_tao: 1 },
+      { snapshot_date: "2026-06-19", alpha_price_tao: 2 },
+    ];
+    // 1m from 06-19 → target 05-20 → +100%
+    assert.equal(computeAlphaPriceChanges(rows).alpha_price_change_1m, 100);
   });
 
   test("uses point-at-or-before when the exact lookback day is missing", () => {
@@ -74,6 +96,28 @@ describe("computeAlphaPriceChanges", () => {
       alpha_price_change_1m: null,
     });
   });
+
+  test("skips a null-priced point when selecting the lookback prior", () => {
+    const rows = [
+      { snapshot_date: "2026-06-01", alpha_price_tao: null },
+      { snapshot_date: "2026-06-10", alpha_price_tao: 1 },
+      { snapshot_date: "2026-06-12", alpha_price_tao: "" },
+      { snapshot_date: "2026-06-20", alpha_price_tao: 2 },
+    ];
+    // 7d from 06-20 → target 06-13; skip null/blank, prior is 06-10 → +100%
+    assert.equal(computeAlphaPriceChanges(rows).alpha_price_change_7d, 100);
+  });
+
+  test("rejects non-YYYY-MM-DD date prefixes", () => {
+    assert.deepEqual(
+      normalizeAlphaPricePoints([
+        { date: "2026", alpha_price_tao: 1 },
+        { date: "2026-03", alpha_price_tao: 1 },
+        { date: "2026-06-01", alpha_price_tao: 1 },
+      ]),
+      [{ date: "2026-06-01", alpha_price_tao: 1 }],
+    );
+  });
 });
 
 describe("normalizeAlphaPricePoints / index / withAlphaPriceChanges", () => {
@@ -82,24 +126,39 @@ describe("normalizeAlphaPricePoints / index / withAlphaPriceChanges", () => {
       normalizeAlphaPricePoints([
         { snapshot_date: "2026-06-02", alpha_price_tao: "1.5" },
         { date: "2026-06-01", alpha_price_tao: 1 },
+        null,
+        "skip",
+        { snapshot_date: "", alpha_price_tao: 9 },
+        { snapshot_date: null, alpha_price_tao: 9 },
+        { alpha_price_tao: 9 },
       ]),
       [
         { date: "2026-06-01", alpha_price_tao: 1 },
         { date: "2026-06-02", alpha_price_tao: 1.5 },
       ],
     );
+    assert.deepEqual(normalizeAlphaPricePoints(null), []);
+    assert.deepEqual(normalizeAlphaPricePoints(undefined), []);
   });
 
-  test("indexAlphaPriceHistoryByNetuid groups by netuid", () => {
+  test("indexAlphaPriceHistoryByNetuid groups by netuid and skips junk", () => {
     const map = indexAlphaPriceHistoryByNetuid([
       { netuid: 1, snapshot_date: "2026-06-01", alpha_price_tao: 1 },
       { netuid: 2, date: "2026-06-01", alpha_price_tao: 2 },
       { netuid: 1, snapshot_date: "2026-06-02", alpha_price_tao: 1.1 },
       { netuid: "bad", snapshot_date: "2026-06-01", alpha_price_tao: 9 },
+      { netuid: -1, snapshot_date: "2026-06-01", alpha_price_tao: 9 },
+      { netuid: 1.5, snapshot_date: "2026-06-01", alpha_price_tao: 9 },
+      { netuid: 3, snapshot_date: "", alpha_price_tao: 9 },
+      { netuid: 3, date: null, alpha_price_tao: 9 },
+      { netuid: 3, alpha_price_tao: 9 },
     ]);
     assert.equal(map.size, 2);
     assert.equal(map.get(1).length, 2);
     assert.equal(map.get(2)[0].alpha_price_tao, 2);
+    assert.equal(indexAlphaPriceHistoryByNetuid(null).size, 0);
+    assert.equal(indexAlphaPriceHistoryByNetuid(undefined).size, 0);
+    assert.equal(indexAlphaPriceHistoryByNetuid("nope").size, 0);
   });
 
   test("withAlphaPriceChanges always attaches the four keys", () => {
@@ -111,6 +170,14 @@ describe("normalizeAlphaPricePoints / index / withAlphaPriceChanges", () => {
     assert.equal(out.alpha_price_tao, 1.5);
     assert.equal(out.alpha_price_change_1h, null);
     assert.equal(out.alpha_price_change_1d, 50);
+    assert.equal(out.alpha_price_change_7d, null);
+    assert.equal(out.alpha_price_change_1m, null);
+  });
+
+  test("withAlphaPriceChanges tolerates a null economics row", () => {
+    const out = withAlphaPriceChanges(null, []);
+    assert.equal(out.alpha_price_change_1h, null);
+    assert.equal(out.alpha_price_change_1d, null);
     assert.equal(out.alpha_price_change_7d, null);
     assert.equal(out.alpha_price_change_1m, null);
   });

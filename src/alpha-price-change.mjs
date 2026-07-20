@@ -33,8 +33,9 @@ function toFiniteOrNull(value) {
 }
 
 function shiftDate(isoDate, days) {
-  const [y, m, d] = String(isoDate).split("-").map(Number);
-  const base = Date.UTC(y, (m || 1) - 1, d || 1) + days * 24 * 60 * 60 * 1000;
+  // Caller always passes a normalized YYYY-MM-DD from normalizeAlphaPricePoints.
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const base = Date.UTC(y, m - 1, d) + days * 24 * 60 * 60 * 1000;
   return new Date(base).toISOString().slice(0, 10);
 }
 
@@ -48,8 +49,11 @@ export function normalizeAlphaPricePoints(rows) {
     if (!row || typeof row !== "object") continue;
     const date = row.date ?? row.snapshot_date;
     if (date == null || date === "") continue;
+    const day = String(date).slice(0, 10);
+    // Reject non-calendar prefixes so shiftDate never sees partial dates.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
     points.push({
-      date: String(date).slice(0, 10),
+      date: day,
       alpha_price_tao: toFiniteOrNull(row.alpha_price_tao),
     });
   }
@@ -71,7 +75,9 @@ function changeOver(points, latest, days) {
   if (days == null || !latest || latest.alpha_price_tao == null) return null;
   const target = shiftDate(latest.date, -days);
   const prior = finitePriceAtOrBefore(points, target);
-  if (!prior || prior.date === latest.date) return null;
+  // target is always strictly before latest.date for positive day windows, so
+  // a found prior is a distinct earlier point (or null when history is short).
+  if (!prior) return null;
   return pctChange(prior.alpha_price_tao, latest.alpha_price_tao);
 }
 

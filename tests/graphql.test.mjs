@@ -2403,6 +2403,9 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
             validator_count: 10,
             max_validators: 64,
             miner_count: 50,
+            alpha_price_tao: 1.2,
+            alpha_price_change_1d: 12,
+            alpha_price_change_7d: 5,
           },
           {
             netuid: 2,
@@ -2416,6 +2419,9 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
             validator_count: 64,
             max_validators: 64,
             miner_count: 100,
+            alpha_price_tao: 2.0,
+            alpha_price_change_1d: -5,
+            alpha_price_change_7d: 25,
           },
           {
             netuid: 3,
@@ -2429,6 +2435,9 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
             validator_count: 5,
             max_validators: 64,
             miner_count: 10,
+            alpha_price_tao: 0.8,
+            alpha_price_change_1d: 40,
+            alpha_price_change_7d: 8,
           },
         ],
       },
@@ -2442,6 +2451,8 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
           highest_emission { netuid emission_share }
           cheapest_registration { netuid registration_cost_tao }
           validator_headroom { netuid validator_headroom }
+          biggest_alpha_gain_1d { netuid alpha_price_change_1d alpha_price_tao }
+          biggest_alpha_gain_7d { netuid alpha_price_change_7d alpha_price_tao }
         } }`,
       env(),
     );
@@ -2460,16 +2471,33 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
     assert.ok(b.cheapest_registration.every((e) => e.netuid !== 2));
     // Most validator headroom first.
     assert.equal(b.validator_headroom[0].netuid, 3);
+    // #7227: biggest 1d gainers; netuid 2's negative change is dropped.
+    assert.deepEqual(
+      b.biggest_alpha_gain_1d.map((e) => e.netuid),
+      [3, 1],
+    );
+    assert.equal(b.biggest_alpha_gain_1d[0].alpha_price_change_1d, 40);
+    assert.deepEqual(
+      b.biggest_alpha_gain_7d.map((e) => e.netuid),
+      [2, 3, 1],
+    );
   });
 
   test("opportunity_boards degrades to empty boards on a cold store", async () => {
     const { status, body } = await gql(
-      "{ opportunity_boards { with_economics_count open_slots { netuid } } }",
+      `{ opportunity_boards {
+          with_economics_count
+          open_slots { netuid }
+          biggest_alpha_gain_1d { netuid }
+          biggest_alpha_gain_7d { netuid }
+        } }`,
       emptyEnv,
     );
     assert.equal(status, 200);
     assert.equal(body.data.opportunity_boards.with_economics_count, 0);
     assert.deepEqual(body.data.opportunity_boards.open_slots, []);
+    assert.deepEqual(body.data.opportunity_boards.biggest_alpha_gain_1d, []);
+    assert.deepEqual(body.data.opportunity_boards.biggest_alpha_gain_7d, []);
   });
 });
 
