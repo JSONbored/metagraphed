@@ -129,6 +129,16 @@ const neuronStakeByHotkeyQueryFailure = vi.hoisted(() => ({ error: null }));
 // catch (captureDataApiError(err, url.pathname)), unlike every other flag
 // above which targets a route with its own dedicated fallback.
 const accountHistoryQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for the GET /api/v1/blocks/:ref retry test (METAGRAPHED-7) only. Unlike every failure
+// hook above (which rejects every matching call for the test's duration), remainingFailures
+// counts DOWN so a test can simulate "fails once, then the retry with a fresh client succeeds"
+// (remainingFailures: 1) vs. "fails on both the original attempt and the retry" (2+). `code`
+// controls whether the rejection looks like postgres.js's own retryable connection error
+// (RETRYABLE_CONNECTION_ERROR_CODES in workers/data-api.mjs) or an unrelated error.
+const blockDetailConnectionFailure = vi.hoisted(() => ({
+  remainingFailures: 0,
+  code: "CONNECTION_CLOSED",
+}));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -296,6 +306,20 @@ vi.mock("postgres", () => ({
       if (/SELECT DISTINCT ON \(account\)/.test(text)) {
         return Promise.resolve(accountIdentityLatestHashes.current);
       }
+      if (
+        blockDetailConnectionFailure.remainingFailures > 0 &&
+        /FROM blocks WHERE block_number = \?/.test(text)
+      ) {
+        blockDetailConnectionFailure.remainingFailures -= 1;
+        return Promise.reject(
+          Object.assign(
+            new Error(
+              `write ${blockDetailConnectionFailure.code} mock.hyperdrive.local:5432`,
+            ),
+            { code: blockDetailConnectionFailure.code },
+          ),
+        );
+      }
       if (mockQueue.current.length) {
         return Promise.resolve(mockQueue.current.shift());
       }
@@ -433,6 +457,8 @@ beforeEach(() => {
   featuredValidatorsQueryFailure.error = null;
   accountIdentityJoinRows.current = [];
   accountIdentityJoinQueryFailure.error = null;
+  blockDetailConnectionFailure.remainingFailures = 0;
+  blockDetailConnectionFailure.code = "CONNECTION_CLOSED";
   mockRows.current = [
     {
       block_number: "123",
@@ -899,6 +925,37 @@ test("GET /api/v1/blocks/:ref on an unknown block skips the neighbor query", asy
   expect(body.prev_block_number).toBeNull();
   expect(body.next_block_number).toBeNull();
   expect(sqlCalls.length).toBe(2); // SET + the main lookup, no neighbor query
+});
+
+test("GET /api/v1/blocks/:ref retries once with a fresh client after a Hyperdrive CONNECTION_CLOSED, then succeeds (METAGRAPHED-7)", async () => {
+  blockDetailConnectionFailure.remainingFailures = 1;
+  // 4 slots: SET (attempt 1, discarded before the connection error), SET (attempt 2), the
+  // block-lookup row (attempt 2, the one that failed on attempt 1), the neighbor lookup.
+  mockQueue.current = [[], [], [BLOCK_ROW], [{ prev: 8586299, next: 8586301 }]];
+  const res = await req("/api/v1/blocks/8586300");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.block.block_number).toBe(8586300);
+  expect(body.prev_block_number).toBe(8586299);
+  expect(body.next_block_number).toBe(8586301);
+});
+
+test("GET /api/v1/blocks/:ref falls through to the generic 502 when the retry also hits a connection error (METAGRAPHED-7)", async () => {
+  blockDetailConnectionFailure.remainingFailures = 2; // fails the original attempt AND the retry
+  const res = await req("/api/v1/blocks/8586300");
+  expect(res.status).toBe(502);
+  const body = await res.json();
+  expect(body.error).toBe("data query failed");
+});
+
+test("GET /api/v1/blocks/:ref does not retry a non-connection error, even once (METAGRAPHED-7 scoping)", async () => {
+  // remainingFailures would allow a "successful" retry if the code retried blindly -- asserting
+  // 502 here proves the retry is scoped to RETRYABLE_CONNECTION_ERROR_CODES, not every error.
+  blockDetailConnectionFailure.remainingFailures = 1;
+  blockDetailConnectionFailure.code = "SOME_OTHER_ERROR";
+  mockQueue.current = [[], [], [BLOCK_ROW], [{ prev: 8586299, next: 8586301 }]];
+  const res = await req("/api/v1/blocks/8586300");
+  expect(res.status).toBe(502);
 });
 
 test("GET /api/v1/blocks/summary is matched before /blocks/:ref (never treats 'summary' as a ref)", async () => {

@@ -383,6 +383,21 @@ function captureDataApiError(err, route) {
 const DATA_API_READ_TRANSACTION = "isolation level repeatable read read only";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
+// METAGRAPHED-7: Hyperdrive closes/recycles pooled connections out from under a live query
+// under load -- postgres.js's Cloudflare build (node_modules/postgres/cf/src/connection.js)
+// surfaces this as one of these three `error.code`s (Errors.connection in cf/src/errors.js),
+// all transport-layer, never a query-correctness problem: CONNECTION_CLOSED (socket closed
+// mid-query), CONNECTION_DESTROYED (pool tore the connection down), CONNECT_TIMEOUT (the
+// initial handshake itself timed out). Retried once below, only for the read-only route
+// dispatcher (already scoped to a single sql.begin() transaction, so nothing can have
+// partially committed) -- never for the write/sync routes, where blindly retrying a batch
+// that may have partially applied would risk double-writes.
+const RETRYABLE_CONNECTION_ERROR_CODES = new Set([
+  "CONNECTION_CLOSED",
+  "CONNECTION_DESTROYED",
+  "CONNECT_TIMEOUT",
+]);
+
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
 // `Date.now() - days*DAY_MS` exactly. An unrecognized label falls back to the
 // map's default rather than erroring -- entities.mjs's own validation already
@@ -4511,7 +4526,7 @@ export default {
     // own, separately-gated big-int handling in src/extrinsics.mjs runs
     // instead; after the cast the wire type is `text` (OID 25), which this
     // override never sees.
-    const sql = postgres(env.HYPERDRIVE.connectionString, {
+    const hyperdriveConnectionOptions = {
       max: 5,
       prepare: false,
       fetch_types: false,
@@ -4524,7 +4539,8 @@ export default {
           parse: parseJsonPreservingBigIntegers,
         },
       },
-    });
+    };
+    const sql = postgres(env.HYPERDRIVE.connectionString, hyperdriveConnectionOptions);
 
     try {
       // sql.begin() reserves ONE physical connection for every query below,
@@ -4537,7 +4553,7 @@ export default {
       // READ-ONLY invariant (top of file) at the database level too, and
       // repeatable read keeps multi-statement analytics responses on one
       // stable snapshot while preserving each route's bounded timeouts.
-      return await sql.begin(DATA_API_READ_TRANSACTION, async (sql) => {
+      const dispatchReadRoutes = async (sql) => {
         await sql`SET statement_timeout = '3000ms'`;
 
         // GET /api/v1/blocks (D1 serving-cutover, #4656 followup): the recent-block
@@ -8486,7 +8502,23 @@ export default {
         }
 
         return json({ error: "not found" }, 404);
-      });
+      };
+
+      // METAGRAPHED-7: retry once, with a freshly created client, when Hyperdrive closed or
+      // destroyed the pooled connection out from under this transaction (see
+      // RETRYABLE_CONNECTION_ERROR_CODES's own header for why this is safe here specifically
+      // -- read-only dispatcher, one sql.begin() transaction, nothing can have partially
+      // committed). Any other error (a real query/schema problem, an unrecoverable retry)
+      // falls through to the outer catch below unchanged.
+      let activeSql = sql;
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          return await activeSql.begin(DATA_API_READ_TRANSACTION, dispatchReadRoutes);
+        } catch (err) {
+          if (attempt > 0 || !RETRYABLE_CONNECTION_ERROR_CODES.has(err?.code)) throw err;
+          activeSql = postgres(env.HYPERDRIVE.connectionString, hyperdriveConnectionOptions);
+        }
+      }
     } catch (err) {
       // Log internally (Wrangler observability) but NEVER leak DB error details
       // (schema, table, or connection info) to API clients.
