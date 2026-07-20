@@ -283,6 +283,17 @@ export const CHAIN_FIREHOSE_BACKOFF_BASE_MS = 500;
 export const CHAIN_FIREHOSE_BACKOFF_MAX_MS = 15_000;
 export const CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS = 10_000;
 
+// A poll/cleanup DB query is retried this many times (with the same capped
+// backoff as forwarding) before its error is allowed to propagate. A
+// transient connection error -- an `ECONNRESET`, or a `PostgresError: the
+// database system is shutting down` (SQLSTATE 57P03) while the box's Postgres
+// is briefly cycling -- must not crash the long-running relay, which restarts
+// from scratch (the container clones this repo fresh at start, see this
+// module's header) on process exit. Given the 500ms/15s backoff, this
+// comfortably outlasts a normal restart window; a genuinely persistent outage
+// still surfaces after the retries are exhausted rather than spinning silently.
+export const CHAIN_FIREHOSE_MAX_QUERY_ATTEMPTS = 6;
+
 // forwardBatch's in-flight concurrency -- forwarding a CHAIN_FIREHOSE_POLL_BATCH_SIZE
 // batch one row at a time (matching src/webhooks.mjs's own ALERT_DELIVERY_CONCURRENCY
 // default) would take minutes to drain any real backlog (each row is a real
@@ -374,6 +385,32 @@ export function computeBackoffDelayMs(
   } = {},
 ) {
   return Math.min(baseMs * 2 ** attempt, maxMs);
+}
+
+// Runs one async DB `operation` with bounded retry/backoff, the same way
+// forwardWithRetry protects the outbound HTTP path -- the difference being a
+// query has no "drop it" fallback, so after CHAIN_FIREHOSE_MAX_QUERY_ATTEMPTS
+// the last error is rethrown rather than swallowed. `sleepImpl` is injected so
+// the backoff schedule is unit-testable without real waits; `onRetry` is
+// invoked (with the caught error and 0-indexed attempt) before each backoff
+// so the caller can log the transient failure it just absorbed.
+export async function runQueryWithRetry(
+  operation,
+  {
+    maxAttempts = CHAIN_FIREHOSE_MAX_QUERY_ATTEMPTS,
+    sleepImpl = (ms) => new Promise((r) => setTimeout(r, ms)),
+    onRetry,
+  } = {},
+) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt >= maxAttempts - 1) throw error;
+      onRetry?.(error, attempt);
+      await sleepImpl(computeBackoffDelayMs(attempt));
+    }
+  }
 }
 
 // Ceiling on how long a single retry-after value can pause the relay for --
@@ -615,7 +652,8 @@ async function main() {
   // ingest endpoint's rate limit -- see forwardBatch's own comment for why
   // this is the actual fix, not just per-row retry backoff.
   async function pollOnce() {
-    const rows = await sql`
+    const rows = await runQueryWithRetry(
+      () => sql`
       UPDATE chain_firehose_outbox
       SET delivered_at = now()
       WHERE id IN (
@@ -625,7 +663,15 @@ async function main() {
         LIMIT ${CHAIN_FIREHOSE_POLL_BATCH_SIZE}
         FOR UPDATE SKIP LOCKED
       )
-      RETURNING id, payload`;
+      RETURNING id, payload`,
+      {
+        onRetry: (error, attempt) =>
+          console.error(
+            `[chain-firehose-relay] claim query failed (attempt ${attempt + 1}/${CHAIN_FIREHOSE_MAX_QUERY_ATTEMPTS}), retrying:`,
+            error,
+          ),
+      },
+    );
     if (rows.length === 0)
       return { claimed: 0, requestCount: 0, rateLimitedForMs: 0 };
     let droppedInBatch = 0;
@@ -672,10 +718,19 @@ async function main() {
 
   async function cleanupOnce() {
     const cutoff = new Date(Date.now() - CHAIN_FIREHOSE_OUTBOX_RETENTION_MS);
-    await sql`
+    await runQueryWithRetry(
+      () => sql`
       DELETE FROM chain_firehose_outbox
       WHERE (delivered_at IS NOT NULL AND delivered_at < ${cutoff})
-         OR (delivered_at IS NULL AND created_at < ${cutoff})`;
+         OR (delivered_at IS NULL AND created_at < ${cutoff})`,
+      {
+        onRetry: (error, attempt) =>
+          console.error(
+            `[chain-firehose-relay] cleanup query failed (attempt ${attempt + 1}/${CHAIN_FIREHOSE_MAX_QUERY_ATTEMPTS}), retrying:`,
+            error,
+          ),
+      },
+    );
   }
 
   let lastCleanupAt = Date.now();

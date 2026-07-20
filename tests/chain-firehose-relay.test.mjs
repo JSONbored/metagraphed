@@ -46,6 +46,7 @@ import {
   CHAIN_FIREHOSE_INGEST_BATCH_SIZE,
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS,
+  CHAIN_FIREHOSE_MAX_QUERY_ATTEMPTS,
   CHAIN_FIREHOSE_MAX_RATE_LIMIT_PAUSE_MS,
   CHAIN_FIREHOSE_POLL_BATCH_SIZE,
   CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S,
@@ -63,6 +64,7 @@ import {
   parseRelayConfig,
   parseRetryAfterMs,
   reportRateLimitPause,
+  runQueryWithRetry,
   touchHeartbeat,
 } from "../scripts/chain-firehose-relay.mjs";
 import { CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE } from "../workers/chain-firehose-hub.mjs";
@@ -964,4 +966,99 @@ test("touchHeartbeat: a write failure (unwritable path) is swallowed, never thro
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// --- runQueryWithRetry --------------------------------------------------------
+
+test("runQueryWithRetry: returns the operation's result on first success without sleeping or retrying", async () => {
+  let calls = 0;
+  let slept = 0;
+  const result = await runQueryWithRetry(
+    async () => {
+      calls += 1;
+      return ["row"];
+    },
+    {
+      sleepImpl: async () => {
+        slept += 1;
+      },
+    },
+  );
+  assert.deepEqual(result, ["row"]);
+  assert.equal(calls, 1);
+  assert.equal(slept, 0);
+});
+
+test("runQueryWithRetry: retries a transient error with capped-exponential backoff, then returns the eventual success", async () => {
+  let calls = 0;
+  const sleeps = [];
+  const result = await runQueryWithRetry(
+    async () => {
+      calls += 1;
+      if (calls < 3) throw new Error("ECONNRESET");
+      return "ok";
+    },
+    {
+      sleepImpl: async (ms) => {
+        sleeps.push(ms);
+      },
+    },
+  );
+  assert.equal(result, "ok");
+  assert.equal(calls, 3);
+  assert.deepEqual(sleeps, [
+    computeBackoffDelayMs(0),
+    computeBackoffDelayMs(1),
+  ]);
+});
+
+test("runQueryWithRetry: rethrows the last error after exhausting maxAttempts", async () => {
+  let calls = 0;
+  await assert.rejects(
+    runQueryWithRetry(
+      async () => {
+        calls += 1;
+        throw new Error(`fail ${calls}`);
+      },
+      { sleepImpl: async () => {} },
+    ),
+    /fail 6/,
+  );
+  assert.equal(calls, CHAIN_FIREHOSE_MAX_QUERY_ATTEMPTS);
+});
+
+test("runQueryWithRetry: invokes onRetry with the caught error and 0-indexed attempt before each backoff, but not after the final failure", async () => {
+  const observed = [];
+  await assert.rejects(
+    runQueryWithRetry(
+      async () => {
+        throw new Error("boom");
+      },
+      {
+        maxAttempts: 3,
+        sleepImpl: async () => {},
+        onRetry: (error, attempt) => {
+          observed.push([error.message, attempt]);
+        },
+      },
+    ),
+  );
+  assert.deepEqual(observed, [
+    ["boom", 0],
+    ["boom", 1],
+  ]);
+});
+
+test("runQueryWithRetry: honors a custom maxAttempts", async () => {
+  let calls = 0;
+  await assert.rejects(
+    runQueryWithRetry(
+      async () => {
+        calls += 1;
+        throw new Error("down");
+      },
+      { maxAttempts: 2, sleepImpl: async () => {} },
+    ),
+  );
+  assert.equal(calls, 2);
 });
