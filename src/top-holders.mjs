@@ -2,7 +2,8 @@
 // centric counterpart to src/accounts-list.mjs (hotkey/neuron-centric,
 // explicitly missing the Free/Total columns this route exists to add — see
 // that module's own header). Sourced from account_balances (a direct
-// System::Account chain-state scan, scripts/fetch-account-balances.py) and
+// System::Account chain-state scan,
+// apps/indexer-rs/src/bin/poller/jobs/account_balances.rs) and
 // nominator_positions x neurons (this coldkey's own total delegated stake
 // positions, the SAME computation GET /api/v1/accounts/:ss58/positions
 // already does per-account, aggregated across every account here). An

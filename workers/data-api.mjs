@@ -1900,10 +1900,10 @@ async function batchedUpsert(sql, rows, insertFn, maxRowsPerBatch) {
 // simpler than account-identity-sync above: latest-only, no history table
 // (a nominator count is a live gauge, not a fact worth diffing over time
 // yet). Populated by its own low-frequency job
-// (scripts/fetch-validator-nominator-counts.py), decoupled from the fast
-// refresh-metagraph cron -- see that script's and the migration's own header
-// comments for why a full SubtensorModule::Alpha scan can't share the
-// neurons snapshot's cadence.
+// (apps/indexer-rs/src/bin/poller/jobs/validator_nominators.rs), decoupled
+// from the fast refresh-metagraph cron -- see that job's and the migration's
+// own header comments for why a full SubtensorModule::Alpha scan can't share
+// the neurons snapshot's cadence.
 const VALIDATOR_NOMINATOR_COUNTS_SYNC_TOKEN_HEADER =
   "x-validator-nominator-counts-sync-token";
 // floor(65535 / 3 columns) = 21845 -- batchedUpsert's per-statement row cap,
@@ -2172,7 +2172,8 @@ async function handleNominatorPositionsSync(request, env) {
 // --- POST /api/v1/internal/account-balances-sync (#6742) -------------------
 //
 // Chain-wide free/reserved balance snapshot, one row per account with a
-// nonzero balance -- scripts/fetch-account-balances.py's own header comment
+// nonzero balance --
+// apps/indexer-rs/src/bin/poller/jobs/account_balances.rs's own header comment
 // on why this reads System::Account directly rather than reconstructing
 // balance from transfer/fee/stake events (a direct state read can't drift;
 // event-replay can, one missed mutation path at a time). Same "latest-only,

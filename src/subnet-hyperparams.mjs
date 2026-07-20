@@ -1,6 +1,7 @@
 // Subnet hyperparameters (#4303, epic #4301): one row per netuid, latest-only.
-// Field mapping documented in scripts/fetch-subnet-hyperparams.py's docstring
-// and migrations/0036_subnet_hyperparams.sql. Mirrors NEURON_INSERT_COLUMNS's
+// Field mapping documented in
+// apps/indexer-rs/src/bin/poller/jobs/subnet_hyperparams.rs and
+// migrations/0036_subnet_hyperparams.sql. Mirrors NEURON_INSERT_COLUMNS's
 // role in src/metagraph-neurons.mjs — the full column set written by the
 // Postgres write path (workers/data-api.mjs's handleSubnetHyperparamsSync)
 // and read by the serving route (#4307/1.4).
@@ -76,7 +77,8 @@ function round(value, dp) {
 }
 
 // *_ratio columns are already a 0..1 U16-derived ratio by the time they reach
-// D1 (scripts/fetch-subnet-hyperparams.py's u16_ratio, rounded to 9dp there
+// D1 (apps/indexer-rs/src/bin/poller/jobs/subnet_hyperparams.rs's u16_ratio,
+// rounded to 9dp there
 // too) — round again here as defense-in-depth against a future writer that
 // skips that rounding, not because this path expects dirty data.
 function ratio(value) {

@@ -2,7 +2,7 @@
 // only. Distinct from subnet identity (SubtensorModule::SubnetIdentitiesV3,
 // src/subnet-identity-history.mjs / src/chain-identity-history.mjs) — this is
 // the identity a coldkey attaches to itself. Field mapping documented in
-// scripts/fetch-account-identity.py's docstring and
+// apps/indexer-rs/src/bin/poller/jobs/account_identity.rs and
 // migrations/0039_account_identity.sql. Mirrors NEURON_INSERT_COLUMNS's role
 // in src/metagraph-neurons.mjs — the full column set once written by the
 // retired staged-load path (loadStagedAccountIdentity, removed in the
