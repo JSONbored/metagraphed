@@ -15,7 +15,7 @@
 // realtime firehose (ChainFirehoseHub, #4982) broadcasts a new chain event, or
 // when the health prober (#6034) detects a per-subnet health/status/surface
 // change via SubnetStatusHub. Every OTHER method on this server is unaffected
-// -- stateless POST, no session required. See workers/mcp-session-hub.mjs's
+// -- stateless POST, no session required. See workers/mcp-session-hub.ts's
 // own header comment for why this is a separate DO from ChainFirehoseHub, and
 // docs/realtime-firehose.md for the full architecture.
 //
@@ -62,7 +62,7 @@ import { ALERT_TRIGGER_OWNER_TOKEN_HEADER } from "./alert-triggers.mjs";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   isValidMcpSessionId,
-} from "../workers/mcp-session-hub.mjs";
+} from "../workers/mcp-session-hub.ts";
 import {
   buildSubnetStatusResourceUri,
   isSubscribableMcpResourceUri,
@@ -16239,7 +16239,7 @@ const MCP_STREAM_HUB_UNAVAILABLE_RESPONSE = new Response(null, {
 // GET /mcp -- the standalone SSE push channel a client opens (with the
 // Mcp-Session-Id minted at `initialize`) after a resources/subscribe call, to
 // receive notifications/resources/updated pushes. See
-// workers/mcp-session-hub.mjs's header comment for why this is a
+// workers/mcp-session-hub.ts's header comment for why this is a
 // bounded-duration stream rather than an indefinite hold, and why it is a
 // separate Durable Object from the realtime chain firehose. Every other MCP
 // method is POST-only and stateless; this is the one GET route.

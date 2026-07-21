@@ -34,7 +34,7 @@ import {
   validateChainEventsSubscribePayload,
   validateChainFirehoseIngestPayload,
 } from "../workers/chain-firehose-hub.mjs";
-import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.mjs";
+import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 
 // --- validateChainEventsSubscribePayload (#4983 security fix) -------------------
 //

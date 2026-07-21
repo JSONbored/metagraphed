@@ -276,7 +276,7 @@ import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   ChainFirehoseHub,
 } from "./chain-firehose-hub.mjs";
-import { McpSessionHub } from "./mcp-session-hub.mjs";
+import { McpSessionHub } from "./mcp-session-hub.ts";
 import { AlerterHub } from "./alerter-hub.ts";
 import { SubnetStatusHub } from "./subnet-status-hub.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";

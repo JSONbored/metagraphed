@@ -57,3 +57,19 @@ types for shared files; the complexity isn't worth it for what it would catch.
 
 Re-run `npm run types:workers` and commit the result whenever `wrangler*.jsonc`'s bindings change —
 same generated-artifact discipline as `packages/contract/index.d.ts`, never hand-edit these files.
+
+A field/const in Env not declared in any wrangler\*.jsonc `vars` block (a dashboard-set secret, a
+`wrangler secret put` value) needs a hand-written entry in `workers/env-extra.d.ts` instead — see that
+file's own header comment. Add fields there as you encounter a real `env.X` access that needs one;
+don't add one speculatively.
+
+**`setTimeout`/`clearTimeout` return-type gotcha:** this repo's root `tsconfig.json` has no `types`
+restriction (Phase 0), so `@types/node`'s global `setTimeout` (returning `NodeJS.Timeout`) and the
+Workers-generated one (returning `number`) are both ambient — TypeScript resolves the global
+`setTimeout`/`clearTimeout` to Node's versions repo-wide, even inside a `workers/` file that only ever
+actually runs under real Workers runtime (or under Vitest's Node-based test environment). Don't type a
+timer-handle field as `ReturnType<typeof setTimeout> | null` and expect it to round-trip cleanly through
+`clearTimeout` — a `Timeout | null` union doesn't cleanly match either of `clearTimeout`'s overloads even
+though each half individually would. Cast at the `clearTimeout(...)` call site instead
+(`as unknown as number`, with a one-line comment pointing back here) rather than fighting the global
+ambiguity file-by-file.

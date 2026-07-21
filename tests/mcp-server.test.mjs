@@ -16,7 +16,7 @@ import { KV_HEALTH_RPC_POOL } from "../src/health-prober.mjs";
 import { createLocalArtifactEnv, latestArtifactDate } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
-import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.mjs";
+import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 import { buildChainStakeMoves } from "../src/chain-stake-moves.mjs";
 import { buildChainStakeTransfers } from "../src/chain-stake-transfers.mjs";
 import { buildChainWeightSetters } from "../src/chain-weight-setters.mjs";
