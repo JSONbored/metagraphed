@@ -168,6 +168,81 @@
         "https://github.com/backend-developers-ltd/ComputeHorde"
       ],
       "url": "https://grafana.bittensor.church/public/openapi3.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-12-compute-horde-grafana-org",
+      "kind": "subnet-api",
+      "name": "Compute Horde Grafana current org",
+      "notes": "Public no-auth GET /api/org on grafana.bittensor.church returning the current Grafana organization JSON. Same host as the already-registered dashboard and OpenAPI surfaces; anonymous viewer access is enabled on this instance even though the OpenAPI schema declares a global auth requirement. Live-verified 2026-07-21: HTTP 200 application/json.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://grafana.bittensor.church/public/openapi3.json",
+        "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
+      ],
+      "url": "https://grafana.bittensor.church/api/org"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-12-compute-horde-grafana-search",
+      "kind": "subnet-api",
+      "name": "Compute Horde Grafana dashboard search",
+      "notes": "Public no-auth GET /api/search on grafana.bittensor.church returning the anonymous-viewer dashboard/folder search listing. Same Grafana host as the registered OpenAPI schema; live-verified 2026-07-21: HTTP 200 application/json.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://grafana.bittensor.church/public/openapi3.json",
+        "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
+      ],
+      "url": "https://grafana.bittensor.church/api/search"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-12-compute-horde-grafana-dashboard-subnet",
+      "kind": "subnet-api",
+      "name": "Compute Horde Grafana subnet dashboard by uid",
+      "notes": "Public no-auth GET /api/dashboards/uid/subnet on grafana.bittensor.church returning the metagraph-subnet dashboard JSON already tracked by the registered dashboard URL (fetched by uid). Same Grafana host; live-verified 2026-07-21: HTTP 200 application/json. Note: /api/health on this instance returns 403 under anonymous access, so auth posture is not assumed from Templar.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://grafana.bittensor.church/public/openapi3.json",
+        "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
+      ],
+      "url": "https://grafana.bittensor.church/api/dashboards/uid/subnet"
     }
   ],
   "website_url": "https://computehorde.io/"
