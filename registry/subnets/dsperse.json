@@ -167,7 +167,13 @@
       "id": "sn-2-inference-labs-subnet-api",
       "kind": "subnet-api",
       "name": "DSperse network stats API",
-      "notes": "Public no-auth GET /stats on sn2-api.inferencelabs.com returning JSON network counters (observed: total_proofs, unique_miners, unique_validators). The official subnet-2 validator client sets DEFAULT_API_URL to https://sn2-api.inferencelabs.com on the same host.",
+      "notes": "Public no-auth GET /stats on sn2-api.inferencelabs.com returning JSON network counters (observed: total_proofs, unique_miners, unique_validators). The official subnet-2 validator client sets DEFAULT_API_URL to https://sn2-api.inferencelabs.com on the same host. Live-verified 2026-07-21: GET returns 200 {\"total_proofs\":2588511354,\"unique_miners\":1703,\"unique_validators\":26}.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "inference-labs",
       "public_safe": true,
       "review": {
