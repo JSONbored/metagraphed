@@ -45,7 +45,7 @@ import {
   mcpServerCardResponse,
   agentToolsResponse,
   handleBadgeSvgRequest,
-} from "./request-handlers/discovery.mjs";
+} from "./request-handlers/discovery.ts";
 import {
   configureAnalytics,
   handleBulkHealthTrends,

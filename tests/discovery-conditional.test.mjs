@@ -10,7 +10,7 @@ import {
   handleBadgeSvgRequest,
   homepageResponse,
   mcpServerCardResponse,
-} from "../workers/request-handlers/discovery.mjs";
+} from "../workers/request-handlers/discovery.ts";
 
 // Re-run a handler with each conditional variant and assert the 304/200 outcome.
 // `call(headers)` returns the handler's Response for the given request headers.

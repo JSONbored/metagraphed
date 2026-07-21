@@ -26,7 +26,7 @@ import {
 // dependency, which drives backlinks/adoption. Rendered from the badge JSON
 // artifact (label/message/color), degrading to a neutral "unavailable" badge.
 export const BADGE_SVG_PATTERN = /^\/metagraph\/health\/badges\/(\d+)\.svg$/;
-const BADGE_COLOR_HEX = {
+const BADGE_COLOR_HEX: Record<string, string> = {
   brightgreen: "#4c1",
   green: "#97ca00",
   yellowgreen: "#a4a61d",
@@ -38,14 +38,24 @@ const BADGE_COLOR_HEX = {
   grey: "#555",
 };
 // Shields-style color for a health status (matches the build's badgeColor).
-const BADGE_STATUS_COLOR = {
+const BADGE_STATUS_COLOR: Record<string, string> = {
   ok: "brightgreen",
   degraded: "yellow",
   failed: "red",
   unknown: "lightgrey",
 };
 
-export async function handleBadgeSvgRequest(request, env, url) {
+interface Badge {
+  label?: string;
+  message?: string;
+  color?: string;
+}
+
+export async function handleBadgeSvgRequest(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return errorResponse(
       "method_not_allowed",
@@ -55,7 +65,10 @@ export async function handleBadgeSvgRequest(request, env, url) {
       { allow: "GET, HEAD, OPTIONS" },
     );
   }
-  const netuid = BADGE_SVG_PATTERN.exec(url.pathname)[1];
+  // Non-null: this handler is only ever reached via api.mjs's own
+  // `BADGE_SVG_PATTERN.test(url.pathname)` dispatch guard, so a match is
+  // already guaranteed by the time this .exec() runs.
+  const netuid = BADGE_SVG_PATTERN.exec(url.pathname)![1];
   const artifact = await readArtifact(
     env,
     `/metagraph/health/badges/${netuid}.json`,
@@ -63,9 +76,11 @@ export async function handleBadgeSvgRequest(request, env, url) {
   // Live overlay: prefer the fresh operational status from the 2-min cron
   // snapshot; fall back to the static badge artifact, then to "unavailable".
   const liveCurrent = await readHealthKv(env, KV_HEALTH_CURRENT);
-  const liveStatus = subnetBadgeStatus(liveCurrent, Number(netuid));
+  const liveStatus = subnetBadgeStatus(liveCurrent, Number(netuid)) as {
+    status: string;
+  } | null;
   const available = Boolean(liveStatus || (artifact.ok && artifact.data));
-  let badge;
+  let badge: Badge;
   if (liveStatus) {
     badge = {
       label: `SN${netuid}`,
@@ -73,7 +88,7 @@ export async function handleBadgeSvgRequest(request, env, url) {
       color: BADGE_STATUS_COLOR[liveStatus.status] || "lightgrey",
     };
   } else if (artifact.ok && artifact.data) {
-    badge = artifact.data;
+    badge = artifact.data as Badge;
   } else {
     badge = {
       label: `SN${netuid}`,
@@ -99,7 +114,7 @@ export async function handleBadgeSvgRequest(request, env, url) {
     `public, max-age=${maxAge}, stale-while-revalidate=300`,
   );
   headers.set("etag", await weakEtag(svg));
-  if (ifNoneMatchSatisfied(request, headers.get("etag"))) {
+  if (ifNoneMatchSatisfied(request, headers.get("etag") || "")) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : svg, {
@@ -108,7 +123,7 @@ export async function handleBadgeSvgRequest(request, env, url) {
   });
 }
 
-function escapeXml(value) {
+function escapeXml(value: unknown): string {
   return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -119,11 +134,15 @@ function escapeXml(value) {
 
 // Approximate text width for the 11px Verdana shields font. textLength scales
 // the glyphs to fit exactly, so the estimate only needs to look balanced.
-function badgeTextWidth(text) {
+function badgeTextWidth(text: string): number {
   return Math.ceil(text.length * 6.5);
 }
 
-function renderBadgeSvg(rawLabel, rawMessage, color) {
+function renderBadgeSvg(
+  rawLabel: string,
+  rawMessage: string,
+  color: string,
+): string {
   const label = escapeXml(rawLabel);
   const message = escapeXml(rawMessage);
   const hex = BADGE_COLOR_HEX[color] || BADGE_COLOR_HEX.lightgrey;
@@ -217,7 +236,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 
 // Shared headers for the worker-owned discovery surfaces: open CORS so agents
 // can fetch cross-origin, the discovery Link header, and a public cache.
-function discoveryHeaders(contentType) {
+function discoveryHeaders(contentType: string): Headers {
   const headers = new Headers();
   headers.set("access-control-allow-origin", "*");
   headers.set("content-type", contentType);
@@ -271,21 +290,21 @@ const CATALOG_BODY = (() => {
   )}\n`;
 })();
 
-let _homepageEtagPromise = null;
-function getHomepageEtag() {
+let _homepageEtagPromise: Promise<string> | null = null;
+function getHomepageEtag(): Promise<string> {
   if (!_homepageEtagPromise) _homepageEtagPromise = weakEtag(HOMEPAGE_HTML);
   return _homepageEtagPromise;
 }
 
-let _catalogEtagPromise = null;
-function getCatalogEtag() {
+let _catalogEtagPromise: Promise<string> | null = null;
+function getCatalogEtag(): Promise<string> {
   if (!_catalogEtagPromise) _catalogEtagPromise = weakEtag(CATALOG_BODY);
   return _catalogEtagPromise;
 }
 
 // api.metagraph.sh homepage: a small human/agent landing whose response carries
 // the RFC 8288 Link headers (an agent can bootstrap from a single HEAD of `/`).
-export async function homepageResponse(request) {
+export async function homepageResponse(request: Request): Promise<Response> {
   const etag = await getHomepageEtag();
   const headers = discoveryHeaders("text/html; charset=utf-8");
   headers.set("etag", etag);
@@ -302,7 +321,7 @@ export async function homepageResponse(request) {
 // canonical API host (api.metagraph.sh) regardless of which host served this —
 // the apex (metagraph.sh) routes /.well-known/* here too, and its catalog must
 // reference the real API, not the apex.
-export async function apiCatalogResponse(request) {
+export async function apiCatalogResponse(request: Request): Promise<Response> {
   const etag = await getCatalogEtag();
   const headers = discoveryHeaders("application/linkset+json");
   headers.set("etag", etag);
@@ -318,20 +337,21 @@ export async function apiCatalogResponse(request) {
 // Stable deterministic JSON serializer (recursive key sort) — matches
 // lib.mjs stableStringify so content_hash is identical to what the build
 // script would produce for the same tool set.
-function stableStringifyCard(value) {
+function stableStringifyCard(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value))
     return `[${value.map(stableStringifyCard).join(",")}]`;
+  const record = value as Record<string, unknown>;
   return (
     `{` +
-    Object.keys(value)
+    Object.keys(record)
       .sort()
-      .map((k) => `${JSON.stringify(k)}:${stableStringifyCard(value[k])}`)
+      .map((k) => `${JSON.stringify(k)}:${stableStringifyCard(record[k])}`)
       .join(",") +
     `}`
   );
 }
-async function hashJsonCard(obj) {
+async function hashJsonCard(obj: unknown): Promise<string> {
   const bytes = new TextEncoder().encode(stableStringifyCard(obj));
   const buf = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(buf)]
@@ -345,7 +365,10 @@ async function hashJsonCard(obj) {
 // MCP-tool PR — two concurrent tool PRs both touched the file and the second
 // always needed a rebase. `generated_at` is epoch-0 (the deterministic content
 // marker per issue #349); `published_at` is overlaid from KV at serve time.
-export async function mcpServerCardResponse(request, env) {
+export async function mcpServerCardResponse(
+  request: Request,
+  env: Env,
+): Promise<Response> {
   const base = `https://${PRIMARY_DOMAIN}`;
   const serverCardContent = {
     schema_version: 1,
@@ -379,7 +402,7 @@ export async function mcpServerCardResponse(request, env) {
   const body = `${JSON.stringify(card, null, 2)}\n`;
   const headers = discoveryHeaders("application/json");
   headers.set("etag", await weakEtag(body));
-  if (ifNoneMatchSatisfied(request, headers.get("etag"))) {
+  if (ifNoneMatchSatisfied(request, headers.get("etag") || "")) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : body, {
@@ -393,7 +416,11 @@ export async function mcpServerCardResponse(request, env) {
 // api-catalog, these are worker-generated discovery documents whose body is
 // derived from the canonical MCP tool list, so there is nothing to bake or keep
 // in sync.
-export async function agentToolsResponse(request, env, kind) {
+export async function agentToolsResponse(
+  request: Request,
+  env: Env,
+  kind: string,
+): Promise<Response> {
   const tools = listToolDefinitions();
   const data =
     kind === "openai"
@@ -406,7 +433,7 @@ export async function agentToolsResponse(request, env, kind) {
   const body = `${JSON.stringify(data, null, 2)}\n`;
   const headers = discoveryHeaders("application/json");
   headers.set("etag", await weakEtag(body));
-  if (ifNoneMatchSatisfied(request, headers.get("etag"))) {
+  if (ifNoneMatchSatisfied(request, headers.get("etag") || "")) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : body, {
