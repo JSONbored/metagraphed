@@ -174,7 +174,13 @@
       "id": "sn-1-apex-orchestrator-openapi",
       "kind": "openapi",
       "name": "Apex orchestrator API OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.x schema for the Apex SN1 orchestrator (title: FastAPI). Served publicly at apex.api.macrocosmos.ai; documents miner submission, competition, validator scoring, and /healthcheck routes. Mainnet default host in the official apex shared settings (ORCHESTRATOR_HOST).",
+      "notes": "Machine-readable OpenAPI 3.x schema for the Apex SN1 orchestrator (title: FastAPI). Served publicly at apex.api.macrocosmos.ai; documents miner submission, competition, validator scoring, and /healthcheck routes. Mainnet default host in the official apex shared settings (ORCHESTRATOR_HOST). Live-verified 2026-07-21: GET returns OpenAPI 3.1.0 JSON (title FastAPI, 32 paths).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -195,7 +201,13 @@
       "id": "sn-1-apex-healthcheck",
       "kind": "subnet-api",
       "name": "Apex orchestrator healthcheck API",
-      "notes": "Public no-auth GET /healthcheck on apex.api.macrocosmos.ai returning liveness JSON (observed: {\"status\":\"healthy\"}). Documented as GET /healthcheck in the subnet OpenAPI spec; apex.api.macrocosmos.ai is the mainnet ORCHESTRATOR_HOST (https) in the official apex shared settings.",
+      "notes": "Public no-auth GET /healthcheck on apex.api.macrocosmos.ai returning liveness JSON (observed: {\"status\":\"healthy\"}). Documented as GET /healthcheck in the subnet OpenAPI spec; apex.api.macrocosmos.ai is the mainnet ORCHESTRATOR_HOST (https) in the official apex shared settings. Live-verified 2026-07-21: HTTP 200 JSON {\"status\":\"healthy\"}.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
