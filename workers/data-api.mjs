@@ -5245,11 +5245,25 @@ export default {
         // D1's hotkey/coldkey union is two INDEXED BY branches combined with
         // UNION ALL (each SQLite index can only ever seek ONE column), with a
         // second-branch guard to stop UNION ALL from double-counting a row
-        // where both columns equal the same ss58. Postgres has no INDEXED BY
-        // equivalent and evaluates a flat `WHERE (hotkey = $1 OR coldkey = $1)`
-        // as one plan, so a matching row is naturally visited exactly once --
-        // the double-count guard has nothing to do here and is deliberately
-        // omitted, not an oversight.
+        // where both columns equal the same ss58. This route's own prior fix
+        // (the observed_at-leading ORDER BY/3-part cursor above) addressed
+        // chunk exclusion but kept the flat `WHERE (hotkey = $1 OR
+        // coldkey = $1)` -- confirmed live via EXPLAIN that this STILL
+        // trips the same statement-timeout (Sentry METAGRAPHED-6, regressed,
+        // still firing after that fix): on TimescaleDB-compressed chunks
+        // hotkey has no compression segment/order-by metadata at all (unlike
+        // coldkey, which does), so an OR pulls every compressed chunk into a
+        // full DecompressChunk + seq scan just to test the hotkey side, an
+        // estimated 45M+ rows before LIMIT even applies -- the exact same
+        // class of bug the sibling /api/v1/accounts/:ss58 route hit as
+        // METAGRAPHED-5/#6878, just never ported to this route. Restored
+        // that same two-branch shape: one capped ORDER BY/LIMIT scan on
+        // hotkey = $1 (lets the planner use idx_ae_hotkey + ordered chunk-
+        // append), a second on coldkey = $1 excluding rows the hotkey branch
+        // already matched (so a self-referential hotkey/coldkey account
+        // isn't double-counted), then merged + re-sorted client-side -- an
+        // active account's matches are almost always satisfied from recent,
+        // uncompressed chunks without ever touching the compressed tail.
         const acctEvents = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/events$/,
         );
@@ -5273,23 +5287,57 @@ export default {
             url.searchParams,
             "block_end",
           );
-          // ORDER BY must lead with observed_at (the hypertable's partition
-          // column), same fix as the /api/v1/extrinsics list route above --
-          // block_number DESC alone forces a scan/sort across every chunk
-          // (no chunk exclusion), which is what tripped this route's
-          // statement_timeout in production (METAGRAPHED-6).
-          const rows = await sql`
+          // Each branch needs up to limit+offset rows, not just limit: in
+          // the worst case every one of the final `limit` (post-offset)
+          // rows comes from a single branch, and offset is only applied
+          // once, after the two branches are merged below. Cursor-based
+          // pages never carry an offset (the cursor itself already narrows
+          // past prior pages), so they only need `limit` per branch.
+          const perBranchLimit = limit + (cursor ? 0 : offset);
+          // Same reasoning as /api/v1/chain/transfers above: this route
+          // alone widens its budget for the (now rarer, but not impossible)
+          // case of a sparse/nonexistent account whose branches still have
+          // to walk back through the compressed chunk tail to prove there's
+          // nothing more to find, rather than raising the global 3s default
+          // for every other (much lighter) route in this dispatcher.
+          await sql`SET LOCAL statement_timeout = '10000ms'`;
+          const hotkeyRows = await sql`
           SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
           FROM account_events
-          WHERE (hotkey = ${ss58} OR coldkey = ${ss58})
+          WHERE hotkey = ${ss58}
             ${kind ? sql`AND event_kind = ${kind}` : sql``}
             ${netuid != null ? sql`AND netuid = ${netuid}` : sql``}
             ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
             ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
             ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
           ORDER BY observed_at DESC, block_number DESC, event_index DESC
-          LIMIT ${limit}
-          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+          LIMIT ${perBranchLimit}`;
+          const coldkeyRows = await sql`
+          SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
+          FROM account_events
+          WHERE coldkey = ${ss58} AND (hotkey IS NULL OR hotkey <> ${ss58})
+            ${kind ? sql`AND event_kind = ${kind}` : sql``}
+            ${netuid != null ? sql`AND netuid = ${netuid}` : sql``}
+            ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+            ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+            ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
+          ORDER BY observed_at DESC, block_number DESC, event_index DESC
+          LIMIT ${perBranchLimit}`;
+          // Each branch is already this account's own newest perBranchLimit
+          // rows on its key, so the true newest (limit+offset) rows across
+          // both are guaranteed to be present in this merged set -- re-sort
+          // by the same feed order, then apply the offset/limit window the
+          // single-scan query used to apply in SQL (cursor pages skip the
+          // offset slice, matching the cursor's own WHERE-side narrowing).
+          const merged = hotkeyRows.concat(coldkeyRows).sort((a, b) => {
+            const observedDelta = Number(b.observed_at) - Number(a.observed_at);
+            if (observedDelta !== 0) return observedDelta;
+            const blockDelta = Number(b.block_number) - Number(a.block_number);
+            if (blockDelta !== 0) return blockDelta;
+            return Number(b.event_index) - Number(a.event_index);
+          });
+          const windowStart = cursor ? 0 : offset;
+          const rows = merged.slice(windowStart, windowStart + limit);
           const last = rows.length === limit ? rows[rows.length - 1] : null;
           const nextCursor = last
             ? encodeCursor([
@@ -7572,17 +7620,61 @@ export default {
             url.searchParams,
             "block_end",
           );
-          const rows = await sql`
-          SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
-          FROM account_events
-          WHERE event_kind = 'Transfer'
-            ${direction === "sent" ? sql`AND hotkey = ${ss58}` : direction === "received" ? sql`AND coldkey = ${ss58}` : sql`AND (hotkey = ${ss58} OR coldkey = ${ss58})`}
-            ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
-            ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
-            ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
-          ORDER BY observed_at DESC, block_number DESC, event_index DESC
-          LIMIT ${limit}
-          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+          let rows;
+          if (direction === "sent" || direction === "received") {
+            // A single indexed column -- idx_ae_hotkey/idx_ae_coldkey already
+            // handle this efficiently, same as before; only the "all
+            // directions" case below hits METAGRAPHED-6's OR-defeats-index
+            // problem.
+            rows = await sql`
+            SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
+            FROM account_events
+            WHERE event_kind = 'Transfer'
+              ${direction === "sent" ? sql`AND hotkey = ${ss58}` : sql`AND coldkey = ${ss58}`}
+              ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+              ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+              ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
+            ORDER BY observed_at DESC, block_number DESC, event_index DESC
+            LIMIT ${limit}
+            ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+          } else {
+            // Same METAGRAPHED-6 fix as /api/v1/accounts/:ss58/events above:
+            // a flat `WHERE (hotkey = $1 OR coldkey = $1)` defeats index
+            // usage on account_events' TimescaleDB-compressed chunks (hotkey
+            // has no compression segment/order-by metadata, unlike coldkey),
+            // so split into two indexed branches and merge client-side.
+            const perBranchLimit = limit + (cursor ? 0 : offset);
+            await sql`SET LOCAL statement_timeout = '10000ms'`;
+            const hotkeyRows = await sql`
+            SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
+            FROM account_events
+            WHERE event_kind = 'Transfer' AND hotkey = ${ss58}
+              ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+              ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+              ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
+            ORDER BY observed_at DESC, block_number DESC, event_index DESC
+            LIMIT ${perBranchLimit}`;
+            const coldkeyRows = await sql`
+            SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
+            FROM account_events
+            WHERE event_kind = 'Transfer' AND coldkey = ${ss58} AND (hotkey IS NULL OR hotkey <> ${ss58})
+              ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+              ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+              ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
+            ORDER BY observed_at DESC, block_number DESC, event_index DESC
+            LIMIT ${perBranchLimit}`;
+            const merged = hotkeyRows.concat(coldkeyRows).sort((a, b) => {
+              const observedDelta =
+                Number(b.observed_at) - Number(a.observed_at);
+              if (observedDelta !== 0) return observedDelta;
+              const blockDelta =
+                Number(b.block_number) - Number(a.block_number);
+              if (blockDelta !== 0) return blockDelta;
+              return Number(b.event_index) - Number(a.event_index);
+            });
+            const windowStart = cursor ? 0 : offset;
+            rows = merged.slice(windowStart, windowStart + limit);
+          }
           const last = rows.length === limit ? rows[rows.length - 1] : null;
           const nextCursor = last
             ? encodeCursor([

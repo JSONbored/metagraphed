@@ -1426,15 +1426,93 @@ test("GET /api/v1/accounts/:ss58/events returns a feed shaped like the D1 route"
   expect(ev.amount_tao).toBe(1.5);
 });
 
-test("GET /api/v1/accounts/:ss58/events matches hotkey OR coldkey in one flat WHERE, no INDEXED BY / dedup guard", async () => {
+test("GET /api/v1/accounts/:ss58/events queries hotkey and coldkey as two separate indexed branches (Sentry METAGRAPHED-6)", async () => {
+  // Matches the sibling /api/v1/accounts/:ss58 route's own #6878 fix: a flat
+  // `WHERE (hotkey = $1 OR coldkey = $1)` defeats index-ordered scanning on
+  // account_events (confirmed live via EXPLAIN against a TimescaleDB
+  // compressed chunk -- see the route's own comment), so this queries each
+  // column separately and merges client-side instead.
   mockRows.current = [ACCOUNT_EVENT_ROW];
   await req(`/api/v1/accounts/${SS58}/events`);
   const text = queryText();
-  expect(text).toContain("WHERE (hotkey =");
-  expect(text).toContain("OR coldkey =");
+  expect(text).toContain("WHERE hotkey =");
+  expect(text).toContain("WHERE coldkey =");
+  expect(text).toContain("hotkey IS NULL OR hotkey <>");
+  expect(text).not.toContain("WHERE (hotkey =");
+  expect(text).not.toContain("OR coldkey =");
   expect(text).not.toContain("INDEXED BY");
-  expect(text).not.toContain("UNION");
-  expect(text).not.toContain("hotkey <>");
+});
+
+test("GET /api/v1/accounts/:ss58/events merges, re-sorts, and re-caps rows from BOTH branches without double-counting a self-referential row", async () => {
+  // Same scenario the sibling /api/v1/accounts/:ss58 route's own merge test
+  // covers: an address with activity under both hotkey and coldkey, PLUS one
+  // row where hotkey and coldkey are the SAME address -- the coldkey
+  // branch's `hotkey IS NULL OR hotkey <> ss58` guard must exclude that row
+  // (already returned by the hotkey branch) rather than double-counting it.
+  // hotkeyRow and selfRow also share the same observed_at, exercising the
+  // sort's block_number tie-break (real chain data can't tie there, but the
+  // tie-break exists for defense-in-depth and needs its own branch coverage).
+  const hotkeyRow = {
+    ...ACCOUNT_EVENT_ROW,
+    observed_at: "100",
+    block_number: "100",
+    event_index: 0,
+    event_kind: "StakeAdded",
+    hotkey: SS58,
+    coldkey: "5ColdOther",
+  };
+  const selfRow = {
+    ...ACCOUNT_EVENT_ROW,
+    observed_at: "100",
+    block_number: "150",
+    event_index: 0,
+    event_kind: "StakeRemoved",
+    hotkey: SS58,
+    coldkey: SS58,
+  };
+  const coldkeyRowNewer = {
+    ...ACCOUNT_EVENT_ROW,
+    observed_at: "200",
+    block_number: "200",
+    event_index: 1,
+    event_kind: "WeightsSet",
+    hotkey: "5HotOther",
+    coldkey: SS58,
+  };
+  // Every one of the 5 optional filter ternaries in EACH branch (kind,
+  // netuid, block_start, block_end, cursor) is itself a nested sql`` call
+  // under this mock, consuming its own queue slot even on its falsy/empty
+  // branch -- so the two real per-branch results sit 6 slots apart from
+  // each other (1 outer call + 5 filter ternaries), after the global
+  // dispatchReadRoutes SET and this route's own SET LOCAL.
+  mockQueue.current = [
+    [], // SET statement_timeout = 3000ms (dispatchReadRoutes' own default)
+    [], // SET LOCAL statement_timeout = 10000ms (this route's own override)
+    [],
+    [],
+    [],
+    [],
+    [], // hotkeyRows' 5 filter ternaries (kind/netuid/block_start/block_end/cursor), all empty here
+    [selfRow, hotkeyRow], // hotkeyRows itself (hotkey = ss58)
+    [],
+    [],
+    [],
+    [],
+    [], // coldkeyRows' 5 filter ternaries, same as above
+    [coldkeyRowNewer], // coldkeyRows itself (coldkey = ss58 AND hotkey <> ss58 -- selfRow correctly excluded here)
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/events?limit=10`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  // 3 distinct rows, not 4 -- selfRow only ever counted once even though it
+  // would satisfy both branches' raw predicates.
+  expect(body.event_count).toBe(3);
+  expect(body.events.map((e) => e.block_number)).toEqual([200, 150, 100]);
+  expect(body.events.map((e) => e.event_kind)).toEqual([
+    "WeightsSet",
+    "StakeRemoved",
+    "StakeAdded",
+  ]);
 });
 
 test("GET /api/v1/accounts/:ss58/events applies the same filter set as the former account event-feed D1 loader", async () => {
@@ -1457,7 +1535,10 @@ test("GET /api/v1/accounts/:ss58/events caps oversized offsets before Postgres",
   );
   expect(accountEventsCall).toBeTruthy();
   const boundValues = sqlCalls.flatMap((call) => call.values);
-  expect(boundValues).toContain(1_000_000);
+  // offset is no longer bound directly (it's applied client-side after the
+  // two branches are merged) -- each branch's own LIMIT is limit+offset, so
+  // the capped offset shows up folded into that derived bound value instead.
+  expect(boundValues).toContain(1 + MAX_OFFSET);
   expect(boundValues).not.toContain(999999999999);
 });
 
@@ -1473,8 +1554,13 @@ test("GET /api/v1/accounts/:ss58/events ignores an old 2-part cursor (pre-METAGR
   mockRows.current = [ACCOUNT_EVENT_ROW];
   await req(`/api/v1/accounts/${SS58}/events?cursor=8586300.0`);
   const text = queryText();
+  // Never emits SQL OFFSET at all -- both branches are always capped by
+  // LIMIT and the offset window is applied client-side after the merge (see
+  // the route's own comment), so an invalid cursor falling back to "page
+  // from the start" shows up as the absence of the cursor's WHERE clause,
+  // not the presence of OFFSET.
   expect(text).not.toContain("AND (observed_at, block_number, event_index) <");
-  expect(text).toContain("OFFSET");
+  expect(text).not.toContain("OFFSET");
 });
 
 test("GET /api/v1/accounts/:ss58/events with no matching rows returns a schema-stable empty feed", async () => {
@@ -4338,6 +4424,82 @@ test("GET /api/v1/accounts/:ss58/transfers?direction=received narrows to the col
   expect(text).not.toContain("OR coldkey");
 });
 
+test("GET /api/v1/accounts/:ss58/transfers?direction=sent also applies block_start/block_end/cursor on the single-branch path", async () => {
+  mockRows.current = [];
+  await req(
+    `/api/v1/accounts/${SS58}/transfers?direction=sent&block_start=1&block_end=2&cursor=1783600000000.8586300.0`,
+  );
+  const text = queryText();
+  expect(text).toContain("AND block_number >=");
+  expect(text).toContain("AND block_number <=");
+  expect(text).toContain("AND (observed_at, block_number, event_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/accounts/:ss58/transfers (no direction) queries hotkey and coldkey as two separate indexed branches (Sentry METAGRAPHED-6)", async () => {
+  // Same METAGRAPHED-6 class of bug as /api/v1/accounts/:ss58/events: a flat
+  // `WHERE ... AND (hotkey = $1 OR coldkey = $1)` defeats index-ordered
+  // scanning on account_events' TimescaleDB-compressed chunks -- only the
+  // "all directions" (no ?direction=) path hits this, since sent/received
+  // already query a single indexed column.
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  await req(`/api/v1/accounts/${SS58}/transfers`);
+  const text = queryText();
+  expect(text).toContain("AND hotkey =");
+  expect(text).toContain("AND coldkey =");
+  expect(text).toContain("hotkey IS NULL OR hotkey <>");
+  expect(text).not.toContain("OR coldkey =");
+});
+
+test("GET /api/v1/accounts/:ss58/transfers (no direction) merges both branches without double-counting a self-transfer row", async () => {
+  // hotkeyRow and selfRow share the same observed_at, exercising the sort's
+  // block_number tie-break branch (see the /events route's own merge test).
+  const hotkeyRow = {
+    ...ACCOUNT_EVENT_ROW,
+    observed_at: "100",
+    block_number: "100",
+    event_index: 0,
+    hotkey: SS58,
+    coldkey: "5ColdOther",
+  };
+  const selfRow = {
+    ...ACCOUNT_EVENT_ROW,
+    observed_at: "100",
+    block_number: "150",
+    event_index: 0,
+    hotkey: SS58,
+    coldkey: SS58,
+  };
+  const coldkeyRowNewer = {
+    ...ACCOUNT_EVENT_ROW,
+    observed_at: "200",
+    block_number: "200",
+    event_index: 1,
+    hotkey: "5HotOther",
+    coldkey: SS58,
+  };
+  // 1 SET (global) + 1 SET LOCAL + 3 filter ternaries (block_start,
+  // block_end, cursor) + hotkeyRows itself, then the same 3 ternaries +
+  // coldkeyRows itself -- see the /events route's own merge test for why
+  // each falsy ternary branch still consumes its own queue slot.
+  mockQueue.current = [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [selfRow, hotkeyRow],
+    [],
+    [],
+    [],
+    [coldkeyRowNewer],
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/transfers?limit=10`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.transfers.map((e) => e.block_number)).toEqual([200, 150, 100]);
+});
+
 test("GET /api/v1/accounts/:ss58/transfers applies block_start/block_end bounds", async () => {
   mockRows.current = [];
   await req(`/api/v1/accounts/${SS58}/transfers?block_start=1&block_end=2`);
@@ -4360,8 +4522,13 @@ test("GET /api/v1/accounts/:ss58/transfers ignores an old 2-part cursor (pre-MET
   mockRows.current = [];
   await req(`/api/v1/accounts/${SS58}/transfers?cursor=8586300.0`);
   const text = queryText();
+  // The default (all-directions) path never emits SQL OFFSET at all -- both
+  // branches are always capped by LIMIT and the offset window is applied
+  // client-side after the merge (see the route's own comment) -- so an
+  // invalid cursor falling back to "page from the start" shows up as the
+  // absence of the cursor's WHERE clause, not the presence of OFFSET.
   expect(text).not.toContain("AND (observed_at, block_number, event_index) <");
-  expect(text).toContain("OFFSET");
+  expect(text).not.toContain("OFFSET");
 });
 
 test("GET /api/v1/accounts/:ss58/transfers returns a next_cursor when the page is full", async () => {
