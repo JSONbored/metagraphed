@@ -1187,10 +1187,7 @@ function AccountDelegationSection({ ss58 }: { ss58: string }) {
   const SUBTITLE =
     "Live stake-weight delegation graph — the child hotkeys this account delegates to, and the parent hotkeys delegating to it, per subnet with each edge's share.";
 
-  if (
-    (childrenResult.isPending && !childrenData) ||
-    (parentsResult.isPending && !parentsData)
-  ) {
+  if ((childrenResult.isPending && !childrenData) || (parentsResult.isPending && !parentsData)) {
     return (
       <AccountFeedSectionSkeleton id="delegation" title="Delegation graph" subtitle={SUBTITLE} />
     );
@@ -1214,9 +1211,7 @@ function AccountDelegationSection({ ss58 }: { ss58: string }) {
     return null;
   }
 
-  const subnetsSpanned = new Set(
-    [...childRows, ...parentRows].map((r) => r.netuid),
-  ).size;
+  const subnetsSpanned = new Set([...childRows, ...parentRows].map((r) => r.netuid)).size;
 
   return (
     <SectionAnchor

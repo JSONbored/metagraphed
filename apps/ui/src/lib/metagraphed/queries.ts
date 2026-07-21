@@ -2758,10 +2758,9 @@ function delegationGraphQuery(
   return queryOptions({
     queryKey: k(`account-${route}`, ss58),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<unknown>(
-        `/api/v1/accounts/${ss58PathSegment(ss58)}/${route}`,
-        { signal },
-      );
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/${route}`, {
+        signal,
+      });
       const d = isRecord(res.data) ? res.data : {};
       return {
         data: {
@@ -2819,10 +2818,9 @@ export const accountEntitiesQuery = (ss58: string) =>
   queryOptions({
     queryKey: k("account-entities", ss58),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<unknown>(
-        `/api/v1/accounts/${ss58PathSegment(ss58)}/entities`,
-        { signal },
-      );
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/entities`, {
+        signal,
+      });
       const d = isRecord(res.data) ? res.data : {};
       const labels = Array.isArray(d.labels)
         ? d.labels.flatMap((row) => {
@@ -2840,8 +2838,7 @@ export const accountEntitiesQuery = (ss58: string) =>
         data: {
           ss58: firstString(d.ss58) ?? ss58,
           labels,
-          ownership_tie_count:
-            firstFiniteNumber(d.ownership_tie_count) ?? ownershipTies.length,
+          ownership_tie_count: firstFiniteNumber(d.ownership_tie_count) ?? ownershipTies.length,
           ownership_ties: ownershipTies,
         } as AccountEntities,
         meta: res.meta,

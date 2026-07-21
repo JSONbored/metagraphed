@@ -49,7 +49,12 @@ describe("accountEntitiesQuery", () => {
       ],
       ownership_tie_count: 2,
       ownership_ties: [
-        { netuid: 5, role: "gained_ownership", block_number: 1000, observed_at: "2026-07-20T00:00:00.000Z" },
+        {
+          netuid: 5,
+          role: "gained_ownership",
+          block_number: 1000,
+          observed_at: "2026-07-20T00:00:00.000Z",
+        },
         { netuid: 6, role: "lost_ownership", block_number: 900, observed_at: null },
       ],
     });
@@ -69,7 +74,12 @@ describe("accountEntitiesQuery", () => {
     ]);
     expect(res.data.ownership_tie_count).toBe(2);
     expect(res.data.ownership_ties).toEqual([
-      { netuid: 5, role: "gained_ownership", block_number: 1000, observed_at: "2026-07-20T00:00:00.000Z" },
+      {
+        netuid: 5,
+        role: "gained_ownership",
+        block_number: 1000,
+        observed_at: "2026-07-20T00:00:00.000Z",
+      },
       { netuid: 6, role: "lost_ownership", block_number: 900, observed_at: null },
     ]);
   });

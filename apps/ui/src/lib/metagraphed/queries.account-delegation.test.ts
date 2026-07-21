@@ -55,9 +55,7 @@ describe("accountChildrenQuery", () => {
         subnets: [
           {
             netuid: 3,
-            entries: [
-              { child: BOB, proportion: "9223372036854775808", proportion_fraction: 0.5 },
-            ],
+            entries: [{ child: BOB, proportion: "9223372036854775808", proportion_fraction: 0.5 }],
           },
         ],
         queried_at: "2026-07-21T00:00:00.000Z",
