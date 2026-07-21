@@ -32,7 +32,7 @@ export const ACCOUNT_IDENTITY_INSERT_COLUMNS = [
 // same derivation account-identity-history.mjs's IDENTITY_FIELDS uses.
 export const IDENTITY_FIELDS = ACCOUNT_IDENTITY_INSERT_COLUMNS.slice(1, -1);
 
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -47,7 +47,9 @@ function toIso(ms) {
 // (url/github/image are links; discord is a contact handle; name/description/
 // additional are free text). Applied only when SERVING — the diff-tracking
 // hash (#4326) is computed over the raw staged values and is unaffected.
-export function sanitizeAccountIdentityFields(fields) {
+export function sanitizeAccountIdentityFields(
+  fields: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null | undefined {
   if (!fields || typeof fields !== "object") return fields;
   return {
     ...fields,
@@ -61,6 +63,14 @@ export function sanitizeAccountIdentityFields(fields) {
   };
 }
 
+export interface AccountIdentityResult {
+  schema_version: 1;
+  account: string;
+  has_identity: boolean;
+  captured_at: string | null;
+  [key: string]: unknown;
+}
+
 /**
  * Shape the latest-only account_identity row into the /identity artifact.
  * has_identity is false (and every field null) when the account has never
@@ -68,18 +78,29 @@ export function sanitizeAccountIdentityFields(fields) {
  * error (#4324/5.4, matching the capture pipeline's own "scoped to accounts
  * that actually have an identity set" coverage note).
  */
-export function buildAccountIdentity(row, account) {
+export function buildAccountIdentity(
+  row: Record<string, unknown> | null,
+  account: string,
+): AccountIdentityResult {
   const identity =
     row && typeof row === "object" ? sanitizeAccountIdentityFields(row) : null;
-  const out = { schema_version: 1, account, has_identity: Boolean(identity) };
+  const out: AccountIdentityResult = {
+    schema_version: 1,
+    account,
+    has_identity: Boolean(identity),
+    captured_at: null,
+  };
   for (const field of IDENTITY_FIELDS) {
     out[field] = identity ? (identity[field] ?? null) : null;
   }
-  out.captured_at = identity ? toIso(row.captured_at) : null;
+  out.captured_at = identity ? toIso(row?.captured_at) : null;
   return out;
 }
 
-export async function loadAccountIdentity(d1, account) {
+export async function loadAccountIdentity(
+  d1: (sql: string, params: unknown[]) => Promise<Record<string, unknown>[]>,
+  account: string,
+): Promise<AccountIdentityResult> {
   const rows = await d1(
     `SELECT ${ACCOUNT_IDENTITY_INSERT_COLUMNS.join(", ")} FROM account_identity WHERE account = ?`,
     [account],

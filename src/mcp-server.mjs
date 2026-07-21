@@ -646,7 +646,7 @@ import {
 } from "./subnet-ohlc.mjs";
 import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
 import { buildAccountPositionHistory } from "./account-position-history.mjs";
-import { buildAccountIdentity } from "./account-identity.mjs";
+import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";
 import { loadSubnetBurn } from "./subnet-burn.mjs";

@@ -336,7 +336,7 @@ import {
   ACCOUNT_IDENTITY_INSERT_COLUMNS,
   IDENTITY_FIELDS,
   buildAccountIdentity,
-} from "../src/account-identity.mjs";
+} from "../src/account-identity.ts";
 import {
   VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
   nominatorCountsByHotkey,

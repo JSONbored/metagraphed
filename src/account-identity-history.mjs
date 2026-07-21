@@ -18,7 +18,7 @@
 import {
   IDENTITY_FIELDS,
   sanitizeAccountIdentityFields,
-} from "./account-identity.mjs";
+} from "./account-identity.ts";
 import { encodeCursor, decodeCursor } from "./cursor.ts";
 import {
   clampLimit,

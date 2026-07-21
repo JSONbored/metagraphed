@@ -333,7 +333,7 @@ import {
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
 } from "./account-stake-moves.mjs";
-import { buildAccountIdentity } from "./account-identity.mjs";
+import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.mjs";
 import {
   buildCounterparties,

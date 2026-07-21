@@ -19,7 +19,7 @@ import { buildExtrinsicFeed } from "../src/extrinsics.mjs";
 import { buildAccountEvents } from "../src/account-events.mjs";
 import { buildSubnetMetagraph } from "../src/metagraph-neurons.mjs";
 import { buildSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
-import { buildAccountIdentity } from "../src/account-identity.mjs";
+import { buildAccountIdentity } from "../src/account-identity.ts";
 import { buildSubnetIdentityHistory } from "../src/subnet-identity-history.mjs";
 import { formatRpcUsage } from "../src/health-serving.mjs";
 import {

@@ -97,7 +97,7 @@ import {
 import { buildAccountPortfolio } from "../../src/account-portfolio.mjs";
 import { buildAccountPositions } from "../../src/account-nominator-positions.mjs";
 import { buildAccountPositionHistory } from "../../src/account-position-history.mjs";
-import { buildAccountIdentity } from "../../src/account-identity.mjs";
+import { buildAccountIdentity } from "../../src/account-identity.ts";
 import { buildAccountIdentityHistory } from "../../src/account-identity-history.mjs";
 import {
   isFinneySs58Address,

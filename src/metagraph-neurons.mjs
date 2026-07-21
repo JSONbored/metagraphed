@@ -5,7 +5,7 @@
 // Pure + exported for tests; the Worker handlers run the D1 or Postgres query
 // and call these builders.
 
-import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.mjs";
+import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.ts";
 
 // The columns the handlers SELECT for a neuron row.
 export const NEURON_COLUMNS =
