@@ -1,17 +1,21 @@
 import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.ts";
+import type { CacheProfile } from "./http.ts";
 
 const SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n]/;
 // Keep each stream pull bounded without fragmenting typical endpoint exports
 // into overly small chunks.
 const CSV_STREAM_ROWS_PER_CHUNK = 128;
 
-function normalizeColumns(rows, columns) {
+function normalizeColumns(
+  rows: unknown[],
+  columns: string[] | null | undefined,
+): string[] {
   if (Array.isArray(columns) && columns.length > 0) {
     return columns.map((column) => String(column));
   }
 
-  const seen = new Set();
-  const names = [];
+  const seen = new Set<string>();
+  const names: string[] = [];
   for (const row of rows) {
     if (!row || typeof row !== "object" || Array.isArray(row)) {
       continue;
@@ -26,7 +30,7 @@ function normalizeColumns(rows, columns) {
   return names;
 }
 
-function stringifyCell(value) {
+function stringifyCell(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
   }
@@ -43,7 +47,7 @@ function stringifyCell(value) {
   return String(value);
 }
 
-function escapeCell(value) {
+function escapeCell(value: unknown): string {
   const text = stringifyCell(value);
   const safeText = SPREADSHEET_FORMULA_PREFIX.test(text) ? `'${text}` : text;
   if (!/[",\r\n]/.test(safeText)) {
@@ -52,7 +56,7 @@ function escapeCell(value) {
   return `"${safeText.replaceAll('"', '""')}"`;
 }
 
-function csvFilename(filename) {
+function csvFilename(filename: string | null | undefined): string {
   const stem =
     String(filename || "export")
       .replace(/\.csv$/i, "")
@@ -61,7 +65,10 @@ function csvFilename(filename) {
   return `${stem}.csv`;
 }
 
-export function rowsToCsv(rows, columns) {
+export function rowsToCsv(
+  rows: unknown[],
+  columns: string[] | null | undefined,
+): string {
   const safeRows = Array.isArray(rows) ? rows : [];
   const header = normalizeColumns(safeRows, columns);
   if (header.length === 0) {
@@ -75,25 +82,28 @@ export function rowsToCsv(rows, columns) {
   return lines.join("\r\n");
 }
 
-function csvLineForRow(row, header) {
+function csvLineForRow(row: unknown, header: string[]): string {
   return header
     .map((column) =>
       escapeCell(
         row && typeof row === "object" && !Array.isArray(row)
-          ? row[column]
+          ? (row as Record<string, unknown>)[column]
           : undefined,
       ),
     )
     .join(",");
 }
 
-export function csvBodyStream(rows, columns) {
+export function csvBodyStream(
+  rows: unknown[],
+  columns: string[] | null | undefined,
+): ReadableStream {
   const safeRows = Array.isArray(rows) ? rows : [];
   const header = normalizeColumns(safeRows, columns);
   const encoder = new TextEncoder();
 
   if (header.length === 0) {
-    return new globalThis.ReadableStream({
+    return new ReadableStream({
       start(controller) {
         controller.close();
       },
@@ -104,7 +114,7 @@ export function csvBodyStream(rows, columns) {
   let index = 0;
   let sentHeader = false;
 
-  return new globalThis.ReadableStream({
+  return new ReadableStream({
     pull(controller) {
       if (!sentHeader) {
         sentHeader = true;
@@ -141,7 +151,7 @@ export function csvBodyStream(rows, columns) {
   });
 }
 
-export function csvRequested(url, request) {
+export function csvRequested(url: URL, request: Request): boolean {
   const format = url.searchParams.get("format")?.toLowerCase();
   if (format === "csv") {
     return true;
@@ -152,7 +162,7 @@ export function csvRequested(url, request) {
   return acceptsCsv(request.headers.get("accept") || "");
 }
 
-function acceptsCsv(header) {
+function acceptsCsv(header: string): boolean {
   let csvQuality = 0;
   let jsonQuality = 0;
 
@@ -170,7 +180,7 @@ function acceptsCsv(header) {
   return csvQuality > 0 && csvQuality >= jsonQuality;
 }
 
-function acceptQuality(params) {
+function acceptQuality(params: string[]): number {
   const qParam = params.find((param) => param.startsWith("q="));
   if (!qParam) {
     return 1;
@@ -186,14 +196,14 @@ function acceptQuality(params) {
 }
 
 export async function csvResponse(
-  rows,
-  filename,
-  cacheProfile,
-  request = null,
-  columns = undefined,
-  extraHeaders = {},
-  options = {},
-) {
+  rows: unknown[],
+  filename: string | null | undefined,
+  cacheProfile: CacheProfile,
+  request: Request | null = null,
+  columns: string[] | undefined = undefined,
+  extraHeaders: Record<string, string> = {},
+  options: { stream?: boolean } = {},
+): Promise<Response> {
   const headers = apiHeaders(cacheProfile);
   headers.set("content-type", "text/csv; charset=utf-8");
   headers.set(

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { latestPointer } from "../workers/storage.mjs";
+import { latestPointer } from "../workers/storage.ts";
 
 test("latestPointer memoizes within the TTL — one KV read for repeated same-env calls (#367)", async () => {
   let gets = 0;

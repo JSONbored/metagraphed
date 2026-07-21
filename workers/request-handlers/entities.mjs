@@ -34,7 +34,7 @@ import {
   publishedAt,
 } from "../responses.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
-import { csvRequested, csvResponse } from "../csv.mjs";
+import { csvRequested, csvResponse } from "../csv.ts";
 import {
   analyticsQueryError,
   markD1FallbackResponse,
@@ -228,7 +228,7 @@ import {
 } from "../../src/subnet-ohlc.mjs";
 import { resolveLiveEconomics } from "../../src/health-serving.mjs";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
-import { readArtifact, readHealthKv } from "../storage.mjs";
+import { readArtifact, readHealthKv } from "../storage.ts";
 import { buildAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
   buildValidatorNominators,

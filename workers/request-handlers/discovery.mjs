@@ -1,6 +1,6 @@
 import { CACHE_SECONDS, PRIMARY_DOMAIN } from "../../src/contracts.mjs";
 import { errorResponse, ifNoneMatchSatisfied, weakEtag } from "../http.ts";
-import { readArtifact, readHealthKv } from "../storage.mjs";
+import { readArtifact, readHealthKv } from "../storage.ts";
 import { contractVersion, publishedAt } from "../responses.ts";
 import { KV_HEALTH_CURRENT } from "../../src/health-prober.mjs";
 import { subnetBadgeStatus } from "../../src/health-serving.mjs";

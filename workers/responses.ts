@@ -6,7 +6,7 @@
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.ts";
 import type { CacheProfile } from "./http.ts";
-import { latestPointer } from "./storage.mjs";
+import { latestPointer } from "./storage.ts";
 
 export function contractVersion(env: Env): string {
   return env.METAGRAPH_CONTRACT_VERSION || CONTRACT_VERSION;

@@ -5,7 +5,7 @@ import { describe, test } from "vitest";
 import { buildStatParts, handleOgImage } from "../src/og-image.mjs";
 
 // A fake readR2Object dep: records the artifact path it was called with and
-// returns a configurable result, mirroring workers/storage.mjs's readR2Object
+// returns a configurable result, mirroring workers/storage.ts's readR2Object
 // contract ({ ok, object } on a hit).
 function fakeReadR2Object({
   ok = true,

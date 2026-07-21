@@ -12,9 +12,9 @@
 
 import { UPTIME_WINDOWS } from "../config.mjs";
 import { tryPostgresTier } from "../postgres-tier.ts";
-import { csvRequested, csvResponse } from "../csv.mjs";
+import { csvRequested, csvResponse } from "../csv.ts";
 import { errorResponse } from "../http.ts";
-import { readArtifact } from "../storage.mjs";
+import { readArtifact } from "../storage.ts";
 import { contractVersion, envelopeResponse } from "../responses.ts";
 import {
   analyticsMeta,

@@ -30,7 +30,7 @@ import {
 } from "../config.mjs";
 import { parseLimitParam } from "../request-params.ts";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
-import { csvRequested, csvResponse } from "../csv.mjs";
+import { csvRequested, csvResponse } from "../csv.ts";
 import {
   contractVersion,
   envelopeResponse,

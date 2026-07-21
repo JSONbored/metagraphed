@@ -6,7 +6,7 @@ import {
   readR2,
   readR2Object,
   latestR2Key,
-} from "../workers/storage.mjs";
+} from "../workers/storage.ts";
 
 // A git/dual-tier artifact (not in any R2-only pattern) serves ASSETS-first,
 // then falls back to R2. These tests drive that fallback chain and the
@@ -340,7 +340,7 @@ test("readArtifact serves R2-first for an R2-preferred dual artifact (R2 hit)", 
     const actual = await importOriginal();
     return { ...actual, isR2PreferredDualArtifactPath: () => true };
   });
-  const { readArtifact: read } = await import("../workers/storage.mjs");
+  const { readArtifact: read } = await import("../workers/storage.ts");
   const env = {
     ASSETS: assetsHit({ from: "assets" }),
     METAGRAPH_ARCHIVE: {
@@ -363,7 +363,7 @@ test("readArtifact falls back to the committed baseline when R2 is cold for an R
     const actual = await importOriginal();
     return { ...actual, isR2PreferredDualArtifactPath: () => true };
   });
-  const { readArtifact: read } = await import("../workers/storage.mjs");
+  const { readArtifact: read } = await import("../workers/storage.ts");
   const env = {
     ASSETS: assetsHit({ from: "committed-baseline" }),
     METAGRAPH_ARCHIVE: {
@@ -386,7 +386,7 @@ test("readArtifact returns the non-404 R2 error over the asset 404 for an R2-pre
     const actual = await importOriginal();
     return { ...actual, isR2PreferredDualArtifactPath: () => true };
   });
-  const { readArtifact: read } = await import("../workers/storage.mjs");
+  const { readArtifact: read } = await import("../workers/storage.ts");
   const env = {
     METAGRAPH_R2_TIMEOUT_MS: "5",
     ASSETS: assetsMiss(), // asset → 404

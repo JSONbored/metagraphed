@@ -6,7 +6,7 @@ import {
   specifiedRules,
   validate,
 } from "graphql";
-import { readArtifact, readHealthKv } from "../workers/storage.mjs";
+import { readArtifact, readHealthKv } from "../workers/storage.ts";
 // #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
 // own loader unchanged (same artifact read, filter, sort, and page logic REST
 // and MCP already use) -- not a reimplementation.

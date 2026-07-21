@@ -15,7 +15,7 @@ import {
   paginationLinkHeader,
   validateListQueryParams,
 } from "./list-query.mjs";
-import { csvRequested, csvResponse } from "./csv.mjs";
+import { csvRequested, csvResponse } from "./csv.ts";
 import {
   apiHeaders,
   errorResponse,
@@ -30,7 +30,7 @@ import {
   readArtifact,
   readHealthKv,
   readR2Object,
-} from "./storage.mjs";
+} from "./storage.ts";
 import {
   contractStaleness,
   contractVersion,

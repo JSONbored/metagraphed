@@ -27,7 +27,7 @@
 // dispatches them, and re-exports the test-facing helpers from itself.
 
 import { apiHeaders, errorResponse } from "../http.ts";
-import { readArtifact, readHealthKv } from "../storage.mjs";
+import { readArtifact, readHealthKv } from "../storage.ts";
 import {
   contractVersion,
   envelopeResponse,

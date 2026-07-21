@@ -14,9 +14,41 @@ import { METAGRAPH_LATEST_KEY } from "./config.mjs";
 const DEFAULT_R2_TIMEOUT_MS = 5000;
 const DEFAULT_D1_TIMEOUT_MS = 5000;
 
+export interface StorageReadOk {
+  ok: true;
+  data: unknown;
+  source: "static-assets" | "r2";
+  storage_tier: string;
+}
+export interface StorageReadError {
+  ok: false;
+  status: number;
+  code: string;
+  message: string;
+}
+export type StorageReadResult = StorageReadOk | StorageReadError;
+
+export interface R2ObjectReadOk {
+  ok: true;
+  object: R2ObjectBody;
+  source: "r2";
+  storage_tier: string;
+}
+export type R2ObjectReadResult = R2ObjectReadOk | StorageReadError;
+
+export interface LatestPointer {
+  published_at?: string;
+  latest_prefix?: string;
+}
+
 // Structured request logging on non-happy paths (R2 timeout, static fallback) so
 // it does not spam logs. Disabled with METAGRAPH_DISABLE_REQUEST_LOGS=true.
-export function logEvent(env, level, event, fields = {}) {
+export function logEvent(
+  env: Env,
+  level: string,
+  event: string,
+  fields: Record<string, unknown> = {},
+): void {
   if (env.METAGRAPH_DISABLE_REQUEST_LOGS === "true") {
     return;
   }
@@ -27,7 +59,7 @@ export function logEvent(env, level, event, fields = {}) {
   }
 }
 
-export function r2TimeoutMs(env) {
+export function r2TimeoutMs(env: Env): number {
   const raw = Number(env.METAGRAPH_R2_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_R2_TIMEOUT_MS;
 }
@@ -36,7 +68,7 @@ export function r2TimeoutMs(env) {
 // time-series. Bound them so a slow/degraded query degrades to the route's normal
 // empty-result path instead of holding the isolate until the CPU limit kills it.
 // Tunable via METAGRAPH_D1_TIMEOUT_MS.
-export function d1TimeoutMs(env) {
+export function d1TimeoutMs(env: Env): number {
   const raw = Number(env.METAGRAPH_D1_TIMEOUT_MS);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_D1_TIMEOUT_MS;
 }
@@ -44,9 +76,12 @@ export function d1TimeoutMs(env) {
 // R2's get() takes no AbortSignal, so bound it with a race: a slow/degraded
 // bucket yields a controlled 504 (and static fallback where allowed) instead of
 // hanging the request until the platform wall-clock limit.
-export async function withTimeout(promise, ms) {
-  let timer;
-  const timeout = new Promise((_, reject) => {
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+): Promise<T> {
+  let timer!: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error("timeout")), ms);
   });
   try {
@@ -56,7 +91,10 @@ export async function withTimeout(promise, ms) {
   }
 }
 
-export async function readArtifact(env, artifactPath) {
+export async function readArtifact(
+  env: Env,
+  artifactPath: string,
+): Promise<StorageReadResult> {
   const storageTier = artifactStorageTierForPath(artifactPath);
 
   if (storageTier === ARTIFACT_STORAGE_TIERS.r2) {
@@ -100,7 +138,11 @@ export async function readArtifact(env, artifactPath) {
   return asset.status !== 404 ? asset : r2;
 }
 
-export async function readAsset(env, artifactPath, storageTier) {
+export async function readAsset(
+  env: Env,
+  artifactPath: string,
+  storageTier: string,
+): Promise<StorageReadResult> {
   if (!env.ASSETS?.fetch) {
     return {
       ok: false,
@@ -131,7 +173,11 @@ export async function readAsset(env, artifactPath, storageTier) {
   };
 }
 
-export async function readR2(env, artifactPath, storageTier) {
+export async function readR2(
+  env: Env,
+  artifactPath: string,
+  storageTier: string,
+): Promise<StorageReadResult> {
   const result = await readR2Object(env, artifactPath, storageTier);
   if (!result.ok) {
     return result;
@@ -148,7 +194,11 @@ export async function readR2(env, artifactPath, storageTier) {
 // but returns the raw R2Object instead of parsing it as JSON -- for binary
 // artifacts (the og-image.png card, see src/og-image.mjs) that readR2's
 // .json() would throw on. readR2 above is implemented in terms of this.
-export async function readR2Object(env, artifactPath, storageTier) {
+export async function readR2Object(
+  env: Env,
+  artifactPath: string,
+  storageTier: string,
+): Promise<R2ObjectReadResult> {
   if (!env.METAGRAPH_ARCHIVE?.get) {
     return {
       ok: false,
@@ -236,7 +286,10 @@ const STABLE_LATEST_ARTIFACT_PATTERNS = [
   /^\/metagraph\/fixtures\/(?!_capture-report\.json$)[A-Za-z0-9._:-]+\.json$/,
 ];
 
-export async function latestR2Key(artifactPath, env) {
+export async function latestR2Key(
+  artifactPath: string,
+  env: Env,
+): Promise<string> {
   const relativePath = artifactPath.replace(/^\/metagraph\//, "");
   if (
     STABLE_LATEST_ARTIFACT_PATTERNS.some((pattern) =>
@@ -260,9 +313,13 @@ export async function latestR2Key(artifactPath, env) {
 // the meantime, so a request served from a just-stale pointer never 404s. Keyed
 // on the env object so tests (and any multi-binding caller) never cross-read.
 const POINTER_MEMO_TTL_MS = 60_000;
-let pointerMemo = { env: null, value: null, expiresAt: 0 };
+let pointerMemo: {
+  env: Env | null;
+  value: LatestPointer | null;
+  expiresAt: number;
+} = { env: null, value: null, expiresAt: 0 };
 
-export async function latestPointer(env) {
+export async function latestPointer(env: Env): Promise<LatestPointer | null> {
   if (!env.METAGRAPH_CONTROL?.get) {
     return null;
   }
@@ -271,9 +328,10 @@ export async function latestPointer(env) {
     return pointerMemo.value;
   }
   try {
-    const value = await env.METAGRAPH_CONTROL.get(METAGRAPH_LATEST_KEY, {
-      type: "json",
-    });
+    const value = await env.METAGRAPH_CONTROL.get<LatestPointer>(
+      METAGRAPH_LATEST_KEY,
+      { type: "json" },
+    );
     pointerMemo = { env, value, expiresAt: now + POINTER_MEMO_TTL_MS };
     return value;
   } catch {
@@ -284,7 +342,7 @@ export async function latestPointer(env) {
 // Read a live health snapshot written by the cron prober (KV health:* keys).
 // Returns null when KV is unbound or the key is cold so callers fall back to the
 // static artifact.
-export async function readHealthKv(env, key) {
+export async function readHealthKv(env: Env, key: string): Promise<unknown> {
   if (!env.METAGRAPH_CONTROL?.get) {
     return null;
   }
