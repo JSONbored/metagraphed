@@ -902,6 +902,596 @@
       "public_safe": true,
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "url": "https://api.chutes.ai/audit/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-data-artifact-api-chutes-ai-3",
+      "kind": "data-artifact",
+      "name": "Chutes per-chute miner-means index",
+      "notes": "Live-verified 2026-07-21: HTTP 200 text/html — an HTML outlier-index page (not JSON) of per-chute mean scores across miners.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/chutes/miner_means"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai",
+      "kind": "subnet-api",
+      "name": "Chutes vLLM config guesser",
+      "notes": "Required query param model (Hugging Face model id). Live-verified 2026-07-21: HTTP 200 application/json with ?model=gpt2.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/guess/vllm_config?model=gpt2"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-data-artifact-api-chutes-ai-4",
+      "kind": "data-artifact",
+      "name": "Chutes recent invocation exports",
+      "notes": "Optional hotkey/limit query params. Live-verified 2026-07-21: HTTP 500 text/plain (live-erroring upstream; registered so the probe reports the real status, per the Targon precedent in #7077).",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/invocations/exports/recent"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-2",
+      "kind": "subnet-api",
+      "name": "Chutes HF repo info",
+      "notes": "Required query param repo_id (owner/repo of a chutes-hosted model). Live-verified 2026-07-21: HTTP 404 application/json for a non-hosted repo_id — endpoint live, needs a chutes-hosted model.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/misc/hf_repo_info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-data-artifact-api-chutes-ai-5",
+      "kind": "data-artifact",
+      "name": "Chutes audit download",
+      "notes": "Required query param path (an audit entry path from the registered audit-log index). Live-verified 2026-07-21: HTTP 404 application/json with a placeholder path — endpoint live.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/audit/download"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-3",
+      "kind": "subnet-api",
+      "name": "Chutes generic URL proxy",
+      "notes": "Required query param url; optional stream. Raw outbound-fetch passthrough flagged SSRF-shaped in #7077. Live-verified 2026-07-21: HTTP 403 for an arbitrary public URL — upstream restricts targets.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/misc/proxy"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-data-artifact-api-chutes-ai-6",
+      "kind": "data-artifact",
+      "name": "Chutes per-chute miner-means detail",
+      "notes": "Path-param template (chute_id) — per-chute detail of the miner-means index; no fixed callable URL.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/chutes/miner_means/%7Bchute_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-data-artifact-api-chutes-ai-7",
+      "kind": "data-artifact",
+      "name": "Chutes per-chute miner-means detail (typed)",
+      "notes": "Path-param template (chute_id, ext) — typed export of the per-chute miner-means detail.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/chutes/miner_means/%7Bchute_id%7D.%7Bext%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-data-artifact-api-chutes-ai-8",
+      "kind": "data-artifact",
+      "name": "Chutes historical invocation exports",
+      "notes": "Path-param template — historical invocation export by date/hour; complements the recent-exports endpoint.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/invocations/exports/%7Byear%7D/%7Bmonth%7D/%7Bday%7D/%7Bhour_format%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-4",
+      "kind": "subnet-api",
+      "name": "Chutes per-hotkey unique-chute history",
+      "notes": "Path-param template (hotkey) — per-hotkey unique-chute history.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/unique_chute_history/%7Bhotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-data-artifact-api-chutes-ai-9",
+      "kind": "data-artifact",
+      "name": "Chutes logo asset",
+      "notes": "Path-param template — logo image asset by id; cosmetic.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/logos/%7Blogo_id%7D.%7Bextension%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077).",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-5",
+      "kind": "subnet-api",
+      "name": "Chutes chute detail",
+      "notes": "Auth-gated per the OpenAPI schema (#7077); path-param template.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/chutes/%7Bchute_id_or_name%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077).",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-6",
+      "kind": "subnet-api",
+      "name": "Chutes chute TEE evidence",
+      "notes": "Auth-gated per the OpenAPI schema (#7077); path-param template.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/chutes/%7Bchute_id_or_name%7D/evidence"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077). Miner routes also accept Bittensor hotkey-signature headers (X-Chutes-Hotkey/X-Chutes-Signature/X-Chutes-Nonce); live-verified 2026-07-21: unauthenticated GET /miner/chutes/ and /miner/inventory return 401 {\"detail\":\"Invalid BT Auth.\"}.",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-7",
+      "kind": "subnet-api",
+      "name": "Chutes miner fleet: chutes",
+      "notes": "Bearer-scoped to the calling hotkey. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Invalid BT Auth.\"} unauthenticated.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/chutes"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077). Miner routes also accept Bittensor hotkey-signature headers (X-Chutes-Hotkey/X-Chutes-Signature/X-Chutes-Nonce); live-verified 2026-07-21: unauthenticated GET /miner/chutes/ and /miner/inventory return 401 {\"detail\":\"Invalid BT Auth.\"}.",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-8",
+      "kind": "subnet-api",
+      "name": "Chutes miner fleet: nodes",
+      "notes": "Bearer-scoped to the calling hotkey; auth-gated per the OpenAPI schema (#7077).",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/nodes"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077). Miner routes also accept Bittensor hotkey-signature headers (X-Chutes-Hotkey/X-Chutes-Signature/X-Chutes-Nonce); live-verified 2026-07-21: unauthenticated GET /miner/chutes/ and /miner/inventory return 401 {\"detail\":\"Invalid BT Auth.\"}.",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-9",
+      "kind": "subnet-api",
+      "name": "Chutes miner fleet: servers",
+      "notes": "Bearer-scoped to the calling hotkey; auth-gated per the OpenAPI schema (#7077).",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/servers"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077). Miner routes also accept Bittensor hotkey-signature headers (X-Chutes-Hotkey/X-Chutes-Signature/X-Chutes-Nonce); live-verified 2026-07-21: unauthenticated GET /miner/chutes/ and /miner/inventory return 401 {\"detail\":\"Invalid BT Auth.\"}.",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-10",
+      "kind": "subnet-api",
+      "name": "Chutes miner fleet: instances",
+      "notes": "Bearer-scoped to the calling hotkey; auth-gated per the OpenAPI schema (#7077).",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/instances"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077). Miner routes also accept Bittensor hotkey-signature headers (X-Chutes-Hotkey/X-Chutes-Signature/X-Chutes-Nonce); live-verified 2026-07-21: unauthenticated GET /miner/chutes/ and /miner/inventory return 401 {\"detail\":\"Invalid BT Auth.\"}.",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-11",
+      "kind": "subnet-api",
+      "name": "Chutes miner fleet: jobs",
+      "notes": "Bearer-scoped to the calling hotkey; auth-gated per the OpenAPI schema (#7077).",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/jobs"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077). Miner routes also accept Bittensor hotkey-signature headers (X-Chutes-Hotkey/X-Chutes-Signature/X-Chutes-Nonce); live-verified 2026-07-21: unauthenticated GET /miner/chutes/ and /miner/inventory return 401 {\"detail\":\"Invalid BT Auth.\"}.",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-12",
+      "kind": "subnet-api",
+      "name": "Chutes miner inventory",
+      "notes": "Bearer-scoped to the calling hotkey. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Invalid BT Auth.\"} unauthenticated.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/inventory"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077). Miner routes also accept Bittensor hotkey-signature headers (X-Chutes-Hotkey/X-Chutes-Signature/X-Chutes-Nonce); live-verified 2026-07-21: unauthenticated GET /miner/chutes/ and /miner/inventory return 401 {\"detail\":\"Invalid BT Auth.\"}.",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-13",
+      "kind": "subnet-api",
+      "name": "Chutes miner active instances",
+      "notes": "Bearer-scoped to the calling hotkey; auth-gated per the OpenAPI schema (#7077).",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/active_instances"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077). Miner routes also accept Bittensor hotkey-signature headers (X-Chutes-Hotkey/X-Chutes-Signature/X-Chutes-Nonce); live-verified 2026-07-21: unauthenticated GET /miner/chutes/ and /miner/inventory return 401 {\"detail\":\"Invalid BT Auth.\"}.",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-14",
+      "kind": "subnet-api",
+      "name": "Chutes miner thrash cooldowns",
+      "notes": "Bearer-scoped to the calling hotkey; auth-gated per the OpenAPI schema (#7077).",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/thrash_cooldowns"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "The OpenAPI schema declares no security scheme for this path but requires the Authorization header parameter directly (required: true) — functionally auth-gated (#7077). Live-verified 2026-07-21: unauthenticated GET returns 400 missing-Authorization error.",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-15",
+      "kind": "subnet-api",
+      "name": "Chutes miner instance logs",
+      "notes": "Schema declares no security but requires an Authorization header parameter directly — functionally auth-gated (#7077). Live-verified 2026-07-21: HTTP 400 missing-Authorization error unauthenticated.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/instance_logs"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077).",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-16",
+      "kind": "subnet-api",
+      "name": "Chutes user balance",
+      "notes": "Auth-gated account data per the OpenAPI schema (#7077); path-param template.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/users/%7Buser_id_or_username%7D/balance"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077).",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-17",
+      "kind": "subnet-api",
+      "name": "Chutes user usage",
+      "notes": "Auth-gated account data per the OpenAPI schema (#7077); path-param template.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/users/%7Buser_id%7D/usage"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077).",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-18",
+      "kind": "subnet-api",
+      "name": "Chutes instance TEE evidence",
+      "notes": "Auth-gated per the OpenAPI schema (#7077); path-param template.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/instances/%7Binstance_id%7D/evidence"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077).",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-19",
+      "kind": "subnet-api",
+      "name": "Chutes instance logs",
+      "notes": "Auth-gated per the OpenAPI schema (#7077); path-param template.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/instances/%7Binstance_id%7D/logs"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077).",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-20",
+      "kind": "subnet-api",
+      "name": "Chutes server detail",
+      "notes": "Auth-gated hardware detail per the OpenAPI schema (#7077); path-param template.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/servers/%7Bserver_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077). Live-verified 2026-07-21: unauthenticated GET returns 401 {\"detail\":\"Invalid nonce!\"} (hotkey-signature nonce check).",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-21",
+      "kind": "subnet-api",
+      "name": "Chutes server maintenance policy",
+      "notes": "Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Invalid nonce!\"} unauthenticated.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/servers/maintenance/policy"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "api-key",
+        "scopes_note": "Derived from the API's own OpenAPI securitySchemes (APIKeyHeader: apiKey in the Authorization header), declared per-operation (#7077).",
+        "value_format": "<api-key>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api-api-chutes-ai-22",
+      "kind": "subnet-api",
+      "name": "Chutes job detail",
+      "notes": "Auth-gated async-job detail per the OpenAPI schema (#7077); path-param template.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/jobs/%7Bjob_id%7D"
     }
   ],
   "website_url": "https://chutes.ai/"
