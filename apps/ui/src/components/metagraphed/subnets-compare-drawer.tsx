@@ -7,6 +7,9 @@ import { compareQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { CompareSubnet, HealthState } from "@/lib/metagraphed/types";
 import { HealthPill, CurationChip } from "@jsonbored/ui-kit";
+import { CompareOverlayChart } from "@/components/metagraphed/compare-overlay-chart";
+
+type CompareView = "grid" | "chart";
 
 /**
  * Floating bottom dock + expandable side-by-side compare drawer for selected
@@ -16,6 +19,7 @@ import { HealthPill, CurationChip } from "@jsonbored/ui-kit";
 export function SubnetsCompareDrawer() {
   const { selected, max, remove, clear } = useCompareSelection();
   const [expanded, setExpanded] = useState(false);
+  const [view, setView] = useState<CompareView>("grid");
 
   if (selected.length === 0) return null;
 
@@ -80,8 +84,42 @@ export function SubnetsCompareDrawer() {
             </div>
           </div>
 
-          {/* Expanded side-by-side */}
-          {expanded && selected.length >= 2 ? <CompareGrid netuids={selected} /> : null}
+          {/* Expanded: a metrics grid (CompareGrid) and a multi-subnet history
+              overlay chart (#6885), toggled by a view tablist. */}
+          {expanded && selected.length >= 2 ? (
+            <div className="border-t border-border">
+              <div className="flex items-center px-3 py-2">
+                <div
+                  role="tablist"
+                  aria-label="Compare view"
+                  className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+                >
+                  {(["grid", "chart"] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      role="tab"
+                      aria-selected={v === view}
+                      onClick={() => setView(v)}
+                      className={classNames(
+                        "px-3 py-1 text-[11px] font-mono uppercase tracking-wider rounded transition-colors",
+                        v === view
+                          ? "bg-ink-strong text-paper"
+                          : "text-ink-muted hover:text-ink-strong",
+                      )}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {view === "grid" ? (
+                <CompareGrid netuids={selected} />
+              ) : (
+                <CompareOverlayChart netuids={selected} />
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
