@@ -230,6 +230,94 @@
       },
       "source_urls": ["https://www.sundaebar.ai/llms.txt"],
       "url": "https://www.sundaebar.ai/api/skill-creators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-121-sundae-bar-product-detail",
+      "kind": "subnet-api",
+      "name": "Sundae Bar product detail",
+      "notes": "Public no-auth GET /api/products/{slug}/public on www.sundaebar.ai returning full public detail for one listing by slug. Explicitly documented in the site's llms.txt as Public, read-only, and unauthenticated. Path-parameterized template (percent-encoded {slug} for URI-format compliance). probe.enabled:false because there is no single fixed slug to auto-probe. Live-verified 2026-07-21: GET /api/products/youtube-automation/public -> 200 JSON.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": ["https://www.sundaebar.ai/llms.txt"],
+      "url": "https://www.sundaebar.ai/api/products/%7Bslug%7D/public"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-121-sundae-bar-rating-aggregate",
+      "kind": "subnet-api",
+      "name": "Sundae Bar rating aggregate",
+      "notes": "Public no-auth GET /api/ratings/{productId} on www.sundaebar.ai returning rating aggregate for one listing (productId is the listing id, not slug). Documented in llms.txt as public/unauthenticated. Path-parameterized template; probe.enabled:false. Live-verified 2026-07-21: GET /api/ratings/3584b3c6-b0fe-4d56-b428-26d592271abd -> 200 JSON.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": ["https://www.sundaebar.ai/llms.txt"],
+      "url": "https://www.sundaebar.ai/api/ratings/%7BproductId%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-121-sundae-bar-rating-reviews",
+      "kind": "subnet-api",
+      "name": "Sundae Bar rating reviews",
+      "notes": "Public no-auth GET /api/ratings/{productId}/reviews on www.sundaebar.ai returning public reviews for one listing. Documented in llms.txt as public/unauthenticated. Path-parameterized template; probe.enabled:false. Live-verified 2026-07-21: GET /api/ratings/3584b3c6-b0fe-4d56-b428-26d592271abd/reviews -> 200 JSON.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": ["https://www.sundaebar.ai/llms.txt"],
+      "url": "https://www.sundaebar.ai/api/ratings/%7BproductId%7D/reviews"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-121-sundae-bar-skill-download",
+      "kind": "subnet-api",
+      "name": "Sundae Bar skill download manifest",
+      "notes": "Public no-auth GET /api/skills/{slug}/download on www.sundaebar.ai returning skill file manifest with download URLs (optional ?format=download returns a zip). Documented in llms.txt as public/unauthenticated. Path-parameterized template; probe.enabled:false. Live-verified 2026-07-21: GET /api/skills/youtube-automation/download -> 200 JSON.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": ["https://www.sundaebar.ai/llms.txt"],
+      "url": "https://www.sundaebar.ai/api/skills/%7Bslug%7D/download"
     }
   ],
   "website_url": "https://www.sundaebar.ai/"
