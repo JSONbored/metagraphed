@@ -258,6 +258,8 @@ import type {
   SurfaceUptime,
   SurfaceUptimeDay,
   Uptime,
+  Domain,
+  DomainConcentration,
 } from "./types";
 
 const STALE_SHORT = 30_000;
@@ -7812,6 +7814,72 @@ export const providersQuery = () =>
     queryFn: async ({ signal }) => {
       const res = await fetchList<unknown>("/api/v1/providers", "providers", undefined, signal);
       return { ...res, data: res.data.map(normalizeProviderListItem) } as ApiResult<Provider[]>;
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeDomainConcentration(value: unknown): DomainConcentration | undefined {
+  if (!isRecord(value)) return undefined;
+  return {
+    holders: optionalNumber(value.holders),
+    gini: optionalNumber(value.gini),
+    hhi: optionalNumber(value.hhi),
+    hhi_normalized: optionalNumber(value.hhi_normalized),
+    nakamoto_coefficient: optionalNumber(value.nakamoto_coefficient),
+    top_1pct_share: optionalNumber(value.top_1pct_share),
+    top_5pct_share: optionalNumber(value.top_5pct_share),
+    top_10pct_share: optionalNumber(value.top_10pct_share),
+    top_20pct_share: optionalNumber(value.top_20pct_share),
+    entropy: optionalNumber(value.entropy),
+    entropy_normalized: optionalNumber(value.entropy_normalized),
+  };
+}
+
+/**
+ * Normalize one capability-domain rollup (a `/api/v1/domains` list entry or a
+ * `/api/v1/domains/{tag}/summary` object — same shape). Returns null when the
+ * payload has no `domain` tag so a malformed row is dropped rather than rendered.
+ */
+export function normalizeDomain(raw: unknown): Domain | null {
+  if (!isRecord(raw)) return null;
+  const domain = optionalString(raw.domain);
+  if (!domain) return null;
+  const netuids = Array.isArray(raw.netuids)
+    ? raw.netuids.filter((n): n is number => typeof n === "number" && Number.isFinite(n))
+    : [];
+  return {
+    domain,
+    subnet_count: optionalNumber(raw.subnet_count),
+    netuids,
+    total_stake_tao: optionalNumber(raw.total_stake_tao),
+    total_emission_share: optionalNumber(raw.total_emission_share),
+    emission_concentration: normalizeDomainConcentration(raw.emission_concentration),
+  };
+}
+
+/** The 14-tag capability-domain rollup: GET /api/v1/domains → data.domains[]. */
+export const domainsQuery = () =>
+  queryOptions({
+    queryKey: k("domains"),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/domains", "domains", undefined, signal);
+      return {
+        ...res,
+        data: res.data.map(normalizeDomain).filter((d): d is Domain => d !== null),
+      } as ApiResult<Domain[]>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Single-domain rollup: GET /api/v1/domains/{tag}/summary. */
+export const domainSummaryQuery = (tag: string) =>
+  queryOptions({
+    queryKey: k("domain-summary", tag),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/domains/${encodeURIComponent(tag)}/summary`, {
+        signal,
+      });
+      return { ...res, data: normalizeDomain(res.data) } as ApiResult<Domain | null>;
     },
     staleTime: STALE_MED,
   });

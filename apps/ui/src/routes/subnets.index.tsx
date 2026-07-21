@@ -129,9 +129,17 @@ export const Route = createFileRoute("/subnets/")({
 type SubnetsSearch = z.infer<typeof tableSearchSchema>;
 
 /** Server-backed params only — sort/curation/health filters are client-side. */
-function subnetsQueryParams(search: SubnetsSearch): { q?: string; limit: number } {
+function subnetsQueryParams(search: SubnetsSearch): {
+  q?: string;
+  domain?: string;
+  limit: number;
+} {
   return {
     q: search.q || undefined,
+    // #6996: GET /api/v1/subnets applies `?domain=` server-side, so a domain
+    // link from the /domains rollup narrows the list (and its CSV export) to
+    // that domain's member subnets without a client-side join.
+    domain: search.domain || undefined,
     limit: search.limit,
   };
 }
@@ -141,6 +149,7 @@ function SubnetsPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const filtersActive =
     !!search.q ||
+    !!search.domain ||
     !!search.sort ||
     !!search.curation ||
     !!search.health ||
