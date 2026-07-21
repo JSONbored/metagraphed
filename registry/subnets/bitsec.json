@@ -318,11 +318,446 @@
       "public_safe": true,
       "source_urls": ["https://bitsec.ai/api/openapi.json"],
       "url": "https://bitsec.ai/api/projects/sets"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-cancel",
+      "kind": "subnet-api",
+      "name": "Bitsec agent run cancellation",
+      "notes": "Cancel Agent operation on the Bitsec API (POST /agents/{agent_id}/cancel), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {agent_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/cancel"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-detail",
+      "kind": "subnet-api",
+      "name": "Bitsec agent detail",
+      "notes": "Agent Detail operation on the Bitsec API (GET /agents/{agent_id}/detail), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {agent_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/detail"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-known-solutions",
+      "kind": "subnet-api",
+      "name": "Bitsec agent known solutions",
+      "notes": "Get Agent Known Solutions operation on the Bitsec API (GET /agents/{agent_id}/known-solutions), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {agent_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/known-solutions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-runs-export",
+      "kind": "subnet-api",
+      "name": "Bitsec agent runs export",
+      "notes": "Agent Runs Export operation on the Bitsec API (GET /agents/{agent_id}/runs-export), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {agent_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/runs-export"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-scores",
+      "kind": "subnet-api",
+      "name": "Bitsec agent scores",
+      "notes": "Get Agent Scores operation on the Bitsec API (GET /agents/{agent_id}/scores), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {agent_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-screener",
+      "kind": "subnet-api",
+      "name": "Bitsec agent screener results",
+      "notes": "Get Agent Screeners operation on the Bitsec API (GET /agents/{agent_id}/screener), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {agent_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/screener"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agents-count",
+      "kind": "subnet-api",
+      "name": "Bitsec agent count",
+      "notes": "Get Agents Count operation on the Bitsec API (GET /agents/count), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Live-verified 2026-07-21: GET /agents/count -> HTTP 200 application/json {\"total_agents\":1096}. Public, no-auth and fixed-URL, so its probe is enabled.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/count"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agents-evaluation",
+      "kind": "subnet-api",
+      "name": "Bitsec agent evaluation submission",
+      "notes": "Create Agent Evaluation operation on the Bitsec API (POST /agents/evaluation/), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. State-changing POST, so the probe is disabled rather than probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/evaluation/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agents-execution",
+      "kind": "subnet-api",
+      "name": "Bitsec agent execution submission",
+      "notes": "Create Agent Execution operation on the Bitsec API (POST /agents/execution/), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. State-changing POST, so the probe is disabled rather than probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/execution/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agents-submit",
+      "kind": "subnet-api",
+      "name": "Bitsec agent submission",
+      "notes": "Submit Agent operation on the Bitsec API (POST /agents/submit/), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. State-changing POST, so the probe is disabled rather than probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/submit/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-leaderboard-legacy",
+      "kind": "data-artifact",
+      "name": "Bitsec legacy jobs leaderboard",
+      "notes": "Leaderboard Old operation on the Bitsec API (GET /jobs/leaderboard_old), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Live-checked 2026-07-21: GET /jobs/leaderboard_old -> HTTP 500 Internal Server Error. It is the legacy sibling of the already-registered /jobs/leaderboard surface and is documented but not currently serving, so the probe is left disabled rather than asserting a working surface.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/leaderboard_old"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-run-agent",
+      "kind": "subnet-api",
+      "name": "Bitsec job run agent",
+      "notes": "Get Job Run Agent operation on the Bitsec API (GET /jobs/runs/{job_run_id}/agent), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {job_run_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/%7Bjob_run_id%7D/agent"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-run-complete",
+      "kind": "subnet-api",
+      "name": "Bitsec job run completion",
+      "notes": "Complete Job Run operation on the Bitsec API (POST /jobs/runs/{job_run_id}/complete), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {job_run_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/%7Bjob_run_id%7D/complete"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-run-proxy-summary",
+      "kind": "subnet-api",
+      "name": "Bitsec job run proxy summary",
+      "notes": "Submit Job Run Proxy Summary operation on the Bitsec API (POST /jobs/runs/{job_run_id}/proxy-summary), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {job_run_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/%7Bjob_run_id%7D/proxy-summary"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-run-start",
+      "kind": "subnet-api",
+      "name": "Bitsec job run start",
+      "notes": "Start Job Run operation on the Bitsec API (POST /jobs/runs/{job_run_id}/start), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {job_run_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/%7Bjob_run_id%7D/start"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-runs-by-validator",
+      "kind": "subnet-api",
+      "name": "Bitsec job runs by validator",
+      "notes": "Get Job Runs By Validator operation on the Bitsec API (GET /jobs/runs/validator/{validator_id}), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Path-parameterized on {validator_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/validator/%7Bvalidator_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but these routes empirically require an Authorization header (live-checked 2026-07-21: HTTP 422 naming header 'authorization' as a required field). The credential format is not documented in the spec, so only the location is asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-users-create",
+      "kind": "subnet-api",
+      "name": "Bitsec user registration",
+      "notes": "Create User operation on the Bitsec API (POST /users/), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Live-verified 2026-07-21: an unauthenticated request returns HTTP 422 naming header \"authorization\" as a required field, so it is registered auth_required:true even though the spec declares no security for it.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/users/"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but these routes empirically require an Authorization header (live-checked 2026-07-21: HTTP 422 naming header 'authorization' as a required field). The credential format is not documented in the spec, so only the location is asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-users-validator-heartbeat",
+      "kind": "subnet-api",
+      "name": "Bitsec validator heartbeat",
+      "notes": "Validator Heartbeat operation on the Bitsec API (POST /users/validators/heartbeat), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Live-verified 2026-07-21: an unauthenticated request returns HTTP 422 naming header \"authorization\" as a required field, so it is registered auth_required:true even though the spec declares no security for it.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/users/validators/heartbeat"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but these routes empirically require an Authorization header (live-checked 2026-07-21: HTTP 422 naming header 'authorization' as a required field). The credential format is not documented in the spec, so only the location is asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-users-validator-me",
+      "kind": "subnet-api",
+      "name": "Bitsec validator identity",
+      "notes": "Get Current Validator operation on the Bitsec API (GET /users/validators/me), declared in the subnet's own OpenAPI spec at https://bitsec.ai/api/openapi.json. Live-verified 2026-07-21: an unauthenticated request returns HTTP 422 naming header \"authorization\" as a required field, so it is registered auth_required:true even though the spec declares no security for it.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/users/validators/me"
     }
   ],
   "social": {
     "x": "https://x.com/bitsecai"
   },
-  "source_repo": "https://github.com/Bitsec-AI/sandbox",
   "website_url": "https://bitsec.ai/"
 }
