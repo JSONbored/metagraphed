@@ -11,7 +11,8 @@
     "forceConsistentCasingInFileNames": true,
     "allowJs": true,
     "checkJs": false,
-    "noEmit": true
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
   "include": ["src/**/*", "workers/**/*", "scripts/**/*", "tests/**/*"],
   "exclude": [

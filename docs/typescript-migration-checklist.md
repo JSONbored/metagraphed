@@ -10,9 +10,15 @@ For every file in a batch:
 
 1. `git mv <file>.mjs <file>.ts` — never copy+delete, preserve history.
 2. Fix every relative import specifier repo-wide that pointed at the old filename, from `./foo.mjs`
-   to `./foo.js` (TypeScript+NodeNext convention: the import specifier keeps a `.js`-shaped extension
-   even though the source file is now `.ts` — never use `.ts` in an import specifier). Check dynamic
-   `import()` calls too, not just static `import`/`export from`.
+   to `./foo.ts` — literal `.ts` extension, not `.js`. (The `.js`-specifier-resolves-to-`.ts`-file
+   convention is a `tsc`-only trick that assumes a compile step emitting real `.js` output; it does
+   **not** work here, verified empirically: plain `node` throws `ERR_MODULE_NOT_FOUND` when an
+   `.mjs`/`.ts` file imports `"./foo.js"` and only `foo.ts` exists on disk, since `scripts/` and much
+   of `tests/` run directly under `node`, not through a bundler. Root `tsconfig.json` sets
+   `allowImportingTsExtensions: true` for exactly this reason — Wrangler's esbuild bundler and Vitest
+   both resolve a literal `.ts` specifier natively too, so this one convention works everywhere in
+   this repo: plain `node`, Wrangler, and Vitest alike.) Check dynamic `import()` calls too, not just
+   static `import`/`export from`.
 3. Add real type annotations for every exported function's parameters/return type and every exported
    constant's shape. Do not just rename-and-ship untyped. Module-local helpers can rely on inference
    where TS already infers correctly.
