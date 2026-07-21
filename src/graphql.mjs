@@ -300,7 +300,7 @@ import {
   STAKE_FLOW_WINDOWS,
   buildAccountStakeFlow,
 } from "./account-stake-flow.mjs";
-import { buildAccountPositionHistory } from "./account-position-history.mjs";
+import { buildAccountPositionHistory } from "./account-position-history.ts";
 import {
   DEFAULT_STAKE_FLOW_DIRECTION,
   STAKE_FLOW_DIRECTIONS,

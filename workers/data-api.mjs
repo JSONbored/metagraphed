@@ -506,7 +506,7 @@ import {
   GLOBAL_VALIDATOR_LIMIT_MAX,
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.mjs";
-import { buildAccountPositionHistory } from "../src/account-position-history.mjs";
+import { buildAccountPositionHistory } from "../src/account-position-history.ts";
 import {
   createUnkeyKey,
   verifyUnkeyKey,

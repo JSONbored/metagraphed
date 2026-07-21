@@ -96,7 +96,7 @@ import {
 } from "../../src/account-events.mjs";
 import { buildAccountPortfolio } from "../../src/account-portfolio.ts";
 import { buildAccountPositions } from "../../src/account-nominator-positions.ts";
-import { buildAccountPositionHistory } from "../../src/account-position-history.mjs";
+import { buildAccountPositionHistory } from "../../src/account-position-history.ts";
 import { buildAccountIdentity } from "../../src/account-identity.ts";
 import { buildAccountIdentityHistory } from "../../src/account-identity-history.ts";
 import {

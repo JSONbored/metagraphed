@@ -645,7 +645,7 @@ import {
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.mjs";
 import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
-import { buildAccountPositionHistory } from "./account-position-history.mjs";
+import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";

@@ -61,23 +61,23 @@ export const ACCOUNT_POSITION_DAILY_READ_COLUMNS =
 // account-portfolio.mjs's round9 — each module owns its own copy, this
 // codebase's established convention for these small numeric coercions).
 const SCALE = 1e9;
-function round9(value) {
+function round9(value: number): number {
   return Math.round(value * SCALE) / SCALE;
 }
 
-function toNumber(value) {
+function toNumber(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
 
-function nullableScore(value) {
+function nullableScore(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? round9(n) : null;
 }
 
-function toInt(value) {
+function toInt(value: unknown): number | null {
   if (typeof value === "number") {
     return Number.isInteger(value) && value >= 0 ? value : null;
   }
@@ -87,7 +87,7 @@ function toInt(value) {
   return null;
 }
 
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -97,7 +97,7 @@ function toIso(ms) {
 
 // Emission-per-stake return rate; null when stake is 0 (undefined return).
 // Mirrors computeYieldValue in account-portfolio.mjs.
-function computeYieldValue(emission, stake) {
+function computeYieldValue(emission: number, stake: number): number | null {
   if (!(stake > 0)) return null;
   return round9(emission / stake);
 }
@@ -107,7 +107,23 @@ function computeYieldValue(emission, stake) {
 // Exported (unlike account-portfolio.mjs's inline per-row mapping) so its
 // field coercion can be unit-tested directly, matching formatRuntimeTransition
 // (src/runtime-versions.mjs)'s precedent for a history route's row formatter.
-export function formatAccountPosition(row) {
+export interface AccountPositionEntry {
+  uid: number | null;
+  coldkey: unknown;
+  role: "validator" | "miner";
+  active: boolean;
+  stake_tao: number;
+  emission_tao: number;
+  rank: number | null;
+  trust: number | null;
+  incentive: number | null;
+  dividends: number | null;
+  yield: number | null;
+}
+
+export function formatAccountPosition(
+  row: Record<string, unknown> | null | undefined,
+): AccountPositionEntry | null {
   if (!row || typeof row !== "object") return null;
   const stake = toNumber(row.stake_tao);
   const emission = toNumber(row.emission_tao);
@@ -132,13 +148,27 @@ export function formatAccountPosition(row) {
 // neuron-history.mjs — the shared history-window vocabulary every other
 // history route already reuses). Mirrors buildNeuronHistory's shape
 // (src/neuron-history.mjs), the response-builder template this issue names.
+export interface AccountPositionHistoryPoint extends AccountPositionEntry {
+  snapshot_date: unknown;
+  captured_at: string | null;
+}
+
+export interface AccountPositionHistoryResult {
+  schema_version: 1;
+  ss58: string;
+  netuid: number;
+  window: string | null;
+  point_count: number;
+  points: AccountPositionHistoryPoint[];
+}
+
 export function buildAccountPositionHistory(
-  rows,
-  ss58,
-  netuid,
-  { window } = {},
-) {
-  const points = (rows || [])
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ss58: string,
+  netuid: number,
+  { window }: { window?: string | null } = {},
+): AccountPositionHistoryResult {
+  const points: AccountPositionHistoryPoint[] = (rows || [])
     .map((r) => {
       const position = formatAccountPosition(r);
       if (!position) return null;
@@ -148,7 +178,7 @@ export function buildAccountPositionHistory(
         ...position,
       };
     })
-    .filter(Boolean);
+    .filter((point): point is AccountPositionHistoryPoint => point !== null);
   return {
     schema_version: 1,
     ss58,

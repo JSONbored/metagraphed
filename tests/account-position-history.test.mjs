@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   formatAccountPosition,
   buildAccountPositionHistory,
-} from "../src/account-position-history.mjs";
+} from "../src/account-position-history.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
