@@ -94,7 +94,7 @@ import {
   buildAccountSubnets,
   buildBlockEvents,
 } from "../../src/account-events.mjs";
-import { buildAccountPortfolio } from "../../src/account-portfolio.mjs";
+import { buildAccountPortfolio } from "../../src/account-portfolio.ts";
 import { buildAccountPositions } from "../../src/account-nominator-positions.mjs";
 import { buildAccountPositionHistory } from "../../src/account-position-history.mjs";
 import { buildAccountIdentity } from "../../src/account-identity.ts";

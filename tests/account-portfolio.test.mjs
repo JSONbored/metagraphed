@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   buildAccountPortfolio,
   loadAccountPortfolio,
-} from "../src/account-portfolio.mjs";
+} from "../src/account-portfolio.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

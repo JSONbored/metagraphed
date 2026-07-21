@@ -100,7 +100,7 @@ import {
   YIELD_HISTORY_WINDOWS,
   DEFAULT_YIELD_HISTORY_WINDOW,
 } from "../src/subnet-yield.mjs";
-import { buildAccountPortfolio } from "../src/account-portfolio.mjs";
+import { buildAccountPortfolio } from "../src/account-portfolio.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,

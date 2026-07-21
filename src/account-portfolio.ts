@@ -16,18 +16,18 @@ export const ACCOUNT_PORTFOLIO_READ_COLUMNS =
 
 // 1 TAO = 1e9 rao; round tao + yield outputs to that precision.
 const SCALE = 1e9;
-function round9(value) {
+function round9(value: number): number {
   return Math.round(value * SCALE) / SCALE;
 }
 
 // Coerce a D1 numeric cell (number, numeric string, or null) to a finite number.
-function toNumber(value) {
+function toNumber(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
 
 // A nullable 0..1 score cell -> rounded number, or null when absent/non-finite.
-function nullableScore(value) {
+function nullableScore(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -37,7 +37,7 @@ function nullableScore(value) {
 
 // Strict non-negative integer coercion: accept ONLY a real number or an all-digits
 // string, so a blank/null/false cell is rejected rather than read as 0.
-function toInt(value) {
+function toInt(value: unknown): number | null {
   if (typeof value === "number") {
     return Number.isInteger(value) && value >= 0 ? value : null;
   }
@@ -47,10 +47,15 @@ function toInt(value) {
   return null;
 }
 
+interface CaptureStamp {
+  ms: number;
+  value: string;
+}
+
 // Guard 0/negative epoch ms (a blank/sentinel D1 cell) so captured_at never stamps
 // the 1970 epoch; mirrors epochMsStamp in concentration.mjs / subnet-performance.mjs.
-function captureStamp(value) {
-  let ms;
+function captureStamp(value: unknown): CaptureStamp | null {
+  let ms: number;
   if (typeof value === "number" && Number.isFinite(value)) {
     ms = value;
   } else if (typeof value === "string" && /^\d+$/.test(value)) {
@@ -65,21 +70,53 @@ function captureStamp(value) {
 }
 
 // Emission-per-stake return rate; null when stake is 0 (undefined return).
-function computeYieldValue(emission, stake) {
+function computeYieldValue(emission: number, stake: number): number | null {
   if (!(stake > 0)) return null;
   return round9(emission / stake);
 }
 
+export interface AccountPortfolioPosition {
+  netuid: number;
+  uid: number | null;
+  role: "validator" | "miner";
+  active: boolean;
+  stake_tao: number;
+  emission_tao: number;
+  rank: number | null;
+  trust: number | null;
+  incentive: number | null;
+  dividends: number | null;
+  yield: number | null;
+}
+
+export interface AccountPortfolioResult {
+  schema_version: 1;
+  ss58: string;
+  captured_at: string | null;
+  subnet_count: number;
+  position_count: number;
+  validator_count: number;
+  miner_count: number;
+  total_stake_tao: number;
+  total_emission_tao: number;
+  overall_yield: number | null;
+  stake_concentration: unknown;
+  positions: AccountPortfolioPosition[];
+}
+
 // Shape one hotkey's neuron rows into the cross-subnet portfolio. Null-safe on
 // junk/sparse rows — an empty array yields a schema-stable empty card.
-export function buildAccountPortfolio(rows, ss58) {
+export function buildAccountPortfolio(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ss58: string,
+): AccountPortfolioResult {
   const list = Array.isArray(rows) ? rows : [];
-  const positions = [];
-  const netuids = new Set();
+  const positions: AccountPortfolioPosition[] = [];
+  const netuids = new Set<number>();
   let validatorCount = 0;
   let totalStake = 0;
   let totalEmission = 0;
-  let capturedAt = null;
+  let capturedAt: CaptureStamp | null = null;
   for (const row of list) {
     const netuid = toInt(row?.netuid);
     if (netuid == null) continue;
@@ -134,7 +171,13 @@ export function buildAccountPortfolio(rows, ss58) {
 // hotkey and shape the portfolio. Cold/absent -> empty card. Like the former
 // account-subnets registration D1 loader (removed in #4772) but reads the full
 // economics columns.
-export async function loadAccountPortfolio(d1, ss58) {
+export async function loadAccountPortfolio(
+  d1: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Array<Record<string, unknown>>>,
+  ss58: string,
+): Promise<AccountPortfolioResult> {
   const rows = await d1(
     `SELECT ${ACCOUNT_PORTFOLIO_READ_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY netuid`,
     [ss58],

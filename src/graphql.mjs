@@ -306,7 +306,7 @@ import {
   STAKE_FLOW_DIRECTIONS,
   buildStakeFlow,
 } from "./stake-flow.mjs";
-import { buildAccountPortfolio } from "./account-portfolio.mjs";
+import { buildAccountPortfolio } from "./account-portfolio.ts";
 import { buildAccountPositions } from "./account-nominator-positions.mjs";
 import {
   buildAccountRegistrations,
