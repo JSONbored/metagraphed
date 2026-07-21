@@ -292,6 +292,751 @@
       "public_safe": true,
       "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
       "url": "https://agent-upload.ridges.ai/validator/connected-validators-info"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-62-ridges-admin-banned-coldkeys-miner-coldkey",
+      "kind": "subnet-api",
+      "name": "Ridges admin banned on-chain accounts miner on-chain accounts",
+      "notes": "Delete Banned on-chain accounts operation on the Ridges agent-upload API (DELETE, PUT /admin/banned-coldkeys/{miner_coldkey}), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/admin/banned-coldkeys/%7Bminer_coldkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-agent-get-by-evaluation-run-id",
+      "kind": "subnet-api",
+      "name": "Ridges agent get by evaluation run id",
+      "notes": "Agent Get By Evaluation Run Id operation on the Ridges agent-upload API (GET /agent/get-by-evaluation-run-id), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/agent/get-by-evaluation-run-id"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-debug-lock-info",
+      "kind": "subnet-api",
+      "name": "Ridges debug lock info",
+      "notes": "Debug Lock Info operation on the Ridges agent-upload API (GET /debug/lock-info), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/debug/lock-info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-debug-query-info",
+      "kind": "subnet-api",
+      "name": "Ridges debug query info",
+      "notes": "Debug Query Info operation on the Ridges agent-upload API (GET /debug/query-info), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/debug/query-info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-evaluation-get-by-evaluation-run-id",
+      "kind": "subnet-api",
+      "name": "Ridges evaluation get by evaluation run id",
+      "notes": "Evaluations Get By Evaluation Run Id operation on the Ridges agent-upload API (GET /evaluation/get-by-evaluation-run-id), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/evaluation/get-by-evaluation-run-id"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-evaluation-run-get-by-id",
+      "kind": "subnet-api",
+      "name": "Ridges evaluation run get by id",
+      "notes": "Evaluation Run Get By Id operation on the Ridges agent-upload API (GET /evaluation-run/get-by-id), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/evaluation-run/get-by-id"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-evaluation-run-get-logs-by-id",
+      "kind": "subnet-api",
+      "name": "Ridges evaluation run get logs by id",
+      "notes": "Evaluation Run Get Logs By Id operation on the Ridges agent-upload API (GET /evaluation-run/get-logs-by-id), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/evaluation-run/get-logs-by-id"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-evaluation-sets-set-id",
+      "kind": "subnet-api",
+      "name": "Ridges evaluation sets set id",
+      "notes": "Evaluation Set Detail operation on the Ridges agent-upload API (GET /evaluation-sets/{set_id}), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. Path-parameterized on {set_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/%7Bset_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-evaluation-sets-set-id-approved-agents",
+      "kind": "subnet-api",
+      "name": "Ridges evaluation sets set id approved agents",
+      "notes": "Evaluation Set Approved Agents operation on the Ridges agent-upload API (GET /evaluation-sets/{set_id}/approved-agents), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. Path-parameterized on {set_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/%7Bset_id%7D/approved-agents"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-evaluation-sets-set-id-leaderboard",
+      "kind": "subnet-api",
+      "name": "Ridges evaluation sets set id leaderboard",
+      "notes": "Evaluation Set Leaderboard operation on the Ridges agent-upload API (GET /evaluation-sets/{set_id}/leaderboard), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. Path-parameterized on {set_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/%7Bset_id%7D/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-retrieval-agent-by-hotkey",
+      "kind": "subnet-api",
+      "name": "Ridges retrieval agent by operator accounts",
+      "notes": "Agent By operator accounts operation on the Ridges agent-upload API (GET /retrieval/agent-by-hotkey), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/retrieval/agent-by-hotkey"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-retrieval-agent-by-id",
+      "kind": "subnet-api",
+      "name": "Ridges retrieval agent by id",
+      "notes": "Agent By Id operation on the Ridges agent-upload API (GET /retrieval/agent-by-id), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/retrieval/agent-by-id"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-retrieval-agent-code",
+      "kind": "subnet-api",
+      "name": "Ridges retrieval agent code",
+      "notes": "Agent Code operation on the Ridges agent-upload API (GET /retrieval/agent-code), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/retrieval/agent-code"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-retrieval-all-agents-by-hotkey",
+      "kind": "subnet-api",
+      "name": "Ridges retrieval all agents by operator accounts",
+      "notes": "All Agents By operator accounts operation on the Ridges agent-upload API (GET /retrieval/all-agents-by-hotkey), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/retrieval/all-agents-by-hotkey"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-retrieval-evaluations-for-agent",
+      "kind": "subnet-api",
+      "name": "Ridges retrieval evaluations for agent",
+      "notes": "Evaluations For Agent operation on the Ridges agent-upload API (GET /retrieval/evaluations-for-agent), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/retrieval/evaluations-for-agent"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-retrieval-queue",
+      "kind": "subnet-api",
+      "name": "Ridges retrieval queue",
+      "notes": "Queue operation on the Ridges agent-upload API (GET /retrieval/queue), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming query parameter \"stage\" as required, so it is a query-param route -- the fixed base URL is registered with probe.enabled:false and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/retrieval/queue"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-scaling-pending-work",
+      "kind": "subnet-api",
+      "name": "Ridges scaling pending work",
+      "notes": "Get Pending Work operation on the Ridges agent-upload API (GET /scaling/pending-work), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified -- the host rate-limits rapid unauthenticated probing).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/scaling/pending-work"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-scoring-screener-info",
+      "kind": "subnet-api",
+      "name": "Ridges scoring screener info",
+      "notes": "Screener Info operation on the Ridges agent-upload API (GET /scoring/screener-info), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. Live-verified 2026-07-21: GET /scoring/screener-info -> HTTP 200 application/json (screener thresholds). Public, no-auth and fixed-URL, so its probe is enabled.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/scoring/screener-info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-scoring-weights",
+      "kind": "subnet-api",
+      "name": "Ridges scoring weights",
+      "notes": "Weights operation on the Ridges agent-upload API (GET /scoring/weights), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. Live-verified 2026-07-21: GET /scoring/weights -> HTTP 200 application/json (per-account weight map). Public, no-auth and fixed-URL, so its probe is enabled.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/scoring/weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-upload-agent",
+      "kind": "subnet-api",
+      "name": "Ridges upload agent",
+      "notes": "Post Agent operation on the Ridges agent-upload API (POST /upload/agent), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/upload/agent"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-upload-agent-check",
+      "kind": "subnet-api",
+      "name": "Ridges upload agent check",
+      "notes": "Check Agent Post operation on the Ridges agent-upload API (POST /upload/agent/check), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/upload/agent/check"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-62-ridges-validator-cancel-current-evaluation",
+      "kind": "subnet-api",
+      "name": "Ridges validator cancel current evaluation",
+      "notes": "Validator Cancel Current Evaluation operation on the Ridges agent-upload API (POST /validator/cancel-current-evaluation), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/cancel-current-evaluation"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-62-ridges-validator-check-cancellation",
+      "kind": "subnet-api",
+      "name": "Ridges validator check cancellation",
+      "notes": "Validator Check Cancellation operation on the Ridges agent-upload API (POST /validator/check-cancellation), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/check-cancellation"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-62-ridges-validator-disconnect",
+      "kind": "subnet-api",
+      "name": "Ridges validator disconnect",
+      "notes": "Validator Disconnect operation on the Ridges agent-upload API (POST /validator/disconnect), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/disconnect"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-62-ridges-validator-finish-evaluation",
+      "kind": "subnet-api",
+      "name": "Ridges validator finish evaluation",
+      "notes": "Validator Finish Evaluation operation on the Ridges agent-upload API (POST /validator/finish-evaluation), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/finish-evaluation"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-62-ridges-validator-heartbeat",
+      "kind": "subnet-api",
+      "name": "Ridges validator heartbeat",
+      "notes": "Validator Heartbeat operation on the Ridges agent-upload API (POST /validator/heartbeat), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/heartbeat"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-validator-register-as-screener",
+      "kind": "subnet-api",
+      "name": "Ridges validator register as screener",
+      "notes": "Validator Register As Screener operation on the Ridges agent-upload API (POST /validator/register-as-screener), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/register-as-screener"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-validator-register-as-validator",
+      "kind": "subnet-api",
+      "name": "Ridges validator register as validator",
+      "notes": "Validator Register As Validator operation on the Ridges agent-upload API (POST /validator/register-as-validator), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/register-as-validator"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-62-ridges-validator-request-evaluation",
+      "kind": "subnet-api",
+      "name": "Ridges validator request evaluation",
+      "notes": "Validator Request Evaluation operation on the Ridges agent-upload API (POST /validator/request-evaluation), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/request-evaluation"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-62-ridges-validator-task-download-url",
+      "kind": "subnet-api",
+      "name": "Ridges validator task download url",
+      "notes": "Validator Task Download Url operation on the Ridges agent-upload API (POST /validator/task-download-url), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/task-download-url"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-62-ridges-validator-update-evaluation-run",
+      "kind": "subnet-api",
+      "name": "Ridges validator update evaluation run",
+      "notes": "Validator Update Evaluation Run operation on the Ridges agent-upload API (POST /validator/update-evaluation-run), declared in the subnet's own OpenAPI spec at https://agent-upload.ridges.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/validator/update-evaluation-run"
     }
   ],
   "website_url": "https://www.ridges.ai/"

@@ -8,6 +8,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { RegistryLeaderboards } from "@/components/metagraphed/registry-leaderboards";
 import {
   PageHero,
   BrandIcon,
@@ -44,13 +45,13 @@ export const Route = createFileRoute("/leaderboards")({
       {
         name: "description",
         content:
-          "Network-wide Bittensor leaderboards — validator weight-setting activity and neuron deregistrations ranked by subnet over 7d and 30d windows.",
+          "Network-wide Bittensor leaderboards — registry health, RPC latency, completeness and economic-opportunity boards, plus validator weight-setting activity and neuron deregistrations ranked by subnet.",
       },
       { property: "og:title", content: "Leaderboards — Metagraphed" },
       {
         property: "og:description",
         content:
-          "Network-wide Bittensor leaderboards — validator weight-setting activity and neuron deregistrations ranked by subnet over 7d and 30d windows.",
+          "Network-wide Bittensor leaderboards — registry health, RPC latency, completeness and economic-opportunity boards, plus validator weight-setting activity and neuron deregistrations ranked by subnet.",
       },
     ],
   }),
@@ -85,8 +86,29 @@ function LeaderboardSkeleton() {
   );
 }
 
-// Every board on this route ranks the same 7d/30d window, so the window control lives at the page
-// level and governs both sections rather than each board owning a duplicate toggle.
+// The registry-leaderboards section is a card grid (two groups of boards), a
+// different shape from the StatTile+table chain boards, so it gets its own
+// matching skeleton rather than borrowing LeaderboardSkeleton.
+function RegistryLeaderboardsSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <Skeleton className="h-3 w-24 mb-2" />
+        <Skeleton className="h-7 w-72 mb-2" />
+        <Skeleton className="h-4 w-full max-w-lg" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }, (_, i) => (
+          <Skeleton key={i} className="h-56" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Every chain board on this route ranks the same 7d/30d window, so the window control lives at the
+// page level and governs those sections rather than each board owning a duplicate toggle. The
+// registry-leaderboards section is not windowed and renders independently of it.
 function LeaderboardsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -98,7 +120,7 @@ function LeaderboardsPage() {
         eyebrow="Explorer"
         live
         title="Leaderboards"
-        description="Network-wide chain activity boards — ranked by subnet from live chain-direct analytics."
+        description="Registry and chain-activity boards — ranked by subnet from live registry data and chain-direct analytics."
         actions={
           <ActionBar>
             <CsvExportMenu win={win} />
@@ -123,6 +145,11 @@ function LeaderboardsPage() {
       </div>
       <div className="space-y-12">
         <QueryErrorBoundary>
+          <Suspense fallback={<RegistryLeaderboardsSkeleton />}>
+            <RegistryLeaderboards />
+          </Suspense>
+        </QueryErrorBoundary>
+        <QueryErrorBoundary>
           <Suspense fallback={<LeaderboardSkeleton />}>
             <WeightSettingLeaderboard win={win} />
           </Suspense>
@@ -139,7 +166,12 @@ function LeaderboardsPage() {
         </QueryErrorBoundary>
       </div>
       <ApiSourceFooter
-        paths={["/api/v1/chain/weights", "/api/v1/chain/deregistrations", "/api/v1/economics"]}
+        paths={[
+          "/api/v1/registry/leaderboards",
+          "/api/v1/chain/weights",
+          "/api/v1/chain/deregistrations",
+          "/api/v1/economics",
+        ]}
       />
     </AppShell>
   );

@@ -440,6 +440,544 @@
       },
       "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
       "url": "https://autoresearch.bitsota.com/api/v1/disclaimer.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-claims-claim-id-cancel",
+      "kind": "subnet-api",
+      "name": "Bitsota claims claim id cancel",
+      "notes": "Cancel Claim Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/claims/{claim_id}/cancel), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {claim_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/claims/%7Bclaim_id%7D/cancel"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-planner-run",
+      "kind": "subnet-api",
+      "name": "Bitsota planner run",
+      "notes": "Planner Run Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/planner/run), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/planner/run"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-planner-run-agentic",
+      "kind": "subnet-api",
+      "name": "Bitsota planner run agentic",
+      "notes": "Agentic Planner Run Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/planner/run-agentic), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/planner/run-agentic"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but this route empirically rejects an unauthenticated request (live-checked 2026-07-21). The header name and credential format are not documented in the spec, so only the location is asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-94-bitsota-reward-policy",
+      "kind": "subnet-api",
+      "name": "Bitsota reward policy",
+      "notes": "Reward Policy Route operation on the Bitsota autoresearch coordinator API (GET, PUT /api/v1/reward-policy), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated GET returns HTTP 401 {\"detail\":\"invalid admin token\"} -- so it is registered auth_required:true, correcting what the schema implies.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/reward-policy"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but this route empirically rejects an unauthenticated request (live-checked 2026-07-21). The header name and credential format are not documented in the spec, so only the location is asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-94-bitsota-submissions",
+      "kind": "subnet-api",
+      "name": "Bitsota submissions",
+      "notes": "List Submissions Route operation on the Bitsota autoresearch coordinator API (GET, POST /api/v1/submissions), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated GET returns HTTP 401 {\"detail\":\"missing auth headers\"} -- so it is registered auth_required:true, correcting what the schema implies.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/submissions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-submissions-submission-id",
+      "kind": "subnet-api",
+      "name": "Bitsota submissions submission id",
+      "notes": "Get Submission Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/submissions/%7Bsubmission_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-submissions-submission-id-artifact",
+      "kind": "subnet-api",
+      "name": "Bitsota submissions submission id artifact",
+      "notes": "Submission Artifact Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/artifact), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/submissions/%7Bsubmission_id%7D/artifact"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-submissions-submission-id-detail",
+      "kind": "subnet-api",
+      "name": "Bitsota submissions submission id detail",
+      "notes": "Get Submission Detail Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/detail), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/submissions/%7Bsubmission_id%7D/detail"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-submissions-submission-id-execution-log",
+      "kind": "subnet-api",
+      "name": "Bitsota submissions submission id execution log",
+      "notes": "Submission Execution Log Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/execution.log), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/submissions/%7Bsubmission_id%7D/execution.log"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-submissions-submission-id-peer-consensus",
+      "kind": "subnet-api",
+      "name": "Bitsota submissions submission id peer consensus",
+      "notes": "Peer Consensus Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/peer-consensus), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/submissions/%7Bsubmission_id%7D/peer-consensus"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-submissions-submission-id-peer-evaluate",
+      "kind": "subnet-api",
+      "name": "Bitsota submissions submission id peer evaluate",
+      "notes": "Peer Evaluate Submission Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/submissions/{submission_id}/peer-evaluate), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/submissions/%7Bsubmission_id%7D/peer-evaluate"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-submissions-submission-id-replay-log",
+      "kind": "subnet-api",
+      "name": "Bitsota submissions submission id replay log",
+      "notes": "Submission Replay Log Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/submissions/{submission_id}/replay.log), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/submissions/%7Bsubmission_id%7D/replay.log"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-submissions-submission-id-verify",
+      "kind": "subnet-api",
+      "name": "Bitsota submissions submission id verify",
+      "notes": "Verify Submission Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/submissions/{submission_id}/verify), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/submissions/%7Bsubmission_id%7D/verify"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-tasks-task-id",
+      "kind": "subnet-api",
+      "name": "Bitsota tasks task id",
+      "notes": "Get Task Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/tasks/{task_id}), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/tasks/%7Btask_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-tasks-task-id-best",
+      "kind": "subnet-api",
+      "name": "Bitsota tasks task id best",
+      "notes": "Best Result Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/tasks/{task_id}/best), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/tasks/%7Btask_id%7D/best"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-tasks-task-id-claim",
+      "kind": "subnet-api",
+      "name": "Bitsota tasks task id claim",
+      "notes": "Claim Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/claim), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/tasks/%7Btask_id%7D/claim"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-tasks-task-id-close",
+      "kind": "subnet-api",
+      "name": "Bitsota tasks task id close",
+      "notes": "Close Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/close), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/tasks/%7Btask_id%7D/close"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-tasks-task-id-onboard-md",
+      "kind": "subnet-api",
+      "name": "Bitsota tasks task id onboard md",
+      "notes": "Task Onboarding Route operation on the Bitsota autoresearch coordinator API (GET /api/v1/tasks/{task_id}/onboard.md), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/tasks/%7Btask_id%7D/onboard.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-tasks-task-id-pause",
+      "kind": "subnet-api",
+      "name": "Bitsota tasks task id pause",
+      "notes": "Pause Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/pause), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/tasks/%7Btask_id%7D/pause"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-tasks-task-id-resume",
+      "kind": "subnet-api",
+      "name": "Bitsota tasks task id resume",
+      "notes": "Resume Task Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/tasks/{task_id}/resume), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/tasks/%7Btask_id%7D/resume"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-validator-jobs-claim",
+      "kind": "subnet-api",
+      "name": "Bitsota validator jobs claim",
+      "notes": "Claim Validator Job Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/validator/jobs/claim), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/validator/jobs/claim"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-validator-jobs-job-id-result",
+      "kind": "subnet-api",
+      "name": "Bitsota validator jobs job id result",
+      "notes": "Submit Validator Job Result Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/validator/jobs/{job_id}/result), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {job_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/validator/jobs/%7Bjob_id%7D/result"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-validator-submissions-scan",
+      "kind": "subnet-api",
+      "name": "Bitsota validator submissions scan",
+      "notes": "Scan Validator Submissions Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/validator/submissions/scan), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/validator/submissions/scan"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-work-items-work-item-id-claim",
+      "kind": "subnet-api",
+      "name": "Bitsota work items work item id claim",
+      "notes": "Claim Work Item Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/work-items/{work_item_id}/claim), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. Path-parameterized on {work_item_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2). The spec declares no security for it; the fixed sibling collection route on this host does reject unauthenticated reads, so it may also be gated -- not asserted here because confirming it needs a valid identifier.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/work-items/%7Bwork_item_id%7D/claim"
     }
   ],
   "website_url": "https://bitsota.ai/"

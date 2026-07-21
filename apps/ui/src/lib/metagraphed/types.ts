@@ -670,14 +670,30 @@ export interface Lineage {
   links: LineageLink[];
 }
 
-/** The five D1-computed registry leaderboards from /api/v1/registry/leaderboards. */
+/**
+ * Registry leaderboards from /api/v1/registry/leaderboards. Six operational
+ * boards (`healthiest`, `fastest-rpc`, `most-complete`, `most-enriched`,
+ * `fastest-growing`, `most-reliable`) and four economic-opportunity boards
+ * (`open-slots`, `cheapest-registration`, `highest-emission`,
+ * `validator-headroom`). (The endpoint also returns two `biggest-alpha-gain-*`
+ * boards not surfaced here.)
+ */
 export type LeaderboardBoardKey =
-  "healthiest" | "fastest-rpc" | "most-complete" | "most-enriched" | "fastest-growing";
+  | "healthiest"
+  | "fastest-rpc"
+  | "most-complete"
+  | "most-enriched"
+  | "fastest-growing"
+  | "most-reliable"
+  | "open-slots"
+  | "cheapest-registration"
+  | "highest-emission"
+  | "validator-headroom";
 
 /**
  * One ranked subnet in a leaderboard. Every row carries netuid/slug/name; only
- * the metric field relevant to its board is populated (e.g. `uptime_ratio` for
- * `healthiest`, `latency_ms` for `fastest-rpc`).
+ * the metric fields relevant to its board are populated (e.g. `uptime_ratio` for
+ * `healthiest`, `latency_ms` for `fastest-rpc`, `open_slots` for `open-slots`).
  */
 export interface LeaderboardRow {
   netuid: number;
@@ -686,15 +702,60 @@ export interface LeaderboardRow {
   uptime_ratio?: number; // healthiest (0–1)
   surfaces_ok?: number; // healthiest
   surfaces_total?: number; // healthiest
-  avg_latency_ms?: number; // healthiest
+  avg_latency_ms?: number; // healthiest / most-reliable
   latency_ms?: number; // fastest-rpc
   completeness_score?: number; // most-complete (0–100)
   surface_count?: number; // most-enriched
   operational_interface_count?: number; // most-enriched
   completeness_delta?: number; // fastest-growing (points)
+  score?: number; // most-reliable (0–100)
+  grade?: string; // most-reliable (A–F)
+  sample_count?: number; // most-reliable
+  open_slots?: number; // open-slots / cheapest-registration
+  max_uids?: number; // open-slots
+  registration_cost_tao?: number; // open-slots / cheapest-registration
+  registration_allowed?: boolean; // open-slots / cheapest-registration
+  emission_share?: number; // highest-emission / validator-headroom (0–1)
+  total_stake_tao?: number; // highest-emission
+  validator_count?: number; // highest-emission / validator-headroom
+  miner_count?: number; // highest-emission
+  validator_headroom?: number; // validator-headroom
+  max_validators?: number; // validator-headroom
 }
 
 export type Leaderboards = Record<LeaderboardBoardKey, LeaderboardRow[]>;
+
+/**
+ * Within-domain emission-concentration metrics from /api/v1/domains — how
+ * concentrated a domain's emission is across its member subnets.
+ */
+export interface DomainConcentration {
+  holders?: number;
+  gini?: number;
+  hhi?: number;
+  hhi_normalized?: number;
+  nakamoto_coefficient?: number;
+  top_1pct_share?: number;
+  top_5pct_share?: number;
+  top_10pct_share?: number;
+  top_20pct_share?: number;
+  entropy?: number;
+  entropy_normalized?: number;
+}
+
+/**
+ * One capability-domain rollup from /api/v1/domains: a domain/capability tag in
+ * the 14-tag taxonomy with its member subnets, total stake, emission share, and
+ * within-domain emission concentration.
+ */
+export interface Domain {
+  domain: string;
+  subnet_count: number;
+  netuids: number[];
+  total_stake_tao?: number;
+  total_emission_share?: number;
+  emission_concentration?: DomainConcentration;
+}
 
 /** Result of an on-demand re-probe via /api/v1/surfaces/{id}/verify. */
 export interface VerifyResult {

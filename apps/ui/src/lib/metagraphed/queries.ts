@@ -156,6 +156,8 @@ import type {
   HealthTrends,
   HealthTrendSurface,
   HealthTrendWindow,
+  Domain,
+  DomainConcentration,
   LeaderboardBoardKey,
   LeaderboardRow,
   Leaderboards,
@@ -774,6 +776,11 @@ const LEADERBOARD_BOARD_KEYS: LeaderboardBoardKey[] = [
   "most-complete",
   "most-enriched",
   "fastest-growing",
+  "most-reliable",
+  "open-slots",
+  "cheapest-registration",
+  "highest-emission",
+  "validator-headroom",
 ];
 
 function normalizeLeaderboardRow(raw: unknown): LeaderboardRow | null {
@@ -782,6 +789,7 @@ function normalizeLeaderboardRow(raw: unknown): LeaderboardRow | null {
   if (typeof r.netuid !== "number") return null;
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+  const bool = (v: unknown) => (typeof v === "boolean" ? v : undefined);
   return {
     netuid: r.netuid,
     slug: str(r.slug),
@@ -795,6 +803,19 @@ function normalizeLeaderboardRow(raw: unknown): LeaderboardRow | null {
     surface_count: num(r.surface_count),
     operational_interface_count: num(r.operational_interface_count),
     completeness_delta: num(r.completeness_delta),
+    score: num(r.score),
+    grade: str(r.grade),
+    sample_count: num(r.sample_count),
+    open_slots: num(r.open_slots),
+    max_uids: num(r.max_uids),
+    registration_cost_tao: num(r.registration_cost_tao),
+    registration_allowed: bool(r.registration_allowed),
+    emission_share: num(r.emission_share),
+    total_stake_tao: num(r.total_stake_tao),
+    validator_count: num(r.validator_count),
+    miner_count: num(r.miner_count),
+    validator_headroom: num(r.validator_headroom),
+    max_validators: num(r.max_validators),
   };
 }
 
@@ -810,9 +831,12 @@ function normalizeLeaderboards(raw: unknown): Leaderboards {
   return out;
 }
 
-// #1111: registry leaderboards — five live, D1-computed boards (healthiest,
-// fastest-rpc, most-complete, most-enriched, fastest-growing). One artifact carries
-// all boards; the homepage discovery module renders the top rows of each.
+// #1111: registry leaderboards — live, D1-computed boards. Six operational
+// (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing,
+// most-reliable) and four economic-opportunity (open-slots,
+// cheapest-registration, highest-emission, validator-headroom). One artifact
+// carries all boards; the homepage discovery module renders the top rows of a
+// subset, and /leaderboards surfaces them all (#6995).
 function normalizeSubnetMover(raw: unknown): SubnetMover | null {
   if (!isRecord(raw)) return null;
   const netuid = coerceFiniteNumber(raw.netuid);
@@ -890,6 +914,62 @@ export const leaderboardsQuery = () =>
         signal,
       });
       return { data: normalizeLeaderboards(res.data?.boards), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #6996: per-domain rollup over the 14-tag capability taxonomy from
+// /api/v1/domains — member subnets, total stake/emission, and within-domain
+// emission concentration. Every numeric cell coerces defensively so a cold
+// store never produces NaN in the UI.
+function normalizeDomainConcentration(raw: unknown): DomainConcentration | undefined {
+  if (!isRecord(raw)) return undefined;
+  const num = (v: unknown) => coerceFiniteNumber(v) ?? undefined;
+  return {
+    holders: num(raw.holders),
+    gini: num(raw.gini),
+    hhi: num(raw.hhi),
+    hhi_normalized: num(raw.hhi_normalized),
+    nakamoto_coefficient: num(raw.nakamoto_coefficient),
+    top_1pct_share: num(raw.top_1pct_share),
+    top_5pct_share: num(raw.top_5pct_share),
+    top_10pct_share: num(raw.top_10pct_share),
+    top_20pct_share: num(raw.top_20pct_share),
+    entropy: num(raw.entropy),
+    entropy_normalized: num(raw.entropy_normalized),
+  };
+}
+
+export function normalizeDomains(raw: unknown): Domain[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : isRecord(raw) && Array.isArray(raw.domains)
+      ? raw.domains
+      : [];
+  return list.flatMap((row) => {
+    if (!isRecord(row) || typeof row.domain !== "string") return [];
+    const netuids = Array.isArray(row.netuids)
+      ? row.netuids.filter((n): n is number => typeof n === "number" && Number.isFinite(n))
+      : [];
+    return [
+      {
+        domain: row.domain,
+        subnet_count: coerceFiniteNumber(row.subnet_count) ?? netuids.length,
+        netuids,
+        total_stake_tao: coerceFiniteNumber(row.total_stake_tao) ?? undefined,
+        total_emission_share: coerceFiniteNumber(row.total_emission_share) ?? undefined,
+        emission_concentration: normalizeDomainConcentration(row.emission_concentration),
+      },
+    ];
+  });
+}
+
+export const domainsQuery = () =>
+  queryOptions({
+    queryKey: k("domains"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ domains?: unknown }>("/api/v1/domains", { signal });
+      return { data: normalizeDomains(res.data?.domains), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });

@@ -19,6 +19,7 @@ import { Route as HealthRouteImport } from './routes/health'
 import { Route as GapsRouteImport } from './routes/gaps'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as EndpointsRouteImport } from './routes/endpoints'
+import { Route as DomainsRouteImport } from './routes/domains'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -93,6 +94,11 @@ const ExplorerRoute = ExplorerRouteImport.update({
 const EndpointsRoute = EndpointsRouteImport.update({
   id: '/endpoints',
   path: '/endpoints',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DomainsRoute = DomainsRouteImport.update({
+  id: '/domains',
+  path: '/domains',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentsRoute = AgentsRouteImport.update({
@@ -225,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
@@ -300,6 +308,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
@@ -339,6 +348,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/domains'
     | '/endpoints'
     | '/explorer'
     | '/gaps'
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/domains'
     | '/endpoints'
     | '/explorer'
     | '/gaps'
@@ -413,6 +424,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/domains'
     | '/endpoints'
     | '/explorer'
     | '/gaps'
@@ -451,6 +463,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AgentsRoute: typeof AgentsRoute
+  DomainsRoute: typeof DomainsRoute
   EndpointsRoute: typeof EndpointsRoute
   ExplorerRoute: typeof ExplorerRoute
   GapsRoute: typeof GapsRoute
@@ -555,6 +568,13 @@ declare module '@tanstack/react-router' {
       path: '/endpoints'
       fullPath: '/endpoints'
       preLoaderRoute: typeof EndpointsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/domains': {
+      id: '/domains'
+      path: '/domains'
+      fullPath: '/domains'
+      preLoaderRoute: typeof DomainsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agents': {
@@ -739,6 +759,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AgentsRoute: AgentsRoute,
+  DomainsRoute: DomainsRoute,
   EndpointsRoute: EndpointsRoute,
   ExplorerRoute: ExplorerRoute,
   GapsRoute: GapsRoute,
