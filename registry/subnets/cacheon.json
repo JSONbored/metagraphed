@@ -194,7 +194,13 @@
       "id": "sn-14-cacheon-leader-api",
       "kind": "subnet-api",
       "name": "Cacheon current leader API",
-      "notes": "Public no-auth GET returning the reigning challenger leader record (UID, score, image, per-prompt stats). Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/leader); same host as the existing /api/status subnet-api surface. Distinct functional endpoint with substantive coordinator data.",
+      "notes": "Public no-auth GET returning the reigning challenger leader record (UID, score, image, per-prompt stats). Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/leader); same host as the existing /api/status subnet-api surface. Distinct functional endpoint with substantive coordinator data. Live-verified 2026-07-21: HTTP 200 application/json (~0.8 KB), leader record with uid, hotkey, commit_block, score, image, per-prompt stats.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "cacheon",
       "public_safe": true,
       "review": {
@@ -213,7 +219,13 @@
       "id": "sn-14-cacheon-health",
       "kind": "subnet-api",
       "name": "Cacheon API health",
-      "notes": "Public no-auth GET /api/health on api.cacheon.ai returning coordinator liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /api/health in the subnet OpenAPI spec on the same host as the existing /api/status and /api/leader subnet-api surfaces.",
+      "notes": "Public no-auth GET /api/health on api.cacheon.ai returning coordinator liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /api/health in the subnet OpenAPI spec on the same host as the existing /api/status and /api/leader subnet-api surfaces. Live-verified 2026-07-21: HTTP 200 application/json, body {\"status\":\"ok\"}.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "cacheon",
       "public_safe": true,
       "review": {
@@ -232,7 +244,13 @@
       "id": "sn-14-cacheon-rounds-api",
       "kind": "subnet-api",
       "name": "Cacheon evaluation rounds API",
-      "notes": "Public no-auth GET returning evaluation round history with challenger counts, scores, speed improvement, and per-round evaluation metadata. Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/rounds); same host as the existing /api/status and /api/leader subnet-api surfaces.",
+      "notes": "Public no-auth GET returning evaluation round history with challenger counts, scores, speed improvement, and per-round evaluation metadata. Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/rounds); same host as the existing /api/status and /api/leader subnet-api surfaces. Live-verified 2026-07-21: HTTP 200 application/json (~95 KB), rounds[] with evaluation_block, evaluated_at, challenger entries and scores.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "cacheon",
       "public_safe": true,
       "review": {
@@ -251,7 +269,13 @@
       "id": "sn-14-cacheon-leader-history-api",
       "kind": "subnet-api",
       "name": "Cacheon leader overtake history API",
-      "notes": "Public no-auth GET returning leader overtake history with timestamps, blocks, leader UID, scores, and image metadata. Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/leader/history); same host as the existing /api/status, /api/leader, and /api/rounds subnet-api surfaces.",
+      "notes": "Public no-auth GET returning leader overtake history with timestamps, blocks, leader UID, scores, and image metadata. Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/leader/history); same host as the existing /api/status, /api/leader, and /api/rounds subnet-api surfaces. Live-verified 2026-07-21: HTTP 200 application/json (~24 KB), history[] of leader overtakes with ts, block, new_leader_uid, new_leader_hotkey.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "cacheon",
       "public_safe": true,
       "review": {
