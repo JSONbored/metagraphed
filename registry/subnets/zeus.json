@@ -19,7 +19,7 @@
   "docs_url": "https://docs.zeussubnet.com/docs/introduction",
   "name": "Zeus",
   "netuid": 18,
-  "notes": "First maintainer-reviewed pass for SN18 (previously unreviewed, categories empty, no website/source-repo/docs surfaces despite website_url and source_repo already being set at the top level). Zeus (by Orpheus AI) forecasts environmental variables (temperature, wind, solar radiation) from ERA5 reanalysis data using on-chain commit-reveal validation. Added the missing website, source-repo, and docs surfaces. Diffed the tracked OpenAPI schema (8 paths) against tracked surfaces: /v1/forecast/point and /v1/forecast/area both confirmed live-tested to require a real API key (401 \"Invalid API key\" despite the schema marking X-API-Key optional); the two /v1/billing/* routes are payment endpoints; /metrics is WAF-blocked (403, HTML challenge page, not the API). None are new public surfaces. 4 of the 5 pre-existing community-submitted surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed.",
+  "notes": "First maintainer-reviewed pass for SN18 (previously unreviewed, categories empty, no website/source-repo/docs surfaces despite website_url and source_repo already being set at the top level). Zeus (by Orpheus AI) forecasts environmental variables (temperature, wind, solar radiation) from ERA5 reanalysis data using on-chain commit-reveal validation. Added the missing website, source-repo, and docs surfaces. Diffed the tracked OpenAPI schema (8 paths) against tracked surfaces: /v1/forecast/point and /v1/forecast/area both confirmed live-tested to require a real API key (401 \"Invalid API key\" despite the schema marking X-API-Key optional); the two /v1/billing/* routes are payment endpoints; /metrics is WAF-blocked (403, HTML challenge page, not the API). 4 of the 5 pre-existing community-submitted surfaces had no probe config at all -- the registry-wide gap tracked in #5932 -- fixed. MCP execute #7034 (2026-07-21): re-verified the four no-auth callable surfaces live and registered the three auth-gated OpenAPI paths (forecast/point, forecast/area, metrics) with auth_required:true and probe.enabled:false so call_subnet_surface rejects them until Phase 3; billing routes remain unregistered (payment/webhook plumbing).",
   "schema_version": 1,
   "slug": "sn-18",
   "social": {
@@ -88,6 +88,7 @@
       "id": "sn-18-zeus-subnet-api",
       "kind": "subnet-api",
       "name": "Zeus subnet-api",
+      "notes": "Live-verified 2026-07-21: GET https://api.zeussubnet.com/v1/meta returned HTTP 200 application/json {\"service\":\"boreas-edge\",\"version\":\"0.1.0\"}.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -109,7 +110,7 @@
       "id": "sn-18-zeus-openapi",
       "kind": "openapi",
       "name": "Zeus BOREAS Edge API (public)",
-      "notes": "Machine-readable spec for the public BOREAS Edge API documented by Zeus.",
+      "notes": "Machine-readable spec for the public BOREAS Edge API documented by Zeus. Live-verified 2026-07-21: GET https://api.zeussubnet.com/openapi.json returned HTTP 200 application/json (~10 KB) OpenAPI 3.1.0, info.title \"BOREAS Edge API (public)\", version 0.1.0.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -136,7 +137,7 @@
       "id": "sn-18-zeus-health",
       "kind": "subnet-api",
       "name": "Zeus BOREAS Edge API health",
-      "notes": "Public no-auth health probe for the Zeus BOREAS Edge API; GET /v1/health returns {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing /v1/meta subnet-api surface.",
+      "notes": "Public no-auth health probe for the Zeus BOREAS Edge API; GET /v1/health returns {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing /v1/meta subnet-api surface. Live-verified 2026-07-21: GET https://api.zeussubnet.com/v1/health returned HTTP 200 application/json {\"status\":\"ok\"}.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -185,7 +186,7 @@
       "id": "sn-18-zeus-ready",
       "kind": "subnet-api",
       "name": "Zeus readiness check",
-      "notes": "Public no-auth GET returning readiness status including vault and database connectivity. Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning readiness status including vault and database connectivity. Documented in the subnet's own OpenAPI schema. Live-verified 2026-07-21: GET https://api.zeussubnet.com/v1/ready returned HTTP 200 application/json {\"status\":\"ok\",\"vault\":\"connected\",\"database\":\"connected\"}.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -200,6 +201,99 @@
       },
       "source_urls": ["https://api.zeussubnet.com/v1/ready"],
       "url": "https://api.zeussubnet.com/v1/ready"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "X-API-Key",
+        "value_format": "<api-key>",
+        "scopes_note": "Zeus BOREAS Edge forecast API key (OpenAPI parameter X-API-Key on /v1/forecast/point)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-18-zeus-forecast-point",
+      "kind": "subnet-api",
+      "name": "Zeus point weather forecast",
+      "notes": "GET /v1/forecast/point weather point-forecast query (lat, lon, model, hourly, forecast_hours) from the registered BOREAS Edge OpenAPI. Schema marks X-API-Key optional, but live unauthenticated requests return 401. Live-verified 2026-07-21: anonymous GET with sample query params returned HTTP 401 application/json {\"detail\":\"Invalid API key.\",\"request_id\":\"...\"}. Registered with probe.enabled:false for MCP execute Phase 1; credential passthrough is Phase 3 (#7016).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsdevninja"
+      },
+      "source_urls": [
+        "https://api.zeussubnet.com/openapi.json",
+        "https://docs.zeussubnet.com/docs/introduction"
+      ],
+      "url": "https://api.zeussubnet.com/v1/forecast/point"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "X-API-Key",
+        "value_format": "<api-key>",
+        "scopes_note": "Zeus BOREAS Edge forecast API key (OpenAPI parameter X-API-Key on /v1/forecast/area)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-18-zeus-forecast-area",
+      "kind": "subnet-api",
+      "name": "Zeus area weather forecast",
+      "notes": "GET /v1/forecast/area bounding-box weather forecast (min_lat, max_lat, min_lon, max_lon, model, hourly, forecast_hours) from the registered BOREAS Edge OpenAPI. Same auth situation as /v1/forecast/point. Live-verified 2026-07-21: anonymous GET with sample query params returned HTTP 401 application/json {\"detail\":\"Invalid API key.\",\"request_id\":\"...\"}. Registered with probe.enabled:false for MCP execute Phase 1; credential passthrough is Phase 3 (#7016).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsdevninja"
+      },
+      "source_urls": [
+        "https://api.zeussubnet.com/openapi.json",
+        "https://docs.zeussubnet.com/docs/introduction"
+      ],
+      "url": "https://api.zeussubnet.com/v1/forecast/area"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Anonymous GET returns Cloudflare WAF 403 HTML challenge (not an API-key JSON error). Exact operator auth for /metrics is not publicly documented in the OpenAPI; tracked as gated with probe disabled."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-18-zeus-metrics",
+      "kind": "subnet-api",
+      "name": "Zeus Prometheus metrics",
+      "notes": "GET /metrics Prometheus-style metrics endpoint listed in the registered BOREAS Edge OpenAPI. Live-verified 2026-07-21: anonymous GET returned HTTP 403 text/html (Cloudflare WAF challenge page, not the API JSON). Registered with auth_required:true and probe.enabled:false per #7034 so call_subnet_surface rejects it until Phase 3; not a no-auth public data surface.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsdevninja"
+      },
+      "source_urls": [
+        "https://api.zeussubnet.com/openapi.json",
+        "https://docs.zeussubnet.com/docs/introduction"
+      ],
+      "url": "https://api.zeussubnet.com/metrics"
     }
   ],
   "website_url": "https://www.zeussubnet.com/"
