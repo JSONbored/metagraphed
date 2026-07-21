@@ -90,7 +90,13 @@
       "id": "sn-9-iota-codeparrot-dataset",
       "kind": "data-artifact",
       "name": "IOTA code pretraining dataset",
-      "notes": "Public Macrocosmos HuggingFace GitHub-code corpus (repo_name/path/size/content/license columns; 32 languages) in the macrocosm-os org, a pretraining-data source fit for the IOTA (SN9) LLM-pretraining subnet; not gated. The IOTA repo README (source) declares Macrocosmos operates subnet 9 and links docs.macrocosmos.ai/subnets/subnet-9-pre-training.",
+      "notes": "Public Macrocosmos HuggingFace GitHub-code corpus (repo_name/path/size/content/license columns; 32 languages) in the macrocosm-os org, a pretraining-data source fit for the IOTA (SN9) LLM-pretraining subnet; not gated. The IOTA repo README (source) declares Macrocosmos operates subnet 9 and links docs.macrocosmos.ai/subnets/subnet-9-pre-training. Live-verified 2026-07-21: GET returns HTTP 200.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 15000
+      },
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -109,7 +115,13 @@
       "id": "sn-9-iota-openapi",
       "kind": "openapi",
       "name": "IOTA orchestrator API OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai — documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo.",
+      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai — documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo. Live-verified 2026-07-21: GET returns OpenAPI 3.1 JSON (~83 KB).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -127,7 +139,13 @@
       "id": "sn-9-iota-healthcheck",
       "kind": "subnet-api",
       "name": "IOTA orchestrator healthcheck",
-      "notes": "Public no-auth GET /healthcheck on the IOTA SN9 orchestrator returning liveness JSON (observed: {\"status\":\"healthy\"}); documented as GET /healthcheck in the subnet OpenAPI spec.",
+      "notes": "Public no-auth GET /healthcheck on the IOTA SN9 orchestrator returning liveness JSON (observed: {\"status\":\"healthy\"}); documented as GET /healthcheck in the subnet OpenAPI spec. Live-verified 2026-07-21: HTTP 200 application/json {\"status\":\"healthy\"}.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -143,7 +161,7 @@
       "id": "sn-9-iota-metrics",
       "kind": "subnet-api",
       "name": "IOTA orchestrator Prometheus metrics",
-      "notes": "Public no-auth GET returning Prometheus text-exposition-format process/runtime metrics (python_gc_objects_collected_total and similar). Documented in the subnet's own OpenAPI schema (path /metrics); plain-text response, not JSON, so tracked with expect: any. Same pattern as the SN1 Apex orchestrator's own /metrics surface (same macrocosm-os org).",
+      "notes": "Public no-auth GET returning Prometheus text-exposition-format process/runtime metrics (python_gc_objects_collected_total and similar). Documented in the subnet's own OpenAPI schema (path /metrics); plain-text response, not JSON, so tracked with expect: any. Same pattern as the SN1 Apex orchestrator's own /metrics surface (same macrocosm-os org). Live-verified 2026-07-21: HTTP 200 text/plain Prometheus exposition.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -161,7 +179,7 @@
       "id": "sn-9-iota-run-info",
       "kind": "subnet-api",
       "name": "IOTA training run info",
-      "notes": "Public no-auth GET /common/get_run_info on the IOTA orchestrator, returning the current decentralized pre-training run's configuration (run_id, num_miners, incentive_perc, run_flags) with no parameters required. Distinct from /common/get_run_epoch, which needs a specific run_id and is not tracked here since the current run_id changes over time (this endpoint is how a client discovers it).",
+      "notes": "Public no-auth GET /common/get_run_info on the IOTA orchestrator, returning the current decentralized pre-training run's configuration (run_id, num_miners, incentive_perc, run_flags) with no parameters required. Distinct from /common/get_run_epoch, which needs a specific run_id and is not tracked here since the current run_id changes over time (this endpoint is how a client discovers it). Live-verified 2026-07-21: HTTP 200 application/json array of RunInfo objects.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -172,6 +190,31 @@
       "public_safe": true,
       "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
       "url": "https://iota.api.macrocosmos.ai/common/get_run_info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-9-iota-profiler-status",
+      "kind": "subnet-api",
+      "name": "IOTA profiler status",
+      "notes": "Public no-auth GET /profiler/status on the IOTA SN9 orchestrator returning profiler liveness JSON (running, profiler_exists). Documented in the subnet OpenAPI schema with no auth required (unlike /profiler/start and /profiler/stop). Live-verified 2026-07-21: HTTP 200 application/json {\"running\":false,\"profiler_exists\":false}.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://iota.api.macrocosmos.ai/profiler/status"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/profiler/status"
     }
   ],
   "website_url": "https://iota.macrocosmos.ai/"
