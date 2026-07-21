@@ -52,7 +52,10 @@ const SURFACES = [
     assertBody: (b) => {
       assert.equal(b.success, true);
       assert.ok(Array.isArray(b.pools));
-      assert.equal(b.pools[0].address, "0x433a00819c771b33fa7223a5b3499b24fbcd1bbc");
+      assert.equal(
+        b.pools[0].address,
+        "0x433a00819c771b33fa7223a5b3499b24fbcd1bbc",
+      );
     },
   },
   {
