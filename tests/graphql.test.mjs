@@ -19277,6 +19277,65 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
     assert.equal(body.data?.chain_events_stats ?? null, null);
   });
 
+  test("a DATA_API 400 is BAD_USER_INPUT, not an empty aggregate", async () => {
+    const env = {
+      DATA_API: dataApi(
+        new Response(JSON.stringify({ error: "blocks out of range" }), {
+          status: 400,
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ chain_events_stats(blocks: 100) { window_blocks } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.match(body.errors[0].message, /blocks out of range/);
+    assert.equal(body.data?.chain_events_stats ?? null, null);
+  });
+
+  test("a non-OK DATA_API response degrades to an empty aggregate", async () => {
+    const env = {
+      DATA_API: dataApi(new Response("err", { status: 503 })),
+    };
+    const { status, body } = await gql(
+      "{ chain_events_stats(blocks: 100) { window_blocks groups activity { pallet } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_events_stats, {
+      window_blocks: 100,
+      groups: 0,
+      activity: [],
+    });
+  });
+
+  test("a rate-limited DATA_API call degrades to an empty aggregate", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({ window_blocks: 1000, groups: 1, activity: [{}] }),
+      ),
+      DATA_RATE_LIMITER: {
+        async limit() {
+          return { success: false };
+        },
+      },
+    };
+    const { status, body } = await gql(
+      "{ chain_events_stats { window_blocks groups activity { pallet } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_events_stats, {
+      window_blocks: 1000,
+      groups: 0,
+      activity: [],
+    });
+  });
+
   test("sparse activity rows fill null defaults", async () => {
     const env = {
       DATA_API: dataApi(

@@ -6938,21 +6938,22 @@ const rootValue = {
   },
 
   // #7432: reuse loadChainActivity + optionalBlocksWindow (the same DATA_API
-  // path MCP get_chain_activity already calls). invalid_params (bad blocks) is
-  // BAD_USER_INPUT; a cold/unbound/rate-limited tier degrades to a
-  // schema-stable empty aggregate, never a GraphQL error — matching
-  // chain_events' cold-empty convention. Distinct from Query.chain_activity.
+  // path MCP get_chain_activity already calls). invalid_params (bad blocks or
+  // a data-Worker 400) is BAD_USER_INPUT; a cold/unbound/rate-limited tier
+  // degrades to a schema-stable empty aggregate, never a GraphQL error —
+  // matching chain_events' cold-empty convention. Distinct from
+  // Query.chain_activity.
   async chain_events_stats({ blocks }, context) {
     let windowBlocks;
     try {
       windowBlocks = optionalBlocksWindow({ blocks });
     } catch (err) {
-      if (err?.toolError && err.code === "invalid_params") {
-        throw new GraphQLError(err.message, {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-      throw err;
+      // optionalBlocksWindow only throws toolError invalid_params; map it
+      // straight to BAD_USER_INPUT (same contract as MCP get_chain_activity).
+      throw new GraphQLError(
+        err?.message || "Argument `blocks` must be a positive integer.",
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
     }
     try {
       const data = await loadChainActivity(context, windowBlocks);
