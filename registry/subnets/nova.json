@@ -163,7 +163,7 @@
       "id": "sn-68-nova-score-share-openapi",
       "kind": "openapi",
       "name": "NOVA Boltz score sharing API OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.x schema for the NOVA SN68 validator score-sharing service (title: Boltz score sharing API). Served publicly at vali-score-share-api.metanova-labs.ai; documents molecule and nanobody score-share routes used by validators to average non-deterministic model results.",
+      "notes": "Machine-readable OpenAPI 3.x schema for the NOVA SN68 validator score-sharing service (title: Boltz score sharing API). Served publicly at vali-score-share-api.metanova-labs.ai; documents molecule and nanobody score-share routes used by validators to average non-deterministic model results. Live-verified 2026-07-22: GET returns OpenAPI 3.1.0 JSON (title Boltz score sharing API).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -191,7 +191,7 @@
       "id": "sn-68-nova-score-share-molecules",
       "kind": "subnet-api",
       "name": "NOVA score-share molecules catalog API",
-      "notes": "Public no-auth GET /api/v1/molecules on vali-score-share-api.metanova-labs.ai returning paginated molecule score-share records (items with name, epoch, target_averages). Documented as GET /api/v1/molecules in the subnet OpenAPI spec; same host as SCORE_SHARE_API_URL in the official nova validator docs and validator.py.",
+      "notes": "Public no-auth GET /api/v1/molecules on vali-score-share-api.metanova-labs.ai returning paginated molecule score-share records (items with name, epoch, target_averages). Documented as GET /api/v1/molecules in the subnet OpenAPI spec; same host as SCORE_SHARE_API_URL in the official nova validator docs and validator.py. Live-verified 2026-07-22: HTTP 200 JSON paginated molecules list (items/total/page).",
       "probe": {
         "enabled": true,
         "expect": "json",
