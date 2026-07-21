@@ -127,7 +127,13 @@
       "id": "sn-43-graphite-ai-subnet-api",
       "kind": "subnet-api",
       "name": "Graphite SN43 subnet stats API",
-      "notes": "Public, unauthenticated JSON endpoint on Graphite's official SN43 API (api.graphite-ai.net) returning the live subnet-43 metagraph aggregate: netuid, total registered neurons, validator/miner counts, total alpha stake, and an availability flag. Documented in the subnet's OpenAPI spec as GET /api/v1/stats/subnet.",
+      "notes": "Public, unauthenticated JSON endpoint on Graphite's official SN43 API (api.graphite-ai.net) returning the live subnet-43 metagraph aggregate: netuid, total registered neurons, validator/miner counts, total alpha stake, and an availability flag. Documented in the subnet's OpenAPI spec as GET /api/v1/stats/subnet. Live-verified 2026-07-21: GET https://api.graphite-ai.net/api/v1/stats/subnet -> HTTP 200 application/json (netuid 43, total_registered/validators/miners counts, total_alpha_stake, updated_at).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "graphite-ai",
       "public_safe": true,
       "review": {
