@@ -202,7 +202,7 @@
       "id": "sn-36-eirel-metagraph-status",
       "kind": "subnet-api",
       "name": "Eirel metagraph status",
-      "notes": "Public metagraph status for netuid 36 on finney (validator/miner counts, timestamp); GET /v1/metagraph/status in the OpenAPI spec.",
+      "notes": "Public metagraph status for netuid 36 on finney (validator/miner counts, timestamp); GET /v1/metagraph/status in the OpenAPI spec. Live-verified 2026-07-21 (reproduced twice, ~5 minutes apart): HTTP 200 application/json, but the body reports an internal decode error for this specific netuid (status: failed, validator_count/miner_count both 0, with a scalecodec type-mismatch message) instead of real data. This is a bug in Eirel's own on-chain query path for this one route, not a metagraphed config issue -- their /healthz reports database/redis ok, and the sibling dashboard-overview surface above returns correct netuid/network/validator data from the same host. url/method/auth here are all correct as registered; no config change made. Probe left enabled so live-status monitoring continues to reflect the outage.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -439,6 +439,2752 @@
       "public_safe": true,
       "source_urls": ["https://api.eirel.ai/openapi.json"],
       "url": "https://api.eirel.ai/v1/workflow-composition/registry"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-dashboard-leaderboard",
+      "kind": "subnet-api",
+      "name": "Eirel dashboard leaderboard",
+      "notes": "Public no-auth GET /api/v1/dashboard/leaderboard on api.eirel.ai returning per-family agent rankings (rank, hotkey, agent_name/version, artifact_sha256, raw_score). Documented in the subnet's own OpenAPI schema. Requires a required family_id query param (base URL 422s with {\"detail\":[{\"loc\":[\"query\",\"family_id\"],\"msg\":\"Field required\"}]} — not a defect); live-verified 2026-07-21 with family_id=general_chat (a real family id from the registered dashboard-families surface) returning a populated leaderboard. Already callable today via call_subnet_surface's own query argument (no Phase 2 needed) despite probe.enabled:false, which only means the periodic health probe (which can't supply a query param) is skipped.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/api/v1/dashboard/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-dashboard-miner-profile",
+      "kind": "subnet-api",
+      "name": "Eirel dashboard miner profile",
+      "notes": "Public no-auth GET /api/v1/dashboard/miners/{hotkey} on api.eirel.ai returning one miner's profile for a family (uid, current_rank/score, lifetime_wins, epochs_participated, latest_metrics). Requires a required family_id query param too. Documented in the subnet's own OpenAPI schema. Live-verified 2026-07-21: GET .../miners/5EM76XmEcuJn3xahDrNVntDpXpsLzXorbK8zKZGCXJpAqqGk?family_id=general_chat -> HTTP 200 with a real profile (uid 210). Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/api/v1/dashboard/miners/%7Bhotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-dashboard-miner-runs",
+      "kind": "subnet-api",
+      "name": "Eirel dashboard miner run history",
+      "notes": "Public no-auth GET /api/v1/dashboard/miners/{hotkey}/runs on api.eirel.ai returning a miner's per-run history for a family (run_id, rank, raw_score, was_winner). Requires a required family_id query param too. Documented in the subnet's own OpenAPI schema. Live-verified 2026-07-21: GET .../miners/5EM76XmEcuJn3xahDrNVntDpXpsLzXorbK8zKZGCXJpAqqGk/runs?family_id=general_chat -> HTTP 200 with 4 real run entries. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/api/v1/dashboard/miners/%7Bhotkey%7D/runs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-dashboard-miner-run-detail",
+      "kind": "subnet-api",
+      "name": "Eirel dashboard miner run detail",
+      "notes": "Public no-auth GET /api/v1/dashboard/miners/{hotkey}/runs/{run_id} on api.eirel.ai returning one miner's detailed per-run metrics (official_score, per-metric breakdown, task counts). Requires a required family_id query param too. Documented in the subnet's own OpenAPI schema. Live-verified 2026-07-21: GET .../miners/5EM76.../runs/run-15?family_id=general_chat -> HTTP 200 with real per-metric detail. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/api/v1/dashboard/miners/%7Bhotkey%7D/runs/%7Brun_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-dashboard-run-validator-costs",
+      "kind": "subnet-api",
+      "name": "Eirel dashboard run validator costs",
+      "notes": "Public no-auth GET /api/v1/dashboard/runs/{run_id}/validator-costs on api.eirel.ai returning per-run oracle/judge cost totals. Documented in the subnet's own OpenAPI schema. Live-verified 2026-07-21: GET .../runs/run-16/validator-costs -> HTTP 200 {\"run_id\":\"run-16\",\"validators\":[],\"total_oracle_cost_usd\":0.0,...}. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/api/v1/dashboard/runs/%7Brun_id%7D/validator-costs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-dashboard-submission-artifact",
+      "kind": "subnet-api",
+      "name": "Eirel dashboard submission artifact",
+      "notes": "Public no-auth GET /api/v1/dashboard/runs/{run_id}/submissions/{submission_id}/artifact on api.eirel.ai, for downloading a completed submission's public artifact. Documented in the subnet's own OpenAPI schema. Live-verified 2026-07-21: a (run_id, submission_id) pair for a still-queued submission returns a clean HTTP 404 {\"detail\":\"not found\"} (not 401/403), confirming the route is genuinely public/unauthenticated -- did not have a completed submission_id on hand to confirm a 200 body shape. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/api/v1/dashboard/runs/%7Brun_id%7D/submissions/%7Bsubmission_id%7D/artifact"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-dashboard-submission-files",
+      "kind": "subnet-api",
+      "name": "Eirel dashboard submission file listing",
+      "notes": "Public no-auth GET /api/v1/dashboard/runs/{run_id}/submissions/{submission_id}/files on api.eirel.ai, listing a completed submission's public files. Documented in the subnet's own OpenAPI schema. Live-verified 2026-07-21: a (run_id, submission_id) pair for a still-queued submission returns a clean HTTP 404 {\"detail\":\"not found\"} (not 401/403), confirming the route is genuinely public/unauthenticated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/api/v1/dashboard/runs/%7Brun_id%7D/submissions/%7Bsubmission_id%7D/files"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-dashboard-submission-file",
+      "kind": "subnet-api",
+      "name": "Eirel dashboard submission file content",
+      "notes": "Public no-auth GET /api/v1/dashboard/runs/{run_id}/submissions/{submission_id}/files/{path} on api.eirel.ai, for fetching one file's content from a completed submission's public artifact. Documented in the subnet's own OpenAPI schema. Live-verified 2026-07-21: a (run_id, submission_id, path) combination for a still-queued submission returns a clean HTTP 404 (not 401/403), confirming the route is genuinely public/unauthenticated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/api/v1/dashboard/runs/%7Brun_id%7D/submissions/%7Bsubmission_id%7D/files/%7Bpath%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-workflow-spec-detail",
+      "kind": "subnet-api",
+      "name": "Eirel workflow spec detail",
+      "notes": "Public no-auth GET /v1/workflow-specs/{workflow_spec_id} on api.eirel.ai returning one workflow spec's full node graph (distinct from the already-registered /v1/workflow-specs list endpoint). Documented in the subnet's own OpenAPI schema. Live-verified 2026-07-21: GET .../v1/workflow-specs/general_chat_single_node_v1 -> HTTP 200 with the full spec; a nonexistent id (\"x\") 500s with a plain-text \"Internal Server Error\" rather than a clean 404 -- an unhandled-not-found bug on Eirel's side, not an auth gate (confirmed genuinely public via the real id). Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/workflow-specs/%7Bworkflow_spec_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-submissions",
+      "kind": "subnet-api",
+      "name": "Eirel POST submissions",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/submissions on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-deployments` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/submissions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-submissions-current",
+      "kind": "subnet-api",
+      "name": "Eirel GET submissions current",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/submissions/current on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/submissions/current"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-submissions-mine",
+      "kind": "subnet-api",
+      "name": "Eirel GET submissions mine",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/submissions/mine on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/submissions/mine"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-submissions-pool",
+      "kind": "subnet-api",
+      "name": "Eirel GET submissions pool",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/submissions/pool on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"invalid internal authorization\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/submissions/pool"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-submissions-submission-id",
+      "kind": "subnet-api",
+      "name": "Eirel GET submissions by submission id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/submissions/{submission_id} on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/submissions/%7Bsubmission_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-submissions-submission-id-artifact",
+      "kind": "subnet-api",
+      "name": "Eirel GET submissions by submission id artifact",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/submissions/{submission_id}/artifact on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-deployments` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/submissions/%7Bsubmission_id%7D/artifact"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-submissions-submission-id-scorecards",
+      "kind": "subnet-api",
+      "name": "Eirel GET submissions by submission id scorecards",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/submissions/{submission_id}/scorecards on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-deployments` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/submissions/%7Bsubmission_id%7D/scorecards"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-submissions-submission-id-progress",
+      "kind": "subnet-api",
+      "name": "Eirel GET submissions by submission id progress",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/submissions/{submission_id}/progress on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-deployments` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/submissions/%7Bsubmission_id%7D/progress"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-submissions-submission-id-canonical",
+      "kind": "subnet-api",
+      "name": "Eirel GET submissions by submission id canonical",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/submissions/{submission_id}/canonical on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-deployments` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/submissions/%7Bsubmission_id%7D/canonical"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-deployments",
+      "kind": "subnet-api",
+      "name": "Eirel GET deployments",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/deployments on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/deployments"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-deployments-deployment-id",
+      "kind": "subnet-api",
+      "name": "Eirel GET deployments by deployment id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/deployments/{deployment_id} on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/deployments/%7Bdeployment_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-deployments-deployment-id-health-history",
+      "kind": "subnet-api",
+      "name": "Eirel GET deployments by deployment id health history",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/deployments/{deployment_id}/health-history on api.eirel.ai — part of Eirel's submission & deployment lifecycle surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-deployments` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/deployments/%7Bdeployment_id%7D/health-history"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-runs-rollover",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators runs rollover",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/runs/rollover on api.eirel.ai — part of Eirel's family scoring & evaluation tasks surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-families-family-id-targets` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/runs/rollover"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-families-family-id-targets",
+      "kind": "subnet-api",
+      "name": "Eirel GET families by family id targets",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/families/{family_id}/targets on api.eirel.ai — part of Eirel's family scoring & evaluation tasks surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/families/%7Bfamily_id%7D/targets"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-families-family-id-scorecards",
+      "kind": "subnet-api",
+      "name": "Eirel GET families by family id scorecards",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/families/{family_id}/scorecards on api.eirel.ai — part of Eirel's family scoring & evaluation tasks surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/families/%7Bfamily_id%7D/scorecards"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-families-family-id-aggregate",
+      "kind": "subnet-api",
+      "name": "Eirel GET families by family id aggregate",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/families/{family_id}/aggregate on api.eirel.ai — part of Eirel's family scoring & evaluation tasks surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/families/%7Bfamily_id%7D/aggregate"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-families-family-id-tasks-claim",
+      "kind": "subnet-api",
+      "name": "Eirel POST families by family id tasks claim",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/families/{family_id}/tasks/claim on api.eirel.ai — part of Eirel's family scoring & evaluation tasks surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-families-family-id-targets` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/families/%7Bfamily_id%7D/tasks/claim"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-families-family-id-task-evaluations-task-evaluation-id-result",
+      "kind": "subnet-api",
+      "name": "Eirel POST families by family id task evaluations by task evaluation id result",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/families/{family_id}/task-evaluations/{task_evaluation_id}/result on api.eirel.ai — part of Eirel's family scoring & evaluation tasks surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-families-family-id-targets` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/families/%7Bfamily_id%7D/task-evaluations/%7Btask_evaluation_id%7D/result"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-families-family-id-tasks-status",
+      "kind": "subnet-api",
+      "name": "Eirel GET families by family id tasks status",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/families/{family_id}/tasks/status on api.eirel.ai — part of Eirel's family scoring & evaluation tasks surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-families-family-id-targets` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/families/%7Bfamily_id%7D/tasks/status"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-serving-releases",
+      "kind": "subnet-api",
+      "name": "Eirel GET serving releases",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/serving/releases on api.eirel.ai — part of Eirel's serving releases surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/serving/releases"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-serving-releases-current",
+      "kind": "subnet-api",
+      "name": "Eirel GET serving releases current",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/serving/releases/current on api.eirel.ai — part of Eirel's serving releases surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-serving-releases` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/serving/releases/current"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-serving-fleet",
+      "kind": "subnet-api",
+      "name": "Eirel GET serving fleet",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/serving/fleet on api.eirel.ai — part of Eirel's serving releases surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-serving-releases` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/serving/fleet"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-serving-family-id",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal serving by family id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/serving/{family_id} on api.eirel.ai — part of Eirel's serving releases surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"invalid internal authorization\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/serving/%7Bfamily_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal workflow episodes",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/workflow-episodes on api.eirel.ai — part of Eirel's workflow episode orchestration surface (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"invalid internal authorization\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-register",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal workflow episodes register",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/workflow-episodes/register on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/register"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-episode-id",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal workflow episodes by episode id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/workflow-episodes/{episode_id} on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"invalid internal authorization\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/%7Bepisode_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-episode-id-trace",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal workflow episodes by episode id trace",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/workflow-episodes/{episode_id}/trace on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/%7Bepisode_id%7D/trace"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-episode-id-lease",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal workflow episodes by episode id lease",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/workflow-episodes/{episode_id}/lease on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/%7Bepisode_id%7D/lease"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-episode-id-heartbeat",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal workflow episodes by episode id heartbeat",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/workflow-episodes/{episode_id}/heartbeat on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/%7Bepisode_id%7D/heartbeat"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-episode-id-complete",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal workflow episodes by episode id complete",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/workflow-episodes/{episode_id}/complete on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/%7Bepisode_id%7D/complete"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-episode-id-cancel",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal workflow episodes by episode id cancel",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/workflow-episodes/{episode_id}/cancel on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/%7Bepisode_id%7D/cancel"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-episode-id-update-selection",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal workflow episodes by episode id update selection",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/workflow-episodes/{episode_id}/update-selection on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/%7Bepisode_id%7D/update-selection"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-episode-id-requeue",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal workflow episodes by episode id requeue",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/workflow-episodes/{episode_id}/requeue on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/%7Bepisode_id%7D/requeue"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-episode-id-dead-letter",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal workflow episodes by episode id dead letter",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/workflow-episodes/{episode_id}/dead-letter on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/%7Bepisode_id%7D/dead-letter"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-episode-id-admin-complete",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal workflow episodes by episode id admin complete",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/workflow-episodes/{episode_id}/admin-complete on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/%7Bepisode_id%7D/admin-complete"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-episodes-recover-expired-leases",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal workflow episodes recover expired leases",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/workflow-episodes/recover-expired-leases on api.eirel.ai — part of Eirel's workflow episode orchestration surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-workflow-episodes` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-episodes/recover-expired-leases"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-summary",
+      "kind": "subnet-api",
+      "name": "Eirel GET operators summary",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/operators/summary on api.eirel.ai — part of Eirel's operator & admin control plane surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"invalid internal authorization\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/summary"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-workflow-incidents",
+      "kind": "subnet-api",
+      "name": "Eirel GET operators workflow incidents",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/operators/workflow-incidents on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/workflow-incidents"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-workflow-incidents-remediate",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators workflow incidents remediate",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/workflow-incidents/remediate on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/workflow-incidents/remediate"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-runtime-remediation",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators runtime remediation",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/runtime-remediation on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/runtime-remediation"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-runtime-remediation-policy",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators runtime remediation policy",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/runtime-remediation/policy on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/runtime-remediation/policy"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-runtime-remediation-suppressions",
+      "kind": "subnet-api",
+      "name": "Eirel GET operators runtime remediation suppressions",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/operators/runtime-remediation/suppressions on api.eirel.ai — part of Eirel's operator & admin control plane surface (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/runtime-remediation/suppressions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-runtime-remediation-suppressions-suppression-id",
+      "kind": "subnet-api",
+      "name": "Eirel DELETE operators runtime remediation suppressions by suppression id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) DELETE /v1/operators/runtime-remediation/suppressions/{suppression_id} on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/runtime-remediation/suppressions/%7Bsuppression_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-runtime-nodes",
+      "kind": "subnet-api",
+      "name": "Eirel GET operators runtime nodes",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/operators/runtime-nodes on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/runtime-nodes"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-runtime-capacity",
+      "kind": "subnet-api",
+      "name": "Eirel GET operators runtime capacity",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/operators/runtime-capacity on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/runtime-capacity"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-prometheus-targets",
+      "kind": "subnet-api",
+      "name": "Eirel GET operators prometheus targets",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/operators/prometheus-targets on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/prometheus-targets"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-runtime-nodes-refresh",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators runtime nodes refresh",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/runtime-nodes/refresh on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/runtime-nodes/refresh"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path. Unlike its router-mates, a live check here got HTTP 422 {\"detail\":[{\"loc\":[\"body\"],\"msg\":\"Field required\"}]} (body-required, not a clean 401) since no further probing was attempted (this is a state-mutating action, see notes). Registered auth_required:true as the conservative default, matching its verified-auth-gated /v1/operators/* router."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-families-family-id-freeze",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators families by family id freeze",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/families/{family_id}/freeze on api.eirel.ai — part of Eirel's operator & admin control plane surface. Live-checked 2026-07-21 with an empty body: HTTP 422 {\"detail\":[{\"loc\":[\"body\"],\"msg\":\"Field required\"}]}, not a clean 401 — auth may be checked after body validation, so this one's auth-gating is inconclusive from a safe read-only request. Did not probe further: this is a state-mutating action (freezing a family's evaluation), and supplying a real body against the live production endpoint to force an auth check isn't an appropriate test. Registered as auth_required:true (matching its /v1/operators/* router, verified auth-gated via the sibling `sn-36-eirel-v1-operators-summary`) as the conservative default; a maintainer with real credentials should confirm. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/families/%7Bfamily_id%7D/freeze"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-serving-releases-trigger",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators serving releases trigger",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/serving-releases/trigger on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/serving-releases/trigger"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-serving-releases-run-scheduled",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators serving releases run scheduled",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/serving-releases/run-scheduled on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/serving-releases/run-scheduled"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-serving-releases-release-id-cancel",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators serving releases by release id cancel",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/serving-releases/{release_id}/cancel on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/serving-releases/%7Brelease_id%7D/cancel"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-deployments-deployment-id-promote",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators deployments by deployment id promote",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/deployments/{deployment_id}/promote on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/deployments/%7Bdeployment_id%7D/promote"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-deployments-deployment-id-drain",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators deployments by deployment id drain",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/deployments/{deployment_id}/drain on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/deployments/%7Bdeployment_id%7D/drain"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-deployments-deployment-id-retire",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators deployments by deployment id retire",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/deployments/{deployment_id}/retire on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/deployments/%7Bdeployment_id%7D/retire"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-serving-deployments-serving-deployment-id-drain",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators serving deployments by serving deployment id drain",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/serving-deployments/{serving_deployment_id}/drain on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/serving-deployments/%7Bserving_deployment_id%7D/drain"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-serving-deployments-serving-deployment-id-retire",
+      "kind": "subnet-api",
+      "name": "Eirel POST operators serving deployments by serving deployment id retire",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/operators/serving-deployments/{serving_deployment_id}/retire on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/serving-deployments/%7Bserving_deployment_id%7D/retire"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-operators-runtime-status",
+      "kind": "subnet-api",
+      "name": "Eirel GET operators runtime status",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/operators/runtime-status on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-operators-summary` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/operators/runtime-status"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-runtime-deployment-id-healthz",
+      "kind": "subnet-api",
+      "name": "Eirel GET runtime by deployment id healthz",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /runtime/{deployment_id}/healthz on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"invalid internal authorization\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/runtime/%7Bdeployment_id%7D/healthz"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-runtime-deployment-id-v1-agent-infer",
+      "kind": "subnet-api",
+      "name": "Eirel POST runtime by deployment id agent infer",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /runtime/{deployment_id}/v1/agent/infer on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/runtime/%7Bdeployment_id%7D/v1/agent/infer"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-runtime-serving-serving-deployment-id-healthz",
+      "kind": "subnet-api",
+      "name": "Eirel GET runtime serving by serving deployment id healthz",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /runtime/serving/{serving_deployment_id}/healthz on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/runtime/serving/%7Bserving_deployment_id%7D/healthz"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-runtime-serving-serving-deployment-id-v1-agent-infer",
+      "kind": "subnet-api",
+      "name": "Eirel POST runtime serving by serving deployment id agent infer",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /runtime/serving/{serving_deployment_id}/v1/agent/infer on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/runtime/serving/%7Bserving_deployment_id%7D/v1/agent/infer"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-validator-runs-run-id-deployments-deployment-id-healthz",
+      "kind": "subnet-api",
+      "name": "Eirel GET validator runs by run id deployments by deployment id healthz",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/validator/runs/{run_id}/deployments/{deployment_id}/healthz on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/validator/runs/%7Brun_id%7D/deployments/%7Bdeployment_id%7D/healthz"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-validator-epochs-epoch-id-deployments-deployment-id-healthz",
+      "kind": "subnet-api",
+      "name": "Eirel GET validator epochs by epoch id deployments by deployment id healthz",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/validator/epochs/{epoch_id}/deployments/{deployment_id}/healthz on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/validator/epochs/%7Bepoch_id%7D/deployments/%7Bdeployment_id%7D/healthz"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-runs-run-id-deployments-deployment-id-healthz",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal runs by run id deployments by deployment id healthz",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/runs/{run_id}/deployments/{deployment_id}/healthz on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/runs/%7Brun_id%7D/deployments/%7Bdeployment_id%7D/healthz"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-epochs-epoch-id-deployments-deployment-id-healthz",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal epochs by epoch id deployments by deployment id healthz",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/epochs/{epoch_id}/deployments/{deployment_id}/healthz on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/epochs/%7Bepoch_id%7D/deployments/%7Bdeployment_id%7D/healthz"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-validator-runs-run-id-deployments-deployment-id-v1-agent-infer",
+      "kind": "subnet-api",
+      "name": "Eirel POST validator runs by run id deployments by deployment id agent infer",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/validator/runs/{run_id}/deployments/{deployment_id}/v1/agent/infer on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/validator/runs/%7Brun_id%7D/deployments/%7Bdeployment_id%7D/v1/agent/infer"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-validator-runs-run-id-deployments-deployment-id-infer",
+      "kind": "subnet-api",
+      "name": "Eirel POST validator runs by run id deployments by deployment id infer",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/validator/runs/{run_id}/deployments/{deployment_id}/infer on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/validator/runs/%7Brun_id%7D/deployments/%7Bdeployment_id%7D/infer"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-validator-epochs-epoch-id-deployments-deployment-id-v1-agent-infer",
+      "kind": "subnet-api",
+      "name": "Eirel POST validator epochs by epoch id deployments by deployment id agent infer",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/validator/epochs/{epoch_id}/deployments/{deployment_id}/v1/agent/infer on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/validator/epochs/%7Bepoch_id%7D/deployments/%7Bdeployment_id%7D/v1/agent/infer"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-runs-run-id-deployments-deployment-id-v1-agent-infer",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal runs by run id deployments by deployment id agent infer",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/runs/{run_id}/deployments/{deployment_id}/v1/agent/infer on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/runs/%7Brun_id%7D/deployments/%7Bdeployment_id%7D/v1/agent/infer"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-epochs-epoch-id-deployments-deployment-id-v1-agent-infer",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal epochs by epoch id deployments by deployment id agent infer",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/epochs/{epoch_id}/deployments/{deployment_id}/v1/agent/infer on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/epochs/%7Bepoch_id%7D/deployments/%7Bdeployment_id%7D/v1/agent/infer"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-runtime-deployment-id-v1-agent-infer-stream",
+      "kind": "subnet-api",
+      "name": "Eirel POST runtime by deployment id agent infer stream",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /runtime/{deployment_id}/v1/agent/infer/stream on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/runtime/%7Bdeployment_id%7D/v1/agent/infer/stream"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-runs-run-id-deployments-deployment-id-v1-agent-infer-stream",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal runs by run id deployments by deployment id agent infer stream",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/runs/{run_id}/deployments/{deployment_id}/v1/agent/infer/stream on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/runs/%7Brun_id%7D/deployments/%7Bdeployment_id%7D/v1/agent/infer/stream"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-epochs-epoch-id-deployments-deployment-id-v1-agent-infer-stream",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal epochs by epoch id deployments by deployment id agent infer stream",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/epochs/{epoch_id}/deployments/{deployment_id}/v1/agent/infer/stream on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/epochs/%7Bepoch_id%7D/deployments/%7Bdeployment_id%7D/v1/agent/infer/stream"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-validator-runs-run-id-deployments-deployment-id-v1-agent-infer-stream",
+      "kind": "subnet-api",
+      "name": "Eirel POST validator runs by run id deployments by deployment id agent infer stream",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/validator/runs/{run_id}/deployments/{deployment_id}/v1/agent/infer/stream on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/validator/runs/%7Brun_id%7D/deployments/%7Bdeployment_id%7D/v1/agent/infer/stream"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-runtime-serving-serving-deployment-id-v1-agent-infer-stream",
+      "kind": "subnet-api",
+      "name": "Eirel POST runtime serving by serving deployment id agent infer stream",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /runtime/serving/{serving_deployment_id}/v1/agent/infer/stream on api.eirel.ai — part of Eirel's runtime inference/health proxy surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-runtime-deployment-id-healthz` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/runtime/serving/%7Bserving_deployment_id%7D/v1/agent/infer/stream"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-validators-me",
+      "kind": "subnet-api",
+      "name": "Eirel GET validators me",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/validators/me on api.eirel.ai — part of Eirel's validator identity & internal artifact registry surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/validators/me"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-submissions-submission-id-artifact",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal submissions by submission id artifact",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/submissions/{submission_id}/artifact on api.eirel.ai — part of Eirel's validator identity & internal artifact registry surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-registry` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/submissions/%7Bsubmission_id%7D/artifact"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-deployments-deployment-id-artifact",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal deployments by deployment id artifact",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/deployments/{deployment_id}/artifact on api.eirel.ai — part of Eirel's validator identity & internal artifact registry surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-registry` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/deployments/%7Bdeployment_id%7D/artifact"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-registry",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal registry",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/registry on api.eirel.ai — part of Eirel's validator identity & internal artifact registry surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"invalid internal authorization\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/registry"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-candidate-registry",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal candidate registry",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/candidate-registry on api.eirel.ai — part of Eirel's validator identity & internal artifact registry surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-registry` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/candidate-registry"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-workflow-composition-registry",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal workflow composition registry",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/workflow-composition/registry on api.eirel.ai — part of Eirel's validator identity & internal artifact registry surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-registry` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/workflow-composition/registry"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-artifacts",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal artifacts",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/artifacts on api.eirel.ai — part of Eirel's validator identity & internal artifact registry surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-registry` (401 \"invalid internal authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/artifacts"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"invalid internal authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-artifacts-artifact-id",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal artifacts by artifact id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/artifacts/{artifact_id} on api.eirel.ai — part of Eirel's validator identity & internal artifact registry surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"invalid internal authorization\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/artifacts/%7Bartifact_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-eval-tool-calls",
+      "kind": "subnet-api",
+      "name": "Eirel POST internal eval tool calls",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/internal/eval/tool_calls on api.eirel.ai — part of Eirel's internal eval & checkpoint persistence surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-eval-feedback` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/eval/tool_calls"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-eval-job-ledger",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal eval job ledger",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/eval/job_ledger on api.eirel.ai — part of Eirel's internal eval & checkpoint persistence surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/eval/job_ledger"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-eval-feedback",
+      "kind": "subnet-api",
+      "name": "Eirel GET eval feedback",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/eval/feedback on api.eirel.ai — part of Eirel's internal eval & checkpoint persistence surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/eval/feedback"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid checkpoint authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-checkpoints-thread-id",
+      "kind": "subnet-api",
+      "name": "Eirel DELETE internal checkpoints by thread id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) DELETE /v1/internal/checkpoints/{thread_id} on api.eirel.ai — part of Eirel's internal eval & checkpoint persistence surface (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-checkpoints-thread-id-latest` (401 \"invalid checkpoint authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/checkpoints/%7Bthread_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"invalid checkpoint authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-checkpoints-thread-id-latest",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal checkpoints by thread id latest",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/checkpoints/{thread_id}/latest on api.eirel.ai — part of Eirel's internal eval & checkpoint persistence surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"invalid checkpoint authorization\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/checkpoints/%7Bthread_id%7D/latest"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"invalid checkpoint authorization\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-internal-checkpoints-thread-id-history",
+      "kind": "subnet-api",
+      "name": "Eirel GET internal checkpoints by thread id history",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/internal/checkpoints/{thread_id}/history on api.eirel.ai — part of Eirel's internal eval & checkpoint persistence surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-internal-checkpoints-thread-id-latest` (401 \"invalid checkpoint authorization\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/internal/checkpoints/%7Bthread_id%7D/history"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-admin-validators",
+      "kind": "subnet-api",
+      "name": "Eirel GET admin validators",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/admin/validators on api.eirel.ai — part of Eirel's operator & admin control plane surface (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-admin-whoami` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/admin/validators"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-admin-validators-hotkey",
+      "kind": "subnet-api",
+      "name": "Eirel DELETE admin validators by hotkey",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) DELETE /v1/admin/validators/{hotkey} on api.eirel.ai — part of Eirel's operator & admin control plane surface (this path also supports PATCH — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-admin-whoami` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/admin/validators/%7Bhotkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-admin-runs",
+      "kind": "subnet-api",
+      "name": "Eirel GET admin runs",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/admin/runs on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-admin-whoami` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/admin/runs"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-admin-runs-current",
+      "kind": "subnet-api",
+      "name": "Eirel GET admin runs current",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/admin/runs/current on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-admin-whoami` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/admin/runs/current"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-admin-runs-advance",
+      "kind": "subnet-api",
+      "name": "Eirel POST admin runs advance",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v1/admin/runs/advance on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-admin-whoami` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/admin/runs/advance"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-admin-neurons",
+      "kind": "subnet-api",
+      "name": "Eirel GET admin neurons",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/admin/neurons on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-admin-whoami` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/admin/neurons"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-admin-submissions",
+      "kind": "subnet-api",
+      "name": "Eirel GET admin submissions",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/admin/submissions on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-admin-whoami` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/admin/submissions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (inherited from a verified router sibling): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-admin-deployments",
+      "kind": "subnet-api",
+      "name": "Eirel GET admin deployments",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/admin/deployments on api.eirel.ai — part of Eirel's operator & admin control plane surface. Not individually curled at this volume (98 auth-gated operations across this subnet's OpenAPI schema) — same router/auth boundary as the verified `sn-36-eirel-v1-admin-whoami` (401 \"missing signature headers\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/admin/deployments"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on Eirel's side), but the live response is a 401 (live-verified 2026-07-21): {\"detail\":\"missing signature headers\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-36-eirel-v1-admin-whoami",
+      "kind": "subnet-api",
+      "name": "Eirel GET admin whoami",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/admin/whoami on api.eirel.ai — part of Eirel's operator & admin control plane surface. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"missing signature headers\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7051) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json"],
+      "url": "https://api.eirel.ai/v1/admin/whoami"
     }
   ],
   "website_url": "https://eirel.ai/"

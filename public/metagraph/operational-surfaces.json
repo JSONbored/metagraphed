@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 557,
+  "surface_count": 558,
   "surfaces": [
     {
       "auth_required": false,
@@ -929,6 +929,24 @@
       "surface_id": "sn-8-vanta-slippage-estimates",
       "surface_key": "srf-4772f1bc76366498",
       "url": "https://github.com/taoshidev/vanta-network/raw/main/vali_objects/utils/model_parameters/slippage_estimates.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 9,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "iota",
+      "subnet_slug": "sn-9",
+      "surface_id": "sn-9-iota-healthcheck",
+      "surface_key": "srf-c339d9bd29f77541",
+      "url": "https://iota.api.macrocosmos.ai/healthcheck"
     },
     {
       "auth_required": false,

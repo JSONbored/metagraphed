@@ -22,7 +22,7 @@
   "dashboard_url": "https://iota.macrocosmos.ai/dashboard/mainnet",
   "name": "iota",
   "netuid": 9,
-  "notes": "Reviewed overlay for SN9 using the official IOTA website, public dashboard, and source repository. The previously discovered Macrocosmos IOTA mining setup URL currently returns 404 and is intentionally not promoted. The orchestrator OpenAPI schema documents 35 total paths; 5 are tracked here (healthcheck, openapi.json, metrics, run info) plus the codeparrot dataset. Of the rest: most are miner/validator protocol endpoints (register, submit_weights, heartbeat, and similar) meant for a specific registered hotkey, not public dashboard consumption -- global_miner_scores returned HTTP 400 unsigned, consistent with requiring Epistula request signing despite no OpenAPI-declared security scheme. get_run_epoch needs a specific run_id and isn't tracked for the same staleness reason as Numinous's (#5914) per-miner endpoints; get_run_info (tracked, zero params) is how a client discovers the current run_id instead.",
+  "notes": "Reviewed overlay for SN9 using the official IOTA website, public dashboard, and source repository. The previously discovered Macrocosmos IOTA mining setup URL currently returns 404 and is intentionally not promoted. The orchestrator OpenAPI schema documents 35 total routes; 5 are tracked here (healthcheck, openapi.json, metrics, run info) plus the codeparrot dataset. Of the rest: most are miner/validator protocol endpoints (register, submit_weights, heartbeat, and similar) meant for a specifically registered miner, not public dashboard consumption -- global_miner_scores returned HTTP 400 without the required request headers, consistent with an undeclared auth requirement in the OpenAPI schema. get_run_epoch needs a specific run_id and isn't tracked for the same staleness reason as Numinous's (#5914) per-miner endpoints; get_run_info (tracked, zero params) is how a client discovers the current run_id instead.",
   "schema_version": 1,
   "slug": "sn-9",
   "source_repo": "https://github.com/macrocosm-os/iota",
@@ -109,7 +109,7 @@
       "id": "sn-9-iota-openapi",
       "kind": "openapi",
       "name": "IOTA orchestrator API OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai — documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo.",
+      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai — documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo. Live-verified 2026-07-21: GET returns OpenAPI 3.1.0 JSON (title FastAPI).",
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -119,7 +119,13 @@
       "schema_status": "machine-readable",
       "schema_url": "https://iota.api.macrocosmos.ai/openapi.json",
       "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
-      "url": "https://iota.api.macrocosmos.ai/openapi.json"
+      "url": "https://iota.api.macrocosmos.ai/openapi.json",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     },
     {
       "auth_required": false,
@@ -127,7 +133,7 @@
       "id": "sn-9-iota-healthcheck",
       "kind": "subnet-api",
       "name": "IOTA orchestrator healthcheck",
-      "notes": "Public no-auth GET /healthcheck on the IOTA SN9 orchestrator returning liveness JSON (observed: {\"status\":\"healthy\"}); documented as GET /healthcheck in the subnet OpenAPI spec.",
+      "notes": "Public no-auth GET /healthcheck on the IOTA SN9 orchestrator returning liveness JSON (observed: {\"status\":\"healthy\"}); documented as GET /healthcheck in the subnet OpenAPI spec. Live-verified 2026-07-21: HTTP 200 JSON {\"status\":\"healthy\"}.",
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -135,7 +141,13 @@
         "submitted_by": "codevector96"
       },
       "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
-      "url": "https://iota.api.macrocosmos.ai/healthcheck"
+      "url": "https://iota.api.macrocosmos.ai/healthcheck",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     },
     {
       "auth_required": false,

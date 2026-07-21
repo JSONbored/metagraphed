@@ -64,7 +64,7 @@
       "id": "sn-78-vocence-subnet-api",
       "kind": "subnet-api",
       "name": "Vocence developer API health endpoint",
-      "notes": "Public health endpoint for the official Vocence developer API.",
+      "notes": "Public health endpoint for the official Vocence developer API. Live-verified 2026-07-21: HTTP 200 JSON {\"status\":\"ok\",\"service\":\"vocence-developer-api\"}.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -89,7 +89,7 @@
       "id": "sn-78-vocence-openapi",
       "kind": "openapi",
       "name": "Vocence Developer API OpenAPI",
-      "notes": "Official machine-readable OpenAPI spec for the Vocence developer API.",
+      "notes": "Official machine-readable OpenAPI spec for the Vocence developer API. Live-verified 2026-07-21: GET returns OpenAPI 3.1.0 JSON (title Vocence Developer API).",
       "probe": {
         "enabled": true,
         "expect": "json",
