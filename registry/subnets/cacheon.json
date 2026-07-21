@@ -194,7 +194,7 @@
       "id": "sn-14-cacheon-leader-api",
       "kind": "subnet-api",
       "name": "Cacheon current leader API",
-      "notes": "Public no-auth GET returning the reigning challenger leader record (UID, score, image, per-prompt stats). Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/leader); same host as the existing /api/status subnet-api surface. Distinct functional endpoint with substantive coordinator data.",
+      "notes": "Public no-auth GET returning the reigning challenger leader record (UID, score, image, per-prompt stats). Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/leader); same host as the existing /api/status subnet-api surface. Distinct functional endpoint with substantive coordinator data. Live-verified 2026-07-22: HTTP 200 JSON leader record.",
       "provider": "cacheon",
       "public_safe": true,
       "review": {
@@ -205,7 +205,13 @@
         "https://api.cacheon.ai/openapi.json",
         "https://cacheon.ai/docs/miners/api-contract"
       ],
-      "url": "https://api.cacheon.ai/api/leader"
+      "url": "https://api.cacheon.ai/api/leader",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     },
     {
       "auth_required": false,
@@ -213,7 +219,7 @@
       "id": "sn-14-cacheon-health",
       "kind": "subnet-api",
       "name": "Cacheon API health",
-      "notes": "Public no-auth GET /api/health on api.cacheon.ai returning coordinator liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /api/health in the subnet OpenAPI spec on the same host as the existing /api/status and /api/leader subnet-api surfaces.",
+      "notes": "Public no-auth GET /api/health on api.cacheon.ai returning coordinator liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /api/health in the subnet OpenAPI spec on the same host as the existing /api/status and /api/leader subnet-api surfaces. Live-verified 2026-07-22: HTTP 200 JSON {\"status\":\"ok\"}.",
       "provider": "cacheon",
       "public_safe": true,
       "review": {
@@ -224,7 +230,13 @@
         "https://api.cacheon.ai/openapi.json",
         "https://cacheon.ai/docs/miners/api-contract"
       ],
-      "url": "https://api.cacheon.ai/api/health"
+      "url": "https://api.cacheon.ai/api/health",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     },
     {
       "auth_required": false,
@@ -232,7 +244,7 @@
       "id": "sn-14-cacheon-rounds-api",
       "kind": "subnet-api",
       "name": "Cacheon evaluation rounds API",
-      "notes": "Public no-auth GET returning evaluation round history with challenger counts, scores, speed improvement, and per-round evaluation metadata. Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/rounds); same host as the existing /api/status and /api/leader subnet-api surfaces.",
+      "notes": "Public no-auth GET returning evaluation round history with challenger counts, scores, speed improvement, and per-round evaluation metadata. Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/rounds); same host as the existing /api/status and /api/leader subnet-api surfaces. Live-verified 2026-07-22: HTTP 200 JSON rounds history.",
       "provider": "cacheon",
       "public_safe": true,
       "review": {
@@ -243,7 +255,13 @@
         "https://api.cacheon.ai/openapi.json",
         "https://cacheon.ai/docs/miners/api-contract"
       ],
-      "url": "https://api.cacheon.ai/api/rounds"
+      "url": "https://api.cacheon.ai/api/rounds",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      }
     },
     {
       "auth_required": false,
@@ -251,7 +269,7 @@
       "id": "sn-14-cacheon-leader-history-api",
       "kind": "subnet-api",
       "name": "Cacheon leader overtake history API",
-      "notes": "Public no-auth GET returning leader overtake history with timestamps, blocks, leader UID, scores, and image metadata. Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/leader/history); same host as the existing /api/status, /api/leader, and /api/rounds subnet-api surfaces.",
+      "notes": "Public no-auth GET returning leader overtake history with timestamps, blocks, leader UID, scores, and image metadata. Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/leader/history); same host as the existing /api/status, /api/leader, and /api/rounds subnet-api surfaces. Live-verified 2026-07-22: HTTP 200 JSON leader overtake history.",
       "provider": "cacheon",
       "public_safe": true,
       "review": {
@@ -262,7 +280,13 @@
         "https://api.cacheon.ai/openapi.json",
         "https://cacheon.ai/docs/miners/api-contract"
       ],
-      "url": "https://api.cacheon.ai/api/leader/history"
+      "url": "https://api.cacheon.ai/api/leader/history",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     },
     {
       "auth_required": false,
@@ -270,7 +294,7 @@
       "id": "sn-14-cacheon-evaluations",
       "kind": "subnet-api",
       "name": "Cacheon evaluations",
-      "notes": "Public no-auth GET returning current miner evaluation entries (uid, hotkey, commit_block, image). Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning current miner evaluation entries (uid, miner account, commit_block, image). Documented in the subnet's own OpenAPI schema.",
       "probe": {
         "enabled": true,
         "expect": "json",
