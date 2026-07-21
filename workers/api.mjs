@@ -221,7 +221,7 @@ import {
   selectSafeRpcEndpoint,
   weightedPickEndpoint,
 } from "./request-handlers/rpc-proxy.ts";
-import { handleFullnodeRpcProxyRequest } from "./request-handlers/fullnode-rpc-proxy.mjs";
+import { handleFullnodeRpcProxyRequest } from "./request-handlers/fullnode-rpc-proxy.ts";
 import {
   buildChangeEvent,
   deliveryStoragePrefix,

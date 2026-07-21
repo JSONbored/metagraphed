@@ -12,7 +12,7 @@
 // contract workers/data-api.mjs's handleApiKeyVerify actually returns.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "vitest";
-import { handleFullnodeRpcProxyRequest } from "../workers/request-handlers/fullnode-rpc-proxy.mjs";
+import { handleFullnodeRpcProxyRequest } from "../workers/request-handlers/fullnode-rpc-proxy.ts";
 
 function createFakeKv() {
   const store = new Map();
