@@ -26,18 +26,19 @@ import {
   FEED_PAGINATION,
 } from "../workers/request-params.ts";
 
-function stableStringify(value) {
+function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(",")}]`;
   }
-  const keys = Object.keys(value).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
 }
 
-async function sha256Hex(text) {
+async function sha256Hex(text: unknown): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(String(text)),
@@ -49,7 +50,7 @@ async function sha256Hex(text) {
 
 /** Hash of the tracked identity fields only — stable regardless of the row's
  * account/captured_at, which change independently of the identity itself. */
-export async function identityHash(snapshot) {
+export async function identityHash(snapshot: unknown): Promise<string | null> {
   if (!snapshot) return null;
   return sha256Hex(stableStringify(snapshot));
 }
@@ -61,7 +62,7 @@ const READ_COLUMNS = [
   "identity_hash",
 ].join(", ");
 
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -69,23 +70,52 @@ function toIso(ms) {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-export function formatAccountIdentityHistoryEntry(row) {
+export interface AccountIdentityHistoryEntry {
+  observed_at: string | null;
+  identity_hash: unknown;
+  [key: string]: unknown;
+}
+
+export function formatAccountIdentityHistoryEntry(
+  row: Record<string, unknown> | null | undefined,
+): AccountIdentityHistoryEntry | null {
   if (!row || typeof row !== "object") return null;
-  const sanitized = sanitizeAccountIdentityFields(row);
-  const entry = { observed_at: toIso(row.observed_at) };
+  const sanitized = sanitizeAccountIdentityFields(row) ?? {};
+  const entry: AccountIdentityHistoryEntry = {
+    observed_at: toIso(row.observed_at),
+    identity_hash: null,
+  };
   for (const field of IDENTITY_FIELDS) entry[field] = sanitized[field] ?? null;
   entry.identity_hash = row.identity_hash ?? null;
   return entry;
 }
 
+export interface AccountIdentityHistoryResult {
+  schema_version: 1;
+  account: string;
+  entry_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  entries: AccountIdentityHistoryEntry[];
+}
+
 export function buildAccountIdentityHistory(
-  rows,
-  account,
-  { limit, offset, nextCursor } = {},
-) {
+  rows: Array<Record<string, unknown>> | null | undefined,
+  account: string,
+  {
+    limit,
+    offset,
+    nextCursor,
+  }: {
+    limit?: number | null;
+    offset?: number | null;
+    nextCursor?: string | null;
+  } = {},
+): AccountIdentityHistoryResult {
   const entries = (rows || [])
     .map(formatAccountIdentityHistoryEntry)
-    .filter(Boolean);
+    .filter((entry): entry is AccountIdentityHistoryEntry => Boolean(entry));
   return {
     schema_version: 1,
     account,
@@ -98,17 +128,28 @@ export function buildAccountIdentityHistory(
 }
 
 export async function loadAccountIdentityHistory(
-  d1,
-  account,
-  { limit, offset, cursor } = {},
-) {
+  d1: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Array<Record<string, unknown>>>,
+  account: string,
+  {
+    limit,
+    offset,
+    cursor,
+  }: {
+    limit?: number | string | null;
+    offset?: number | string | null;
+    cursor?: unknown;
+  } = {},
+): Promise<AccountIdentityHistoryResult> {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
-  const params = [account];
+  const params: unknown[] = [account];
   let sql = `SELECT ${READ_COLUMNS} FROM account_identity_history WHERE account = ?`;
-  if (useCursor) {
+  if (useCursor && cur) {
     sql += " AND (observed_at, id) < (?, ?)";
     params.push(cur[0], cur[1]);
   }

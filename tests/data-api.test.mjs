@@ -7,7 +7,7 @@ import { encodeCursor } from "../src/cursor.ts";
 import { formatSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
 import { hyperparamsHash } from "../src/subnet-hyperparams-history.mjs";
 import { IDENTITY_FIELDS } from "../src/account-identity.ts";
-import { identityHash } from "../src/account-identity-history.mjs";
+import { identityHash } from "../src/account-identity-history.ts";
 import {
   identityHash as subnetIdentityHash,
   identitySnapshotFromProfile,

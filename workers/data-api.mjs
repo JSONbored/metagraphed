@@ -351,7 +351,7 @@ import {
 import {
   identityHash,
   buildAccountIdentityHistory,
-} from "../src/account-identity-history.mjs";
+} from "../src/account-identity-history.ts";
 import {
   identitySnapshotFromProfile,
   identityHash as subnetIdentityHash,
