@@ -67,7 +67,7 @@ import {
   runQueryWithRetry,
   touchHeartbeat,
 } from "../scripts/chain-firehose-relay.mjs";
-import { CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE } from "../workers/chain-firehose-hub.mjs";
+import { CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE } from "../workers/chain-firehose-hub.ts";
 
 // #6672: this script deploys standalone (see CHAIN_FIREHOSE_INGEST_BATCH_SIZE's
 // own comment) and can't import workers/chain-firehose-hub.mjs at runtime, so

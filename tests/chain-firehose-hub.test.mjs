@@ -33,7 +33,7 @@ import {
   parseChainFirehoseTopics,
   validateChainEventsSubscribePayload,
   validateChainFirehoseIngestPayload,
-} from "../workers/chain-firehose-hub.mjs";
+} from "../workers/chain-firehose-hub.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 
 // --- validateChainEventsSubscribePayload (#4983 security fix) -------------------

@@ -37,7 +37,13 @@ import {
   subscribe,
   validate,
 } from "graphql";
-import { GRAPHQL_TRANSPORT_WS_PROTOCOL, makeServer } from "graphql-ws";
+import {
+  GRAPHQL_TRANSPORT_WS_PROTOCOL,
+  makeServer,
+  type ConnectionInitMessage,
+  type Server as GraphqlWsServer,
+  type WebSocket as GraphqlWsSocket,
+} from "graphql-ws";
 import { resolveClientIp } from "./config.ts";
 import {
   GRAPHQL_MAX_COMPLEXITY,
@@ -176,14 +182,30 @@ export const CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK = 64;
 // can enumerate the two populations separately via state.getWebSockets(tag).
 export const GRAPHQL_WS_SOCKET_TAG = "graphql-ws";
 
-function utf8ByteLength(value) {
+type ChainFirehoseFieldValue = string | number | boolean | null;
+
+// Loosely-shaped: the four source tables carry different columns beyond
+// `table`/`block_number`, and validateSingleChainFirehoseIngestPayload
+// bounds every OTHER field to a bounded scalar rather than enumerating them.
+export interface ChainFirehoseIngestPayload {
+  table: string;
+  block_number: number;
+  [key: string]: ChainFirehoseFieldValue;
+}
+
+type ValidationResult<T> =
+  { ok: true; payload: T } | { ok: false; error: string };
+
+function utf8ByteLength(value: string): number {
   return new TextEncoder().encode(value).length;
 }
 
 // null => no filter (every table). An empty Set means every requested topic
 // was unrecognized -- the caller matches nothing, rather than silently
 // falling back to "everything" for a typo'd topic name.
-export function parseChainFirehoseTopics(searchParams) {
+export function parseChainFirehoseTopics(
+  searchParams: URLSearchParams,
+): Set<string> | null {
   const raw = searchParams.get("topics");
   if (!raw) return null;
   const requested = raw
@@ -194,9 +216,12 @@ export function parseChainFirehoseTopics(searchParams) {
   return new Set(matched);
 }
 
-export function chainFirehoseMatchesTopics(payload, topics) {
+export function chainFirehoseMatchesTopics(
+  payload: { table?: unknown } | null | undefined,
+  topics: Set<string> | null | undefined,
+): boolean {
   if (topics === null || topics === undefined) return true;
-  return topics.has(payload?.table);
+  return topics.has(payload?.table as string);
 }
 
 // Validates ONE already-parsed payload object against the shape
@@ -207,20 +232,26 @@ export function chainFirehoseMatchesTopics(payload, topics) {
 // payload is rejected as a clean 400 rather than reaching SSE/WS fanout.
 // Factored out of validateChainFirehoseIngestPayload (#6672) so a batch-array
 // body can run every element through the exact same rules as a lone object.
-function validateSingleChainFirehoseIngestPayload(parsed) {
+function validateSingleChainFirehoseIngestPayload(
+  parsed: unknown,
+): ValidationResult<ChainFirehoseIngestPayload> {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return { ok: false, error: "each payload must be a JSON object" };
   }
-  if (!CHAIN_FIREHOSE_TABLES.has(parsed.table)) {
+  const record = parsed as Record<string, unknown>;
+  if (!CHAIN_FIREHOSE_TABLES.has(record.table as string)) {
     return {
       ok: false,
       error: `table must be one of ${[...CHAIN_FIREHOSE_TABLES].join(", ")}`,
     };
   }
-  if (!Number.isInteger(parsed.block_number) || parsed.block_number < 0) {
+  if (
+    !Number.isInteger(record.block_number) ||
+    (record.block_number as number) < 0
+  ) {
     return { ok: false, error: "block_number must be a non-negative integer" };
   }
-  for (const [key, value] of Object.entries(parsed)) {
+  for (const [key, value] of Object.entries(record)) {
     if (value === null) continue;
     if (typeof value === "string") {
       if (utf8ByteLength(value) > CHAIN_FIREHOSE_MAX_FIELD_STRING_BYTES) {
@@ -240,7 +271,7 @@ function validateSingleChainFirehoseIngestPayload(parsed) {
     if (typeof value === "boolean") continue;
     return { ok: false, error: `${key} has an unsupported value type` };
   }
-  return { ok: true, payload: parsed };
+  return { ok: true, payload: record as ChainFirehoseIngestPayload };
 }
 
 // Validates a raw ingest body: either ONE JSON object (the original shape --
@@ -251,7 +282,9 @@ function validateSingleChainFirehoseIngestPayload(parsed) {
 // for the former (unchanged shape/behavior for every existing single-object
 // caller) or an array for the latter -- handleIngest below dispatches on
 // Array.isArray(payload) to broadcast one or many.
-export function validateChainFirehoseIngestPayload(raw) {
+export function validateChainFirehoseIngestPayload(
+  raw: unknown,
+): ValidationResult<ChainFirehoseIngestPayload | ChainFirehoseIngestPayload[]> {
   if (typeof raw !== "string" || raw.length === 0) {
     return { ok: false, error: "request body must be a non-empty JSON string" };
   }
@@ -266,7 +299,7 @@ export function validateChainFirehoseIngestPayload(raw) {
       error: `request body exceeds ${maxBodyBytes} bytes`,
     };
   }
-  let parsed;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
@@ -282,7 +315,7 @@ export function validateChainFirehoseIngestPayload(raw) {
         error: `batch array exceeds ${CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE} payloads`,
       };
     }
-    const payloads = [];
+    const payloads: ChainFirehoseIngestPayload[] = [];
     for (const [index, item] of parsed.entries()) {
       const result = validateSingleChainFirehoseIngestPayload(item);
       if (!result.ok) {
@@ -295,7 +328,7 @@ export function validateChainFirehoseIngestPayload(raw) {
   return validateSingleChainFirehoseIngestPayload(parsed);
 }
 
-export function formatChainFirehoseSseFrame(payload) {
+export function formatChainFirehoseSseFrame(payload: unknown): string {
   return `event: chain\ndata: ${JSON.stringify(payload)}\n\n`;
 }
 
@@ -310,7 +343,10 @@ export function formatChainFirehoseSseFrame(payload) {
 // retry. Failing open to an empty array skips only this cycle's plain/
 // graphql-ws fanout; every other broadcast population is unaffected, and the
 // next broadcast() retries getWebSockets() fresh.
-function safeGetWebSockets(state, tag) {
+function safeGetWebSockets(
+  state: DurableObjectState,
+  tag?: string,
+): WebSocket[] {
   try {
     return state.getWebSockets(tag);
   } catch {
@@ -332,21 +368,26 @@ function safeGetWebSockets(state, tag) {
 // wired into makeServer's onSubscribe below. Pure and unit-tested directly
 // (no WS connection needed): returns null when the payload is valid, or a
 // non-empty GraphQLError[] describing why it was rejected.
-export function validateChainEventsSubscribePayload(payload) {
-  const query = payload?.query;
+export function validateChainEventsSubscribePayload(
+  payload: unknown,
+): readonly GraphQLError[] | null {
+  const query = (payload as { query?: unknown } | null | undefined)?.query;
   if (typeof query !== "string" || !query.trim()) {
     return [new GraphQLError("Missing required field: query.")];
   }
   if (new TextEncoder().encode(query).length > GRAPHQL_MAX_QUERY_BYTES) {
     return [new GraphQLError("GraphQL query is too large.")];
   }
-  let document;
+  let document: ReturnType<typeof parse>;
   try {
     document = parse(query);
   } catch (err) {
-    return [new GraphQLError(err.message)];
+    return [new GraphQLError((err as Error).message)];
   }
-  const operation = getOperationAST(document, payload.operationName);
+  const operationName = (
+    payload as { operationName?: string } | null | undefined
+  )?.operationName;
+  const operation = getOperationAST(document, operationName);
   if (!operation || operation.operation !== "subscription") {
     return [
       new GraphQLError(
@@ -360,6 +401,12 @@ export function validateChainEventsSubscribePayload(payload) {
     maxComplexityRule(GRAPHQL_MAX_COMPLEXITY),
   ]);
   return validationErrors.length > 0 ? validationErrors : null;
+}
+
+export interface AsyncRepeater<T> {
+  push(value: T): void;
+  end(): void;
+  [Symbol.asyncIterator](): AsyncIterator<T>;
 }
 
 // A minimal push-based async iterator: push() delivers a value to whichever
@@ -377,12 +424,15 @@ export function validateChainEventsSubscribePayload(payload) {
 // below. Once the buffer would exceed the mark, the repeater ends itself and
 // calls `onOverflow` (subscribeChainEvents wires this to unsubscribe the
 // entry) instead of buffering further.
-export function createAsyncRepeater({
+export function createAsyncRepeater<T>({
   highWaterMark = CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK,
   onOverflow = null,
-} = {}) {
-  const pending = [];
-  let waitingResolve = null;
+}: {
+  highWaterMark?: number;
+  onOverflow?: (() => void) | null;
+} = {}): AsyncRepeater<T> {
+  const pending: T[] = [];
+  let waitingResolve: ((result: IteratorResult<T>) => void) | null = null;
   let finished = false;
   const finish = () => {
     if (finished) return;
@@ -391,11 +441,11 @@ export function createAsyncRepeater({
     if (waitingResolve) {
       const resolve = waitingResolve;
       waitingResolve = null;
-      resolve({ value: undefined, done: true });
+      resolve({ value: undefined as unknown as T, done: true });
     }
   };
   return {
-    push(value) {
+    push(value: T) {
       if (finished) return;
       if (waitingResolve) {
         const resolve = waitingResolve;
@@ -415,24 +465,60 @@ export function createAsyncRepeater({
     },
     [Symbol.asyncIterator]() {
       return {
-        next() {
+        next(): Promise<IteratorResult<T>> {
           if (pending.length > 0) {
-            return Promise.resolve({ value: pending.shift(), done: false });
+            return Promise.resolve({
+              value: pending.shift() as T,
+              done: false,
+            });
           }
           if (finished) {
-            return Promise.resolve({ value: undefined, done: true });
+            return Promise.resolve({
+              value: undefined as unknown as T,
+              done: true,
+            });
           }
           return new Promise((resolve) => {
             waitingResolve = resolve;
           });
         },
-        return() {
+        return(): Promise<IteratorResult<T>> {
           finish();
-          return Promise.resolve({ value: undefined, done: true });
+          return Promise.resolve({
+            value: undefined as unknown as T,
+            done: true,
+          });
         },
       };
     },
   };
+}
+
+interface SseClientEntry {
+  controller: ReadableStreamDefaultController;
+  topics: Set<string> | null;
+  ip: string;
+}
+
+interface GraphqlWsConnectionInfo {
+  activeSubscriptions: number;
+}
+
+interface ChainEventSubscriberEntry {
+  repeater: AsyncRepeater<ChainFirehoseIngestPayload> | null;
+  topics: Set<string> | null;
+  clientIp: string | undefined;
+  connection: GraphqlWsConnectionInfo | undefined;
+}
+
+interface GraphqlWsSocketEntry {
+  onMessageCb?: (data: string) => Promise<void>;
+  closedCb?: (code?: number, reason?: string) => Promise<void>;
+}
+
+interface ChainEventsGraphqlWsExtra {
+  ip: string | undefined;
+  graphqlWsConnection: GraphqlWsConnectionInfo;
 }
 
 // Only the WebSocket-upgrade branch of handleSubscribe below needs a real
@@ -446,54 +532,69 @@ export function createAsyncRepeater({
 // Streams APIs there), so only that one branch is /* v8 ignore */-marked
 // below, not the whole class -- see #4982's issue body ("note any coverage
 // gap explicitly rather than skipping silently").
-export class ChainFirehoseHub {
-  constructor(state, env) {
+export class ChainFirehoseHub implements DurableObject {
+  state: DurableObjectState;
+  env: Env;
+  sseClients: Set<SseClientEntry>;
+  // #5004 item 1: live SSE/WS connection count per client IP, mirroring
+  // sseClients/state.getWebSockets() but keyed by resolveClientIp(request)
+  // instead of by connection -- the per-IP sub-quota above. Both WS "modes"
+  // (plain firehose and graphql-ws) share wsClientsByIp: they both accept a
+  // WebSocketPair from the SAME handleSubscribe entry point and both count
+  // against the same per-IP WS budget (see handleSubscribe's WS-upgrade
+  // branch). WebSockets are hibernatable and survive fresh DO
+  // reconstruction, so wsClientsByIp must be rebuilt from
+  // state.getWebSockets() attachments before each WS admission check rather
+  // than trusting this constructor-fresh Map alone.
+  sseClientsByIp: Map<string, number>;
+  wsClientsByIp: Map<string, number>;
+  // #4983: GraphQL subscriptions over WS, negotiated via
+  // Sec-WebSocket-Protocol on the SAME /subscribe path -- see the class
+  // header comment. chainEventSubscribers holds active createAsyncRepeater()
+  // instances (one per live `chainEvents` subscription, keyed indirectly
+  // via topics); graphqlWsSockets maps a hibernated WebSocket -> the
+  // graphql-ws callbacks registered for it (onMessage from the adapter's
+  // own onMessage() registration, closed from Server.opened()'s return
+  // value) since hibernation delivers messages/close events through this
+  // class's own webSocketMessage/webSocketClose, not socket-level listeners.
+  chainEventSubscribers: Set<ChainEventSubscriberEntry>;
+  // #5004 item 2: live `chainEvents` GraphQL-subscription count per client
+  // IP -- the per-IP sub-quota counterpart to sseClientsByIp/wsClientsByIp
+  // above, same Map-of-counts shape. Incremented in subscribeChainEvents,
+  // decremented in unsubscribeChainEvents (looked up via the clientIp
+  // stashed on each chainEventSubscribers entry, since unsubscribe is only
+  // ever called with the repeater, not the IP). Same hibernation-survival
+  // convention as every other in-memory Map on this class: resets to empty
+  // on a fresh DO reconstruction, not meant to survive it.
+  chainEventSubscribersByIp: Map<string, number>;
+  graphqlWsSockets: WeakMap<WebSocket, GraphqlWsSocketEntry>;
+  // #4983 MCP half: the most recent broadcast payload, for the
+  // metagraph://chain/stream MCP resource's resources/read (a pointer/
+  // notification-only protocol -- the client always re-reads current state
+  // rather than the notification carrying it, see notifyMcpSessions).
+  // mcpSubscribedSessions holds the STRING session ids interested in that
+  // one resource (not connection objects -- MCP sessions are
+  // McpSessionHub, a SEPARATE Durable Object per session id, reached by
+  // name, not a live handle this class holds onto).
+  latestPayload: ChainFirehoseIngestPayload | null;
+  mcpSubscribedSessions: Set<string>;
+  graphqlWsServer: GraphqlWsServer<ChainEventsGraphqlWsExtra>;
+
+  constructor(state: DurableObjectState, env: Env) {
     this.state = state;
     this.env = env;
     this.sseClients = new Set();
-    // #5004 item 1: live SSE/WS connection count per client IP, mirroring
-    // sseClients/state.getWebSockets() but keyed by resolveClientIp(request)
-    // instead of by connection -- the per-IP sub-quota above. Both WS "modes"
-    // (plain firehose and graphql-ws) share wsClientsByIp: they both accept a
-    // WebSocketPair from the SAME handleSubscribe entry point and both count
-    // against the same per-IP WS budget (see handleSubscribe's WS-upgrade
-    // branch). WebSockets are hibernatable and survive fresh DO
-    // reconstruction, so wsClientsByIp must be rebuilt from
-    // state.getWebSockets() attachments before each WS admission check rather
-    // than trusting this constructor-fresh Map alone.
     this.sseClientsByIp = new Map();
     this.wsClientsByIp = new Map();
-    // #4983: GraphQL subscriptions over WS, negotiated via
-    // Sec-WebSocket-Protocol on the SAME /subscribe path -- see the class
-    // header comment. chainEventSubscribers holds active createAsyncRepeater()
-    // instances (one per live `chainEvents` subscription, keyed indirectly
-    // via topics); graphqlWsSockets maps a hibernated WebSocket -> the
-    // graphql-ws callbacks registered for it (onMessage from the adapter's
-    // own onMessage() registration, closed from Server.opened()'s return
-    // value) since hibernation delivers messages/close events through this
-    // class's own webSocketMessage/webSocketClose, not socket-level listeners.
     this.chainEventSubscribers = new Set();
-    // #5004 item 2: live `chainEvents` GraphQL-subscription count per client
-    // IP -- the per-IP sub-quota counterpart to sseClientsByIp/wsClientsByIp
-    // above, same Map-of-counts shape. Incremented in subscribeChainEvents,
-    // decremented in unsubscribeChainEvents (looked up via the clientIp
-    // stashed on each chainEventSubscribers entry, since unsubscribe is only
-    // ever called with the repeater, not the IP). Same hibernation-survival
-    // convention as every other in-memory Map on this class: resets to empty
-    // on a fresh DO reconstruction, not meant to survive it.
     this.chainEventSubscribersByIp = new Map();
     this.graphqlWsSockets = new WeakMap();
-    // #4983 MCP half: the most recent broadcast payload, for the
-    // metagraph://chain/stream MCP resource's resources/read (a pointer/
-    // notification-only protocol -- the client always re-reads current state
-    // rather than the notification carrying it, see notifyMcpSessions).
-    // mcpSubscribedSessions holds the STRING session ids interested in that
-    // one resource (not connection objects -- MCP sessions are
-    // McpSessionHub, a SEPARATE Durable Object per session id, reached by
-    // name, not a live handle this class holds onto).
     this.latestPayload = null;
     this.mcpSubscribedSessions = new Set();
-    this.graphqlWsServer = makeServer({
+    this.graphqlWsServer = makeServer<
+      ConnectionInitMessage["payload"],
+      ChainEventsGraphqlWsExtra
+    >({
       schema: chainEventsGraphqlSchema,
       execute,
       subscribe,
@@ -553,7 +654,11 @@ export class ChainFirehoseHub {
   // socket-scoped invariant, defense-in-depth alongside (not instead of) the
   // per-IP cap -- see CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_SOCKET's
   // own comment for why both are worth having.
-  subscribeChainEvents(topics, clientIp, connection) {
+  subscribeChainEvents(
+    topics: Set<string> | null,
+    clientIp: string | undefined,
+    connection: GraphqlWsConnectionInfo | undefined,
+  ): AsyncRepeater<ChainFirehoseIngestPayload> | null {
     if (
       this.chainEventSubscribers.size >=
       CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS
@@ -573,12 +678,17 @@ export class ChainFirehoseHub {
     ) {
       return null;
     }
-    const entry = { repeater: null, topics, clientIp, connection };
+    const entry: ChainEventSubscriberEntry = {
+      repeater: null,
+      topics,
+      clientIp,
+      connection,
+    };
     // onOverflow (a stalled consumer exceeding the repeater's high-water
     // mark, see createAsyncRepeater above) unsubscribes through the SAME
     // path a normal unsubscribe does, so the per-IP/per-socket counters
     // release exactly like any other cleanup.
-    const repeater = createAsyncRepeater({
+    const repeater = createAsyncRepeater<ChainFirehoseIngestPayload>({
       onOverflow: () => this.unsubscribeChainEvents(repeater),
     });
     entry.repeater = repeater;
@@ -593,7 +703,7 @@ export class ChainFirehoseHub {
     return repeater;
   }
 
-  unsubscribeChainEvents(repeater) {
+  unsubscribeChainEvents(repeater: AsyncRepeater<ChainFirehoseIngestPayload>) {
     for (const entry of this.chainEventSubscribers) {
       if (entry.repeater === repeater) {
         entry.repeater.end();
@@ -623,15 +733,15 @@ export class ChainFirehoseHub {
   // subscribes to metagraph://chain/stream, and on unsubscribe/termination.
   // Idempotent either way (Set semantics) -- a session double-subscribing or
   // unsubscribing something it never subscribed to is a harmless no-op.
-  mcpSubscribeSession(sessionId) {
+  mcpSubscribeSession(sessionId: string) {
     this.mcpSubscribedSessions.add(sessionId);
   }
 
-  mcpUnsubscribeSession(sessionId) {
+  mcpUnsubscribeSession(sessionId: string) {
     this.mcpSubscribedSessions.delete(sessionId);
   }
 
-  async fetch(request) {
+  async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/ingest" && request.method === "POST") {
       return this.handleIngest(request);
@@ -646,7 +756,7 @@ export class ChainFirehoseHub {
       });
     }
     if (url.pathname === "/mcp-subscribe" && request.method === "POST") {
-      const { sessionId } = await request.json();
+      const { sessionId } = (await request.json()) as { sessionId: string };
       this.mcpSubscribeSession(sessionId);
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
@@ -654,7 +764,7 @@ export class ChainFirehoseHub {
       });
     }
     if (url.pathname === "/mcp-unsubscribe" && request.method === "POST") {
-      const { sessionId } = await request.json();
+      const { sessionId } = (await request.json()) as { sessionId: string };
       this.mcpUnsubscribeSession(sessionId);
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
@@ -664,7 +774,7 @@ export class ChainFirehoseHub {
     return new Response("not found", { status: 404 });
   }
 
-  async handleIngest(request) {
+  async handleIngest(request: Request): Promise<Response> {
     const raw = await request.text();
     const result = validateChainFirehoseIngestPayload(raw);
     if (!result.ok) {
@@ -692,7 +802,7 @@ export class ChainFirehoseHub {
     });
   }
 
-  handleSubscribe(request, url) {
+  handleSubscribe(request: Request, url: URL): Response {
     const topics = parseChainFirehoseTopics(url.searchParams);
 
     /* v8 ignore start -- WebSocketPair/state.acceptWebSocket have no Node
@@ -728,7 +838,8 @@ export class ChainFirehoseHub {
       );
 
       const pair = new WebSocketPair();
-      const [client, server] = Object.values(pair);
+      const client = pair[0];
+      const server = pair[1];
 
       if (isGraphqlWs) {
         this.state.acceptWebSocket(server, [GRAPHQL_WS_SOCKET_TAG]);
@@ -744,11 +855,11 @@ export class ChainFirehoseHub {
           clientIp,
           (this.wsClientsByIp.get(clientIp) || 0) + 1,
         );
-        const adapterSocket = {
+        const adapterSocket: GraphqlWsSocket = {
           protocol: GRAPHQL_TRANSPORT_WS_PROTOCOL,
-          send: (data) => server.send(data),
-          close: (code, reason) => server.close(code, reason),
-          onMessage: (cb) => {
+          send: (data: string) => server.send(data),
+          close: (code?: number, reason?: string) => server.close(code, reason),
+          onMessage: (cb: (data: string) => Promise<void>) => {
             const entry = this.graphqlWsSockets.get(server) || {};
             entry.onMessageCb = cb;
             this.graphqlWsSockets.set(server, entry);
@@ -808,25 +919,24 @@ export class ChainFirehoseHub {
     }
 
     const encoder = new TextEncoder();
-    // `hub`, not `this` -- start()/cancel() below are plain-function
-    // properties of the object literal passed to ReadableStream, so `this`
-    // inside them is that literal, not the ChainFirehoseHub instance; the
-    // original code worked around this the same way (a captured `clients`
-    // local). addSseClient/removeSseClient are the single add/remove path
-    // for BOTH this.sseClients and this.sseClientsByIp, so the two can never
-    // drift out of sync -- broadcast()'s own two cleanup paths below route
-    // through removeSseClient too, not a direct sseClients.delete().
-    const hub = this;
-    let entry;
+    // start()/cancel() below are ARROW functions specifically so `this`
+    // inside them stays the ChainFirehoseHub instance rather than the
+    // object literal passed to ReadableStream (a plain-function property
+    // would rebind `this` to that literal) -- addSseClient/removeSseClient
+    // are the single add/remove path for BOTH this.sseClients and
+    // this.sseClientsByIp, so the two can never drift out of sync --
+    // broadcast()'s own two cleanup paths below route through
+    // removeSseClient too, not a direct sseClients.delete().
+    let entry: SseClientEntry;
     const stream = new ReadableStream(
       {
-        start(controller) {
+        start: (controller) => {
           entry = { controller, topics, ip: clientIp };
-          hub.addSseClient(entry);
+          this.addSseClient(entry);
           controller.enqueue(encoder.encode(": connected\n\n"));
         },
-        cancel() {
-          hub.removeSseClient(entry);
+        cancel: () => {
+          this.removeSseClient(entry);
         },
       },
       new CountQueuingStrategy({
@@ -849,7 +959,7 @@ export class ChainFirehoseHub {
   // in BOTH this.sseClients (the existing global-cap membership set) and
   // this.sseClientsByIp (the per-IP sub-quota), together, so the two never
   // drift apart. `entry.ip` is set by handleSubscribe's SSE branch above.
-  addSseClient(entry) {
+  addSseClient(entry: SseClientEntry) {
     this.sseClients.add(entry);
     this.sseClientsByIp.set(
       entry.ip,
@@ -864,7 +974,7 @@ export class ChainFirehoseHub {
   // call sites. Keeping this as one shared method is what guarantees
   // sseClients and sseClientsByIp stay paired -- see addSseClient above.
   // A no-op if `entry` was never actually a member (nothing to release).
-  removeSseClient(entry) {
+  removeSseClient(entry: SseClientEntry) {
     if (!this.sseClients.delete(entry)) return;
     const count = this.sseClientsByIp.get(entry.ip);
     if (!count) return;
@@ -883,9 +993,9 @@ export class ChainFirehoseHub {
   // durable socket attachments before admission keeps the per-IP quota
   // aligned with the same socket population used by the global cap.
   rebuildWsClientsByIp() {
-    const counts = new Map();
+    const counts = new Map<string, number>();
     for (const ws of this.state.getWebSockets()) {
-      let ip;
+      let ip: string | undefined;
       try {
         ip = ws.deserializeAttachment()?.ip;
       } catch {
@@ -910,8 +1020,8 @@ export class ChainFirehoseHub {
   // rebuildWsClientsByIp() scans its durable attachment; if the close/error
   // event arrives before any admission-triggered rebuild, missing counts
   // still remain a safe no-op rather than an underflow.
-  releaseWsIpSlot(ws) {
-    let ip;
+  releaseWsIpSlot(ws: WebSocket) {
+    let ip: string | undefined;
     try {
       ip = ws.deserializeAttachment()?.ip;
     } catch {
@@ -932,7 +1042,7 @@ export class ChainFirehoseHub {
   // (survives hibernation/reconstruction via state.getWebSockets(tag)),
   // regardless of whether THIS DO instance's in-memory graphqlWsSockets
   // WeakMap still has a live entry for it?
-  isGraphqlWsTaggedSocket(ws) {
+  isGraphqlWsTaggedSocket(ws: WebSocket): boolean {
     return this.state.getWebSockets(GRAPHQL_WS_SOCKET_TAG).includes(ws);
   }
 
@@ -951,7 +1061,7 @@ export class ChainFirehoseHub {
   // incoming messages, close it cleanly (1012 "Service Restart" is the
   // semantically correct RFC 6455 code) so the client's own reconnect logic
   // re-establishes a fresh handshake against the current graphqlWsServer.
-  closeStaleGraphqlWsSocket(ws) {
+  closeStaleGraphqlWsSocket(ws: WebSocket) {
     try {
       ws.close(1012, "durable object restarted; reconnect");
     } catch {
@@ -959,7 +1069,7 @@ export class ChainFirehoseHub {
     }
   }
 
-  async webSocketMessage(ws, message) {
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
     // graphql-ws sockets: every incoming protocol message (connection_init,
     // subscribe, complete, ping/pong) is handled entirely by graphql-ws
     // itself via the onMessage callback its own opened() registered -- see
@@ -981,7 +1091,7 @@ export class ChainFirehoseHub {
     }
   }
 
-  webSocketClose(ws, code, reason) {
+  webSocketClose(ws: WebSocket, code: number, reason: string) {
     // #5004 item 1: release this socket's per-IP WS slot on every close,
     // graphql-ws or plain firehose alike -- see releaseWsIpSlot's comment.
     this.releaseWsIpSlot(ws);
@@ -997,7 +1107,7 @@ export class ChainFirehoseHub {
     }
   }
 
-  webSocketError(ws, error) {
+  webSocketError(ws: WebSocket, error: unknown) {
     // #5004 item 1: same per-IP release as webSocketClose -- an error close
     // must free the slot too, or a flaky/dropped connection never gets its
     // budget back. See releaseWsIpSlot's comment.
@@ -1009,12 +1119,12 @@ export class ChainFirehoseHub {
     // way; there is no in-memory firehose connection list here to reconcile.
     const entry = this.graphqlWsSockets.get(ws);
     if (entry?.closedCb) {
-      entry.closedCb(1011, error?.message || "internal error");
+      entry.closedCb(1011, (error as Error)?.message || "internal error");
       this.graphqlWsSockets.delete(ws);
     }
   }
 
-  async broadcast(payload) {
+  async broadcast(payload: ChainFirehoseIngestPayload) {
     this.latestPayload = payload;
     const encoder = new TextEncoder();
     for (const entry of this.sseClients) {
@@ -1069,7 +1179,7 @@ export class ChainFirehoseHub {
         }
         continue;
       }
-      let topics = null;
+      let topics: Set<string> | null = null;
       try {
         const attachment = ws.deserializeAttachment();
         topics = attachment?.topics ? new Set(attachment.topics) : null;
@@ -1093,7 +1203,7 @@ export class ChainFirehoseHub {
     // graphql-ws adapter socket's send()).
     for (const entry of this.chainEventSubscribers) {
       if (!chainFirehoseMatchesTopics(payload, entry.topics)) continue;
-      entry.repeater.push(payload);
+      entry.repeater?.push(payload);
     }
 
     // #4983 MCP half: every MCP session subscribed to metagraph://chain/stream

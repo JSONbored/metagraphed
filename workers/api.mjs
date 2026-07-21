@@ -275,7 +275,7 @@ import { loadGlobalOperationalHealth } from "../src/global-operational-health.mj
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   ChainFirehoseHub,
-} from "./chain-firehose-hub.mjs";
+} from "./chain-firehose-hub.ts";
 import { McpSessionHub } from "./mcp-session-hub.ts";
 import { AlerterHub } from "./alerter-hub.ts";
 import { SubnetStatusHub } from "./subnet-status-hub.ts";
