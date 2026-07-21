@@ -336,6 +336,380 @@
       },
       "source_urls": ["https://api.leoma.ai/openapi.json"],
       "url": "https://api.leoma.ai/weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-blacklist-operator-account",
+      "kind": "subnet-api",
+      "name": "Leoma blacklist operator account",
+      "notes": "Remove From Blacklist operation on the Leoma API (DELETE, GET /blacklist/{operator account}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/blacklist/%7Bhotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-miners-all",
+      "kind": "subnet-api",
+      "name": "Leoma miners all",
+      "notes": "Get All Miners operation on the Leoma API (GET /miners/all), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a required validator-identity request header as required, so the probe is left disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/miners/all"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-miners-info-miner-account-id",
+      "kind": "subnet-api",
+      "name": "Leoma miners info miner operator account",
+      "notes": "Get Miner Info operation on the Leoma API (GET /miners/info/{miner account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/miners/info/%7Bminer_hotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-miners-miner-account-id",
+      "kind": "subnet-api",
+      "name": "Leoma miners miner operator account",
+      "notes": "Get Miner operation on the Leoma API (GET /miners/{miner account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/miners/%7Bminer_hotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-miners-miner-account-id-tasks",
+      "kind": "subnet-api",
+      "name": "Leoma miners miner operator account tasks",
+      "notes": "Get Miner Tasks operation on the Leoma API (GET /miners/{miner account id}/tasks), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/miners/%7Bminer_hotkey%7D/tasks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-miners-uid-uid",
+      "kind": "subnet-api",
+      "name": "Leoma miners uid uid",
+      "notes": "Get Miner By Uid operation on the Leoma API (GET /miners/uid/{uid}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/miners/uid/%7Buid%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-miners-valid",
+      "kind": "subnet-api",
+      "name": "Leoma miners valid",
+      "notes": "Get Valid Miners operation on the Leoma API (GET /miners/valid), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a required validator-identity request header as required, so the probe is left disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/miners/valid"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-samples",
+      "kind": "subnet-api",
+      "name": "Leoma samples",
+      "notes": "Submit Sample operation on the Leoma API (POST /samples), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/samples"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-samples-batch",
+      "kind": "subnet-api",
+      "name": "Leoma samples batch",
+      "notes": "Submit Samples Batch operation on the Leoma API (POST /samples/batch), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/samples/batch"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-samples-miner-miner-account-id",
+      "kind": "subnet-api",
+      "name": "Leoma samples miner miner operator account",
+      "notes": "Get Miner Samples operation on the Leoma API (GET /samples/miner/{miner account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/samples/miner/%7Bminer_hotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-samples-task",
+      "kind": "subnet-api",
+      "name": "Leoma samples task",
+      "notes": "Get Task Samples operation on the Leoma API (GET /samples/task), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a required validator-identity query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/samples/task"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-samples-validator-validator-account-id",
+      "kind": "subnet-api",
+      "name": "Leoma samples validator validator operator account",
+      "notes": "Get Validator Samples operation on the Leoma API (GET /samples/validator/{validator account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/samples/validator/%7Bvalidator_hotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-scores-miner-miner-account-id",
+      "kind": "subnet-api",
+      "name": "Leoma scores miner miner operator account",
+      "notes": "Get Miner Scores operation on the Leoma API (GET /scores/miner/{miner account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/scores/miner/%7Bminer_hotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-scores-validator-validator-account-id",
+      "kind": "subnet-api",
+      "name": "Leoma scores validator validator operator account",
+      "notes": "Get Validator Scores operation on the Leoma API (GET /scores/validator/{validator account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/scores/validator/%7Bvalidator_hotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-tasks",
+      "kind": "subnet-api",
+      "name": "Leoma tasks",
+      "notes": "Get Miner Tasks operation on the Leoma API (GET /tasks), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a required miner-identity query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/tasks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-tasks-task-id",
+      "kind": "subnet-api",
+      "name": "Leoma tasks task id",
+      "notes": "Get Task Detail operation on the Leoma API (GET /tasks/{task_id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/tasks/%7Btask_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-tasks-task-id-miner-miner-account-id",
+      "kind": "subnet-api",
+      "name": "Leoma tasks task id miner miner operator account",
+      "notes": "Get Task Miner Detail operation on the Leoma API (GET /tasks/{task_id}/miner/{miner account id}), declared in the subnet's own OpenAPI spec at https://api.leoma.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.leoma.ai/openapi.json"],
+      "url": "https://api.leoma.ai/tasks/%7Btask_id%7D/miner/%7Bminer_hotkey%7D"
     }
   ],
   "website_url": "https://leoma.ai/"
