@@ -224,6 +224,231 @@
         "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
       ],
       "url": "https://api.readyai.ai/api/v1/priorityqueue/request"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-33-readyai-admin-task-account-by-id",
+      "kind": "subnet-api",
+      "name": "ReadyAI admin task account by id",
+      "notes": "Delete Wallet operation on the ReadyAI SN33 API (DELETE, PUT /api/v1/admin/task/wallets/{wallet_id}), declared in the subnet's own OpenAPI spec at https://api.readyai.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {wallet_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.readyai.ai/openapi.json"],
+      "url": "https://api.readyai.ai/api/v1/admin/task/wallets/%7Bwallet_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-33-readyai-admin-task-accounts",
+      "kind": "subnet-api",
+      "name": "ReadyAI admin task accounts",
+      "notes": "List Wallets operation on the ReadyAI SN33 API (GET, POST /api/v1/admin/task/wallets), declared in the subnet's own OpenAPI spec at https://api.readyai.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET /api/v1/admin/task/wallets returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.readyai.ai/openapi.json"],
+      "url": "https://api.readyai.ai/api/v1/admin/task/wallets"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-33-readyai-admin-task-weights",
+      "kind": "subnet-api",
+      "name": "ReadyAI admin task weights",
+      "notes": "Read Weights operation on the ReadyAI SN33 API (GET, PUT /api/v1/admin/task/weights), declared in the subnet's own OpenAPI spec at https://api.readyai.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET /api/v1/admin/task/weights returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.readyai.ai/openapi.json"],
+      "url": "https://api.readyai.ai/api/v1/admin/task/weights"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-33-readyai-analytics-task-records",
+      "kind": "subnet-api",
+      "name": "ReadyAI analytics task records",
+      "notes": "Get Task Record Analytics operation on the ReadyAI SN33 API (GET /api/v1/analytics/task-records), declared in the subnet's own OpenAPI spec at https://api.readyai.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET /api/v1/analytics/task-records returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.readyai.ai/openapi.json"],
+      "url": "https://api.readyai.ai/api/v1/analytics/task-records"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-33-readyai-conversation-record",
+      "kind": "subnet-api",
+      "name": "ReadyAI conversation record by guid",
+      "notes": "Record Cgp Result operation on the ReadyAI SN33 API (PUT /api/v1/conversation/record/{c_guid}), declared in the subnet's own OpenAPI spec at https://api.readyai.ai/openapi.json. The spec declares no security on it, but it is path-parameterized and a state-changing PUT, so the probe stays disabled (Phase 2). Path-parameterized on {c_guid}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.readyai.ai/openapi.json"],
+      "url": "https://api.readyai.ai/api/v1/conversation/record/%7Bc_guid%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-33-readyai-conversation-reserve",
+      "kind": "subnet-api",
+      "name": "ReadyAI conversation reservation",
+      "notes": "Reserve Conversation operation on the ReadyAI SN33 API (GET, POST /api/v1/conversation/reserve), declared in the subnet's own OpenAPI spec at https://api.readyai.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET /api/v1/conversation/reserve returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.readyai.ai/openapi.json"],
+      "url": "https://api.readyai.ai/api/v1/conversation/reserve"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-33-readyai-metrics",
+      "kind": "subnet-api",
+      "name": "ReadyAI service metrics",
+      "notes": "Metrics operation on the ReadyAI SN33 API (GET /metrics), declared in the subnet's own OpenAPI spec at https://api.readyai.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET /metrics returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.readyai.ai/openapi.json"],
+      "url": "https://api.readyai.ai/metrics"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-33-readyai-priorityqueue-reserve",
+      "kind": "subnet-api",
+      "name": "ReadyAI priority-queue reservation",
+      "notes": "Reserve Priority Queue operation on the ReadyAI SN33 API (PUT /api/v1/priorityqueue/reserve), declared in the subnet's own OpenAPI spec at https://api.readyai.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.readyai.ai/openapi.json"],
+      "url": "https://api.readyai.ai/api/v1/priorityqueue/reserve"
     }
   ],
   "website_url": "https://readyai.ai/"

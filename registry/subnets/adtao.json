@@ -72,7 +72,7 @@
       "id": "sn-21-adtao-validator-openapi",
       "kind": "openapi",
       "name": "AdTAO SN21 Validator OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.1.0 schema (title \"SN21 Validator\", version 0.1.0) served by the official AdTAO validator API on the operator's validator.adtao.io host. Documents the public epoch/episode, prediction, commitment, verification, scores, and training routes plus /health. Unauthenticated GET returns the full paths object.",
+      "notes": "Machine-readable OpenAPI 3.1.0 schema (title \"SN21 Validator\", version 0.1.0) served by the official AdTAO validator API on the operator's validator.adtao.io host. Documents the public epoch/episode, prediction, commitment, verification, scores, and training routes plus /health. Unauthenticated GET returns the full paths object. Live-verified 2026-07-22: GET returns OpenAPI 3.1.0 JSON (title SN21 Validator).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -99,7 +99,7 @@
       "id": "sn-21-adtao-validator-api",
       "kind": "subnet-api",
       "name": "AdTAO SN21 Validator API",
-      "notes": "Official public AdTAO (SN21) validator API on the operator's validator.adtao.io host. An unauthenticated GET on /health returns live JSON service status (service, current epoch label, episodes loaded, submission window, deadline). The /v1/epochs routes are described in the linked OpenAPI schema.",
+      "notes": "Official public AdTAO (SN21) validator API on the operator's validator.adtao.io host. An unauthenticated GET on /health returns live JSON service status (service, current epoch label, episodes loaded, submission window, deadline). The /v1/epochs routes are described in the linked OpenAPI schema. Live-verified 2026-07-22: HTTP 200 JSON status=ok for sn21-validator health.",
       "probe": {
         "enabled": true,
         "expect": "json",

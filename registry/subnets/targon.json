@@ -217,6 +217,28 @@
       },
       "source_urls": ["https://stats.targon.com/docs"],
       "url": "https://stats.targon.com/api/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-4-targon-healthz-api",
+      "kind": "subnet-api",
+      "name": "Targon Hub API healthz",
+      "notes": "Public no-auth GET /tha/v2/healthz on api.targon.com documented at docs.targon.com/api/health. Live-verified 2026-07-21: HTTP 500 application/json (INTERNAL_SERVER_ERROR) - registered so probe monitoring reflects current endpoint state.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": ["https://docs.targon.com/api/health"],
+      "url": "https://api.targon.com/tha/v2/healthz"
     }
   ],
   "website_url": "https://targon.com/"

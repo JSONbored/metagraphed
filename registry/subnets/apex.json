@@ -174,7 +174,7 @@
       "id": "sn-1-apex-orchestrator-openapi",
       "kind": "openapi",
       "name": "Apex orchestrator API OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.x schema for the Apex SN1 orchestrator (title: FastAPI). Served publicly at apex.api.macrocosmos.ai; documents miner submission, competition, validator scoring, and /healthcheck routes. Mainnet default host in the official apex shared settings (ORCHESTRATOR_HOST).",
+      "notes": "Machine-readable OpenAPI 3.x schema for the Apex SN1 orchestrator (title: FastAPI). Served publicly at apex.api.macrocosmos.ai; documents miner submission, competition, validator scoring, and /healthcheck routes. Mainnet default host in the official apex shared settings (ORCHESTRATOR_HOST). Live-verified 2026-07-22: GET returns OpenAPI 3.1.0 JSON (title FastAPI).",
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -187,7 +187,13 @@
         "https://github.com/macrocosm-os/apex/blob/main/shared/common/src/common/settings.py",
         "https://apex.api.macrocosmos.ai/openapi.json"
       ],
-      "url": "https://apex.api.macrocosmos.ai/openapi.json"
+      "url": "https://apex.api.macrocosmos.ai/openapi.json",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     },
     {
       "auth_required": false,
@@ -195,7 +201,7 @@
       "id": "sn-1-apex-healthcheck",
       "kind": "subnet-api",
       "name": "Apex orchestrator healthcheck API",
-      "notes": "Public no-auth GET /healthcheck on apex.api.macrocosmos.ai returning liveness JSON (observed: {\"status\":\"healthy\"}). Documented as GET /healthcheck in the subnet OpenAPI spec; apex.api.macrocosmos.ai is the mainnet ORCHESTRATOR_HOST (https) in the official apex shared settings.",
+      "notes": "Public no-auth GET /healthcheck on apex.api.macrocosmos.ai returning liveness JSON (observed: {\"status\":\"healthy\"}). Documented as GET /healthcheck in the subnet OpenAPI spec; apex.api.macrocosmos.ai is the mainnet ORCHESTRATOR_HOST (https) in the official apex shared settings. Live-verified 2026-07-22: HTTP 200 JSON {\"status\":\"healthy\"}.",
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -206,7 +212,13 @@
         "https://apex.api.macrocosmos.ai/openapi.json",
         "https://github.com/macrocosm-os/apex/blob/main/shared/common/src/common/settings.py"
       ],
-      "url": "https://apex.api.macrocosmos.ai/healthcheck"
+      "url": "https://apex.api.macrocosmos.ai/healthcheck",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     },
     {
       "auth_required": false,
@@ -214,7 +226,7 @@
       "id": "sn-1-apex-healthcheck-ready",
       "kind": "subnet-api",
       "name": "Apex orchestrator readiness check",
-      "notes": "Public no-auth GET returning readiness status (observed: {\"status\":\"ready\"}), distinct from the already-tracked liveness /healthcheck. Documented in the subnet's own OpenAPI schema (path /healthcheck/ready); same host as the existing healthcheck surface.",
+      "notes": "Public no-auth GET returning readiness status (observed: {\"status\":\"ready\"}), distinct from the already-tracked liveness /healthcheck. Documented in the subnet's own OpenAPI schema (path /healthcheck/ready); same host as the existing healthcheck surface. Live-verified 2026-07-22: HTTP 200 JSON {\"status\":\"ready\"}.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -236,7 +248,7 @@
       "id": "sn-1-apex-metrics",
       "kind": "subnet-api",
       "name": "Apex orchestrator Prometheus metrics",
-      "notes": "Public no-auth GET returning Prometheus text-exposition-format process/runtime metrics (python_gc_objects_collected_total and similar). Documented in the subnet's own OpenAPI schema (path /metrics); plain-text response, not JSON, so tracked with expect: any.",
+      "notes": "Public no-auth GET returning Prometheus text-exposition-format process/runtime metrics (python_gc_objects_collected_total and similar). Documented in the subnet's own OpenAPI schema (path /metrics); plain-text response, not JSON, so tracked with expect: any. Live-verified 2026-07-22: HTTP 200 Prometheus text exposition.",
       "probe": {
         "enabled": true,
         "expect": "any",

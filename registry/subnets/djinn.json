@@ -292,6 +292,81 @@
       },
       "source_urls": ["https://github.com/Djinn-Inc/djinn"],
       "url": "https://www.djinn.gg/api/validators/discover"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-odds",
+      "kind": "subnet-api",
+      "name": "Djinn odds by sport",
+      "notes": "Public no-auth GET /api/odds on www.djinn.gg returning live odds for one sport. Requires query param `sport` (allowed keys listed in the 400 body when omitted). Callable via call_subnet_surface's `query` argument. probe.enabled:false because bare GET without sport returns HTTP 400. Live-verified 2026-07-21: no sport → 400; ?sport=basketball_nba → 200 JSON.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://github.com/Djinn-Inc/djinn",
+        "https://www.djinn.gg/api/sports"
+      ],
+      "url": "https://www.djinn.gg/api/odds"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-genius-signals",
+      "kind": "subnet-api",
+      "name": "Djinn genius signals by address",
+      "notes": "Public no-auth GET /api/genius/signals on www.djinn.gg returning Genius-track signals for one Ethereum address. Requires query param `address`. Callable via call_subnet_surface's `query` argument. probe.enabled:false because bare GET without address returns HTTP 400. Live-verified 2026-07-21: no address → 400 {\"error\":\"invalid_address\",...}.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://github.com/Djinn-Inc/djinn",
+        "https://www.djinn.gg/api/genius/leaderboard"
+      ],
+      "url": "https://www.djinn.gg/api/genius/signals"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-genius-earnings",
+      "kind": "subnet-api",
+      "name": "Djinn genius earnings by address",
+      "notes": "Public no-auth GET /api/genius/earnings on www.djinn.gg returning Genius-track earnings for one Ethereum address. Requires query param `address`. Callable via call_subnet_surface's `query` argument. probe.enabled:false because bare GET without address returns HTTP 400. Live-verified 2026-07-21: no address → 400 {\"error\":\"invalid_address\",...}.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://github.com/Djinn-Inc/djinn",
+        "https://www.djinn.gg/api/genius/leaderboard"
+      ],
+      "url": "https://www.djinn.gg/api/genius/earnings"
     }
   ],
   "website_url": "https://www.djinn.gg/"
