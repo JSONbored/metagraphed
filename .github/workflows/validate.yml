@@ -286,6 +286,17 @@ jobs:
       # checkout step above pins to the real head sha instead (so tests run the
       # contributor's actual commit) -- so auto-detection would otherwise attach
       # the report to a merge sha that never appears in the PR's own checks list.
+      #
+      # version: pinned, not the action's own 'latest' default (metagraphed#7554's
+      # own CI hit "Could not verify signature" on the CLI's self-download+GPG-verify
+      # step -- root-caused by reading codecov-action's dist/codecov.sh: it builds
+      # the download URL as cli.codecov.io/${CC_VERSION}/..., and with 'latest' that
+      # resolves through Codecov's CDN alias, where the binary/SHA256SUM/.sig can
+      # momentarily disagree across edge nodes -- confirmed transient: a re-run
+      # ~1 min later succeeded with no other change. A pinned version tag is an
+      # immutable, long-since-fully-propagated path, so this class of race can't
+      # recur here. Bump deliberately (not blindly to whatever's newest) if pinning
+      # ever needs to move.
       - name: Upload coverage to Codecov
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
@@ -293,6 +304,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           disable_search: true
+          version: v11.3.1
           override_branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
           override_commit: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           override_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || '' }}
@@ -311,6 +323,7 @@ jobs:
         with:
           files: ./coverage/lcov.info
           disable_search: true
+          version: v11.3.1
           override_branch: ${{ github.event.pull_request.head.repo.owner.login }}:${{ github.event.pull_request.head.ref }}
           override_commit: ${{ github.event.pull_request.head.sha }}
           override_pr: ${{ github.event.pull_request.number }}
@@ -324,6 +337,7 @@ jobs:
           files: ./reports/junit/vitest.xml
           report_type: test_results
           disable_search: true
+          version: v11.3.1
           override_branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
           override_commit: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           override_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || '' }}
@@ -336,6 +350,7 @@ jobs:
           files: ./reports/junit/vitest.xml
           report_type: test_results
           disable_search: true
+          version: v11.3.1
           override_branch: ${{ github.event.pull_request.head.repo.owner.login }}:${{ github.event.pull_request.head.ref }}
           override_commit: ${{ github.event.pull_request.head.sha }}
           override_pr: ${{ github.event.pull_request.number }}
