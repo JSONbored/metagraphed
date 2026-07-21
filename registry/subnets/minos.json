@@ -9,7 +9,7 @@
     "gap_notes": [
       "No verified official docs URL yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet -- api.theminos.ai/openapi.json and /docs both 404.",
-      "The /v2/* Minos Platform task endpoints (round-status, submit-config, get-scoring-rounds, etc.) are all POST-only and require signed-request auth; registered as auth_required surfaces per #7118."
+      "The /v2/* Minos Platform task endpoints are POST-only with signed-request auth; registered as auth_required surfaces per #7118."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -35,7 +35,7 @@
       "id": "sn-107-minos-subnet-api",
       "kind": "subnet-api",
       "name": "Minos Platform API",
-      "notes": "Public health/status endpoint of the Minos Platform (api.theminos.ai), the hosted round-coordination service documented in the official minos_subnet README. Unauthenticated GET returns JSON service status; the /v2/* task endpoints require signed-request auth. Live-verified 2026-07-22: HTTP 200 JSON {\"status\":\"healthy\",\"version\":\"2.0.0\",\"mode\":\"active\"}.",
+      "notes": "Public Minos Platform GET /health. Live-verified 2026-07-22: HTTP 200 JSON status healthy. /v2/* routes require signed-request auth.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -59,7 +59,7 @@
       "id": "sn-107-taomarketcap-subnet-api",
       "kind": "subnet-api",
       "name": "Minos TaoMarketCap subnet snapshot API",
-      "notes": "Public no-auth GET /public/v1/subnets/107/ on api.taomarketcap.com returning machine-readable JSON for SN107 Minos on-chain subnet state, economics, registration/burn parameters, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API and provides the standalone public JSON data for netuid 107 alongside the subnet's first-party /health endpoint. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET. Live-verified 2026-07-22: HTTP 200 JSON with netuid 107 and latest_snapshot.",
+      "notes": "Public TaoMarketCap GET /public/v1/subnets/107/ (trailing slash). Live-verified 2026-07-22: HTTP 200 JSON netuid 107. Rejects HEAD (405); probe uses GET.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -136,14 +136,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Official minos_subnet README documents signed-request auth on /v2/* Platform task endpoints. Exact credential headers/body fields are Phase 3 territory; empty unauthenticated POSTs are body-validated (422) before a clean 401 is observable."
+        "scopes_note": "Signed-request auth per official README. Empty POST often 422 before auth completes."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-107-minos-v2-round-status",
       "kind": "subnet-api",
       "name": "Minos Platform round status",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v2/round-status on api.theminos.ai — Minos Platform task endpoint (miner: poll active rounds + presigned BAM URL) documented in the official minos_subnet README. Registered per #7118 additional-surfaces scope. Live-verified 2026-07-22: unauthenticated POST with empty JSON body returns HTTP 422 (route live; body validated before auth completes). probe.enabled:false until Phase 3.",
+      "notes": "Auth-gated POST /v2/round-status on api.theminos.ai (Phase 3). README Minos Platform task route; in scope per #7118. Sibling /v2/round-status empty POST returns 422.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -165,14 +165,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Official minos_subnet README documents signed-request auth on /v2/* Platform task endpoints. Exact credential headers/body fields are Phase 3 territory; empty unauthenticated POSTs are body-validated (422) before a clean 401 is observable."
+        "scopes_note": "Signed-request auth per official README. Empty POST often 422 before auth completes."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-107-minos-v2-submit-config",
       "kind": "subnet-api",
       "name": "Minos Platform submit config",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v2/submit-config on api.theminos.ai — Minos Platform task endpoint (miner: submit variant-calling tool config) documented in the official minos_subnet README. Registered per #7118 additional-surfaces scope. Same host/auth boundary as live-verified sn-107-minos-v2-round-status (422 on empty body); not individually re-curled at this volume. probe.enabled:false until Phase 3.",
+      "notes": "Auth-gated POST /v2/submit-config on api.theminos.ai (Phase 3). README Minos Platform task route; in scope per #7118. Sibling /v2/round-status empty POST returns 422.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -194,14 +194,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Official minos_subnet README documents signed-request auth on /v2/* Platform task endpoints. Exact credential headers/body fields are Phase 3 territory; empty unauthenticated POSTs are body-validated (422) before a clean 401 is observable."
+        "scopes_note": "Signed-request auth per official README. Empty POST often 422 before auth completes."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-107-minos-v2-get-scoring-rounds",
       "kind": "subnet-api",
       "name": "Minos Platform get scoring rounds",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v2/get-scoring-rounds on api.theminos.ai — Minos Platform task endpoint (validator: rounds ready for scoring) documented in the official minos_subnet README. Registered per #7118 additional-surfaces scope. Live-verified 2026-07-22: unauthenticated POST with empty JSON body returns HTTP 422 (route live; body validated before auth completes). probe.enabled:false until Phase 3.",
+      "notes": "Auth-gated POST /v2/get-scoring-rounds on api.theminos.ai (Phase 3). README Minos Platform task route; in scope per #7118. Sibling /v2/round-status empty POST returns 422.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -223,14 +223,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Official minos_subnet README documents signed-request auth on /v2/* Platform task endpoints. Exact credential headers/body fields are Phase 3 territory; empty unauthenticated POSTs are body-validated (422) before a clean 401 is observable."
+        "scopes_note": "Signed-request auth per official README. Empty POST often 422 before auth completes."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-107-minos-v2-get-submissions",
       "kind": "subnet-api",
       "name": "Minos Platform get submissions",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v2/get-submissions on api.theminos.ai — Minos Platform task endpoint (validator: fetch miner configs for a round) documented in the official minos_subnet README. Registered per #7118 additional-surfaces scope. Same host/auth boundary as live-verified sn-107-minos-v2-round-status (422 on empty body); not individually re-curled at this volume. probe.enabled:false until Phase 3.",
+      "notes": "Auth-gated POST /v2/get-submissions on api.theminos.ai (Phase 3). README Minos Platform task route; in scope per #7118. Sibling /v2/round-status empty POST returns 422.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -252,14 +252,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Official minos_subnet README documents signed-request auth on /v2/* Platform task endpoints. Exact credential headers/body fields are Phase 3 territory; empty unauthenticated POSTs are body-validated (422) before a clean 401 is observable."
+        "scopes_note": "Signed-request auth per official README. Empty POST often 422 before auth completes."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-107-minos-v2-get-assignment",
       "kind": "subnet-api",
       "name": "Minos Platform get assignment",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v2/get-assignment on api.theminos.ai — Minos Platform task endpoint (validator: scoring assignment) documented in the official minos_subnet README. Registered per #7118 additional-surfaces scope. Same host/auth boundary as live-verified sn-107-minos-v2-round-status (422 on empty body); not individually re-curled at this volume. probe.enabled:false until Phase 3.",
+      "notes": "Auth-gated POST /v2/get-assignment on api.theminos.ai (Phase 3). README Minos Platform task route; in scope per #7118. Sibling /v2/round-status empty POST returns 422.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -281,14 +281,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Official minos_subnet README documents signed-request auth on /v2/* Platform task endpoints. Exact credential headers/body fields are Phase 3 territory; empty unauthenticated POSTs are body-validated (422) before a clean 401 is observable."
+        "scopes_note": "Signed-request auth per official README. Empty POST often 422 before auth completes."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-107-minos-v2-submit-score",
       "kind": "subnet-api",
       "name": "Minos Platform submit score",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v2/submit-score on api.theminos.ai — Minos Platform task endpoint (validator: submit per-miner scores) documented in the official minos_subnet README. Registered per #7118 additional-surfaces scope. Same host/auth boundary as live-verified sn-107-minos-v2-round-status (422 on empty body); not individually re-curled at this volume. probe.enabled:false until Phase 3.",
+      "notes": "Auth-gated POST /v2/submit-score on api.theminos.ai (Phase 3). README Minos Platform task route; in scope per #7118. Sibling /v2/round-status empty POST returns 422.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -310,14 +310,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Official minos_subnet README documents signed-request auth on /v2/* Platform task endpoints. Exact credential headers/body fields are Phase 3 territory; empty unauthenticated POSTs are body-validated (422) before a clean 401 is observable."
+        "scopes_note": "Signed-request auth per official README. Empty POST often 422 before auth completes."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-107-minos-v2-get-backfill-scores",
       "kind": "subnet-api",
       "name": "Minos Platform get backfill scores",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v2/get-backfill-scores on api.theminos.ai — Minos Platform task endpoint (validator: peer scores after scoring window) documented in the official minos_subnet README. Registered per #7118 additional-surfaces scope. Same host/auth boundary as live-verified sn-107-minos-v2-round-status (422 on empty body); not individually re-curled at this volume. probe.enabled:false until Phase 3.",
+      "notes": "Auth-gated POST /v2/get-backfill-scores on api.theminos.ai (Phase 3). README Minos Platform task route; in scope per #7118. Sibling /v2/round-status empty POST returns 422.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -339,14 +339,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Official minos_subnet README documents signed-request auth on /v2/* Platform task endpoints. Exact credential headers/body fields are Phase 3 territory; empty unauthenticated POSTs are body-validated (422) before a clean 401 is observable."
+        "scopes_note": "Signed-request auth per official README. Empty POST often 422 before auth completes."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-107-minos-v2-submit-weight-history",
       "kind": "subnet-api",
       "name": "Minos Platform submit weight history",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v2/submit-weight-history on api.theminos.ai — Minos Platform task endpoint (validator: submit scores/eligibility/weights) documented in the official minos_subnet README. Registered per #7118 additional-surfaces scope. Same host/auth boundary as live-verified sn-107-minos-v2-round-status (422 on empty body); not individually re-curled at this volume. probe.enabled:false until Phase 3.",
+      "notes": "Auth-gated POST /v2/submit-weight-history on api.theminos.ai (Phase 3). README Minos Platform task route; in scope per #7118. Sibling /v2/round-status empty POST returns 422.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -368,14 +368,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Official minos_subnet README documents signed-request auth on /v2/* Platform task endpoints. Exact credential headers/body fields are Phase 3 territory; empty unauthenticated POSTs are body-validated (422) before a clean 401 is observable."
+        "scopes_note": "Signed-request auth per official README. Empty POST often 422 before auth completes."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-107-minos-v2-get-validator-state",
       "kind": "subnet-api",
       "name": "Minos Platform get validator state",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /v2/get-validator-state on api.theminos.ai — Minos Platform task endpoint (validator: recover round state after restart) documented in the official minos_subnet README. Registered per #7118 additional-surfaces scope. Same host/auth boundary as live-verified sn-107-minos-v2-round-status (422 on empty body); not individually re-curled at this volume. probe.enabled:false until Phase 3.",
+      "notes": "Auth-gated POST /v2/get-validator-state on api.theminos.ai (Phase 3). README Minos Platform task route; in scope per #7118. Sibling /v2/round-status empty POST returns 422.",
       "probe": {
         "enabled": false,
         "expect": "json",
