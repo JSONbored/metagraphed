@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { decodePostgresCallArgs } from "../src/postgres-call-args.mjs";
-import { normalizePostgresValue } from "../src/scale-normalize.mjs";
+import { normalizePostgresValue } from "../src/scale-normalize.ts";
 
 // decodePostgresCallArgs must run BEFORE normalizePostgresValue (see
 // src/postgres-call-args.mjs's own header for why) -- every test below

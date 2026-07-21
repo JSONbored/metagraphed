@@ -10,11 +10,11 @@ import {
   clampLimit,
   clampOffset,
 } from "../workers/request-params.mjs";
-import { decodeCursor, encodeCursor } from "./cursor.mjs";
-import { normalizePostgresValue } from "./scale-normalize.mjs";
+import { decodeCursor, encodeCursor } from "./cursor.ts";
+import { normalizePostgresValue } from "./scale-normalize.ts";
 import { decodePostgresCallArgs } from "./postgres-call-args.mjs";
 import { decodeEthereumEvmCallArgs } from "./indexer-rs-ethereum-decode.mjs";
-import { parseJsonPreservingBigInts } from "./big-int-safe-json.mjs";
+import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
 import { decodeBTreeSetFields } from "./postgres-collection-normalize.mjs";
 
 // Was the D1 prune-cron's retention window (a 2026-07-10 capacity emergency:

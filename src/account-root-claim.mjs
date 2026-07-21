@@ -20,9 +20,9 @@
 // pattern; I96F32 decode mirrors network-parameters' fixed-point split.
 
 import { blake2b } from "@noble/hashes/blake2.js";
-import { encodeAccountId32 } from "./ss58.mjs";
+import { encodeAccountId32 } from "./ss58.ts";
 import { isFinneySs58Address } from "./account-balance.mjs";
-import { storageMapPrefix, bytesToHex } from "./twox-storage-key.mjs";
+import { storageMapPrefix, bytesToHex } from "./twox-storage-key.ts";
 
 export const ROOT_CLAIM_KV_TTL = 120; // seconds
 export const ROOT_CLAIM_NEGATIVE_KV_TTL = 10; // seconds

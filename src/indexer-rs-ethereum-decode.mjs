@@ -47,13 +47,13 @@
 // past 2^53 the exact same way -- so a limb like 9131459485341369597 arrived
 // here already rounded to 9131459485341369344, and the resulting decimal
 // string LOOKED exact while being built from imprecise input. Fixed by
-// routing row.call_args through src/big-int-safe-json.mjs's
+// routing row.call_args through src/big-int-safe-json.ts's
 // parseJsonPreservingBigInts instead of bare JSON.parse -- see that module's
 // header for the mechanism. toLimbBigInt below accepts either a plain number
 // (the common case: 3 of a U256's 4 limbs are usually 0, safe either way) or
 // the numeric STRING that parser produces for a limb large enough to need it.
-import { isEnumTreeNode } from "./scale-normalize.mjs";
-import { unwrapByteArray, bytesToHex } from "./bytes.mjs";
+import { isEnumTreeNode } from "./scale-normalize.ts";
+import { unwrapByteArray, bytesToHex } from "./bytes.ts";
 import { decodeEvmPrecompileCall } from "./evm-precompiles.mjs";
 
 // A single limb (u64, up to 2^64-1) as delivered by src/extrinsics.mjs's

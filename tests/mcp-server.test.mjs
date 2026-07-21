@@ -17411,7 +17411,7 @@ describe("MCP get_subnet_lease", () => {
       ]),
     );
     const { twox64ConcatU32StorageKey } =
-      await import("../src/twox-storage-key.mjs");
+      await import("../src/twox-storage-key.ts");
     const leaseKey = twox64ConcatU32StorageKey(
       "SubtensorModule",
       "SubnetLeases",

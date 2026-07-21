@@ -34,12 +34,12 @@
 // single hardcoded prefix, this file needs three different item prefixes so
 // they're computed via that shared module rather than each hardcoded here.
 
-import { encodeAccountId32 } from "./ss58.mjs";
+import { encodeAccountId32 } from "./ss58.ts";
 import { isU16Netuid } from "./subnet-recycled.mjs";
 import {
   twox64ConcatU16StorageKey,
   twox64ConcatU32StorageKey,
-} from "./twox-storage-key.mjs";
+} from "./twox-storage-key.ts";
 
 export const SUBNET_LEASE_KV_TTL = 120; // seconds -- same freshness profile as subnet-burn.mjs
 export const SUBNET_LEASE_NEGATIVE_KV_TTL = 10; // seconds

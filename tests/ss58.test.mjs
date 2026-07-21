@@ -6,7 +6,7 @@ import {
   encodeAccountId32,
   normalizeAccountId32Field,
   unwrapMultiAddressId,
-} from "../src/ss58.mjs";
+} from "../src/ss58.ts";
 
 // Carried over from tests/sudo-key.test.mjs -- live-confirmed 2026-07-08
 // against finney (bittensor 10.5.0, substrate.create_storage_key("Sudo",

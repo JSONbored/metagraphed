@@ -4,7 +4,7 @@ import {
   ECONOMICS_CURRENT_KV_TTL_MS,
   readEconomicsCurrentKv,
 } from "../workers/api.mjs";
-import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
+import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 
 // readEconomicsCurrentKv wraps readHealthKv(env, KV_ECONOMICS_CURRENT) with a
 // 60-second in-isolate memo — same pattern as readHealthMetaKv (#1375),

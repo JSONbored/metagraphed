@@ -17,7 +17,7 @@ import {
   normalizeProbeStatus,
   okLatencyMs,
 } from "./health-probe-core.mjs";
-import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
+import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 
 // Must exceed the probe cadence (15 min) so a live D1 health row is never treated

@@ -27,7 +27,7 @@
 // (e.g. a MultiAddress::Signed(AccountId32) tag once the account itself is
 // hex, or a Result<(),E>::Ok(()) down to bare "Ok"). Everything else is
 // untouched.
-import { encodeAccountId32 } from "./ss58.mjs";
+import { encodeAccountId32 } from "./ss58.ts";
 
 const ACCOUNT_KEYS = new Set([
   "who",
@@ -206,7 +206,7 @@ function toHex(bytes) {
 }
 
 // Known free-text/opaque variable-length byte fields, keyed by
-// "Pallet.method.field" -- mirrors src/bytes.mjs's TEXTUAL_FIELDS (#4689)
+// "Pallet.method.field" -- mirrors src/bytes.ts's TEXTUAL_FIELDS (#4689)
 // for the analogous call_args gap, scoped narrowly by exact pallet/method/
 // field triple rather than any shape heuristic (chain_events.args carries
 // no per-field type string, so a length-based guess would risk the same

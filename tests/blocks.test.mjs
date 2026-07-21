@@ -15,7 +15,7 @@ import {
   loadBlocks,
   MAX_BLOCK_COUNT_FILTER,
 } from "../src/blocks.mjs";
-import { encodeCursor } from "../src/cursor.mjs";
+import { encodeCursor } from "../src/cursor.ts";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 

@@ -8,7 +8,7 @@ import {
   clampLimit,
   clampOffset,
 } from "../workers/request-params.mjs";
-import { decodeCursor, encodeCursor } from "./cursor.mjs";
+import { decodeCursor, encodeCursor } from "./cursor.ts";
 
 function toIso(ms) {
   if (ms == null) return null;

@@ -7,7 +7,7 @@ import {
   identityHash,
   loadAccountIdentityHistory,
 } from "../src/account-identity-history.mjs";
-import { encodeCursor } from "../src/cursor.mjs";
+import { encodeCursor } from "../src/cursor.ts";
 
 describe("identityHash", () => {
   test("is stable for the same snapshot", async () => {

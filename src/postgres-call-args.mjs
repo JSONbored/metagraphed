@@ -22,9 +22,9 @@
 // later pass over the combined tree recurses into it generically and never
 // misidentifies it -- see src/extrinsics.mjs's formatExtrinsic for the call
 // order this depends on.
-import { isEnumTreeNode } from "./scale-normalize.mjs";
-import { normalizeAccountId32Field } from "./ss58.mjs";
-import { unwrapByteArray, decodeBytesField, bytesToHex } from "./bytes.mjs";
+import { isEnumTreeNode } from "./scale-normalize.ts";
+import { normalizeAccountId32Field } from "./ss58.ts";
+import { unwrapByteArray, decodeBytesField, bytesToHex } from "./bytes.ts";
 import { BTREESET_FIELDS } from "./postgres-collection-normalize.mjs";
 
 // True when `value` is D1/indexer-rs's typed call_args field descriptor

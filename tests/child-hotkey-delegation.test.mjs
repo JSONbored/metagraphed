@@ -8,7 +8,7 @@ import {
   loadAccountChildren,
   loadAccountParents,
 } from "../src/child-hotkey-delegation.mjs";
-import { encodeAccountId32 } from "../src/ss58.mjs";
+import { encodeAccountId32 } from "../src/ss58.ts";
 import { handleRequest } from "../workers/api.mjs";
 
 function req(path) {

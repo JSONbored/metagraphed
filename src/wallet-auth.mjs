@@ -11,7 +11,7 @@
 // signing key material never reaches this codebase: the wallet extension
 // signs client-side, this module only ever sees the resulting signature.
 import { verify as sr25519Verify } from "@scure/sr25519";
-import { DEFAULT_SS58_PREFIX, decodeSs58 } from "./ss58.mjs";
+import { DEFAULT_SS58_PREFIX, decodeSs58 } from "./ss58.ts";
 import { signPayload, timingSafeEqual } from "./webhooks.mjs";
 
 const CHALLENGE_KV_PREFIX = "wallet-challenge:";

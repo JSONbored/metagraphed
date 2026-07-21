@@ -3,7 +3,7 @@
 // Hyperdrive→Railway path is validated separately.
 import { beforeEach, test, expect, vi } from "vitest";
 import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.mjs";
-import { encodeCursor } from "../src/cursor.mjs";
+import { encodeCursor } from "../src/cursor.ts";
 import { formatSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
 import { hyperparamsHash } from "../src/subnet-hyperparams-history.mjs";
 import { IDENTITY_FIELDS } from "../src/account-identity.mjs";

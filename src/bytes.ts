@@ -11,7 +11,7 @@
 // can't import from directly -- same split already established for
 // ss58.ts/ss58.mjs and chain-event-args.ts/chain-event-args.mjs.
 
-function isIntArray(value) {
+function isIntArray(value: unknown): value is number[] {
   return (
     Array.isArray(value) &&
     value.every(
@@ -28,7 +28,7 @@ function isIntArray(value) {
  * newtype-wrapped `Hash`/`H256`/`BoundedVec<u8>` field with one or more
  * wraps (e.g. a `commit_hash`, or `commit`/`ciphertext`'s variable-length
  * payload) with the same function. */
-export function unwrapByteArray(value) {
+export function unwrapByteArray(value: unknown): number[] | null {
   let current = value;
   while (
     Array.isArray(current) &&
@@ -42,7 +42,7 @@ export function unwrapByteArray(value) {
 
 /** Canonical lowercase `0x`-prefixed hex, matching D1's existing convention
  * for opaque byte blobs. */
-export function bytesToHex(bytes) {
+export function bytesToHex(bytes: number[]): string {
   return "0x" + bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -61,11 +61,16 @@ const TEXTUAL_FIELDS = new Set([
  * hex for everything else (the safe default for opaque payloads, and the
  * same fix for D1's own Ethereum.transact.input mojibake bug that field is
  * deliberately NOT in the allowlist). */
-export function decodeBytesField(callModule, callFunction, fieldName, bytes) {
+export function decodeBytesField(
+  callModule: string | null | undefined,
+  callFunction: string | null | undefined,
+  fieldName: string,
+  bytes: number[],
+): string {
   const key = `${callModule ?? ""}.${callFunction ?? ""}.${fieldName}`;
   if (TEXTUAL_FIELDS.has(key)) {
     try {
-      return new TextDecoder("utf-8", { fatal: true }).decode(
+      return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(
         Uint8Array.from(bytes),
       );
     } catch {
