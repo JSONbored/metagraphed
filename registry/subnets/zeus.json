@@ -200,6 +200,81 @@
       },
       "source_urls": ["https://api.zeussubnet.com/v1/ready"],
       "url": "https://api.zeussubnet.com/v1/ready"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-18-zeus-forecast-point",
+      "kind": "subnet-api",
+      "name": "Zeus point forecast",
+      "notes": "Auth-gated GET /v1/forecast/point on api.zeussubnet.com for weather point forecasts (lat, lon, model, hourly, forecast_hours query params). Present in the registered OpenAPI schema with no security declared, but live unauthenticated requests return HTTP 401 Invalid API key. Register auth_required:true, probe.enabled:false. Live-verified 2026-07-21.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://api.zeussubnet.com/openapi.json",
+        "https://www.zeussubnet.com/"
+      ],
+      "url": "https://api.zeussubnet.com/v1/forecast/point"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-18-zeus-forecast-area",
+      "kind": "subnet-api",
+      "name": "Zeus area forecast",
+      "notes": "Auth-gated GET /v1/forecast/area on api.zeussubnet.com for bounding-box weather forecasts (min_lat, max_lat, min_lon, max_lon, model, hourly, forecast_hours query params). Present in the registered OpenAPI schema; live unauthenticated requests return HTTP 401 Invalid API key. Register auth_required:true, probe.enabled:false. Live-verified 2026-07-21.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://api.zeussubnet.com/openapi.json",
+        "https://www.zeussubnet.com/"
+      ],
+      "url": "https://api.zeussubnet.com/v1/forecast/area"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-18-zeus-metrics",
+      "kind": "subnet-api",
+      "name": "Zeus Prometheus metrics",
+      "notes": "Auth-gated GET /metrics on api.zeussubnet.com (Prometheus-style metrics in the registered OpenAPI schema). Live unauthenticated request returns HTTP 403. Register auth_required:true, probe.enabled:false. Live-verified 2026-07-21.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://api.zeussubnet.com/openapi.json",
+        "https://www.zeussubnet.com/"
+      ],
+      "url": "https://api.zeussubnet.com/metrics"
     }
   ],
   "website_url": "https://www.zeussubnet.com/"
