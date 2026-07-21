@@ -218,6 +218,236 @@
         "https://bitmind.ai/"
       ],
       "url": "https://huggingface.co/datasets/bitmind/bm-real"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes and no per-operation security, but every one of these endpoints empirically rejects an unauthenticated request with HTTP 401 \"API key is required\" (live-checked 2026-07-21). The header/parameter the credential is passed in is not documented in the spec, so only the scheme is recorded here."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-34-bitmind-detect",
+      "kind": "subnet-api",
+      "name": "BitMind unified detection",
+      "notes": "Detect operation on the BitMind Detection API (POST /v1/detect), declared in the subnet's own OpenAPI spec at https://api.bitmind.ai/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated POST returns HTTP 401 {\"detail\":\"API key is required\"} -- so it is registered auth_required:true (correcting what the schema implies) with probe.enabled:false, since it is a state-changing POST and not probe-safe (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/v1/detect"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes and no per-operation security, but every one of these endpoints empirically rejects an unauthenticated request with HTTP 401 \"API key is required\" (live-checked 2026-07-21). The header/parameter the credential is passed in is not documented in the spec, so only the scheme is recorded here."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-34-bitmind-detect-document",
+      "kind": "subnet-api",
+      "name": "BitMind document detection",
+      "notes": "Detect Document operation on the BitMind Detection API (POST /detect-document), declared in the subnet's own OpenAPI spec at https://api.bitmind.ai/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated POST returns HTTP 401 {\"detail\":\"API key is required\"} -- so it is registered auth_required:true (correcting what the schema implies) with probe.enabled:false, since it is a state-changing POST and not probe-safe (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/detect-document"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes and no per-operation security, but every one of these endpoints empirically rejects an unauthenticated request with HTTP 401 \"API key is required\" (live-checked 2026-07-21). The header/parameter the credential is passed in is not documented in the spec, so only the scheme is recorded here."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-34-bitmind-detect-image",
+      "kind": "subnet-api",
+      "name": "BitMind image detection",
+      "notes": "Detect Image operation on the BitMind Detection API (POST /detect-image), declared in the subnet's own OpenAPI spec at https://api.bitmind.ai/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated POST returns HTTP 401 {\"detail\":\"API key is required\"} -- so it is registered auth_required:true (correcting what the schema implies) with probe.enabled:false, since it is a state-changing POST and not probe-safe (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/detect-image"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes and no per-operation security, but every one of these endpoints empirically rejects an unauthenticated request with HTTP 401 \"API key is required\" (live-checked 2026-07-21). The header/parameter the credential is passed in is not documented in the spec, so only the scheme is recorded here."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-34-bitmind-detect-text",
+      "kind": "subnet-api",
+      "name": "BitMind text detection",
+      "notes": "Detect Text operation on the BitMind Detection API (POST /detect-text), declared in the subnet's own OpenAPI spec at https://api.bitmind.ai/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated POST returns HTTP 401 {\"detail\":\"API key is required\"} -- so it is registered auth_required:true (correcting what the schema implies) with probe.enabled:false, since it is a state-changing POST and not probe-safe (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/detect-text"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes and no per-operation security, but every one of these endpoints empirically rejects an unauthenticated request with HTTP 401 \"API key is required\" (live-checked 2026-07-21). The header/parameter the credential is passed in is not documented in the spec, so only the scheme is recorded here."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-34-bitmind-detect-video",
+      "kind": "subnet-api",
+      "name": "BitMind video detection",
+      "notes": "Detect Video operation on the BitMind Detection API (POST /detect-video), declared in the subnet's own OpenAPI spec at https://api.bitmind.ai/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated POST returns HTTP 401 {\"detail\":\"API key is required\"} -- so it is registered auth_required:true (correcting what the schema implies) with probe.enabled:false, since it is a state-changing POST and not probe-safe (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/detect-video"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes and no per-operation security, but every one of these endpoints empirically rejects an unauthenticated request with HTTP 401 \"API key is required\" (live-checked 2026-07-21). The header/parameter the credential is passed in is not documented in the spec, so only the scheme is recorded here."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-34-bitmind-liveness-verify",
+      "kind": "subnet-api",
+      "name": "BitMind liveness verification",
+      "notes": "Liveness Verify operation on the BitMind Detection API (POST /liveness/verify), declared in the subnet's own OpenAPI spec at https://api.bitmind.ai/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated POST returns HTTP 401 {\"detail\":\"API key is required\"} -- so it is registered auth_required:true (correcting what the schema implies) with probe.enabled:false, since it is a state-changing POST and not probe-safe (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/liveness/verify"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes and no per-operation security, but every one of these endpoints empirically rejects an unauthenticated request with HTTP 401 \"API key is required\" (live-checked 2026-07-21). The header/parameter the credential is passed in is not documented in the spec, so only the scheme is recorded here."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-34-bitmind-preprocess-video",
+      "kind": "subnet-api",
+      "name": "BitMind video preprocessing",
+      "notes": "Preprocess Video operation on the BitMind Detection API (POST /preprocess-video), declared in the subnet's own OpenAPI spec at https://api.bitmind.ai/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated POST returns HTTP 401 {\"detail\":\"API key is required\"} -- so it is registered auth_required:true (correcting what the schema implies) with probe.enabled:false, since it is a state-changing POST and not probe-safe (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/preprocess-video"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-34-bitmind-service-root",
+      "kind": "subnet-api",
+      "name": "BitMind Detection API service root",
+      "notes": "Public no-auth GET / on api.bitmind.ai returning the service banner (service name, version, region, docs path), declared in the subnet's own OpenAPI spec. Live-verified 2026-07-21: HTTP 200 application/json {\"service\":\"BitMind Detection API\",\"version\":\"1.0.0\",...}. Unlike the detection operations on this host it needs no credential, so its probe stays enabled.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes and no per-operation security, but every one of these endpoints empirically rejects an unauthenticated request with HTTP 401 \"API key is required\" (live-checked 2026-07-21). The header/parameter the credential is passed in is not documented in the spec, so only the scheme is recorded here."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-34-bitmind-video-upload-url",
+      "kind": "subnet-api",
+      "name": "BitMind video upload URL issuance",
+      "notes": "Get Video Upload Url operation on the BitMind Detection API (POST /get-video-upload-url), declared in the subnet's own OpenAPI spec at https://api.bitmind.ai/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated POST returns HTTP 401 {\"detail\":\"API key is required\"} -- so it is registered auth_required:true (correcting what the schema implies) with probe.enabled:false, since it is a state-changing POST and not probe-safe (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/get-video-upload-url"
     }
   ],
   "website_url": "https://bitmind.ai/"
