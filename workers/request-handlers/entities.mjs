@@ -102,7 +102,7 @@ import { buildAccountIdentityHistory } from "../../src/account-identity-history.
 import {
   isFinneySs58Address,
   loadAccountBalance,
-} from "../../src/account-balance.mjs";
+} from "../../src/account-balance.ts";
 import { loadAccountRootClaim } from "../../src/account-root-claim.mjs";
 import {
   loadAccountChildren,

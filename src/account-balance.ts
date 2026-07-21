@@ -45,7 +45,7 @@ const ACCOUNT_DATA_RESERVED_OFFSET = 32;
 const U128_BYTES = 16;
 const RAO_PER_TAO = 1_000_000_000n;
 
-function decodeBase58(value) {
+function decodeBase58(value: string): Uint8Array | null {
   const bytes = [0];
   for (const char of value) {
     const carryStart = SS58_BASE58_INDEX.get(char);
@@ -68,7 +68,7 @@ function decodeBase58(value) {
   return Uint8Array.from(bytes.reverse());
 }
 
-function verifyFinneySs58Checksum(decoded) {
+function verifyFinneySs58Checksum(decoded: Uint8Array): boolean {
   if (decoded.length !== FINNEY_SS58_DECODED_LENGTH) return false;
   const body = decoded.subarray(
     0,
@@ -84,7 +84,7 @@ function verifyFinneySs58Checksum(decoded) {
   return hash[0] === checksum[0] && hash[1] === checksum[1];
 }
 
-export function isFinneySs58Address(value) {
+export function isFinneySs58Address(value: string): boolean {
   if (
     value.length < FINNEY_SS58_MIN_LENGTH ||
     value.length > FINNEY_SS58_MAX_LENGTH
@@ -100,13 +100,13 @@ export function isFinneySs58Address(value) {
   );
 }
 
-function toHex(bytes) {
+function toHex(bytes: Uint8Array): string {
   let out = "";
   for (const byte of bytes) out += byte.toString(16).padStart(2, "0");
   return out;
 }
 
-function hexToBytes(hex) {
+function hexToBytes(hex: string): Uint8Array | null {
   const body = hex.startsWith("0x") ? hex.slice(2) : hex;
   if (body.length === 0 || body.length % 2 !== 0) return null;
   const bytes = new Uint8Array(body.length / 2);
@@ -118,7 +118,7 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-function readU128Le(bytes, offset) {
+function readU128Le(bytes: Uint8Array, offset: number): bigint {
   let value = 0n;
   for (let index = U128_BYTES - 1; index >= 0; index -= 1) {
     value = (value << 8n) | BigInt(bytes[offset + index]);
@@ -128,7 +128,7 @@ function readU128Le(bytes, offset) {
 
 // The 32-byte AccountId inside a finney SS58 (prefix byte, then AccountId32, then
 // the 2-byte checksum). Callers shape-check the address with isFinneySs58Address.
-function accountIdFromSs58(ss58) {
+function accountIdFromSs58(ss58: string): Uint8Array | null {
   const decoded = decodeBase58(ss58);
   if (decoded?.length !== FINNEY_SS58_DECODED_LENGTH) return null;
   return decoded.subarray(1, 1 + ACCOUNT_ID_LENGTH);
@@ -136,15 +136,22 @@ function accountIdFromSs58(ss58) {
 
 // System::Account(accountId) = twox128("System") ++ twox128("Account")
 // ++ blake2_128Concat(accountId), where blake2_128Concat(x) = blake2b-128(x) ++ x.
-export function systemAccountStorageKey(accountId) {
+export function systemAccountStorageKey(accountId: Uint8Array): string {
   return `0x${SYSTEM_ACCOUNT_STORAGE_PREFIX}${toHex(
     blake2b(accountId, { dkLen: 16 }),
   )}${toHex(accountId)}`;
 }
 
+interface JsonRpcResponseLike {
+  error?: unknown;
+  result?: unknown;
+}
+
 // free + reserved (in rao) from a state_getStorage AccountInfo response, or null
 // when the node reported an error or returned an undecodable blob.
-export function accountInfoTotalRao(rpcBody) {
+export function accountInfoTotalRao(
+  rpcBody: JsonRpcResponseLike | null | undefined,
+): bigint | null {
   if (!rpcBody || rpcBody.error) return null;
   const result = rpcBody.result;
   // A never-seen account has no System::Account entry at all — that is a
@@ -161,23 +168,33 @@ export function accountInfoTotalRao(rpcBody) {
   );
 }
 
+export interface AccountBalanceResult {
+  schema_version: 1;
+  ss58: string;
+  balance_tao: number | null;
+  queried_at: string;
+}
+
 // Query live balance for one finney ss58. Uses METAGRAPH_CONTROL KV (60s TTL) when
 // present; balance_tao is null on RPC failure (schema-stable, never throws).
-export async function loadAccountBalance(env, ss58) {
+export async function loadAccountBalance(
+  env: Env,
+  ss58: string,
+): Promise<AccountBalanceResult> {
   const cacheKey = `balance:${ss58}`;
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached;
+      if (cached) return cached as AccountBalanceResult;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
     }
   }
 
   const queriedAt = new Date().toISOString();
-  let balanceTao = null;
+  let balanceTao: number | null = null;
   let rpcOk = false;
 
   try {
@@ -185,6 +202,12 @@ export async function loadAccountBalance(env, ss58) {
     // not found"), so this route returned null for every address (#6506). Read
     // the System::Account storage entry directly instead — the same thing the
     // absent method would have wrapped.
+    // Non-null: callers shape-check `ss58` with isFinneySs58Address first (see
+    // this file's own header comment), so accountIdFromSs58 only ever returns
+    // null here for an address this function is never actually called with --
+    // a violation would throw below, caught by the same try/catch as any
+    // other RPC failure, leaving balance_tao null (unchanged behavior).
+    const accountId = accountIdFromSs58(ss58)!;
     const rpcResp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -193,11 +216,13 @@ export async function loadAccountBalance(env, ss58) {
         jsonrpc: "2.0",
         id: 1,
         method: "state_getStorage",
-        params: [systemAccountStorageKey(accountIdFromSs58(ss58))],
+        params: [systemAccountStorageKey(accountId)],
       }),
     });
     if (rpcResp.ok) {
-      const totalRao = accountInfoTotalRao(await rpcResp.json());
+      const totalRao = accountInfoTotalRao(
+        (await rpcResp.json()) as JsonRpcResponseLike,
+      );
       if (totalRao != null) {
         // Sum in BigInt rao space, then divide once — avoids float precision loss
         // on large on-chain balances before converting the remainder to TAO.
@@ -210,7 +235,7 @@ export async function loadAccountBalance(env, ss58) {
     // RPC fetch failed — balance_tao stays null.
   }
 
-  const payload = {
+  const payload: AccountBalanceResult = {
     schema_version: 1,
     ss58,
     balance_tao: balanceTao,

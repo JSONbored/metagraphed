@@ -7,7 +7,7 @@ import {
   isFinneySs58Address,
   loadAccountBalance,
   systemAccountStorageKey,
-} from "../src/account-balance.mjs";
+} from "../src/account-balance.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 

@@ -38,7 +38,7 @@
 
 import { blake2b } from "@noble/hashes/blake2.js";
 import { encodeAccountId32 } from "./ss58.ts";
-import { isFinneySs58Address } from "./account-balance.mjs";
+import { isFinneySs58Address } from "./account-balance.ts";
 import { storageMapPrefix, bytesToHex } from "./twox-storage-key.ts";
 
 export const CHILD_HOTKEY_KV_TTL = 120; // seconds -- live chain state, same profile as subnet-lease.mjs
