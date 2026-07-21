@@ -324,6 +324,370 @@
         "https://api.heyditto.ai/api/admin/v1/swagger/doc.json"
       ],
       "url": "https://api.heyditto.ai/api/admin/v1/swagger/doc.json"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-agent-account-by-id",
+      "kind": "subnet-api",
+      "name": "Ditto admin agent-account by id",
+      "notes": "Get a single agent account created by this app operation on the Ditto Admin API (GET, PATCH /agent-accounts/{account_id}), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Path-parameterized on {account_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/agent-accounts/%7Baccount_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-agent-account-link",
+      "kind": "subnet-api",
+      "name": "Ditto admin agent-account link",
+      "notes": "Link an agent account to a user operation on the Ditto Admin API (POST /agent-accounts/{account_id}/link), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Path-parameterized on {account_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/agent-accounts/%7Baccount_id%7D/link"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-agent-account-readable-threads",
+      "kind": "subnet-api",
+      "name": "Ditto admin agent-account readable threads",
+      "notes": "List an agent account's readable threads operation on the Ditto Admin API (GET, PUT /agent-accounts/{account_id}/readable-threads), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Path-parameterized on {account_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/agent-accounts/%7Baccount_id%7D/readable-threads"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-agent-account-unlink",
+      "kind": "subnet-api",
+      "name": "Ditto admin agent-account unlink",
+      "notes": "Unlink an agent account from its user operation on the Ditto Admin API (POST /agent-accounts/{account_id}/unlink), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Path-parameterized on {account_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/agent-accounts/%7Baccount_id%7D/unlink"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-agent-accounts",
+      "kind": "subnet-api",
+      "name": "Ditto admin agent-accounts collection",
+      "notes": "List all agent accounts created by this app (paginated) operation on the Ditto Admin API (GET, POST /agent-accounts), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Live-verified 2026-07-21: GET https://api.heyditto.ai/api/admin/v1/agent-accounts without credentials -> HTTP 401 {\"message\":\"unauthorized\",\"status\":401}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/agent-accounts"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-consent-requests",
+      "kind": "subnet-api",
+      "name": "Ditto admin consent requests",
+      "notes": "Create an OAuth consent request (returnable consent URL) operation on the Ditto Admin API (POST /consent-requests), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/consent-requests"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-graphs",
+      "kind": "subnet-api",
+      "name": "Ditto admin graphs collection",
+      "notes": "List graphs provisioned by this app operation on the Ditto Admin API (GET, POST /graphs), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Live-verified 2026-07-21: GET https://api.heyditto.ai/api/admin/v1/graphs without credentials -> HTTP 401 {\"message\":\"unauthorized\",\"status\":401}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/graphs"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-user-agent-accounts",
+      "kind": "subnet-api",
+      "name": "Ditto admin user agent-accounts",
+      "notes": "List a user's agent accounts (paginated) operation on the Ditto Admin API (GET /users/{user_id}/agent-accounts), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Path-parameterized on {user_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/users/%7Buser_id%7D/agent-accounts"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-user-by-id",
+      "kind": "subnet-api",
+      "name": "Ditto admin user by id",
+      "notes": "Get a provisioned user's state operation on the Ditto Admin API (GET, PATCH /users/{user_id}), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Path-parameterized on {user_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/users/%7Buser_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-user-grant-requests",
+      "kind": "subnet-api",
+      "name": "Ditto admin user grant requests",
+      "notes": "Request data-sharing scopes from a user operation on the Ditto Admin API (POST /users/{user_id}/grant-requests), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Path-parameterized on {user_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/users/%7Buser_id%7D/grant-requests"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-user-provider-credential-by-provider",
+      "kind": "subnet-api",
+      "name": "Ditto admin user provider credential by provider",
+      "notes": "Set one provider key (BYOK) operation on the Ditto Admin API (PUT /users/{user_id}/keys/{provider}), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Path-parameterized on {user_id}, {provider}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/users/%7Buser_id%7D/keys/%7Bprovider%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-user-provider-credentials",
+      "kind": "subnet-api",
+      "name": "Ditto admin user provider credentials",
+      "notes": "List a user's provider keys (status only) operation on the Ditto Admin API (GET, POST /users/{user_id}/keys), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Path-parameterized on {user_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/users/%7Buser_id%7D/keys"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own Swagger securityDefinitions (AdminKey), which every operation in the spec requires."
+      },
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-118-ditto-admin-users",
+      "kind": "subnet-api",
+      "name": "Ditto admin users collection",
+      "notes": "List users provisioned by this admin (paginated) operation on the Ditto Admin API (GET, POST /users), declared in the subnet's own Swagger 2.0 spec at /api/admin/v1/swagger/doc.json. Every operation in that spec requires the AdminKey security definition, so it is registered auth_required:true with the probe disabled (Phase 3). Live-verified 2026-07-21: GET https://api.heyditto.ai/api/admin/v1/users without credentials -> HTTP 401 {\"message\":\"unauthorized\",\"status\":401}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.heyditto.ai/api/admin/v1/swagger/doc.json"],
+      "url": "https://api.heyditto.ai/api/admin/v1/users"
     }
   ],
   "website_url": "https://heyditto.ai/"
