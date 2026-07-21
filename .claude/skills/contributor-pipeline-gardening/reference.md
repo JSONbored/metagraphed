@@ -97,7 +97,7 @@ rather than trusting each edit in isolation.
 
 **How to apply here:** whenever an issue's fix has a real existing precedent to follow — an existing
 route/endpoint's shape, an existing schema pattern, an existing Worker handler, a comparable already-
-merged PR — name the *exact* file/PR to mirror as a leading, standalone callout (not buried in prose
+merged PR — name the _exact_ file/PR to mirror as a leading, standalone callout (not buried in prose
 Context), and state explicitly what does **not** satisfy the issue (a differently-shaped
 implementation, an unspecified choice among multiple plausible artifacts, a new parallel mechanism
 instead of extending the cited one). Applies to code issues under the template below; for
