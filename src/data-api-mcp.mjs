@@ -18,6 +18,23 @@ function clampChainEventsLimit(value) {
   return Math.min(Math.max(Math.floor(n), 1), CHAIN_EVENTS_LIMIT_MAX);
 }
 
+// Blocks-window validator shared by MCP get_chain_activity and GraphQL
+// Query.chain_events_stats (#7432): a missing window defaults to 1000, a
+// non-positive-integer window is an invalid_params error, and the window is
+// clamped to the 5000-block maximum. Colocated with loadChainActivity below so
+// both callers reuse one validator instead of duplicating it.
+export function optionalBlocksWindow(args) {
+  const value = args?.blocks;
+  if (value === undefined || value === null) return 1000;
+  if (!Number.isInteger(value) || value < 1) {
+    throwToolError(
+      "invalid_params",
+      "Argument `blocks` must be a positive integer.",
+    );
+  }
+  return Math.min(value, 5000);
+}
+
 // The data Worker returns `{ error: "..." }` on 400; some envelopes use
 // `{ error: { message } }` or a top-level `message` instead.
 function dataApiErrorMessage(body) {
@@ -178,5 +195,22 @@ export async function loadChainEventsFeed(
     next_before: data?.next_before ?? null,
     next_cursor: data?.next_cursor ?? null,
     events: Array.isArray(data?.events) ? data.events : [],
+  };
+}
+
+// Chain-activity aggregate (pallet.method event distribution) over the most
+// recent N blocks, from the Postgres-backed all-events tier via the DATA_API
+// binding -- the same path loadChainEventsFeed uses for the raw feed. Shared by
+// MCP get_chain_activity and GraphQL Query.chain_events_stats (#7432); the
+// caller applies optionalBlocksWindow first.
+export async function loadChainActivity(ctx, blocks) {
+  const data = await dataApiFetchJson(
+    ctx,
+    `/api/v1/chain-events/stats?blocks=${blocks}`,
+  );
+  return {
+    window_blocks: data?.window_blocks ?? blocks,
+    groups: data?.groups ?? 0,
+    activity: Array.isArray(data?.activity) ? data.activity : [],
   };
 }

@@ -19,7 +19,14 @@ import { loadEvidenceList } from "./evidence-mcp.mjs";
 // #7171: GraphQL parity for GET /api/v1/chain-events (paginated Query feed),
 // reusing loadChainEventsFeed that MCP list_chain_events already calls.
 // Distinct from Subscription.chainEvents (live WebSocket firehose).
-import { loadChainEventsFeed } from "./data-api-mcp.mjs";
+// #7432: GraphQL parity for GET /api/v1/chain-events/stats, reusing the
+// relocated loadChainActivity (+ its optionalBlocksWindow validator) that MCP
+// get_chain_activity already calls -- not a reimplementation.
+import {
+  loadChainActivity,
+  loadChainEventsFeed,
+  optionalBlocksWindow,
+} from "./data-api-mcp.mjs";
 // #6992: GraphQL parity for profiles, reusing list_profiles' own loader
 // unchanged (same artifact read, filter, sort, and page logic REST and MCP
 // already use) -- not a reimplementation.
@@ -643,6 +650,8 @@ export const SDL = `
     extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
     "Paginated all-events feed (newest first) from the Postgres-backed all-events tier: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Distinct from Subscription.chainEvents (live WebSocket firehose). Mirrors GET /api/v1/chain-events."
     chain_events(pallet: String, method: String, block: Int, extrinsic: Int, cursor: String, before: Int, limit: Int): ChainEventsFeed!
+    "The pallet.method event-distribution aggregate over the most recent blocks (the blocks window, 1-5000, default 1000) from the Postgres-backed all-events tier: each pallet.method with its event count, busiest first. A non-positive-integer blocks window is a GraphQL error. Distinct from chain_events (the raw paginated feed) and chain_activity (the daily block/extrinsic/event-count series). Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity)."
+    chain_events_stats(blocks: Int): ChainEventsStats!
     "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
     extrinsic(ref: String!): ExtrinsicDetail
     "Subtensor's root-origin hyperparameter/network-config change feed (newest first) -- the extrinsics feed fixed to call_module=AdminUtils, so it takes no signer/call_module filter. Same ExtrinsicList shape as extrinsics. Mirrors GET /api/v1/governance/config-changes."
@@ -1960,6 +1969,13 @@ export const SDL = `
     next_before: Int
     next_cursor: String
     events: [ChainEventRow!]!
+  }
+
+  "The pallet.method event-distribution aggregate for GET /api/v1/chain-events/stats: the block window covered, the number of distinct pallet.method groups, and the activity rows (each a pallet.method with its event count, busiest first) passed through verbatim from the all-events tier."
+  type ChainEventsStats {
+    window_blocks: Int
+    groups: Int
+    activity: [JSON!]!
   }
 
   "One raw pallet-level chain event from the all-events tier (distinct from the curated AccountEvent and from Subscription's ChainEvent firehose payload)."
@@ -4188,6 +4204,7 @@ export const FIELD_COMPLEXITY = {
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_events: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_events_stats: RELATIONSHIP_FIELD_COMPLEXITY,
   sudo: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
   governance_config_changes: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -6864,6 +6881,11 @@ const rootValue = {
   // BAD_USER_INPUT; a cold/unbound/rate-limited tier degrades to a
   // schema-stable empty feed, never a GraphQL error — matching extrinsics'
   // cold-empty convention. Distinct from Subscription.chainEvents.
+  chain_events_stats(args, context) {
+    const blocks = optionalBlocksWindow(args);
+    return loadChainActivity(context, blocks);
+  },
+
   async chain_events(
     { pallet, method, block, extrinsic, cursor, before, limit },
     context,

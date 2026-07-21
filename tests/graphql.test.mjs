@@ -1967,6 +1967,61 @@ describe("graphql — profiles", () => {
 
 // #6977: block-scoped extrinsics/events/chain-events lists mirror the same
 // Postgres tier + schema-stable fallback the block/extrinsics feeds already use.
+describe("graphql — chain_events_stats (#7432)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("resolves the pallet.method aggregate from the all-events tier", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({
+          window_blocks: 500,
+          groups: 2,
+          activity: [
+            { pallet: "Balances", method: "Transfer", count: 120 },
+            { pallet: "System", method: "ExtrinsicSuccess", count: 90 },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ chain_events_stats(blocks: 500) { window_blocks groups activity } }",
+      env,
+    );
+    assert.equal(status, 200);
+    const stats = body.data.chain_events_stats;
+    assert.equal(stats.window_blocks, 500);
+    assert.equal(stats.groups, 2);
+    assert.equal(stats.activity.length, 2);
+    assert.equal(stats.activity[0].method, "Transfer");
+    assert.equal(stats.activity[0].count, 120);
+  });
+
+  test("defaults a missing blocks window and passes an empty tier through as a zeroed aggregate", async () => {
+    const env = { DATA_API: dataApi(Response.json({})) };
+    const { body } = await gql(
+      "{ chain_events_stats { window_blocks groups activity } }",
+      env,
+    );
+    // optionalBlocksWindow defaults to 1000; an empty tier response yields the
+    // loader's defaults (never null), matching REST/MCP.
+    assert.equal(body.data.chain_events_stats.window_blocks, 1000);
+    assert.equal(body.data.chain_events_stats.groups, 0);
+    assert.deepEqual(body.data.chain_events_stats.activity, []);
+  });
+
+  test("rejects a non-positive-integer blocks window as a GraphQL error", async () => {
+    const { body } = await gql("{ chain_events_stats(blocks: 0) { groups } }");
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.chain_events_stats, 5);
+  });
+});
+
 describe("graphql — block_extrinsics / block_events / block_chain_events (#6977)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

@@ -602,10 +602,11 @@ import {
   buildBlockExtrinsics,
 } from "./extrinsics.mjs";
 import {
-  dataApiFetchJson,
   loadBlockChainEvents,
+  loadChainActivity,
   loadChainEventsFeed,
   loadExtrinsicChainEvents,
+  optionalBlocksWindow,
 } from "./data-api-mcp.mjs";
 import {
   aiEnabled,
@@ -1295,22 +1296,9 @@ async function loadSubnetEconomics(ctx, netuid) {
   };
 }
 
-// Chain-activity aggregate (pallet.method event distribution) over the most
-// recent N blocks, from the Postgres-backed all-events tier. That tier lives in
-// the dedicated data Worker (ADR 0013) so the postgres.js driver stays out of
-// this Worker's bundle; MCP handlers reach it through the DATA_API service
-// binding, the same binding the REST proxy uses for /api/v1/chain-events/stats.
-async function loadChainActivity(ctx, blocks) {
-  const data = await dataApiFetchJson(
-    ctx,
-    `/api/v1/chain-events/stats?blocks=${blocks}`,
-  );
-  return {
-    window_blocks: data?.window_blocks ?? blocks,
-    groups: data?.groups ?? 0,
-    activity: Array.isArray(data?.activity) ? data.activity : [],
-  };
-}
+// loadChainActivity (the /api/v1/chain-events/stats aggregate) now lives in
+// src/data-api-mcp.mjs alongside its raw-feed sibling loadChainEventsFeed and is
+// imported above -- shared with GraphQL Query.chain_events_stats (#7432).
 
 // One page of the raw recent chain-events feed (newest first) from the
 // Postgres-backed all-events tier via the DATA_API binding — the same path
@@ -1926,18 +1914,6 @@ function requireHotkey(args) {
 // to 1000; a provided value must be a positive integer and is clamped to the
 // data Worker's 1-5000 bound so a stray large value is silently capped (the data
 // Worker clamps too, but capping here keeps the request URL honest).
-function optionalBlocksWindow(args) {
-  const value = args?.blocks;
-  if (value === undefined || value === null) return 1000;
-  if (!Number.isInteger(value) || value < 1) {
-    throw toolError(
-      "invalid_params",
-      "Argument `blocks` must be a positive integer.",
-    );
-  }
-  return Math.min(value, 5000);
-}
-
 function clampLimit(value, fallback, max) {
   // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
   // 1. tools/call does not enforce the inputSchema `minimum`, so an explicit
