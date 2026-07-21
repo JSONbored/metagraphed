@@ -602,7 +602,6 @@ import {
   buildBlockExtrinsics,
 } from "./extrinsics.mjs";
 import {
-  dataApiFetchJson,
   loadBlockChainEvents,
   loadChainActivity,
   loadChainEventsFeed,
