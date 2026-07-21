@@ -247,6 +247,22 @@ describe("buildSubnetYield", () => {
     assert.equal(d.subnet_yield, 0.1);
   });
 
+  test("subnet_yield excludes a zero-stake UID's emission from the aggregate (it has no stake to earn on)", () => {
+    const d = buildSubnetYield(
+      [
+        neuron(0, { validator: true, stake: 10, emission: 2 }), // yield 0.2
+        neuron(1, { stake: 0, emission: 5 }), // no stake -> undefined yield
+      ],
+      7,
+    );
+    // The zero-stake UID's emission still counts toward the subnet's total...
+    assert.equal(d.total_emission_tao, 7);
+    // ...but must NOT inflate subnet_yield (that would be 7/10=0.7); only the
+    // staked UID contributes, matching neurons[].yield / median_yield.
+    assert.equal(d.subnet_yield, 0.2);
+    assert.equal(d.median_yield, 0.2);
+  });
+
   test("a null D1 block_number stays null, not a fabricated genesis 0", () => {
     // block_number is a nullable INTEGER; Number(null) === 0 must not surface
     // as the real chain height 0 (the contract models it as ["integer","null"]).
@@ -481,6 +497,9 @@ describe("buildSubnetYieldHistory", () => {
     assert.equal(data.points[0].neuron_count, 2);
     assert.equal(data.points[0].yield_count, 1); // only the staked UID
     assert.equal(data.points[0].median_yield, 0.1);
+    // The zero-stake UID must not inflate the day's aggregate either (that
+    // would be 15/100=0.15); only the staked UID's 10/100 counts.
+    assert.equal(data.points[0].subnet_yield, 0.1);
   });
 
   test("drops the oldest (possibly partial) day when the read was capped", () => {

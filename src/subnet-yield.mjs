@@ -143,8 +143,17 @@ export function buildSubnetYield(rows, netuid) {
     totalStakeRao += toRaoBig(stake);
     if (emission != null) {
       totalEmissionRao += toRaoBig(emission);
-      yieldStakeRao += toRaoBig(stake);
-      yieldEmissionRao += toRaoBig(emission);
+      // subnet_yield is a stake-weighted return, so a UID with emission but no
+      // stake (a miner earning incentive with ~0 staked alpha) has an undefined
+      // per-stake return -- exclude it from the yield accumulators exactly as
+      // computeYieldValue (and thus the neurons[].yield distribution + median/
+      // mean/percentiles) already does, rather than letting its emission inflate
+      // the numerator over a 0-stake denominator contribution. Its emission is
+      // still counted toward total_emission_tao above.
+      if (stake > 0) {
+        yieldStakeRao += toRaoBig(stake);
+        yieldEmissionRao += toRaoBig(emission);
+      }
     }
     if (isValidator) validatorCount += 1;
     neurons.push({
@@ -205,8 +214,10 @@ export function buildSubnetYield(rows, netuid) {
     miner_count: neurons.length - validatorCount,
     total_stake_tao: round9(totalStake),
     total_emission_tao: round9(totalEmission),
-    // Subnet-wide return over UIDs with known stake + emission only — blank-emission
-    // rows stay in the neuron list but must not dilute the aggregate as if emission were 0.
+    // Subnet-wide return over UIDs with positive stake + known emission only —
+    // blank-emission and zero-stake rows stay in the neuron list but must not
+    // dilute the aggregate (as if emission were 0, or return were earned on no
+    // stake); mirrors the neurons[].yield / median / percentile distribution.
     subnet_yield: yieldStake > 0 ? round9(yieldEmission / yieldStake) : null,
     mean_yield: meanYield,
     median_yield: medianYield,
@@ -277,7 +288,9 @@ function yieldHistoryPoint(date, dayRows) {
     if (stake == null) continue;
     neuronCount += 1;
     const emission = nullableTao(row?.emission_tao);
-    if (emission != null) {
+    // Match buildSubnetYield: a zero-stake (or blank-emission) UID has no defined
+    // per-stake return, so it must not inflate the day's subnet_yield aggregate.
+    if (emission != null && stake > 0) {
       yieldStakeRao += toRaoBig(stake);
       yieldEmissionRao += toRaoBig(emission);
     }
