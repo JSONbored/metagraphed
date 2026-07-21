@@ -101,7 +101,8 @@
         "submitted_by": "gildardodev"
       },
       "source_urls": ["https://api.zeussubnet.com/openapi.json"],
-      "url": "https://api.zeussubnet.com/v1/meta"
+      "url": "https://api.zeussubnet.com/v1/meta",
+      "notes": ". Live-verified 2026-07-22: HTTP 200 JSON {\"service\":\"boreas-edge\",\"version\":\"0.1.0\"}."
     },
     {
       "auth_required": false,
@@ -109,7 +110,7 @@
       "id": "sn-18-zeus-openapi",
       "kind": "openapi",
       "name": "Zeus BOREAS Edge API (public)",
-      "notes": "Machine-readable spec for the public BOREAS Edge API documented by Zeus.",
+      "notes": "Machine-readable spec for the public BOREAS Edge API documented by Zeus. Live-verified 2026-07-22: GET returns OpenAPI 3.1.0 JSON (title BOREAS Edge API (public)).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -136,7 +137,7 @@
       "id": "sn-18-zeus-health",
       "kind": "subnet-api",
       "name": "Zeus BOREAS Edge API health",
-      "notes": "Public no-auth health probe for the Zeus BOREAS Edge API; GET /v1/health returns {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing /v1/meta subnet-api surface.",
+      "notes": "Public no-auth health probe for the Zeus BOREAS Edge API; GET /v1/health returns {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing /v1/meta subnet-api surface. Live-verified 2026-07-22: HTTP 200 JSON {\"status\":\"ok\"}.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -185,7 +186,7 @@
       "id": "sn-18-zeus-ready",
       "kind": "subnet-api",
       "name": "Zeus readiness check",
-      "notes": "Public no-auth GET returning readiness status including vault and database connectivity. Documented in the subnet's own OpenAPI schema.",
+      "notes": "Public no-auth GET returning readiness status including vault and database connectivity. Documented in the subnet's own OpenAPI schema. Live-verified 2026-07-22: HTTP 200 JSON status=ok with vault/database connected.",
       "probe": {
         "enabled": true,
         "expect": "json",
