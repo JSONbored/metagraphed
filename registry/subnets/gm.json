@@ -160,6 +160,94 @@
         "https://github.com/taostat/gm-miner/blob/main/image/envoy.yaml"
       ],
       "url": "https://raw.githubusercontent.com/taostat/gm-miner/refs/heads/main/image/envoy.yaml"
+    },
+    {
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-28-gm-chat-completions",
+      "kind": "subnet-api",
+      "name": "gm Gateway chat completions (OpenAI-compatible)",
+      "notes": "Create a chat completion operation on the gm Gateway API (POST /chat/completions), declared in the subnet's own OpenAPI 3.1.0 spec at https://saygm.com/openapi.json (server https://api.saygm.com/v1). The spec sets a top-level bearerAuth security requirement that every operation inherits, so it is registered auth_required:true with the probe disabled. Live-verified 2026-07-21: an unauthenticated POST to https://api.saygm.com/v1/chat/completions returns HTTP 401 (authentication required), confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://saygm.com/openapi.json"],
+      "url": "https://api.saygm.com/v1/chat/completions"
+    },
+    {
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-28-gm-gemini-generate-content",
+      "kind": "subnet-api",
+      "name": "gm Gateway Gemini generateContent",
+      "notes": "Gemini generateContent / streamGenerateContent operation on the gm Gateway API (POST /v1beta/models/{modelAndAction}), declared in the subnet's own OpenAPI 3.1.0 spec at https://saygm.com/openapi.json (server https://api.saygm.com/v1). The spec sets a top-level bearerAuth security requirement that every operation inherits, so it is registered auth_required:true with the probe disabled. Path-parameterized on {modelAndAction}, so it has no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://saygm.com/openapi.json"],
+      "url": "https://api.saygm.com/v1/v1beta/models/%7BmodelAndAction%7D"
+    },
+    {
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-28-gm-messages",
+      "kind": "subnet-api",
+      "name": "gm Gateway messages (Anthropic Messages API)",
+      "notes": "Create a message (Anthropic Messages API) operation on the gm Gateway API (POST /messages), declared in the subnet's own OpenAPI 3.1.0 spec at https://saygm.com/openapi.json (server https://api.saygm.com/v1). The spec sets a top-level bearerAuth security requirement that every operation inherits, so it is registered auth_required:true with the probe disabled. Live-verified 2026-07-21: an unauthenticated POST to https://api.saygm.com/v1/messages returns HTTP 401 (authentication required), confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://saygm.com/openapi.json"],
+      "url": "https://api.saygm.com/v1/messages"
+    },
+    {
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-28-gm-responses",
+      "kind": "subnet-api",
+      "name": "gm Gateway responses (OpenAI Responses API)",
+      "notes": "Create a response (OpenAI Responses API) operation on the gm Gateway API (POST /responses), declared in the subnet's own OpenAPI 3.1.0 spec at https://saygm.com/openapi.json (server https://api.saygm.com/v1). The spec sets a top-level bearerAuth security requirement that every operation inherits, so it is registered auth_required:true with the probe disabled. Live-verified 2026-07-21: an unauthenticated POST to https://api.saygm.com/v1/responses returns HTTP 401 (authentication required), confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://saygm.com/openapi.json"],
+      "url": "https://api.saygm.com/v1/responses"
     }
   ],
   "website_url": "https://saygm.com/"
