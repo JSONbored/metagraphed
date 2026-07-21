@@ -497,6 +497,1707 @@
         "https://api.oroagents.com/v1/public/evaluations/pending"
       ],
       "url": "https://api.oroagents.com/v1/public/evaluations/pending"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-agent-versions",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin agent versions",
+      "notes": "List agent versions with work item state operation on the ORO agents API (GET /v1/admin/agent-versions), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/agent-versions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-agent-versions-agent-version-id-cancel",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin agent versions agent version id cancel",
+      "notes": "Cancel evaluation of an agent version operation on the ORO agents API (POST /v1/admin/agent-versions/{agent_version_id}/cancel), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/agent-versions/%7Bagent_version_id%7D/cancel"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-agent-versions-agent-version-id-code",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin agent versions agent version id code",
+      "notes": "Download agent code operation on the ORO agents API (GET /v1/admin/agent-versions/{agent_version_id}/code), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/agent-versions/%7Bagent_version_id%7D/code"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-agent-versions-agent-version-id-discard",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin agent versions agent version id discard",
+      "notes": "Discard an agent version from leaderboard operation on the ORO agents API (POST /v1/admin/agent-versions/{agent_version_id}/discard), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/agent-versions/%7Bagent_version_id%7D/discard"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-agent-versions-agent-version-id-eliminate",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin agent versions agent version id eliminate",
+      "notes": "Eliminate an agent version (admin override) operation on the ORO agents API (POST /v1/admin/agent-versions/{agent_version_id}/eliminate), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/agent-versions/%7Bagent_version_id%7D/eliminate"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-agent-versions-agent-version-id-reevaluate",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin agent versions agent version id reevaluate",
+      "notes": "Re-evaluate an agent version operation on the ORO agents API (POST /v1/admin/agent-versions/{agent_version_id}/reevaluate), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/agent-versions/%7Bagent_version_id%7D/reevaluate"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-agent-versions-agent-version-id-reinstate",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin agent versions agent version id reinstate",
+      "notes": "Reinstate a discarded agent version operation on the ORO agents API (POST /v1/admin/agent-versions/{agent_version_id}/reinstate), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/agent-versions/%7Bagent_version_id%7D/reinstate"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-agent-versions-agent-version-id-reinstate-elimina",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin agent versions agent version id reinstate elimina",
+      "notes": "Reinstate an agent version that was eliminated after a race operation on the ORO agents API (POST /v1/admin/agent-versions/{agent_version_id}/reinstate-elimination), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/agent-versions/%7Bagent_version_id%7D/reinstate-elimination"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-agent-versions-agent-version-id-set-top",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin agent versions agent version id set top",
+      "notes": "Set an agent version as the top agent for emissions operation on the ORO agents API (POST /v1/admin/agent-versions/{agent_version_id}/set-top), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/agent-versions/%7Bagent_version_id%7D/set-top"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-analytics-agent-version-variance",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin analytics agent version variance",
+      "notes": "Score variance across validators for recent agent versions operation on the ORO agents API (GET /v1/admin/analytics/agent-version-variance), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/analytics/agent-version-variance"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-analytics-validator-failures-validator-account-id",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin analytics validator failures validator operator account",
+      "notes": "Recent failed/timed-out runs for a single validator operation on the ORO agents API (GET /v1/admin/analytics/validator-failures/{validator-account-id}), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/analytics/validator-failures/%7Bvalidator_hotkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-analytics-validator-resources",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin analytics validator resources",
+      "notes": "Validator host resource samples operation on the ORO agents API (GET /v1/admin/analytics/validator-resources), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/analytics/validator-resources"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-analytics-validator-scores",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin analytics validator scores",
+      "notes": "Aggregated scoring statistics per validator operation on the ORO agents API (GET /v1/admin/analytics/validator-scores), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/analytics/validator-scores"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-audit-events",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin audit events",
+      "notes": "Get audit events operation on the ORO agents API (GET /v1/admin/audit-events), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 naming the required signed-request header set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/audit-events"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-evaluation-runs",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin evaluation runs",
+      "notes": "List evaluation runs with full details operation on the ORO agents API (GET /v1/admin/evaluation-runs), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/evaluation-runs"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-evaluation-runs-eval-run-id-invalidate",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin evaluation runs eval run id invalidate",
+      "notes": "Invalidate an evaluation run operation on the ORO agents API (POST /v1/admin/evaluation-runs/{eval_run_id}/invalidate), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/evaluation-runs/%7Beval_run_id%7D/invalidate"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-miners",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin miners",
+      "notes": "List miners with ban status and agent count operation on the ORO agents API (GET /v1/admin/miners), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/miners"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-miners-miner-account-id-ban",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin miners miner operator account ban",
+      "notes": "Ban a miner operation on the ORO agents API (POST /v1/admin/miners/{miner-account-id}/ban), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/miners/%7Bminer_hotkey%7D/ban"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-miners-miner-account-id-unban",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin miners miner operator account unban",
+      "notes": "Unban a miner operation on the ORO agents API (POST /v1/admin/miners/{miner-account-id}/unban), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/miners/%7Bminer_hotkey%7D/unban"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-miners-operator-account-clear-cooldown",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin miners operator account clear cooldown",
+      "notes": "Clear miner cooldown operation on the ORO agents API (POST /v1/admin/miners/{operator account}/clear-cooldown), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/miners/%7Bhotkey%7D/clear-cooldown"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-races-close-qualifying",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin races close qualifying",
+      "notes": "Close qualifying and start race operation on the ORO agents API (POST /v1/admin/races/close-qualifying), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/races/close-qualifying"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-races-current",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin races current",
+      "notes": "Get current race state operation on the ORO agents API (GET /v1/admin/races/current), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/races/current"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-races-race-id-diagnostics",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin races race id diagnostics",
+      "notes": "Get race diagnostics operation on the ORO agents API (GET /v1/admin/races/{race_id}/diagnostics), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/races/%7Brace_id%7D/diagnostics"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-reaper-stats",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin reaper stats",
+      "notes": "Get reaper service statistics operation on the ORO agents API (GET /v1/admin/reaper/stats), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/reaper/stats"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-suites",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin suites",
+      "notes": "Create a new problem suite operation on the ORO agents API (POST /v1/admin/suites), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/suites"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-suites-suite-id-activate",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin suites suite id activate",
+      "notes": "Activate a problem suite operation on the ORO agents API (POST /v1/admin/suites/{suite_id}/activate), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/suites/%7Bsuite_id%7D/activate"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-validator-pause",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin validator pause",
+      "notes": "Get validator-pause (andon-cord) state operation on the ORO agents API (GET, POST /v1/admin/validator-pause), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/validator-pause"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-validator-resume",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin validator resume",
+      "notes": "Resume validator claims (release the andon cord) operation on the ORO agents API (POST /v1/admin/validator-resume), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/validator-resume"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-validators",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin validators",
+      "notes": "List validators including banned operation on the ORO agents API (GET /v1/admin/validators), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/validators"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-validators-validator-account-id",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin validators validator operator account",
+      "notes": "Update validator configuration operation on the ORO agents API (PATCH /v1/admin/validators/{validator-account-id}), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/validators/%7Bvalidator_hotkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-validators-validator-account-id-ban",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin validators validator operator account ban",
+      "notes": "Ban a validator operation on the ORO agents API (POST /v1/admin/validators/{validator-account-id}/ban), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/validators/%7Bvalidator_hotkey%7D/ban"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-admin-validators-validator-account-id-unban",
+      "kind": "subnet-api",
+      "name": "ORO v1 admin validators validator operator account unban",
+      "notes": "Unban a validator operation on the ORO agents API (POST /v1/admin/validators/{validator-account-id}/unban), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/admin/validators/%7Bvalidator_hotkey%7D/unban"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-auth-challenge",
+      "kind": "subnet-api",
+      "name": "ORO v1 auth challenge",
+      "notes": "Request Challenge operation on the ORO agents API (POST /v1/auth/challenge), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/auth/challenge"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-auth-logout",
+      "kind": "subnet-api",
+      "name": "ORO v1 auth logout",
+      "notes": "Logout operation on the ORO agents API (POST /v1/auth/logout), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/auth/logout"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-auth-session",
+      "kind": "subnet-api",
+      "name": "ORO v1 auth session",
+      "notes": "Create Session Endpoint operation on the ORO agents API (POST /v1/auth/session), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/auth/session"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-agent-versions-agent-version-id",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner agent versions agent version id",
+      "notes": "Get agent version status operation on the ORO agents API (GET /v1/miner/agent-versions/{agent_version_id}), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/agent-versions/%7Bagent_version_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-agents",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner agents",
+      "notes": "List miner's agents operation on the ORO agents API (GET /v1/miner/agents), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 naming the required signed-request header set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/agents"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-agents-agent-id-versions",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner agents agent id versions",
+      "notes": "List agent versions operation on the ORO agents API (GET /v1/miner/agents/{agent_id}/versions), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/agents/%7Bagent_id%7D/versions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-chutes-auth",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner chutes auth",
+      "notes": "Store Chutes OAuth refresh token (legacy — use /inference-auth/chutes) operation on the ORO agents API (POST /v1/miner/chutes-auth), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/chutes-auth"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-chutes-auth-status",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner chutes auth status",
+      "notes": "Check Chutes auth status (legacy — use /inference-auth/chutes) operation on the ORO agents API (GET /v1/miner/chutes-auth/status), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 naming the required signed-request header set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/chutes-auth/status"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-chutes-exchange-code",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner chutes exchange code",
+      "notes": "Exchange Chutes PKCE auth code for a refresh token (server-side) operation on the ORO agents API (POST /v1/miner/chutes/exchange-code), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/chutes/exchange-code"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-inference-auth",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner inference auth",
+      "notes": "List all inference-auth providers the miner has connected operation on the ORO agents API (GET /v1/miner/inference-auth), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 naming the required signed-request header set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/inference-auth"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-inference-auth-default",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner inference auth default",
+      "notes": "Set the miner's default inference provider operation on the ORO agents API (PATCH /v1/miner/inference-auth/default), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/inference-auth/default"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-inference-auth-provider",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner inference auth provider",
+      "notes": "Disconnect an inference-provider credential operation on the ORO agents API (DELETE, GET, POST /v1/miner/inference-auth/{provider}), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/inference-auth/%7Bprovider%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-race-selection",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner race selection",
+      "notes": "Clear pinned race candidate operation on the ORO agents API (DELETE, PUT /v1/miner/race-selection), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/race-selection"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-miner-submit",
+      "kind": "subnet-api",
+      "name": "ORO v1 miner submit",
+      "notes": "Submit agent operation on the ORO agents API (POST /v1/miner/submit), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/miner/submit"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-public-agent-versions-agent-version-id",
+      "kind": "subnet-api",
+      "name": "ORO v1 public agent versions agent version id",
+      "notes": "Get agent version details operation on the ORO agents API (GET /v1/public/agent-versions/{agent_version_id}), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/public/agent-versions/%7Bagent_version_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-public-agent-versions-agent-version-id-problems",
+      "kind": "subnet-api",
+      "name": "ORO v1 public agent versions agent version id problems",
+      "notes": "Get agent version problem progress operation on the ORO agents API (GET /v1/public/agent-versions/{agent_version_id}/problems), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/public/agent-versions/%7Bagent_version_id%7D/problems"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-public-agent-versions-agent-version-id-runs",
+      "kind": "subnet-api",
+      "name": "ORO v1 public agent versions agent version id runs",
+      "notes": "Get agent version runs operation on the ORO agents API (GET /v1/public/agent-versions/{agent_version_id}/runs), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/public/agent-versions/%7Bagent_version_id%7D/runs"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-public-agent-versions-agent-version-id-status",
+      "kind": "subnet-api",
+      "name": "ORO v1 public agent versions agent version id status",
+      "notes": "Get agent version status operation on the ORO agents API (GET /v1/public/agent-versions/{agent_version_id}/status), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/public/agent-versions/%7Bagent_version_id%7D/status"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-public-artifacts-download-url",
+      "kind": "subnet-api",
+      "name": "ORO v1 public artifacts download url",
+      "notes": "Get artifact download URL operation on the ORO agents API (POST /v1/public/artifacts/download-url), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/public/artifacts/download-url"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-public-evaluation-runs-eval-run-id",
+      "kind": "subnet-api",
+      "name": "ORO v1 public evaluation runs eval run id",
+      "notes": "Get evaluation run details operation on the ORO agents API (GET /v1/public/evaluation-runs/{eval_run_id}), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/public/evaluation-runs/%7Beval_run_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-public-races-race-id",
+      "kind": "subnet-api",
+      "name": "ORO v1 public races race id",
+      "notes": "Get race details operation on the ORO agents API (GET /v1/public/races/{race_id}), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/public/races/%7Brace_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-public-races-race-id-validator-variance",
+      "kind": "subnet-api",
+      "name": "ORO v1 public races race id validator variance",
+      "notes": "Per-validator variance for a race operation on the ORO agents API (GET /v1/public/races/{race_id}/validator-variance), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/public/races/%7Brace_id%7D/validator-variance"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-public-suites-suite-id-problems",
+      "kind": "subnet-api",
+      "name": "ORO v1 public suites suite id problems",
+      "notes": "Get suite problems operation on the ORO agents API (GET /v1/public/suites/{suite_id}/problems), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/public/suites/%7Bsuite_id%7D/problems"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-public-waitlist",
+      "kind": "subnet-api",
+      "name": "ORO v1 public waitlist",
+      "notes": "Join waitlist operation on the ORO agents API (POST /v1/public/waitlist), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/public/waitlist"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-validator-evaluation-runs-eval-run-id-complete",
+      "kind": "subnet-api",
+      "name": "ORO v1 validator evaluation runs eval run id complete",
+      "notes": "Complete evaluation run operation on the ORO agents API (POST /v1/validator/evaluation-runs/{eval_run_id}/complete), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/validator/evaluation-runs/%7Beval_run_id%7D/complete"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-validator-evaluation-runs-eval-run-id-heartbeat",
+      "kind": "subnet-api",
+      "name": "ORO v1 validator evaluation runs eval run id heartbeat",
+      "notes": "Extend lease operation on the ORO agents API (POST /v1/validator/evaluation-runs/{eval_run_id}/heartbeat), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/validator/evaluation-runs/%7Beval_run_id%7D/heartbeat"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-validator-evaluation-runs-eval-run-id-problems",
+      "kind": "subnet-api",
+      "name": "ORO v1 validator evaluation runs eval run id problems",
+      "notes": "Get problems for an evaluation run operation on the ORO agents API (GET /v1/validator/evaluation-runs/{eval_run_id}/problems), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/validator/evaluation-runs/%7Beval_run_id%7D/problems"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-validator-evaluation-runs-eval-run-id-progress",
+      "kind": "subnet-api",
+      "name": "ORO v1 validator evaluation runs eval run id progress",
+      "notes": "Update progress operation on the ORO agents API (POST /v1/validator/evaluation-runs/{eval_run_id}/progress), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/validator/evaluation-runs/%7Beval_run_id%7D/progress"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-validator-uploads-presign",
+      "kind": "subnet-api",
+      "name": "ORO v1 validator uploads presign",
+      "notes": "Get upload URL operation on the ORO agents API (POST /v1/validator/uploads/presign), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/validator/uploads/presign"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-validator-weight-salt",
+      "kind": "subnet-api",
+      "name": "ORO v1 validator weight salt",
+      "notes": "Get Weight Salt operation on the ORO agents API (GET /v1/validator/weight-salt), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 naming the required signed-request header set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/validator/weight-salt"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-15-oro-v1-validator-work-claim",
+      "kind": "subnet-api",
+      "name": "ORO v1 validator work claim",
+      "notes": "Claim evaluation work operation on the ORO agents API (POST /v1/validator/work/claim), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json"],
+      "url": "https://api.oroagents.com/v1/validator/work/claim"
     }
   ],
   "website_url": "https://oroagents.com/"
