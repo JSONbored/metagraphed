@@ -183,6 +183,55 @@
         "https://poker44.net/"
       ],
       "url": "https://poker44.net/Poker44_Whitepaper.pdf"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-benchmark-chunks",
+      "kind": "data-artifact",
+      "name": "Poker44 benchmark chunks by source date",
+      "notes": "GET /api/v1/benchmark/chunks on api.poker44.net, documented in the subnet repo's docs/training-benchmark.md alongside the already-registered /api/v1/benchmark status and /api/v1/benchmark/releases routes. Requires a sourceDate query param (optional limit) rather than a path param, so it is callable today via call_subnet_surface's query argument against this fixed base URL. Live-verified 2026-07-21 (~23:52 UTC): bare URL HTTP 422 VALIDATION_ERROR listing the required sourceDate field (a clean validation response, not an auth rejection, confirming the route is live and unauthenticated); with sourceDate=2026-07-21&limit=1 (the latestSourceDate reported by the registered /api/v1/benchmark status surface) HTTP 200 application/json returning the v1.13 shadow-training release's chunk list with per-chunk ids, hashes and hand data. probe.enabled:false (the unparameterized URL 422s, so a scheduled GET probe cannot succeed without a query argument).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md",
+        "https://api.poker44.net/api/v1/benchmark"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark/chunks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-benchmark-chunk-by-id",
+      "kind": "data-artifact",
+      "name": "Poker44 single benchmark chunk by id",
+      "notes": "GET /api/v1/benchmark/chunks/{chunkId} on api.poker44.net, the second undocumented-in-registry route under the /api/v1/benchmark prefix from docs/training-benchmark.md -- fetches one released benchmark chunk by its UUID (chunk ids come from the sibling chunks-by-source-date listing). Live-verified 2026-07-21 (~23:53 UTC): with a real chunkId from that listing (069386f8-998f-4437-9402-2a4ea6e520a0) HTTP 200 application/json (~451 KB chunk payload: chunkHash, hand batches, release metadata); with a non-UUID placeholder HTTP 422 VALIDATION_ERROR Invalid UUID -- a clean validation response, not an auth rejection, confirming the route is live and unauthenticated. probe.enabled:false (the URL is a percent-encoded {chunkId} template; the probe pipeline has no per-surface path-param injection).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark/chunks/%7BchunkId%7D"
     }
   ],
   "website_url": "https://poker44.net/"
