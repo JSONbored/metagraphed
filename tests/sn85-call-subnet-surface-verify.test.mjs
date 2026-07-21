@@ -14,10 +14,9 @@
 // (src/health-probe-core.mjs), so that surface is absent from the real
 // public/metagraph/operational-surfaces.json and cannot be resolved by
 // surface_id through the MCP tool -- it is verified direct-call only (matching
-// the SN74 precedent). health/ready are subnet-api (operational) and carry no
-// probe block; call_subnet_surface defaults to GET when a surface has no
-// probe.method, so they are callable as-is. Fixtures below mirror the live
-// shapes, keeping the test hermetic (bodies are live data -> assert stable shape).
+// the SN74 precedent). health/ready are subnet-api (operational) with GET/json
+// probes so call_subnet_surface resolves method from probe.method. Fixtures
+// below mirror the live shapes, keeping the test hermetic.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -112,7 +111,7 @@ const SURFACES = [
     kind: "subnet-api",
     operational: true,
     url: "https://api.vidaio.io/health",
-    hasProbe: false,
+    hasProbe: true,
     hasSchema: false,
     body: { status: "ok" },
     assertShape: (body) => {
@@ -124,7 +123,7 @@ const SURFACES = [
     kind: "subnet-api",
     operational: true,
     url: "https://api.vidaio.io/ready",
-    hasProbe: false,
+    hasProbe: true,
     hasSchema: false,
     body: { status: "ok" },
     assertShape: (body) => {
