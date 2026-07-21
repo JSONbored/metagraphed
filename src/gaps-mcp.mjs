@@ -2,7 +2,7 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/gaps.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 export const GAPS_ARTIFACT = "/metagraph/gaps.json";

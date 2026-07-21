@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 
 // A subset of the /api/v1/subnets index row shape (name + slug are the
 // searchable keys; both are projected onto every index row).

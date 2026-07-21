@@ -3,7 +3,7 @@
 // health/history snapshots with health-surfaces filters.
 
 import { DAY_PATTERN } from "../workers/request-params.ts";
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 const HEALTH_SURFACE_SORT_FIELDS =

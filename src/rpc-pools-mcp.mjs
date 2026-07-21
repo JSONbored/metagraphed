@@ -7,7 +7,7 @@
 // endpoint-pools-mcp.mjs (the generalized sibling collection), which has no
 // live-overlay step of its own.
 
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
 import { overlayRpcPoolEligibility } from "./health-serving.mjs";

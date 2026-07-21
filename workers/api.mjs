@@ -14,7 +14,7 @@ import {
   canonicalListSearch,
   paginationLinkHeader,
   validateListQueryParams,
-} from "./list-query.mjs";
+} from "./list-query.ts";
 import { csvRequested, csvResponse } from "./csv.ts";
 import {
   apiHeaders,

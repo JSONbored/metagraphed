@@ -2,7 +2,7 @@
 // Pure orchestration over resolveLiveEconomics + applyQueryFilters; MCP/REST
 // handlers keep tier precedence and envelope wiring.
 
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
 import { resolveLiveEconomics } from "./health-serving.mjs";
 

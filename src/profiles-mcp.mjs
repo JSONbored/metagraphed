@@ -2,7 +2,7 @@
 // GET /api/v1/subnets/{netuid}/profile. Artifact-backed list-query over
 // profiles.json and per-netuid profile detail snapshots.
 
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 const PROFILES_SORT_FIELDS = API_QUERY_COLLECTIONS.profiles.sort_fields;

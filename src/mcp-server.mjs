@@ -42,7 +42,7 @@ import {
 } from "./usage-telemetry.mjs";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {

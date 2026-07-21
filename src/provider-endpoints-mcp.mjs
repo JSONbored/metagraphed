@@ -3,7 +3,7 @@
 // transforms as the REST route over the baked
 // /metagraph/providers/{slug}/endpoints.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 export const PROVIDER_SLUG_PATTERN = /^[a-z0-9-]+$/;

@@ -46,7 +46,7 @@ import {
   applyQueryFilters,
   listQueryParamNames,
   paginationLinkHeader,
-} from "../list-query.mjs";
+} from "../list-query.ts";
 import {
   loadSubnetHealthTrends,
   loadSubnetIncidents,

@@ -3,7 +3,7 @@
 // transforms as the REST route over the baked
 // /metagraph/review/enrichment-targets.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 export const REVIEW_ENRICHMENT_TARGETS_ARTIFACT =
