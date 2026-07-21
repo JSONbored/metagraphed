@@ -181,6 +181,28 @@
       },
       "source_urls": ["https://leadpoet.com/api/geo/cities"],
       "url": "https://leadpoet.com/api/geo/cities"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-71-leadpoet-contact-api",
+      "kind": "subnet-api",
+      "name": "Leadpoet contact form API",
+      "notes": "Public no-auth POST /api/contact on leadpoet.com documented in the subnet OpenAPI schema (path /api/contact). Marketing contact-form submit with a JSON body; probe.enabled:false because it is a write endpoint and not safe to auto-probe. Live-verified 2026-07-21: GET returns HTTP 200 (endpoint reachable); POST left unfired.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leadpoet",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": ["https://leadpoet.com/api/openapi.json"],
+      "url": "https://leadpoet.com/api/contact"
     }
   ],
   "website_url": "https://leadpoet.com/"

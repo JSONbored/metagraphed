@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 558,
+  "surface_count": 569,
   "surfaces": [
     {
       "auth_required": false,
@@ -206,6 +206,24 @@
       "public_safe": true,
       "subnet_name": "Apex",
       "subnet_slug": "sn-1",
+      "surface_id": "sn-1-apex-healthcheck",
+      "surface_key": "srf-07941863062c55b5",
+      "url": "https://apex.api.macrocosmos.ai/healthcheck"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 1,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "Apex",
+      "subnet_slug": "sn-1",
       "surface_id": "sn-1-apex-healthcheck-ready",
       "surface_key": "srf-fcd390d4676aeddd",
       "url": "https://apex.api.macrocosmos.ai/healthcheck/ready"
@@ -281,6 +299,42 @@
       "surface_id": "sn-2-dsperse-model-list",
       "surface_key": "srf-43ce8d499d2a4e28",
       "url": "https://repository.inferencelabs.com/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 2,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "inference-labs",
+      "public_safe": true,
+      "subnet_name": "DSperse",
+      "subnet_slug": "dsperse",
+      "surface_id": "sn-2-inference-labs-subnet-api",
+      "surface_key": "srf-43c3b9147fb895e6",
+      "url": "https://sn2-api.inferencelabs.com/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 3,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "subnet_name": "Templar",
+      "subnet_slug": "sn-3",
+      "surface_id": "sn-3-templar-health",
+      "surface_key": "srf-b305797d699b0b53",
+      "url": "https://grafana.tplr.ai/api/health"
     },
     {
       "auth_required": false,
@@ -3164,6 +3218,24 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 43,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "subnet_name": "Graphite",
+      "subnet_slug": "sn-43",
+      "surface_id": "sn-43-graphite-ai-subnet-api",
+      "surface_key": "srf-4806f836ad71e513",
+      "url": "https://api.graphite-ai.net/api/v1/stats/subnet"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 43,
@@ -3431,6 +3503,42 @@
       "surface_id": "sn-45-talisman-health",
       "surface_key": "srf-8bd015ccd5408407",
       "url": "https://api.alpharidge.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 46,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "subnet_name": "Zipcode",
+      "subnet_slug": "sn-46",
+      "surface_id": "sn-46-zipcode-api-dashboard-auth-validation-set",
+      "surface_key": "srf-38cc113dbd28b284",
+      "url": "https://zipcode.ai/api/dashboard/auth/validation-set"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 46,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "subnet_name": "Zipcode",
+      "subnet_slug": "sn-46",
+      "surface_id": "sn-46-zipcode-api-geocode",
+      "surface_key": "srf-d9dc2622f96ffa5e",
+      "url": "https://zipcode.ai/api/geocode"
     },
     {
       "auth_required": false,
@@ -9764,9 +9872,99 @@
       "public_safe": true,
       "subnet_name": "MANTIS",
       "subnet_slug": "sn-123",
+      "surface_id": "sn-123-mantis-dashboard-snap-breakouts",
+      "surface_key": "srf-be79f671cce3849f",
+      "url": "https://mantis123.com/dashboard/api/snap/breakouts"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 123,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
+      "surface_id": "sn-123-mantis-dashboard-snap-clusters",
+      "surface_key": "srf-45237fdd1846b981",
+      "url": "https://mantis123.com/dashboard/api/snap/clusters"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 123,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
       "surface_id": "sn-123-mantis-dashboard-snap-meta",
       "surface_key": "srf-d09de2bf6915dc20",
       "url": "https://mantis123.com/dashboard/api/snap/meta"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 123,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
+      "surface_id": "sn-123-mantis-dashboard-snap-metagraph",
+      "surface_key": "srf-271e538e0b7f639c",
+      "url": "https://mantis123.com/dashboard/api/snap/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 123,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
+      "surface_id": "sn-123-mantis-dashboard-snap-miners",
+      "surface_key": "srf-81ef2f1dcf1263aa",
+      "url": "https://mantis123.com/dashboard/api/snap/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 123,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "subnet_name": "MANTIS",
+      "subnet_slug": "sn-123",
+      "surface_id": "sn-123-mantis-dashboard-snap-participation",
+      "surface_key": "srf-9cb1b83197eac86a",
+      "url": "https://mantis123.com/dashboard/api/snap/participation"
     },
     {
       "auth_required": false,
