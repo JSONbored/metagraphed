@@ -128,7 +128,13 @@
       "id": "sn-85-vidaio-health",
       "kind": "subnet-api",
       "name": "Vidaio API health",
-      "notes": "Public no-auth GET /health returning {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing openapi surface (api.vidaio.io/openapi.json, path /health).",
+      "notes": "Public no-auth GET /health returning {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing openapi surface (api.vidaio.io/openapi.json, path /health). Live-verified 2026-07-21: GET https://api.vidaio.io/health -> HTTP 200 application/json (status ok).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "vidaio",
       "public_safe": true,
       "review": {
@@ -147,7 +153,13 @@
       "id": "sn-85-vidaio-ready",
       "kind": "subnet-api",
       "name": "Vidaio API readiness health",
-      "notes": "Public no-auth GET /ready returning {\"status\":\"ok\"} when the API can reach its backing database. Documented in the machine-readable OpenAPI spec on the same host as the existing openapi and /health subnet-api surfaces (api.vidaio.io/openapi.json, path /ready). Distinct from the /health liveness endpoint.",
+      "notes": "Public no-auth GET /ready returning {\"status\":\"ok\"} when the API can reach its backing database. Documented in the machine-readable OpenAPI spec on the same host as the existing openapi and /health subnet-api surfaces (api.vidaio.io/openapi.json, path /ready). Distinct from the /health liveness endpoint. Live-verified 2026-07-21: GET https://api.vidaio.io/ready -> HTTP 200 application/json (status ok).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "vidaio",
       "public_safe": true,
       "review": {
