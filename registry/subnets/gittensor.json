@@ -185,7 +185,7 @@
       "id": "gittensory-mcp",
       "kind": "subnet-api",
       "name": "Gittensory MCP (contribution interface)",
-      "notes": "Streamable-HTTP MCP server exposing deterministic, gittensor-native contribution signals (decision pack, check-before-start, preflight, notifications) to a contributor's own agent harness. POST-only JSON-RPC, so recurring read probes are intentionally disabled. Contributor tools are scoped to the authenticated GitHub login. Migrated from gittensory-api.aethereal.dev to api.loopover.ai -- both GET and POST now correctly return 401 unauthorized (confirmed 2026-07-15), consistent with the prior auth-gated behavior.",
+      "notes": "Streamable-HTTP MCP server exposing deterministic, gittensor-native contribution signals (decision pack, check-before-start, preflight, notifications) to a contributor's own agent harness. POST-only JSON-RPC, so recurring read probes are intentionally disabled. Contributor tools are scoped to the authenticated GitHub login. Migrated from gittensory-api.aethereal.dev to api.loopover.ai -- both GET and POST now correctly return 401 unauthorized (confirmed 2026-07-15), consistent with the prior auth-gated behavior. Live-verified 2026-07-20: anonymous GET and JSON-RPC POST tools/list both returned HTTP 401 application/json with {\"error\":\"unauthorized\"}, confirming the declared custom-auth requirement; execution remains Phase 3 territory.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -219,7 +219,7 @@
       "id": "gittensory-mcp-compatibility",
       "kind": "subnet-api",
       "name": "Gittensory MCP compatibility status",
-      "notes": "Public no-auth GET /v1/mcp/compatibility on api.loopover.ai returning the @loopover/mcp package's minimum/latest supported version info (used by the CLI to self-check compatibility). Documented in the LoopOver API OpenAPI schema (100 paths) on the same host as the contribution-interface descriptor.",
+      "notes": "Public no-auth GET /v1/mcp/compatibility on api.loopover.ai returning the @loopover/mcp package's minimum/latest supported version info (used by the CLI to self-check compatibility). Documented in the LoopOver API OpenAPI schema (100 paths) on the same host as the contribution-interface descriptor. Live-verified 2026-07-20: GET returned HTTP 200 application/json (435 bytes) with status, service, apiVersion, mcp compatibility, warnings, breaking changes, and generatedAt fields.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -395,9 +395,10 @@
       "id": "sn-74-gittensor-openapi",
       "kind": "openapi",
       "name": "Gittensor API OpenAPI schema",
+      "notes": "Live-verified 2026-07-20: GET returned HTTP 200 application/json (15,254 bytes), parsed as an OpenAPI 3.0 object with paths, info, tags, servers, and components. Tightened probe.expect from any to json to match the observed response.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -419,9 +420,10 @@
       "id": "sn-74-gittensor-subnet-api",
       "kind": "subnet-api",
       "name": "Gittensor community subnet-api",
+      "notes": "Live-verified 2026-07-20: GET returned HTTP 200 application/json (179,338 bytes), parsed as an array of 168 miner records. Tightened probe.expect from any to json to match the observed response.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -463,7 +465,7 @@
       "id": "sn-74-gittensor-health",
       "kind": "subnet-api",
       "name": "Gittensor API root health",
-      "notes": "Public no-auth GET / on api.gittensor.io returning API liveness (observed plain-text response: Hello World!). Documented as AppController_getHello at path / in the subnet swagger-json OpenAPI spec on the same host as the existing miners and dash subnet-api surfaces.",
+      "notes": "Public no-auth GET / on api.gittensor.io returning API liveness (observed plain-text response: Hello World!). Documented as AppController_getHello at path / in the subnet swagger-json OpenAPI spec on the same host as the existing miners and dash subnet-api surfaces. Live-verified 2026-07-20: GET returned HTTP 200 text/html; charset=utf-8 with the 12-byte body \"Hello World!\"; probe.expect any remains correct for this non-JSON response.",
       "probe": {
         "enabled": true,
         "expect": "any",
