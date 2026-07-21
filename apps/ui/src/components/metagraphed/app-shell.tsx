@@ -435,6 +435,7 @@ function SiteFooter() {
         </div>
         <FooterCol title="Registry">
           <FooterLink to="/subnets">Subnets</FooterLink>
+          <FooterLink to="/domains">Domains</FooterLink>
           <FooterLink to="/blocks">Blocks</FooterLink>
           <FooterLink to="/surfaces">Surfaces</FooterLink>
           <FooterLink to="/endpoints">Endpoints</FooterLink>

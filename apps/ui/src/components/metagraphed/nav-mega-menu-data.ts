@@ -29,6 +29,7 @@ export const MEGA_PANELS: MegaPanel[] = [
     apiPath: "/api/v1/subnets",
     browse: [
       { to: "/subnets", label: "All subnets", hint: "Browse every active netuid" },
+      { to: "/domains", label: "By domain", hint: "Capability-tag rollup" },
       {
         to: "/subnets",
         search: { curation: "maintainer-reviewed" },

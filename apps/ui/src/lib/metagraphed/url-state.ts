@@ -19,6 +19,11 @@ export const tableSearchSchema = z.object({
   stale: fallback(z.string(), "").default(""),
   provider: fallback(z.string(), "").default(""),
   netuid: fallback(z.string(), "").default(""),
+  // Capability-domain filter, server-applied. GET /api/v1/subnets accepts
+  // `?domain=<tag>` (verified live), so the /domains rollup can link straight
+  // through to the subnets table pre-filtered to one domain's member subnets.
+  // Defaults to "" so an unfiltered /subnets URL is byte-identical to today's.
+  domain: fallback(z.string(), "").default(""),
   // #9: agent-catalog capability filters (applied client-side over joined rows).
   serviceKind: fallback(z.string(), "").default(""),
   readiness: fallback(z.string(), "").default(""),

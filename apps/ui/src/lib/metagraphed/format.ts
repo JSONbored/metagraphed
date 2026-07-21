@@ -26,6 +26,16 @@ export function formatTao(v?: number | null): string {
 }
 
 /**
+ * Format a 0–1 ratio as a percentage string, e.g. 0.071288 → "7.1%". `digits`
+ * controls decimal places (default 1). Nullish / non-finite input renders the
+ * em-dash fallback. Used for domain emission-share and concentration ratios.
+ */
+export function formatPercent(v?: number | null, digits = 1): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  return `${(v * 100).toFixed(digits)}%`;
+}
+
+/**
  * The upstream registry frequently emits "1970-01-01T00:00:00.000Z" as a
  * placeholder when an artifact hasn't been timestamped yet. Treat any
  * pre-2000 date as "unknown" so the UI doesn't claim freshness/staleness

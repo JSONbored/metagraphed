@@ -29,6 +29,7 @@ import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
+import { Route as DomainsIndexRouteImport } from './routes/domains.index'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
 import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.index'
 import { Route as AccountsIndexRouteImport } from './routes/accounts.index'
@@ -38,6 +39,7 @@ import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 import { Route as GraphqlExplorerRouteImport } from './routes/graphql.explorer'
 import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
+import { Route as DomainsTagRouteImport } from './routes/domains.$tag'
 import { Route as DocsLlmsDottxtRouteImport } from './routes/docs.llms[.]txt'
 import { Route as DocsSplatRouteImport } from './routes/docs.$'
 import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
@@ -145,6 +147,11 @@ const EventsIndexRoute = EventsIndexRouteImport.update({
   path: '/events/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DomainsIndexRoute = DomainsIndexRouteImport.update({
+  id: '/domains/',
+  path: '/domains/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlocksIndexRoute = BlocksIndexRouteImport.update({
   id: '/blocks/',
   path: '/blocks/',
@@ -188,6 +195,11 @@ const GraphqlExplorerRoute = GraphqlExplorerRouteImport.update({
 const ExtrinsicsHashRoute = ExtrinsicsHashRouteImport.update({
   id: '/extrinsics/$hash',
   path: '/extrinsics/$hash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DomainsTagRoute = DomainsTagRouteImport.update({
+  id: '/domains/$tag',
+  path: '/domains/$tag',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsLlmsDottxtRoute = DocsLlmsDottxtRouteImport.update({
@@ -240,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/blocks/$ref': typeof BlocksRefRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
+  '/domains/$tag': typeof DomainsTagRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
@@ -249,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/accounts/': typeof AccountsIndexRoute
   '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
+  '/domains/': typeof DomainsIndexRoute
   '/events/': typeof EventsIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
@@ -277,6 +291,7 @@ export interface FileRoutesByTo {
   '/blocks/$ref': typeof BlocksRefRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
+  '/domains/$tag': typeof DomainsTagRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
@@ -286,6 +301,7 @@ export interface FileRoutesByTo {
   '/accounts': typeof AccountsIndexRoute
   '/admin-changes': typeof AdminChangesIndexRoute
   '/blocks': typeof BlocksIndexRoute
+  '/domains': typeof DomainsIndexRoute
   '/events': typeof EventsIndexRoute
   '/extrinsics': typeof ExtrinsicsIndexRoute
   '/providers': typeof ProvidersIndexRoute
@@ -315,6 +331,7 @@ export interface FileRoutesById {
   '/blocks/$ref': typeof BlocksRefRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
+  '/domains/$tag': typeof DomainsTagRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/graphql/explorer': typeof GraphqlExplorerRoute
   '/providers/$slug': typeof ProvidersSlugRoute
@@ -324,6 +341,7 @@ export interface FileRoutesById {
   '/accounts/': typeof AccountsIndexRoute
   '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
+  '/domains/': typeof DomainsIndexRoute
   '/events/': typeof EventsIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
@@ -354,6 +372,7 @@ export interface FileRouteTypes {
     | '/blocks/$ref'
     | '/docs/$'
     | '/docs/llms.txt'
+    | '/domains/$tag'
     | '/extrinsics/$hash'
     | '/graphql/explorer'
     | '/providers/$slug'
@@ -363,6 +382,7 @@ export interface FileRouteTypes {
     | '/accounts/'
     | '/admin-changes/'
     | '/blocks/'
+    | '/domains/'
     | '/events/'
     | '/extrinsics/'
     | '/providers/'
@@ -391,6 +411,7 @@ export interface FileRouteTypes {
     | '/blocks/$ref'
     | '/docs/$'
     | '/docs/llms.txt'
+    | '/domains/$tag'
     | '/extrinsics/$hash'
     | '/graphql/explorer'
     | '/providers/$slug'
@@ -400,6 +421,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/admin-changes'
     | '/blocks'
+    | '/domains'
     | '/events'
     | '/extrinsics'
     | '/providers'
@@ -428,6 +450,7 @@ export interface FileRouteTypes {
     | '/blocks/$ref'
     | '/docs/$'
     | '/docs/llms.txt'
+    | '/domains/$tag'
     | '/extrinsics/$hash'
     | '/graphql/explorer'
     | '/providers/$slug'
@@ -437,6 +460,7 @@ export interface FileRouteTypes {
     | '/accounts/'
     | '/admin-changes/'
     | '/blocks/'
+    | '/domains/'
     | '/events/'
     | '/extrinsics/'
     | '/providers/'
@@ -466,6 +490,7 @@ export interface RootRouteChildren {
   BlocksRefRoute: typeof BlocksRefRoute
   DocsSplatRoute: typeof DocsSplatRoute
   DocsLlmsDottxtRoute: typeof DocsLlmsDottxtRoute
+  DomainsTagRoute: typeof DomainsTagRoute
   ExtrinsicsHashRoute: typeof ExtrinsicsHashRoute
   GraphqlExplorerRoute: typeof GraphqlExplorerRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
@@ -475,6 +500,7 @@ export interface RootRouteChildren {
   AccountsIndexRoute: typeof AccountsIndexRoute
   AdminChangesIndexRoute: typeof AdminChangesIndexRoute
   BlocksIndexRoute: typeof BlocksIndexRoute
+  DomainsIndexRoute: typeof DomainsIndexRoute
   EventsIndexRoute: typeof EventsIndexRoute
   ExtrinsicsIndexRoute: typeof ExtrinsicsIndexRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
@@ -627,6 +653,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/domains/': {
+      id: '/domains/'
+      path: '/domains'
+      fullPath: '/domains/'
+      preLoaderRoute: typeof DomainsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blocks/': {
       id: '/blocks/'
       path: '/blocks'
@@ -688,6 +721,13 @@ declare module '@tanstack/react-router' {
       path: '/extrinsics/$hash'
       fullPath: '/extrinsics/$hash'
       preLoaderRoute: typeof ExtrinsicsHashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/domains/$tag': {
+      id: '/domains/$tag'
+      path: '/domains/$tag'
+      fullPath: '/domains/$tag'
+      preLoaderRoute: typeof DomainsTagRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs/llms.txt': {
@@ -754,6 +794,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlocksRefRoute: BlocksRefRoute,
   DocsSplatRoute: DocsSplatRoute,
   DocsLlmsDottxtRoute: DocsLlmsDottxtRoute,
+  DomainsTagRoute: DomainsTagRoute,
   ExtrinsicsHashRoute: ExtrinsicsHashRoute,
   GraphqlExplorerRoute: GraphqlExplorerRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
@@ -763,6 +804,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsIndexRoute: AccountsIndexRoute,
   AdminChangesIndexRoute: AdminChangesIndexRoute,
   BlocksIndexRoute: BlocksIndexRoute,
+  DomainsIndexRoute: DomainsIndexRoute,
   EventsIndexRoute: EventsIndexRoute,
   ExtrinsicsIndexRoute: ExtrinsicsIndexRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,

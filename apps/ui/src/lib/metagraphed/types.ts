@@ -502,6 +502,40 @@ export interface ProviderEndpointSummary {
   by_publication_state?: Record<string, number>;
 }
 
+/**
+ * Within-domain emission concentration for a capability-domain rollup — how
+ * evenly emission is spread across the domain's member subnets. All fields are
+ * optional so an as-yet-unseen concentration payload still normalizes.
+ */
+export interface DomainConcentration {
+  holders?: number;
+  gini?: number;
+  hhi?: number;
+  hhi_normalized?: number;
+  nakamoto_coefficient?: number;
+  top_1pct_share?: number;
+  top_5pct_share?: number;
+  top_10pct_share?: number;
+  top_20pct_share?: number;
+  entropy?: number;
+  entropy_normalized?: number;
+}
+
+/**
+ * A capability-domain rollup from `GET /api/v1/domains` (and the single-domain
+ * `GET /api/v1/domains/{tag}/summary`, which returns the same shape): every
+ * subnet tagged with one of the taxonomy's domain tags, aggregated into member
+ * count, total stake + emission share, and within-domain emission concentration.
+ */
+export interface Domain {
+  domain: string;
+  subnet_count?: number;
+  netuids: number[];
+  total_stake_tao?: number;
+  total_emission_share?: number;
+  emission_concentration?: DomainConcentration;
+}
+
 export interface Provider {
   slug: string;
   name?: string;
