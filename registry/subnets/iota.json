@@ -109,7 +109,13 @@
       "id": "sn-9-iota-openapi",
       "kind": "openapi",
       "name": "IOTA orchestrator API OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai — documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo.",
+      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai — documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo. Live-verified 2026-07-21: HTTP 200 application/json (~83 KB), OpenAPI 3.1 document (FastAPI).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -127,7 +133,13 @@
       "id": "sn-9-iota-healthcheck",
       "kind": "subnet-api",
       "name": "IOTA orchestrator healthcheck",
-      "notes": "Public no-auth GET /healthcheck on the IOTA SN9 orchestrator returning liveness JSON (observed: {\"status\":\"healthy\"}); documented as GET /healthcheck in the subnet OpenAPI spec.",
+      "notes": "Public no-auth GET /healthcheck on the IOTA SN9 orchestrator returning liveness JSON (observed: {\"status\":\"healthy\"}); documented as GET /healthcheck in the subnet OpenAPI spec. Live-verified 2026-07-21: HTTP 200 application/json, body {\"status\":\"healthy\"}.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
