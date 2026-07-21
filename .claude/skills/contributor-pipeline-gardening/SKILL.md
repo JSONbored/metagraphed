@@ -26,6 +26,15 @@ probe-config issues (decomposing #5932) that had to be reverted mid-run. If Pass
 Pass 2's top-up work surfaces a real registry data gap, name it in the digest for the dedicated
 registry automation to pick up — do not file issues or PRs against `registry/` from this pipeline.
 
+**This boundary is about not _authoring_ registry content or filing new registry-data issues from
+this pipeline — it is not license to skip normal issue-state hygiene for an existing issue whose
+deliverable happens to touch `registry/subnets/<slug>.json`.** The "MCP execute: verify + wire SN*"
+family (see the dedicated subsection under Pass 1 below) is exactly this case: those ~120 issues were
+filed by a different process (the MCP-execute epic, #7013/#7014), not by this pipeline, and Pass 1's
+stale-sweep still applies to them like any other issue — read-only verification of whether a closing
+PR actually delivered, not authorship. Don't treat this family as untouchable just because its
+deliverable is a registry file edit.
+
 metagraphed is a Bittensor subnet registry / block-explorer product. Unlike gittensory/loopover,
 **a linked issue is optional here** — the gate judges a PR on its own merit when nothing is linked,
 it only auto-closes for a missing link if a linked issue was claimed and doesn't hold up (see
@@ -71,6 +80,49 @@ Hardening`) same as before.
   numbering, "take/commission management," "move/re-delegate stake flow," "risk disclosure copy") is
   active and security-sensitive — treat anything touching real stake movement, phishing surface, or
   the pre-launch security review as `maintainer-only` by default; don't second-guess that boundary.
+
+### MCP execute "verify + wire SN*" family — special stale-sweep rule (added 2026-07-21)
+
+~120 issues, titled "MCP execute: verify + wire SN\<n\> (\<name\>) once Phase 1 ships", one per
+subnet, tracked under the epic at #7013/#7014 (issue numbers #7017-#7136). They ask a contributor to
+verify a subnet's registered surfaces work via the `call_subnet_surface` MCP tool (Phase 1, shipped)
+and add whatever's missing to `registry/subnets/<slug>.json`. Treat this family as an exception to
+the general "don't touch registry-adjacent issues" instinct — see the Scope boundary section above
+for why Pass 1's normal read-only verification still applies here.
+
+**The completeness bar is full subnet API parity, not just what the issue's original checklist
+named.** A 2026-07-21 audit of all 120 subnets found that most subnets expose real API surface the
+original issue never listed — the registry is meant to catalog _everything_ a subnet's real API
+exposes, not just what's currently callable by the anonymous Phase-1 tool. This explicitly includes:
+fixed no-auth endpoints (register with `probe.enabled:true`), query-param-only endpoints (register
+with the fixed base URL, `probe.enabled:false` — already callable today via the tool's `query` arg),
+path-param endpoints (register with the literal `{param}` template, `probe.enabled:false` — needs
+Phase 2, not built yet), and **auth-gated endpoints** (register anyway, with `auth_required:true`,
+`probe.enabled:false` — needs Phase 3, not built yet, but the registry should still document them for
+future Phase 3 and for maintainers/developers who bring their own credentials). Do not treat "not
+currently callable by Phase 1" as a reason to leave something unregistered. If an issue body has a
+`## Additional surface(s) found during review` section (added during the 2026-07-21 audit pass),
+that content is just as much the deliverable as the issue's original `## Surface(s) to verify (N)`
+list — check both when deciding whether the issue is actually satisfied.
+
+**Known anti-pattern — confirmed live 2026-07-21, check for it every time:** many contributor PRs
+against this family add _only_ a `tests/*.test.mjs` file, with zero changes to
+`registry/subnets/*.json`, and the merge gate has been auto-merging them and closing the issue anyway
+— even against issues carrying an explicit, itemized list of missing surfaces. A passing verification
+test is not the deliverable; the registry file entry is. When Pass 1 finds one of these issues closed
+via a merged PR, **do not accept "a PR merged and referenced this issue" as sufficient on its own** —
+pull the PR's changed-files list (`gh pr view <n> --json files`) and confirm it actually touches
+`registry/subnets/<slug>.json` with a real diff. If the merging PR only added a test file (or any
+other non-registry file) and the issue's surfaces genuinely aren't in the registry, reopen it:
+
+```
+gh issue reopen <n> --repo JSONbored/metagraphed --comment "Reopening — the PR that just closed this (test-only, no \`registry/subnets/*.json\` changes) did not add any of the surfaces this issue asks for, including the gap findings documented in the **\"Additional surface(s) found during review\"** section above. A verification test alone doesn't satisfy this issue — the registry file itself needs the actual surface entries added. Please open a new PR that adds the missing surfaces (not just a test)."
+```
+
+This is read-only issue-state hygiene (checking a PR's file list, reopening if it didn't deliver) —
+it is not "registry enrichment" in the sense the Scope boundary above forbids. Don't author registry
+content yourself or open a PR against `registry/` from this pipeline; just don't let a closed-but-
+undelivered issue sit unflagged.
 
 ## Pass 2 — backlog top-up
 
