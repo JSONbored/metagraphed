@@ -35,7 +35,7 @@
       "id": "sn-124-swarm-health",
       "kind": "subnet-api",
       "name": "Swarm backend API health",
-      "notes": "Public no-auth GET /health on api.swarm124.com returning application liveness JSON (observed: {\"status\":\"healthy\"}). Served on the SN124 Swarm backend API host documented as the default SWARM_BACKEND_API_URL in the official swarm-subnet CLI and validator backend API client.",
+      "notes": "Public no-auth GET /health on api.swarm124.com returning application liveness JSON (observed: {\"status\":\"healthy\"}). Served on the SN124 Swarm backend API host documented as the default SWARM_BACKEND_API_URL in the official swarm-subnet CLI and validator backend API client. Live-verified 2026-07-21: GET returns HTTP 200 application/json {\"status\":\"healthy\"}; HEAD 405 (allow: GET), so the probe correctly declares GET.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -101,7 +101,7 @@
         "https://github.com/swarm-subnet/swarm/blob/main/swarm/validator/backend_api.py"
       ],
       "url": "https://api.swarm124.com/leaderboard",
-      "notes": "Public no-auth GET /leaderboard — ranked miner model leaderboard (rank, model id, uid, benchmark score) for SN124 Swarm. Served on the same api.swarm124.com host as the subnet's registered health API; the endpoint is defined in the subnet's backend API module."
+      "notes": "Public no-auth GET /leaderboard — ranked miner model leaderboard (rank, model id, uid, benchmark score) for SN124 Swarm. Served on the same api.swarm124.com host as the subnet's registered health API; the endpoint is defined in the subnet's backend API module. Live-verified 2026-07-21: GET returns HTTP 200 application/json with an {\"entries\":[…]} array (each entry has rank, model_id, uid, benchmark_score, family, status); HEAD 405 (allow: GET), so the probe correctly declares GET."
     },
     {
       "auth_required": false,
@@ -163,30 +163,6 @@
       "public_safe": true,
       "source_urls": ["https://github.com/swarm-subnet/swarm"],
       "url": "https://github.com/swarm-subnet/swarm"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "id": "sn-124-swarm-kings-diagnostics",
-      "kind": "subnet-api",
-      "name": "Swarm king-of-the-hill diagnostics",
-      "notes": "Public no-auth GET /kings/diagnostics on api.swarm124.com returning a small diagnostics snapshot (benchmark_version, window_size, active_kings, champion_uid, champion_score, crowning_floor, last_crowned_epoch). docs/king_of_the_hill.md explicitly documents this route as public alongside the already-tracked /kings/active on the same SWARM_BACKEND_API_URL host. No wallet/hotkey data.",
-      "probe": {
-        "enabled": true,
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "swarm",
-      "public_safe": true,
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "jsonbored"
-      },
-      "source_urls": [
-        "https://github.com/swarm-subnet/swarm/blob/main/docs/king_of_the_hill.md"
-      ],
-      "url": "https://api.swarm124.com/kings/diagnostics"
     }
   ],
   "website_url": "https://swarm124.com/"
