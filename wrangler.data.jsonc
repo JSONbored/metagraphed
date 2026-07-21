@@ -69,7 +69,7 @@
   // handler -- see workers/data-api.sentry.mjs's own header for why this
   // can't be wrapped inline (breaks its existing tests, which import
   // workers/data-api.mjs directly and are unaffected by this).
-  "main": "workers/data-api.sentry.mjs",
+  "main": "workers/data-api.sentry.ts",
   // Reached only through the main Worker's DATA_API service binding. Wrangler
   // defaults workers.dev to enabled when a Worker has no public routes, so keep
   // both public and preview URLs disabled for this private data tier.

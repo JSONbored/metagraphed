@@ -33,18 +33,22 @@ const requireKvBinding =
   Boolean(process.env.METAGRAPH_KV_NAMESPACE_ID);
 
 check(config.name === "metagraphed", "wrangler name must be metagraphed");
-// workers/api.sentry.mjs is the real deployed entry point as of
+// workers/api.sentry.ts is the real deployed entry point as of
 // metagraphed#6502/#6479/#6485 -- a thin Sentry deploy-entry wrapper that
 // imports and re-exports workers/api.mjs's own handler + Durable Object
 // classes unchanged (see that file's own header for why it's a separate
 // file, not an inline wrap: @sentry/cloudflare's withSentry() crashes in
 // this repo's plain-Node vitest tests). Either value is a legitimate,
 // verified-working entry point; this check's real intent is "the main
-// Worker's own handler, wrapped or not," not a literal string pin to the
-// pre-Sentry file.
+// Worker's own handler, wrapped or not," not a literal string pin to one
+// exact filename. Accepts both .mjs and .ts spellings of each -- the
+// TypeScript migration (metagraphed#7510) converts workers/ file by file,
+// so api.mjs and api.sentry.mjs may each independently still be .mjs or
+// already be .ts depending on migration progress.
 check(
-  config.main === "workers/api.mjs" || config.main === "workers/api.sentry.mjs",
-  "wrangler main must point to workers/api.mjs or its Sentry deploy-entry wrapper, workers/api.sentry.mjs",
+  ["workers/api.mjs", "workers/api.ts"].includes(config.main) ||
+    ["workers/api.sentry.mjs", "workers/api.sentry.ts"].includes(config.main),
+  "wrangler main must point to workers/api.(mjs|ts) or its Sentry deploy-entry wrapper, workers/api.sentry.(mjs|ts)",
 );
 check(Boolean(config.compatibility_date), "compatibility_date is required");
 check(
