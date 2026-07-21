@@ -194,6 +194,604 @@
       },
       "source_urls": ["https://chain.joinbase.ai/v1/validators/public"],
       "url": "https://chain.joinbase.ai/v1/validators/public"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-100-platform-admin",
+      "kind": "subnet-api",
+      "name": "Platform admin",
+      "notes": "Admin Home operation on the Plaтform BASE Challenge Proxy API (GET /admin), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Unauthorized\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/admin"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-100-platform-admin-challenges",
+      "kind": "subnet-api",
+      "name": "Platform admin challenges",
+      "notes": "Admin Challenges operation on the Plaтform BASE Challenge Proxy API (GET /admin/challenges), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Unauthorized\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/admin/challenges"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-challenges-slug",
+      "kind": "subnet-api",
+      "name": "Platform challenges slug",
+      "notes": "Proxy Root operation on the Plaтform BASE Challenge Proxy API (DELETE, GET, PATCH, POST, PUT /challenges/{slug}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {slug}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/challenges/%7Bslug%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-challenges-slug-path",
+      "kind": "subnet-api",
+      "name": "Platform challenges slug path",
+      "notes": "Proxy Path operation on the Plaтform BASE Challenge Proxy API (DELETE, GET, PATCH, POST, PUT /challenges/{slug}/{path}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {slug}, {path}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/challenges/%7Bslug%7D/%7Bpath%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-internal-v1-challenges-slug-raw-weights",
+      "kind": "subnet-api",
+      "name": "Platform internal v1 challenges slug raw weights",
+      "notes": "Push Raw Weights operation on the Plaтform BASE Challenge Proxy API (POST /internal/v1/challenges/{slug}/raw-weights), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {slug}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/internal/v1/challenges/%7Bslug%7D/raw-weights"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-100-platform-v1-admin-challenges",
+      "kind": "subnet-api",
+      "name": "Platform v1 admin challenges",
+      "notes": "Create Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/admin/challenges"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-100-platform-v1-admin-challenges-slug",
+      "kind": "subnet-api",
+      "name": "Platform v1 admin challenges slug",
+      "notes": "Get Challenge operation on the Plaтform BASE Challenge Proxy API (GET, PATCH /v1/admin/challenges/{slug}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/admin/challenges/%7Bslug%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-100-platform-v1-admin-challenges-slug-activate",
+      "kind": "subnet-api",
+      "name": "Platform v1 admin challenges slug activate",
+      "notes": "Activate Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/activate), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/admin/challenges/%7Bslug%7D/activate"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-100-platform-v1-admin-challenges-slug-deactivate",
+      "kind": "subnet-api",
+      "name": "Platform v1 admin challenges slug deactivate",
+      "notes": "Deactivate Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/deactivate), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/admin/challenges/%7Bslug%7D/deactivate"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-100-platform-v1-admin-challenges-slug-pull",
+      "kind": "subnet-api",
+      "name": "Platform v1 admin challenges slug pull",
+      "notes": "Pull Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/pull), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/admin/challenges/%7Bslug%7D/pull"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-100-platform-v1-admin-challenges-slug-restart",
+      "kind": "subnet-api",
+      "name": "Platform v1 admin challenges slug restart",
+      "notes": "Restart Challenge operation on the Plaтform BASE Challenge Proxy API (POST /v1/admin/challenges/{slug}/restart), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/admin/challenges/%7Bslug%7D/restart"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-100-platform-v1-admin-challenges-slug-status",
+      "kind": "subnet-api",
+      "name": "Platform v1 admin challenges slug status",
+      "notes": "Challenge Status operation on the Plaтform BASE Challenge Proxy API (GET /v1/admin/challenges/{slug}/status), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/admin/challenges/%7Bslug%7D/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-assignments-assignment-id-progress",
+      "kind": "subnet-api",
+      "name": "Platform v1 assignments assignment id progress",
+      "notes": "Assignment Progress operation on the Plaтform BASE Challenge Proxy API (POST /v1/assignments/{assignment_id}/progress), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {assignment_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/assignments/%7Bassignment_id%7D/progress"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-assignments-assignment-id-result",
+      "kind": "subnet-api",
+      "name": "Platform v1 assignments assignment id result",
+      "notes": "Assignment Result operation on the Plaтform BASE Challenge Proxy API (POST /v1/assignments/{assignment_id}/result), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {assignment_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/assignments/%7Bassignment_id%7D/result"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-assignments-pull",
+      "kind": "subnet-api",
+      "name": "Platform v1 assignments pull",
+      "notes": "Pull Assignments operation on the Plaтform BASE Challenge Proxy API (POST /v1/assignments/pull), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/assignments/pull"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-challenges-challenge-name-submissions",
+      "kind": "subnet-api",
+      "name": "Platform v1 challenges challenge name submissions",
+      "notes": "Upload Submission operation on the Plaтform BASE Challenge Proxy API (POST /v1/challenges/{challenge_name}/submissions), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {challenge_name}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/challenges/%7Bchallenge_name%7D/submissions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-challenges-challenge-name-submissions-submission-id",
+      "kind": "subnet-api",
+      "name": "Platform v1 challenges challenge name submissions submission id",
+      "notes": "Bridge Submission Status operation on the Plaтform BASE Challenge Proxy API (GET /v1/challenges/{challenge_name}/submissions/{submission_id}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {challenge_name}, {submission_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/challenges/%7Bchallenge_name%7D/submissions/%7Bsubmission_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-100-platform-v1-validators",
+      "kind": "subnet-api",
+      "name": "Platform v1 validators",
+      "notes": "List Validators operation on the Plaтform BASE Challenge Proxy API (GET /v1/validators), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Unauthorized\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-validators-heartbeat",
+      "kind": "subnet-api",
+      "name": "Platform v1 validators heartbeat",
+      "notes": "Heartbeat Validator operation on the Plaтform BASE Challenge Proxy API (POST /v1/validators/heartbeat), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/validators/heartbeat"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-validators-register",
+      "kind": "subnet-api",
+      "name": "Platform v1 validators register",
+      "notes": "Register Validator operation on the Plaтform BASE Challenge Proxy API (POST /v1/validators/register), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/validators/register"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-validators-subscriptions",
+      "kind": "subnet-api",
+      "name": "Platform v1 validators subscriptions",
+      "notes": "Set Subscriptions operation on the Plaтform BASE Challenge Proxy API (POST /v1/validators/subscriptions), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/validators/subscriptions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-weights-latest",
+      "kind": "subnet-api",
+      "name": "Platform v1 weights latest",
+      "notes": "Get Latest Weights operation on the Plaтform BASE Challenge Proxy API (GET /v1/weights/latest), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Live-verified 2026-07-21: GET /v1/weights/latest -> HTTP 200 application/json (protocol_version, vector_id, vector_digest). Public, no-auth and fixed-URL, so its probe is enabled.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/weights/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-weights-submission-observations",
+      "kind": "subnet-api",
+      "name": "Platform v1 weights submission observations",
+      "notes": "Report Submission Observation operation on the Plaтform BASE Challenge Proxy API (POST /v1/weights/submission-observations), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/weights/submission-observations"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-v1-weights-vector-id",
+      "kind": "subnet-api",
+      "name": "Platform v1 weights vector id",
+      "notes": "Get Weight Vector operation on the Plaтform BASE Challenge Proxy API (GET /v1/weights/{vector_id}), declared in the subnet's own OpenAPI spec at https://chain.joinbase.ai/openapi.json. Path-parameterized on {vector_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://chain.joinbase.ai/openapi.json"],
+      "url": "https://chain.joinbase.ai/v1/weights/%7Bvector_id%7D"
     }
   ],
   "website_url": "https://www.platform.network/"
