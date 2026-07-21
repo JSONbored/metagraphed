@@ -151,7 +151,13 @@
       "id": "sn-3-templar-health",
       "kind": "subnet-api",
       "name": "Templar Grafana health",
-      "notes": "Public no-auth GET /api/health on grafana.tplr.ai returning application liveness JSON. Served on the Templar Grafana host registered as a dashboard surface and linked from the Templar source repository README.",
+      "notes": "Public no-auth GET /api/health on grafana.tplr.ai returning application liveness JSON. Served on the Templar Grafana host registered as a dashboard surface and linked from the Templar source repository README. Live-verified 2026-07-21: GET https://grafana.tplr.ai/api/health -> HTTP 200 application/json {\"database\": \"ok\"}.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
       "provider": "one-covenant",
       "public_safe": true,
       "review": {
