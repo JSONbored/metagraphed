@@ -263,6 +263,719 @@
       },
       "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
       "url": "https://apex.api.macrocosmos.ai/metrics"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-code",
+      "kind": "subnet-api",
+      "name": "Apex dashboard code",
+      "notes": "Get Code operation on the Apex orchestrator API (GET /dashboard/code), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/code"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions",
+      "notes": "List Competitions operation on the Apex orchestrator API (GET /dashboard/competitions), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 requiring the documented request header.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-coming-soon",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions coming soon",
+      "notes": "Get Coming Soon Competitions operation on the Apex orchestrator API (GET /dashboard/competitions/coming-soon), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 requiring the documented request header.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/coming-soon"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-competition-id",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions competition id",
+      "notes": "Get Competition Details Root operation on the Apex orchestrator API (GET /dashboard/competitions/{competition_id}), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/%7Bcompetition_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-competition-id-details",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions competition id details",
+      "notes": "Get Competition Details operation on the Apex orchestrator API (GET /dashboard/competitions/{competition_id}/details), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/%7Bcompetition_id%7D/details"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-competition-id-miners",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions competition id miners",
+      "notes": "Get Competition Miners operation on the Apex orchestrator API (GET /dashboard/competitions/{competition_id}/miners), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/%7Bcompetition_id%7D/miners"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-competition-id-submissions",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions competition id submissions",
+      "notes": "Get Competition Submissions operation on the Apex orchestrator API (GET /dashboard/competitions/{competition_id}/submissions), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/%7Bcompetition_id%7D/submissions"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-competition-id-submissions-operator-account",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions competition id submissions operator-account",
+      "notes": "Get Competition Submission Versions operation on the Apex orchestrator API (GET /dashboard/competitions/{competition_id}/submissions/{operator-account}), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/%7Bcompetition_id%7D/submissions/%7Bhotkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-competition-id-submissions-operator-account-best",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions competition id submissions operator-account best",
+      "notes": "Get Competition Submission Best operation on the Apex orchestrator API (GET /dashboard/competitions/{competition_id}/submissions/{operator-account}/best), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/%7Bcompetition_id%7D/submissions/%7Bhotkey%7D/best"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-competition-id-submissions-operator-account-latest",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions competition id submissions operator-account latest",
+      "notes": "Get Competition Submission Latest operation on the Apex orchestrator API (GET /dashboard/competitions/{competition_id}/submissions/{operator-account}/latest), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/%7Bcompetition_id%7D/submissions/%7Bhotkey%7D/latest"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-competition-id-submissions-operator-account-round-number-version",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions competition id submissions operator-account round number versi",
+      "notes": "Get Competition Submission Detail By Version operation on the Apex orchestrator API (GET /dashboard/competitions/{competition_id}/submissions/{operator-account}/{round_number}/{version}), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/%7Bcompetition_id%7D/submissions/%7Bhotkey%7D/%7Bround_number%7D/%7Bversion%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-competition-id-top-scores",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions competition id top scores",
+      "notes": "Get Competition Top Scores operation on the Apex orchestrator API (GET /dashboard/competitions/{competition_id}/top-scores), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/%7Bcompetition_id%7D/top-scores"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-competitions-competition-id-tournament",
+      "kind": "subnet-api",
+      "name": "Apex dashboard competitions competition id tournament",
+      "notes": "Get Competition Tournament operation on the Apex orchestrator API (GET /dashboard/competitions/{competition_id}/tournament), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/competitions/%7Bcompetition_id%7D/tournament"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-file",
+      "kind": "subnet-api",
+      "name": "Apex dashboard file",
+      "notes": "Get File operation on the Apex orchestrator API (GET /dashboard/file), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Not individually probed; the basis is the 401 observed on sampled routes in this same dashboard family.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/file"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the dashboard routes reject an unauthenticated request with HTTP 401 and name the required header in the response (live-checked 2026-07-21). Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-1-apex-dashboard-miners-leaderboard",
+      "kind": "subnet-api",
+      "name": "Apex dashboard miners leaderboard",
+      "notes": "Get Miner Leaderboard operation on the Apex orchestrator API (GET /dashboard/miners/leaderboard), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security for it, but the dashboard family is gated: registered auth_required:true with probe.enabled:false (Phase 3), correcting what the schema implies. Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 requiring the documented request header.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/dashboard/miners/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-miner-competition",
+      "kind": "subnet-api",
+      "name": "Apex miner competition",
+      "notes": "Get Competition operation on the Apex orchestrator API (GET /miner/competition), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 400 rejecting a missing or invalid on-chain address parameter, so it is parameter-gated rather than gated by authentication; the probe is disabled and no auth requirement is asserted.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/miner/competition"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-miner-competitions-competition-id-previous-round-input-files",
+      "kind": "subnet-api",
+      "name": "Apex miner competitions competition id previous round input files",
+      "notes": "Get Previous Round Input Files operation on the Apex orchestrator API (GET /miner/competitions/{competition_id}/previous-round-input-files), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/miner/competitions/%7Bcompetition_id%7D/previous-round-input-files"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-miner-submission",
+      "kind": "subnet-api",
+      "name": "Apex miner submission",
+      "notes": "Get Submissions operation on the Apex orchestrator API (GET, POST /miner/submission), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 400 rejecting a missing or invalid on-chain address parameter, so it is parameter-gated rather than gated by authentication; the probe is disabled and no auth requirement is asserted.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/miner/submission"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-miner-submission-code",
+      "kind": "subnet-api",
+      "name": "Apex miner submission code",
+      "notes": "Get Submission Code operation on the Apex orchestrator API (GET /miner/submission/code), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming query parameter \"competition_id\" as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/miner/submission/code"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-miner-submission-fee",
+      "kind": "subnet-api",
+      "name": "Apex miner submission fee",
+      "notes": "Get Submission Fee operation on the Apex orchestrator API (GET /miner/submission/fee), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming query parameter \"competition_id\" as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/miner/submission/fee"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-miner-submission-file",
+      "kind": "subnet-api",
+      "name": "Apex miner submission file",
+      "notes": "Get Submission File operation on the Apex orchestrator API (GET /miner/submission/file), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming query parameter \"submission_id\" as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/miner/submission/file"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-miner-submission-submission-id-detail",
+      "kind": "subnet-api",
+      "name": "Apex miner submission submission id detail",
+      "notes": "Get Submission Detail operation on the Apex orchestrator API (GET /miner/submission/{submission_id}/detail), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/miner/submission/%7Bsubmission_id%7D/detail"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-public-miners-byonchain-account-onchain-account-exists",
+      "kind": "subnet-api",
+      "name": "Apex public miners by onchain-account onchain-account exists",
+      "notes": "onchain-account Exists operation on the Apex orchestrator API (GET /public/miners/byonchain-account/{onchain-account}/exists), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/public/miners/by-coldkey/%7Bcoldkey%7D/exists"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-public-miners-byonchain-account-onchain-account-profile",
+      "kind": "subnet-api",
+      "name": "Apex public miners by onchain-account onchain-account profile",
+      "notes": "Get Miner Profile operation on the Apex orchestrator API (GET /public/miners/byonchain-account/{onchain-account}/profile), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/public/miners/by-coldkey/%7Bcoldkey%7D/profile"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-validator-global-miner-scores",
+      "kind": "subnet-api",
+      "name": "Apex validator global miner scores",
+      "notes": "Get Global Miner Scores operation on the Apex orchestrator API (GET /validator/global_miner_scores), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 400 rejecting a missing or invalid on-chain address parameter, so it is parameter-gated rather than gated by authentication; the probe is disabled and no auth requirement is asserted.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/validator/global_miner_scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-worker-job",
+      "kind": "subnet-api",
+      "name": "Apex worker job",
+      "notes": "Get Job operation on the Apex orchestrator API (GET /worker/job), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/worker/job"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-worker-job-file",
+      "kind": "subnet-api",
+      "name": "Apex worker job file",
+      "notes": "Post Job File operation on the Apex orchestrator API (POST /worker/job/file), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/worker/job/file"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-worker-job-reject",
+      "kind": "subnet-api",
+      "name": "Apex worker job reject",
+      "notes": "Post Job Reject operation on the Apex orchestrator API (POST /worker/job/reject), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/worker/job/reject"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-worker-job-results",
+      "kind": "subnet-api",
+      "name": "Apex worker job results",
+      "notes": "Post Job Results operation on the Apex orchestrator API (POST /worker/job/results), declared in the subnet's own OpenAPI spec at https://apex.api.macrocosmos.ai/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://apex.api.macrocosmos.ai/openapi.json"],
+      "url": "https://apex.api.macrocosmos.ai/worker/job/results"
     }
   ],
   "website_url": "https://apex.macrocosmos.ai/"
