@@ -159,6 +159,222 @@
         "https://vidaio.io/"
       ],
       "url": "https://api.vidaio.io/ready"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes, which declares a header-based scheme per operation and names the header in the spec. Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-85-vidaio-available-credits",
+      "kind": "subnet-api",
+      "name": "Vidaio available credits",
+      "notes": "Get available credits operation on the Vidaio API (GET /available_credits), declared in the subnet's own OpenAPI spec at https://api.vidaio.io/openapi.json. The spec declares a header-based security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401, confirming the gate is real rather than schema-only.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.vidaio.io/openapi.json"],
+      "url": "https://api.vidaio.io/available_credits"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes, which declares a header-based scheme per operation and names the header in the spec. Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-85-vidaio-compression",
+      "kind": "subnet-api",
+      "name": "Vidaio compression",
+      "notes": "Start compression operation on the Vidaio API (POST /compression), declared in the subnet's own OpenAPI spec at https://api.vidaio.io/openapi.json. The spec declares a header-based security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.vidaio.io/openapi.json"],
+      "url": "https://api.vidaio.io/compression"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes, which declares a header-based scheme per operation and names the header in the spec. Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-85-vidaio-compression-task-id",
+      "kind": "subnet-api",
+      "name": "Vidaio compression task id",
+      "notes": "Get compression status operation on the Vidaio API (GET /compression/{task_id}), declared in the subnet's own OpenAPI spec at https://api.vidaio.io/openapi.json. The spec declares a header-based security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.vidaio.io/openapi.json"],
+      "url": "https://api.vidaio.io/compression/%7Btask_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes, which declares a header-based scheme per operation and names the header in the spec. Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-85-vidaio-compression-task-id-result",
+      "kind": "subnet-api",
+      "name": "Vidaio compression task id result",
+      "notes": "Get compression result operation on the Vidaio API (GET /compression/{task_id}/result), declared in the subnet's own OpenAPI spec at https://api.vidaio.io/openapi.json. The spec declares a header-based security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.vidaio.io/openapi.json"],
+      "url": "https://api.vidaio.io/compression/%7Btask_id%7D/result"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes, which declares a header-based scheme per operation and names the header in the spec. Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-85-vidaio-rate-limits",
+      "kind": "subnet-api",
+      "name": "Vidaio rate limits",
+      "notes": "Get authentication rate limits operation on the Vidaio API (GET /rate_limits), declared in the subnet's own OpenAPI spec at https://api.vidaio.io/openapi.json. The spec declares a header-based security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401, confirming the gate is real rather than schema-only.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.vidaio.io/openapi.json"],
+      "url": "https://api.vidaio.io/rate_limits"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes, which declares a header-based scheme per operation and names the header in the spec. Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-85-vidaio-upscaling",
+      "kind": "subnet-api",
+      "name": "Vidaio upscaling",
+      "notes": "Start upscaling operation on the Vidaio API (POST /upscaling), declared in the subnet's own OpenAPI spec at https://api.vidaio.io/openapi.json. The spec declares a header-based security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.vidaio.io/openapi.json"],
+      "url": "https://api.vidaio.io/upscaling"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes, which declares a header-based scheme per operation and names the header in the spec. Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-85-vidaio-upscaling-task-id",
+      "kind": "subnet-api",
+      "name": "Vidaio upscaling task id",
+      "notes": "Get upscaling status operation on the Vidaio API (GET /upscaling/{task_id}), declared in the subnet's own OpenAPI spec at https://api.vidaio.io/openapi.json. The spec declares a header-based security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.vidaio.io/openapi.json"],
+      "url": "https://api.vidaio.io/upscaling/%7Btask_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes, which declares a header-based scheme per operation and names the header in the spec. Only the scheme and location are asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-85-vidaio-upscaling-task-id-result",
+      "kind": "subnet-api",
+      "name": "Vidaio upscaling task id result",
+      "notes": "Get upscaling result operation on the Vidaio API (GET /upscaling/{task_id}/result), declared in the subnet's own OpenAPI spec at https://api.vidaio.io/openapi.json. The spec declares a header-based security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.vidaio.io/openapi.json"],
+      "url": "https://api.vidaio.io/upscaling/%7Btask_id%7D/result"
     }
   ],
   "website_url": "https://vidaio.io/"
