@@ -1024,12 +1024,16 @@ function StakeFlowScorecard({ netuid }: { netuid: number }) {
  * Economics; this fills the Activity-tab gap the issue called out.
  */
 function ActivityEventRollup({ netuid }: { netuid: number }) {
-  const { data: summaryRes, isPending: summaryPending, isError: summaryError } = useQuery(
-    subnetEventSummaryQuery(netuid),
-  );
-  const { data: axonRes, isPending: axonPending, isError: axonError } = useQuery(
-    subnetAxonRemovalsQuery(netuid),
-  );
+  const {
+    data: summaryRes,
+    isPending: summaryPending,
+    isError: summaryError,
+  } = useQuery(subnetEventSummaryQuery(netuid));
+  const {
+    data: axonRes,
+    isPending: axonPending,
+    isError: axonError,
+  } = useQuery(subnetAxonRemovalsQuery(netuid));
   const summary = summaryRes?.data;
   const axon = axonRes?.data;
   const topCategories = [...(summary?.categories ?? [])]
@@ -1039,18 +1043,22 @@ function ActivityEventRollup({ netuid }: { netuid: number }) {
     ? topCategories.map((c) => `${formatNumber(c.event_count)} ${c.category}`).join(" · ")
     : "by category";
   const windowLabel = summary?.window ?? axon?.window ?? "7d";
-  const totalEvents =
-    summaryError ? "—" : summaryPending && !summary ? "…" : formatNumber(summary?.total_events ?? 0);
-  const kindCount =
-    summaryError ? "—" : summaryPending && !summary ? "…" : formatNumber(summary?.kind_count ?? 0);
-  const categoryCount =
-    summaryError
-      ? "—"
-      : summaryPending && !summary
-        ? "…"
-        : formatNumber(summary?.category_count ?? 0);
-  const removals =
-    axonError ? "—" : axonPending && !axon ? "…" : formatNumber(axon?.removals ?? 0);
+  const totalEvents = summaryError
+    ? "—"
+    : summaryPending && !summary
+      ? "…"
+      : formatNumber(summary?.total_events ?? 0);
+  const kindCount = summaryError
+    ? "—"
+    : summaryPending && !summary
+      ? "…"
+      : formatNumber(summary?.kind_count ?? 0);
+  const categoryCount = summaryError
+    ? "—"
+    : summaryPending && !summary
+      ? "…"
+      : formatNumber(summary?.category_count ?? 0);
+  const removals = axonError ? "—" : axonPending && !axon ? "…" : formatNumber(axon?.removals ?? 0);
   const removers = axon?.distinct_removers ?? 0;
 
   return (
