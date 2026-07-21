@@ -311,7 +311,7 @@
       "id": "sn-93-bitcast-whitepaper-docs",
       "kind": "docs",
       "name": "Bitcast whitepaper",
-      "notes": "Public no-auth whitepaper (PDF) for SN93 Bitcast, served at www.bitcast.network/whitepaper.pdf on the official Bitcast website (the same operator as the registered stats.bitcast.network / creator.bitcast.network surfaces). A machine-readable document describing the subnet's design — content-attention incentive mechanism, miner/validator roles, and scoring. Distinct in URL and kind from the API/dashboard surfaces already registered.",
+      "notes": "Public no-auth whitepaper (PDF) for SN93 Bitcast, served at www.bitcast.network/whitepaper.pdf on the official Bitcast website (the same operator as the registered stats.bitcast.network / creator.bitcast.network surfaces). A machine-readable document describing the subnet's design \u2014 content-attention incentive mechanism, miner/validator roles, and scoring. Distinct in URL and kind from the API/dashboard surfaces already registered.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -417,6 +417,3424 @@
       },
       "source_urls": ["https://bitcast-api.bitcast.network/openapi.json"],
       "url": "https://bitcast-api.bitcast.network/api/v2/validator/pools"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get",
+      "kind": "subnet-api",
+      "name": "Bitcast Root",
+      "notes": "Auth-gated GET / on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-admin-competitor-campaigns",
+      "kind": "subnet-api",
+      "name": "Bitcast List Competitor Campaigns",
+      "notes": "Public no-auth GET /api/v2/admin/competitor-campaigns on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (not in the live-verified public fixed-GET set).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/competitor-campaigns"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-admin-competitor-platforms",
+      "kind": "subnet-api",
+      "name": "Bitcast List Competitor Platforms",
+      "notes": "Public no-auth GET /api/v2/admin/competitor-platforms on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). Live-verified 2026-07-21: HTTP 200 JSON. probe.enabled:true.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/competitor-platforms"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-admin-orgs",
+      "kind": "subnet-api",
+      "name": "Bitcast List Orgs",
+      "notes": "Public no-auth GET/POST /api/v2/admin/orgs on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). Live-verified 2026-07-21: HTTP 200 JSON. probe.enabled:true.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-put-api-v2-admin-orgs-org-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Update Org",
+      "notes": "Public no-auth PUT /api/v2/admin/orgs/{org_id} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs/%7Borg_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-admin-orgs-org-id-briefs",
+      "kind": "subnet-api",
+      "name": "Bitcast List Org Briefs",
+      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/briefs on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs/%7Borg_id%7D/briefs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-delete-api-v2-admin-orgs-org-id-briefs-brief-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Unassign Brief From Org",
+      "notes": "Public no-auth DELETE /api/v2/admin/orgs/{org_id}/briefs/{brief_id} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs/%7Borg_id%7D/briefs/%7Bbrief_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-admin-orgs-org-id-campaign-groups",
+      "kind": "subnet-api",
+      "name": "Bitcast List Campaign Groups",
+      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/campaign-groups on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs/%7Borg_id%7D/campaign-groups"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-put-api-v2-admin-orgs-org-id-campaign-groups-group-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Update Campaign Group",
+      "notes": "Public no-auth PUT/DELETE /api/v2/admin/orgs/{org_id}/campaign-groups/{group_id} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs/%7Borg_id%7D/campaign-groups/%7Bgroup_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-admin-orgs-org-id-config",
+      "kind": "subnet-api",
+      "name": "Bitcast List Attention Config",
+      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/config on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs/%7Borg_id%7D/config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-put-api-v2-admin-orgs-org-id-config-config-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Update Attention Handle",
+      "notes": "Public no-auth PUT/DELETE /api/v2/admin/orgs/{org_id}/config/{config_id} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs/%7Borg_id%7D/config/%7Bconfig_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-admin-orgs-org-id-members",
+      "kind": "subnet-api",
+      "name": "Bitcast List Members",
+      "notes": "Public no-auth GET/POST /api/v2/admin/orgs/{org_id}/members on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs/%7Borg_id%7D/members"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-put-api-v2-admin-orgs-org-id-members-member-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Update Member",
+      "notes": "Public no-auth PUT/DELETE /api/v2/admin/orgs/{org_id}/members/{member_id} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs/%7Borg_id%7D/members/%7Bmember_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-admin-surveillance-videos",
+      "kind": "subnet-api",
+      "name": "Bitcast List Surveillance Videos",
+      "notes": "Auth-gated GET /api/v2/admin/surveillance/videos on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/surveillance/videos"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-admin-surveillance-videos-bitcast-video-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Surveillance Video",
+      "notes": "Auth-gated GET /api/v2/admin/surveillance/videos/{bitcast_video_id} on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/surveillance/videos/%7Bbitcast_video_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-admin-watchlist",
+      "kind": "subnet-api",
+      "name": "Bitcast List Watchlist",
+      "notes": "Public no-auth GET/POST /api/v2/admin/watchlist on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). Live-verified 2026-07-21: HTTP 200 JSON. probe.enabled:true.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/watchlist"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-delete-api-v2-admin-watchlist-handle",
+      "kind": "subnet-api",
+      "name": "Bitcast Remove From Watchlist",
+      "notes": "Public no-auth DELETE /api/v2/admin/watchlist/{handle} on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/watchlist/%7Bhandle%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-auth-forgot-password",
+      "kind": "subnet-api",
+      "name": "Bitcast Request password reset",
+      "notes": "Public no-auth POST /api/v2/auth/forgot-password on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/auth/forgot-password"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-auth-google",
+      "kind": "subnet-api",
+      "name": "Bitcast Exchange Google ID token for JWT",
+      "notes": "Public no-auth POST /api/v2/auth/google on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/auth/google"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Declared HTTPBearer in bitcast-api.bitcast.network/openapi.json."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-auth-impersonate-user-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Admin impersonation",
+      "notes": "Auth-gated POST /api/v2/auth/impersonate/{user_id} on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/auth/impersonate/%7Buser_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-auth-login",
+      "kind": "subnet-api",
+      "name": "Bitcast Email/password login",
+      "notes": "Public no-auth POST /api/v2/auth/login on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/auth/login"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Declared HTTPBearer in bitcast-api.bitcast.network/openapi.json."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-auth-me",
+      "kind": "subnet-api",
+      "name": "Bitcast Current user profile",
+      "notes": "Auth-gated GET /api/v2/auth/me on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/auth/me"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Declared HTTPBearer in bitcast-api.bitcast.network/openapi.json."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-auth-refresh",
+      "kind": "subnet-api",
+      "name": "Bitcast Refresh JWT",
+      "notes": "Auth-gated POST /api/v2/auth/refresh on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/auth/refresh"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-auth-register",
+      "kind": "subnet-api",
+      "name": "Bitcast Register via Google OAuth",
+      "notes": "Public no-auth POST /api/v2/auth/register on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/auth/register"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-auth-register-email",
+      "kind": "subnet-api",
+      "name": "Bitcast Register via email/password",
+      "notes": "Public no-auth POST /api/v2/auth/register-email on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/auth/register-email"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-auth-reset-password",
+      "kind": "subnet-api",
+      "name": "Bitcast Reset password",
+      "notes": "Public no-auth POST /api/v2/auth/reset-password on bitcast-api.bitcast.network \u2014 OpenAPI declares no security on this operation (#7105). probe.enabled:false (path-parameterized or write/auth-flow; not auto-probed).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/auth/reset-password"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-brand-watchlist",
+      "kind": "subnet-api",
+      "name": "Bitcast Full watchlist grouped by category",
+      "notes": "Auth-gated GET /api/v2/brand/watchlist on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/brand/watchlist"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-brand-watchlist-tweets",
+      "kind": "subnet-api",
+      "name": "Bitcast Raw enriched tweets for a watchlist handle",
+      "notes": "Auth-gated GET /api/v2/brand/watchlist-tweets on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/brand/watchlist-tweets"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-brand-x-handle-analytics",
+      "kind": "subnet-api",
+      "name": "Bitcast Legacy alias for /watchlist-tweets",
+      "notes": "Auth-gated GET /api/v2/brand/x-handle-analytics on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/brand/x-handle-analytics"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-brand-x-watchlist-group",
+      "kind": "subnet-api",
+      "name": "Bitcast Watchlist accounts in the same category as a handle",
+      "notes": "Auth-gated GET /api/v2/brand/x-watchlist-group on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/brand/x-watchlist-group"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-clients-org",
+      "kind": "subnet-api",
+      "name": "Bitcast Get client org config (attention handles + org details)",
+      "notes": "Auth-gated GET /api/v2/clients/org on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/clients/org"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-clients-org-campaigns",
+      "kind": "subnet-api",
+      "name": "Bitcast Get campaigns attached to a client org (financials stripped)",
+      "notes": "Auth-gated GET /api/v2/clients/org/campaigns on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/clients/org/campaigns"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-clients-org-campaigns-brief-id-tweets",
+      "kind": "subnet-api",
+      "name": "Bitcast Get matched tweets for a specific campaign (org-scoped)",
+      "notes": "Auth-gated GET /api/v2/clients/org/campaigns/{brief_id}/tweets on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/clients/org/campaigns/%7Bbrief_id%7D/tweets"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-clients-orgs",
+      "kind": "subnet-api",
+      "name": "Bitcast Admin-only: list all client orgs for the org switcher",
+      "notes": "Auth-gated GET /api/v2/clients/orgs on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/clients/orgs"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-internal-cache-refresh-arrpv",
+      "kind": "subnet-api",
+      "name": "Bitcast Refresh the creator ARRPV cache table",
+      "notes": "Auth-gated POST /api/v2/internal/cache/refresh-arrpv on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/internal/cache/refresh-arrpv"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-monitoring-chutes-test",
+      "kind": "subnet-api",
+      "name": "Bitcast Test Chutes Performance",
+      "notes": "Auth-gated POST /api/v2/monitoring/chutes-test on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/monitoring/chutes-test"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-monitoring-health",
+      "kind": "subnet-api",
+      "name": "Bitcast Performance Health",
+      "notes": "Auth-gated GET /api/v2/monitoring/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/monitoring/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-monitoring-twitter-latency",
+      "kind": "subnet-api",
+      "name": "Bitcast Test Twitter Latency",
+      "notes": "Auth-gated POST /api/v2/monitoring/twitter-latency on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/monitoring/twitter-latency"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-monitoring-youtube-latency",
+      "kind": "subnet-api",
+      "name": "Bitcast Test Youtube Latency",
+      "notes": "Auth-gated POST /api/v2/monitoring/youtube-latency on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/monitoring/youtube-latency"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Declared HTTPBearer in bitcast-api.bitcast.network/openapi.json."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-portal-youtube-credentials-connect",
+      "kind": "subnet-api",
+      "name": "Bitcast Connect YouTube via OAuth callback (JWT auth)",
+      "notes": "Auth-gated POST /api/v2/portal/youtube/credentials/connect on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/portal/youtube/credentials/connect"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Declared HTTPBearer in bitcast-api.bitcast.network/openapi.json."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-portal-youtube-credentials-disconnect",
+      "kind": "subnet-api",
+      "name": "Bitcast Disconnect YouTube account (JWT auth)",
+      "notes": "Auth-gated POST /api/v2/portal/youtube/credentials/disconnect on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/portal/youtube/credentials/disconnect"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Declared HTTPBearer in bitcast-api.bitcast.network/openapi.json."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-portal-youtube-credentials-upload",
+      "kind": "subnet-api",
+      "name": "Bitcast Upload YouTube credentials (JWT auth)",
+      "notes": "Auth-gated POST /api/v2/portal/youtube/credentials/upload on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/portal/youtube/credentials/upload"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-stats-creator-growth",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Creator Growth",
+      "notes": "Auth-gated GET /api/v2/stats/creator-growth on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/stats/creator-growth"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-stats-creator-growth-health",
+      "kind": "subnet-api",
+      "name": "Bitcast Creator Growth Service Health",
+      "notes": "Auth-gated GET /api/v2/stats/creator-growth/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/stats/creator-growth/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-stats-ecosystem-creator-growth",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Ecosystem Creator Growth",
+      "notes": "Auth-gated GET /api/v2/stats/ecosystem-creator-growth on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/stats/ecosystem-creator-growth"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-stats-ecosystem-growth",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Ecosystem Growth",
+      "notes": "Auth-gated GET /api/v2/stats/ecosystem-growth on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/stats/ecosystem-growth"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-stats-revenue-summary",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Revenue Summary",
+      "notes": "Auth-gated GET /api/v2/stats/revenue/summary on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/stats/revenue/summary"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-stats-revenue-transactions",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Revenue Transactions",
+      "notes": "Auth-gated GET /api/v2/stats/revenue/transactions on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/stats/revenue/transactions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-accounts",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Accounts",
+      "notes": "Auth-gated GET /api/v2/twitter/accounts on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/accounts"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-accounts-distribution",
+      "kind": "subnet-api",
+      "name": "Bitcast Get X Distribution",
+      "notes": "Auth-gated GET /api/v2/twitter/accounts/distribution on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/accounts/distribution"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-accounts-earnings",
+      "kind": "subnet-api",
+      "name": "Bitcast Get All Accounts Earnings",
+      "notes": "Auth-gated GET /api/v2/twitter/accounts/earnings on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/accounts/earnings"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-accounts-username",
+      "kind": "subnet-api",
+      "name": "Bitcast Get details for a single Twitter account by username",
+      "notes": "Auth-gated GET /api/v2/twitter/accounts/{username} on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/accounts/%7Busername%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-accounts-username-private",
+      "kind": "subnet-api",
+      "name": "Bitcast Get private account data for a logged-in user",
+      "notes": "Auth-gated GET /api/v2/twitter/accounts/{username}/private on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/accounts/%7Busername%7D/private"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-accounts-username-referral-targets",
+      "kind": "subnet-api",
+      "name": "Bitcast Get unregistered KOLs sorted by connection strength for referral",
+      "notes": "Auth-gated GET /api/v2/twitter/accounts/{username}/referral-targets on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/accounts/%7Busername%7D/referral-targets"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-briefs",
+      "kind": "subnet-api",
+      "name": "Bitcast Get all Twitter briefs with key details",
+      "notes": "Auth-gated GET/POST /api/v2/twitter/briefs on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; 2 operations share this URL and are registered once.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/briefs"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-briefs-brief-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Get detailed information for a specific Twitter brief",
+      "notes": "Auth-gated GET /api/v2/twitter/briefs/{brief_id} on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/briefs/%7Bbrief_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-briefs-brief-id-analytics",
+      "kind": "subnet-api",
+      "name": "Bitcast Get engagement analytics for a specific Twitter brief",
+      "notes": "Auth-gated GET /api/v2/twitter/briefs/{brief_id}/analytics on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/briefs/%7Bbrief_id%7D/analytics"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-briefs-brief-id-daily-views",
+      "kind": "subnet-api",
+      "name": "Bitcast Get daily per-tweet views for a brief (stacked bar chart data)",
+      "notes": "Auth-gated GET /api/v2/twitter/briefs/{brief_id}/daily-views on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/briefs/%7Bbrief_id%7D/daily-views"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-briefs-brief-id-evaluations",
+      "kind": "subnet-api",
+      "name": "Bitcast Get all evaluations for a brief (admin only)",
+      "notes": "Auth-gated GET /api/v2/twitter/briefs/{brief_id}/evaluations on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/briefs/%7Bbrief_id%7D/evaluations"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-twitter-briefs-brief-id-topup",
+      "kind": "subnet-api",
+      "name": "Bitcast Top up an existing brief with additional funding",
+      "notes": "Auth-gated POST /api/v2/twitter/briefs/{brief_id}/topup on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/briefs/%7Bbrief_id%7D/topup"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-twitter-coldkeys",
+      "kind": "subnet-api",
+      "name": "Bitcast Register a coldkey with additional metadata and get registration tag",
+      "notes": "Auth-gated POST /api/v2/twitter/coldkeys on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/coldkeys"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-twitter-coldkeys-coldkey",
+      "kind": "subnet-api",
+      "name": "Bitcast Register a coldkey and get registration tag (legacy)",
+      "notes": "Auth-gated POST /api/v2/twitter/coldkeys/{coldkey} on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/coldkeys/%7Bcoldkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-daily-summary",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Twitter Daily Summary",
+      "notes": "Auth-gated GET /api/v2/twitter/daily-summary on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/daily-summary"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-daily-summary-health",
+      "kind": "subnet-api",
+      "name": "Bitcast Twitter Daily Summary Service Health",
+      "notes": "Auth-gated GET /api/v2/twitter/daily-summary/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/daily-summary/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-twitter-funding-funding-id-cancel",
+      "kind": "subnet-api",
+      "name": "Bitcast Cancel a pending funding record",
+      "notes": "Auth-gated POST /api/v2/twitter/funding/{funding_id}/cancel on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/funding/%7Bfunding_id%7D/cancel"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-twitter-funding-funding-id-payment",
+      "kind": "subnet-api",
+      "name": "Bitcast Submit payment transaction hash and block number",
+      "notes": "Auth-gated POST /api/v2/twitter/funding/{funding_id}/payment on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/funding/%7Bfunding_id%7D/payment"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-pools",
+      "kind": "subnet-api",
+      "name": "Bitcast [LEGACY] Get list of available Twitter pools",
+      "notes": "Auth-gated GET /api/v2/twitter/pools on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/pools"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-pools-configs",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Twitter pool configurations (all x_pools fields)",
+      "notes": "Auth-gated GET /api/v2/twitter/pools/configs on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/pools/configs"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-pools-pool-name-metrics",
+      "kind": "subnet-api",
+      "name": "Bitcast Get pool metrics including follower statistics and network analysis",
+      "notes": "Auth-gated GET /api/v2/twitter/pools/{pool_name}/metrics on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/pools/%7Bpool_name%7D/metrics"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-pools-pool-name-score-changes",
+      "kind": "subnet-api",
+      "name": "Bitcast Get score changes between last two validator runs for a pool",
+      "notes": "Auth-gated GET /api/v2/twitter/pools/{pool_name}/score-changes on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/pools/%7Bpool_name%7D/score-changes"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-referrals",
+      "kind": "subnet-api",
+      "name": "Bitcast Get All Referrals",
+      "notes": "Auth-gated GET /api/v2/twitter/referrals on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/referrals"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-referrals-me",
+      "kind": "subnet-api",
+      "name": "Bitcast Get My Referrals",
+      "notes": "Auth-gated GET /api/v2/twitter/referrals/me on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/referrals/me"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-twitter-stats",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Twitter Platform Stats",
+      "notes": "Auth-gated GET /api/v2/twitter/stats on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/twitter/stats"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-users-registration-status",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Registration Status",
+      "notes": "Auth-gated GET /api/v2/users/registration-status on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/users/registration-status"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-users-resolve-wallet",
+      "kind": "subnet-api",
+      "name": "Bitcast Resolve Wallet",
+      "notes": "Auth-gated GET /api/v2/users/resolve-wallet on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/users/resolve-wallet"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-agency-creators",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Agency Creators",
+      "notes": "Auth-gated GET /api/v2/youtube/agency/creators on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/agency/creators"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-agency-info",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Agency Info",
+      "notes": "Auth-gated GET /api/v2/youtube/agency/info on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/agency/info"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-agency-agency-id-earnings",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Agency Earnings",
+      "notes": "Auth-gated GET /api/v2/youtube/agency/{agency_id}/earnings on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/agency/%7Bagency_id%7D/earnings"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-agency-agency-id-videos",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Agency Videos",
+      "notes": "Auth-gated GET /api/v2/youtube/agency/{agency_id}/videos on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/agency/%7Bagency_id%7D/videos"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-agency-agency-id-videos-video-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Agency Video Detail",
+      "notes": "Auth-gated GET /api/v2/youtube/agency/{agency_id}/videos/{video_id} on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/agency/%7Bagency_id%7D/videos/%7Bvideo_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-briefs",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Briefs",
+      "notes": "Auth-gated GET /api/v2/youtube/briefs on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/briefs"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-briefs-aggregated",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Aggregated Brief Stats",
+      "notes": "Auth-gated GET /api/v2/youtube/briefs/aggregated on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/briefs/aggregated"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-briefs-health",
+      "kind": "subnet-api",
+      "name": "Bitcast Briefs Service Health",
+      "notes": "Auth-gated GET /api/v2/youtube/briefs/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/briefs/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-briefs-brief-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Brief Details",
+      "notes": "Auth-gated GET /api/v2/youtube/briefs/{brief_id} on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/briefs/%7Bbrief_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-briefs-brief-id-daily-views",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Brief Daily Views",
+      "notes": "Auth-gated GET /api/v2/youtube/briefs/{brief_id}/daily-views on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/briefs/%7Bbrief_id%7D/daily-views"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-briefs-brief-id-geographic",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Brief Geographic",
+      "notes": "Auth-gated GET /api/v2/youtube/briefs/{brief_id}/geographic on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/briefs/%7Bbrief_id%7D/geographic"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-briefs-brief-id-videos",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Brief Videos",
+      "notes": "Auth-gated GET /api/v2/youtube/briefs/{brief_id}/videos on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/briefs/%7Bbrief_id%7D/videos"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-credentials-access-tokens",
+      "kind": "subnet-api",
+      "name": "Bitcast Get YouTube access tokens for miner usage",
+      "notes": "Auth-gated GET /api/v2/youtube/credentials/access-tokens on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/credentials/access-tokens"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-youtube-credentials-credentials-upload",
+      "kind": "subnet-api",
+      "name": "Bitcast Upload YouTube JSON credential file",
+      "notes": "Auth-gated POST /api/v2/youtube/credentials/credentials/upload on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/credentials/credentials/upload"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-credentials-health",
+      "kind": "subnet-api",
+      "name": "Bitcast Credential system health check",
+      "notes": "Auth-gated GET /api/v2/youtube/credentials/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/credentials/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-youtube-credentials-upload",
+      "kind": "subnet-api",
+      "name": "Bitcast Upload YouTube credentials (JWT auth)",
+      "notes": "Auth-gated POST /api/v2/youtube/credentials/upload on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/credentials/upload"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-daily-summary",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Youtube Daily Summary",
+      "notes": "Auth-gated GET /api/v2/youtube/daily-summary on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/daily-summary"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-daily-summary-health",
+      "kind": "subnet-api",
+      "name": "Bitcast Youtube Daily Summary Service Health",
+      "notes": "Auth-gated GET /api/v2/youtube/daily-summary/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/daily-summary/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-geographic",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Youtube Geographic",
+      "notes": "Auth-gated GET /api/v2/youtube/geographic on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/geographic"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-geographic-health",
+      "kind": "subnet-api",
+      "name": "Bitcast Youtube Geographic Service Health",
+      "notes": "Auth-gated GET /api/v2/youtube/geographic/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/geographic/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-notifications-health",
+      "kind": "subnet-api",
+      "name": "Bitcast Notifications service health check",
+      "notes": "Auth-gated GET /api/v2/youtube/notifications/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/notifications/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-youtube-notifications-log-bulk",
+      "kind": "subnet-api",
+      "name": "Bitcast Bulk-record notification delivery results",
+      "notes": "Auth-gated POST /api/v2/youtube/notifications/log/bulk on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/notifications/log/bulk"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-youtube-notifications-queue",
+      "kind": "subnet-api",
+      "name": "Bitcast Create a notification queue item (dev/testing)",
+      "notes": "Auth-gated POST /api/v2/youtube/notifications/queue on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/notifications/queue"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-notifications-queue-unprocessed",
+      "kind": "subnet-api",
+      "name": "Bitcast Fetch unprocessed notifications",
+      "notes": "Auth-gated GET /api/v2/youtube/notifications/queue/unprocessed on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/notifications/queue/unprocessed"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-users",
+      "kind": "subnet-api",
+      "name": "Bitcast Get User Details",
+      "notes": "Auth-gated GET/POST /api/v2/youtube/users on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; 2 operations share this URL and are registered once.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-users-accounts-bitcast-account-id-account-stats",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Account Stats By Bitcast Id",
+      "notes": "Auth-gated GET /api/v2/youtube/users/accounts/{bitcast_account_id}/account/stats on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/accounts/%7Bbitcast_account_id%7D/account/stats"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-users-accounts-bitcast-account-id-videos",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Account Videos By Bitcast Id",
+      "notes": "Auth-gated GET /api/v2/youtube/users/accounts/{bitcast_account_id}/videos on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/accounts/%7Bbitcast_account_id%7D/videos"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-users-distribution",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Yt Distribution",
+      "notes": "Auth-gated GET /api/v2/youtube/users/distribution on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/distribution"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-users-earnings",
+      "kind": "subnet-api",
+      "name": "Bitcast Get All Yt Accounts Earnings",
+      "notes": "Auth-gated GET /api/v2/youtube/users/earnings on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/earnings"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-users-health",
+      "kind": "subnet-api",
+      "name": "Bitcast Users Service Health",
+      "notes": "Auth-gated GET /api/v2/youtube/users/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-users-list",
+      "kind": "subnet-api",
+      "name": "Bitcast Get All Users",
+      "notes": "Auth-gated GET /api/v2/youtube/users/list on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/list"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-patch-api-v2-youtube-users-portal-user-id-access",
+      "kind": "subnet-api",
+      "name": "Bitcast Update User Access",
+      "notes": "Auth-gated PATCH /api/v2/youtube/users/{portal_user_id}/access on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/%7Bportal_user_id%7D/access"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-users-portal-user-id-account-stats",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Account Stats",
+      "notes": "Auth-gated GET /api/v2/youtube/users/{portal_user_id}/account/stats on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/%7Bportal_user_id%7D/account/stats"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-patch-api-v2-youtube-users-portal-user-id-archive",
+      "kind": "subnet-api",
+      "name": "Bitcast Update User Archive",
+      "notes": "Auth-gated PATCH /api/v2/youtube/users/{portal_user_id}/archive on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/%7Bportal_user_id%7D/archive"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-patch-api-v2-youtube-users-portal-user-id-inactive",
+      "kind": "subnet-api",
+      "name": "Bitcast Update User Inactive",
+      "notes": "Auth-gated PATCH /api/v2/youtube/users/{portal_user_id}/inactive on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/%7Bportal_user_id%7D/inactive"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-patch-api-v2-youtube-users-portal-user-id-notification-preferences",
+      "kind": "subnet-api",
+      "name": "Bitcast Update Notification Preferences",
+      "notes": "Auth-gated PATCH /api/v2/youtube/users/{portal_user_id}/notification-preferences on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/%7Bportal_user_id%7D/notification-preferences"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-put-api-v2-youtube-users-portal-user-id-payment-coldkey",
+      "kind": "subnet-api",
+      "name": "Bitcast Update Payment Coldkey",
+      "notes": "Auth-gated PUT /api/v2/youtube/users/{portal_user_id}/payment-coldkey on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/%7Bportal_user_id%7D/payment-coldkey"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-users-portal-user-id-payments",
+      "kind": "subnet-api",
+      "name": "Bitcast Get User Payments",
+      "notes": "Auth-gated GET /api/v2/youtube/users/{portal_user_id}/payments on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/%7Bportal_user_id%7D/payments"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-put-api-v2-youtube-users-portal-user-id-telegram-chat-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Update Telegram Chat Id",
+      "notes": "Auth-gated PUT /api/v2/youtube/users/{portal_user_id}/telegram-chat-id on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/%7Bportal_user_id%7D/telegram-chat-id"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-users-portal-user-id-videos",
+      "kind": "subnet-api",
+      "name": "Bitcast Get User Videos",
+      "notes": "Auth-gated GET /api/v2/youtube/users/{portal_user_id}/videos on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/%7Bportal_user_id%7D/videos"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-youtube-users-portal-user-id-waitlist-details",
+      "kind": "subnet-api",
+      "name": "Bitcast Create User Waitlist Details",
+      "notes": "Auth-gated POST /api/v2/youtube/users/{portal_user_id}/waitlist-details on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/users/%7Bportal_user_id%7D/waitlist-details"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-validation-health",
+      "kind": "subnet-api",
+      "name": "Bitcast YouTube validation service health check",
+      "notes": "Auth-gated GET /api/v2/youtube/validation/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/validation/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-post-api-v2-youtube-validation-script",
+      "kind": "subnet-api",
+      "name": "Bitcast Check a YouTube script against a brief",
+      "notes": "Auth-gated POST /api/v2/youtube/validation/script on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/validation/script"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-videos-health",
+      "kind": "subnet-api",
+      "name": "Bitcast Videos Service Health",
+      "notes": "Auth-gated GET /api/v2/youtube/videos/health on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/videos/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-93-bitcast-get-api-v2-youtube-videos-bitcast-video-id",
+      "kind": "subnet-api",
+      "name": "Bitcast Get Single Video",
+      "notes": "Auth-gated GET /api/v2/youtube/videos/{bitcast_video_id} on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://www.bitcast.network/"
+      ],
+      "url": "https://bitcast-api.bitcast.network/api/v2/youtube/videos/%7Bbitcast_video_id%7D"
     }
   ],
   "website_url": "https://www.bitcast.network/"
