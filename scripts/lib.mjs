@@ -878,7 +878,7 @@ export function sortValue(value) {
 
 export const REGISTRY_SYNC_DEFAULT_URL =
   "https://api.metagraph.sh/api/v1/internal/registry-sync";
-// Stay comfortably under workers/registry-sync-api.mjs's own 4 MiB body /
+// Stay comfortably under workers/registry-sync-api.ts's own 4 MiB body /
 // 5,000-rows-per-kind caps -- these are call-site chunk sizes, not the
 // server's actual limit, so a caller can safely batch well below them.
 export const REGISTRY_SYNC_MAX_BODY_BYTES = 3_500_000;

@@ -23,6 +23,7 @@ interface Env {
   METAGRAPH_D1_TIMEOUT_MS?: string;
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;
   METAGRAPH_R2_TIMEOUT_MS?: string;
+  REGISTRY_SYNC_SECRET?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_ADDRESS?: string;
   TELEGRAM_BOT_TOKEN?: string;

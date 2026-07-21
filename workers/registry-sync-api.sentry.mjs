@@ -25,7 +25,7 @@
 // (tests import the raw file only; only wrangler's build ever loads this
 // wrapper).
 import * as Sentry from "@sentry/cloudflare";
-import handler from "./registry-sync-api.mjs";
+import handler from "./registry-sync-api.ts";
 
 export default Sentry.withSentry(
   (env) => ({
