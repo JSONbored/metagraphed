@@ -79,9 +79,10 @@
       "id": "sn-43-graphite-ai-openapi",
       "kind": "openapi",
       "name": "Graphite Knowledge Graph API (OpenAPI)",
+      "notes": "Graphite OpenAPI schema. Live-verified 2026-07-21: GET returns OpenAPI JSON.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -127,7 +128,13 @@
       "id": "sn-43-graphite-ai-subnet-api",
       "kind": "subnet-api",
       "name": "Graphite SN43 subnet stats API",
-      "notes": "Public, unauthenticated JSON endpoint on Graphite's official SN43 API (api.graphite-ai.net) returning the live subnet-43 metagraph aggregate: netuid, total registered neurons, validator/miner counts, total alpha stake, and an availability flag. Documented in the subnet's OpenAPI spec as GET /api/v1/stats/subnet.",
+      "notes": "Public, unauthenticated JSON endpoint on Graphite's official SN43 API (api.graphite-ai.net) returning the live subnet-43 metagraph aggregate: netuid, total registered neurons, validator/miner counts, total alpha stake, and an availability flag. Documented in the subnet's OpenAPI spec as GET /api/v1/stats/subnet. Live-verified 2026-07-21: HTTP 200 JSON with netuid/total_registered/validators/miners.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "graphite-ai",
       "public_safe": true,
       "review": {
@@ -221,7 +228,7 @@
       "id": "sn-43-graphite-min-compute",
       "kind": "data-artifact",
       "name": "Graphite minimum compute requirements",
-      "notes": "Public no-auth min_compute.yml committed at the root of SN43 Graphite's official GraphiteAI/Graphite-Subnet repository — the minimum and recommended hardware specification (CPU, RAM, storage, OS, and network bandwidth) for running a Graphite miner or validator. Served read-only via raw.githubusercontent from the same official repo registered as the subnet's source-repo; a standalone machine-readable reference artifact distinct from the existing Graphite past-problems dataset and API surfaces.",
+      "notes": "Public no-auth min_compute.yml committed at the root of SN43 Graphite's official GraphiteAI/Graphite-Subnet repository \u2014 the minimum and recommended hardware specification (CPU, RAM, storage, OS, and network bandwidth) for running a Graphite miner or validator. Served read-only via raw.githubusercontent from the same official repo registered as the subnet's source-repo; a standalone machine-readable reference artifact distinct from the existing Graphite past-problems dataset and API surfaces.",
       "probe": {
         "enabled": true,
         "expect": "any",
