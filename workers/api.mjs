@@ -278,7 +278,7 @@ import {
 } from "./chain-firehose-hub.mjs";
 import { McpSessionHub } from "./mcp-session-hub.mjs";
 import { AlerterHub } from "./alerter-hub.mjs";
-import { SubnetStatusHub } from "./subnet-status-hub.mjs";
+import { SubnetStatusHub } from "./subnet-status-hub.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
