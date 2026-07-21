@@ -90,11 +90,11 @@
       "id": "sn-110-green-compute-openapi",
       "kind": "openapi",
       "name": "Green Compute Gateway OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.1 schema served publicly by the Green Compute API gateway (api.green-compute.com). Captured for schema-shape metadata only; endpoints are not invoked and no response payloads are persisted.",
+      "notes": "Machine-readable OpenAPI 3.1 schema served publicly by the Green Compute API gateway (api.green-compute.com). Captured for schema-shape metadata only; endpoints are not invoked and no response payloads are persisted. Live-verified 2026-07-22: GET returns OpenAPI 3.1.0 JSON (title GreenCompute Gateway).",
       "probe": {
         "enabled": true,
         "expect": "json",
-        "method": "HEAD",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "green-compute",
@@ -191,7 +191,7 @@
       "id": "sn-110-green-compute-healthz",
       "kind": "subnet-api",
       "name": "Green Compute gateway healthz",
-      "notes": "Public no-auth GET /healthz on api.green-compute.com returning gateway liveness JSON (observed: {\"status\":\"ok\",\"service\":\"greencompute-gateway\"}). Documented as GET /healthz in the subnet OpenAPI spec on the same host as the existing chat-completions and openapi surfaces.",
+      "notes": "Public no-auth GET /healthz on api.green-compute.com returning gateway liveness JSON (observed: {\"status\":\"ok\",\"service\":\"greencompute-gateway\"}). Documented as GET /healthz in the subnet OpenAPI spec on the same host as the existing chat-completions and openapi surfaces. Live-verified 2026-07-22: HTTP 200 JSON {\"status\":\"ok\",\"service\":\"greencompute-gateway\"}.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -216,7 +216,7 @@
       "id": "sn-110-green-compute-billing-bonus-rates-api",
       "kind": "subnet-api",
       "name": "Green Compute billing bonus rates API",
-      "notes": "Public no-auth GET returning platform billing bonus rates by payment method (stripe, usdt, usdc, tao, alpha). Documented in the subnet's own OpenAPI (api.green-compute.com/openapi.json, path /platform/billing/bonus-rates); same host as the existing healthz and openapi surfaces.",
+      "notes": "Public no-auth GET returning platform billing bonus rates by payment method (stripe, usdt, usdc, tao, alpha). Documented in the subnet's own OpenAPI (api.green-compute.com/openapi.json, path /platform/billing/bonus-rates); same host as the existing healthz and openapi surfaces. Live-verified 2026-07-22: HTTP 200 JSON with stripe/usdt/usdc/tao/alpha rate keys.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -241,7 +241,7 @@
       "id": "sn-110-green-compute-readyz",
       "kind": "subnet-api",
       "name": "Green Compute gateway readiness",
-      "notes": "Public no-auth GET /readyz on api.green-compute.com returning gateway readiness JSON including database connectivity (observed: {\"status\":\"ok\",\"service\":\"greencompute-gateway\",\"database\":\"ok\"}). Documented in the subnet's own OpenAPI schema; distinct from the existing /healthz liveness surface.",
+      "notes": "Public no-auth GET /readyz on api.green-compute.com returning gateway readiness JSON including database connectivity (observed: {\"status\":\"ok\",\"service\":\"greencompute-gateway\",\"database\":\"ok\"}). Documented in the subnet's own OpenAPI schema; distinct from the existing /healthz liveness surface. Live-verified 2026-07-22: HTTP 200 JSON {\"status\":\"ok\",\"service\":\"greencompute-gateway\",\"database\":\"ok\"}.",
       "probe": {
         "enabled": true,
         "expect": "json",
