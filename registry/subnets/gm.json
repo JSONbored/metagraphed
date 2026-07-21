@@ -25,7 +25,7 @@
   "docs_url": null,
   "name": "gm",
   "netuid": 28,
-  "notes": "Reviewed overlay for SN28 gm. Public news/directory sources describe a TEE-enabled LLM inference marketplace. This pass added the missing website and source-repo surfaces (both already set as top-level website_url/source_repo fields, live-verified, but previously untracked as surfaces) and fixed all 4 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. The 4 documented gm Gateway API paths (chat/completions, responses, messages, v1beta model actions) all require bearer auth per the OpenAPI schema's global security requirement and are write/inference-call endpoints, so none are promoted as additional surfaces. No dedicated docs subdomain found (docs.saygm.com unresolvable, saygm.com/docs 404s).",
+  "notes": "Reviewed overlay for SN28 gm. Public news/directory sources describe a TEE-enabled LLM inference marketplace. Website and source-repo surfaces are tracked; probe configs cover the public no-auth surfaces (openapi / models / healthz / envoy config). The four Gateway API operations from saygm.com/openapi.json (chat/completions, responses, messages, and v1beta generateContent) are registered as auth-gated subnet-api surfaces (auth_required:true, probe.enabled:false) for full API parity \u2014 Phase 3 credential passthrough is not built yet. Live-verified 2026-07-21: openapi.json 200, /v1/models 200, /healthz 200 \"ok\"; the four write endpoints return 401 without a key (Gemini base is https://api.saygm.com with no /v1 prefix). No dedicated docs subdomain found (docs.saygm.com unresolvable, saygm.com/docs 404s).",
   "schema_version": 1,
   "slug": "gm",
   "social": {
@@ -49,7 +49,9 @@
       },
       "provider": "gm",
       "public_safe": true,
-      "source_urls": ["https://github.com/taostat/gm-miner"],
+      "source_urls": [
+        "https://github.com/taostat/gm-miner"
+      ],
       "url": "https://saygm.com/"
     },
     {
@@ -67,7 +69,9 @@
       },
       "provider": "gm",
       "public_safe": true,
-      "source_urls": ["https://saygm.com/"],
+      "source_urls": [
+        "https://saygm.com/"
+      ],
       "url": "https://github.com/taostat/gm-miner"
     },
     {
@@ -90,7 +94,10 @@
       },
       "schema_status": "machine-readable",
       "schema_url": "https://saygm.com/openapi.json",
-      "source_urls": ["https://saygm.com/", "https://saygm.com/openapi.json"],
+      "source_urls": [
+        "https://saygm.com/",
+        "https://saygm.com/openapi.json"
+      ],
       "url": "https://saygm.com/openapi.json"
     },
     {
@@ -111,7 +118,10 @@
         "state": "community-submitted",
         "submitted_by": "dhgoal"
       },
-      "source_urls": ["https://saygm.com/", "https://saygm.com/openapi.json"],
+      "source_urls": [
+        "https://saygm.com/",
+        "https://saygm.com/openapi.json"
+      ],
       "url": "https://api.saygm.com/v1/models"
     },
     {
@@ -133,7 +143,10 @@
         "state": "community-submitted",
         "submitted_by": "jimcody1995"
       },
-      "source_urls": ["https://saygm.com/", "https://saygm.com/openapi.json"],
+      "source_urls": [
+        "https://saygm.com/",
+        "https://saygm.com/openapi.json"
+      ],
       "url": "https://saygm.com/healthz"
     },
     {
@@ -160,6 +173,134 @@
         "https://github.com/taostat/gm-miner/blob/main/image/envoy.yaml"
       ],
       "url": "https://raw.githubusercontent.com/taostat/gm-miner/refs/heads/main/image/envoy.yaml"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <gm-api-key>",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (bearerAuth): a gm API key minted in the dashboard, sent as Authorization: Bearer <gm-api-key>. Declared as the document-level security requirement inherited by every Gateway API operation."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-28-gm-chat-completions",
+      "kind": "subnet-api",
+      "name": "gm Gateway API POST chat completions",
+      "notes": "Auth-gated (Bearer gm API key, Phase 3 credential passthrough, not built yet) POST /v1/chat/completions on api.saygm.com \u2014 OpenAI-compatible Chat Completions from the already-registered sn-28-gm-openapi schema (servers: https://api.saygm.com/v1). Live-verified 2026-07-21: unauthenticated POST returned HTTP 401 {\"error\":{\"message\":\"Invalid Authentication\",\"type\":\"invalid_request_error\",\"code\":\"invalid_api_key\"}}. probe.enabled:false \u2014 POST-only write/inference endpoint (a GET probe would 405). Registered per the registry's full-API-parity policy (metagraphed#7044); not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "wondercreatemaster"
+      },
+      "source_urls": [
+        "https://saygm.com/openapi.json",
+        "https://api.saygm.com/v1/chat/completions"
+      ],
+      "url": "https://api.saygm.com/v1/chat/completions"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <gm-api-key>",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (bearerAuth): a gm API key minted in the dashboard, sent as Authorization: Bearer <gm-api-key>. Declared as the document-level security requirement inherited by every Gateway API operation."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-28-gm-responses",
+      "kind": "subnet-api",
+      "name": "gm Gateway API POST responses",
+      "notes": "Auth-gated (Bearer gm API key, Phase 3 credential passthrough, not built yet) POST /v1/responses on api.saygm.com \u2014 OpenAI-compatible Responses API from the already-registered sn-28-gm-openapi schema. Live-verified 2026-07-21: unauthenticated POST returned HTTP 401 {\"error\":{\"message\":\"Invalid Authentication\",\"type\":\"invalid_request_error\",\"code\":\"invalid_api_key\"}}. probe.enabled:false \u2014 POST-only. Registered per metagraphed#7044.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "wondercreatemaster"
+      },
+      "source_urls": [
+        "https://saygm.com/openapi.json",
+        "https://api.saygm.com/v1/responses"
+      ],
+      "url": "https://api.saygm.com/v1/responses"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <gm-api-key>",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (bearerAuth): a gm API key minted in the dashboard, sent as Authorization: Bearer <gm-api-key>. Declared as the document-level security requirement inherited by every Gateway API operation."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-28-gm-messages",
+      "kind": "subnet-api",
+      "name": "gm Gateway API POST messages",
+      "notes": "Auth-gated (Bearer gm API key, Phase 3 credential passthrough, not built yet) POST /v1/messages on api.saygm.com \u2014 Anthropic-compatible Messages API from the already-registered sn-28-gm-openapi schema (OpenAPI text: auth is still the gm API key as a bearer token). Live-verified 2026-07-21: unauthenticated POST returned HTTP 401 {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"}} (Anthropic-shaped error body; document-level securitySchemes still name bearerAuth). probe.enabled:false \u2014 POST-only. Registered per metagraphed#7044.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "wondercreatemaster"
+      },
+      "source_urls": [
+        "https://saygm.com/openapi.json",
+        "https://api.saygm.com/v1/messages"
+      ],
+      "url": "https://api.saygm.com/v1/messages"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <gm-api-key>",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (bearerAuth): a gm API key minted in the dashboard, sent as Authorization: Bearer <gm-api-key>. Declared as the document-level security requirement inherited by every Gateway API operation."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-28-gm-gemini-generate-content",
+      "kind": "subnet-api",
+      "name": "gm Gateway API POST Gemini generateContent",
+      "notes": "Auth-gated (Bearer gm API key, Phase 3 credential passthrough, not built yet) POST /v1beta/models/{modelAndAction} on api.saygm.com \u2014 Gemini-compatible generateContent / streamGenerateContent. The operation overrides the document servers entry: base is https://api.saygm.com (no /v1 prefix); a naively-prefixed /v1/v1beta/... URL 404s. Live-verified 2026-07-21: unauthenticated POST to https://api.saygm.com/v1beta/models/gemini-2.5-pro:generateContent returned HTTP 401 {\"error\":{\"code\":401,\"message\":\"API key not valid...\",\"status\":\"UNAUTHENTICATED\"}}; the /v1-prefixed twin returned 404. URL uses percent-encoded {%7BmodelAndAction%7D} template (raw braces fail format:uri). probe.enabled:false \u2014 POST-only path-param surface (Phase 2). Registered per metagraphed#7044.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "wondercreatemaster"
+      },
+      "source_urls": [
+        "https://saygm.com/openapi.json",
+        "https://api.saygm.com/v1beta/models/%7BmodelAndAction%7D"
+      ],
+      "url": "https://api.saygm.com/v1beta/models/%7BmodelAndAction%7D"
     }
   ],
   "website_url": "https://saygm.com/"
