@@ -61,6 +61,9 @@ import { loadAdapter } from "./adapters-mcp.mjs";
 // already call -- not a reimplementation.
 import { loadChangelog } from "./changelog-mcp.mjs";
 import { loadContracts } from "./contracts-mcp.mjs";
+// #7431: GraphQL parity for GET /api/v1/build, reusing loadBuildSummary that
+// MCP get_build already calls -- not a reimplementation.
+import { loadBuildSummary } from "./build-mcp.mjs";
 import { loadHealthHistory } from "./health-history-mcp.mjs";
 import {
   buildChainAxonRemovals,
@@ -632,6 +635,8 @@ export const SDL = `
     changelog: Changelog
     "The registry's public artifact contract metadata: every baked artifact path, storage tier, schema reference, and consumer notes. Resolves to a GraphQL error (not null) when the contracts artifact has not been baked in this environment, matching the REST route's 404 and the get_contracts MCP tool. Mirrors GET /api/v1/contracts."
     contracts: Contracts
+    "The generated build summary: artifact inventory counts and sizes, subnet/provider/surface totals, coverage rollup, and publish metadata. Resolves to a GraphQL error (not null) when the build-summary artifact has not been baked in this environment, matching the REST route's 404 and the get_build MCP tool. Mirrors GET /api/v1/build."
+    build: BuildSummary!
     "A compact daily operational health snapshot for one UTC date (YYYY-MM-DD): per-surface status/latency plus summary incident counts from the archived health/history tier. Filter by netuid/kind/provider/status/classification, sort with sort/order, and page with limit (1-1000)/cursor. An invalid date/filter/sort/limit/cursor or a missing snapshot is a GraphQL error, not a silently substituted default. Distinct from the live health rollup and health_trends. Mirrors GET /api/v1/health/history/{date}."
     health_history(date: String!, netuid: Int, kind: String, provider: String, status: String, classification: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): HealthHistory!
     "Global operational health rollup with per-subnet summaries."
@@ -2026,6 +2031,22 @@ export const SDL = `
     type_definitions_url: String
     notes: JSON
     artifacts: [JSON!]!
+  }
+
+  type BuildSummary {
+    schema_version: Int!
+    contract_version: String
+    generated_at: String
+    published_at: String
+    adapter_count: Int
+    artifact_count: Int!
+    artifact_size_bytes: Int
+    subnet_count: Int
+    surface_count: Int
+    provider_count: Int
+    artifacts: JSON
+    coverage: JSON
+    artifact_budget_summary: JSON
   }
 
   type HealthHistory {
@@ -4184,6 +4205,7 @@ export const FIELD_COMPLEXITY = {
   rpc_endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
   changelog: RELATIONSHIP_FIELD_COMPLEXITY,
   contracts: RELATIONSHIP_FIELD_COMPLEXITY,
+  build: RELATIONSHIP_FIELD_COMPLEXITY,
   health_history: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -6222,6 +6244,13 @@ const rootValue = {
 
   contracts(_args, context) {
     return loadContracts(context, { readArtifact });
+  },
+
+  // #7431: reuse get_build's own loader unchanged (the same baked artifact read
+  // REST and MCP already use). A cold/absent artifact makes the loader throw,
+  // which the graphql executor surfaces as a normal GraphQL error.
+  build(_args, context) {
+    return loadBuildSummary(context, { readArtifact });
   },
 
   // #7170: reuse get_health_history's own loader unchanged. It takes deps as

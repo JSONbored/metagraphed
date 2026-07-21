@@ -1714,6 +1714,54 @@ describe("graphql — contracts", () => {
   });
 });
 
+// #7431: GraphQL parity for GET /api/v1/build, reusing loadBuildSummary that MCP
+// get_build already calls (same artifact read + error behavior as REST and MCP).
+describe("graphql — build", () => {
+  const BUILD_BLOB = {
+    schema_version: 1,
+    contract_version: "2026-06-29.1",
+    generated_at: "2026-07-01T00:00:00.000Z",
+    published_at: "2026-07-01T00:00:00.000Z",
+    artifact_count: 99,
+    artifact_size_bytes: 1_000_000,
+    subnet_count: 129,
+    surface_count: 400,
+    provider_count: 50,
+    artifacts: [{ path: "/metagraph/subnets.json", size_bytes: 1000 }],
+    coverage: { surfaces: 10 },
+    artifact_budget_summary: { ok: 1, warn: 0, fail: 0 },
+  };
+
+  test("serves the baked build-summary artifact verbatim", async () => {
+    const env = fixtureEnv({ "/metagraph/build-summary.json": BUILD_BLOB });
+    const { status, body } = await gql(
+      "{ build { schema_version contract_version generated_at published_at artifact_count artifact_size_bytes subnet_count surface_count provider_count artifacts coverage artifact_budget_summary } }",
+      env,
+    );
+    assert.equal(status, 200);
+    const build = body.data.build;
+    assert.equal(build.schema_version, 1);
+    assert.equal(build.contract_version, "2026-06-29.1");
+    assert.equal(build.generated_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(build.published_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(build.artifact_count, 99);
+    assert.equal(build.subnet_count, 129);
+    assert.deepEqual(build.artifacts[0].path, "/metagraph/subnets.json");
+    assert.equal(build.coverage.surfaces, 10);
+    assert.equal(build.artifact_budget_summary.ok, 1);
+  });
+
+  test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ build { schema_version } }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data, null);
+  });
+
+  test("FIELD_COMPLEXITY weights it like its sibling relationship fields", () => {
+    assert.equal(FIELD_COMPLEXITY.build, 5);
+  });
+});
+
 describe("graphql — health_history", () => {
   const SURFACE_ROW = {
     netuid: 7,
