@@ -132,6 +132,258 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://mcp.theminos.ai/"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-107-minos-v2-round-status",
+      "kind": "subnet-api",
+      "name": "Minos Platform v2 round status (auth-gated)",
+      "notes": "POST /v2/round-status on api.theminos.ai (same host as the registered /health surface) -- Poll active rounds and retrieve the presigned artifact-download URL for the current round (participant-facing). One of the 9 POST-only /v2 Minos Platform task endpoints documented in the official minos_subnet README route table (no OpenAPI/Swagger schema exists for this API -- openapi.json and /docs both 404, per the linked issue's own live check). Live-verified 2026-07-21 (~23:35 UTC): an unsigned POST with an empty JSON body returns HTTP 422 with a field-by-field validation error listing the required signed-request body fields -- the route is live and body-validated, matching the README's documented hotkey-signed auth requirement. Registered auth_required:true with probe.enabled:false per the linked issue's guidance; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/v2/round-status"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-107-minos-v2-submit-config",
+      "kind": "subnet-api",
+      "name": "Minos Platform v2 config submission (auth-gated)",
+      "notes": "POST /v2/submit-config on api.theminos.ai (same host as the registered /health surface) -- Submit a variant-calling tool configuration for the active round (participant-facing write). One of the 9 POST-only /v2 Minos Platform task endpoints documented in the official minos_subnet README route table (no OpenAPI/Swagger schema exists for this API -- openapi.json and /docs both 404, per the linked issue's own live check). Live-verified 2026-07-21 (~23:35 UTC): an unsigned POST with an empty JSON body returns HTTP 422 with a field-by-field validation error listing the required signed-request body fields -- the route is live and body-validated, matching the README's documented hotkey-signed auth requirement. Registered auth_required:true with probe.enabled:false per the linked issue's guidance; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/v2/submit-config"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-107-minos-v2-get-scoring-rounds",
+      "kind": "subnet-api",
+      "name": "Minos Platform v2 scoring rounds (auth-gated)",
+      "notes": "POST /v2/get-scoring-rounds on api.theminos.ai (same host as the registered /health surface) -- List rounds that are ready for scoring (scoring-side). One of the 9 POST-only /v2 Minos Platform task endpoints documented in the official minos_subnet README route table (no OpenAPI/Swagger schema exists for this API -- openapi.json and /docs both 404, per the linked issue's own live check). Live-verified 2026-07-21 (~23:35 UTC): an unsigned POST with an empty JSON body returns HTTP 422 with a field-by-field validation error listing the required signed-request body fields -- the route is live and body-validated, matching the README's documented hotkey-signed auth requirement. Registered auth_required:true with probe.enabled:false per the linked issue's guidance; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/v2/get-scoring-rounds"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-107-minos-v2-get-submissions",
+      "kind": "subnet-api",
+      "name": "Minos Platform v2 round submissions (auth-gated)",
+      "notes": "POST /v2/get-submissions on api.theminos.ai (same host as the registered /health surface) -- Fetch the submitted configurations for a round (scoring-side). One of the 9 POST-only /v2 Minos Platform task endpoints documented in the official minos_subnet README route table (no OpenAPI/Swagger schema exists for this API -- openapi.json and /docs both 404, per the linked issue's own live check). Live-verified 2026-07-21 (~23:35 UTC): an unsigned POST with an empty JSON body returns HTTP 422 with a field-by-field validation error listing the required signed-request body fields -- the route is live and body-validated, matching the README's documented hotkey-signed auth requirement. Registered auth_required:true with probe.enabled:false per the linked issue's guidance; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/v2/get-submissions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-107-minos-v2-get-assignment",
+      "kind": "subnet-api",
+      "name": "Minos Platform v2 scoring assignment (auth-gated)",
+      "notes": "POST /v2/get-assignment on api.theminos.ai (same host as the registered /health surface) -- Fetch the caller's scoring assignment for a round (scoring-side). One of the 9 POST-only /v2 Minos Platform task endpoints documented in the official minos_subnet README route table (no OpenAPI/Swagger schema exists for this API -- openapi.json and /docs both 404, per the linked issue's own live check). Live-verified 2026-07-21 (~23:35 UTC): an unsigned POST with an empty JSON body returns HTTP 422 with a field-by-field validation error listing the required signed-request body fields -- the route is live and body-validated, matching the README's documented hotkey-signed auth requirement. Registered auth_required:true with probe.enabled:false per the linked issue's guidance; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/v2/get-assignment"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-107-minos-v2-submit-score",
+      "kind": "subnet-api",
+      "name": "Minos Platform v2 score submission (auth-gated)",
+      "notes": "POST /v2/submit-score on api.theminos.ai (same host as the registered /health surface) -- Submit per-participant scores for a round (scoring-side write). One of the 9 POST-only /v2 Minos Platform task endpoints documented in the official minos_subnet README route table (no OpenAPI/Swagger schema exists for this API -- openapi.json and /docs both 404, per the linked issue's own live check). Live-verified 2026-07-21 (~23:35 UTC): an unsigned POST with an empty JSON body returns HTTP 422 with a field-by-field validation error listing the required signed-request body fields -- the route is live and body-validated, matching the README's documented hotkey-signed auth requirement. Registered auth_required:true with probe.enabled:false per the linked issue's guidance; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/v2/submit-score"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-107-minos-v2-get-backfill-scores",
+      "kind": "subnet-api",
+      "name": "Minos Platform v2 backfill scores (auth-gated)",
+      "notes": "POST /v2/get-backfill-scores on api.theminos.ai (same host as the registered /health surface) -- Fetch peer scores after the scoring window closes (scoring-side). One of the 9 POST-only /v2 Minos Platform task endpoints documented in the official minos_subnet README route table (no OpenAPI/Swagger schema exists for this API -- openapi.json and /docs both 404, per the linked issue's own live check). Live-verified 2026-07-21 (~23:35 UTC): an unsigned POST with an empty JSON body returns HTTP 422 with a field-by-field validation error listing the required signed-request body fields -- the route is live and body-validated, matching the README's documented hotkey-signed auth requirement. Registered auth_required:true with probe.enabled:false per the linked issue's guidance; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/v2/get-backfill-scores"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-107-minos-v2-submit-weight-history",
+      "kind": "subnet-api",
+      "name": "Minos Platform v2 weight-history submission (auth-gated)",
+      "notes": "POST /v2/submit-weight-history on api.theminos.ai (same host as the registered /health surface) -- Submit scores, eligibility, and weight entries for a round (scoring-side write). One of the 9 POST-only /v2 Minos Platform task endpoints documented in the official minos_subnet README route table (no OpenAPI/Swagger schema exists for this API -- openapi.json and /docs both 404, per the linked issue's own live check). Live-verified 2026-07-21 (~23:35 UTC): an unsigned POST with an empty JSON body returns HTTP 422 with a field-by-field validation error listing the required signed-request body fields -- the route is live and body-validated, matching the README's documented hotkey-signed auth requirement. Registered auth_required:true with probe.enabled:false per the linked issue's guidance; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/v2/submit-weight-history"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-107-minos-v2-get-validator-state",
+      "kind": "subnet-api",
+      "name": "Minos Platform v2 validator state (auth-gated)",
+      "notes": "POST /v2/get-validator-state on api.theminos.ai (same host as the registered /health surface) -- Recover round state after a restart (scoring-side). One of the 9 POST-only /v2 Minos Platform task endpoints documented in the official minos_subnet README route table (no OpenAPI/Swagger schema exists for this API -- openapi.json and /docs both 404, per the linked issue's own live check). Live-verified 2026-07-21 (~23:35 UTC): an unsigned POST with an empty JSON body returns HTTP 422 with a field-by-field validation error listing the required signed-request body fields -- the route is live and body-validated, matching the README's documented hotkey-signed auth requirement. Registered auth_required:true with probe.enabled:false per the linked issue's guidance; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/v2/get-validator-state"
     }
   ],
   "contact": "contact@theminos.ai"
