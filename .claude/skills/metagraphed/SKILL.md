@@ -288,6 +288,7 @@ in the contributor PR.
 ```sh
 git diff --check
 npm run lint && npm run format:check        # NOTE: main isn't fully prettier-clean — never reformat whole files you didn't change
+npm run typecheck                           # tsc --noEmit, whole in-scope tree (src/workers/scripts/tests)
 npm run validate                            # registry + API + OpenAPI checks
 npm test                                    # or: npm run test:coverage for the coverage gate
 # Then the focused validators for what you touched (full list in reference.md), e.g.:
@@ -558,7 +559,7 @@ confidence — this is a deliberate exception to the normal one-shot autonomous 
       deploy/publish-pipeline-owned, not contract artifacts). Revert them against your base remote
       (the Phase B3 command above) before committing if `npm run build` touched them. `npm run build`
       itself warns you if either changed.
-- [ ] `git diff --check` clean · `lint` + `format:check` clean · `npm run validate` green ·
+- [ ] `git diff --check` clean · `lint` + `format:check` + `typecheck` clean · `npm run validate` green ·
       `npm run test:coverage` green · the focused `validate:*` for what you touched green.
 - [ ] Branch current with `main`; Conventional Commit (no AI attribution); PR template filled; `Closes #<issue>` — required, referencing an issue that's still open.
 

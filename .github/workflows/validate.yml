@@ -440,6 +440,15 @@ jobs:
           npm run lint
           npm run format:check
 
+      # Same class of check as Lint + format above: cheap, no build, no network
+      # — runs unconditionally rather than gating on DOCS_ONLY since a real
+      # docs-only diff can't touch a .ts file anyway (see typescript-migration
+      # epic metagraphed#7510). tsc reads tsconfig.json's own include/exclude,
+      # not the file list — this typechecks the whole in-scope tree every run,
+      # not just files this PR touched.
+      - name: Typecheck
+        run: npm run typecheck
+
       # Drift gate: these compare the COMMITTED contract (openapi.json, the schema
       # bundle, generated types + client) against what the schemas regenerate, so
       # they MUST run before the build step below overwrites those committed files.

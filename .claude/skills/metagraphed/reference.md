@@ -129,7 +129,8 @@ touch registry data, schemas, code, or CI config; a non-`.md` file anywhere, inc
 future non-`.md` file under `.claude/skills/`, disqualifies the whole PR), the `changes` job sets
 `docs_only=true` and `checks` skips only its build/contract/registry/deploy-dry-run steps via a
 **per-step** `if: env.DOCS_ONLY != 'true'` guard — never a job-level skip, so `checks` always reports
-a real `success`/`failure` conclusion, never `skipped`. `Lint + format`, `validate:docs`,
+a real `success`/`failure` conclusion, never `skipped`. `Lint + format`, `Typecheck` (`tsc --noEmit`,
+added by the TypeScript migration, metagraphed#7510), `validate:docs`,
 `validate:intake`, `scan:public-safety`, and `validate:private-boundary` still run
 unconditionally on every PR, docs-only or not — they're cheap (no build, no network) and are
 exactly what a stray secret, private-boundary leak, or broken doc-contract reference in a
@@ -166,7 +167,8 @@ no per-subject directory structure (all 154 files sit flat in `tests/`), a third
 for a filesystem-race reason (see below) unrelated to subject area — splitting by area would need a
 real test-tree/module-boundary refactor, not a CI config change.
 
-**Gates (all must pass):** `lint` · `format:check` · `validate:contract-drift` ·
+**Gates (all must pass):** `lint` · `format:check` · `typecheck` (`tsc --noEmit`, whole-tree, not
+diff-scoped — reads `tsconfig.json`'s own `include`/`exclude`) · `validate:contract-drift` ·
 `validate:schema-enums` · `validate:openapi-examples` · `validate:generated-client` ·
 `validate:committed-seed` · `npm run build` · committed-derived-artifact freshness (working tree clean
 under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA/CONTENT-derived artifacts
@@ -231,6 +233,7 @@ The gate's private scoring rubric/thresholds must **never** appear in this repo 
 | Validate a surface contribution _(new)_   | `npm run validate:surface -- registry/subnets/<slug>.json`                                                                                                                                                                                                  |
 | Public-safety scan                        | `npm run scan:public-safety`                                                                                                                                                                                                                                |
 | Code/schema: regenerate the contract      | `npm run build`                                                                                                                                                                                                                                             |
+| Code/schema: typecheck _(new)_            | `npm run typecheck` (`tsc --noEmit`; `src/`+`workers/`+`scripts/`+`tests/` are still mostly `.mjs` — see the TypeScript migration epic, metagraphed#7510)                                                                                                   |
 | Code/schema: validators                   | `npm run validate` · `validate:schemas` · `validate:api` · `validate:openapi` · `validate:types` · `validate:contract-drift` · `validate:mcp` · `validate:ai` · `validate:docs` · `validate:intake` · `validate:workflows`                                  |
 | Tests / coverage                          | `npm test` · `npm run test:coverage`                                                                                                                                                                                                                        |
 | Full local pipeline (after a clean build) | `npm run pipeline:check`                                                                                                                                                                                                                                    |

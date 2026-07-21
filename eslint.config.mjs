@@ -1,6 +1,39 @@
 import js from "@eslint/js";
+import tseslint from "typescript-eslint";
 
-export default [
+const runtimeGlobals = {
+  AbortController: "readonly",
+  AbortSignal: "readonly",
+  Blob: "readonly",
+  Buffer: "readonly",
+  CompressionStream: "readonly",
+  CountQueuingStrategy: "readonly",
+  Headers: "readonly",
+  ReadableStream: "readonly",
+  Request: "readonly",
+  Response: "readonly",
+  URL: "readonly",
+  URLSearchParams: "readonly",
+  atob: "readonly",
+  btoa: "readonly",
+  console: "readonly",
+  crypto: "readonly",
+  fetch: "readonly",
+  globalThis: "readonly",
+  performance: "readonly",
+  process: "readonly",
+  setTimeout: "readonly",
+  clearTimeout: "readonly",
+  setInterval: "readonly",
+  clearInterval: "readonly",
+  TextDecoder: "readonly",
+  TextEncoder: "readonly",
+  WebSocket: "readonly",
+  WebSocketPair: "readonly",
+  structuredClone: "readonly",
+};
+
+export default tseslint.config(
   {
     ignores: [
       "node_modules/**",
@@ -11,6 +44,12 @@ export default [
       // this repo's root config has no TSX/JSX parser wired in and would just
       // error on syntax it can't parse, not meaningfully lint it.
       "apps/ui/**",
+      // packages/ui-kit has its own eslint.config.js + tsconfig.json; packages/client
+      // has its own tsconfig.json. Linting either from here creates a multi-root
+      // tsconfig ambiguity for the TS parser (typescript-eslint can't tell which
+      // tsconfig.json is authoritative for a file under two candidate roots).
+      "packages/client/**",
+      "packages/ui-kit/**",
       "public/metagraph/**",
       "registry/candidates/generated/**",
       "registry/subnets/generated/**",
@@ -27,37 +66,7 @@ export default [
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
-      globals: {
-        AbortController: "readonly",
-        AbortSignal: "readonly",
-        Blob: "readonly",
-        Buffer: "readonly",
-        CompressionStream: "readonly",
-        CountQueuingStrategy: "readonly",
-        Headers: "readonly",
-        ReadableStream: "readonly",
-        Request: "readonly",
-        Response: "readonly",
-        URL: "readonly",
-        URLSearchParams: "readonly",
-        atob: "readonly",
-        btoa: "readonly",
-        console: "readonly",
-        crypto: "readonly",
-        fetch: "readonly",
-        globalThis: "readonly",
-        performance: "readonly",
-        process: "readonly",
-        setTimeout: "readonly",
-        clearTimeout: "readonly",
-        setInterval: "readonly",
-        clearInterval: "readonly",
-        TextDecoder: "readonly",
-        TextEncoder: "readonly",
-        WebSocket: "readonly",
-        WebSocketPair: "readonly",
-        structuredClone: "readonly",
-      },
+      globals: runtimeGlobals,
     },
     rules: {
       "no-unused-vars": [
@@ -66,4 +75,17 @@ export default [
       ],
     },
   },
-];
+  {
+    files: ["**/*.ts"],
+    extends: [tseslint.configs.recommended],
+    languageOptions: {
+      globals: runtimeGlobals,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
+);

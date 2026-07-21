@@ -9,7 +9,7 @@ import {
   metagraphedFetch,
   metagraphedPaginate,
   metagraphedRpc,
-} from "../generated/metagraphed-client";
+} from "../generated/metagraphed-client.js";
 
 function stubFetch(
   impl: (url: URL, init: RequestInit) => Promise<Response>,
@@ -207,7 +207,7 @@ describe("metagraphedRpc", () => {
 
 describe("createMetagraphedClient", () => {
   test("convenience methods build typed paths + queries", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn(async (_url: URL, _init?: RequestInit) =>
       jsonResponse({ ok: true, data: { netuid: 7 }, meta: {} }),
     );
     const client = createMetagraphedClient({
@@ -407,7 +407,9 @@ describe("createMetagraphedClient", () => {
       },
     ];
     let index = 0;
-    const fetchMock = vi.fn(async () => jsonResponse(pages[index++]));
+    const fetchMock = vi.fn(async (_url: URL, _init?: RequestInit) =>
+      jsonResponse(pages[index++]),
+    );
     const client = createMetagraphedClient({
       fetch: fetchMock as unknown as typeof fetch,
     });

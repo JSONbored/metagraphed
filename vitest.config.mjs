@@ -86,11 +86,15 @@ export default defineConfig({
       // listed file-by-file here rather than via `scripts/lib/**/*.mjs`: a future
       // module dropped into that directory without a dedicated test would
       // otherwise be auto-measured and trip the floors below.
+      // .{mjs,ts} everywhere below: the TypeScript migration (metagraphed#7510)
+      // converts these files to .ts in place over time, and a renamed file must
+      // stay measured -- an .mjs-only glob would silently drop it from coverage
+      // the moment it's renamed, rather than failing loud.
       include: [
-        "src/**/*.mjs",
-        "workers/**/*.mjs",
-        "scripts/{artifact-budgets,lib,openapi-components,registry-identity}.mjs",
-        "scripts/lib/{build-readiness,economics-artifacts,endpoint-artifacts,enrichment-queue-artifacts,formatting,readme-links}.mjs",
+        "src/**/*.{mjs,ts}",
+        "workers/**/*.{mjs,ts}",
+        "scripts/{artifact-budgets,lib,openapi-components,registry-identity}.{mjs,ts}",
+        "scripts/lib/{build-readiness,economics-artifacts,endpoint-artifacts,enrichment-queue-artifacts,formatting,readme-links}.{mjs,ts}",
       ],
       // The workers/*.sentry.mjs deploy-entry wrappers (metagraphed#6479;
       // currently data-api.sentry.mjs + registry-sync-api.sentry.mjs --
@@ -108,7 +112,7 @@ export default defineConfig({
       // it wraps (workers/data-api.mjs, workers/registry-sync-api.mjs) is
       // unaffected and stays fully covered as before -- these tests were
       // never routed through the wrapper.
-      exclude: ["workers/*.sentry.mjs"],
+      exclude: ["workers/*.sentry.{mjs,ts}"],
       // BACKSTOP floors only — NOT the primary gate. The real PR coverage gate is
       // Codecov (delta-based project + patch coverage, see codecov.yml). That
       // avoids the fixed-pin churn where every PR must match a near-peak absolute
