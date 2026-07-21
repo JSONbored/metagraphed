@@ -725,6 +725,38 @@ export interface LeaderboardRow {
 
 export type Leaderboards = Record<LeaderboardBoardKey, LeaderboardRow[]>;
 
+/**
+ * Within-domain emission-concentration metrics from /api/v1/domains — how
+ * concentrated a domain's emission is across its member subnets.
+ */
+export interface DomainConcentration {
+  holders?: number;
+  gini?: number;
+  hhi?: number;
+  hhi_normalized?: number;
+  nakamoto_coefficient?: number;
+  top_1pct_share?: number;
+  top_5pct_share?: number;
+  top_10pct_share?: number;
+  top_20pct_share?: number;
+  entropy?: number;
+  entropy_normalized?: number;
+}
+
+/**
+ * One capability-domain rollup from /api/v1/domains: a domain/capability tag in
+ * the 14-tag taxonomy with its member subnets, total stake, emission share, and
+ * within-domain emission concentration.
+ */
+export interface Domain {
+  domain: string;
+  subnet_count: number;
+  netuids: number[];
+  total_stake_tao?: number;
+  total_emission_share?: number;
+  emission_concentration?: DomainConcentration;
+}
+
 /** Result of an on-demand re-probe via /api/v1/surfaces/{id}/verify. */
 export interface VerifyResult {
   status?: HealthState | string;

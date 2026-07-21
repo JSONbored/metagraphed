@@ -156,6 +156,8 @@ import type {
   HealthTrends,
   HealthTrendSurface,
   HealthTrendWindow,
+  Domain,
+  DomainConcentration,
   LeaderboardBoardKey,
   LeaderboardRow,
   Leaderboards,
@@ -912,6 +914,62 @@ export const leaderboardsQuery = () =>
         signal,
       });
       return { data: normalizeLeaderboards(res.data?.boards), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #6996: per-domain rollup over the 14-tag capability taxonomy from
+// /api/v1/domains — member subnets, total stake/emission, and within-domain
+// emission concentration. Every numeric cell coerces defensively so a cold
+// store never produces NaN in the UI.
+function normalizeDomainConcentration(raw: unknown): DomainConcentration | undefined {
+  if (!isRecord(raw)) return undefined;
+  const num = (v: unknown) => coerceFiniteNumber(v) ?? undefined;
+  return {
+    holders: num(raw.holders),
+    gini: num(raw.gini),
+    hhi: num(raw.hhi),
+    hhi_normalized: num(raw.hhi_normalized),
+    nakamoto_coefficient: num(raw.nakamoto_coefficient),
+    top_1pct_share: num(raw.top_1pct_share),
+    top_5pct_share: num(raw.top_5pct_share),
+    top_10pct_share: num(raw.top_10pct_share),
+    top_20pct_share: num(raw.top_20pct_share),
+    entropy: num(raw.entropy),
+    entropy_normalized: num(raw.entropy_normalized),
+  };
+}
+
+export function normalizeDomains(raw: unknown): Domain[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : isRecord(raw) && Array.isArray(raw.domains)
+      ? raw.domains
+      : [];
+  return list.flatMap((row) => {
+    if (!isRecord(row) || typeof row.domain !== "string") return [];
+    const netuids = Array.isArray(row.netuids)
+      ? row.netuids.filter((n): n is number => typeof n === "number" && Number.isFinite(n))
+      : [];
+    return [
+      {
+        domain: row.domain,
+        subnet_count: coerceFiniteNumber(row.subnet_count) ?? netuids.length,
+        netuids,
+        total_stake_tao: coerceFiniteNumber(row.total_stake_tao) ?? undefined,
+        total_emission_share: coerceFiniteNumber(row.total_emission_share) ?? undefined,
+        emission_concentration: normalizeDomainConcentration(row.emission_concentration),
+      },
+    ];
+  });
+}
+
+export const domainsQuery = () =>
+  queryOptions({
+    queryKey: k("domains"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ domains?: unknown }>("/api/v1/domains", { signal });
+      return { data: normalizeDomains(res.data?.domains), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });
