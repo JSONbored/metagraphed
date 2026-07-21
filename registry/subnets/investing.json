@@ -210,12 +210,12 @@
       "id": "sn-88-investing-dist-api",
       "kind": "subnet-api",
       "name": "Investing distribution API",
-      "notes": "Public no-auth GET /dist on api.investing88.ai returning JSON per-miner asset-distribution weight records (hotkey SS58 address plus a series of numeric allocation values). The official Investing/core/api.py client fetches this endpoint via API_ROOT; const.py pins API_ROOT to api.investing88.ai. Same host as the existing days/ratio/assets surfaces.",
+      "notes": "Public no-auth GET /dist on api.investing88.ai returning JSON per-miner asset-distribution weight records (hotkey SS58 address plus a series of numeric allocation values). The official Investing/core/api.py client fetches this endpoint via API_ROOT; const.py pins API_ROOT to api.investing88.ai. Same host as the existing days/ratio/assets surfaces. Verified live end-to-end via call_subnet_surface: an unauthenticated GET returns HTTP 200 JSON, but the endpoint computes the full per-miner distribution server-side and does not emit response headers until ~16s (measured TTFB 15.5-15.8s), so the prior 10s probe timeout aborted the call before the body arrived; timeout raised to the 30s schema max so the surface is reliably callable.",
       "probe": {
         "enabled": true,
         "expect": "json",
         "method": "GET",
-        "timeout_ms": 10000
+        "timeout_ms": 30000
       },
       "provider": "mobiusfund",
       "public_safe": true,
