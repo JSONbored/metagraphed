@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 556,
+  "surface_count": 557,
   "surfaces": [
     {
       "auth_required": false,
@@ -6444,7 +6444,7 @@
       "kind": "subnet-api",
       "netuid": 74,
       "probe": {
-        "expect": "any",
+        "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
       },
@@ -8669,6 +8669,24 @@
       "surface_id": "sn-104-taomarketcap-subnet-snapshot",
       "surface_key": "srf-784573d5ed376328",
       "url": "https://api.taomarketcap.com/public/v1/subnets/104/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 105,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "subnet_name": "Beam",
+      "subnet_slug": "sn-105",
+      "surface_id": "sn-105-beam-health",
+      "surface_key": "srf-bf31a29ee0fe8bc6",
+      "url": "https://beamcore.b1m.ai/health"
     },
     {
       "auth_required": false,
