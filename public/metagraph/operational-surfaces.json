@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 569,
+  "surface_count": 582,
   "surfaces": [
     {
       "auth_required": false,
@@ -353,6 +353,24 @@
       "surface_id": "sn-3-templar-min-compute-spec",
       "surface_key": "srf-3c91dc30d6e9ffef",
       "url": "https://raw.githubusercontent.com/one-covenant/templar/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 4,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
+      "public_safe": true,
+      "subnet_name": "Targon",
+      "subnet_slug": "sn-4",
+      "surface_id": "sn-4-targon-healthz-api",
+      "surface_key": "srf-eecabd53d1e3682d",
+      "url": "https://api.targon.com/tha/v2/healthz"
     },
     {
       "auth_required": false,
@@ -1073,6 +1091,60 @@
       "surface_id": "sn-11-trajectoryrl-subnet-api",
       "surface_key": "srf-fb2d84726c2ab7c6",
       "url": "https://trajrl.com/api/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 12,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
+      "public_safe": true,
+      "subnet_name": "Compute Horde",
+      "subnet_slug": "sn-12",
+      "surface_id": "sn-12-compute-horde-grafana-dashboard-subnet",
+      "surface_key": "srf-43adf78e67118ec4",
+      "url": "https://grafana.bittensor.church/api/dashboards/uid/subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 12,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
+      "public_safe": true,
+      "subnet_name": "Compute Horde",
+      "subnet_slug": "sn-12",
+      "surface_id": "sn-12-compute-horde-grafana-org",
+      "surface_key": "srf-90d65d4b51e9a7c3",
+      "url": "https://grafana.bittensor.church/api/org"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 12,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
+      "public_safe": true,
+      "subnet_name": "Compute Horde",
+      "subnet_slug": "sn-12",
+      "surface_id": "sn-12-compute-horde-grafana-search",
+      "surface_key": "srf-a16edf62c329cdee",
+      "url": "https://grafana.bittensor.church/api/search"
     },
     {
       "auth_required": false,
@@ -3380,6 +3452,60 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-events",
+      "surface_key": "srf-dfc56da9b8e7ff15",
+      "url": "https://api.alpharidge.ai/dashboard/events"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-events-trending",
+      "surface_key": "srf-71a0ad4289251d81",
+      "url": "https://api.alpharidge.ai/dashboard/events/trending"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-miner-dispatch",
+      "surface_key": "srf-0cfd5ed6c11caade",
+      "url": "https://api.alpharidge.ai/dashboard/miner-dispatch"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 45,
@@ -3395,6 +3521,42 @@
       "surface_id": "sn-45-alpharidge-dashboard-miners",
       "surface_key": "srf-9f742042649fdc01",
       "url": "https://api.alpharidge.ai/dashboard/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-narratives",
+      "surface_key": "srf-857f3e32dda4ebe9",
+      "url": "https://api.alpharidge.ai/dashboard/narratives"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 45,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "subnet_name": "AlphaRidge.ai",
+      "subnet_slug": "sn-45",
+      "surface_id": "sn-45-alpharidge-dashboard-narratives-trending",
+      "surface_key": "srf-16c26e1a9a0777c4",
+      "url": "https://api.alpharidge.ai/dashboard/narratives/trending"
     },
     {
       "auth_required": false,
@@ -5105,6 +5267,42 @@
       "surface_id": "sn-62-ridges-problem-statistics",
       "surface_key": "srf-f1a13a9bc01b7934",
       "url": "https://agent-upload.ridges.ai/statistics/problem-statistics"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-scoring-screener-info",
+      "surface_key": "srf-7b04619900089bca",
+      "url": "https://agent-upload.ridges.ai/scoring/screener-info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 62,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-scoring-weights",
+      "surface_key": "srf-0a256cdcf9b29dbc",
+      "url": "https://agent-upload.ridges.ai/scoring/weights"
     },
     {
       "auth_required": false,
@@ -7288,6 +7486,24 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 90,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
+      "public_safe": true,
+      "subnet_name": "DegenBrain",
+      "subnet_slug": "sn-90",
+      "surface_id": "sn-90-degenbrain-test-next-chunk",
+      "surface_key": "srf-778baba2e90c2bca",
+      "url": "https://api.subnet90.com/api/test/next-chunk?validator_id=test"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 91,
       "probe": {
         "expect": "json",
@@ -8453,6 +8669,24 @@
       "surface_id": "sn-100-platform-network-subnet-api",
       "surface_key": "srf-196044ef4420d344",
       "url": "https://chain.joinbase.ai/v1/registry"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 100,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "subnet_name": "Plaτform",
+      "subnet_slug": "sn-100",
+      "surface_id": "sn-100-platform-v1-weights-latest",
+      "surface_key": "srf-d52f4b24f9a4160f",
+      "url": "https://chain.joinbase.ai/v1/weights/latest"
     },
     {
       "auth_required": false,

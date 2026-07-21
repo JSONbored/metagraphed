@@ -185,6 +185,348 @@
       },
       "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
       "url": "https://api.numinouslabs.io/api/v1/benchmarks/baseline"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-aggregated-scores",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 aggregated scores",
+      "notes": "GET /api/v1/aggregated-scores on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Required query: miner_uid, miner_hotkey. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/aggregated-scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey predictions active",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/predictions/active on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21 with a placeholder value: HTTP 200 or a clean validation error (e.g. UUID-parsing 422), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/miners/%7Bminer_uid%7D/%7Bminer_hotkey%7D/predictions/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-agents-versionid-code",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 agents by version_id code",
+      "notes": "GET /api/v1/agents/{version_id}/code on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21 with a placeholder value: HTTP 200 or a clean validation error (e.g. UUID-parsing 422), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/agents/%7Bversion_id%7D/code"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-agents",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey agents",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/agents on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Not individually curled — same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/miners/%7Bminer_uid%7D/%7Bminer_hotkey%7D/agents"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-agents-versionid-code",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey agents by version_id code",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/agents/{version_id}/code on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Not individually curled — same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/miners/%7Bminer_uid%7D/%7Bminer_hotkey%7D/agents/%7Bversion_id%7D/code"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-historical-ranking",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey historical ranking",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/historical-ranking on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Not individually curled — same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/miners/%7Bminer_uid%7D/%7Bminer_hotkey%7D/historical-ranking"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-runs-eventid",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey runs by event_id",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/runs/{event_id} on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Not individually curled — same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/miners/%7Bminer_uid%7D/%7Bminer_hotkey%7D/runs/%7Bevent_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-runs-runid-logs",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey runs by run_id logs",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/runs/{run_id}/logs on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Not individually curled — same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/miners/%7Bminer_uid%7D/%7Bminer_hotkey%7D/runs/%7Brun_id%7D/logs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-miner-reasonings",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 miner reasonings",
+      "notes": "GET /api/v1/miner-reasonings on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Required query: miner_uid, miner_hotkey, event_id. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/miner-reasonings"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI schema (security declared per-operation); exact header/token format not documented beyond the schema's boolean security flag."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-forecasters-predictions",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 forecasters predictions",
+      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) GET /api/v1/forecasters/predictions on api.numinouslabs.io. Required query: forecaster_name. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Unauthorized\"}. Path/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7022) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/forecasters/predictions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-forecasters-prediction-jobs-predictionid",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 forecasters prediction jobs by prediction_id",
+      "notes": "GET /api/v1/forecasters/prediction-jobs/{prediction_id} on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21 with a placeholder value: HTTP 200 or a clean validation error (e.g. UUID-parsing 422), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/forecasters/prediction-jobs/%7Bprediction_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI schema (security declared per-operation); exact header/token format not documented beyond the schema's boolean security flag."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-internal-liveuamap-events",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 internal liveuamap events",
+      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) GET /api/v1/internal/liveuamap/events on api.numinouslabs.io. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Unauthorized\"}. Path/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7022) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/internal/liveuamap/events"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI schema (security declared per-operation); exact header/token format not documented beyond the schema's boolean security flag."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-internal-liveuamap-regions",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 internal liveuamap regions",
+      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) GET /api/v1/internal/liveuamap/regions on api.numinouslabs.io. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Unauthorized\"}. Path/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7022) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/internal/liveuamap/regions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-causal-drivers",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 causal drivers",
+      "notes": "GET /api/v1/causal-drivers/ on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Required query: question. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/causal-drivers/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-api-v1-deep-research",
+      "kind": "subnet-api",
+      "name": "Numinous GET api v1 deep research",
+      "notes": "GET /api/v1/deep-research/ on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Required query: question. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/deep-research/"
     }
   ],
   "website_url": "https://numinouslabs.io/"
