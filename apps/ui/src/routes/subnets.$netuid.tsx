@@ -15,6 +15,9 @@ import {
   Activity,
   ChevronDown,
   Filter,
+  Layers,
+  Coins,
+  UserMinus,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton, RECOVERY } from "@/components/metagraphed/states";
@@ -78,6 +81,8 @@ import {
   subnetHyperparamsHistoryQuery,
   subnetAlphaVolumeQuery,
   subnetStakeQuoteQuery,
+  subnetEventSummaryQuery,
+  subnetAxonRemovalsQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { rovingTabIndex, useRovingTablist } from "@/hooks/use-roving-tablist";
@@ -1036,6 +1041,7 @@ function ActivityPanel({ netuid }: { netuid: number }) {
         />
       }
     >
+      <ActivityEventRollup netuid={netuid} />
       <StakeFlowScorecard netuid={netuid} />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-32 w-full" />}>
@@ -1043,6 +1049,64 @@ function ActivityPanel({ netuid }: { netuid: number }) {
         </Suspense>
       </QueryErrorBoundary>
     </SectionAnchor>
+  );
+}
+
+// #7000: windowed rollup complementing the raw per-event Activity table below —
+// total events / distinct kinds & categories / TAO+alpha moved (from
+// subnetEventSummaryQuery's per-category breakdown) plus an axon-removals
+// glance (from subnetAxonRemovalsQuery), so a visitor doesn't have to tally the
+// raw event log by hand. Both queries already exist for other surfaces; this is
+// the first place either is actually rendered.
+const TOP_CATEGORY_COUNT = 3;
+
+function ActivityEventRollup({ netuid }: { netuid: number }) {
+  const { data: summaryRes } = useQuery(subnetEventSummaryQuery(netuid));
+  const { data: axonRes } = useQuery(subnetAxonRemovalsQuery(netuid));
+  const summary = summaryRes?.data;
+  const axon = axonRes?.data;
+  if (!summary && !axon) return null;
+
+  const categories = summary?.categories ?? [];
+  const topCategories = [...categories]
+    .sort((a, b) => b.event_count - a.event_count)
+    .slice(0, TOP_CATEGORY_COUNT)
+    .map((c) => c.category)
+    .join(", ");
+  const totalTao = categories.reduce((sum, c) => sum + c.amount_tao, 0);
+  const totalAlpha = categories.reduce((sum, c) => sum + c.alpha_amount, 0);
+
+  return (
+    <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <StatTile
+        icon={Activity}
+        eyebrow="Events"
+        value={formatNumber(summary?.total_events ?? 0)}
+        hint={summary ? `over ${summary.window}` : "—"}
+        tooltip="Total decoded chain events for this subnet in the window."
+      />
+      <StatTile
+        icon={Layers}
+        eyebrow="Kinds / categories"
+        value={`${formatNumber(summary?.kind_count ?? 0)} / ${formatNumber(summary?.category_count ?? 0)}`}
+        hint={topCategories || "—"}
+        tooltip="Distinct event kinds and categories seen, with the top categories by volume."
+      />
+      <StatTile
+        icon={Coins}
+        eyebrow="TAO / alpha moved"
+        value={`${taoCompact(totalTao)} τ`}
+        hint={`${taoCompact(totalAlpha)} α`}
+        tooltip="Summed TAO and alpha amounts across all categorized events in the window."
+      />
+      <StatTile
+        icon={UserMinus}
+        eyebrow="Axon removals"
+        value={formatNumber(axon?.removals ?? 0)}
+        hint={axon ? `${formatNumber(axon.distinct_removers)} removers · ${axon.window}` : "—"}
+        tooltip="AxonInfoRemoved events and distinct removing hotkeys over the window."
+      />
+    </div>
   );
 }
 
