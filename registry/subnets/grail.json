@@ -96,7 +96,13 @@
       "id": "sn-81-grail-health",
       "kind": "subnet-api",
       "name": "Grail Grafana health",
-      "notes": "Public no-auth GET /api/health on grail-grafana.tplr.ai returning application liveness JSON. Served on the Grail Grafana host registered as a dashboard surface and linked from the Grail source repository README.",
+      "notes": "Public no-auth GET /api/health on grail-grafana.tplr.ai returning application liveness JSON. Served on the Grail Grafana host registered as a dashboard surface and linked from the Grail source repository README. Live-verified 2026-07-21: GET https://grail-grafana.tplr.ai/api/health returned HTTP 200 application/json {\"database\":\"ok\"}. Added missing probe (GET, expect: json) for MCP execute / health monitoring (#7094).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "one-covenant",
       "public_safe": true,
       "review": {
@@ -152,7 +158,7 @@
       "id": "sn-81-grail-grafana-openapi",
       "kind": "openapi",
       "name": "Grail Grafana HTTP API OpenAPI",
-      "notes": "Public no-auth OpenAPI 3 schema (title \"Grafana HTTP API.\") served at grail-grafana.tplr.ai/public/openapi3.json — the same host already registered as this file's dashboard and subnet-api (health) surfaces. Same operator (one-covenant / tplr.ai) and identical publish convention already accepted for the sibling Templar (SN3) subnet's Grafana OpenAPI surface (grafana.tplr.ai/public/openapi3.json).",
+      "notes": "Public no-auth OpenAPI 3 schema (title \"Grafana HTTP API.\") served at grail-grafana.tplr.ai/public/openapi3.json — the same host already registered as this file's dashboard and subnet-api (health) surfaces. Same operator (one-covenant / tplr.ai) and identical publish convention already accepted for the sibling Templar (SN3) subnet's Grafana OpenAPI surface (grafana.tplr.ai/public/openapi3.json). Live-verified 2026-07-21: GET https://grail-grafana.tplr.ai/public/openapi3.json returned HTTP 200 application/json OpenAPI 3.0.3 (~733 KB; exceeds call_subnet_surface MAX_RESPONSE_BYTES 256 KiB, so a live tool call truncates), info.title \"Grafana HTTP API.\", version 0.0.1.",
       "probe": {
         "enabled": true,
         "expect": "json",
