@@ -307,7 +307,7 @@ import {
   buildStakeFlow,
 } from "./stake-flow.mjs";
 import { buildAccountPortfolio } from "./account-portfolio.ts";
-import { buildAccountPositions } from "./account-nominator-positions.mjs";
+import { buildAccountPositions } from "./account-nominator-positions.ts";
 import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,

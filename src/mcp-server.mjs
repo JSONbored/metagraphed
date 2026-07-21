@@ -505,7 +505,7 @@ import {
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
 } from "./subnet-deregistrations.mjs";
 import { buildAccountPortfolio } from "./account-portfolio.ts";
-import { buildAccountPositions } from "./account-nominator-positions.mjs";
+import { buildAccountPositions } from "./account-nominator-positions.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,

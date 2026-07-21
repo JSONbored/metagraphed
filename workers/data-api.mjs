@@ -347,7 +347,7 @@ import {
   buildAccountPositions,
   distinctHotkeys,
   stakeByHotkeyNetuid,
-} from "../src/account-nominator-positions.mjs";
+} from "../src/account-nominator-positions.ts";
 import {
   identityHash,
   buildAccountIdentityHistory,
