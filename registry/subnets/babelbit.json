@@ -182,6 +182,369 @@
       "public_safe": true,
       "source_urls": ["https://api.babelbit.ai/openapi.json"],
       "url": "https://api.babelbit.ai/debug/network"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-59-babelbit-auth",
+      "kind": "subnet-api",
+      "name": "Babelbit auth",
+      "notes": "Authenticate operation on the Babelbit API (POST /auth), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/auth"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-59-babelbit-auth-verify",
+      "kind": "subnet-api",
+      "name": "Babelbit auth verify",
+      "notes": "Verify Authentication operation on the Babelbit API (POST /auth/verify), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/auth/verify"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-challenge",
+      "kind": "subnet-api",
+      "name": "Babelbit challenge",
+      "notes": "Get Active Challenge View operation on the Babelbit API (GET /challenge), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/challenge"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-challenge-challenge-uid-n-utterances",
+      "kind": "subnet-api",
+      "name": "Babelbit challenge challenge uid n utterances",
+      "notes": "Get Challenge Utterance Count operation on the Babelbit API (GET /challenge/{challenge_uid}/n_utterances), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {challenge_uid}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/challenge/%7Bchallenge_uid%7D/n_utterances"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-solo-next",
+      "kind": "subnet-api",
+      "name": "Babelbit solo next",
+      "notes": "Next Solo Audio Utterance operation on the Babelbit API (POST /solo/next), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/solo/next"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-solo-session-session-id",
+      "kind": "subnet-api",
+      "name": "Babelbit solo session session id",
+      "notes": "Delete Solo Session operation on the Babelbit API (DELETE /solo/session/{session_id}), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Path-parameterized on {session_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/solo/session/%7Bsession_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-solo-sessions",
+      "kind": "subnet-api",
+      "name": "Babelbit solo sessions",
+      "notes": "List Solo Sessions operation on the Babelbit API (GET /solo/sessions), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/solo/sessions"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-solo-start",
+      "kind": "subnet-api",
+      "name": "Babelbit solo start",
+      "notes": "Start Solo Session operation on the Babelbit API (GET /solo/start), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/solo/start"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-source-audio-next",
+      "kind": "subnet-api",
+      "name": "Babelbit source audio next",
+      "notes": "Next Source Audio Utterance operation on the Babelbit API (POST /source-audio/next), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/source-audio/next"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-source-audio-start",
+      "kind": "subnet-api",
+      "name": "Babelbit source audio start",
+      "notes": "Start Source Audio Session operation on the Babelbit API (POST /source-audio/start), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/source-audio/start"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-target-audio-next",
+      "kind": "subnet-api",
+      "name": "Babelbit target audio next",
+      "notes": "Next Target Audio Utterance operation on the Babelbit API (POST /target-audio/next), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/target-audio/next"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-target-audio-start",
+      "kind": "subnet-api",
+      "name": "Babelbit target audio start",
+      "notes": "Start Target Audio Session operation on the Babelbit API (POST /target-audio/start), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/target-audio/start"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-59-babelbit-transcription",
+      "kind": "subnet-api",
+      "name": "Babelbit transcription",
+      "notes": "Get Active Challenge Transcription View operation on the Babelbit API (GET /transcription), declared in the subnet's own OpenAPI spec at https://api.babelbit.ai/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.babelbit.ai/openapi.json"],
+      "url": "https://api.babelbit.ai/transcription"
     }
   ],
   "website_url": "https://babelbit.ai/"
