@@ -86,7 +86,7 @@ export const CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE = 10;
 // #4984 AlerterHub singleton's own /evaluate call (see below), independent
 // of whatever AlerterHub's own internal timeouts add up to (a worst-case
 // ~4s trigger-cache refresh plus an ~8s-per-batch bounded-concurrency
-// delivery fan-out -- workers/alerter-hub.mjs's ALERT_TRIGGER_REFRESH_TIMEOUT_MS
+// delivery fan-out -- workers/alerter-hub.ts's ALERT_TRIGGER_REFRESH_TIMEOUT_MS
 // and ALERT_DELIVERY_TIMEOUT_MS). Generous enough not to truncate a normal
 // evaluate() cycle, but a real ceiling so a slow/stuck evaluator can no
 // longer stall handleIngest()'s response to the box-side relay indefinitely.

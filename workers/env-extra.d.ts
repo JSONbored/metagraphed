@@ -18,8 +18,12 @@
 // alphabetized; don't add a field speculatively for something not yet read
 // anywhere.
 interface Env {
+  ALERT_TRIGGERS_INTERNAL_TOKEN?: string;
   METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
   METAGRAPH_D1_TIMEOUT_MS?: string;
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;
   METAGRAPH_R2_TIMEOUT_MS?: string;
+  RESEND_API_KEY?: string;
+  RESEND_FROM_ADDRESS?: string;
+  TELEGRAM_BOT_TOKEN?: string;
 }

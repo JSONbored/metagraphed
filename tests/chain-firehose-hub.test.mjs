@@ -1676,7 +1676,7 @@ test("broadcast: the ALERTER_HUB ping carries a bounded AbortSignal, so a slow/s
 });
 
 test("ALERTER_HUB_EVALUATE_TIMEOUT_MS is generous enough to cover AlerterHub's own worst-case refresh+delivery cycle", () => {
-  // Documents the reasoning, not just the number: workers/alerter-hub.mjs's
+  // Documents the reasoning, not just the number: workers/alerter-hub.ts's
   // own ALERT_TRIGGER_REFRESH_TIMEOUT_MS (4000) plus ALERT_DELIVERY_TIMEOUT_MS
   // (8000, but bounded-concurrency so one slow batch, not summed across every
   // match) should together stay comfortably under this ceiling.
