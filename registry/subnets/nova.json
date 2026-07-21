@@ -234,6 +234,175 @@
         "https://github.com/metanova-labs/nova"
       ],
       "url": "https://raw.githubusercontent.com/metanova-labs/nova/f7a313bc7d17bbd64b42c670c5c04a62d9b4599d/config/config.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-68-nova-molecule-target",
+      "kind": "subnet-api",
+      "name": "NOVA molecule target by name and epoch",
+      "notes": "Public no-auth GET /api/v1/molecule-targets/{name}/{epoch} on vali-score-share-api.metanova-labs.ai returning per-target averages for one molecule submission. Documented in the subnet OpenAPI; sibling of /api/v1/molecules. Path-parameterized template (percent-encoded braces for URI-format compliance). probe.enabled:false because name/epoch pairs rotate. Live-verified 2026-07-21 against a real molecule from /api/v1/molecules -> 200 JSON.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://vali-score-share-api.metanova-labs.ai/openapi.json",
+        "https://vali-score-share-api.metanova-labs.ai/api/v1/molecules"
+      ],
+      "url": "https://vali-score-share-api.metanova-labs.ai/api/v1/molecule-targets/%7Bname%7D/%7Bepoch%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "X-API-Key",
+        "scopes_note": "Required X-API-Key header parameter declared on this operation in the subnet OpenAPI schema (vali-score-share-api.metanova-labs.ai/openapi.json); anonymous calls return HTTP 422 missing header."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-68-nova-molecule-target-validations",
+      "kind": "subnet-api",
+      "name": "NOVA molecule target validations",
+      "notes": "Auth-gated GET /api/v1/molecule-targets/{name}/{epoch}/validations on vali-score-share-api.metanova-labs.ai. OpenAPI declares a required X-API-Key header (no security block). Path-parameterized template; probe.enabled:false. Live-verified 2026-07-21: anonymous GET -> 422 missing X-API-Key.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://vali-score-share-api.metanova-labs.ai/openapi.json"
+      ],
+      "url": "https://vali-score-share-api.metanova-labs.ai/api/v1/molecule-targets/%7Bname%7D/%7Bepoch%7D/validations"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-68-nova-nanobody",
+      "kind": "subnet-api",
+      "name": "NOVA nanobody by hash and epoch",
+      "notes": "Public no-auth GET /api/v1/nanobodies/{sequence_hash}/{epoch} on vali-score-share-api.metanova-labs.ai. Documented in the subnet OpenAPI. Path-parameterized template; probe.enabled:false (no stable canonical hash/epoch). Live-verified 2026-07-21: unknown hash -> 404 No nanobody validations found (route live).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://vali-score-share-api.metanova-labs.ai/openapi.json"
+      ],
+      "url": "https://vali-score-share-api.metanova-labs.ai/api/v1/nanobodies/%7Bsequence_hash%7D/%7Bepoch%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "X-API-Key",
+        "scopes_note": "Required X-API-Key header parameter declared on this operation in the subnet OpenAPI schema (vali-score-share-api.metanova-labs.ai/openapi.json); anonymous calls return HTTP 422 missing header."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-68-nova-nanobody-validations",
+      "kind": "subnet-api",
+      "name": "NOVA nanobody validations",
+      "notes": "Auth-gated GET /api/v1/nanobodies/{sequence_hash}/{epoch}/validations on vali-score-share-api.metanova-labs.ai. OpenAPI declares a required X-API-Key header. Path-parameterized template; probe.enabled:false. Live-verified 2026-07-21: anonymous GET -> 422 missing X-API-Key.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://vali-score-share-api.metanova-labs.ai/openapi.json"
+      ],
+      "url": "https://vali-score-share-api.metanova-labs.ai/api/v1/nanobodies/%7Bsequence_hash%7D/%7Bepoch%7D/validations"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "X-API-Key",
+        "scopes_note": "Required X-API-Key header parameter declared on this operation in the subnet OpenAPI schema (vali-score-share-api.metanova-labs.ai/openapi.json); anonymous calls return HTTP 422 missing header."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-68-nova-job",
+      "kind": "subnet-api",
+      "name": "NOVA job by id",
+      "notes": "Auth-gated GET /api/v1/jobs/{job_id} on vali-score-share-api.metanova-labs.ai. OpenAPI declares a required X-API-Key header. Path-parameterized template; probe.enabled:false. Live-verified 2026-07-21: anonymous GET with non-int id -> 422 missing X-API-Key (and int_parsing on path), confirming the route is live and gated.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://vali-score-share-api.metanova-labs.ai/openapi.json"
+      ],
+      "url": "https://vali-score-share-api.metanova-labs.ai/api/v1/jobs/%7Bjob_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "X-API-Key",
+        "scopes_note": "Required X-API-Key header parameter declared on this operation in the subnet OpenAPI schema (vali-score-share-api.metanova-labs.ai/openapi.json); anonymous calls return HTTP 422 missing header."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-68-nova-validations-batch",
+      "kind": "subnet-api",
+      "name": "NOVA batch validations submit",
+      "notes": "Auth-gated POST /api/v1/validations/batch on vali-score-share-api.metanova-labs.ai for creating molecule/nanobody validations in batch. OpenAPI declares a required X-API-Key header (no security block). probe.enabled:false (write + auth-gated). Live-verified 2026-07-21: anonymous POST {} -> 422 missing X-API-Key.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://vali-score-share-api.metanova-labs.ai/openapi.json"
+      ],
+      "url": "https://vali-score-share-api.metanova-labs.ai/api/v1/validations/batch"
     }
   ],
   "source_repo": "https://github.com/metanova-labs/nova",
