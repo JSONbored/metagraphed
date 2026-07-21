@@ -155,9 +155,7 @@ export default {
     )
       ? body.prune_surfaces
       : [];
-    const deleteSubnets: DeleteSubnetRow[] = Array.isArray(
-      body?.delete_subnets,
-    )
+    const deleteSubnets: DeleteSubnetRow[] = Array.isArray(body?.delete_subnets)
       ? body.delete_subnets
       : [];
     const rowGroups: Array<[string, unknown[]]> = [

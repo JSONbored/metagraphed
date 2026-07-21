@@ -206,7 +206,9 @@ export class AlerterHub implements DurableObject {
   constructor(
     state: DurableObjectState,
     env: Env,
-    { deliver = deliverAlertMatch }: { deliver?: typeof deliverAlertMatch } = {},
+    {
+      deliver = deliverAlertMatch,
+    }: { deliver?: typeof deliverAlertMatch } = {},
   ) {
     this.state = state;
     this.env = env;

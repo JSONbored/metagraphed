@@ -147,7 +147,8 @@ export class McpSessionHub implements DurableObject {
       (stored.get("subscribedUris") as string[] | undefined) || [],
     );
     this.sequence = (stored.get("sequence") as number | undefined) || 0;
-    this.terminated = (stored.get("terminated") as boolean | undefined) || false;
+    this.terminated =
+      (stored.get("terminated") as boolean | undefined) || false;
     this.hydrated = true;
   }
 

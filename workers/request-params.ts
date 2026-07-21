@@ -46,7 +46,10 @@ export interface ParamError {
 // [MIN_LIMIT, maxLimit], falling back to defaultLimit when absent/blank/non-finite.
 export function clampLimit(
   raw: string | number | null | undefined,
-  { defaultLimit = DEFAULT_LIMIT, maxLimit = MAX_LIMIT }: PaginationProfile = {},
+  {
+    defaultLimit = DEFAULT_LIMIT,
+    maxLimit = MAX_LIMIT,
+  }: PaginationProfile = {},
 ): number {
   return clampInt(raw, defaultLimit, MIN_LIMIT, maxLimit);
 }

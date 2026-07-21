@@ -238,9 +238,7 @@ export class SubnetStatusHub implements DurableObject {
     const list = Array.isArray(netuids)
       ? [
           ...new Set(
-            netuids.filter(
-              (n): n is number => Number.isInteger(n) && n >= 0,
-            ),
+            netuids.filter((n): n is number => Number.isInteger(n) && n >= 0),
           ),
         ]
       : [];

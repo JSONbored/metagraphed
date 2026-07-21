@@ -50,6 +50,12 @@ export default tseslint.config(
       // tsconfig.json is authoritative for a file under two candidate roots).
       "packages/client/**",
       "packages/ui-kit/**",
+      // wrangler-generated Env/runtime types (npm run types:workers) -- never
+      // hand-edited; wrangler's own codegen ships its own eslint-disable
+      // comments that this repo's config doesn't need to weigh in on.
+      "workers/worker-configuration.d.ts",
+      "workers/data-api.worker-configuration.d.ts",
+      "workers/registry-sync-api.worker-configuration.d.ts",
       "public/metagraph/**",
       "registry/candidates/generated/**",
       "registry/subnets/generated/**",

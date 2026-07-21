@@ -269,9 +269,7 @@ function filterRows(
           const fieldValue = row[field];
           return (
             Array.isArray(fieldValue) &&
-            fieldValue
-              .map((v) => String(v).toLowerCase())
-              .includes(expectedCi)
+            fieldValue.map((v) => String(v).toLowerCase()).includes(expectedCi)
           );
         });
       }
