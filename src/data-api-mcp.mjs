@@ -180,3 +180,38 @@ export async function loadChainEventsFeed(
     events: Array.isArray(data?.events) ? data.events : [],
   };
 }
+
+// The optional `blocks` window for get_chain_activity / Query.chain_events_stats:
+// a missing value defaults to 1000; a provided value must be a positive integer
+// and is clamped to the data Worker's 1-5000 bound so a stray large value is
+// silently capped (the data Worker clamps too, but capping here keeps the
+// request URL honest). Shared so MCP and GraphQL apply the same contract.
+export function optionalBlocksWindow(args) {
+  const value = args?.blocks;
+  if (value === undefined || value === null) return 1000;
+  if (!Number.isInteger(value) || value < 1) {
+    throwToolError(
+      "invalid_params",
+      "Argument `blocks` must be a positive integer.",
+    );
+  }
+  return Math.min(value, 5000);
+}
+
+// Chain-activity aggregate (pallet.method event distribution) over the most
+// recent N blocks, from the Postgres-backed all-events tier. That tier lives in
+// the dedicated data Worker (ADR 0013) so the postgres.js driver stays out of
+// the main Worker bundle; callers reach it through the DATA_API service
+// binding, the same binding the REST proxy uses for /api/v1/chain-events/stats.
+// Shared by MCP get_chain_activity and GraphQL Query.chain_events_stats (#7432).
+export async function loadChainActivity(ctx, blocks) {
+  const data = await dataApiFetchJson(
+    ctx,
+    `/api/v1/chain-events/stats?blocks=${blocks}`,
+  );
+  return {
+    window_blocks: data?.window_blocks ?? blocks,
+    groups: data?.groups ?? 0,
+    activity: Array.isArray(data?.activity) ? data.activity : [],
+  };
+}

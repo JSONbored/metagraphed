@@ -19,7 +19,15 @@ import { loadEvidenceList } from "./evidence-mcp.mjs";
 // #7171: GraphQL parity for GET /api/v1/chain-events (paginated Query feed),
 // reusing loadChainEventsFeed that MCP list_chain_events already calls.
 // Distinct from Subscription.chainEvents (live WebSocket firehose).
-import { loadChainEventsFeed } from "./data-api-mcp.mjs";
+// #7432: GraphQL parity for GET /api/v1/chain-events/stats (pallet.method
+// aggregate), reusing loadChainActivity + optionalBlocksWindow that MCP
+// get_chain_activity already calls. Named chain_events_stats so it does not
+// collide with the unrelated Query.chain_activity (daily series).
+import {
+  loadChainActivity,
+  loadChainEventsFeed,
+  optionalBlocksWindow,
+} from "./data-api-mcp.mjs";
 // #6992: GraphQL parity for profiles, reusing list_profiles' own loader
 // unchanged (same artifact read, filter, sort, and page logic REST and MCP
 // already use) -- not a reimplementation.
@@ -638,6 +646,8 @@ export const SDL = `
     extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
     "Paginated all-events feed (newest first) from the Postgres-backed all-events tier: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Distinct from Subscription.chainEvents (live WebSocket firehose). Mirrors GET /api/v1/chain-events."
     chain_events(pallet: String, method: String, block: Int, extrinsic: Int, cursor: String, before: Int, limit: Int): ChainEventsFeed!
+    "Pallet.method event-distribution aggregate over the most recent N blocks from the Postgres-backed all-events tier (each row's count, busiest first). Distinct from chain_activity (daily block/extrinsic/event-count series). blocks defaults to 1000 and is clamped to 1-5000; a non-positive value is BAD_USER_INPUT. A cold/unbound tier resolves to a schema-stable empty aggregate, never a GraphQL error. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity)."
+    chain_events_stats(blocks: Int): ChainEventsStats!
     "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
     extrinsic(ref: String!): ExtrinsicDetail
     "Subtensor's root-origin hyperparameter/network-config change feed (newest first) -- the extrinsics feed fixed to call_module=AdminUtils, so it takes no signer/call_module filter. Same ExtrinsicList shape as extrinsics. Mirrors GET /api/v1/governance/config-changes."
@@ -1967,6 +1977,20 @@ export const SDL = `
     phase: String
     extrinsic_index: Int
     observed_at: Float
+  }
+
+  "One pallet.method pair's event count in the recent-blocks window. Mirrors one row of GET /api/v1/chain-events/stats activity[]."
+  type ChainEventsStatsActivity {
+    pallet: String
+    method: String
+    count: Int
+  }
+
+  "Pallet.method event-distribution aggregate over the most recent N blocks from the all-events tier. Distinct from ChainActivity (daily series). Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity)."
+  type ChainEventsStats {
+    window_blocks: Int!
+    groups: Int!
+    activity: [ChainEventsStatsActivity!]!
   }
 
   type ProfileList {
@@ -4166,6 +4190,7 @@ export const FIELD_COMPLEXITY = {
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_events: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_events_stats: RELATIONSHIP_FIELD_COMPLEXITY,
   sudo: RELATIONSHIP_FIELD_COMPLEXITY,
   extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
   governance_config_changes: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -6879,6 +6904,48 @@ const rootValue = {
         next_before: null,
         next_cursor: null,
         events: [],
+      };
+    }
+  },
+
+  // #7432: reuse loadChainActivity + optionalBlocksWindow (the same DATA_API
+  // path MCP get_chain_activity already calls). invalid_params (bad blocks) is
+  // BAD_USER_INPUT; a cold/unbound/rate-limited tier degrades to a
+  // schema-stable empty aggregate, never a GraphQL error — matching
+  // chain_events' cold-empty convention. Distinct from Query.chain_activity.
+  async chain_events_stats({ blocks }, context) {
+    let windowBlocks;
+    try {
+      windowBlocks = optionalBlocksWindow({ blocks });
+    } catch (err) {
+      if (err?.toolError && err.code === "invalid_params") {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      throw err;
+    }
+    try {
+      const data = await loadChainActivity(context, windowBlocks);
+      return {
+        window_blocks: data.window_blocks,
+        groups: data.groups,
+        activity: data.activity.map((row) => ({
+          pallet: row.pallet ?? null,
+          method: row.method ?? null,
+          count: row.count ?? null,
+        })),
+      };
+    } catch (err) {
+      if (err?.toolError && err.code === "invalid_params") {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      return {
+        window_blocks: windowBlocks,
+        groups: 0,
+        activity: [],
       };
     }
   },

@@ -3,8 +3,10 @@ import { describe, test } from "vitest";
 import {
   dataApiFetchJson,
   loadBlockChainEvents,
+  loadChainActivity,
   loadChainEventsFeed,
   loadExtrinsicChainEvents,
+  optionalBlocksWindow,
 } from "../src/data-api-mcp.mjs";
 
 function dataApiCtx({ fetchImpl, rateLimit = null } = {}) {
@@ -444,5 +446,56 @@ describe("data-api-mcp", () => {
     assert.deepEqual(out.events, []);
     assert.equal(out.next_before, null);
     assert.equal(out.next_cursor, null);
+  });
+
+  test("optionalBlocksWindow defaults to 1000 and clamps to 5000", () => {
+    assert.equal(optionalBlocksWindow({}), 1000);
+    assert.equal(optionalBlocksWindow({ blocks: null }), 1000);
+    assert.equal(optionalBlocksWindow({ blocks: 250 }), 250);
+    assert.equal(optionalBlocksWindow({ blocks: 9000 }), 5000);
+  });
+
+  test("optionalBlocksWindow rejects a non-positive blocks value", () => {
+    assert.throws(
+      () => optionalBlocksWindow({ blocks: 0 }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => optionalBlocksWindow({ blocks: 1.5 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("loadChainActivity fetches /chain-events/stats and shapes the aggregate", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async (request) => {
+        const url = new URL(request.url);
+        assert.equal(url.pathname, "/api/v1/chain-events/stats");
+        assert.equal(url.searchParams.get("blocks"), "250");
+        return Response.json({
+          window_blocks: 250,
+          groups: 2,
+          activity: [
+            { pallet: "SubtensorModule", method: "set_weights", count: 42 },
+            { pallet: "System", method: "ExtrinsicSuccess", count: 7 },
+          ],
+        });
+      },
+    });
+    const out = await loadChainActivity(ctx, 250);
+    assert.equal(out.window_blocks, 250);
+    assert.equal(out.groups, 2);
+    assert.equal(out.activity.length, 2);
+    assert.equal(out.activity[0].method, "set_weights");
+  });
+
+  test("loadChainActivity degrades a partial DATA_API body to defaults", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async () => Response.json({}),
+    });
+    const out = await loadChainActivity(ctx, 1000);
+    assert.equal(out.window_blocks, 1000);
+    assert.equal(out.groups, 0);
+    assert.deepEqual(out.activity, []);
   });
 });
