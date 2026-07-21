@@ -5,7 +5,7 @@ import { envelopeResponse } from "../workers/responses.ts";
 import {
   markD1FallbackResponse,
   withEdgeCache,
-} from "../workers/request-handlers/analytics.mjs";
+} from "../workers/request-handlers/analytics.ts";
 import {
   handleBlocksSummary,
   handleSubnetStakeFlow,

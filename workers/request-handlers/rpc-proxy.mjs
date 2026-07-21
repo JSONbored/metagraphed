@@ -37,7 +37,7 @@ import {
   analyticsMeta,
   analyticsQueryError,
   analyticsWindow,
-} from "./analytics.mjs";
+} from "./analytics.ts";
 import {
   findSurface,
   verifySurfaceWithCache,

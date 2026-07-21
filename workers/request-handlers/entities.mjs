@@ -39,7 +39,7 @@ import {
   analyticsQueryError,
   markD1FallbackResponse,
   validateQueryParams,
-} from "./analytics.mjs";
+} from "./analytics.ts";
 import {
   buildGlobalValidators,
   buildSubnetMetagraph,

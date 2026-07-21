@@ -27,7 +27,7 @@ import {
   handleChainWeights,
   handleChainWeightSetters,
   handleChainServing,
-} from "../workers/request-handlers/analytics.mjs";
+} from "../workers/request-handlers/analytics.ts";
 import { CHAIN_STAKE_FLOW_LIMIT_DEFAULT } from "../src/chain-stake-flow.mjs";
 import { CHAIN_WEIGHTS_LIMIT_DEFAULT } from "../src/chain-weights.mjs";
 import { CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT } from "../src/chain-weight-setters.mjs";

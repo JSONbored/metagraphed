@@ -155,7 +155,7 @@ import {
 import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
-} from "../workers/request-handlers/analytics.mjs";
+} from "../workers/request-handlers/analytics.ts";
 import {
   BLOCK_PAGINATION,
   DAY_PATTERN,

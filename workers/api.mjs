@@ -72,7 +72,7 @@ import {
   handleHealthPercentiles,
   handleHealthTrends,
   withEdgeCache,
-} from "./request-handlers/analytics.mjs";
+} from "./request-handlers/analytics.ts";
 import {
   handleSubnetMetagraph,
   handleNeuron,
@@ -292,7 +292,7 @@ import {
 import {
   handleSavedQueryRequest,
   SAVED_QUERIES_PATH_PREFIX,
-} from "./request-handlers/saved-queries.mjs";
+} from "./request-handlers/saved-queries.ts";
 import {
   aiEnabled,
   askQuestion,
