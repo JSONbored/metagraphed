@@ -1320,6 +1320,65 @@ export interface AccountCounterparties {
   counterparties: AccountCounterparty[];
   [key: string]: unknown;
 }
+/**
+ * One edge in the live child/parent-hotkey delegation graph
+ * (/accounts/{ss58}/children | /parents, #6723) — the counterpart hotkey and
+ * the proportion of stake-weight this edge carries on a given subnet.
+ */
+export interface AccountDelegationEdge {
+  /** The child (children route) or parent (parents route) hotkey ss58. */
+  counterpart: string;
+  /** Raw u64 proportion as a decimal string (0..u64::MAX ≙ 0..100%). */
+  proportion: string | null;
+  /** The same proportion as a 0..1 fraction. */
+  proportion_fraction: number | null;
+}
+/** One subnet's delegation edges in the child/parent-hotkey graph. */
+export interface AccountDelegationSubnet {
+  netuid: number;
+  entries: AccountDelegationEdge[];
+}
+/**
+ * #6723: /accounts/{ss58}/children | /parents — this account's live stake-weight
+ * delegation graph, per subnet. `subnets` is `null` (not `[]`) when the live RPC
+ * failed, so callers can distinguish "temporarily unavailable" from "genuinely
+ * none" — matching src/child-hotkey-delegation.mjs's tri-state contract.
+ */
+export interface AccountDelegationGraph {
+  account: string;
+  subnets: AccountDelegationSubnet[] | null;
+  queried_at: string | null;
+  [key: string]: unknown;
+}
+/** One community-contributed entity label in /accounts/{ss58}/entities (#6740). */
+export interface AccountEntityLabel {
+  name: string | null;
+  category: string | null;
+  notes: string | null;
+  source_urls: string[];
+}
+/**
+ * One subnet-ownership tie in /accounts/{ss58}/entities — a SubnetOwnerChanged
+ * transfer this address was on either side of.
+ */
+export interface AccountOwnershipTie {
+  netuid: number | null;
+  /** "gained_ownership" when this address became owner, else "lost_ownership". */
+  role: string | null;
+  block_number: number | null;
+  observed_at: string | null;
+}
+/**
+ * #6740: /accounts/{ss58}/entities — this address's community labels plus every
+ * subnet-ownership tie via the SubnetOwnerChanged chain-events stream.
+ */
+export interface AccountEntities {
+  ss58: string;
+  labels: AccountEntityLabel[];
+  ownership_tie_count: number;
+  ownership_ties: AccountOwnershipTie[];
+  [key: string]: unknown;
+}
 /** One per-subnet stake/unstake flow row in /accounts/{ss58}/stake-flow. */
 export interface AccountStakeFlowSubnet {
   netuid: number;

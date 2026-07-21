@@ -48,6 +48,11 @@ import type {
   AccountEventsPage,
   AccountCounterparties,
   AccountCounterparty,
+  AccountDelegationGraph,
+  AccountDelegationSubnet,
+  AccountEntities,
+  AccountEntityLabel,
+  AccountOwnershipTie,
   AccountStakeFlow,
   AccountStakeFlowSubnet,
   AccountHistory,
@@ -2706,6 +2711,142 @@ export const accountCounterpartiesQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountCounterparties>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #6723: live child/parent-hotkey delegation graph — the counterpart hotkeys
+// this account delegates stake-weight to (children) or receives it from
+// (parents), per subnet. Shared normalizer for both /accounts/{ss58}/children
+// and /parents, which differ only in the per-entry counterpart field name
+// ("child" vs "parent"). Preserves the backend's `subnets: null` tri-state (live
+// RPC failed) distinctly from `subnets: []` (genuinely no delegations) so the UI
+// can render "temporarily unavailable" separately from a cold wallet.
+function normalizeDelegationSubnets(
+  raw: unknown,
+  counterpartKey: "child" | "parent",
+): AccountDelegationSubnet[] | null {
+  if (raw === null) return null;
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((subnet) => {
+    if (!isRecord(subnet)) return [];
+    const netuid = firstFiniteNumber(subnet.netuid);
+    if (netuid == null) return [];
+    const entries = Array.isArray(subnet.entries)
+      ? subnet.entries.flatMap((entry) => {
+          if (!isRecord(entry)) return [];
+          const counterpart = firstString(entry[counterpartKey]);
+          if (!counterpart) return [];
+          return [
+            {
+              counterpart,
+              proportion: firstString(entry.proportion) ?? null,
+              proportion_fraction: firstFiniteNumber(entry.proportion_fraction) ?? null,
+            },
+          ];
+        })
+      : [];
+    return [{ netuid, entries }];
+  });
+}
+
+function delegationGraphQuery(
+  ss58: string,
+  route: "children" | "parents",
+  counterpartKey: "child" | "parent",
+) {
+  return queryOptions({
+    queryKey: k(`account-${route}`, ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/${route}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          account: firstString(d.account) ?? ss58,
+          subnets: normalizeDelegationSubnets(d.subnets, counterpartKey),
+          queried_at: firstString(d.queried_at) ?? null,
+        } as AccountDelegationGraph,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountDelegationGraph>;
+    },
+    staleTime: STALE_MED,
+  });
+}
+
+export const accountChildrenQuery = (ss58: string) =>
+  delegationGraphQuery(ss58, "children", "child");
+
+export const accountParentsQuery = (ss58: string) =>
+  delegationGraphQuery(ss58, "parents", "parent");
+
+// #6740: community entity labels + subnet-ownership ties for one address, from
+// /api/v1/accounts/{ss58}/entities. Structured-object response with two arrays;
+// both degrade to [] on a cold/unknown address (never throws).
+function normalizeEntityLabel(raw: unknown): AccountEntityLabel | null {
+  if (!isRecord(raw)) return null;
+  return {
+    name: firstString(raw.name) ?? null,
+    category: firstString(raw.category) ?? null,
+    notes: firstString(raw.notes) ?? null,
+    source_urls: Array.isArray(raw.source_urls)
+      ? raw.source_urls.flatMap((u) => {
+          const s = firstString(u);
+          return s ? [s] : [];
+        })
+      : [],
+  };
+}
+
+function normalizeOwnershipTie(raw: unknown): AccountOwnershipTie | null {
+  if (!isRecord(raw)) return null;
+  const role = firstString(raw.role);
+  const netuid = firstFiniteNumber(raw.netuid);
+  const block = firstFiniteNumber(raw.block_number);
+  if (role == null && netuid == null && block == null) return null;
+  return {
+    netuid: netuid ?? null,
+    role: role ?? null,
+    block_number: block ?? null,
+    observed_at: firstString(raw.observed_at) ?? null,
+  };
+}
+
+export const accountEntitiesQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-entities", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/entities`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const labels = Array.isArray(d.labels)
+        ? d.labels.flatMap((row) => {
+            const l = normalizeEntityLabel(row);
+            return l ? [l] : [];
+          })
+        : [];
+      const ownershipTies = Array.isArray(d.ownership_ties)
+        ? d.ownership_ties.flatMap((row) => {
+            const t = normalizeOwnershipTie(row);
+            return t ? [t] : [];
+          })
+        : [];
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          labels,
+          ownership_tie_count:
+            firstFiniteNumber(d.ownership_tie_count) ?? ownershipTies.length,
+          ownership_ties: ownershipTies,
+        } as AccountEntities,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountEntities>;
     },
     staleTime: STALE_MED,
   });
