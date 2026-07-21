@@ -9,8 +9,7 @@
   "curation": {
     "gap_notes": [
       "No verified docs site yet.",
-      "No verified SSE/event stream yet.",
-      "The OpenAPI schema also declares GET /jobs/leaderboard_old (500 live) and GET /users/validators/me (422 live, likely auth-scoped despite no declared security) -- neither tracked."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -20,7 +19,7 @@
   },
   "name": "Bitsec",
   "netuid": 60,
-  "notes": "First maintainer-reviewed pass for SN60 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 30-path OpenAPI schema and added 10 new no-auth no-param surfaces spanning agents, analytics, jobs, and projects; excluded /jobs/leaderboard_old (500 live) and /users/validators/me (422 live) since the schema's declared no-auth status doesn't match live behavior.",
+  "notes": "First maintainer-reviewed pass for SN60 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 30-path OpenAPI schema and added 10 new no-auth no-param surfaces spanning agents, analytics, jobs, and projects; excluded /jobs/leaderboard_old (500 live) and /users/validators/me (422 live) since the schema's declared no-auth status didn't match live behavior at the time. MCP execute verify pass (#7073): registered the remaining 19 documented paths, now that a required-header vs. no-auth classification is available for each -- 2 no-auth fixed-path (agents/count, and jobs/leaderboard_old registered anyway with probe.enabled:true despite its live 500, matching the Targon SN4 precedent of cataloguing a real endpoint's actual state rather than omitting it), 6 no-auth path-param agent/job lookups (probe.enabled:false, no stable canonical id), and 11 that declare a required 'authorization' header parameter on the operation itself rather than a formal OpenAPI security scheme -- live-verified 422 unauthenticated on every one, registered with auth_required:true, auth.scheme:custom (the exact token format isn't publicly documented), probe.enabled:false.",
   "schema_version": 1,
   "slug": "sn-60",
   "source_repo": "https://github.com/Bitsec-AI/sandbox",
@@ -120,7 +119,7 @@
       "id": "sn-60-bitsec-ai-known-solutions",
       "kind": "data-artifact",
       "name": "Bitsec.ai known-solutions dataset",
-      "notes": "Public no-auth JSON dataset of known-vulnerability benchmark projects (GET /projects/known-solutions) used to evaluate SN60 miner agents — each entry has real codebases (repo/commit/tarball) and vulnerability findings (severity, title, description). Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"Get Current Project Set Known Solutions\". Served on the official bitsec.ai domain.",
+      "notes": "Public no-auth JSON dataset of known-vulnerability benchmark projects (GET /projects/known-solutions) used to evaluate SN60 miner agents \u2014 each entry has real codebases (repo/commit/tarball) and vulnerability findings (severity, title, description). Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"Get Current Project Set Known Solutions\". Served on the official bitsec.ai domain.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -318,11 +317,494 @@
       "public_safe": true,
       "source_urls": ["https://bitsec.ai/api/openapi.json"],
       "url": "https://bitsec.ai/api/projects/sets"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agents-count",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agents count",
+      "notes": "Public no-auth GET /api/agents/count on bitsec.ai, returning the total registered agent count. Documented in the subnet's own OpenAPI schema with no security scheme. Live-verified 2026-07-21: HTTP 200 JSON {\"total_agents\":1094}.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/count"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-leaderboard-old",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai legacy jobs leaderboard",
+      "notes": "GET /api/jobs/leaderboard_old on bitsec.ai, documented in the subnet's own OpenAPI schema with no security scheme -- a legacy sibling of the already-registered /api/jobs/leaderboard. Live-verified 2026-07-21: HTTP 500 text/plain (currently erroring in production). Registered anyway per the existing project precedent of cataloguing real documented endpoints even when currently erroring (e.g. Targon SN4's /tha/v2/healthz), so the probe reflects the real status; expect:any since the error response isn't JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/leaderboard_old"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-detail",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agent detail",
+      "notes": "GET /api/agents/{agent_id}/detail on bitsec.ai, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21: a placeholder agent_id returns HTTP 422 (validation error on the id format, not an auth rejection -- confirms the route is live and genuinely unauthenticated). Path-parameterized; registered per catalog-everything convention, no stable canonical agent_id to probe against.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/detail"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-runs-export",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agent runs export",
+      "notes": "GET /api/agents/{agent_id}/runs-export on bitsec.ai, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21: a placeholder agent_id returns HTTP 422 (validation error on the id format, not an auth rejection). Path-parameterized; registered per catalog-everything convention, no stable canonical agent_id to probe against.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/runs-export"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-screener",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agent screener",
+      "notes": "GET /api/agents/{agent_id}/screener on bitsec.ai, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21: a placeholder agent_id returns HTTP 422 (validation error on the id format, not an auth rejection). Path-parameterized; registered per catalog-everything convention, no stable canonical agent_id to probe against.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/screener"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-known-solutions",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agent known-solutions",
+      "notes": "GET /api/agents/{agent_id}/known-solutions on bitsec.ai, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters -- a per-agent sibling distinct from the already-registered project-set-wide /api/projects/known-solutions. Live-verified 2026-07-21: a placeholder agent_id returns HTTP 422 (validation error on the id format, not an auth rejection). Path-parameterized; registered per catalog-everything convention, no stable canonical agent_id to probe against.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/known-solutions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-scores",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agent scores",
+      "notes": "GET /api/agents/{agent_id}/scores on bitsec.ai, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21: a placeholder agent_id returns HTTP 422 (validation error on the id format, not an auth rejection). Path-parameterized; registered per catalog-everything convention, no stable canonical agent_id to probe against.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-runs-by-validator",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai job runs by validator",
+      "notes": "GET /api/jobs/runs/validator/{validator_id} on bitsec.ai, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21: a placeholder validator_id returns HTTP 422 (validation error on the id format, not an auth rejection). Path-parameterized; registered per catalog-everything convention, no stable canonical validator_id to probe against.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/validator/%7Bvalidator_id%7D"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-agent-cancel",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agent job cancel",
+      "notes": "POST /api/agents/{agent_id}/cancel on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated POST (placeholder agent_id) -> HTTP 422, consistent with the required header being enforced. Path-parameterized write endpoint; probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/%7Bagent_id%7D/cancel",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-agents-execution",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agent execution trigger",
+      "notes": "POST /api/agents/execution/ on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated POST -> HTTP 422, consistent with the required header being enforced. Write endpoint; probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/execution/",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-agents-evaluation",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agent evaluation trigger",
+      "notes": "POST /api/agents/evaluation/ on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated POST -> HTTP 422, consistent with the required header being enforced. Write endpoint; probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/evaluation/",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-agents-submit",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai agent submit",
+      "notes": "POST /api/agents/submit/ on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated POST -> HTTP 422, consistent with the required header being enforced. Write endpoint (miner agent submission); probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/agents/submit/",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-run-agent",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai job run agent detail",
+      "notes": "GET /api/jobs/runs/{job_run_id}/agent on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated GET (placeholder job_run_id) -> HTTP 422, consistent with the required header being enforced. Path-parameterized; probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/%7Bjob_run_id%7D/agent",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-run-start",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai job run start",
+      "notes": "POST /api/jobs/runs/{job_run_id}/start on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated POST (placeholder job_run_id) -> HTTP 422, consistent with the required header being enforced. Path-parameterized write endpoint; probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/%7Bjob_run_id%7D/start",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-run-complete",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai job run complete",
+      "notes": "POST /api/jobs/runs/{job_run_id}/complete on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated POST (placeholder job_run_id) -> HTTP 422, consistent with the required header being enforced. Path-parameterized write endpoint; probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/%7Bjob_run_id%7D/complete",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-run-proxy-summary",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai job run proxy summary",
+      "notes": "POST /api/jobs/runs/{job_run_id}/proxy-summary on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated POST (placeholder job_run_id) -> HTTP 422, consistent with the required header being enforced. Path-parameterized write endpoint; probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/jobs/runs/%7Bjob_run_id%7D/proxy-summary",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-users-create",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai user create",
+      "notes": "POST /api/users/ on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated POST -> HTTP 422, consistent with the required header being enforced. Write endpoint; probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/users/",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-users-validator-me",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai validator self profile",
+      "notes": "GET /api/users/validators/me on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated GET -> HTTP 422, consistent with the required header being enforced -- matches the maintainer's own prior gap_notes observation of this exact endpoint. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/users/validators/me",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-60-bitsec-users-validator-heartbeat",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai validator heartbeat",
+      "notes": "POST /api/users/validators/heartbeat on bitsec.ai declares a required 'authorization' header parameter in the subnet's own OpenAPI schema. Live-verified 2026-07-21: unauthenticated POST -> HTTP 422, consistent with the required header being enforced. Write endpoint; probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://bitsec.ai/api/openapi.json"],
+      "url": "https://bitsec.ai/api/users/validators/heartbeat",
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "authorization",
+        "scopes_note": "Declared as a required 'authorization' header parameter on the operation itself (not a formal OpenAPI security scheme); exact token format isn't publicly documented."
+      }
     }
   ],
   "social": {
     "x": "https://x.com/bitsecai"
   },
-  "source_repo": "https://github.com/Bitsec-AI/sandbox",
   "website_url": "https://bitsec.ai/"
 }
