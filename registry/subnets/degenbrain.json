@@ -212,6 +212,56 @@
         "https://subnet90.com/"
       ],
       "url": "https://api.subnet90.com/api/markets/btc-100k-2024/breakdown"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-test-next-chunk",
+      "kind": "subnet-api",
+      "name": "DegenBrain test chunk fetch",
+      "notes": "Public no-auth GET /api/test/next-chunk on api.subnet90.com returning a batch of statements for a validator to test. Documented in the subnet OpenAPI (api.subnet90.com/openapi.json); requires query param validator_id (optional chunk_size). Callable via call_subnet_surface's query arg. probe.enabled:false because bare GET without validator_id returns HTTP 422. Live-verified 2026-07-21: no validator_id -> 422; ?validator_id=test -> 200 JSON with chunk_id + statements.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://api.subnet90.com/openapi.json",
+        "https://subnet90.com/"
+      ],
+      "url": "https://api.subnet90.com/api/test/next-chunk"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-resolve",
+      "kind": "subnet-api",
+      "name": "DegenBrain resolve trigger",
+      "notes": "Public no-auth POST /api/resolve on api.subnet90.com documented in the subnet OpenAPI as a fixed resolve trigger. probe.enabled:false because it is a write endpoint and not safe to auto-probe (GET returns 405 Method Not Allowed). Live-verified 2026-07-21: POST without body -> 422 missing statement field (route is live).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://api.subnet90.com/openapi.json",
+        "https://subnet90.com/"
+      ],
+      "url": "https://api.subnet90.com/api/resolve"
     }
   ],
   "website_url": "https://subnet90.com/"
