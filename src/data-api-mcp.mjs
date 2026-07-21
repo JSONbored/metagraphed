@@ -180,3 +180,40 @@ export async function loadChainEventsFeed(
     events: Array.isArray(data?.events) ? data.events : [],
   };
 }
+
+// The optional `blocks` window for the chain-activity aggregate (MCP's
+// get_chain_activity tool + GraphQL's chain_events_stats): a missing value
+// defaults to 1000; a provided value must be a positive integer and is clamped to
+// the data Worker's 1-5000 bound so a stray large value is silently capped (the
+// data Worker clamps too, but capping here keeps the request URL honest). Lives
+// beside its loader here so both the MCP tool and the GraphQL resolver reuse one
+// validator rather than reimplementing the bound.
+export function optionalBlocksWindow(args) {
+  const value = args?.blocks;
+  if (value === undefined || value === null) return 1000;
+  if (!Number.isInteger(value) || value < 1) {
+    throwToolError(
+      "invalid_params",
+      "Argument `blocks` must be a positive integer.",
+    );
+  }
+  return Math.min(value, 5000);
+}
+
+// Chain-activity aggregate (pallet.method event distribution, busiest first) over
+// the most recent N blocks — same DATA_API path REST's /api/v1/chain-events/stats
+// proxy, MCP's get_chain_activity tool, and GraphQL's chain_events_stats field all
+// use. Shared here beside its raw-feed sibling loadChainEventsFeed rather than
+// duplicated in the MCP server (#7432). Cold/unbound tier surfaces as a thrown
+// tool error from dataApiFetchJson, which each caller degrades in its own idiom.
+export async function loadChainActivity(ctx, blocks) {
+  const data = await dataApiFetchJson(
+    ctx,
+    `/api/v1/chain-events/stats?blocks=${blocks}`,
+  );
+  return {
+    window_blocks: data?.window_blocks ?? blocks,
+    groups: data?.groups ?? 0,
+    activity: Array.isArray(data?.activity) ? data.activity : [],
+  };
+}

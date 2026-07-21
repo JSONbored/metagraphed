@@ -19177,6 +19177,108 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
   });
 });
 
+// --- chain_events_stats parity (#7432) ---
+describe("graphql — chain_events_stats (#7432, DATA_API chain-activity aggregate)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("cold/unbound tier returns a schema-stable empty aggregate, never an error", async () => {
+    const { status, body } = await gql(
+      "{ chain_events_stats { window_blocks groups activity { pallet } } }",
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_events_stats, {
+      window_blocks: 1000,
+      groups: 0,
+      activity: [],
+    });
+  });
+
+  test("resolves DATA_API rows and maps activity fields, nulling sparse groups", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({
+          window_blocks: 500,
+          groups: 2,
+          activity: [
+            { pallet: "SubtensorModule", method: "WeightsSet", count: 9 },
+            {},
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ chain_events_stats(blocks: 500) { window_blocks groups activity { pallet method count } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_events_stats, {
+      window_blocks: 500,
+      groups: 2,
+      activity: [
+        { pallet: "SubtensorModule", method: "WeightsSet", count: 9 },
+        { pallet: null, method: null, count: null },
+      ],
+    });
+  });
+
+  test("defaults blocks to 1000 and clamps a large window to 5000 in the request URL", async () => {
+    const urls = [];
+    const env = {
+      DATA_API: {
+        fetch: async (req) => {
+          urls.push(new URL(req.url));
+          return Response.json({
+            window_blocks: 5000,
+            groups: 0,
+            activity: [],
+          });
+        },
+      },
+    };
+    await gql("{ chain_events_stats { window_blocks } }", env);
+    await gql("{ chain_events_stats(blocks: 6000) { window_blocks } }", env);
+    assert.equal(urls[0].pathname, "/api/v1/chain-events/stats");
+    assert.equal(urls[0].searchParams.get("blocks"), "1000");
+    assert.equal(urls[1].searchParams.get("blocks"), "5000");
+  });
+
+  test("a partial DATA_API body degrades to loader defaults over the requested window", async () => {
+    const env = { DATA_API: dataApi(Response.json({})) };
+    const { status, body } = await gql(
+      "{ chain_events_stats(blocks: 250) { window_blocks groups activity { pallet } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_events_stats, {
+      window_blocks: 250,
+      groups: 0,
+      activity: [],
+    });
+  });
+
+  test("a non-positive-integer blocks is BAD_USER_INPUT, not an empty aggregate", async () => {
+    const { status, body } = await gql(
+      "{ chain_events_stats(blocks: 0) { window_blocks } }",
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.match(body.errors[0].message, /positive integer/);
+    assert.equal(body.data?.chain_events_stats ?? null, null);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.chain_events_stats,
+      FIELD_COMPLEXITY.extrinsics,
+    );
+  });
+});
+
 // --- curation parity (#6982) ---
 describe("graphql — curation parity (#6982)", () => {
   test("curation resolves the baked curation-states artifact", async () => {
