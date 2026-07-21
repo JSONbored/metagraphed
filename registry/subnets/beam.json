@@ -219,6 +219,1294 @@
       },
       "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
       "url": "https://beamcore.b1m.ai/status/orchestrator-relays"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-auth-challenge",
+      "kind": "subnet-api",
+      "name": "Beam auth challenge",
+      "notes": "API operation on the BeamCore API (POST /auth/challenge), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/auth/challenge"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-auth-keys",
+      "kind": "subnet-api",
+      "name": "Beam auth keys",
+      "notes": "API operation on the BeamCore API (GET, POST /auth/keys), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"error\":\"authentication required\"}.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/auth/keys"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-auth-keys-key-prefix",
+      "kind": "subnet-api",
+      "name": "Beam auth keys key prefix",
+      "notes": "API operation on the BeamCore API (DELETE /auth/keys/{key_prefix}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/auth/keys/%7Bkey_prefix%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-auth-keys-worker",
+      "kind": "subnet-api",
+      "name": "Beam auth keys worker",
+      "notes": "API operation on the BeamCore API (POST /auth/keys/worker), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/auth/keys/worker"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-auth-me",
+      "kind": "subnet-api",
+      "name": "Beam auth me",
+      "notes": "API operation on the BeamCore API (GET /auth/me), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"error\":\"authentication required\"}.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/auth/me"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-auth-verify",
+      "kind": "subnet-api",
+      "name": "Beam auth verify",
+      "notes": "API operation on the BeamCore API (POST /auth/verify), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/auth/verify"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-clients",
+      "kind": "subnet-api",
+      "name": "Beam clients",
+      "notes": "API operation on the BeamCore API (GET /clients), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"error\":\"authentication required\"}.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/clients"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-clients-client-id",
+      "kind": "subnet-api",
+      "name": "Beam clients client id",
+      "notes": "API operation on the BeamCore API (GET /clients/{client_id}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/clients/%7Bclient_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-clients-register",
+      "kind": "subnet-api",
+      "name": "Beam clients register",
+      "notes": "API operation on the BeamCore API (POST /clients/register), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/clients/register"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-destinations",
+      "kind": "subnet-api",
+      "name": "Beam destinations",
+      "notes": "API operation on the BeamCore API (GET, POST /destinations), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"error\":\"authentication required\"}.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/destinations"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-destinations-destination-id",
+      "kind": "subnet-api",
+      "name": "Beam destinations destination id",
+      "notes": "API operation on the BeamCore API (DELETE, GET, PUT /destinations/{destination_id}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/destinations/%7Bdestination_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-docs",
+      "kind": "subnet-api",
+      "name": "Beam docs",
+      "notes": "API operation on the BeamCore API (GET /docs/), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/docs/"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-docs-json",
+      "kind": "subnet-api",
+      "name": "Beam docs json",
+      "notes": "API operation on the BeamCore API (GET /docs/json), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/docs/json"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-docs-static",
+      "kind": "subnet-api",
+      "name": "Beam docs static",
+      "notes": "API operation on the BeamCore API (GET /docs/static/{*}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/docs/static/%7B*%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-docs-static-index-html",
+      "kind": "subnet-api",
+      "name": "Beam docs static index html",
+      "notes": "API operation on the BeamCore API (GET /docs/static/index.html), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/docs/static/index.html"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-docs-static-swagger-initializer-js",
+      "kind": "subnet-api",
+      "name": "Beam docs static swagger initializer js",
+      "notes": "API operation on the BeamCore API (GET /docs/static/swagger-initializer.js), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/docs/static/swagger-initializer.js"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-docs-yaml",
+      "kind": "subnet-api",
+      "name": "Beam docs yaml",
+      "notes": "API operation on the BeamCore API (GET /docs/yaml), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/docs/yaml"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-internal-routing-live",
+      "kind": "subnet-api",
+      "name": "Beam internal routing live",
+      "notes": "API operation on the BeamCore API (GET /internal/routing/live), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/internal/routing/live"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-internal-routing-orchestrators-owner-group-sync",
+      "kind": "subnet-api",
+      "name": "Beam internal routing orchestrators owner group sync",
+      "notes": "API operation on the BeamCore API (POST /internal/routing/orchestrators-owner-group-sync), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/internal/routing/orchestrators-owner-group-sync"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-internal-routing-orchestrators-prism-sync",
+      "kind": "subnet-api",
+      "name": "Beam internal routing orchestrators prism sync",
+      "notes": "API operation on the BeamCore API (POST /internal/routing/orchestrators-prism-sync), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/internal/routing/orchestrators-prism-sync"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-jobs",
+      "kind": "subnet-api",
+      "name": "Beam jobs",
+      "notes": "API operation on the BeamCore API (GET /jobs), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/jobs"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-jobs-job-id",
+      "kind": "subnet-api",
+      "name": "Beam jobs job id",
+      "notes": "API operation on the BeamCore API (GET /jobs/{job_id}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/jobs/%7Bjob_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-logs-stream-source",
+      "kind": "subnet-api",
+      "name": "Beam logs stream source",
+      "notes": "API operation on the BeamCore API (GET /logs/stream/{source}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/logs/stream/%7Bsource%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-history",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators history",
+      "notes": "API operation on the BeamCore API (DELETE /orchestrators/history), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/history"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-orchestrator-id",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators orchestrator id",
+      "notes": "API operation on the BeamCore API (GET /orchestrators/{orchestrator_id}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/%7Borchestrator_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-orchestrator-id-assignments",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators orchestrator id assignments",
+      "notes": "API operation on the BeamCore API (GET /orchestrators/{orchestrator_id}/assignments), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/%7Borchestrator_id%7D/assignments"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-orchestrator-id-pending-transfers",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators orchestrator id pending transfers",
+      "notes": "API operation on the BeamCore API (GET /orchestrators/{orchestrator_id}/pending-transfers), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/%7Borchestrator_id%7D/pending-transfers"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-orchestrator-id-tasks",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators orchestrator id tasks",
+      "notes": "API operation on the BeamCore API (GET /orchestrators/{orchestrator_id}/tasks), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/%7Borchestrator_id%7D/tasks"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-orchestrator-id-workers",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators orchestrator id workers",
+      "notes": "API operation on the BeamCore API (GET /orchestrators/{orchestrator_id}/workers), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/%7Borchestrator_id%7D/workers"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-orchestrator-id-workers-worker-id",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators orchestrator id workers worker id",
+      "notes": "API operation on the BeamCore API (PATCH /orchestrators/{orchestrator_id}/workers/{worker_id}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/%7Borchestrator_id%7D/workers/%7Bworker_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-pending-transfers",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators pending transfers",
+      "notes": "API operation on the BeamCore API (GET /orchestrators/pending-transfers), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"error\":\"authentication required\"}.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/pending-transfers"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-prism-scores-orch-uid",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators prism scores orch uid",
+      "notes": "API operation on the BeamCore API (GET /orchestrators/prism-scores/{orch_uid}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/prism-scores/%7Borch_uid%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-ready",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators ready",
+      "notes": "API operation on the BeamCore API (PATCH /orchestrators/ready), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/ready"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-register",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators register",
+      "notes": "API operation on the BeamCore API (POST /orchestrators/register), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/register"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-tasks-acknowledge",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators tasks acknowledge",
+      "notes": "API operation on the BeamCore API (POST /orchestrators/tasks/acknowledge), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/tasks/acknowledge"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-orchestrators-workers",
+      "kind": "subnet-api",
+      "name": "Beam orchestrators workers",
+      "notes": "API operation on the BeamCore API (GET /orchestrators/workers), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/orchestrators/workers"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-redoc",
+      "kind": "subnet-api",
+      "name": "Beam redoc",
+      "notes": "API operation on the BeamCore API (GET /redoc), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/redoc"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-transfers",
+      "kind": "subnet-api",
+      "name": "Beam transfers",
+      "notes": "API operation on the BeamCore API (GET /transfers), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"error\":\"authentication required\"}.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/transfers"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-validator-epoch-summary-latest-epoch",
+      "kind": "subnet-api",
+      "name": "Beam validator epoch summary latest epoch",
+      "notes": "API operation on the BeamCore API (GET /Validator/epoch-summary/latest-epoch), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/Validator/epoch-summary/latest-epoch"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-validators-heartbeat",
+      "kind": "subnet-api",
+      "name": "Beam validators heartbeat",
+      "notes": "API operation on the BeamCore API (POST /validators/heartbeat), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/validators/heartbeat"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-validators-scores-submit",
+      "kind": "subnet-api",
+      "name": "Beam validators scores submit",
+      "notes": "API operation on the BeamCore API (POST /validators/scores/submit), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/validators/scores/submit"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-validators-weights-epoch",
+      "kind": "subnet-api",
+      "name": "Beam validators weights epoch",
+      "notes": "API operation on the BeamCore API (GET /validators/weights/{epoch}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/validators/weights/%7Bepoch%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-validators-weights-proof",
+      "kind": "subnet-api",
+      "name": "Beam validators weights proof",
+      "notes": "API operation on the BeamCore API (POST /validators/weights/proof), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/validators/weights/proof"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-webhooks-sentry",
+      "kind": "subnet-api",
+      "name": "Beam webhooks sentry",
+      "notes": "API operation on the BeamCore API (POST /webhooks/sentry), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/webhooks/sentry"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-workers-register",
+      "kind": "subnet-api",
+      "name": "Beam workers register",
+      "notes": "API operation on the BeamCore API (POST /workers/register), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/workers/register"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKey, header x-api-key). The spec does not attach it per-operation, but the API enforces it globally: every sampled route rejects an unauthenticated call with HTTP 401 (live-checked 2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-105-beam-workers-worker-id",
+      "kind": "subnet-api",
+      "name": "Beam workers worker id",
+      "notes": "API operation on the BeamCore API (GET /workers/{worker_id}), declared in the subnet's own OpenAPI spec at https://beamcore.b1m.ai/openapi.json. The spec defines an apiKey security scheme but does not attach it per-operation; the API enforces it globally, so this is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the global enforcement verified on sampled routes across the auth, clients, destinations, transfers and orchestrator families. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/workers/%7Bworker_id%7D"
     }
   ],
   "website_url": "https://b1m.ai/"
