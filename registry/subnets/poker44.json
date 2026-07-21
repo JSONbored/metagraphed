@@ -183,6 +183,30 @@
         "https://poker44.net/"
       ],
       "url": "https://poker44.net/Poker44_Whitepaper.pdf"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-benchmark-chunks",
+      "kind": "data-artifact",
+      "name": "Poker44 benchmark chunks for a source date",
+      "notes": "Public no-auth GET /api/v1/benchmark/chunks on api.poker44.net listing the published shadow-training chunks for one release date. Documented in docs/training-benchmark.md alongside the already-tracked /api/v1/benchmark status and /api/v1/benchmark/releases surfaces. Takes a required sourceDate query parameter (plus optional limit/cursor) rather than a path parameter, so the base URL is fixed and the route is callable today through call_subnet_surface's query argument. Live-verified 2026-07-21: GET /api/v1/benchmark/chunks?sourceDate=2026-07-21&limit=1 -> HTTP 200 application/json listing chunkId/chunkHash/chunkIndex/releasedAt plus a nextCursor; the bare URL with no sourceDate returns HTTP 422, which is why probe.enabled is false. No wallet/hotkey data.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark/chunks"
     }
   ],
   "website_url": "https://poker44.net/"
