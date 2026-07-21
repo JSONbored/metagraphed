@@ -19,7 +19,7 @@ import {
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
-} from "../workers/request-handlers/analytics-routes.mjs";
+} from "../workers/request-handlers/analytics-routes.ts";
 import { MCP_TOOLS } from "../src/mcp-server.mjs";
 import {
   unsupportedWindowMessage,

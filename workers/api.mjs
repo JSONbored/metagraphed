@@ -201,7 +201,7 @@ import {
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
-} from "./request-handlers/analytics-routes.mjs";
+} from "./request-handlers/analytics-routes.ts";
 import {
   classifyUpstreamAttempt,
   configureRpcProxy,
@@ -651,7 +651,7 @@ export {
   weightedPickEndpoint,
 };
 
-export { composeCompareData } from "./request-handlers/analytics-routes.mjs";
+export { composeCompareData } from "./request-handlers/analytics-routes.ts";
 
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other

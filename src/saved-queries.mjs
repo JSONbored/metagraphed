@@ -9,7 +9,7 @@
 //
 // Every handler wraps an existing, already-served derived-view module rather
 // than authoring new query logic -- exactly the discipline #6756 asked for.
-import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.mjs";
+import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
 import { LEADERBOARD_BOARDS } from "./health-serving.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {

@@ -20,7 +20,7 @@ import {
   SS58_ADDRESS_PATTERN,
   UPTIME_WINDOWS,
 } from "../workers/config.ts";
-import { composeCompareData } from "../workers/request-handlers/analytics-routes.mjs";
+import { composeCompareData } from "../workers/request-handlers/analytics-routes.ts";
 
 export { composeCompareData };
 export const COMPARE_DIMENSIONS = ["structure", "economics", "health"];

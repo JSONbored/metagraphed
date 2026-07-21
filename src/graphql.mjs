@@ -187,7 +187,7 @@ import {
   TOP_HOLDERS_LIMIT_MAX,
   TOP_HOLDERS_SORTS,
 } from "./top-holders.mjs";
-import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.mjs";
+import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
 import {
   COMPARE_VALIDATORS_MAX,
   loadCompareSubnets,
