@@ -210,6 +210,1294 @@
         "https://platform.thesoma.ai/openapi.json"
       ],
       "url": "https://platform.thesoma.ai/openapi.json"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-competition-timeframe-current",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend competition timeframe current",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/competition/timeframe/current on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/competition/timeframe/current"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-competition-competition-id-aggregate",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend competition competition id aggregate",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/competition/{competition_id}/aggregate on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/competition/%7Bcompetition_id%7D/aggregate"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-competitions-list",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend competitions-list",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/competitions-list on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Live-verified 2026-07-21: HTTP 403 for anonymous GET. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/competitions-list"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-miners-comp-id",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend miners comp id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/miners/{comp_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/miners/%7Bcomp_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-miners-comp-id-hotkey",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend miners comp id hotkey",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/miners/{comp_id}/{hotkey} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/miners/%7Bcomp_id%7D/%7Bhotkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-miners-comp-id-hotkey-competition",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend miners comp id hotkey competition",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/miners/{comp_id}/{hotkey}/competition on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/miners/%7Bcomp_id%7D/%7Bhotkey%7D/competition"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-miners-comp-id-hotkey-competition-challenges",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend miners comp id hotkey competition challenges",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/miners/{comp_id}/{hotkey}/competition/challenges on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/miners/%7Bcomp_id%7D/%7Bhotkey%7D/competition/challenges"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-miners-comp-id-hotkey-screener",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend miners comp id hotkey screener",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/miners/{comp_id}/{hotkey}/screener on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/miners/%7Bcomp_id%7D/%7Bhotkey%7D/screener"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-miners-comp-id-hotkey-screener-challenges",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend miners comp id hotkey screener challenges",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/miners/{comp_id}/{hotkey}/screener/challenges on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/miners/%7Bcomp_id%7D/%7Bhotkey%7D/screener/challenges"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-miners-hotkey-competition-challenges-batch-challenge-id",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend miners hotkey competition challenges batch challenge id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/miners/{hotkey}/competition/challenges/{batch_challenge_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/miners/%7Bhotkey%7D/competition/challenges/%7Bbatch_challenge_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-summary",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend summary",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/summary on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Live-verified 2026-07-21: HTTP 403 for anonymous GET. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/summary"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-swe-miners-comp-id",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend swe miners comp id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/swe/miners/{comp_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/swe/miners/%7Bcomp_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-swe-miners-comp-id-hotkey",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend swe miners comp id hotkey",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/swe/miners/{comp_id}/{hotkey} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/swe/miners/%7Bcomp_id%7D/%7Bhotkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-swe-miners-comp-id-hotkey-penalties",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend swe miners comp id hotkey penalties",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/swe/miners/{comp_id}/{hotkey}/penalties on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/swe/miners/%7Bcomp_id%7D/%7Bhotkey%7D/penalties"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-swe-miners-comp-id-hotkey-tasks",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend swe miners comp id hotkey tasks",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/swe/miners/{comp_id}/{hotkey}/tasks on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/swe/miners/%7Bcomp_id%7D/%7Bhotkey%7D/tasks"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-swe-miners-comp-id-hotkey-tasks-task-name",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend swe miners comp id hotkey tasks task name",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/swe/miners/{comp_id}/{hotkey}/tasks/{task_name} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/swe/miners/%7Bcomp_id%7D/%7Bhotkey%7D/tasks/%7Btask_name%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-swe-miners-comp-id-hotkey-tasks-task-name-runs",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend swe miners comp id hotkey tasks task name runs",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/swe/miners/{comp_id}/{hotkey}/tasks/{task_name}/runs on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/swe/miners/%7Bcomp_id%7D/%7Bhotkey%7D/tasks/%7Btask_name%7D/runs"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-frontend-validators",
+      "kind": "subnet-api",
+      "name": "SOMA api private frontend validators",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/private/frontend/validators on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/frontend/validators"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-incentives-competitions-competition-id-candidates",
+      "kind": "subnet-api",
+      "name": "SOMA api private incentives competitions competition id candidates",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/private/incentives/competitions/{competition_id}/candidates on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/incentives/competitions/%7Bcompetition_id%7D/candidates"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-incentives-top-miners-top-miner-id-approval",
+      "kind": "subnet-api",
+      "name": "SOMA api private incentives top-miners top miner id approval",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) PATCH /api/private/incentives/top-miners/{top_miner_id}/approval on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/incentives/top-miners/%7Btop_miner_id%7D/approval"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-private-sandbox-compact-bench-report",
+      "kind": "subnet-api",
+      "name": "SOMA api private sandbox compact-bench report",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /api/private/sandbox/compact-bench/report on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/private/* router/auth boundary as the verified sn-114-soma-api-private-frontend-summary (403). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/private/sandbox/compact-bench/report"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-competition-timeframe-current",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key competition timeframe current",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/competition/timeframe/current on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/competition/timeframe/current"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-competitions-list",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key competitions-list",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/competitions-list on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Live-verified 2026-07-21: HTTP 401 for anonymous GET. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/competitions-list"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-miners-comp-id",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key miners comp id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/miners/%7Bcomp_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-miners-comp-id-hotkey",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key miners comp id hotkey",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/miners/%7Bcomp_id%7D/%7Bhotkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-miners-comp-id-hotkey-competition",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key miners comp id hotkey competition",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/competition on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/miners/%7Bcomp_id%7D/%7Bhotkey%7D/competition"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-miners-comp-id-hotkey-competition-challenges",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key miners comp id hotkey competition challenges",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/competition/challenges on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/miners/%7Bcomp_id%7D/%7Bhotkey%7D/competition/challenges"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-miners-comp-id-hotkey-screener",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key miners comp id hotkey screener",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/screener on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/miners/%7Bcomp_id%7D/%7Bhotkey%7D/screener"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-miners-comp-id-hotkey-screener-challenges",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key miners comp id hotkey screener challenges",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{comp_id}/{hotkey}/screener/challenges on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/miners/%7Bcomp_id%7D/%7Bhotkey%7D/screener/challenges"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-miners-hotkey-competition-challenges-batch-challenge-id",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key miners hotkey competition challenges batch challenge id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/miners/{hotkey}/competition/challenges/{batch_challenge_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/miners/%7Bhotkey%7D/competition/challenges/%7Bbatch_challenge_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-summary",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key summary",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/summary on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Live-verified 2026-07-21: HTTP 401 for anonymous GET. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/summary"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key swe miners comp id",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/swe/miners/%7Bcomp_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id-hotkey",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key swe miners comp id hotkey",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/swe/miners/%7Bcomp_id%7D/%7Bhotkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id-hotkey-penalties",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key swe miners comp id hotkey penalties",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/penalties on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/swe/miners/%7Bcomp_id%7D/%7Bhotkey%7D/penalties"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id-hotkey-tasks",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key swe miners comp id hotkey tasks",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/tasks on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/swe/miners/%7Bcomp_id%7D/%7Bhotkey%7D/tasks"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id-hotkey-tasks-task-name",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key swe miners comp id hotkey tasks task name",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/tasks/{task_name} on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/swe/miners/%7Bcomp_id%7D/%7Bhotkey%7D/tasks/%7Btask_name%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-swe-miners-comp-id-hotkey-tasks-task-name-runs",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key swe miners comp id hotkey tasks task name runs",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/swe/miners/{comp_id}/{hotkey}/tasks/{task_name}/runs on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/swe/miners/%7Bcomp_id%7D/%7Bhotkey%7D/tasks/%7Btask_name%7D/runs"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-api-public-frontend-key-validators",
+      "kind": "subnet-api",
+      "name": "SOMA api public frontend-key validators",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /api/public/frontend-key/validators on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not individually curled at this volume (46 auth-gated operations) -- same /api/public/frontend-key/* router/auth boundary as the verified sn-114-soma-api-public-frontend-key-summary (401). Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/api/public/frontend-key/validators"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-miner-openrouter-key-add",
+      "kind": "subnet-api",
+      "name": "SOMA miner openrouter-key add",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /miner/openrouter-key/add on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not spot-verified individually -- Bittensor miner/validator protocol writes flagged in metagraphed#7125 for maintainer confirmation of the actual hotkey-signature gate. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/miner/openrouter-key/add"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-miner-openrouter-key-delete",
+      "kind": "subnet-api",
+      "name": "SOMA miner openrouter-key delete",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /miner/openrouter-key/delete on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not spot-verified individually -- Bittensor miner/validator protocol writes flagged in metagraphed#7125 for maintainer confirmation of the actual hotkey-signature gate. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/miner/openrouter-key/delete"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-miner-openrouter-key-update",
+      "kind": "subnet-api",
+      "name": "SOMA miner openrouter-key update",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /miner/openrouter-key/update on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not spot-verified individually -- Bittensor miner/validator protocol writes flagged in metagraphed#7125 for maintainer confirmation of the actual hotkey-signature gate. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/miner/openrouter-key/update"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-miner-upload",
+      "kind": "subnet-api",
+      "name": "SOMA miner upload",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /miner/upload on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not spot-verified individually -- Bittensor miner/validator protocol writes flagged in metagraphed#7125 for maintainer confirmation of the actual hotkey-signature gate. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/miner/upload"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-validator-get-best-miners",
+      "kind": "subnet-api",
+      "name": "SOMA validator get best miners",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /validator/get_best_miners on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not spot-verified individually -- Bittensor miner/validator protocol writes flagged in metagraphed#7125 for maintainer confirmation of the actual hotkey-signature gate. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/validator/get_best_miners"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-validator-get-swebench-validation",
+      "kind": "subnet-api",
+      "name": "SOMA validator get swebench validation",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /validator/get_swebench_validation on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not spot-verified individually -- Bittensor miner/validator protocol writes flagged in metagraphed#7125 for maintainer confirmation of the actual hotkey-signature gate. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/validator/get_swebench_validation"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-validator-register",
+      "kind": "subnet-api",
+      "name": "SOMA validator register",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /validator/register on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not spot-verified individually -- Bittensor miner/validator protocol writes flagged in metagraphed#7125 for maintainer confirmation of the actual hotkey-signature gate. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/validator/register"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-114-soma-validator-submit-swebench-validation-score",
+      "kind": "subnet-api",
+      "name": "SOMA validator submit swebench validation score",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) POST /validator/submit_swebench_validation_score on platform.thesoma.ai -- from the SN114 SOMA platform OpenAPI schema (sn-114-soma-openapi, 46 paths). Not spot-verified individually -- Bittensor miner/validator protocol writes flagged in metagraphed#7125 for maintainer confirmation of the actual hotkey-signature gate. Registered per the registry full-API-parity policy (metagraphed#7125 reopen) even though it is not callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://platform.thesoma.ai/openapi.json"
+      ],
+      "url": "https://platform.thesoma.ai/validator/submit_swebench_validation_score"
     }
   ],
   "website_url": "https://thesoma.ai/"
