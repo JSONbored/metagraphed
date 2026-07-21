@@ -290,6 +290,1172 @@
       },
       "source_urls": ["https://api.cartha.finance/v1/parent-vaults"],
       "url": "https://api.cartha.finance/v1/parent-vaults"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-check-lock-updated",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin check lock updated",
+      "notes": "Check Lock Updated Event operation on the OxMarkets/Cartha API (POST /admin/check-lock-updated), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/check-lock-updated"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-check-withdrawal",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin check withdrawal",
+      "notes": "Check Withdrawal Event operation on the OxMarkets/Cartha API (POST /admin/check-withdrawal), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/check-withdrawal"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-epoch-status",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin epoch status",
+      "notes": "Get Epoch Status operation on the OxMarkets/Cartha API (GET /admin/epoch-status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/epoch-status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-force-process-lock-updated",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin force process lock updated",
+      "notes": "Force Process Lock Updated operation on the OxMarkets/Cartha API (POST /admin/force-process-lock-updated), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/force-process-lock-updated"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-force-process-withdrawal",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin force process withdrawal",
+      "notes": "Force Process Withdrawal operation on the OxMarkets/Cartha API (POST /admin/force-process-withdrawal), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/force-process-withdrawal"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-frozen-epochs",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin frozen epochs",
+      "notes": "Get Frozen Epochs operation on the OxMarkets/Cartha API (GET /admin/frozen-epochs), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/frozen-epochs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-parent-lock-orphans",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin parent lock orphans",
+      "notes": "Get Parent Lock Orphans operation on the OxMarkets/Cartha API (GET /admin/parent-lock-orphans), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/parent-lock-orphans"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-processed-events",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin processed events",
+      "notes": "Get Processed Events operation on the OxMarkets/Cartha API (GET /admin/processed-events), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/processed-events"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-recover-lock",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin recover lock",
+      "notes": "Recover Lock operation on the OxMarkets/Cartha API (POST /admin/recover-lock), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/recover-lock"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-recover-parent-lock",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin recover parent lock",
+      "notes": "Recover Parent Lock operation on the OxMarkets/Cartha API (POST /admin/recover-parent-lock), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/recover-parent-lock"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-admin-scheduler-status",
+      "kind": "subnet-api",
+      "name": "OxMarkets admin scheduler status",
+      "notes": "Get Scheduler Status operation on the OxMarkets/Cartha API (GET /admin/scheduler-status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/admin/scheduler-status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-auth-verify-operator-account",
+      "kind": "subnet-api",
+      "name": "OxMarkets auth verify operator account",
+      "notes": "Verify operator account operation on the OxMarkets/Cartha API (POST /auth/verify-operator account), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/auth/verify-hotkey"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-lock-process",
+      "kind": "subnet-api",
+      "name": "OxMarkets lock process",
+      "notes": "Process Lock Transaction operation on the OxMarkets/Cartha API (POST /lock/process), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/lock/process"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-lock-request-parent-signature",
+      "kind": "subnet-api",
+      "name": "OxMarkets lock request parent signature",
+      "notes": "Request Parent Lock Signature operation on the OxMarkets/Cartha API (POST /lock/request-parent-signature), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/lock/request-parent-signature"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-lock-request-signature",
+      "kind": "subnet-api",
+      "name": "OxMarkets lock request signature",
+      "notes": "Request Lock Signature operation on the OxMarkets/Cartha API (POST /lock/request-signature), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/lock/request-signature"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-lock-request-signature-public",
+      "kind": "subnet-api",
+      "name": "OxMarkets lock request signature public",
+      "notes": "Request Lock Signature Public operation on the OxMarkets/Cartha API (POST /lock/request-signature-public), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/lock/request-signature-public"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-lock-status",
+      "kind": "subnet-api",
+      "name": "OxMarkets lock status",
+      "notes": "Get Lock Status operation on the OxMarkets/Cartha API (GET /lock/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/lock/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-parent-lock-check-event",
+      "kind": "subnet-api",
+      "name": "OxMarkets parent lock check event",
+      "notes": "Check Parent Lock Event operation on the OxMarkets/Cartha API (POST /parent-lock/check-event), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/parent-lock/check-event"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-parent-lock-force-process-event",
+      "kind": "subnet-api",
+      "name": "OxMarkets parent lock force process event",
+      "notes": "Force Process Parent Lock Event operation on the OxMarkets/Cartha API (POST /parent-lock/force-process-event), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/parent-lock/force-process-event"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-parent-lock-process",
+      "kind": "subnet-api",
+      "name": "OxMarkets parent lock process",
+      "notes": "Process Parent Lock Transaction operation on the OxMarkets/Cartha API (POST /parent-lock/process), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/parent-lock/process"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-parent-lock-status",
+      "kind": "subnet-api",
+      "name": "OxMarkets parent lock status",
+      "notes": "Get Parent Lock Status operation on the OxMarkets/Cartha API (GET /parent-lock/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming a transaction-hash query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/parent-lock/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-subnet-check-registration",
+      "kind": "subnet-api",
+      "name": "OxMarkets subnet check registration",
+      "notes": "Check Registration operation on the OxMarkets/Cartha API (GET /subnet/check-registration), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming an operator-account query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/subnet/check-registration"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-audit-log",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin audit log",
+      "notes": "Create Audit Log operation on the OxMarkets/Cartha API (POST /v1/admin/audit-log), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/audit-log"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-audit-logs",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin audit logs",
+      "notes": "Get Audit Logs operation on the OxMarkets/Cartha API (GET /v1/admin/audit-logs), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/audit-logs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-email-template-name",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin email template name",
+      "notes": "Admin Reset Email Template operation on the OxMarkets/Cartha API (DELETE, GET, PUT /v1/admin/email-template/{name}), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/email-template/%7Bname%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-email-template-name-preview",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin email template name preview",
+      "notes": "Admin Preview Email Template operation on the OxMarkets/Cartha API (POST /v1/admin/email-template/{name}/preview), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/email-template/%7Bname%7D/preview"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-email-templates",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin email templates",
+      "notes": "Admin List Email Templates operation on the OxMarkets/Cartha API (GET /v1/admin/email-templates), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/email-templates"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-principal-application-application-id-review",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin principal application application id review",
+      "notes": "Admin Review Principal Application operation on the OxMarkets/Cartha API (POST /v1/admin/principal-application/{application_id}/review), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/principal-application/%7Bapplication_id%7D/review"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-principal-applications",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin principal applications",
+      "notes": "Admin List Principal Applications operation on the OxMarkets/Cartha API (GET /v1/admin/principal-applications), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/principal-applications"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-principal-miner-operator-account",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin principal miner operator account",
+      "notes": "Admin Update Principal Miner operation on the OxMarkets/Cartha API (PUT /v1/admin/principal-miner/{operator account}), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/principal-miner/%7Bhotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-principal-miner-operator-account-remove",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin principal miner operator account remove",
+      "notes": "Admin Delete Principal Miner operation on the OxMarkets/Cartha API (POST /v1/admin/principal-miner/{operator account}/remove), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/principal-miner/%7Bhotkey%7D/remove"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-principal-miners",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin principal miners",
+      "notes": "Admin List Principal Miners operation on the OxMarkets/Cartha API (GET /v1/admin/principal-miners), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/principal-miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-system-alert",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin system alert",
+      "notes": "Create System Alert operation on the OxMarkets/Cartha API (POST /v1/admin/system-alert), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/system-alert"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-system-alert-alert-id-acknowledge",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin system alert alert id acknowledge",
+      "notes": "Acknowledge System Alert operation on the OxMarkets/Cartha API (POST /v1/admin/system-alert/{alert_id}/acknowledge), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/system-alert/%7Balert_id%7D/acknowledge"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-system-alerts",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin system alerts",
+      "notes": "Get System Alerts operation on the OxMarkets/Cartha API (GET /v1/admin/system-alerts), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/system-alerts"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-admin-system-alerts-stats",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 admin system alerts stats",
+      "notes": "Get System Alerts Stats operation on the OxMarkets/Cartha API (GET /v1/admin/system-alerts/stats), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/admin/system-alerts/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-deregistrations-check",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 deregistrations check",
+      "notes": "Check Deregistrations operation on the OxMarkets/Cartha API (POST /v1/deregistrations/check), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/deregistrations/check"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-epoch-carry-over",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 epoch carry over",
+      "notes": "Manual Carry Over operation on the OxMarkets/Cartha API (POST /v1/epoch/carry-over), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/epoch/carry-over"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-evictions-run",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 evictions run",
+      "notes": "Run Evictions operation on the OxMarkets/Cartha API (POST /v1/evictions/run), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/evictions/run"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-metagraph-compare",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 metagraph compare",
+      "notes": "Compare Metagraph Snapshots operation on the OxMarkets/Cartha API (GET /v1/metagraph/compare), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/metagraph/compare"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-metagraph-deregistered",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 metagraph deregistered",
+      "notes": "Get Deregistered operator account operation on the OxMarkets/Cartha API (GET /v1/metagraph/deregistered), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/metagraph/deregistered"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-metagraph-snapshot-snapshot-id",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 metagraph snapshot snapshot id",
+      "notes": "Get Metagraph Snapshot Detail operation on the OxMarkets/Cartha API (GET /v1/metagraph/snapshot/{snapshot_id}), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/metagraph/snapshot/%7Bsnapshot_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-metagraph-snapshots",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 metagraph snapshots",
+      "notes": "Get Metagraph Snapshots operation on the OxMarkets/Cartha API (GET /v1/metagraph/snapshots), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/metagraph/snapshots"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-miner-principal-apply",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 miner principal apply",
+      "notes": "Principal Apply operation on the OxMarkets/Cartha API (POST /v1/miner/principal/apply), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/miner/principal/apply"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-miner-principal-list",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 miner principal list",
+      "notes": "Principal List operation on the OxMarkets/Cartha API (GET /v1/miner/principal/list), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/miner/principal/list"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-miner-principal-profile",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 miner principal profile",
+      "notes": "Principal Profile operation on the OxMarkets/Cartha API (GET /v1/miner/principal/profile), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/miner/principal/profile"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-miner-principal-sync",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 miner principal sync",
+      "notes": "Principal Sync operation on the OxMarkets/Cartha API (POST /v1/miner/principal/sync), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/miner/principal/sync"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-miner-status",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 miner status",
+      "notes": "Miner Status Public operation on the OxMarkets/Cartha API (GET /v1/miner/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming an operator-account query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/miner/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-miner-status-by-evm",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 miner status by evm",
+      "notes": "Miner Status By Evm operation on the OxMarkets/Cartha API (GET /v1/miner/status-by-evm), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming an EVM-address query parameter as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/miner/status-by-evm"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-pair-status",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 pair status",
+      "notes": "Pair Status operation on the OxMarkets/Cartha API (POST /v1/pair/status), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/pair/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-position-check-withdrawal",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 position check withdrawal",
+      "notes": "Check Withdrawal operation on the OxMarkets/Cartha API (POST /v1/position/check-withdrawal), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/position/check-withdrawal"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-upcoming-epoch-cleanup",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 upcoming epoch cleanup",
+      "notes": "Cleanup Upcoming Epoch operation on the OxMarkets/Cartha API (POST /v1/upcoming-epoch/cleanup), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/upcoming-epoch/cleanup"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-v1-verified-miners",
+      "kind": "subnet-api",
+      "name": "OxMarkets v1 verified miners",
+      "notes": "Verified Miners operation on the OxMarkets/Cartha API (GET /v1/verified-miners), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. Live-checked 2026-07-21: an unparameterised GET returns HTTP 403 stating a validator whitelist is enabled and a validator-identity parameter must be supplied, so access is restricted at the application level rather than by a declared security scheme; the probe is left disabled and the observation recorded.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/verified-miners"
     }
   ],
   "website_url": "https://www.0xmarkets.io/"
