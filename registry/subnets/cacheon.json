@@ -358,7 +358,7 @@
       "id": "sn-14-cacheon-evaluations-hotkey-hotkey",
       "kind": "subnet-api",
       "name": "Cacheon api evaluations by hotkey",
-      "notes": "Public no-auth GET /api/evaluations/hotkey/{hotkey} on api.cacheon.ai returning evaluation entries for one miner hotkey -- distinct from the already-tracked sn-14-cacheon-evaluations list surface. Documented in the subnet OpenAPI schema (sn-14-cacheon-openapi, path /api/evaluations/hotkey/{hotkey}). Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because a {hotkey} template is not a fixed callable URL today. Not spot-verified individually (no representative hotkey on hand); same host and no-auth pattern as the live-verified sn-14-cacheon-evaluations sibling. Registered per metagraphed#7030 reopen.",
+      "notes": "Public no-auth GET /api/evaluations/hotkey/{hotkey} on api.cacheon.ai returning evaluation entries for one miner's hotkey -- distinct from the already-tracked sn-14-cacheon-evaluations list surface. Documented in the subnet OpenAPI schema (sn-14-cacheon-openapi, path /api/evaluations/hotkey/{hotkey}). Path-param endpoint (Phase 2 of #7013) -- probe.enabled:false because a {hotkey} template is not a fixed callable URL today. Not spot-verified individually (no representative hotkey on hand); same host and no-auth pattern as the live-verified sn-14-cacheon-evaluations sibling. Registered per metagraphed#7030 reopen.",
       "probe": {
         "enabled": false,
         "expect": "json",
