@@ -163,6 +163,306 @@
         "https://api.taoprivatenetwork.com/api-docs/openapi.json"
       ],
       "url": "https://api.taoprivatenetwork.com/api/v1/version"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKeyAuth), declared per-operation."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-65-tpn-failover-config-new",
+      "kind": "subnet-api",
+      "name": "TPN failover config issuance",
+      "notes": "Generate Failover VPN Configuration operation on the TPN API (POST /failover/config/new), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/failover/config/new"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKeyAuth), declared per-operation."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-65-tpn-failover-countries",
+      "kind": "subnet-api",
+      "name": "TPN failover country availability",
+      "notes": "Get Available Firehose Countries operation on the TPN API (GET /failover/countries), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET /failover/countries returns HTTP 401 'Unauthorized: API Key missing', confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/failover/countries"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKeyAuth), declared per-operation."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-65-tpn-failover-health",
+      "kind": "subnet-api",
+      "name": "TPN failover health",
+      "notes": "Get Firehose Pool Health operation on the TPN API (GET /failover/health), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET /failover/health returns HTTP 401 'Unauthorized: API Key missing', confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/failover/health"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKeyAuth), declared per-operation."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-65-tpn-proxy-generate",
+      "kind": "subnet-api",
+      "name": "TPN proxy config generation",
+      "notes": "Generate SOCKS5 Proxy Configuration operation on the TPN API (POST /proxy/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/proxy/generate"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKeyAuth), declared per-operation."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-65-tpn-user-balance",
+      "kind": "subnet-api",
+      "name": "TPN account balance",
+      "notes": "Get API Key Balance operation on the TPN API (GET /user/balance), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET /user/balance returns HTTP 401 'Unauthorized: API Key missing', confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/user/balance"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-65-tpn-vpn-cost",
+      "kind": "subnet-api",
+      "name": "TPN VPN cost quote",
+      "notes": "Calculate VPN Credit Cost operation on the TPN API (POST /vpn/cost), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it, but it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/vpn/cost"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-65-tpn-vpn-countries",
+      "kind": "subnet-api",
+      "name": "TPN VPN country availability",
+      "notes": "Get Available VPN Countries operation on the TPN API (GET /vpn/countries), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it. Live-checked 2026-07-21: GET /vpn/countries returned HTTP 500 after roughly 50s (reproduced for both no-auth GET reporting routes), so the endpoint is documented but not currently serving; the probe is left disabled rather than asserting a working surface.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/vpn/countries"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "x-api-key",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (apiKeyAuth), declared per-operation."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-65-tpn-vpn-generate",
+      "kind": "subnet-api",
+      "name": "TPN VPN config generation",
+      "notes": "Generate WireGuard VPN Configuration operation on the TPN API (POST /vpn/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares the apiKeyAuth security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/vpn/generate"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-65-tpn-vpn-stats",
+      "kind": "subnet-api",
+      "name": "TPN VPN network statistics",
+      "notes": "Get VPN Validator Statistics operation on the TPN API (GET /vpn/stats), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it. Live-checked 2026-07-21: GET /vpn/stats returned HTTP 500 after roughly 50s (reproduced for both no-auth GET reporting routes), so the endpoint is documented but not currently serving; the probe is left disabled rather than asserting a working surface.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/vpn/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-65-tpn-x402-proxy-generate",
+      "kind": "subnet-api",
+      "name": "TPN x402 proxy config generation",
+      "notes": "Generate SOCKS5 Proxy Configuration (x402) operation on the TPN API (POST /x402/proxy/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it, but it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/x402/proxy/generate"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-65-tpn-x402-vpn-generate",
+      "kind": "subnet-api",
+      "name": "TPN x402 VPN config generation",
+      "notes": "Generate WireGuard VPN Configuration (x402) operation on the TPN API (POST /x402/vpn/generate), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it, but it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/x402/vpn/generate"
     }
   ],
   "website_url": "https://tpn.taofu.xyz/"
