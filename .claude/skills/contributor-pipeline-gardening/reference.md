@@ -81,6 +81,32 @@ doesn't require access a contributor can't have). metagraphed-specific instances
   maintainer-vs-contributor gating a code change does, since the gate's own AI-reviewer +
   ownership-proof verification is the real safety net there, not issue labeling.
 
+## Reuse-existing-pattern is mandatory, not implied, whenever a real precedent exists
+
+Maintainer's own words, 2026-07-21: "gittensor miners are lazy and don't care, so we need to be
+extremely clear about what's wanted/needed." Applies here exactly as it does on gittensory/loopover's
+own copy of this skill (see that repo's `reference.md` for the full incident writeup) — a contributor's
+AI-harness agent reads only the issue text, not this skill file, not either repo's CLAUDE.md, and not
+"the obviously right way to do it."
+
+**What this broke on the sibling repo already:** a batch of issues had their labels flipped to
+contributor-eligible, but the body text was left saying `maintainer-only` verbatim in the footer, and
+one issue's Deliverables left the actual artifact ambiguous between three different plausible shapes
+with no pick. Caught only because the maintainer asked for the whole body to be reread end-to-end
+rather than trusting each edit in isolation.
+
+**How to apply here:** whenever an issue's fix has a real existing precedent to follow — an existing
+route/endpoint's shape, an existing schema pattern, an existing Worker handler, a comparable already-
+merged PR — name the *exact* file/PR to mirror as a leading, standalone callout (not buried in prose
+Context), and state explicitly what does **not** satisfy the issue (a differently-shaped
+implementation, an unspecified choice among multiple plausible artifacts, a new parallel mechanism
+instead of extending the cited one). Applies to code issues under the template below; for
+registry/surface-data issues, the equivalent is naming the exact sibling subnet file whose surface
+shape/format should be mirrored, per `.claude/skills/metagraphed/reference.md`'s own conventions.
+
+Before publishing any batch, reread each finished issue body end-to-end — not just the diff of what
+changed — to catch exactly this class of self-contradiction.
+
 ## Issue body template
 
 ```md
