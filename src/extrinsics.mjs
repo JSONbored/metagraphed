@@ -4,7 +4,7 @@
 // + blocks, NOT Taostats. This module holds the load contract, the row→API
 // shaping, and the retention prune. Pure + exported for tests; the Worker runs
 // the D1 I/O.
-import { DAY_MS } from "../workers/config.mjs";
+import { DAY_MS } from "../workers/config.ts";
 import {
   BLOCK_PAGINATION,
   clampLimit,

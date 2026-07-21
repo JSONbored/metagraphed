@@ -394,7 +394,7 @@ import {
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
   WEBHOOK_TTL_SECONDS,
-} from "./config.mjs";
+} from "./config.ts";
 
 const RAW_ARTIFACT_ROUTES = PUBLIC_ARTIFACTS.filter((entry) =>
   entry.path.endsWith(".json"),

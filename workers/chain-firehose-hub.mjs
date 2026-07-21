@@ -38,7 +38,7 @@ import {
   validate,
 } from "graphql";
 import { GRAPHQL_TRANSPORT_WS_PROTOCOL, makeServer } from "graphql-ws";
-import { resolveClientIp } from "./config.mjs";
+import { resolveClientIp } from "./config.ts";
 import {
   GRAPHQL_MAX_COMPLEXITY,
   GRAPHQL_MAX_QUERY_BYTES,

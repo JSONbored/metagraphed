@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import { test } from "vitest";
 
-import * as worker from "../workers/config.mjs";
+import * as worker from "../workers/config.ts";
 import * as wsslb from "../deploy/wss-lb/src/rpc-policy.mjs";
 
 test("wss-lb RPC policy matches workers/config.mjs (no drift)", () => {

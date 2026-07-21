@@ -19,7 +19,7 @@ import {
   MAX_INCIDENT_ROWS,
   SS58_ADDRESS_PATTERN,
   UPTIME_WINDOWS,
-} from "../workers/config.mjs";
+} from "../workers/config.ts";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.mjs";
 
 export { composeCompareData };

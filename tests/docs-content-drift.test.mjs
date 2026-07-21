@@ -24,7 +24,7 @@ import {
   MAX_STATE_QUERY_RESPONSE_BYTES,
   SAFE_RPC_METHODS,
   SAFE_RPC_STATE_QUERY_METHODS,
-} from "../workers/config.mjs";
+} from "../workers/config.ts";
 import {
   RPC_MAX_ATTEMPTS,
   RPC_PROXY_POOLS,

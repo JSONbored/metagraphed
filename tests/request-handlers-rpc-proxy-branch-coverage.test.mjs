@@ -12,7 +12,7 @@ import {
   proxyWithFailover,
   rpcCachePolicy,
 } from "../workers/request-handlers/rpc-proxy.mjs";
-import { MAX_STATE_QUERY_KEYS_PAGE_SIZE } from "../workers/config.mjs";
+import { MAX_STATE_QUERY_KEYS_PAGE_SIZE } from "../workers/config.ts";
 
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
 

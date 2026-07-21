@@ -378,14 +378,19 @@ export const ANONYMOUS_CLIENT_KEY = "anonymous";
 // (non-CF / local / the test harness) we collapse to a single fixed bucket
 // rather than honoring any client-supplied header. A shared fixed bucket is the
 // safe failure mode — worst case all such callers share one limit.
-export function resolveClientIp(request) {
+export function resolveClientIp(request: Request): string {
   return request.headers.get("cf-connecting-ip") || ANONYMOUS_CLIENT_KEY;
 }
 
 // Clamp a raw limit/offset (a query-param string or a tool-arg number) into
 // [min, max], falling back to `def` when absent/blank/non-finite. Shared by every
 // paginated route + tool so they bound page size identically.
-export function clampInt(raw, def, min, max) {
+export function clampInt(
+  raw: string | number | null | undefined,
+  def: number,
+  min: number,
+  max: number,
+): number {
   if (raw == null || raw === "") return def;
   const n = Number(raw);
   if (!Number.isFinite(n)) return def;

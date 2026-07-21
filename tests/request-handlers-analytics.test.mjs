@@ -40,7 +40,7 @@ import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
   DAY_MS,
-} from "../workers/config.mjs";
+} from "../workers/config.ts";
 
 configureAnalytics({
   readHealthMetaKv: async (env) => {

@@ -11,7 +11,7 @@ import {
   ANONYMOUS_CLIENT_KEY,
   clampInt,
   resolveClientIp,
-} from "../workers/config.mjs";
+} from "../workers/config.ts";
 
 const fakeRequest = (headers) => ({
   headers: { get: (name) => headers[name.toLowerCase()] ?? null },

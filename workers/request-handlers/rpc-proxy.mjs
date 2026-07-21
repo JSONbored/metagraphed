@@ -63,7 +63,7 @@ import {
   SAFE_RPC_METHODS,
   SAFE_RPC_STATE_QUERY_METHODS,
   TRUSTED_RPC_UPSTREAM_ORIGINS,
-} from "../config.mjs";
+} from "../config.ts";
 
 // Injected once from api.mjs (see configureRpcProxy). The in-isolate
 // snapshot-meta read lives in api.mjs because the other handler clusters and a

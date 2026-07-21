@@ -40,7 +40,7 @@ import {
   isUsageTelemetryConfigured,
   recordUsageEvent,
 } from "./usage-telemetry.mjs";
-import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
+import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters } from "../workers/list-query.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";

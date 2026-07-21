@@ -200,7 +200,7 @@ import {
   parseCompareNetuidList,
   parseUptimeWindow,
 } from "./analytics-live.mjs";
-import { UPTIME_WINDOWS } from "../workers/config.mjs";
+import { UPTIME_WINDOWS } from "../workers/config.ts";
 import {
   buildAccountExtrinsics,
   buildExtrinsic,
@@ -339,7 +339,7 @@ import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
   SS58_ADDRESS_PATTERN,
-} from "../workers/config.mjs";
+} from "../workers/config.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.mjs";
 import {
   CHAIN_SIGNERS_SORTS,

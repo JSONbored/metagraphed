@@ -4,7 +4,7 @@
 // (both callers try the Postgres tier first) -- this loader is only reached
 // on a tier miss, so it always returns the schema-stable empty shape.
 
-import { ANALYTICS_WINDOWS, RPC_USAGE_BUCKETS } from "../workers/config.mjs";
+import { ANALYTICS_WINDOWS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
 import { formatRpcUsage } from "./health-serving.mjs";
 
 export async function loadRpcUsage({ window = "7d", observedAt = null } = {}) {

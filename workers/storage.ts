@@ -9,7 +9,7 @@ import {
   ARTIFACT_STORAGE_TIERS,
   isR2PreferredDualArtifactPath,
 } from "../src/artifact-storage.mjs";
-import { METAGRAPH_LATEST_KEY } from "./config.mjs";
+import { METAGRAPH_LATEST_KEY } from "./config.ts";
 
 const DEFAULT_R2_TIMEOUT_MS = 5000;
 const DEFAULT_D1_TIMEOUT_MS = 5000;

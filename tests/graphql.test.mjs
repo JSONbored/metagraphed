@@ -28,7 +28,7 @@ import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.mjs"
 import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.mjs";
 import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { resolveClientIp, DAY_MS } from "../workers/config.mjs";
+import { resolveClientIp, DAY_MS } from "../workers/config.ts";
 import {
   KV_ECONOMICS_CURRENT,
   KV_HEALTH_CURRENT,

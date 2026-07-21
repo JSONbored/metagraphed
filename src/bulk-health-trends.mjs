@@ -4,7 +4,7 @@
 // (both callers try the Postgres tier first) -- this loader is only reached
 // on a tier miss, so it always returns the schema-stable empty shape.
 
-import { HEALTH_TREND_WINDOWS } from "../workers/config.mjs";
+import { HEALTH_TREND_WINDOWS } from "../workers/config.ts";
 import { formatBulkTrends } from "./health-serving.mjs";
 
 export async function loadBulkHealthTrends({ observedAt = null } = {}) {

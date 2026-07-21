@@ -16,7 +16,7 @@ import {
   buildOpenApiArtifact,
   compileRoutePattern,
 } from "../src/contracts.mjs";
-import { RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN } from "../workers/config.mjs";
+import { RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN } from "../workers/config.ts";
 import { evaluateArtifactBudgets } from "../scripts/artifact-budgets.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 

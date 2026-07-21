@@ -39,7 +39,7 @@ import {
   MAX_RPC_BODY_BYTES,
   resolveClientIp,
   SAFE_RPC_METHODS,
-} from "../config.mjs";
+} from "../config.ts";
 
 const FULLNODE_EXTRA_SAFE_METHODS = new Set(["author_submitExtrinsic"]);
 

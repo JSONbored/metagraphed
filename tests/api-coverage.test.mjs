@@ -12,7 +12,7 @@ import {
 import workerDefault from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
-import * as workerConfig from "../workers/config.mjs";
+import * as workerConfig from "../workers/config.ts";
 
 const req = (path, init) =>
   new Request(`https://api.metagraph.sh${path}`, init);

@@ -27,7 +27,7 @@ import {
   DEFAULT_ANALYTICS_WINDOW,
   MAX_INCIDENT_ROWS,
   resolveClientIp,
-} from "../config.mjs";
+} from "../config.ts";
 import { parseLimitParam } from "../request-params.ts";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
 import { csvRequested, csvResponse } from "../csv.ts";

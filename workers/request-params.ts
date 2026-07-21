@@ -12,7 +12,7 @@
 // Import-free apart from `clampInt`, so it stays a leaf the request handlers and
 // the src/* loaders can both depend on without a cycle.
 
-import { clampInt } from "./config.mjs";
+import { clampInt } from "./config.ts";
 
 // Absolute pagination ceilings, shared by every paginated route + tool. A page is
 // never larger than MAX_LIMIT rows, and OFFSET never seeks past MAX_OFFSET (deep
@@ -46,7 +46,7 @@ export interface ParamError {
 // [MIN_LIMIT, maxLimit], falling back to defaultLimit when absent/blank/non-finite.
 export function clampLimit(
   raw: string | number | null | undefined,
-  { defaultLimit, maxLimit = MAX_LIMIT }: PaginationProfile = {},
+  { defaultLimit = DEFAULT_LIMIT, maxLimit = MAX_LIMIT }: PaginationProfile = {},
 ): number {
   return clampInt(raw, defaultLimit, MIN_LIMIT, maxLimit);
 }

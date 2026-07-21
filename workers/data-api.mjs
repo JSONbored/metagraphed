@@ -258,7 +258,7 @@ import {
   RPC_USAGE_BUCKETS,
   resolveClientIp,
   ROLLUP_TOKEN_HEADER,
-} from "./config.mjs";
+} from "./config.ts";
 import {
   formatBulkTrends,
   formatTrends,

@@ -21,7 +21,7 @@
 // + Workers VPC Service + Hyperdrive path already proven for reads).
 import postgres from "postgres";
 import { timingSafeEqual } from "../src/webhooks.mjs";
-import { resolveClientIp } from "./config.mjs";
+import { resolveClientIp } from "./config.ts";
 
 const TOKEN_HEADER = "x-registry-sync-token";
 const MAX_BODY_BYTES = 4_194_304; // 4 MiB -- the full registry is ~1.5k surfaces, comfortably under this

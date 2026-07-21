@@ -10,7 +10,7 @@
 // (`readHealthMetaKv`, `readEconomicsCurrentKv`) stay in api.mjs and are
 // injected once at module-init so this file never imports api.mjs back.
 
-import { UPTIME_WINDOWS } from "../config.mjs";
+import { UPTIME_WINDOWS } from "../config.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
 import { errorResponse } from "../http.ts";

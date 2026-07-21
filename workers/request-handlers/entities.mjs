@@ -17,7 +17,7 @@
 // straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.mjs";
+import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.ts";
 import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,
