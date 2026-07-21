@@ -134,6 +134,906 @@
         "https://github.com/HeraldMedia/herald/blob/4de1577e82b74807d4081c3f61edffaee9ed718a/min_compute.yml"
       ],
       "url": "https://raw.githubusercontent.com/HeraldMedia/herald/4de1577e82b74807d4081c3f61edffaee9ed718a/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-health",
+      "kind": "subnet-api",
+      "name": "ain (Herald) first-party API health",
+      "notes": "Public no-auth GET /health on the first-party Herald backend API (api.heraldmedia.ai), documented in the subnet's own OpenAPI schema (api.heraldmedia.ai/openapi.json, 36 paths) with no security scheme. Live-verified 2026-07-21 (~21:35 UTC): HTTP 200 JSON ({\"ok\":true,\"version\":\"0.1.0\"}). Registered during the MCP execute verify pass (#7082).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-ready",
+      "kind": "subnet-api",
+      "name": "ain (Herald) first-party API readiness",
+      "notes": "Public no-auth GET /ready on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with no security scheme. Live-verified 2026-07-21 (~21:35 UTC): HTTP 503 with a well-formed JSON body ({\"ok\":false, per-network/netuid readiness scope checks}) -- a real, currently-not-ready endpoint, not a dead route. Registered anyway per the existing project precedent of cataloguing real documented endpoints even when currently reporting unhealthy (probe.expect:json checks content-type, not status code, so a 5xx here surfaces as the recognized 'transient' probe status rather than a hard failure).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-briefs",
+      "kind": "subnet-api",
+      "name": "ain (Herald) briefs list",
+      "notes": "Public no-auth GET /briefs on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with no security scheme and no parameters. Live-verified 2026-07-21 (~21:35 UTC): HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/briefs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-validator-briefs-v2",
+      "kind": "subnet-api",
+      "name": "ain (Herald) validator briefs (v2)",
+      "notes": "Public no-auth GET /api/v2/validator/briefs on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with no security scheme and no parameters. Live-verified 2026-07-21 (~21:35 UTC): HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/api/v2/validator/briefs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-registry-outlets",
+      "kind": "subnet-api",
+      "name": "ain (Herald) live outlet registry",
+      "notes": "Public no-auth GET /registry/outlets.json on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with optional network/netuid query params, neither required. Live-verified 2026-07-21 (~21:35 UTC) (no params): HTTP 200 JSON. Distinct from the already-registered static outlets.seed.json on raw GitHub -- this is the API-served live version of the same registry.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/registry/outlets.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-validator-registry-v3",
+      "kind": "subnet-api",
+      "name": "ain (Herald) validator registry (v3)",
+      "notes": "Public no-auth GET /api/v3/validator/registry on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with optional network/netuid query params, neither required. Live-verified 2026-07-21 (~21:35 UTC) (no params): HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/api/v3/validator/registry"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-reporting-export",
+      "kind": "subnet-api",
+      "name": "ain (Herald) reporting export",
+      "notes": "Public no-auth GET /reporting/export on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with optional network/netuid query params, neither required. Live-verified 2026-07-21 (~21:35 UTC) (no params): HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/reporting/export"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-disputes-list",
+      "kind": "subnet-api",
+      "name": "ain (Herald) disputes list",
+      "notes": "Public no-auth GET /disputes on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with no parameters and no header requirement (the sibling POST /disputes declares a required-in-practice x-disputes-token header; the GET list route does not). Live-verified 2026-07-21 (~21:35 UTC): HTTP 200 JSON. The sibling POST /disputes (dispute submission) shares this exact URL; the registry's one-surface-per-URL rule (validate:surface duplicate-URL check, #5737) means this single surface represents the path -- the POST operation carries a schema-declared x-disputes-token header.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/disputes"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-funding-list",
+      "kind": "subnet-api",
+      "name": "ain (Herald) funding list",
+      "notes": "Public no-auth GET /funding on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with no parameters and no header requirement (the sibling POST /funding declares an x-funding-token header; the GET list route does not). Live-verified 2026-07-21 (~21:35 UTC): HTTP 200 JSON. The sibling POST /funding (funding submission) shares this exact URL; the registry's one-surface-per-URL rule (validate:surface duplicate-URL check, #5737) means this single surface represents the path -- the POST operation carries a schema-declared x-funding-token header.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/funding"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-public-subnet-status",
+      "kind": "subnet-api",
+      "name": "ain (Herald) public subnet status",
+      "notes": "Public no-auth GET /public/subnet/status on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with required network/netuid query params. Live-verified 2026-07-21 (~21:35 UTC) with network=finney&netuid=69: HTTP 200 JSON; without params: HTTP 422 (confirms live validation, not auth). probe.enabled:false since the probe pipeline has no per-surface query-param injection for required params.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/public/subnet/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-public-epochs",
+      "kind": "subnet-api",
+      "name": "ain (Herald) public epochs",
+      "notes": "Public no-auth GET /public/epochs on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with required network/netuid query params. Live-verified 2026-07-21 (~21:35 UTC) with network=finney&netuid=69: HTTP 200 JSON. probe.enabled:false (required params, no query-injection in the probe pipeline).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/public/epochs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-public-validators",
+      "kind": "subnet-api",
+      "name": "ain (Herald) public validators",
+      "notes": "Public no-auth GET /public/validators on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with required network/netuid query params. Live-verified 2026-07-21 (~21:35 UTC) with network=finney&netuid=69: HTTP 200 JSON ({\"reporters\":[],\"latest_epoch\":null}); without params: HTTP 422 listing the required query fields (confirms live validation, not auth). probe.enabled:false (required params, no query-injection in the probe pipeline).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/public/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-public-events",
+      "kind": "sse",
+      "name": "ain (Herald) public events stream (SSE)",
+      "notes": "GET /public/events on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with required network/netuid query params. Live-verified 2026-07-21 (~21:35 UTC) with network=finney&netuid=69: HTTP 200 with content-type text/event-stream -- a long-lived Server-Sent Events stream of finalized_block/indexer events, not a one-shot JSON body; without params: HTTP 422 listing the required query fields (confirms live validation, not auth). Registered kind:sse accordingly. probe.enabled:false (required params, no query-injection in the probe pipeline, and the stream never terminates on its own).",
+      "probe": {
+        "enabled": false,
+        "expect": "sse",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/public/events"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-public-commitments",
+      "kind": "subnet-api",
+      "name": "ain (Herald) public commitments",
+      "notes": "Public no-auth GET /public/commitments on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with required network/netuid query params (plus an optional hotkey filter param). Live-verified 2026-07-21 (~21:35 UTC) with network=finney&netuid=69: HTTP 200 JSON; without params: HTTP 422 listing the required query fields (confirms live validation, not auth). probe.enabled:false (required params, no query-injection in the probe pipeline).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/public/commitments"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-public-articles",
+      "kind": "subnet-api",
+      "name": "ain (Herald) public articles",
+      "notes": "Public no-auth GET /public/articles on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with optional network/netuid query params, neither required. Live-verified 2026-07-21 (~21:35 UTC) (no params): HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/public/articles"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-public-stats",
+      "kind": "subnet-api",
+      "name": "ain (Herald) public stats",
+      "notes": "Public no-auth GET /public/stats on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with optional network/netuid query params, neither required. Live-verified 2026-07-21 (~21:35 UTC) (no params): HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/public/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-public-leaderboard",
+      "kind": "subnet-api",
+      "name": "ain (Herald) public leaderboard",
+      "notes": "Public no-auth GET /public/leaderboard on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with optional network/netuid query params, neither required. Live-verified 2026-07-21 (~21:35 UTC) (no params): HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/public/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-api-brief-economics",
+      "kind": "subnet-api",
+      "name": "ain (Herald) per-brief economics",
+      "notes": "GET /public/briefs/{brief_id}/economics on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with a required brief_id path param plus required network/netuid query params. Live-verified 2026-07-21 (~21:35 UTC): without query params HTTP 422 listing the required network/netuid fields (the placeholder path segment itself is accepted); with network=finney&netuid=69 and a placeholder brief_id, HTTP 404 {\"detail\":\"no confirmed economics for brief\"} -- a clean domain not-found, not an auth rejection, confirming the route is live and genuinely unauthenticated. probe.enabled:false (the URL is a percent-encoded {brief_id} template; the probe pipeline has no per-surface path-param injection).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/public/briefs/%7Bbrief_id%7D/economics"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-results-token",
+        "scopes_note": "Declared as an optional (required:false) header parameter on the operation itself in the OpenAPI schema, but live-verified 401 unauthenticated -- enforced in application logic, not a formal OpenAPI security scheme. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-validator-results",
+      "kind": "subnet-api",
+      "name": "ain (Herald) validator results (auth-gated)",
+      "notes": "GET /validator/results on api.heraldmedia.ai declares network/netuid query params plus an x-results-token header (all required:false in the schema) -- live-verified 2026-07-21: HTTP 401 {\"detail\":\"unauthorized\"} both with and without network/netuid query params, confirming the header is enforced in practice despite the schema not marking it required. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/validator/results"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-reveals-token",
+        "scopes_note": "Declared as an optional (required:false) header parameter on the operation itself in the OpenAPI schema, but live-verified 401 unauthenticated -- enforced in application logic, not a formal OpenAPI security scheme. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-reveals-list",
+      "kind": "subnet-api",
+      "name": "ain (Herald) reveals list (auth-gated)",
+      "notes": "GET /reveals on api.heraldmedia.ai declares an x-reveals-token header (required:false in the schema). Live-verified 2026-07-21 (~21:35 UTC): HTTP 401 {\"detail\":\"unauthorized\"} unauthenticated, confirming the header is enforced in practice. probe.enabled:false. The sibling POST /reveals (reveal submission) shares this exact URL; the registry's one-surface-per-URL rule (validate:surface duplicate-URL check, #5737) means this single surface represents the path -- the POST operation carries the same x-reveals-token gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/reveals"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-service-token",
+        "scopes_note": "Declared as an optional (required:false) header parameter on the operation itself in the OpenAPI schema, but live-verified 401 unauthenticated -- enforced in application logic, not a formal OpenAPI security scheme. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-users-coverage",
+      "kind": "subnet-api",
+      "name": "ain (Herald) user coverage (auth-gated)",
+      "notes": "GET /users/coverage on api.heraldmedia.ai declares optional network/netuid query params plus x-user-hotkey and x-service-token headers (all required:false in the schema). Live-verified 2026-07-21 (~21:35 UTC): HTTP 401 {\"detail\":\"unauthorized\"} unauthenticated, confirming at least one of the two headers is enforced in practice despite neither being schema-required. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/users/coverage"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-admin-token",
+        "scopes_note": "Declared as an optional (required:false) header parameter on the operation itself in the OpenAPI schema, but live-verified 401 unauthenticated -- enforced in application logic, not a formal OpenAPI security scheme. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-admin-briefs",
+      "kind": "subnet-api",
+      "name": "ain (Herald) admin briefs list (auth-gated)",
+      "notes": "GET /admin/briefs on api.heraldmedia.ai declares an x-admin-token header (required:false in the schema). Live-verified 2026-07-21 (~21:35 UTC): HTTP 401 {\"detail\":\"unauthorized\"} unauthenticated, confirming the header is enforced in practice. probe.enabled:false. The sibling POST /admin/briefs (brief creation) shares this exact URL; the registry's one-surface-per-URL rule (validate:surface duplicate-URL check, #5737) means this single surface represents the path -- the POST operation carries the same x-admin-token gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/admin/briefs"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-admin-token",
+        "scopes_note": "Declared as an optional (required:false) header parameter on the operation itself in the OpenAPI schema, but live-verified 401 unauthenticated -- enforced in application logic, not a formal OpenAPI security scheme. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-admin-reporters",
+      "kind": "subnet-api",
+      "name": "ain (Herald) admin reporters list (auth-gated)",
+      "notes": "GET /admin/reporters on api.heraldmedia.ai declares network/netuid query params plus an x-admin-token header (all required:false in the schema). Live-verified 2026-07-21 (~21:35 UTC): HTTP 401 {\"detail\":\"unauthorized\"} unauthenticated, confirming the header is enforced in practice. probe.enabled:false. The sibling POST /admin/reporters (reporter registration) shares this exact URL; the registry's one-surface-per-URL rule (validate:surface duplicate-URL check, #5737) means this single surface represents the path -- the POST operation carries the same x-admin-token gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/admin/reporters"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-admin-token",
+        "scopes_note": "Declared as an optional (required:false) header parameter on the operation itself in the OpenAPI schema, but live-verified 401 unauthenticated -- enforced in application logic, not a formal OpenAPI security scheme. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-admin-registry-draft",
+      "kind": "subnet-api",
+      "name": "ain (Herald) admin registry draft (auth-gated)",
+      "notes": "GET /admin/registry/draft on api.heraldmedia.ai declares network/netuid query params plus an x-admin-token header (all required:false in the schema). Live-verified 2026-07-21 (~21:35 UTC): HTTP 401 {\"detail\":\"unauthorized\"} unauthenticated, confirming the header is enforced in practice. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/admin/registry/draft"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-service-token",
+        "scopes_note": "Declared as an optional (required:false) header parameter on the operation itself in the OpenAPI schema, but live-verified 401 unauthenticated -- enforced in application logic, not a formal OpenAPI security scheme. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-contact-list",
+      "kind": "subnet-api",
+      "name": "ain (Herald) contact list (auth-gated)",
+      "notes": "GET /contact on api.heraldmedia.ai declares an x-service-token header (required:false in the schema). Live-verified 2026-07-21 (~21:35 UTC): HTTP 401 {\"detail\":\"unauthorized\"} unauthenticated, confirming the header is enforced in practice. probe.enabled:false. The sibling POST /contact (contact submission) shares this exact URL; the registry's one-surface-per-URL rule (validate:surface duplicate-URL check, #5737) means this single surface represents the path -- the POST operation carries the same x-service-token gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/contact"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-admin-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-admin-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /admin/briefs route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-admin-briefs-close",
+      "kind": "subnet-api",
+      "name": "ain (Herald) admin brief close (write, auth-gated)",
+      "notes": "POST /admin/briefs/{brief_id}/close on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-admin-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-admin-token gate is live-verified enforced on the sibling GET /admin/briefs (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/admin/briefs/%7Bbrief_id%7D/close"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-admin-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-admin-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /admin/briefs route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-admin-briefs-fund",
+      "kind": "subnet-api",
+      "name": "ain (Herald) admin brief fund (write, auth-gated)",
+      "notes": "POST /admin/briefs/{brief_id}/fund on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-admin-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-admin-token gate is live-verified enforced on the sibling GET /admin/briefs (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/admin/briefs/%7Bbrief_id%7D/fund"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-admin-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-admin-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /admin/briefs route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-admin-registry-editions",
+      "kind": "subnet-api",
+      "name": "ain (Herald) admin registry editions (write, auth-gated)",
+      "notes": "POST /admin/registry/editions on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-admin-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-admin-token gate is live-verified enforced on the sibling GET /admin/briefs (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/admin/registry/editions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-admin-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-admin-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /admin/briefs route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-admin-registry-outlets",
+      "kind": "subnet-api",
+      "name": "ain (Herald) admin registry outlets (write, auth-gated)",
+      "notes": "POST /admin/registry/outlets on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-admin-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-admin-token gate is live-verified enforced on the sibling GET /admin/briefs (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/admin/registry/outlets"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-admin-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-admin-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /admin/briefs route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-admin-registry-outlet-status",
+      "kind": "subnet-api",
+      "name": "ain (Herald) admin registry outlet status (write, auth-gated)",
+      "notes": "POST /admin/registry/outlets/{outlet_id}/status on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-admin-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-admin-token gate is live-verified enforced on the sibling GET /admin/briefs (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/admin/registry/outlets/%7Boutlet_id%7D/status"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-admin-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-admin-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /admin/briefs route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-admin-registry-discard",
+      "kind": "subnet-api",
+      "name": "ain (Herald) admin registry discard (write, auth-gated)",
+      "notes": "POST /admin/registry/discard on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-admin-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-admin-token gate is live-verified enforced on the sibling GET /admin/briefs (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/admin/registry/discard"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-results-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-results-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /validator/results route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-results-submit",
+      "kind": "subnet-api",
+      "name": "ain (Herald) results submission (write, auth-gated)",
+      "notes": "POST /results on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-results-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-results-token gate is live-verified enforced on the sibling GET /validator/results (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/results"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-results-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-results-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /validator/results route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-validator-snapshots",
+      "kind": "subnet-api",
+      "name": "ain (Herald) validator snapshots submission (write, auth-gated)",
+      "notes": "POST /api/v3/validator/snapshots on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-results-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-results-token gate is live-verified enforced on the sibling GET /validator/results (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/api/v3/validator/snapshots"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-results-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-results-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /validator/results route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-validator-weight-receipts",
+      "kind": "subnet-api",
+      "name": "ain (Herald) validator weight receipts submission (write, auth-gated)",
+      "notes": "POST /api/v3/validator/weight-receipts on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-results-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-results-token gate is live-verified enforced on the sibling GET /validator/results (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/api/v3/validator/weight-receipts"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-service-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-service-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /contact route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-users-upsert",
+      "kind": "subnet-api",
+      "name": "ain (Herald) users upsert (write, auth-gated)",
+      "notes": "POST /users/upsert on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-service-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-service-token gate is live-verified enforced on the sibling GET /contact (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/users/upsert"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "location": "header",
+        "name": "x-service-token",
+        "scopes_note": "Declared as a header parameter on the operation itself in the OpenAPI schema (not a formal securitySchemes entry); the same x-service-token header is live-verified enforced (HTTP 401 unauthenticated) on this API's GET /contact route. Exact token format isn't publicly documented."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-69-ain-api-contact-status",
+      "kind": "subnet-api",
+      "name": "ain (Herald) contact status update (write, auth-gated)",
+      "notes": "POST /contact/{contact_id}/status on api.heraldmedia.ai -- a write/mutation operation declared in the subnet's own OpenAPI schema with an x-service-token header. Not spot-verified individually (a state-changing POST against a production validator-facing system; #7082's own review section lists these write endpoints as not individually spot-verified), but the same x-service-token gate is live-verified enforced on the sibling GET /contact (HTTP 401 unauthenticated, 2026-07-21 (~21:35 UTC)). Registered auth_required:true with probe.enabled:false per #7082's guidance for the auth-gated set; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.heraldmedia.ai/openapi.json"],
+      "url": "https://api.heraldmedia.ai/contact/%7Bcontact_id%7D/status"
     }
   ],
   "website_url": "https://www.heraldmedia.ai/"
