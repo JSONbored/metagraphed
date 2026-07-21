@@ -180,3 +180,37 @@ export async function loadChainEventsFeed(
     events: Array.isArray(data?.events) ? data.events : [],
   };
 }
+
+const CHAIN_ACTIVITY_BLOCKS_DEFAULT = 1000;
+const CHAIN_ACTIVITY_BLOCKS_MAX = 5000;
+
+// The optional `blocks` window for get_chain_activity / chain_events_stats: a
+// missing value defaults to 1000; a provided value must be a positive integer
+// and is clamped to the data Worker's 1-5000 bound.
+export function optionalBlocksWindow(args) {
+  const value = args?.blocks;
+  if (value === undefined || value === null)
+    return CHAIN_ACTIVITY_BLOCKS_DEFAULT;
+  if (!Number.isInteger(value) || value < 1) {
+    throwToolError(
+      "invalid_params",
+      "Argument `blocks` must be a positive integer.",
+    );
+  }
+  return Math.min(value, CHAIN_ACTIVITY_BLOCKS_MAX);
+}
+
+// Chain-activity aggregate (pallet.method event distribution) over the most
+// recent N blocks, from the Postgres-backed all-events tier — same DATA_API path
+// REST's /api/v1/chain-events/stats proxy and MCP get_chain_activity use.
+export async function loadChainActivity(ctx, blocks) {
+  const data = await dataApiFetchJson(
+    ctx,
+    `/api/v1/chain-events/stats?blocks=${blocks}`,
+  );
+  return {
+    window_blocks: data?.window_blocks ?? blocks,
+    groups: data?.groups ?? 0,
+    activity: Array.isArray(data?.activity) ? data.activity : [],
+  };
+}
