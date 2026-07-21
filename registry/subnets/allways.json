@@ -194,8 +194,8 @@
       },
       "provider": "allways",
       "public_safe": true,
-      "url": "https://api.all-ways.io/miners/leaderboard",
-      "source_urls": ["https://api.all-ways.io/swagger-json"]
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/miners/leaderboard"
     },
     {
       "auth_required": false,
@@ -620,6 +620,336 @@
         "https://api.all-ways.io/swagger"
       ],
       "url": "https://api.all-ways.io/history/rate?direction=SOL-BTC"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-events-swap-swapkey",
+      "kind": "subnet-api",
+      "name": "Allways GET events swap by swapKey",
+      "notes": "GET /events/swap/{swapKey} on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/events/swap/%7BswapKey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-events-minerhotkey",
+      "kind": "subnet-api",
+      "name": "Allways GET events miner by hotkey",
+      "notes": "GET /events/miner/{hotkey} on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Live-verified 2026-07-21 with a dummy hotkey: HTTP 200 (empty/default result set), confirming the route is real and public. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/events/miner/%7Bhotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-miners-hotkey",
+      "kind": "subnet-api",
+      "name": "Allways GET miners by hotkey",
+      "notes": "GET /miners/{hotkey} on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Live-verified 2026-07-21 with a dummy hotkey: HTTP 404 -- a real route with real not-found handling, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/miners/%7Bhotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-miners-hotkey-stats",
+      "kind": "subnet-api",
+      "name": "Allways GET miners by hotkey stats",
+      "notes": "GET /miners/{hotkey}/stats on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/miners/%7Bhotkey%7D/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-miners-hotkey-scores",
+      "kind": "subnet-api",
+      "name": "Allways GET miners by hotkey scores",
+      "notes": "GET /miners/{hotkey}/scores on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/miners/%7Bhotkey%7D/scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-miners-hotkey-scores-current",
+      "kind": "subnet-api",
+      "name": "Allways GET miners by hotkey scores current",
+      "notes": "GET /miners/{hotkey}/scores/current on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/miners/%7Bhotkey%7D/scores/current"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-miners-hotkey-swaps",
+      "kind": "subnet-api",
+      "name": "Allways GET miners by hotkey swaps",
+      "notes": "GET /miners/{hotkey}/swaps on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/miners/%7Bhotkey%7D/swaps"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-miners-hotkey-rate-history",
+      "kind": "subnet-api",
+      "name": "Allways GET miners by hotkey rate history",
+      "notes": "GET /miners/{hotkey}/rate-history on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/miners/%7Bhotkey%7D/rate-history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-og-image",
+      "kind": "subnet-api",
+      "name": "Allways GET og image",
+      "notes": "GET /og-image on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Live-verified 2026-07-21: HTTP 200, content-type image/png -- an image, not JSON. Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/og-image"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-swaps-swapid",
+      "kind": "subnet-api",
+      "name": "Allways GET swaps by swapId",
+      "notes": "GET /swaps/{swapId} on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Live-verified 2026-07-21 with a dummy id: HTTP 500 -- the route exists and attempts to process the id (not a 401/403 auth gate). Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/swaps/%7BswapId%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-reservations-by-source-address",
+      "kind": "subnet-api",
+      "name": "Allways GET reservations by source by address",
+      "notes": "GET /reservations/by-source/{address} on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Live-verified 2026-07-21 with a dummy address: HTTP 200 (empty/default result set), confirming the route is real and public. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/reservations/by-source/%7Baddress%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-reservations-requesthash",
+      "kind": "subnet-api",
+      "name": "Allways GET reservations by requestHash",
+      "notes": "GET /reservations/{requestHash} on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Not individually curled -- same no-auth shape as the verified `sn-7-allways-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) -- the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/reservations/%7BrequestHash%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-treasury",
+      "kind": "subnet-api",
+      "name": "Allways GET treasury",
+      "notes": "GET /treasury on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Live-verified 2026-07-21: HTTP 200 with a real JSON treasury breakdown -- not in the issue's original OpenAPI diff (subnet added this route after the issue was filed; the live schema now has 40 paths, not the issue's 37). Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/treasury"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-treasury-routers",
+      "kind": "subnet-api",
+      "name": "Allways GET treasury routers",
+      "notes": "GET /treasury/routers on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Live-verified 2026-07-21: HTTP 200 -- same as sn-7-allways-treasury-api above, added to the schema after the issue was filed. Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/treasury/routers"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-treasury-churn",
+      "kind": "subnet-api",
+      "name": "Allways GET treasury churn",
+      "notes": "GET /treasury/churn on api.all-ways.io -- public, no auth declared in the OpenAPI schema (37-then-40-path spec, no `security` on any operation). Live-verified 2026-07-21: HTTP 200 -- same as sn-7-allways-treasury-api above, added to the schema after the issue was filed. Registered per the registry's full-API-parity policy (metagraphed#7023).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/treasury/churn"
     }
   ],
   "website_url": "https://all-ways.io/"
