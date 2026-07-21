@@ -9,8 +9,7 @@
   "curation": {
     "gap_notes": [
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "The /api/v1/benchmark/chunks route requires a sourceDate/chunkId parameter and is not promotable."
+      "No verified SSE/event stream yet."
     ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -35,7 +34,7 @@
       "id": "sn-126-poker44-health",
       "kind": "subnet-api",
       "name": "Poker44 platform health API",
-      "notes": "Public no-auth GET /health on api.poker44.net returning platform liveness JSON (observed: status healthy, database and redis connected). Same host as the internal validator routes configured in the official Poker44-subnet validator neuron.",
+      "notes": "Public no-auth GET /health on api.poker44.net returning platform liveness JSON (observed: status healthy, database and redis connected). Same host as the internal validator routes configured in the official Poker44-subnet validator neuron. Live-verified 2026-07-21: HTTP 200 application/json {\"success\":true,\"data\":{\"status\":\"healthy\",\"services\":{\"database\":{\"status\":\"connected\"},\"redis\":{\"status\":\"connected\"},...}}}.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -145,7 +144,7 @@
       "id": "sn-126-poker44-benchmark-releases",
       "kind": "data-artifact",
       "name": "Poker44 benchmark release history",
-      "notes": "Public no-auth GET /api/v1/benchmark/releases on api.poker44.net returning the history of published shadow-training benchmark releases (per-release chunk/hand counts, audit thresholds, source dates). Explicitly documented as a standalone route in docs/training-benchmark.md alongside the already-tracked /api/v1/benchmark status endpoint; the sibling /api/v1/benchmark/chunks route requires a sourceDate/chunkId parameter and is not promotable. No wallet/hotkey data.",
+      "notes": "Public no-auth GET /api/v1/benchmark/releases on api.poker44.net returning the history of published shadow-training benchmark releases (per-release chunk/hand counts, audit thresholds, source dates). Explicitly documented as a standalone route in docs/training-benchmark.md alongside the already-tracked /api/v1/benchmark status endpoint and the separately registered /api/v1/benchmark/chunks (+ /chunks/{chunkId}) surfaces. No wallet/hotkey data.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -183,6 +182,54 @@
         "https://poker44.net/"
       ],
       "url": "https://poker44.net/Poker44_Whitepaper.pdf"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-benchmark-chunks",
+      "kind": "data-artifact",
+      "name": "Poker44 benchmark chunks by source date",
+      "notes": "Public no-auth GET /api/v1/benchmark/chunks on api.poker44.net returning shadow-training hand chunks for one sourceDate (optional limit). Requires query param `sourceDate=YYYY-MM-DD` — callable today via call_subnet_surface's `query` argument. probe.enabled:false because bare GET without sourceDate is not a stable no-param probe. Documented in docs/training-benchmark.md; registered under metagraphed#7134. Live-verified 2026-07-21: GET ?sourceDate=2026-07-21&limit=1 → HTTP 200 JSON with data.chunks[0].chunkId (e.g. 069386f8-998f-4437-9402-2a4ea6e520a0).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md",
+        "https://api.poker44.net/api/v1/benchmark"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark/chunks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-benchmark-chunk-by-id",
+      "kind": "data-artifact",
+      "name": "Poker44 benchmark chunk by id",
+      "notes": "Public no-auth GET /api/v1/benchmark/chunks/{chunkId} on api.poker44.net returning one shadow-training chunk payload. Path-param endpoint (needs Phase 2 schema-aware execution for template substitution) — the URL's %7BchunkId%7D segment is the URI-encoded form of a literal {chunkId} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). probe.enabled:false (no single fixed callable URL). Documented in docs/training-benchmark.md; registered under metagraphed#7134. Live-verified 2026-07-21: GET /api/v1/benchmark/chunks/069386f8-998f-4437-9402-2a4ea6e520a0 → HTTP 200 JSON with matching data.chunkId.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md",
+        "https://api.poker44.net/api/v1/benchmark/chunks"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark/chunks/%7BchunkId%7D"
     }
   ],
   "website_url": "https://poker44.net/"
