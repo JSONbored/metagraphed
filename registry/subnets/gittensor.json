@@ -662,6 +662,446 @@
       },
       "source_urls": ["https://api.gittensor.io/swagger-json"],
       "url": "https://api.gittensor.io/configurations/general"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-dash-lines-hotkey",
+      "kind": "subnet-api",
+      "name": "Gittensor GET dash lines hotkey",
+      "notes": "GET /dash/lines/hotkey on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: hotkey. Live-verified 2026-07-21 with a real, valid value: HTTP 200. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/dash/lines/hotkey"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-miners-githubid",
+      "kind": "subnet-api",
+      "name": "Gittensor GET miners by githubId",
+      "notes": "GET /miners/{githubId} on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/miners/%7BgithubId%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-miners-githubid-prs",
+      "kind": "subnet-api",
+      "name": "Gittensor GET miners by githubId prs",
+      "notes": "GET /miners/{githubId}/prs on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/miners/%7BgithubId%7D/prs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-miners-githubid-github",
+      "kind": "subnet-api",
+      "name": "Gittensor GET miners by githubId github",
+      "notes": "GET /miners/{githubId}/github on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/miners/%7BgithubId%7D/github"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-miners-by-hotkey-hotkey-github",
+      "kind": "subnet-api",
+      "name": "Gittensor GET miners by hotkey by hotkey github",
+      "notes": "GET /miners/by-hotkey/{hotkey}/github on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/miners/by-hotkey/%7Bhotkey%7D/github"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-miners-by-github-id-githubid-hotkey",
+      "kind": "subnet-api",
+      "name": "Gittensor GET miners by github id by githubId hotkey",
+      "notes": "GET /miners/by-github-id/{githubId}/hotkey on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/miners/by-github-id/%7BgithubId%7D/hotkey"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-prs-details",
+      "kind": "subnet-api",
+      "name": "Gittensor GET prs details",
+      "notes": "GET /prs/details on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: repo, number. Live-verified 2026-07-21 with a real, valid value: HTTP 200. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/prs/details"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-prs-comments",
+      "kind": "subnet-api",
+      "name": "Gittensor GET prs comments",
+      "notes": "GET /prs/comments on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: repo, number. Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-dash-lines-hotkey` sibling. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/prs/comments"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repos-repo-impact",
+      "kind": "subnet-api",
+      "name": "Gittensor GET repos by repo impact",
+      "notes": "GET /repos/{repo}/impact on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/repos/%7Brepo%7D/impact"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repos-repo-prs",
+      "kind": "subnet-api",
+      "name": "Gittensor GET repos by repo prs",
+      "notes": "GET /repos/{repo}/prs on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/repos/%7Brepo%7D/prs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repos-repo-badge-svg",
+      "kind": "subnet-api",
+      "name": "Gittensor GET repos by repo badge svg",
+      "notes": "GET /repos/{repo}/badge.svg on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/repos/%7Brepo%7D/badge.svg"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repos-repo",
+      "kind": "subnet-api",
+      "name": "Gittensor GET repos by repo",
+      "notes": "GET /repos/{repo} on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/repos/%7Brepo%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repos-repo-issues",
+      "kind": "subnet-api",
+      "name": "Gittensor GET repos by repo issues",
+      "notes": "GET /repos/{repo}/issues on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/repos/%7Brepo%7D/issues"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repos-repo-maintainers",
+      "kind": "subnet-api",
+      "name": "Gittensor GET repos by repo maintainers",
+      "notes": "GET /repos/{repo}/maintainers on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/repos/%7Brepo%7D/maintainers"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repos-repo-miners",
+      "kind": "subnet-api",
+      "name": "Gittensor GET repos by repo miners",
+      "notes": "GET /repos/{repo}/miners on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/repos/%7Brepo%7D/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-og-image",
+      "kind": "subnet-api",
+      "name": "Gittensor GET og image",
+      "notes": "GET /og-image on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Required query params: type, id, repo, number. Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-dash-lines-hotkey` sibling. probe.enabled:false is the safer default here: an auto-probe with no query params would just error, misreporting the surface as down. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/og-image"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-issues-repo-repofullname-summary",
+      "kind": "subnet-api",
+      "name": "Gittensor GET issues repo by repoFullName summary",
+      "notes": "GET /issues/repo/{repoFullName}/summary on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Not individually curled — same no-auth, no-declared-security shape as the verified `sn-74-gittensor-repos-repo` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/issues/repo/%7BrepoFullName%7D/summary"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-issues-id",
+      "kind": "subnet-api",
+      "name": "Gittensor GET issues by id",
+      "notes": "GET /issues/{id} on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/issues/%7Bid%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-issues-id-details",
+      "kind": "subnet-api",
+      "name": "Gittensor GET issues by id details",
+      "notes": "GET /issues/{id}/details on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/issues/%7Bid%7D/details"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-issues-id-submissions",
+      "kind": "subnet-api",
+      "name": "Gittensor GET issues by id submissions",
+      "notes": "GET /issues/{id}/submissions on api.gittensor.io — public, no auth declared in the OpenAPI schema (Gittensor's whole public API is no-auth). Live-verified 2026-07-21 with a real, valid value: HTTP 200. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7087).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/issues/%7Bid%7D/submissions"
     }
   ],
   "website_url": "https://gittensor.io/"

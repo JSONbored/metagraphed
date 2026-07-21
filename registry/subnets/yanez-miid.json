@@ -186,6 +186,31 @@
       },
       "source_urls": ["https://miners-stats.yanezcompliance.net/health"],
       "url": "https://miners-stats.yanezcompliance.net/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-54-yanez-miner-by-uid",
+      "kind": "subnet-api",
+      "name": "Yanez Compliance per-miner score history",
+      "notes": "Public no-auth GET /miners/{miner_uid} on miners-stats.yanezcompliance.net returning that miner's scored evaluation history. Documented in the subnet OpenAPI (miners-stats.yanezcompliance.net/openapi.json); sibling of the already-registered /miners list. Path-parameterized template registered per catalog-everything policy (URL uses percent-encoded {miner_uid} for URI-format compliance — not a baked-in example uid). probe.enabled:false because there is no single fixed URL to auto-probe without a caller-supplied miner_uid. Live-verified 2026-07-21: GET /miners/0 -> 200 JSON array of scored evaluations.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "yanez-compliance",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://miners-stats.yanezcompliance.net/openapi.json",
+        "https://miners-stats.yanezcompliance.net/miners"
+      ],
+      "url": "https://miners-stats.yanezcompliance.net/miners/%7Bminer_uid%7D"
     }
   ],
   "website_url": "https://www.yanez.ai/"

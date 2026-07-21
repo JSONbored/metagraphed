@@ -212,6 +212,131 @@
         "https://subnet90.com/"
       ],
       "url": "https://api.subnet90.com/api/markets/btc-100k-2024/breakdown"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-test-next-chunk",
+      "kind": "subnet-api",
+      "name": "DegenBrain test chunk fetch",
+      "notes": "Public no-auth GET /api/test/next-chunk on api.subnet90.com returning a batch of statements for a validator to test. Documented in the subnet OpenAPI (api.subnet90.com/openapi.json). Requires query param validator_id (optional chunk_size); callable via call_subnet_surface's query arg. Registered URL includes example validator_id=test so the enabled probe stays healthy (bare GET without validator_id returns HTTP 422). Live-verified 2026-07-21: ?validator_id=test -> 200 JSON with chunk_id + statements.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://api.subnet90.com/openapi.json",
+        "https://subnet90.com/"
+      ],
+      "url": "https://api.subnet90.com/api/test/next-chunk?validator_id=test"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-resolution-detail",
+      "kind": "subnet-api",
+      "name": "DegenBrain resolution detail",
+      "notes": "Public no-auth GET /api/resolutions/{statement_id} on api.subnet90.com returning single-statement resolution detail. Documented in the subnet OpenAPI; sibling of the already-registered /api/resolutions list. Path-parameterized template registered per catalog-everything policy (ReadyAI/SOMA convention). probe.enabled:false because there is no stable canonical statement_id (live made-up/example ids return HTTP 404 JSON). Live-verified 2026-07-21: route exists (404 Statement not found).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://api.subnet90.com/openapi.json",
+        "https://subnet90.com/"
+      ],
+      "url": "https://api.subnet90.com/api/resolutions/%7Bstatement_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-market-responses",
+      "kind": "subnet-api",
+      "name": "DegenBrain market responses submit",
+      "notes": "Public no-auth POST /api/markets/{market_id}/responses on api.subnet90.com documented in the subnet OpenAPI. Path-parameterized write endpoint; probe.enabled:false (state-changing, not probe-safe). Template registered per catalog-everything policy.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://api.subnet90.com/openapi.json",
+        "https://subnet90.com/"
+      ],
+      "url": "https://api.subnet90.com/api/markets/%7Bmarket_id%7D/responses"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-resolve",
+      "kind": "subnet-api",
+      "name": "DegenBrain resolve trigger",
+      "notes": "Public no-auth POST /api/resolve on api.subnet90.com documented in the subnet OpenAPI as a fixed resolve trigger. probe.enabled:false because it is a write endpoint and not safe to auto-probe (GET returns 405 Method Not Allowed). Live-verified 2026-07-21: POST without body -> 422 missing statement field (route is live).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://api.subnet90.com/openapi.json",
+        "https://subnet90.com/"
+      ],
+      "url": "https://api.subnet90.com/api/resolve"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-test-results",
+      "kind": "subnet-api",
+      "name": "DegenBrain test result submit",
+      "notes": "Public no-auth POST /api/test/results/{chunk_id} on api.subnet90.com documented in the subnet OpenAPI. Path-parameterized write endpoint; probe.enabled:false (state-changing, not probe-safe). Template registered per catalog-everything policy.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://api.subnet90.com/openapi.json",
+        "https://subnet90.com/"
+      ],
+      "url": "https://api.subnet90.com/api/test/results/%7Bchunk_id%7D"
     }
   ],
   "website_url": "https://subnet90.com/"
