@@ -220,7 +220,7 @@ import {
   RPC_POOL_ARTIFACT_TTL_MS,
   selectSafeRpcEndpoint,
   weightedPickEndpoint,
-} from "./request-handlers/rpc-proxy.mjs";
+} from "./request-handlers/rpc-proxy.ts";
 import { handleFullnodeRpcProxyRequest } from "./request-handlers/fullnode-rpc-proxy.mjs";
 import {
   buildChangeEvent,

@@ -26,6 +26,7 @@ interface Env {
   REGISTRY_SYNC_SECRET?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_ADDRESS?: string;
+  RPC_USAGE_SYNC_SECRET?: string;
   SENTRY_DSN?: string;
   SENTRY_ENVIRONMENT?: string;
   SENTRY_RELEASE?: string;

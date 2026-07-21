@@ -27,7 +27,11 @@
 // dispatches them, and re-exports the test-facing helpers from itself.
 
 import { apiHeaders, errorResponse } from "../http.ts";
-import { readArtifact, readHealthKv } from "../storage.ts";
+import {
+  readArtifact,
+  readHealthKv,
+  type StorageReadResult,
+} from "../storage.ts";
 import {
   contractVersion,
   envelopeResponse,
@@ -37,6 +41,7 @@ import {
   analyticsMeta,
   analyticsQueryError,
   analyticsWindow,
+  type EdgeCacheCtx,
 } from "./analytics.ts";
 import {
   findSurface,
@@ -65,17 +70,40 @@ import {
   TRUSTED_RPC_UPSTREAM_ORIGINS,
 } from "../config.ts";
 
+export interface RpcEndpoint {
+  id: string;
+  url: string;
+  provider?: string;
+  score?: number;
+  latest_block?: number;
+  pool_eligible?: boolean;
+}
+
+export interface RpcPool {
+  id?: string;
+  endpoints?: RpcEndpoint[];
+}
+
+// The shape of the api.mjs-local in-isolate memoized KV read (see
+// configureRpcProxy below) -- mirrors analytics.ts's own HealthMetaKvReader
+// (same api.mjs-owned helper, wired independently into each sibling module).
+type HealthMetaKvReader = (
+  env: Env,
+) => Promise<{ last_run_at?: string | null } | null>;
+
 // Injected once from api.mjs (see configureRpcProxy). The in-isolate
 // snapshot-meta read lives in api.mjs because the other handler clusters and a
 // test still import it from there; injecting the stable function reference here
 // keeps the import acyclic — the same wiring analytics.mjs uses for the same
 // helper.
-let readHealthMetaKv = () => {
+let readHealthMetaKv: HealthMetaKvReader = () => {
   throw new Error("rpc-proxy handlers used before configureRpcProxy()");
 };
 
 // Called once at api.mjs module-init to wire the api.mjs-local KV reader.
-export function configureRpcProxy(deps) {
+export function configureRpcProxy(deps: {
+  readHealthMetaKv: HealthMetaKvReader;
+}) {
   readHealthMetaKv = deps.readHealthMetaKv;
 }
 
@@ -88,12 +116,20 @@ export function configureRpcProxy(deps) {
 // Keyed on env so tests / multi-binding callers never cross-read; only ok reads
 // are cached so a transient R2 miss isn't sticky.
 export const RPC_POOL_ARTIFACT_TTL_MS = 300_000;
-let rpcPoolArtifactCache = { env: null, value: null, expiresAt: 0 };
+let rpcPoolArtifactCache: {
+  env: Env | null;
+  value: StorageReadResult | null;
+  expiresAt: number;
+} = { env: null, value: null, expiresAt: 0 };
 
-export async function readRpcPoolArtifact(env, now = Date.now()) {
+export async function readRpcPoolArtifact(
+  env: Env,
+  now = Date.now(),
+): Promise<StorageReadResult> {
   if (
     rpcPoolArtifactCache.env === env &&
-    now < rpcPoolArtifactCache.expiresAt
+    now < rpcPoolArtifactCache.expiresAt &&
+    rpcPoolArtifactCache.value
   ) {
     return rpcPoolArtifactCache.value;
   }
@@ -118,7 +154,23 @@ export async function readRpcPoolArtifact(env, now = Date.now()) {
 // over ~25 days), so a plain per-request env.DATA_API.fetch() under the
 // SAME ctx.waitUntil is safe; revisit if traffic grows enough to warrant
 // batching. Never throws, never adds latency to the proxied call.
-function syncRpcUsageEventToPostgres(env, ctx, event) {
+export interface RpcUsageEvent {
+  observed_at: number;
+  network: string;
+  endpoint_id: string | null;
+  provider: string | null;
+  ok: boolean;
+  status: number;
+  attempts: number;
+  latency_ms: number;
+  cache: "hit" | "miss" | "bypass";
+}
+
+function syncRpcUsageEventToPostgres(
+  env: Env,
+  ctx: EdgeCacheCtx | undefined,
+  event: RpcUsageEvent,
+) {
   if (!env?.DATA_API || !env?.RPC_USAGE_SYNC_SECRET) return;
   if (typeof ctx?.waitUntil !== "function") return;
   const send = env.DATA_API.fetch(
@@ -139,7 +191,11 @@ function syncRpcUsageEventToPostgres(env, ctx, event) {
 // ctx.waitUntil and swallows every error. When the binding/ctx is absent
 // (tests, local dev) it is a no-op. The proxy degrades to "no analytics",
 // never to "broken".
-function recordRpcUsage(env, ctx, event) {
+function recordRpcUsage(
+  env: Env,
+  ctx: EdgeCacheCtx | undefined,
+  event: RpcUsageEvent,
+) {
   syncRpcUsageEventToPostgres(env, ctx, event);
 }
 
@@ -148,9 +204,14 @@ function recordRpcUsage(env, ctx, event) {
 // shows whether the load balancer is actually spreading traffic. D1 fully
 // eliminated (2026-07-17): rpc_proxy_events is Postgres-only now, so a tier
 // miss returns a schema-stable zeroed payload rather than a live D1 query.
-export async function handleRpcUsage(request, env, url) {
-  const { label, error } = analyticsWindow(url);
-  if (error) return analyticsQueryError(error);
+export async function handleRpcUsage(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const windowResult = analyticsWindow(url);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const meta = await readHealthMetaKv(env);
   // #4832 gap-closure: reuses tryPostgresTier's usual "forward the caller's
   // request unchanged" contract (a clean 1:1 route, unlike handleCompare's
@@ -162,11 +223,15 @@ export async function handleRpcUsage(request, env, url) {
   // only ever hold that same rolling slice, so there was no long-tail
   // history a backfill could leave behind.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_RPC_USAGE_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_RPC_USAGE_SOURCE",
+    )) as Awaited<ReturnType<typeof loadRpcUsage>> | null) ??
     (await loadRpcUsage({
       window: label,
       observedAt: meta?.last_run_at || null,
-    }));
+    } as unknown as Parameters<typeof loadRpcUsage>[0]));
   return envelopeResponse(
     request,
     {
@@ -177,7 +242,7 @@ export async function handleRpcUsage(request, env, url) {
   );
 }
 
-async function verifyMeta(env) {
+async function verifyMeta(env: Env) {
   return {
     artifact_path: null,
     cache: "short",
@@ -194,7 +259,12 @@ async function verifyMeta(env) {
 // plus a 60s per-surface Cache-API entry so repeat calls can't fan out into real
 // outbound probes. An agent (or the verify_integration MCP tool) calls this to
 // confirm "callable right now" before wiring.
-export async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
+export async function handleSurfaceVerify(
+  request: Request,
+  env: Env,
+  surfaceId: string,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
   // No request body — path param only — so this is a GET/HEAD action endpoint
   // (same method set as handleBadgeSvgRequest). Reject anything else before the
   // rate limiter or outbound probe can run (#6015).
@@ -240,11 +310,16 @@ export async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
       503,
     );
   }
-  let surface = findSurface(catalog.data?.surfaces, surfaceId);
+  const catalogSurfaces = (catalog.data as { surfaces?: unknown[] })?.surfaces;
+  let surface = findSurface(catalogSurfaces, surfaceId);
   if (!surface) {
     const aliases = await readArtifact(env, SURFACE_ALIASES_PATH);
     if (aliases.ok) {
-      surface = findSurface(catalog.data?.surfaces, surfaceId, aliases.data);
+      surface = findSurface(
+        catalogSurfaces,
+        surfaceId,
+        aliases.data as unknown as Parameters<typeof findSurface>[2],
+      );
     }
   }
   if (!surface) {
@@ -265,8 +340,8 @@ export async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
       connect: workerWebSocketConnector(globalThis.fetch),
     },
     {
-      waitUntil: (promise) => ctx?.waitUntil?.(promise),
-    },
+      waitUntil: (promise: Promise<unknown>) => ctx?.waitUntil?.(promise),
+    } as unknown as Parameters<typeof verifySurfaceWithCache>[2],
   );
   return envelopeResponse(
     request,
@@ -275,7 +350,20 @@ export async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
   );
 }
 
-export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
+interface JsonRpcRequestBody {
+  jsonrpc?: string;
+  id?: unknown;
+  method: string;
+  params?: unknown;
+  [key: string]: unknown;
+}
+
+export async function handleRpcProxyRequest(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
   if (request.method !== "POST") {
     return errorResponse(
       "method_not_allowed",
@@ -337,8 +425,8 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     }
   }
 
-  let bodyText;
-  let rpcBody;
+  let bodyText: string;
+  let rpcBody: JsonRpcRequestBody;
   try {
     bodyText = await request.text();
     if (new TextEncoder().encode(bodyText).length > MAX_RPC_BODY_BYTES) {
@@ -468,9 +556,8 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
       { supported_networks: Object.keys(RPC_PROXY_POOLS) },
     );
   }
-  const staticPool = (poolArtifact.data.pools || []).find(
-    (candidate) => candidate.id === poolId,
-  );
+  const pools = (poolArtifact.data as { pools?: RpcPool[] }).pools;
+  const staticPool = (pools || []).find((candidate) => candidate.id === poolId);
   // Overlay the 15-minute cron health so the proxy avoids sustained-down endpoints
   // (the in-isolate breaker still handles instantaneous failures). Falls back to
   // the static pool when the live snapshot is cold (always the case for the static
@@ -512,7 +599,12 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   // Response cache for idempotent reads (Cache API). Cache hit short-circuits
   // the upstream call; a successful, cacheable response is stored async.
   const cachePolicy = rpcCachePolicy(rpcBody.method, rpcBody.params);
-  const cache = cachePolicy.cacheable ? globalThis.caches?.default : null;
+  // See analytics.ts's withEdgeCache for why this goes through `globalThis`
+  // (not the bare `caches` global) -- the optional chain only guards anything
+  // because Node/vitest has no Cache API global at all.
+  const cache = cachePolicy.cacheable
+    ? (globalThis as { caches?: CacheStorage }).caches?.default
+    : null;
   let cacheKey = null;
   if (cache) {
     cacheKey = await rpcCacheKey(network, rpcBody.method, rpcBody.params);
@@ -654,7 +746,10 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
           "cache-control": `public, s-maxage=${cachePolicy.ttl}`,
         },
       });
-      ctx?.waitUntil?.(cache.put(cacheKey, cached));
+      // `cache` is guaranteed non-null here: cacheKey (checked via the early
+      // `if (!cacheKey) return response;` above) is only ever set inside the
+      // `if (cache) {...}` block earlier in this function.
+      if (cache) ctx?.waitUntil?.(cache.put(cacheKey, cached));
     }
   }
   return new Response(response.body, { status: response.status, headers });
@@ -667,7 +762,10 @@ const RPC_ATTEMPT_TIMEOUT_MS = 6000;
 const RPC_CLASSIFY_BODY_LIMIT_BYTES = 64 * 1024;
 // /rpc/v1/{network} → the pool id served from rpc/pools.json. Adding a network
 // here (plus its pool + allowlisted origins) is all the proxy needs to serve it.
-export const RPC_PROXY_POOLS = { finney: "finney-rpc", test: "test-rpc" };
+export const RPC_PROXY_POOLS: Record<string, string> = {
+  finney: "finney-rpc",
+  test: "test-rpc",
+};
 // Max blocks an endpoint may trail the freshest reported tip before the proxy
 // demotes it behind synced nodes. Bittensor block time is ~12s, so ~10 blocks
 // (~15 min) tolerates cross-provider probe-timing skew while still routing around
@@ -683,11 +781,17 @@ const TRANSIENT_RPC_ERROR_CODES = new Set([-32603]); // internal error
 // and temporarily eject (deprioritise) repeat offenders. Per-isolate only (no
 // global view, resets on cold start) — cheap and enough to ride out the burst
 // that matters. RPC_HEALTH is the module-default map; injectable for tests.
-const RPC_HEALTH = new Map(); // endpointId -> { fails, ejectedUntil }
+export interface RpcHealthEntry {
+  fails: number;
+  ejectedUntil: number;
+}
+export type RpcHealthMap = Map<string, RpcHealthEntry>;
+
+const RPC_HEALTH: RpcHealthMap = new Map();
 const RPC_EJECT_THRESHOLD = 3;
 const RPC_EJECT_COOLDOWN_MS = 30_000;
 
-export function recordRpcFailure(map, id, now) {
+export function recordRpcFailure(map: RpcHealthMap, id: string, now: number) {
   const entry = map.get(id) || { fails: 0, ejectedUntil: 0 };
   entry.fails += 1;
   if (entry.fails >= RPC_EJECT_THRESHOLD && entry.ejectedUntil <= now) {
@@ -696,11 +800,15 @@ export function recordRpcFailure(map, id, now) {
   map.set(id, entry);
 }
 
-export function recordRpcSuccess(map, id) {
+export function recordRpcSuccess(map: RpcHealthMap, id: string) {
   map.delete(id);
 }
 
-export function isRpcEndpointEjected(map, id, now) {
+export function isRpcEndpointEjected(
+  map: RpcHealthMap,
+  id: string,
+  now: number,
+): boolean {
   const entry = map.get(id);
   return Boolean(entry && entry.ejectedUntil > now);
 }
@@ -709,7 +817,10 @@ export function isRpcEndpointEjected(map, id, now) {
 // block-pinned (by an explicit block number/hash param) or quasi-static reads
 // are cacheable; head-moving forms (param-less block reads, finalized head,
 // system_health) are never cached.
-export function rpcCachePolicy(method, params) {
+export function rpcCachePolicy(
+  method: string,
+  params: unknown,
+): { cacheable: boolean; ttl: number } {
   const args = Array.isArray(params) ? params : [];
   switch (method) {
     case "chain_getBlockHash":
@@ -739,16 +850,25 @@ export function rpcCachePolicy(method, params) {
 // Build a minimal JSON-RPC success envelope around a cached `result`, echoing
 // the current request's `id` (when present) so cache hits never replay another
 // caller's id.
-function rpcResultEnvelope(requestBody, result) {
-  const envelope = { jsonrpc: "2.0" };
+function rpcResultEnvelope(
+  requestBody: JsonRpcRequestBody,
+  result: unknown,
+): { jsonrpc: string; id?: unknown; result: unknown } {
+  // Two branches, not incremental mutation, so key insertion order (jsonrpc,
+  // id, result) stays exactly what it was before conversion -- an object
+  // literal must satisfy its full declared type at construction, unlike the
+  // original's build-it-up-with-optional-properties JS.
   if (Object.prototype.hasOwnProperty.call(requestBody, "id")) {
-    envelope.id = requestBody.id;
+    return { jsonrpc: "2.0", id: requestBody.id, result };
   }
-  envelope.result = result;
-  return envelope;
+  return { jsonrpc: "2.0", result };
 }
 
-async function rpcCacheKey(network, method, params) {
+async function rpcCacheKey(
+  network: string,
+  method: string,
+  params: unknown,
+): Promise<Request> {
   const normalized = JSON.stringify([
     network,
     method,
@@ -768,7 +888,15 @@ async function rpcCacheKey(network, method, params) {
 
 // Decide how to treat one upstream attempt: "transient" (fail over to the next
 // endpoint), "success"/"fatal" (return this upstream's response to the client).
-export function classifyUpstreamAttempt({ thrown, status, parsedBody }) {
+export function classifyUpstreamAttempt({
+  thrown,
+  status,
+  parsedBody,
+}: {
+  thrown: boolean;
+  status: number;
+  parsedBody: unknown;
+}): "transient" | "fatal" | "success" {
   if (thrown) return "transient"; // network error or AbortSignal timeout
   if (status >= 500 || status === 429) return "transient";
   // A redirect (3xx) or the opaqueredirect sentinel (status 0, produced by the
@@ -781,15 +909,20 @@ export function classifyUpstreamAttempt({ thrown, status, parsedBody }) {
   // recorded as failed and we fail over to the next allowlisted endpoint.
   if (status === 0 || (status >= 300 && status < 400)) return "transient";
   if (status >= 400) return "fatal"; // upstream rejected the request itself
-  if (parsedBody && typeof parsedBody === "object" && parsedBody.error) {
-    if (TRANSIENT_RPC_ERROR_CODES.has(Number(parsedBody.error.code))) {
+  const errorField = (parsedBody as { error?: { code?: unknown } } | null)
+    ?.error;
+  if (parsedBody && typeof parsedBody === "object" && errorField) {
+    if (TRANSIENT_RPC_ERROR_CODES.has(Number(errorField.code))) {
       return "transient";
     }
   }
   return "success";
 }
 
-async function readResponseTextWithLimit(response, maxBytes) {
+async function readResponseTextWithLimit(
+  response: Response,
+  maxBytes: number,
+): Promise<{ text: string; truncated: boolean }> {
   if (!response.body?.getReader) {
     const text = await response.text();
     return {
@@ -816,12 +949,17 @@ async function readResponseTextWithLimit(response, maxBytes) {
   return { text, truncated: false };
 }
 
-function streamRpcResponse(upstream, endpoint, attempts, status) {
+function streamRpcResponse(
+  upstream: Response,
+  endpoint: RpcEndpoint,
+  attempts: unknown[],
+  status: number,
+): Response {
   const headers = apiHeaders("short");
   headers.set("cache-control", "no-store");
   headers.set("content-type", JSON_CONTENT_TYPE);
   headers.set("x-metagraph-rpc-endpoint-id", endpoint.id);
-  headers.set("x-metagraph-rpc-provider", endpoint.provider);
+  headers.set("x-metagraph-rpc-provider", endpoint.provider || "");
   headers.set("x-metagraph-rpc-attempts", String(attempts.length + 1));
   setRpcRateLimitHeaders(headers);
   return new Response(upstream.body, { status: status || 502, headers });
@@ -836,7 +974,7 @@ export const RPC_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 // Mirrors wrangler.jsonc's STATE_QUERY_RATE_LIMITER binding (#4344/9.2) --
 // a fifth of the general proxy's budget, its own separate bucket.
 export const STATE_QUERY_RATE_LIMIT = { limit: 20, windowSeconds: 60 };
-function setRpcRateLimitHeaders(headers) {
+function setRpcRateLimitHeaders(headers: Headers) {
   headers.set("x-ratelimit-limit", String(RPC_RATE_LIMIT.limit));
   headers.set(
     "x-ratelimit-policy",
@@ -855,7 +993,10 @@ function setRpcRateLimitHeaders(headers) {
 // caller's RPC traffic silently consuming the GraphQL budget (or vice versa).
 // Skipped only when the binding is absent (local dev / CI), matching the RPC/MCP
 // paths. Returns a 429 Response when the caller is over the limit, else null.
-export async function graphqlRateLimited(request, env) {
+export async function graphqlRateLimited(
+  request: Request,
+  env: Env,
+): Promise<Response | null> {
   if (!env.RPC_RATE_LIMITER?.limit) return null;
   const { success } = await env.RPC_RATE_LIMITER.limit({
     key: `gql:${resolveClientIp(request)}`,
@@ -880,7 +1021,7 @@ export async function graphqlRateLimited(request, env) {
 // Transient HTTP statuses are classified before reading bodies, and JSON-RPC
 // error-envelope inspection is bounded so large upstream responses can stream.
 export async function proxyWithFailover(
-  orderedEndpoints,
+  orderedEndpoints: RpcEndpoint[],
   {
     bodyText,
     poolId,
@@ -888,15 +1029,22 @@ export async function proxyWithFailover(
     maxAttempts = RPC_MAX_ATTEMPTS,
     timeoutMs = RPC_ATTEMPT_TIMEOUT_MS,
     healthMap = RPC_HEALTH,
+  }: {
+    bodyText: string;
+    poolId: string;
+    fetchFn?: typeof fetch;
+    maxAttempts?: number;
+    timeoutMs?: number;
+    healthMap?: RpcHealthMap;
   },
-) {
-  const attempts = [];
+): Promise<Response> {
+  const attempts: Array<{ endpoint_id: string; reason: string }> = [];
   const limit = Math.min(orderedEndpoints.length, maxAttempts);
   for (let index = 0; index < limit; index += 1) {
     const endpoint = orderedEndpoints[index];
     let status = 0;
-    let upstream = null;
-    let parsedBody = null;
+    let upstream: Response | null = null;
+    let parsedBody: unknown = null;
     let thrown = false;
     try {
       upstream = await fetchFn(endpoint.url, {
@@ -929,8 +1077,14 @@ export async function proxyWithFailover(
       continue;
     }
 
-    if (upstream && status < 400) {
-      let clientBodyToCancel = null;
+    // Real invariant, made explicit for the type checker: classifyUpstreamAttempt
+    // returns "transient" unconditionally when `thrown` is true (its first check),
+    // so reaching here means the try block above completed without throwing --
+    // `upstream` was assigned a real Response.
+    if (!upstream) continue;
+
+    if (status < 400) {
+      let clientBodyToCancel: ReadableStream | null = null;
       try {
         if (upstream.body?.tee) {
           const [inspectBody, clientBody] = upstream.body.tee();
@@ -1035,16 +1189,20 @@ export async function proxyWithFailover(
 // origin allowlist + its own healthMap so its circuit-breaker state never
 // mixes with the public pool's.
 export function orderSafeRpcEndpoints(
-  pool,
-  randomFn = Math.random,
+  pool: RpcPool | null | undefined,
+  randomFn: () => number = Math.random,
   {
     healthMap = RPC_HEALTH,
     now = Date.now(),
     trustedOrigins = TRUSTED_RPC_UPSTREAM_ORIGINS,
+  }: {
+    healthMap?: RpcHealthMap;
+    now?: number;
+    trustedOrigins?: Set<string>;
   } = {},
-) {
-  const safe = [];
-  let unsafeEndpoint = null;
+): { endpoints: RpcEndpoint[]; unsafeEndpoint: RpcEndpoint | null } {
+  const safe: RpcEndpoint[] = [];
+  let unsafeEndpoint: RpcEndpoint | null = null;
   for (const endpoint of pool?.endpoints || []) {
     if (!endpoint?.pool_eligible) {
       continue;
@@ -1060,7 +1218,7 @@ export function orderSafeRpcEndpoints(
   }
 
   const remaining = [...safe];
-  const shuffled = [];
+  const shuffled: RpcEndpoint[] = [];
   while (remaining.length) {
     const pick = weightedPickEndpoint(remaining, randomFn);
     shuffled.push(pick);
@@ -1081,7 +1239,7 @@ export function orderSafeRpcEndpoints(
     .map((e) => Number(e.latest_block))
     .filter((b) => Number.isFinite(b) && b > 0);
   const maxBlock = liveBlocks.length ? Math.max(...liveBlocks) : null;
-  const isLagging = (endpoint) => {
+  const isLagging = (endpoint: RpcEndpoint) => {
     const block = Number(endpoint.latest_block);
     return (
       maxBlock != null &&
@@ -1101,7 +1259,10 @@ export function orderSafeRpcEndpoints(
 
 // Back-compat single-pick wrapper (still used by tests): the first of the
 // weighted-ordered list.
-export function selectSafeRpcEndpoint(pool, randomFn = Math.random) {
+export function selectSafeRpcEndpoint(
+  pool: RpcPool | null | undefined,
+  randomFn: () => number = Math.random,
+): { endpoint: RpcEndpoint | null; unsafeEndpoint: RpcEndpoint | null } {
   const { endpoints, unsafeEndpoint } = orderSafeRpcEndpoints(pool, randomFn);
   return { endpoint: endpoints[0] ?? null, unsafeEndpoint };
 }
@@ -1109,19 +1270,25 @@ export function selectSafeRpcEndpoint(pool, randomFn = Math.random) {
 // Weighted-random pick favouring higher-scored (healthier/faster) endpoints,
 // falling back to uniform weighting when scores are absent so traffic still
 // spreads. randomFn is injectable for deterministic tests.
-export function weightedPickEndpoint(endpoints, randomFn = Math.random) {
+export function weightedPickEndpoint(
+  endpoints: RpcEndpoint[],
+  randomFn: () => number = Math.random,
+): RpcEndpoint {
   if (endpoints.length === 1) {
     return endpoints[0];
   }
-  const weights = endpoints.map((endpoint) =>
-    Number.isFinite(endpoint.score) && endpoint.score > 0 ? endpoint.score : 1,
-  );
+  const weights: number[] = endpoints.map((endpoint) => {
+    const score = endpoint.score;
+    return Number.isFinite(score) && (score as number) > 0
+      ? (score as number)
+      : 1;
+  });
   const total = weights.reduce((sum, weight) => sum + weight, 0);
   let cursor = randomFn() * total;
   for (let index = 0; index < endpoints.length; index += 1) {
-    cursor -= weights[index];
+    cursor -= weights[index] as number;
     if (cursor < 0) {
-      return endpoints[index];
+      return endpoints[index] as RpcEndpoint;
     }
   }
   return endpoints[endpoints.length - 1];
@@ -1132,14 +1299,14 @@ export function weightedPickEndpoint(endpoints, randomFn = Math.random) {
 // its own separate Set so a public-pool origin can never satisfy a gated
 // request's safety check, or vice versa.
 function isSafeRpcEndpointUrl(
-  value,
-  trustedOrigins = TRUSTED_RPC_UPSTREAM_ORIGINS,
-) {
+  value: unknown,
+  trustedOrigins: Set<string> = TRUSTED_RPC_UPSTREAM_ORIGINS,
+): boolean {
   if (typeof value !== "string") {
     return false;
   }
 
-  let parsed;
+  let parsed: URL;
   try {
     parsed = new URL(value);
   } catch {
@@ -1160,7 +1327,7 @@ function isSafeRpcEndpointUrl(
 // Shared IPv4 private/CGNAT-range predicate — applied both to a bare IPv4
 // hostname and to the v4 address embedded in an IPv4-mapped/compatible/6to4/
 // NAT64 IPv6 literal (see below). [first, second] are the leading two octets.
-function isPrivateIpv4Octets([first, second]) {
+function isPrivateIpv4Octets([first, second]: number[]): boolean {
   return (
     first === 0 ||
     first === 10 ||
@@ -1179,7 +1346,7 @@ function isPrivateIpv4Octets([first, second]) {
 // private-IP branches below through isSafeRpcEndpointUrl alone — this is
 // defense in depth against a future origin entry resolving privately, the same
 // posture health-probe-core.mjs's isUnsafePublicUrl documents for its guard.
-export function isPrivateOrLocalHostname(hostname) {
+export function isPrivateOrLocalHostname(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (host === "localhost" || host.endsWith(".localhost")) {
     return true;
@@ -1211,7 +1378,7 @@ export function isPrivateOrLocalHostname(hostname) {
   return embedded ? isPrivateIpv4Octets(embedded) : false;
 }
 
-function parseIpv4Address(host) {
+function parseIpv4Address(host: string): number[] | null {
   const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
   if (!match) {
     return null;
@@ -1221,7 +1388,7 @@ function parseIpv4Address(host) {
   return octets.every((octet) => octet >= 0 && octet <= 255) ? octets : null;
 }
 
-function isSafeRpcMethod(method) {
+function isSafeRpcMethod(method: string): boolean {
   if (DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))) {
     return false;
   }
@@ -1230,7 +1397,7 @@ function isSafeRpcMethod(method) {
 
 // #4344/9.2: same DENIED_RPC_PREFIXES defense-in-depth as isSafeRpcMethod,
 // then membership in the narrower state-query set.
-function isSafeRpcStateQueryMethod(method) {
+function isSafeRpcStateQueryMethod(method: string): boolean {
   if (DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))) {
     return false;
   }
@@ -1240,7 +1407,7 @@ function isSafeRpcStateQueryMethod(method) {
 // A real storage key/prefix is always 0x-prefixed hex -- reject anything else
 // or anything past MAX_STATE_QUERY_KEY_HEX_CHARS outright (no real key/prefix
 // legitimately needs more).
-function isValidStateQueryHex(value) {
+function isValidStateQueryHex(value: unknown): boolean {
   return (
     typeof value === "string" &&
     value.length <= MAX_STATE_QUERY_KEY_HEX_CHARS + 2 &&
@@ -1251,9 +1418,12 @@ function isValidStateQueryHex(value) {
 // Substrate block hashes are H256 -- exactly 32 bytes as 0x-prefixed hex.
 // Narrower than isValidStateQueryHex (variable-length storage keys): an
 // optional `at` param that isn't this shape must not reach upstream (#6014).
-function isValidBlockHashHex(value) {
+function isValidBlockHashHex(value: unknown): boolean {
   return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
 }
+
+type StateQueryValidation =
+  { ok: true; params: unknown[] } | { ok: false; message: string };
 
 // Validates + (for state_getKeysPaged) clamps the caller-supplied params for
 // a state-query method (#4344/9.2). Returns {ok:true, params} -- `params` is
@@ -1262,7 +1432,10 @@ function isValidBlockHashHex(value) {
 // Returns {ok:false, message} on a malformed key/prefix -- the same
 // rpc_invalid_request shape the existing body-shape check above uses, no new
 // error taxonomy needed.
-function validateStateQueryParams(method, params) {
+function validateStateQueryParams(
+  method: string,
+  params: unknown,
+): StateQueryValidation {
   const args = Array.isArray(params) ? params : [];
   if (method === "state_getStorage") {
     // state_getStorage: [key, at?]
@@ -1281,7 +1454,7 @@ function validateStateQueryParams(method, params) {
           "state_getStorage requires params[1] (at), when present, to be a 0x-prefixed 32-byte block hash.",
       };
     }
-    return { ok: true, params };
+    return { ok: true, params: args };
   }
   // state_getKeysPaged: [prefix, count, startKey?, at?]
   if (!isValidStateQueryHex(args[0])) {
@@ -1320,7 +1493,7 @@ function validateStateQueryParams(method, params) {
     };
   }
   const clamped = Math.min(count, MAX_STATE_QUERY_KEYS_PAGE_SIZE);
-  if (clamped === rawCount) return { ok: true, params };
+  if (clamped === rawCount) return { ok: true, params: args };
   const nextParams = [...args];
   nextParams[1] = clamped;
   return { ok: true, params: nextParams };

@@ -11,7 +11,7 @@ import {
   handleRpcProxyRequest,
   handleRpcUsage,
   handleSurfaceVerify,
-} from "../workers/request-handlers/rpc-proxy.mjs";
+} from "../workers/request-handlers/rpc-proxy.ts";
 
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
 const SURFACE_ID = "sn-6-numinous-api-health";

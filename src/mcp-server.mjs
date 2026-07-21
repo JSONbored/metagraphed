@@ -48,7 +48,7 @@ import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {
   handleRpcProxyRequest,
   graphqlRateLimited,
-} from "../workers/request-handlers/rpc-proxy.mjs";
+} from "../workers/request-handlers/rpc-proxy.ts";
 import { handleGraphQLRequest } from "./graphql.mjs";
 import {
   isValidSubscriptionId,

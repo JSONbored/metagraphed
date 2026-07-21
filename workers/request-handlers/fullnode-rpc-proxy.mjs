@@ -33,7 +33,7 @@ import {
   orderSafeRpcEndpoints,
   proxyWithFailover,
   RPC_MAX_ATTEMPTS,
-} from "./rpc-proxy.mjs";
+} from "./rpc-proxy.ts";
 import {
   DENIED_RPC_PREFIXES,
   MAX_RPC_BODY_BYTES,
