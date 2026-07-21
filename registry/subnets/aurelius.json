@@ -1,15 +1,11 @@
 {
-  "schema_version": 1,
-  "netuid": 37,
-  "name": "Aurelius",
-  "slug": "sn-37",
-  "status": "active",
   "categories": [
     "alignment",
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo"
   ],
+  "contact": "aurelius.subnet@gmail.com",
   "curation": {
     "gap_notes": [
       "The registered website (aureliusaligned.ai) currently fails to connect over both HTTP and HTTPS (DNS resolves, but the connection times out) and is not promoted as a website surface.",
@@ -21,101 +17,110 @@
     "source_count": 10,
     "verified_at": "2026-07-16T01:10:00.000Z"
   },
+  "name": "Aurelius",
+  "netuid": 37,
   "notes": "First maintainer-reviewed pass for SN37 (previously candidate-discovered/unreviewed, categories empty, no source-repo surface despite source_repo already being set). Added the missing source-repo surface; the registered website (aureliusaligned.ai) is currently unreachable (DNS resolves, connection times out on both ports 80/443) so no website surface is promoted. Fixed all 9 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full Aurelius Central API OpenAPI schema (58 paths): the /work-token/admin/*, /config, /submissions/*, /benchmark/*, /novelty/*, /classifier/*, /stats/*, /reports/*, and /admin/api/* prefixes all live-tested as 401-gated despite the schema declaring no security scheme for several of them (a documentation gap on the operator's side, not a registry concern). Found and added one new genuine no-auth public endpoint: GET /work-token/deposit-address/verify, returning the designated multisig deposit address and its verification instructions (public on-chain address only, no secrets).",
+  "schema_version": 1,
+  "slug": "sn-37",
+  "social": {
+    "x": "https://x.com/aureliusaligned"
+  },
+  "source_repo": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-37-aurelius-source-repo",
-      "name": "Aurelius source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
-      "provider": "aurelius",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
+      "id": "sn-37-aurelius-source-repo",
+      "kind": "source-repo",
+      "name": "Aurelius source repository",
+      "notes": "Official Aurelius (SN37) source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
+      "provider": "aurelius",
+      "public_safe": true,
       "source_urls": ["https://aureliusaligned.ai/"],
-      "notes": "Official Aurelius (SN37) source repository."
+      "url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol"
     },
     {
-      "id": "sn-37-aurelius-api-docs",
-      "name": "Aurelius Central API documentation",
-      "kind": "docs",
-      "url": "https://new-collector-api-production.up.railway.app/docs",
-      "provider": "aurelius",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-37-aurelius-api-docs",
+      "kind": "docs",
+      "name": "Aurelius Central API documentation",
+      "notes": "Interactive (Swagger UI) documentation for the mainnet (SN37) Aurelius Central API. The official README documents this production host as the finney/mainnet api_url (the -staging host is testnet SN455).",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Interactive (Swagger UI) documentation for the mainnet (SN37) Aurelius Central API. The official README documents this production host as the finney/mainnet api_url (the -staging host is testnet SN455)."
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/docs"
     },
     {
-      "id": "sn-37-aurelius-openapi",
-      "name": "Aurelius Central API (OpenAPI)",
-      "kind": "openapi",
-      "url": "https://new-collector-api-production.up.railway.app/openapi.json",
-      "schema_url": "https://new-collector-api-production.up.railway.app/openapi.json",
-      "schema_status": "machine-readable",
-      "provider": "aurelius",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-37-aurelius-openapi",
+      "kind": "openapi",
+      "name": "Aurelius Central API (OpenAPI)",
+      "notes": "Machine-readable OpenAPI spec for the mainnet (SN37) Aurelius Central API — the same spec the existing /docs Swagger UI renders. The official README documents this production host as the finney/mainnet api_url (the -staging host is testnet SN455).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
-        "https://new-collector-api-production.up.railway.app/docs"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "nickmopen"
       },
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "json",
-        "timeout_ms": 10000
-      },
-      "notes": "Machine-readable OpenAPI spec for the mainnet (SN37) Aurelius Central API — the same spec the existing /docs Swagger UI renders. The official README documents this production host as the finney/mainnet api_url (the -staging host is testnet SN455)."
-    },
-    {
-      "id": "sn-37-aurelius-subnet-api",
-      "name": "Aurelius Central API health",
-      "kind": "subnet-api",
-      "url": "https://new-collector-api-production.up.railway.app/health",
-      "provider": "aurelius",
-      "auth_required": false,
-      "authority": "community",
-      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://new-collector-api-production.up.railway.app/openapi.json",
       "source_urls": [
         "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
-        "https://new-collector-api-production.up.railway.app/openapi.json"
+        "https://new-collector-api-production.up.railway.app/docs"
       ],
+      "url": "https://new-collector-api-production.up.railway.app/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-37-aurelius-subnet-api",
+      "kind": "subnet-api",
+      "name": "Aurelius Central API health",
+      "notes": "Public no-auth GET returning Central API health (status, db, db_pool, classifier, novelty). Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health); same host as the existing openapi + docs surfaces. The official README documents this production host as the finney/mainnet api_url and recommends curl against /health for connectivity checks.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "kiannidev"
       },
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "json",
-        "timeout_ms": 10000
-      },
-      "notes": "Public no-auth GET returning Central API health (status, db, db_pool, classifier, novelty). Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health); same host as the existing openapi + docs surfaces. The official README documents this production host as the finney/mainnet api_url and recommends curl against /health for connectivity checks."
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/health"
     },
     {
       "auth_required": false,
@@ -124,17 +129,17 @@
       "kind": "subnet-api",
       "name": "Aurelius work-token designated address API",
       "notes": "Public no-auth GET returning the Central API work-token designated receiving address. Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /work-token/designated-address); same host as the existing openapi, docs, and /health subnet-api surfaces. The official README documents this production host as the finney/mainnet api_url.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "aurelius",
       "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "kiannidev"
-      },
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "json",
-        "timeout_ms": 10000
       },
       "source_urls": [
         "https://new-collector-api-production.up.railway.app/openapi.json",
@@ -151,8 +156,8 @@
       "notes": "Public no-auth GET /work-token/deposit-address/verify on new-collector-api-production.up.railway.app returning the designated multisig deposit address, threshold, and verification instructions (public on-chain address only, no secrets). Documented as GET /work-token/deposit-address/verify in the subnet's own OpenAPI schema; distinct from the already-registered work-token/designated-address surface.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "json",
+        "method": "GET",
         "timeout_ms": 10000
       },
       "provider": "aurelius",
@@ -169,17 +174,17 @@
       "kind": "subnet-api",
       "name": "Aurelius Central API liveness health",
       "notes": "Public no-auth GET /health/live returning {\"status\":\"ok\"} for lightweight liveness checks. Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health/live); same host as the existing openapi, docs, /health, and work-token subnet-api surfaces. Distinct from the richer /health endpoint that reports db, db_pool, classifier, and novelty subsystems.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "aurelius",
       "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "kiannidev"
-      },
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "json",
-        "timeout_ms": 10000
       },
       "source_urls": [
         "https://new-collector-api-production.up.railway.app/openapi.json",
@@ -194,17 +199,17 @@
       "kind": "subnet-api",
       "name": "Aurelius Central API readiness health",
       "notes": "Public no-auth GET /health/ready returning readiness JSON (status, db, db_pool, classifier, novelty). Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health/ready); same host as the existing openapi, docs, /health, /health/live, and work-token subnet-api surfaces. Distinct from the lightweight /health/live liveness endpoint.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "aurelius",
       "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "kiannidev"
-      },
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "json",
-        "timeout_ms": 10000
       },
       "source_urls": [
         "https://new-collector-api-production.up.railway.app/openapi.json",
@@ -219,17 +224,17 @@
       "kind": "data-artifact",
       "name": "Aurelius seed dataset",
       "notes": "Public no-auth JSONL dataset committed in SN37 Aurelius's official repository — the seed corpus of moral-reasoning dilemma scenario configs (one JSON object per line: {config:{name,tension_archetype,morebench_context,premise,...}}) that bootstraps the validator scoring pipeline. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo. Distinct from the existing Aurelius Central API subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "aurelius",
       "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
-      },
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "any",
-        "timeout_ms": 10000
       },
       "source_urls": [
         "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/data/seed_dataset.jsonl"
@@ -243,28 +248,1618 @@
       "kind": "data-artifact",
       "name": "Aurelius ScenarioConfig JSON Schema",
       "notes": "Public no-auth JSON Schema (title \"ScenarioConfig\", \"Aurelius moral dilemma scenario configuration v1\") committed at aurelius/common/schema_v1.json in SN37 Aurelius's official Aurelius-Protocol repository. It is the formal machine-readable contract every moral-dilemma scenario config in the subnet's scoring pipeline conforms to — the schema the existing seed_dataset.jsonl records validate against. Served read-only via raw.githubusercontent from the same official repo registered as the subnet's source-repo; distinct from that seed-dataset artifact (this is the schema, that is the data).",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "aurelius",
       "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "lourincedaging0-commits"
       },
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
       "source_urls": [
         "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/aurelius/common/schema_v1.json"
       ],
       "url": "https://raw.githubusercontent.com/Aurelius-Protocol/Aurelius-Protocol/main/aurelius/common/schema_v1.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-37-aurelius-auth-validator-challenge",
+      "kind": "subnet-api",
+      "name": "Aurelius POST auth validator challenge",
+      "notes": "POST /auth/validator/challenge on new-collector-api-production.up.railway.app — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. POST-only — not GET-probable, so probe stays disabled (a GET probe against a POST-only route would just 405, misreporting the surface as down). Registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/auth/validator/challenge"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-37-aurelius-auth-validator-verify",
+      "kind": "subnet-api",
+      "name": "Aurelius POST auth validator verify",
+      "notes": "POST /auth/validator/verify on new-collector-api-production.up.railway.app — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. POST-only — not GET-probable, so probe stays disabled (a GET probe against a POST-only route would just 405, misreporting the surface as down). Registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/auth/validator/verify"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-deposit",
+      "kind": "subnet-api",
+      "name": "Aurelius POST work token deposit",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/deposit on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/deposit"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-balance-hotkey",
+      "kind": "subnet-api",
+      "name": "Aurelius GET work token balance by hotkey",
+      "notes": "GET /work-token/balance/{hotkey} on new-collector-api-production.up.railway.app — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/balance/%7Bhotkey%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-rate-limit-hotkey",
+      "kind": "subnet-api",
+      "name": "Aurelius GET work token rate limit by hotkey",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/rate-limit/{hotkey} on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/rate-limit/%7Bhotkey%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-consume",
+      "kind": "subnet-api",
+      "name": "Aurelius POST work token consume",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/consume on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/consume"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-status-work-id",
+      "kind": "subnet-api",
+      "name": "Aurelius GET work token status by work id",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/status/{work_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/status/%7Bwork_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-deposit-address-rotate",
+      "kind": "subnet-api",
+      "name": "Aurelius POST work token deposit address rotate",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/deposit-address/rotate on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/deposit-address/rotate"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-deposit-address",
+      "kind": "subnet-api",
+      "name": "Aurelius PATCH work token deposit address",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) PATCH /work-token/deposit-address on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/deposit-address"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-deposit-address-history",
+      "kind": "subnet-api",
+      "name": "Aurelius GET work token deposit address history",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/deposit-address/history on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/deposit-address/history"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-admin-onchain-transfers",
+      "kind": "subnet-api",
+      "name": "Aurelius GET work token admin onchain transfers",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/admin/onchain-transfers on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/admin/onchain-transfers"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-admin-repair-balances",
+      "kind": "subnet-api",
+      "name": "Aurelius POST work token admin repair balances",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/repair-balances on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/admin/repair-balances"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-admin-credit-onchain-transfer-id",
+      "kind": "subnet-api",
+      "name": "Aurelius POST work token admin credit onchain by transfer id",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/credit-onchain/{transfer_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/admin/credit-onchain/%7Btransfer_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-admin-onchain-backfill",
+      "kind": "subnet-api",
+      "name": "Aurelius POST work token admin onchain backfill",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/onchain/backfill on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/admin/onchain/backfill"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-admin-onchain-skip-poison-block",
+      "kind": "subnet-api",
+      "name": "Aurelius POST work token admin onchain skip poison block",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/onchain/skip-poison-block on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/admin/onchain/skip-poison-block"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-admin-synthetic-credit",
+      "kind": "subnet-api",
+      "name": "Aurelius POST work token admin synthetic credit",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/synthetic-credit on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/admin/synthetic-credit"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-admin-synthetic-debit",
+      "kind": "subnet-api",
+      "name": "Aurelius POST work token admin synthetic debit",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /work-token/admin/synthetic-debit on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/admin/synthetic-debit"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-work-token-admin-synthetic-balance-hotkey",
+      "kind": "subnet-api",
+      "name": "Aurelius GET work token admin synthetic balance by hotkey",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /work-token/admin/synthetic-balance/{hotkey} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/work-token/admin/synthetic-balance/%7Bhotkey%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-config",
+      "kind": "subnet-api",
+      "name": "Aurelius GET config",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /config on new-collector-api-production.up.railway.app (this path also supports PUT — same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/config"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-submissions",
+      "kind": "subnet-api",
+      "name": "Aurelius GET submissions",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /submissions on new-collector-api-production.up.railway.app (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/submissions"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-submissions-work-id",
+      "kind": "subnet-api",
+      "name": "Aurelius GET submissions by work id",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /submissions/{work_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/submissions/%7Bwork_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-benchmark-status",
+      "kind": "subnet-api",
+      "name": "Aurelius GET benchmark status",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /benchmark/status on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/benchmark/status"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-benchmark-trigger",
+      "kind": "subnet-api",
+      "name": "Aurelius POST benchmark trigger",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /benchmark/trigger on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/benchmark/trigger"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-benchmark-result",
+      "kind": "subnet-api",
+      "name": "Aurelius POST benchmark result",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /benchmark/result on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/benchmark/result"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-benchmark-history",
+      "kind": "subnet-api",
+      "name": "Aurelius GET benchmark history",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /benchmark/history on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/benchmark/history"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-novelty-check",
+      "kind": "subnet-api",
+      "name": "Aurelius POST novelty check",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /novelty/check on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/novelty/check"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-novelty-add",
+      "kind": "subnet-api",
+      "name": "Aurelius POST novelty add",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /novelty/add on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/novelty/add"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-novelty-remove",
+      "kind": "subnet-api",
+      "name": "Aurelius POST novelty remove",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /novelty/remove on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/novelty/remove"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-classifier-predict",
+      "kind": "subnet-api",
+      "name": "Aurelius POST classifier predict",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /classifier/predict on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/classifier/predict"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-classifier-model-version",
+      "kind": "subnet-api",
+      "name": "Aurelius GET classifier model version",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /classifier/model/version on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/classifier/model/version"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-classifier-model",
+      "kind": "subnet-api",
+      "name": "Aurelius GET classifier model",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /classifier/model on new-collector-api-production.up.railway.app (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/classifier/model"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-stats-deposits",
+      "kind": "subnet-api",
+      "name": "Aurelius GET stats deposits",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/deposits on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/stats/deposits"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-stats-submissions",
+      "kind": "subnet-api",
+      "name": "Aurelius GET stats submissions",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/submissions on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/stats/submissions"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-stats-validators",
+      "kind": "subnet-api",
+      "name": "Aurelius GET stats validators",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/validators on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/stats/validators"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-stats-pipeline",
+      "kind": "subnet-api",
+      "name": "Aurelius GET stats pipeline",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/pipeline on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/stats/pipeline"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-stats-transparency-report",
+      "kind": "subnet-api",
+      "name": "Aurelius GET stats transparency report",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/transparency-report on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/stats/transparency-report"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-stats-consensus-deviation",
+      "kind": "subnet-api",
+      "name": "Aurelius GET stats consensus deviation",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/consensus-deviation on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/stats/consensus-deviation"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-stats-version-distribution",
+      "kind": "subnet-api",
+      "name": "Aurelius GET stats version distribution",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/version-distribution on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/stats/version-distribution"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-stats-archetypes",
+      "kind": "subnet-api",
+      "name": "Aurelius GET stats archetypes",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/archetypes on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/stats/archetypes"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-stats-influence-distribution",
+      "kind": "subnet-api",
+      "name": "Aurelius GET stats influence distribution",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/influence-distribution on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/stats/influence-distribution"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-reports",
+      "kind": "subnet-api",
+      "name": "Aurelius POST reports",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) POST /reports on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/reports"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-reports-consistency",
+      "kind": "subnet-api",
+      "name": "Aurelius GET reports consistency",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /reports/consistency on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/reports/consistency"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-reports-consistency-hotkey",
+      "kind": "subnet-api",
+      "name": "Aurelius GET reports consistency by hotkey",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /reports/consistency/{hotkey} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/reports/consistency/%7Bhotkey%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-reports-consensus-work-id",
+      "kind": "subnet-api",
+      "name": "Aurelius GET reports consensus by work id",
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /reports/consensus/{work_id} on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) — same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/reports/consensus/%7Bwork_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (like its whole /admin/api/* router), but live requests are gated: GET /admin/api/auth/me and /admin/api/config both return 401 {\"detail\":\"Not authenticated\"}, and POST /admin/api/auth/login returns 403 {\"detail\":\"Missing X-Admin-Request header\"} -- session-cookie/custom-header auth the schema does not model."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-admin-api-auth-login",
+      "kind": "subnet-api",
+      "name": "Aurelius POST admin api auth login",
+      "notes": "Auth-gated POST /admin/api/auth/login on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/admin/api/auth/login"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (like its whole /admin/api/* router), but live requests are gated: GET /admin/api/auth/me and /admin/api/config both return 401 {\"detail\":\"Not authenticated\"}, and POST /admin/api/auth/login returns 403 {\"detail\":\"Missing X-Admin-Request header\"} -- session-cookie/custom-header auth the schema does not model."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-admin-api-auth-logout",
+      "kind": "subnet-api",
+      "name": "Aurelius POST admin api auth logout",
+      "notes": "Auth-gated POST /admin/api/auth/logout on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/admin/api/auth/logout"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (like its whole /admin/api/* router), but live requests are gated: GET /admin/api/auth/me and /admin/api/config both return 401 {\"detail\":\"Not authenticated\"}, and POST /admin/api/auth/login returns 403 {\"detail\":\"Missing X-Admin-Request header\"} -- session-cookie/custom-header auth the schema does not model."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-admin-api-auth-me",
+      "kind": "subnet-api",
+      "name": "Aurelius GET admin api auth me",
+      "notes": "Auth-gated GET /admin/api/auth/me on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/admin/api/auth/me"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (like its whole /admin/api/* router), but live requests are gated: GET /admin/api/auth/me and /admin/api/config both return 401 {\"detail\":\"Not authenticated\"}, and POST /admin/api/auth/login returns 403 {\"detail\":\"Missing X-Admin-Request header\"} -- session-cookie/custom-header auth the schema does not model."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-admin-api-config",
+      "kind": "subnet-api",
+      "name": "Aurelius GET admin api config",
+      "notes": "Auth-gated GET /admin/api/config on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/admin/api/config"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (like its whole /admin/api/* router), but live requests are gated: GET /admin/api/auth/me and /admin/api/config both return 401 {\"detail\":\"Not authenticated\"}, and POST /admin/api/auth/login returns 403 {\"detail\":\"Missing X-Admin-Request header\"} -- session-cookie/custom-header auth the schema does not model."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-admin-api-config-schema",
+      "kind": "subnet-api",
+      "name": "Aurelius GET admin api config schema",
+      "notes": "Auth-gated GET /admin/api/config/schema on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/admin/api/config/schema"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (like its whole /admin/api/* router), but live requests are gated: GET /admin/api/auth/me and /admin/api/config both return 401 {\"detail\":\"Not authenticated\"}, and POST /admin/api/auth/login returns 403 {\"detail\":\"Missing X-Admin-Request header\"} -- session-cookie/custom-header auth the schema does not model."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-admin-api-config-stage",
+      "kind": "subnet-api",
+      "name": "Aurelius POST admin api config stage",
+      "notes": "Auth-gated POST /admin/api/config/stage on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/admin/api/config/stage"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (like its whole /admin/api/* router), but live requests are gated: GET /admin/api/auth/me and /admin/api/config both return 401 {\"detail\":\"Not authenticated\"}, and POST /admin/api/auth/login returns 403 {\"detail\":\"Missing X-Admin-Request header\"} -- session-cookie/custom-header auth the schema does not model."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-admin-api-config-commit",
+      "kind": "subnet-api",
+      "name": "Aurelius POST admin api config commit",
+      "notes": "Auth-gated POST /admin/api/config/commit on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/admin/api/config/commit"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (like its whole /admin/api/* router), but live requests are gated: GET /admin/api/auth/me and /admin/api/config both return 401 {\"detail\":\"Not authenticated\"}, and POST /admin/api/auth/login returns 403 {\"detail\":\"Missing X-Admin-Request header\"} -- session-cookie/custom-header auth the schema does not model."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-admin-api-config-history",
+      "kind": "subnet-api",
+      "name": "Aurelius GET admin api config history",
+      "notes": "Auth-gated GET /admin/api/config/history on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/admin/api/config/history"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (like its whole /admin/api/* router), but live requests are gated: GET /admin/api/auth/me and /admin/api/config both return 401 {\"detail\":\"Not authenticated\"}, and POST /admin/api/auth/login returns 403 {\"detail\":\"Missing X-Admin-Request header\"} -- session-cookie/custom-header auth the schema does not model."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-37-aurelius-admin-api-config-revert",
+      "kind": "subnet-api",
+      "name": "Aurelius POST admin api config revert",
+      "notes": "Auth-gated POST /admin/api/config/revert on new-collector-api-production.up.railway.app — part of Aurelius's admin dashboard surface. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same `/admin/api/*` router as the verified `sn-37-aurelius-admin-api-auth-me`, which the OpenAPI schema also declares no security for despite being live-gated. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7052).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/admin/api/config/revert"
     }
   ],
-  "social": {
-    "x": "https://x.com/aureliusaligned"
-  },
-  "contact": "aurelius.subnet@gmail.com",
-  "source_repo": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
   "website_url": "https://aureliusaligned.ai/"
 }

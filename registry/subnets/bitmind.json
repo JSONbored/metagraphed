@@ -218,6 +218,254 @@
         "https://bitmind.ai/"
       ],
       "url": "https://huggingface.co/datasets/bitmind/bm-real"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Supabase JWT or API key per BitMind Detection API OpenAPI info.description."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-34-bitmind-detect-v1",
+      "kind": "subnet-api",
+      "name": "BitMind auto-detecting detection front door",
+      "notes": "Auth-gated POST /v1/detect on api.bitmind.ai — OpenAPI operation detect_v1_detect_post. Infers image/video/text/document type and delegates to the matching detector. Documented in sn-34-bitmind-openapi (info.description requires Authorization: Bearer <token> for all non-health endpoints). Live-verified 2026-07-21: anonymous POST {} returned HTTP 401 {\"detail\":\"API key is required\"}. Probe disabled (auth-gated write action; Phase 1 call_subnet_surface cannot supply credentials).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.bitmind.ai/openapi.json",
+        "https://bitmind.ai/"
+      ],
+      "url": "https://api.bitmind.ai/v1/detect"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Supabase JWT or API key per BitMind Detection API OpenAPI info.description."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-34-bitmind-detect-image",
+      "kind": "subnet-api",
+      "name": "BitMind AI image detection",
+      "notes": "Auth-gated POST /detect-image on api.bitmind.ai — OpenAPI operation detect_image_detect_image_post. Detects AI-generated images. Same auth wrapper as /v1/detect (schema info.description). Live-verified 2026-07-21: anonymous POST {} returned HTTP 401 {\"detail\":\"API key is required\"}. Probe disabled (auth-gated write action).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.bitmind.ai/openapi.json",
+        "https://bitmind.ai/"
+      ],
+      "url": "https://api.bitmind.ai/detect-image"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Supabase JWT or API key per BitMind Detection API OpenAPI info.description."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-34-bitmind-detect-video",
+      "kind": "subnet-api",
+      "name": "BitMind AI video detection",
+      "notes": "Auth-gated POST /detect-video on api.bitmind.ai — OpenAPI operation detect_video_detect_video_post. Detects AI-generated videos. Auth-gated per schema info.description (same host/wrapper as live-verified /v1/detect 401). Probe disabled (auth-gated write action).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.bitmind.ai/openapi.json",
+        "https://bitmind.ai/"
+      ],
+      "url": "https://api.bitmind.ai/detect-video"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Supabase JWT or API key per BitMind Detection API OpenAPI info.description."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-34-bitmind-detect-text",
+      "kind": "subnet-api",
+      "name": "BitMind AI text detection",
+      "notes": "Auth-gated POST /detect-text on api.bitmind.ai — OpenAPI operation detect_text_detect_text_post. Detects AI-generated text. Live-verified 2026-07-21: anonymous POST {} returned HTTP 401 {\"detail\":\"API key is required\"}. Probe disabled (auth-gated write action).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.bitmind.ai/openapi.json",
+        "https://bitmind.ai/"
+      ],
+      "url": "https://api.bitmind.ai/detect-text"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Supabase JWT or API key per BitMind Detection API OpenAPI info.description."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-34-bitmind-detect-document",
+      "kind": "subnet-api",
+      "name": "BitMind document forgery detection",
+      "notes": "Auth-gated POST /detect-document on api.bitmind.ai — OpenAPI operation detect_document_detect_document_post. Detects forgery/tampering in a PDF. Auth-gated per schema info.description (same host/wrapper as live-verified /v1/detect 401). Probe disabled (auth-gated write action).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.bitmind.ai/openapi.json",
+        "https://bitmind.ai/"
+      ],
+      "url": "https://api.bitmind.ai/detect-document"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Supabase JWT or API key per BitMind Detection API OpenAPI info.description."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-34-bitmind-liveness-verify",
+      "kind": "subnet-api",
+      "name": "BitMind liveness verification",
+      "notes": "Auth-gated POST /liveness/verify on api.bitmind.ai — OpenAPI operation liveness_verify_liveness_verify_post. Verifies a face capture is a live human (KYC). Auth-gated per schema info.description (same host/wrapper as live-verified /v1/detect 401). Probe disabled (auth-gated write action).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.bitmind.ai/openapi.json",
+        "https://bitmind.ai/"
+      ],
+      "url": "https://api.bitmind.ai/liveness/verify"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Supabase JWT or API key per BitMind Detection API OpenAPI info.description."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-34-bitmind-preprocess-video",
+      "kind": "subnet-api",
+      "name": "BitMind video preprocessing",
+      "notes": "Auth-gated POST /preprocess-video on api.bitmind.ai — OpenAPI operation preprocess_video_preprocess_video_post. Preprocesses video for browser compatibility (no detection). Auth-gated per schema info.description (same host/wrapper as live-verified /v1/detect 401). Probe disabled (auth-gated write action).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.bitmind.ai/openapi.json",
+        "https://bitmind.ai/"
+      ],
+      "url": "https://api.bitmind.ai/preprocess-video"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>",
+        "scopes_note": "Supabase JWT or API key per BitMind Detection API OpenAPI info.description."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-34-bitmind-get-video-upload-url",
+      "kind": "subnet-api",
+      "name": "BitMind video upload URL",
+      "notes": "Auth-gated POST /get-video-upload-url on api.bitmind.ai — OpenAPI operation get_video_upload_url_get_video_upload_url_post. Returns a presigned URL for large video uploads. Auth-gated per schema info.description (same host/wrapper as live-verified /v1/detect 401). Probe disabled (auth-gated write action).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.bitmind.ai/openapi.json",
+        "https://bitmind.ai/"
+      ],
+      "url": "https://api.bitmind.ai/get-video-upload-url"
     }
   ],
   "website_url": "https://bitmind.ai/"

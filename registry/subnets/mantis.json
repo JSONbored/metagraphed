@@ -213,6 +213,131 @@
         "https://mantis123.com/dashboard/static/app.js"
       ],
       "url": "https://mantis123.com/dashboard/api/history/incentive"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-123-mantis-dashboard-snap-breakouts",
+      "kind": "subnet-api",
+      "name": "MANTIS dashboard breakout events",
+      "notes": "Public no-auth GET /dashboard/api/snap/breakouts on mantis123.com returning per-ticker breakout event history (trigger/resolution blocks, direction, labels, predictor counts). Sibling of the already-registered snap/meta surface — same host/pattern, discovered via the console app.js snap(\"breakouts\") call site. Live-verified 2026-07-21: HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://mantis123.com/",
+        "https://mantis123.com/dashboard/static/app.js"
+      ],
+      "url": "https://mantis123.com/dashboard/api/snap/breakouts"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-123-mantis-dashboard-snap-clusters",
+      "kind": "subnet-api",
+      "name": "MANTIS dashboard miner clusters",
+      "notes": "Public no-auth GET /dashboard/api/snap/clusters on mantis123.com returning per-ticker miner clustering data as public SS58 address groups (no coldkeys or wallet secrets). Sibling of snap/meta — app.js snap(\"clusters\"). Live-verified 2026-07-21: HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://mantis123.com/",
+        "https://mantis123.com/dashboard/static/app.js"
+      ],
+      "url": "https://mantis123.com/dashboard/api/snap/clusters"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-123-mantis-dashboard-snap-metagraph",
+      "kind": "subnet-api",
+      "name": "MANTIS dashboard metagraph snapshot",
+      "notes": "Public no-auth GET /dashboard/api/snap/metagraph on mantis123.com returning a per-UID metagraph snapshot (hotkey, incentive, emission, stake, trust) at the latest synced block. Same public-hotkey-only shape as history/incentive. Sibling of snap/meta — app.js snap(\"metagraph\"). Live-verified 2026-07-21: HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://mantis123.com/",
+        "https://mantis123.com/dashboard/static/app.js"
+      ],
+      "url": "https://mantis123.com/dashboard/api/snap/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-123-mantis-dashboard-snap-miners",
+      "kind": "subnet-api",
+      "name": "MANTIS dashboard miner totals",
+      "notes": "Public no-auth GET /dashboard/api/snap/miners on mantis123.com returning per-ticker miner participation totals (ch_totals). Sibling of snap/meta — app.js snap(\"miners\"). Live-verified 2026-07-21: HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://mantis123.com/",
+        "https://mantis123.com/dashboard/static/app.js"
+      ],
+      "url": "https://mantis123.com/dashboard/api/snap/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-123-mantis-dashboard-snap-participation",
+      "kind": "subnet-api",
+      "name": "MANTIS dashboard participation history",
+      "notes": "Public no-auth GET /dashboard/api/snap/participation on mantis123.com returning per-ticker time series of participation counts. Sibling of snap/meta — app.js snap(\"participation\"). Live-verified 2026-07-21: HTTP 200 JSON.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mantis",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": [
+        "https://mantis123.com/",
+        "https://mantis123.com/dashboard/static/app.js"
+      ],
+      "url": "https://mantis123.com/dashboard/api/snap/participation"
     }
   ],
   "website_url": "https://mantis123.com/"
