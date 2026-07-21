@@ -128,7 +128,7 @@
       "id": "sn-85-vidaio-health",
       "kind": "subnet-api",
       "name": "Vidaio API health",
-      "notes": "Public no-auth GET /health returning {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing openapi surface (api.vidaio.io/openapi.json, path /health).",
+      "notes": "Public no-auth GET /health returning {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing openapi surface (api.vidaio.io/openapi.json, route /health). Live-verified 2026-07-21: HTTP 200 JSON {\"status\":\"ok\"}.",
       "provider": "vidaio",
       "public_safe": true,
       "review": {
@@ -139,7 +139,13 @@
         "https://api.vidaio.io/openapi.json",
         "https://vidaio.io/"
       ],
-      "url": "https://api.vidaio.io/health"
+      "url": "https://api.vidaio.io/health",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     },
     {
       "auth_required": false,
@@ -147,7 +153,7 @@
       "id": "sn-85-vidaio-ready",
       "kind": "subnet-api",
       "name": "Vidaio API readiness health",
-      "notes": "Public no-auth GET /ready returning {\"status\":\"ok\"} when the API can reach its backing database. Documented in the machine-readable OpenAPI spec on the same host as the existing openapi and /health subnet-api surfaces (api.vidaio.io/openapi.json, path /ready). Distinct from the /health liveness endpoint.",
+      "notes": "Public no-auth GET /ready returning {\"status\":\"ok\"} when the API can reach its backing database. Documented in the machine-readable OpenAPI spec on the same host as the existing openapi and /health subnet-api surfaces (api.vidaio.io/openapi.json, route /ready). Distinct from the /health liveness endpoint. Live-verified 2026-07-21: HTTP 200 JSON {\"status\":\"ok\"}.",
       "provider": "vidaio",
       "public_safe": true,
       "review": {
@@ -158,7 +164,13 @@
         "https://api.vidaio.io/openapi.json",
         "https://vidaio.io/"
       ],
-      "url": "https://api.vidaio.io/ready"
+      "url": "https://api.vidaio.io/ready",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      }
     }
   ],
   "website_url": "https://vidaio.io/"
