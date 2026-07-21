@@ -358,6 +358,1230 @@
       "public_safe": true,
       "source_urls": ["https://api.gradients.io/openapi.json"],
       "url": "https://api.gradients.io/tournament/latest/details"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-account-balance-check",
+      "kind": "subnet-api",
+      "name": "Gradients account balance check",
+      "notes": "Account Balance Check operation on the Gradients API (POST /account-balance-check), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/account-balance-check"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-account-create",
+      "kind": "subnet-api",
+      "name": "Gradients account create",
+      "notes": "Account Create operation on the Gradients API (POST /account-create), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/account-create"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-account-get-info",
+      "kind": "subnet-api",
+      "name": "Gradients account get info",
+      "notes": "Account Get Info operation on the Gradients API (POST /account-get-info), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/account-get-info"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-account-get-logs",
+      "kind": "subnet-api",
+      "name": "Gradients account get logs",
+      "notes": "Account Get Logs operation on the Gradients API (POST /account-get-logs), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/account-get-logs"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-account-get-public-key",
+      "kind": "subnet-api",
+      "name": "Gradients account get public key",
+      "notes": "Account Get Public Key operation on the Gradients API (POST /account-get-public-key), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/account-get-public-key"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-account-recovery-challenge",
+      "kind": "subnet-api",
+      "name": "Gradients account recovery challenge",
+      "notes": "Account Recovery Challenge operation on the Gradients API (POST /account-recovery-challenge), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/account-recovery-challenge"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-account-recovery-verify",
+      "kind": "subnet-api",
+      "name": "Gradients account recovery verify",
+      "notes": "Account Recovery Verify operation on the Gradients API (POST /account-recovery-verify), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/account-recovery-verify"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-account-set-data",
+      "kind": "subnet-api",
+      "name": "Gradients account set data",
+      "notes": "Account Set Data operation on the Gradients API (POST /account-set-data), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/account-set-data"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-account-transactions",
+      "kind": "subnet-api",
+      "name": "Gradients account transactions",
+      "notes": "Account Transactions operation on the Gradients API (POST /account-transactions), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/account-transactions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-account-username-check",
+      "kind": "subnet-api",
+      "name": "Gradients account username check",
+      "notes": "Account Username Check operation on the Gradients API (POST /account-username-check), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/account-username-check"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-add-balance",
+      "kind": "subnet-api",
+      "name": "Gradients add balance",
+      "notes": "Add Balance operation on the Gradients API (POST /add-balance), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/add-balance"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-api-key-create",
+      "kind": "subnet-api",
+      "name": "Gradients api key create",
+      "notes": "Api Key Create operation on the Gradients API (POST /api-key-create), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/api-key-create"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-apply-voucher",
+      "kind": "subnet-api",
+      "name": "Gradients apply voucher",
+      "notes": "Apply Voucher Endpoint operation on the Gradients API (POST /apply-voucher), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/apply-voucher"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-auditing-tasks-hotkey-hotkey",
+      "kind": "subnet-api",
+      "name": "Gradients auditing tasks operator account operator account",
+      "notes": "Audit Recent Tasks For operator account Endpoint operation on the Gradients API (GET /auditing/tasks/operator account/{operator account}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {operator account}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/auditing/tasks/hotkey/%7Bhotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-auditing-tasks-task-id",
+      "kind": "subnet-api",
+      "name": "Gradients auditing tasks task id",
+      "notes": "Audit Task Details Endpoint operation on the Gradients API (GET /auditing/tasks/{task_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/auditing/tasks/%7Btask_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-auth-with-fingerprint",
+      "kind": "subnet-api",
+      "name": "Gradients auth with fingerprint",
+      "notes": "Auth With Fingerprint operation on the Gradients API (POST /auth-with-fingerprint), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/auth-with-fingerprint"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-signing-challenge-generate",
+      "kind": "subnet-api",
+      "name": "Gradients signing challenge generate",
+      "notes": "on-chain account Attach Challenge operation on the Gradients API (POST /signing-challenge-generate), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/signing-challenge-generate"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-signing-challenge-verify",
+      "kind": "subnet-api",
+      "name": "Gradients signing challenge verify",
+      "notes": "on-chain account Attach Verify operation on the Gradients API (POST /signing-challenge-verify), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/signing-challenge-verify"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-tournament-balance-coldkey",
+      "kind": "subnet-api",
+      "name": "Gradients tournament balance on-chain account",
+      "notes": "Get Tournament Balance operation on the Gradients API (GET /tournament/balance/{on-chain account}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {on-chain account}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/tournament/balance/%7Bcoldkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-tournament-tournament-id-details",
+      "kind": "subnet-api",
+      "name": "Gradients tournament tournament id details",
+      "notes": "Get Tournament Details operation on the Gradients API (GET /tournament/{tournament_id}/details), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {tournament_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/tournament/%7Btournament_id%7D/details"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-chutes-deploy",
+      "kind": "subnet-api",
+      "name": "Gradients v1 chutes deploy",
+      "notes": "Deploy Chute operation on the Gradients API (POST /v1/chutes/deploy), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/chutes/deploy"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-chutes-status-chute-id",
+      "kind": "subnet-api",
+      "name": "Gradients v1 chutes status chute id",
+      "notes": "Get Chute Status operation on the Gradients API (GET /v1/chutes/status/{chute_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/chutes/status/%7Bchute_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-performance-weight-projection",
+      "kind": "subnet-api",
+      "name": "Gradients v1 performance weight projection",
+      "notes": "Weight Projection operation on the Gradients API (GET /v1/performance/weight-projection), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming query parameter \"percentage_improvement\" as required, so it is a query-param route -- the fixed base URL is registered with probe.enabled:false and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/performance/weight-projection"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-prices",
+      "kind": "subnet-api",
+      "name": "Gradients v1 prices",
+      "notes": "Get All Prices operation on the Gradients API (GET /v1/prices), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 AuthenticationRequired, whose message names the Authorization header.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/prices"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-scheduler-health",
+      "kind": "subnet-api",
+      "name": "Gradients v1 scheduler health",
+      "notes": "Scheduler Health operation on the Gradients API (GET /v1/scheduler/health), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/scheduler/health"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-scheduler-jobs",
+      "kind": "subnet-api",
+      "name": "Gradients v1 scheduler jobs",
+      "notes": "Scheduler List Jobs operation on the Gradients API (GET /v1/scheduler/jobs), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/scheduler/jobs"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-scheduler-jobs-create",
+      "kind": "subnet-api",
+      "name": "Gradients v1 scheduler jobs create",
+      "notes": "Scheduler Create Job operation on the Gradients API (POST /v1/scheduler/jobs/create), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/scheduler/jobs/create"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-scheduler-jobs-job-id",
+      "kind": "subnet-api",
+      "name": "Gradients v1 scheduler jobs job id",
+      "notes": "Scheduler Delete Job operation on the Gradients API (DELETE, GET /v1/scheduler/jobs/{job_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/scheduler/jobs/%7Bjob_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-scheduler-jobs-job-id-results",
+      "kind": "subnet-api",
+      "name": "Gradients v1 scheduler jobs job id results",
+      "notes": "Scheduler Get Job Results operation on the Gradients API (GET /v1/scheduler/jobs/{job_id}/results), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/scheduler/jobs/%7Bjob_id%7D/results"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks",
+      "notes": "Get Task Details By Account operation on the Gradients API (GET /v1/tasks), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 AuthenticationRequired, whose message names the Authorization header.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-account-account-id",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks account account id",
+      "notes": "Get Task Details By Account operation on the Gradients API (GET /v1/tasks/account/{account_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/account/%7Baccount_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-breakdown-task-id",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks breakdown task id",
+      "notes": "Get Task Breakdown operation on the Gradients API (GET /v1/tasks/breakdown/{task_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/breakdown/%7Btask_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-create",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks create",
+      "notes": "Create Text Task operation on the Gradients API (POST /v1/tasks/create), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/create"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-create-chat",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks create chat",
+      "notes": "Create Task Chat operation on the Gradients API (POST /v1/tasks/create_chat), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/create_chat"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-create-custom-dataset-chat",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks create custom dataset chat",
+      "notes": "Create Chat Task With Custom Dataset operation on the Gradients API (POST /v1/tasks/create_custom_dataset_chat), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/create_custom_dataset_chat"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-create-custom-dataset-text",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks create custom dataset text",
+      "notes": "Create Text Task With Custom Dataset operation on the Gradients API (POST /v1/tasks/create_custom_dataset_text), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/create_custom_dataset_text"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-create-dpo",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks create dpo",
+      "notes": "Create Task Dpo operation on the Gradients API (POST /v1/tasks/create_dpo), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/create_dpo"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-create-grpo",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks create grpo",
+      "notes": "Create Task Grpo operation on the Gradients API (POST /v1/tasks/create_grpo), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/create_grpo"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-create-image",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks create image",
+      "notes": "Create Image Task operation on the Gradients API (POST /v1/tasks/create_image), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/create_image"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-create-image-zip",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks create image zip",
+      "notes": "Create Image Zip Task operation on the Gradients API (POST /v1/tasks/create_image_zip), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/create_image_zip"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-delete-task-id",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks delete task id",
+      "notes": "Delete Task operation on the Gradients API (DELETE /v1/tasks/delete/{task_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/delete/%7Btask_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-image-check-price",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks image check price",
+      "notes": "Check Image Task Price operation on the Gradients API (POST /v1/tasks/image/check_price), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/image/check_price"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-organic-completed",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks organic completed",
+      "notes": "Get Organic Completed Tasks operation on the Gradients API (GET /v1/tasks/organic/completed), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Live-checked 2026-07-21: GET returned HTTP 404 Not Found, so this documented route is not currently served; the probe is left disabled and the observation recorded rather than asserting a working surface.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/organic/completed"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-task-id",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks task id",
+      "notes": "Get Task Details operation on the Gradients API (GET /v1/tasks/{task_id}), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/%7Btask_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-task-id-result-model-name",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks task id result model name",
+      "notes": "Update Task Result Model Name operation on the Gradients API (PUT /v1/tasks/{task_id}/result_model_name), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/%7Btask_id%7D/result_model_name"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-task-id-training-repo-backup",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks task id training repo backup",
+      "notes": "Update Task Training Repo operation on the Gradients API (PUT /v1/tasks/{task_id}/training_repo_backup), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. Path-parameterized on {task_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/%7Btask_id%7D/training_repo_backup"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (APIKeyHeader); the live 401 response names the Authorization header explicitly."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-56-gradients-v1-tasks-text-check-price",
+      "kind": "subnet-api",
+      "name": "Gradients v1 tasks text check price",
+      "notes": "Check Text Task Price operation on the Gradients API (POST /v1/tasks/text/check_price), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/v1/tasks/text/check_price"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-validator-signup",
+      "kind": "subnet-api",
+      "name": "Gradients validator signup",
+      "notes": "Validator Signup operation on the Gradients API (POST /validator-signup), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/validator-signup"
     }
   ],
   "website_url": "https://www.gradients.io/"
