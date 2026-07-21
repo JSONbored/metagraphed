@@ -220,7 +220,13 @@
       "id": "sn-87-luminar-health",
       "kind": "subnet-api",
       "name": "Luminar Network health",
-      "notes": "Public no-auth GET /healthz on luminar.network returning gateway liveness (observed plain-text response: ok). Served on the official SN87 website host registered in this manifest and linked from the Luminar source repository README.",
+      "notes": "Public no-auth GET /healthz on luminar.network returning gateway liveness (observed plain-text response: ok). Served on the official SN87 website host registered in this manifest and linked from the Luminar source repository README. Live-verified 2026-07-21: GET returns 200 \"ok\".",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "luminar-network",
       "public_safe": true,
       "review": {
