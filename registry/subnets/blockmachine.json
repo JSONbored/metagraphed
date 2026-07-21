@@ -270,6 +270,530 @@
       "public_safe": true,
       "source_urls": ["https://api.blockmachine.io/openapi.json"],
       "url": "https://api.blockmachine.io/install.sh"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-bans",
+      "kind": "subnet-api",
+      "name": "BlockMachine bans",
+      "notes": "List Bans operation on the BlockMachine API (GET, POST /bans), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/bans"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-bans-on-chain-account",
+      "kind": "subnet-api",
+      "name": "BlockMachine bans on-chain account",
+      "notes": "Unban Miner operation on the BlockMachine API (DELETE, GET /bans/{on-chain account}), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/bans/%7Bcoldkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-bans-proxy-detection",
+      "kind": "subnet-api",
+      "name": "BlockMachine bans proxy detection",
+      "notes": "Ban Proxy Detected Miner operation on the BlockMachine API (POST /bans/proxy-detection), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/bans/proxy-detection"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-base-incentive-candidates",
+      "kind": "subnet-api",
+      "name": "BlockMachine base incentive candidates",
+      "notes": "Get Base Incentive Candidates operation on the BlockMachine API (GET /base-incentive/candidates), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/base-incentive/candidates"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-base-incentive-eligible",
+      "kind": "subnet-api",
+      "name": "BlockMachine base incentive eligible",
+      "notes": "Get Base Incentive Eligible operation on the BlockMachine API (GET /base-incentive/eligible), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/base-incentive/eligible"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-base-incentive-ledger",
+      "kind": "subnet-api",
+      "name": "BlockMachine base incentive ledger",
+      "notes": "Get Base Incentive Ledger operation on the BlockMachine API (GET, POST /base-incentive/ledger), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. Live-checked 2026-07-21: the bare URL returns HTTP 422 naming query parameter \"epoch_id\" as required, so it is a query-param route -- the fixed base URL is registered with the probe disabled and it is callable via call_subnet_surface's query argument.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/base-incentive/ledger"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-benchmarks",
+      "kind": "subnet-api",
+      "name": "BlockMachine benchmarks",
+      "notes": "Get Benchmarks operation on the BlockMachine API (GET, POST /benchmarks), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares no security on it; it is a state-changing operation and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/benchmarks"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-compatibility-policy",
+      "kind": "subnet-api",
+      "name": "BlockMachine compatibility policy",
+      "notes": "Get Policy operation on the BlockMachine API (GET /compatibility/policy), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/compatibility/policy"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-epochs-epoch-id",
+      "kind": "subnet-api",
+      "name": "BlockMachine epochs epoch id",
+      "notes": "Get Epoch operation on the BlockMachine API (GET /epochs/{epoch_id}), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/epochs/%7Bepoch_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-epochs-epoch-id-finalize",
+      "kind": "subnet-api",
+      "name": "BlockMachine epochs epoch id finalize",
+      "notes": "Finalize Epoch operation on the BlockMachine API (POST /epochs/{epoch_id}/finalize), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/epochs/%7Bepoch_id%7D/finalize"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-epochs-epoch-id-free-tier-incentive",
+      "kind": "subnet-api",
+      "name": "BlockMachine epochs epoch id free tier incentive",
+      "notes": "Report Free Tier Incentive operation on the BlockMachine API (POST /epochs/{epoch_id}/free-tier-incentive), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/epochs/%7Bepoch_id%7D/free-tier-incentive"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-nodes",
+      "kind": "subnet-api",
+      "name": "BlockMachine nodes",
+      "notes": "List Nodes operation on the BlockMachine API (GET, POST /nodes), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/nodes"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-nodes-node-id",
+      "kind": "subnet-api",
+      "name": "BlockMachine nodes node id",
+      "notes": "Delete Node operation on the BlockMachine API (DELETE, GET, PATCH /nodes/{node_id}), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/nodes/%7Bnode_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-nodes-node-id-credential",
+      "kind": "subnet-api",
+      "name": "BlockMachine nodes node id credential",
+      "notes": "Get credential Metadata operation on the BlockMachine API (GET, POST /nodes/{node_id}/credential), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/nodes/%7Bnode_id%7D/secret"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-nodes-node-id-credential-promote",
+      "kind": "subnet-api",
+      "name": "BlockMachine nodes node id credential promote",
+      "notes": "Promote credential operation on the BlockMachine API (POST /nodes/{node_id}/credential/promote), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/nodes/%7Bnode_id%7D/secret/promote"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-nodes-node-id-events",
+      "kind": "subnet-api",
+      "name": "BlockMachine nodes node id events",
+      "notes": "List Events operation on the BlockMachine API (GET /nodes/{node_id}/events), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/nodes/%7Bnode_id%7D/events"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-nodes-node-id-metrics",
+      "kind": "subnet-api",
+      "name": "BlockMachine nodes node id metrics",
+      "notes": "Get Metrics operation on the BlockMachine API (GET /nodes/{node_id}/metrics), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/nodes/%7Bnode_id%7D/metrics"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-pricing-rules",
+      "kind": "subnet-api",
+      "name": "BlockMachine pricing rules",
+      "notes": "Delete Pricing Rule operation on the BlockMachine API (DELETE, GET, POST /pricing/rules), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/pricing/rules"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-snapshots-url",
+      "kind": "subnet-api",
+      "name": "BlockMachine snapshots url",
+      "notes": "Get Snapshot Url operation on the BlockMachine API (GET /snapshots/url), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/snapshots/url"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (HTTPBearer), declared per-operation.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-19-blockmachine-validator-config",
+      "kind": "subnet-api",
+      "name": "BlockMachine validator config",
+      "notes": "Get Validator Config operation on the BlockMachine API (GET /validator/config), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "url": "https://api.blockmachine.io/validator/config"
     }
   ],
   "website_url": "https://blockmachine.io/"
