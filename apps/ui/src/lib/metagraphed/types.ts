@@ -2544,6 +2544,25 @@ export interface ConcentrationMetrics {
   entropy_normalized?: number;
 }
 
+/**
+ * Per-domain rollup row from GET /api/v1/domains (#6996) — one entry per tag in
+ * the 14-tag capability taxonomy, aggregated over the `?domain=` filter's members.
+ */
+export interface DomainRollup {
+  domain: string;
+  subnet_count: number;
+  netuids?: number[];
+  total_stake_tao?: number;
+  total_emission_share?: number;
+  emission_concentration?: ConcentrationMetrics;
+}
+
+/** GET /api/v1/domains response payload — the full domain/capability-tag taxonomy. */
+export interface DomainsOverview {
+  domain_count?: number;
+  domains: DomainRollup[];
+}
+
 /** Percentile spread of a 0–1 score across neurons (trust / consensus / validator_trust). */
 export interface ScoreDistribution {
   count?: number;

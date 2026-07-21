@@ -8,6 +8,8 @@ import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
 import { isUsableTimestamp } from "./format";
 import type {
   AdapterSnapshot,
+  DomainRollup,
+  DomainsOverview,
   AgentResource,
   AgentResources,
   AgentCatalogSummary,
@@ -890,6 +892,51 @@ export const leaderboardsQuery = () =>
         signal,
       });
       return { data: normalizeLeaderboards(res.data?.boards), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Per-domain capability-tag rollup — GET /api/v1/domains (#6996). The list API
+// returns the 14-tag taxonomy already aggregated (member count, total stake,
+// emission share, within-domain emission concentration); we just drop rows that
+// lack the one field the page keys on (a string `domain`) and sort by stake so
+// the overview leads with the largest domains.
+function normalizeDomainRow(raw: unknown): DomainRollup | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.domain !== "string") return null;
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+  return {
+    domain: r.domain,
+    subnet_count: num(r.subnet_count) ?? 0,
+    netuids: Array.isArray(r.netuids)
+      ? r.netuids.filter((n): n is number => typeof n === "number")
+      : undefined,
+    total_stake_tao: num(r.total_stake_tao),
+    total_emission_share: num(r.total_emission_share),
+    emission_concentration:
+      r.emission_concentration && typeof r.emission_concentration === "object"
+        ? (r.emission_concentration as DomainRollup["emission_concentration"])
+        : undefined,
+  };
+}
+
+function normalizeDomains(raw: unknown): DomainsOverview {
+  const rows = Array.isArray(raw)
+    ? raw.map(normalizeDomainRow).filter((d): d is DomainRollup => d !== null)
+    : [];
+  rows.sort((a, b) => (b.total_stake_tao ?? 0) - (a.total_stake_tao ?? 0));
+  return { domain_count: rows.length, domains: rows };
+}
+
+export const domainsQuery = () =>
+  queryOptions({
+    queryKey: k("domains"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ domains?: unknown }>("/api/v1/domains", {
+        signal,
+      });
+      return { data: normalizeDomains(res.data?.domains), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });

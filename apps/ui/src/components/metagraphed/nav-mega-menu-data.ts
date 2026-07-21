@@ -41,6 +41,7 @@ export const MEGA_PANELS: MegaPanel[] = [
         label: "Machine-verified",
         hint: "Probed & confirmed",
       },
+      { to: "/domains", label: "Domains", hint: "Capability-tag rollups" },
       { to: "/subnets/0", label: "Root (netuid 0)", hint: "Base-layer Subtensor" },
       { to: "/subnets/7", label: "Allways · SN7", hint: "Adapter-backed pilot" },
       { to: "/subnets/74", label: "Gittensor · SN74", hint: "Adapter-backed pilot" },
