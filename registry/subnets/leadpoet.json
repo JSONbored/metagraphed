@@ -7,14 +7,14 @@
   ],
   "contact": "hello@leadpoet.com",
   "curation": {
+    "gap_notes": [
+      "Diffed the leadpoet.com OpenAPI schema (5 paths) for undiscovered public GET endpoints -- all 4 GET routes (health, geo/countries, geo/states, geo/cities) were already tracked; the 5th path is a non-GET contact-form route, out of scope."
+    ],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-07-15T00:00:00.000Z",
-    "verified_at": "2026-07-15T00:00:00.000Z",
     "source_count": 7,
-    "gap_notes": [
-      "Diffed the leadpoet.com OpenAPI schema (5 paths) for undiscovered public GET endpoints -- all 4 GET routes (health, geo/countries, geo/states, geo/cities) were already tracked; the 5th path is a non-GET contact-form route, out of scope."
-    ]
+    "verified_at": "2026-07-15T00:00:00.000Z"
   },
   "name": "Leadpoet",
   "netuid": 71,
@@ -122,7 +122,7 @@
       "id": "sn-71-leadpoet-geo-countries",
       "kind": "data-artifact",
       "name": "Leadpoet country reference list",
-      "notes": "Public no-auth GET /api/geo/countries on leadpoet.com returning the ISO country code/label reference list used by the platform's lead-fulfillment forms. Confirmed present at the exact path in the subnet's own OpenAPI schema (GET /api/geo/countries, tag \"reference\", summary \"List ISO countries (priority-ordered)\", response schema GeoOption[]) — the same schema already registered as the sn-71-leadpoet-openapi surface in this file; same leadpoet.com host as the existing health surface.",
+      "notes": "Public no-auth GET /api/geo/countries on leadpoet.com returning the ISO country code/label reference list used by the platform's lead-fulfillment forms. Confirmed present at the exact path in the subnet's own OpenAPI schema (GET /api/geo/countries, tag \"reference\", summary \"List ISO countries (priority-ordered)\", response schema GeoOption[]) \u2014 the same schema already registered as the sn-71-leadpoet-openapi surface in this file; same leadpoet.com host as the existing health surface.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -181,6 +181,28 @@
       },
       "source_urls": ["https://leadpoet.com/api/geo/cities"],
       "url": "https://leadpoet.com/api/geo/cities"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-71-leadpoet-contact-api",
+      "kind": "subnet-api",
+      "name": "Leadpoet contact form API",
+      "notes": "Public no-auth POST /api/contact on leadpoet.com documented in the subnet OpenAPI schema (path /api/contact). Marketing contact-form submit with a JSON body; probe.enabled:false because it is a write endpoint and not safe to auto-probe. Live-verified 2026-07-21: GET returns HTTP 200 (endpoint reachable); POST left unfired.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leadpoet",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kai392"
+      },
+      "source_urls": ["https://leadpoet.com/api/openapi.json"],
+      "url": "https://leadpoet.com/api/contact"
     }
   ],
   "website_url": "https://leadpoet.com/"
