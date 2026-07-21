@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
-import { contractStaleness, contractVersion } from "../workers/responses.mjs";
+import { contractStaleness, contractVersion } from "../workers/responses.ts";
 
 test("contractVersion returns env override when METAGRAPH_CONTRACT_VERSION is set", () => {
   assert.equal(

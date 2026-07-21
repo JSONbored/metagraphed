@@ -22,7 +22,7 @@ import {
   parseLimitParam,
   parseNonNegativeIntParam,
   parsePagination,
-} from "../workers/request-params.mjs";
+} from "../workers/request-params.ts";
 
 // Build a request URL carrying only the query string under test.
 function url(query) {

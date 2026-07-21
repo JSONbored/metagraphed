@@ -41,10 +41,10 @@ import {
   recordUsageEvent,
 } from "./usage-telemetry.mjs";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
-import { DAY_PATTERN } from "../workers/request-params.mjs";
+import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters } from "../workers/list-query.mjs";
-import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
-import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
+import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {
   handleRpcProxyRequest,
   graphqlRateLimited,
@@ -10331,7 +10331,7 @@ export const MCP_TOOLS = [
         );
       }
       if (!response.ok) {
-        // handleRpcProxyRequest's every error path goes through workers/http.mjs's
+        // handleRpcProxyRequest's every error path goes through workers/http.ts's
         // errorResponse(), which always populates error.code/error.message -- no
         // "malformed error body" case exists to guess a fallback for.
         throw toolError(payload.error.code, payload.error.message);

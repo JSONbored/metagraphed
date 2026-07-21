@@ -11,11 +11,11 @@
 // injected once at module-init so this file never imports api.mjs back.
 
 import { UPTIME_WINDOWS } from "../config.mjs";
-import { tryPostgresTier } from "../postgres-tier.mjs";
+import { tryPostgresTier } from "../postgres-tier.ts";
 import { csvRequested, csvResponse } from "../csv.mjs";
-import { errorResponse } from "../http.mjs";
+import { errorResponse } from "../http.ts";
 import { readArtifact } from "../storage.mjs";
-import { contractVersion, envelopeResponse } from "../responses.mjs";
+import { contractVersion, envelopeResponse } from "../responses.ts";
 import {
   analyticsMeta,
   analyticsQueryError,
@@ -25,7 +25,7 @@ import {
 import {
   parseLimitParam,
   parseNonNegativeIntParam,
-} from "../request-params.mjs";
+} from "../request-params.ts";
 import {
   parseHistoryWindow,
   unsupportedWindowMessage,

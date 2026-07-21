@@ -28,18 +28,18 @@ import {
   MAX_INCIDENT_ROWS,
   resolveClientIp,
 } from "../config.mjs";
-import { parseLimitParam } from "../request-params.mjs";
-import { errorResponse, ifNoneMatchSatisfied } from "../http.mjs";
+import { parseLimitParam } from "../request-params.ts";
+import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
 import { csvRequested, csvResponse } from "../csv.mjs";
 import {
   contractVersion,
   envelopeResponse,
   publishedAt,
-} from "../responses.mjs";
+} from "../responses.ts";
 import {
   currentPostgresTierFallbackGeneration,
   tryPostgresTier,
-} from "../postgres-tier.mjs";
+} from "../postgres-tier.ts";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
 import { formatGlobalIncidents } from "../../src/health-serving.mjs";
 import {

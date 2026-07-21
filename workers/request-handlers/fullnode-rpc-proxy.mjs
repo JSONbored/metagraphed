@@ -27,7 +27,7 @@
 // is a lower-volume, paid/gated tier where correctness/freshness matters more
 // than shaving upstream calls, and it now carries a non-idempotent write
 // method -- a deliberate v1 scope cut, not an oversight.
-import { errorResponse } from "../http.mjs";
+import { errorResponse } from "../http.ts";
 import { validateApiKey } from "../../src/api-key-validation.mjs";
 import {
   orderSafeRpcEndpoints,

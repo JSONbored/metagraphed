@@ -4,8 +4,8 @@
 // result with no fixed response shape across templates, the same "no static
 // artifact" category as /api/v1/graphql -- see workers/api.mjs's own comment
 // on why this sits outside the API_ROUTES/contracts.mjs registry.
-import { errorResponse } from "../http.mjs";
-import { dataResponse } from "../responses.mjs";
+import { errorResponse } from "../http.ts";
+import { dataResponse } from "../responses.ts";
 import { runSavedQuery } from "../../src/saved-queries.mjs";
 
 export const SAVED_QUERIES_PATH_PREFIX = "/api/v1/queries/";

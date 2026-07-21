@@ -1,4 +1,4 @@
-import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.mjs";
+import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.ts";
 
 const SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n]/;
 // Keep each stream pull bounded without fragmenting typical endpoint exports

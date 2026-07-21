@@ -31,8 +31,8 @@ import {
 // unchanged (same artifact read, filter, sort, and page logic REST and MCP
 // already use) -- not a reimplementation.
 import { loadProfilesList } from "./profiles-mcp.mjs";
-import { contractVersion } from "../workers/responses.mjs";
-import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { contractVersion } from "../workers/responses.ts";
+import { tryPostgresTier } from "../workers/postgres-tier.ts";
 // #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
 // routes, reusing the same shaping functions list_endpoint_pools/list_rpc_pools/
 // list_endpoint_incidents already call for MCP parity -- not a reimplementation.
@@ -162,7 +162,7 @@ import {
   FEED_PAGINATION,
   clampLimit,
   clampOffset,
-} from "../workers/request-params.mjs";
+} from "../workers/request-params.ts";
 import { buildSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { buildChainIdentityHistory } from "./chain-identity-history.mjs";
 import {

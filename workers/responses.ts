@@ -4,17 +4,18 @@
 // http + storage leaf modules and the contract version; it calls nothing back
 // into api.mjs, so there is no import cycle.
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
-import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.mjs";
+import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.ts";
+import type { CacheProfile } from "./http.ts";
 import { latestPointer } from "./storage.mjs";
 
-export function contractVersion(env) {
+export function contractVersion(env: Env): string {
   return env.METAGRAPH_CONTRACT_VERSION || CONTRACT_VERSION;
 }
 
 // Contract versions are "YYYY-MM-DD.N": the ISO date sorts lexicographically,
 // the revision N numerically. Returns <0 if a precedes b, 0 if equal, >0 after.
-function compareContractVersions(a, b) {
-  const parse = (value) => {
+function compareContractVersions(a: string, b: string): number {
+  const parse = (value: string): [string, number] => {
     const [date = "", rev = "0"] = String(value).split(".");
     return [date, Number.parseInt(rev, 10) || 0];
   };
@@ -27,7 +28,10 @@ function compareContractVersions(a, b) {
 // A served artifact built under an OLDER contract than the live one may predate
 // a schema change — the silent serve-time drift #1001 makes observable. Returns
 // { built_under, live } when the artifact lags the live contract, else null.
-export function contractStaleness(env, builtUnderVersion) {
+export function contractStaleness(
+  env: Env,
+  builtUnderVersion: string | null | undefined,
+): { built_under: string; live: string } | null {
   if (!builtUnderVersion) return null;
   const live = contractVersion(env);
   return compareContractVersions(builtUnderVersion, live) < 0
@@ -38,13 +42,18 @@ export function contractStaleness(env, builtUnderVersion) {
 // Published-at is read from the latest-pointer KV (warmed on publish), so this
 // only touches KV on origin misses. Returns null when KV is unbound or the
 // pointer predates published_at support.
-export async function publishedAt(env) {
+export async function publishedAt(env: Env): Promise<string | null> {
   const pointer = await latestPointer(env);
   return pointer?.published_at || null;
 }
 
 // Success envelope for non-cacheable (mutation / dynamic) JSON responses.
-export function dataResponse(env, data, status = 200, extraMeta = {}) {
+export function dataResponse(
+  env: Env,
+  data: unknown,
+  status = 200,
+  extraMeta: Record<string, unknown> = {},
+): Response {
   const headers = apiHeaders("short");
   headers.set("cache-control", "no-store");
   return new Response(
@@ -62,14 +71,22 @@ export function dataResponse(env, data, status = 200, extraMeta = {}) {
   );
 }
 
+interface EnvelopePayload {
+  data: unknown;
+  meta: Record<string, unknown> & {
+    contract_version?: string;
+    stale_contract?: { built_under: string };
+  };
+}
+
 // Cacheable success envelope with a weak ETag + 304 short-circuit; HEAD returns
 // headers only. cacheProfile selects the cache-control max-age via apiHeaders.
 export async function envelopeResponse(
-  request,
-  payload,
-  cacheProfile,
-  extraHeaders = {},
-) {
+  request: Request,
+  payload: EnvelopePayload,
+  cacheProfile: CacheProfile,
+  extraHeaders: Record<string, string | null | undefined> = {},
+): Promise<Response> {
   const body = JSON.stringify({
     ok: true,
     schema_version: 1,

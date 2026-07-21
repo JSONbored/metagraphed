@@ -885,7 +885,7 @@ test("GET /api/v1/chain/transfers rejects an unsupported format value with 400",
 
 // #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
 // table this handler already reads, no new flag) -- tryPostgresTier's own
-// fallback contract is unit-tested in workers/postgres-tier.mjs's own tests,
+// fallback contract is unit-tested in workers/postgres-tier.ts's own tests,
 // so these two just prove the wiring: a Postgres hit is served as-is with D1
 // never queried, and a Postgres failure falls back to D1.
 test("GET /api/v1/chain/transfers: flag=postgres serves the DATA_API response, D1 never queried", async () => {
@@ -1204,7 +1204,7 @@ test("GET /api/v1/chain/transfer-pairs validates sort, limit, and query keys", a
 
 // #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
 // table this handler already reads, no new flag) -- tryPostgresTier's own
-// fallback contract is unit-tested in workers/postgres-tier.mjs's own tests,
+// fallback contract is unit-tested in workers/postgres-tier.ts's own tests,
 // so these two just prove the wiring: a Postgres hit is served as-is with D1
 // never queried, and a Postgres failure falls back to D1.
 test("GET /api/v1/chain/transfer-pairs: flag=postgres serves the DATA_API response, D1 never queried", async () => {

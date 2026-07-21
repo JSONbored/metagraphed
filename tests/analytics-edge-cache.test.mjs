@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { envelopeResponse } from "../workers/responses.mjs";
+import { envelopeResponse } from "../workers/responses.ts";
 import {
   markD1FallbackResponse,
   withEdgeCache,

@@ -25,7 +25,7 @@ import { formatRpcUsage } from "../src/health-serving.mjs";
 import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,
-} from "../workers/request-params.mjs";
+} from "../workers/request-params.ts";
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),

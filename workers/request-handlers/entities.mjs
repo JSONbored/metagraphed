@@ -25,15 +25,15 @@ import {
   parseLimitParam,
   parseNonNegativeIntParam,
   parsePagination,
-} from "../request-params.mjs";
+} from "../request-params.ts";
 
-import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.mjs";
+import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.ts";
 import {
   contractVersion,
   envelopeResponse,
   publishedAt,
-} from "../responses.mjs";
-import { tryPostgresTier } from "../postgres-tier.mjs";
+} from "../responses.ts";
+import { tryPostgresTier } from "../postgres-tier.ts";
 import { csvRequested, csvResponse } from "../csv.mjs";
 import {
   analyticsQueryError,

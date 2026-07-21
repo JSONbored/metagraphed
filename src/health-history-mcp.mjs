@@ -2,7 +2,7 @@
 // GET /api/v1/health/history/{date}. Artifact-backed list-query over dated
 // health/history snapshots with health-surfaces filters.
 
-import { DAY_PATTERN } from "../workers/request-params.mjs";
+import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters } from "../workers/list-query.mjs";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 

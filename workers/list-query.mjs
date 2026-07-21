@@ -8,8 +8,8 @@ import {
   API_QUERY_COLLECTIONS,
   SEARCH_TEXT_MAX_LENGTH,
 } from "../src/contracts.mjs";
-import { linkHeader } from "./http.mjs";
-import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.mjs";
+import { linkHeader } from "./http.ts";
+import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.ts";
 
 const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 

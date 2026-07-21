@@ -26,13 +26,13 @@
 // Everything else is a direct leaf import. api.mjs imports the handlers back and
 // dispatches them, and re-exports the test-facing helpers from itself.
 
-import { apiHeaders, errorResponse } from "../http.mjs";
+import { apiHeaders, errorResponse } from "../http.ts";
 import { readArtifact, readHealthKv } from "../storage.mjs";
 import {
   contractVersion,
   envelopeResponse,
   publishedAt,
-} from "../responses.mjs";
+} from "../responses.ts";
 import {
   analyticsMeta,
   analyticsQueryError,
@@ -51,7 +51,7 @@ import {
 import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.mjs";
 import { overlayRpcPoolEligibility } from "../../src/health-serving.mjs";
 import { loadRpcUsage } from "../../src/rpc-usage-loader.mjs";
-import { tryPostgresTier } from "../postgres-tier.mjs";
+import { tryPostgresTier } from "../postgres-tier.ts";
 import {
   DENIED_RPC_PREFIXES,
   JSON_CONTENT_TYPE,

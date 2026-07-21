@@ -2,7 +2,7 @@
 // is mocked so the routing + response shaping are tested with no real DB — the live
 // Hyperdrive→Railway path is validated separately.
 import { beforeEach, test, expect, vi } from "vitest";
-import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.mjs";
+import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { formatSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
 import { hyperparamsHash } from "../src/subnet-hyperparams-history.mjs";

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { dataResponse, envelopeResponse } from "../workers/responses.mjs";
+import { dataResponse, envelopeResponse } from "../workers/responses.ts";
 import {
   errorResponse,
   ifNoneMatchSatisfied,
   linkHeader,
-} from "../workers/http.mjs";
+} from "../workers/http.ts";
 
 const reqWith = (ifNoneMatch) =>
   new Request("https://metagraph.sh/api/v1/anything", {

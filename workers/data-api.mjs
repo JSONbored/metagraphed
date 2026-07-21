@@ -493,7 +493,7 @@ import {
   clampLimit as clampRequestLimit,
   clampOffset as clampRequestOffset,
   parseLimitParam,
-} from "./request-params.mjs";
+} from "./request-params.ts";
 import {
   buildSubnetMetagraph,
   buildSubnetValidators,

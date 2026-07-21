@@ -18,7 +18,7 @@ import {
   okLatencyMs,
 } from "./health-probe-core.mjs";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.ts";
-import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { tryPostgresTier } from "../workers/postgres-tier.ts";
 
 // Must exceed the probe cadence (15 min) so a live D1 health row is never treated
 // as stale just because the next probe hasn't run yet. 25 min = cadence + a

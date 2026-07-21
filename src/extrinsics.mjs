@@ -9,7 +9,7 @@ import {
   BLOCK_PAGINATION,
   clampLimit,
   clampOffset,
-} from "../workers/request-params.mjs";
+} from "../workers/request-params.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { normalizePostgresValue } from "./scale-normalize.ts";
 import { decodePostgresCallArgs } from "./postgres-call-args.mjs";

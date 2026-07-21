@@ -16,8 +16,8 @@ import {
   clampLimit,
   clampOffset,
   FEED_PAGINATION,
-} from "../workers/request-params.mjs";
-import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+} from "../workers/request-params.ts";
+import { tryPostgresTier } from "../workers/postgres-tier.ts";
 
 const READ_COLUMNS =
   "id, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash";

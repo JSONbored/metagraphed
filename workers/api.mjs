@@ -23,7 +23,7 @@ import {
   ifNoneMatchSatisfied,
   weakEtag,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
-} from "./http.mjs";
+} from "./http.ts";
 import {
   latestPointer,
   logEvent,
@@ -37,7 +37,7 @@ import {
   dataResponse,
   envelopeResponse,
   publishedAt,
-} from "./responses.mjs";
+} from "./responses.ts";
 import {
   BADGE_SVG_PATTERN,
   homepageResponse,
@@ -270,7 +270,7 @@ import {
   derivePreviouslyKnownAs,
   overlayPreviouslyKnownAs,
 } from "../src/subnet-identity-history.mjs";
-import { tryPostgresTier } from "./postgres-tier.mjs";
+import { tryPostgresTier } from "./postgres-tier.ts";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.mjs";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,

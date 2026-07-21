@@ -11,7 +11,7 @@
 // than authoring new query logic -- exactly the discipline #6756 asked for.
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.mjs";
 import { LEADERBOARD_BOARDS } from "./health-serving.mjs";
-import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_WINDOWS,
