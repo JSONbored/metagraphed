@@ -14,8 +14,9 @@
 
 // Normalize one cursor part: non-negative safe integers, or D1-style numeric
 // strings (decodeCursor accepts `/^\d+$/` segments; encode must be symmetric).
-function cursorPart(value) {
-  if (Number.isSafeInteger(value) && value >= 0) return value;
+function cursorPart(value: number | string): number | null {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0)
+    return value;
   if (typeof value === "string" && /^\d+$/.test(value)) {
     const n = Number(value);
     if (Number.isSafeInteger(n) && n >= 0) return n;
@@ -28,9 +29,9 @@ function cursorPart(value) {
 // arrive as strings). Returns null for empty/invalid input (no next_cursor).
 // Values above Number.MAX_SAFE_INTEGER are rejected — they cannot survive the
 // Number() round-trip the decoder performs.
-export function encodeCursor(parts) {
+export function encodeCursor(parts: Array<number | string>): string | null {
   if (!Array.isArray(parts) || parts.length === 0) return null;
-  const normalized = [];
+  const normalized: number[] = [];
   for (const part of parts) {
     const n = cursorPart(part);
     if (n == null) return null;
@@ -42,11 +43,11 @@ export function encodeCursor(parts) {
 // Decode a cursor token back to exactly `arity` non-negative integers. Returns
 // null on any malformed/garbage input (the handler then ignores the cursor),
 // preserving the never-throw contract of the chain routes.
-export function decodeCursor(raw, arity) {
+export function decodeCursor(raw: unknown, arity: number): number[] | null {
   if (typeof raw !== "string" || raw === "") return null;
   const segs = raw.split(".");
   if (segs.length !== arity) return null;
-  const parts = [];
+  const parts: number[] = [];
   for (const s of segs) {
     if (!/^\d+$/.test(s)) return null;
     const n = Number(s);

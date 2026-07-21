@@ -34,7 +34,7 @@ import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
-} from "../src/kv-keys.mjs";
+} from "../src/kv-keys.ts";
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
 const emptyEnv = {};

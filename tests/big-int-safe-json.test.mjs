@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { parseJsonPreservingBigInts } from "../src/big-int-safe-json.mjs";
+import { parseJsonPreservingBigInts } from "../src/big-int-safe-json.ts";
 
 describe("parseJsonPreservingBigInts", () => {
   test("preserves a large integer literal as an exact string instead of rounding it (the real corruption case caught by Gittensory review on #4692's original PR)", () => {

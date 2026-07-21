@@ -11,7 +11,7 @@ import {
   twox64ConcatU16StorageKey,
   twox64ConcatU32StorageKey,
   bytesToHex,
-} from "../src/twox-storage-key.mjs";
+} from "../src/twox-storage-key.ts";
 
 // Official xxHash64 reference vectors (seed=0), from the upstream xxHash
 // test suite -- verifies the algorithm itself, independent of any

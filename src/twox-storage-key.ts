@@ -23,12 +23,12 @@ const PRIME64_4 = 0x85ebca77c2b2ae63n;
 const PRIME64_5 = 0x27d4eb2f165667c5n;
 const MASK64 = (1n << 64n) - 1n;
 
-function rotl64(x, r) {
+function rotl64(x: bigint, r: bigint): bigint {
   x &= MASK64;
   return ((x << r) | (x >> (64n - r))) & MASK64;
 }
 
-function readU64LE(bytes, offset) {
+function readU64LE(bytes: Uint8Array, offset: number): bigint {
   let v = 0n;
   for (let i = 7; i >= 0; i -= 1) {
     v = (v << 8n) | BigInt(bytes[offset + i]);
@@ -36,7 +36,7 @@ function readU64LE(bytes, offset) {
   return v;
 }
 
-function readU32LE(bytes, offset) {
+function readU32LE(bytes: Uint8Array, offset: number): bigint {
   return (
     BigInt(bytes[offset]) |
     (BigInt(bytes[offset + 1]) << 8n) |
@@ -50,7 +50,7 @@ function readU32LE(bytes, offset) {
 // name or a 2-8 byte SCALE-encoded map key, well under 32 bytes, but the long
 // path is implemented too rather than asserting a length ceiling, so this
 // stays correct if a future storage item's key ever needs it.
-export function xxh64(input, seed = 0n) {
+export function xxh64(input: Uint8Array | string, seed = 0n): bigint {
   const bytes =
     input instanceof Uint8Array ? input : new TextEncoder().encode(input);
   const len = bytes.length;
@@ -135,7 +135,7 @@ export function xxh64(input, seed = 0n) {
   return h64 & MASK64;
 }
 
-function u64ToLeBytes(v) {
+function u64ToLeBytes(v: bigint): Uint8Array {
   const out = new Uint8Array(8);
   for (let i = 0; i < 8; i += 1) {
     out[i] = Number((v >> BigInt(i * 8)) & 0xffn);
@@ -143,7 +143,7 @@ function u64ToLeBytes(v) {
   return out;
 }
 
-function concatBytes(...parts) {
+function concatBytes(...parts: Uint8Array[]): Uint8Array {
   const total = parts.reduce((sum, p) => sum + p.length, 0);
   const out = new Uint8Array(total);
   let offset = 0;
@@ -154,21 +154,21 @@ function concatBytes(...parts) {
   return out;
 }
 
-function toHex(bytes) {
+function toHex(bytes: Uint8Array): string {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 // twox64(input) -- one XXH64 hash (seed 0), little-endian bytes. This IS the
 // Twox64Concat map-key hash (not "prefix"); see twox64Concat below for the
 // full concat form actually used in a StorageMap key.
-export function twox64(input) {
+export function twox64(input: Uint8Array | string): Uint8Array {
   return u64ToLeBytes(xxh64(input, 0n));
 }
 
 // twox128(input) -- the fixed pallet-name/item-name prefix hash: two XXH64
 // hashes (seeds 0 and 1) concatenated, little-endian. Matches sudo-key.mjs's
 // own already-verified reference value exactly (see this module's header).
-export function twox128(input) {
+export function twox128(input: Uint8Array | string): Uint8Array {
   return concatBytes(
     u64ToLeBytes(xxh64(input, 0n)),
     u64ToLeBytes(xxh64(input, 1n)),
@@ -182,7 +182,10 @@ export function twox128(input) {
 // per-request Twox64Concat suffix, precomputing just the prefix independently
 // saves nothing (the pallet+item strings are already known constants either
 // way), so both are exposed for callers to compose as needed.
-export function storageMapPrefix(palletName, itemName) {
+export function storageMapPrefix(
+  palletName: string,
+  itemName: string,
+): Uint8Array {
   return concatBytes(twox128(palletName), twox128(itemName));
 }
 
@@ -191,7 +194,7 @@ export function storageMapPrefix(palletName, itemName) {
 // to recover the original key by reading the tail of each returned storage
 // key, unlike a Blake2_128Concat-hashed key of variable/opaque original width
 // stored the same way but requiring a different hash-length skip).
-export function twox64Concat(keyBytes) {
+export function twox64Concat(keyBytes: Uint8Array): Uint8Array {
   return concatBytes(twox64(keyBytes), keyBytes);
 }
 
@@ -199,14 +202,18 @@ export function twox64Concat(keyBytes) {
 // burn.mjs's own netuidStorageKeySuffix, duplicated rather than imported
 // (this codebase's established self-contained-module convention for small
 // codec helpers -- see subnet-burn.mjs's own comment on why).
-export function u16LeBytes(n) {
+export function u16LeBytes(n: number): Uint8Array {
   return new Uint8Array([n & 0xff, (n >> 8) & 0xff]);
 }
 
 // Full storage key for a StorageMap<_, Twox64Concat, u16, V> entry (e.g.
 // SubtensorModule::SubnetUidToLeaseId), as a "0x"-prefixed hex string ready
 // for a state_getStorage RPC call.
-export function twox64ConcatU16StorageKey(palletName, itemName, netuid) {
+export function twox64ConcatU16StorageKey(
+  palletName: string,
+  itemName: string,
+  netuid: number,
+): string {
   const prefix = storageMapPrefix(palletName, itemName);
   const suffix = twox64Concat(u16LeBytes(netuid));
   return "0x" + toHex(concatBytes(prefix, suffix));
@@ -215,7 +222,7 @@ export function twox64ConcatU16StorageKey(palletName, itemName, netuid) {
 // u32 SCALE encoding: little-endian, 4 bytes -- Substrate's `LeaseId = u32`
 // (pallets/subtensor/src/subnets/leasing.rs), the map key for SubnetLeases
 // and AccumulatedLeaseDividends.
-export function u32LeBytes(n) {
+export function u32LeBytes(n: number): Uint8Array {
   return new Uint8Array([
     n & 0xff,
     (n >> 8) & 0xff,
@@ -224,12 +231,16 @@ export function u32LeBytes(n) {
   ]);
 }
 
-export function twox64ConcatU32StorageKey(palletName, itemName, id) {
+export function twox64ConcatU32StorageKey(
+  palletName: string,
+  itemName: string,
+  id: number,
+): string {
   const prefix = storageMapPrefix(palletName, itemName);
   const suffix = twox64Concat(u32LeBytes(id));
   return "0x" + toHex(concatBytes(prefix, suffix));
 }
 
-export function bytesToHex(bytes) {
+export function bytesToHex(bytes: Uint8Array): string {
   return "0x" + toHex(bytes);
 }

@@ -616,7 +616,7 @@ import {
   withinRateLimit,
 } from "./ai-search.mjs";
 import { keywordScore, queryTerms } from "./keyword-search.mjs";
-import { KV_HEALTH_META } from "./kv-keys.mjs";
+import { KV_HEALTH_META } from "./kv-keys.ts";
 import {
   buildAccountsList,
   ACCOUNTS_LIST_SORTS,

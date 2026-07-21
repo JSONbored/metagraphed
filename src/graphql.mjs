@@ -334,7 +334,7 @@ import {
   buildCounterparties,
   buildCounterpartyRelationship,
 } from "./counterparties.mjs";
-import { KV_HEALTH_META, KV_HEALTH_RPC_POOL } from "./kv-keys.mjs";
+import { KV_HEALTH_META, KV_HEALTH_RPC_POOL } from "./kv-keys.ts";
 import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,

@@ -9,7 +9,7 @@ import {
   decodeEthereumEvmCallArgs,
 } from "../src/indexer-rs-ethereum-decode.mjs";
 import { decodePostgresCallArgs } from "../src/postgres-call-args.mjs";
-import { normalizePostgresValue } from "../src/scale-normalize.mjs";
+import { normalizePostgresValue } from "../src/scale-normalize.ts";
 
 // Full formatExtrinsic-equivalent pipeline, matching src/extrinsics.mjs's
 // actual call order (decodePostgresCallArgs -> normalizePostgresValue ->
@@ -87,7 +87,7 @@ describe("decodeU256Limbs", () => {
 
     test("preserves exact precision when one limb arrives as a string (the real corruption case caught by Gittensory review)", () => {
       // 9131459485341369597 exceeds Number.MAX_SAFE_INTEGER -- this is exactly
-      // the shape src/big-int-safe-json.mjs's parseJsonPreservingBigInts
+      // the shape src/big-int-safe-json.ts's parseJsonPreservingBigInts
       // produces: the large limb pre-quoted as a string, the other 3 (small,
       // usually 0) limbs left as plain numbers.
       assert.equal(

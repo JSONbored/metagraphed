@@ -19,7 +19,7 @@ import {
   IDENTITY_FIELDS,
   sanitizeAccountIdentityFields,
 } from "./account-identity.mjs";
-import { encodeCursor, decodeCursor } from "./cursor.mjs";
+import { encodeCursor, decodeCursor } from "./cursor.ts";
 import {
   clampLimit,
   clampOffset,

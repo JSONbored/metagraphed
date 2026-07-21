@@ -34,7 +34,7 @@ import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
-} from "./kv-keys.mjs";
+} from "./kv-keys.ts";
 import {
   diffChangedSubnetNetuids,
   notifySubnetStatusChanged,

@@ -7,7 +7,7 @@
 // recordSubnetIdentityChanges' own header comment). Pure + injectable for
 // tests.
 
-import { encodeCursor, decodeCursor } from "./cursor.mjs";
+import { encodeCursor, decodeCursor } from "./cursor.ts";
 import {
   sanitizeIdentityHistoryFields,
   sanitizeIdentityHistoryText,

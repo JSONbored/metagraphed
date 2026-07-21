@@ -54,7 +54,9 @@
 // postgres-collection-normalize.mjs's narrow per-field allowlist for how
 // that side is handled instead).
 
-function isPlainScalar(value) {
+function isPlainScalar(
+  value: unknown,
+): value is string | number | boolean | null {
   return (
     value === null ||
     typeof value === "number" ||
@@ -71,16 +73,25 @@ function isPlainScalar(value) {
  * never collide. Postgres/indexer-rs's raw dump never produces this shape
  * (its call_args is either a flat `{fieldName: value}` object or a bare
  * array), so this is D1-specific by construction, not just by convention. */
-export function isTypedFieldDescriptor(value) {
+interface TypedFieldDescriptor {
+  name: string;
+  type: string;
+  value: unknown;
+}
+
+export function isTypedFieldDescriptor(
+  value: unknown,
+): value is TypedFieldDescriptor {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const keys = Object.keys(value);
+  const candidate = value as Record<string, unknown>;
   return (
     keys.length === 3 &&
     keys.includes("name") &&
     keys.includes("type") &&
     keys.includes("value") &&
-    typeof value.name === "string" &&
-    typeof value.type === "string"
+    typeof candidate.name === "string" &&
+    typeof candidate.type === "string"
   );
 }
 
@@ -99,7 +110,7 @@ export function isTypedFieldDescriptor(value) {
 const COLLECTION_TYPE_RE =
   /(?:Vec|BoundedVec|WeakBoundedVec|BTreeSet|BoundedBTreeSet|BTreeMap|BoundedBTreeMap)</;
 
-function isCollectionType(type) {
+function isCollectionType(type: string): boolean {
   return COLLECTION_TYPE_RE.test(type);
 }
 
@@ -109,7 +120,7 @@ function isCollectionType(type) {
 // could itself be an Option, nested struct, etc). Falls through to the
 // generic normalize() if `value` isn't actually an array (defensive; not
 // expected for a real collection-typed field).
-function normalizeCollectionValue(value) {
+function normalizeCollectionValue(value: unknown): unknown {
   if (!Array.isArray(value)) return normalize(value);
   return value.map(normalize);
 }
@@ -119,19 +130,25 @@ function normalizeCollectionValue(value) {
  * needs the identical shape check to distinguish a nested call from an
  * ordinary enum-with-data node (both share this two-key shape; the
  * distinction is whether `values[0]` is ITSELF another such node). */
-export function isEnumTreeNode(value) {
+interface EnumTreeNode {
+  name: string;
+  values: unknown[];
+}
+
+export function isEnumTreeNode(value: unknown): value is EnumTreeNode {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const keys = Object.keys(value);
+  const candidate = value as Record<string, unknown>;
   return (
     keys.length === 2 &&
     keys.includes("name") &&
     keys.includes("values") &&
-    typeof value.name === "string" &&
-    Array.isArray(value.values)
+    typeof candidate.name === "string" &&
+    Array.isArray(candidate.values)
   );
 }
 
-function normalize(value) {
+function normalize(value: unknown): unknown {
   if (Array.isArray(value)) {
     // Generic single-field newtype/tuple-struct wrap around a plain scalar
     // (e.g. LimitOrders.execute_batched_orders' fee_rate: [0] -> 0). Scoped to
@@ -176,7 +193,7 @@ function normalize(value) {
     };
   }
   if (value && typeof value === "object") {
-    const out = {};
+    const out: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) out[key] = normalize(val);
     return out;
   }
@@ -194,6 +211,6 @@ function normalize(value) {
  * PREVIOUSLY (incorrectly) documented and tested as an unconditional no-op on
  * D1 data; that was false whenever a collection-typed field held exactly one
  * element, e.g. SubtensorModule.set_weights' dests/weights). */
-export function normalizePostgresValue(value) {
+export function normalizePostgresValue(value: unknown): unknown {
   return normalize(value);
 }

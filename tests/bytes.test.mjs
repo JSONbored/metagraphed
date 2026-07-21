@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import {
-  unwrapByteArray,
-  bytesToHex,
-  decodeBytesField,
-} from "../src/bytes.mjs";
+import { unwrapByteArray, bytesToHex, decodeBytesField } from "../src/bytes.ts";
 
 describe("unwrapByteArray", () => {
   test("returns a flat byte array unchanged (zero wraps, e.g. Multisig's raw call_hash)", () => {

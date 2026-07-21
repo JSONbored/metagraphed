@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { encodeCursor, decodeCursor } from "../src/cursor.mjs";
+import { encodeCursor, decodeCursor } from "../src/cursor.ts";
 
 // ---- Keyset cursor codec (#1851) ------------------------------------------
 

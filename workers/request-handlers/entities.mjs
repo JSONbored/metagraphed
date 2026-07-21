@@ -227,7 +227,7 @@ import {
   MAX_OHLC_WINDOW_DAYS,
 } from "../../src/subnet-ohlc.mjs";
 import { resolveLiveEconomics } from "../../src/health-serving.mjs";
-import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.mjs";
+import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.mjs";
 import { buildAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {

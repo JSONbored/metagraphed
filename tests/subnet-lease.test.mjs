@@ -7,7 +7,7 @@ import {
   decodeSubnetLease,
   loadSubnetLease,
 } from "../src/subnet-lease.mjs";
-import { encodeAccountId32 } from "../src/ss58.mjs";
+import { encodeAccountId32 } from "../src/ss58.ts";
 import { handleRequest } from "../workers/api.mjs";
 
 function req(path) {
@@ -234,7 +234,7 @@ describe("loadSubnetLease", () => {
     // SubnetLeases(3)/AccumulatedLeaseDividends(3) fire in parallel under
     // Promise.all, so route the stub by key rather than call order.
     const { twox64ConcatU32StorageKey } =
-      await import("../src/twox-storage-key.mjs");
+      await import("../src/twox-storage-key.ts");
     const leaseKey = twox64ConcatU32StorageKey(
       "SubtensorModule",
       "SubnetLeases",
@@ -285,7 +285,7 @@ describe("loadSubnetLease", () => {
       costRao: 500_000_000_000,
     });
     const { twox64ConcatU32StorageKey } =
-      await import("../src/twox-storage-key.mjs");
+      await import("../src/twox-storage-key.ts");
     const leaseKey = twox64ConcatU32StorageKey(
       "SubtensorModule",
       "SubnetLeases",
@@ -362,7 +362,7 @@ describe("loadSubnetLease", () => {
       costRao: 0,
     });
     const { twox64ConcatU32StorageKey } =
-      await import("../src/twox-storage-key.mjs");
+      await import("../src/twox-storage-key.ts");
     const leaseKey = twox64ConcatU32StorageKey(
       "SubtensorModule",
       "SubnetLeases",
@@ -398,7 +398,7 @@ describe("loadSubnetLease", () => {
       costRao: 0,
     });
     const { twox64ConcatU32StorageKey } =
-      await import("../src/twox-storage-key.mjs");
+      await import("../src/twox-storage-key.ts");
     const leaseKey = twox64ConcatU32StorageKey(
       "SubtensorModule",
       "SubnetLeases",

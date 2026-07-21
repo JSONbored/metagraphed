@@ -20,7 +20,7 @@ export const DEFAULT_SS58_PREFIX = 42;
 // doesn't apply to any caller here: the payload always starts with a
 // non-zero network prefix byte, so the byte array this ever sees can't start
 // with a zero byte.
-function encodeBase58(bytes) {
+function encodeBase58(bytes: Uint8Array): string {
   let num = 0n;
   for (const b of bytes) num = (num << 8n) | BigInt(b);
   let out = "";
@@ -39,9 +39,9 @@ function encodeBase58(bytes) {
  * tested in tests/ss58.test.mjs against real production data.
  */
 export function encodeAccountId32(
-  accountIdBytes,
+  accountIdBytes: Uint8Array | number[],
   prefix = DEFAULT_SS58_PREFIX,
-) {
+): string | null {
   const bytes =
     accountIdBytes instanceof Uint8Array
       ? accountIdBytes
@@ -74,7 +74,7 @@ const SS58_ACCOUNT_ID32_BYTE_LENGTH = 35;
 // this deliberately doesn't handle can't arise for a well-formed address.
 // Returns null for a character outside the alphabet or a value too large to
 // fit in that many bytes (either way, not a valid encoding of that length).
-function decodeBase58(str, byteLength) {
+function decodeBase58(str: string, byteLength: number): Uint8Array | null {
   let num = 0n;
   for (const char of str) {
     const index = BASE58_ALPHABET.indexOf(char);
@@ -99,7 +99,9 @@ function decodeBase58(str, byteLength) {
  * Round-trip tested against tests/ss58.test.mjs's existing encode golden
  * values.
  */
-export function decodeSs58(address) {
+export function decodeSs58(
+  address: unknown,
+): { prefix: number; publicKey: Uint8Array } | null {
   if (typeof address !== "string" || address.length === 0) return null;
   const decoded = decodeBase58(address, SS58_ACCOUNT_ID32_BYTE_LENGTH);
   if (!decoded) return null;
@@ -113,7 +115,7 @@ export function decodeSs58(address) {
   return { prefix: payload[0], publicKey: payload.slice(1) };
 }
 
-function isByteArray(value, len) {
+function isByteArray(value: unknown, len: number): value is number[] {
   return (
     Array.isArray(value) &&
     value.length === len &&
@@ -127,7 +129,7 @@ function isByteArray(value, len) {
  * bare AccountId32 field arrives as `[[b0..b31]]`, not a flat 32-byte array.
  * Unwraps that one layer; returns null if `value` isn't that shape.
  */
-function unwrapAccountId32Newtype(value) {
+function unwrapAccountId32Newtype(value: unknown): number[] | null {
   if (Array.isArray(value) && value.length === 1 && isByteArray(value[0], 32)) {
     return value[0];
   }
@@ -143,18 +145,17 @@ function unwrapAccountId32Newtype(value) {
  * integer, `Raw` is arbitrary-length bytes), and none have been observed on
  * this chain, so declining is safer than guessing (#4669/#4688).
  */
-export function unwrapMultiAddressId(value) {
+export function unwrapMultiAddressId(value: unknown): number[] | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as { name?: unknown; values?: unknown };
   if (
-    !value ||
-    typeof value !== "object" ||
-    Array.isArray(value) ||
-    value.name !== "Id" ||
-    !Array.isArray(value.values) ||
-    value.values.length !== 1
+    candidate.name !== "Id" ||
+    !Array.isArray(candidate.values) ||
+    candidate.values.length !== 1
   ) {
     return null;
   }
-  return unwrapAccountId32Newtype(value.values[0]);
+  return unwrapAccountId32Newtype(candidate.values[0]);
 }
 
 /**
@@ -166,7 +167,10 @@ export function unwrapMultiAddressId(value) {
  * structurally indistinguishable from a `Hash`/`H256` (#4669's accepted
  * ambiguity note), so callers must gate on field-name/context first.
  */
-export function normalizeAccountId32Field(value, prefix = DEFAULT_SS58_PREFIX) {
+export function normalizeAccountId32Field(
+  value: unknown,
+  prefix = DEFAULT_SS58_PREFIX,
+): string | null {
   if (isByteArray(value, 32)) return encodeAccountId32(value, prefix);
   const unwrapped =
     unwrapAccountId32Newtype(value) ?? unwrapMultiAddressId(value);

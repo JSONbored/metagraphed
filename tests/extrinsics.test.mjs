@@ -12,7 +12,7 @@ import {
   formatExtrinsic,
   loadExtrinsics,
 } from "../src/extrinsics.mjs";
-import { encodeCursor } from "../src/cursor.mjs";
+import { encodeCursor } from "../src/cursor.ts";
 import { DAY_MS } from "../workers/config.mjs";
 
 // ---- Pure module (#1345) ---------------------------------------------------

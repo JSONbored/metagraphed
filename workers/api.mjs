@@ -251,7 +251,7 @@ import {
   runHealthProber,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
-import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
+import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 import {
   mergeFreshness,
   mergeRpcEndpoints,

@@ -15,7 +15,7 @@ import {
   recordSubnetIdentityChanges,
   syncSubnetIdentityToPostgres,
 } from "../src/subnet-identity-history.mjs";
-import { encodeCursor } from "../src/cursor.mjs";
+import { encodeCursor } from "../src/cursor.ts";
 
 function identityHistoryRow(overrides = {}) {
   return {

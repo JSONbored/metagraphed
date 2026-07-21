@@ -28,7 +28,7 @@
 const JSON_STRING_OR_NUMBER =
   /"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
 
-function quoteUnsafeIntegers(text) {
+function quoteUnsafeIntegers(text: string): string {
   return text.replace(JSON_STRING_OR_NUMBER, (token) => {
     if (token[0] === '"') return token; // already a string -- leave untouched
     if (!/^-?\d+$/.test(token)) return token; // has a decimal point/exponent -- not a bare integer, Number() already the only sane representation
@@ -42,6 +42,6 @@ function quoteUnsafeIntegers(text) {
  * literal past Number.MAX_SAFE_INTEGER -- which is every call_args payload
  * except the specific numeric fields (U256 limbs, u64 PoW nonces, ...) large
  * enough to need it. */
-export function parseJsonPreservingBigInts(text) {
+export function parseJsonPreservingBigInts(text: string): unknown {
   return JSON.parse(quoteUnsafeIntegers(text));
 }

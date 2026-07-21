@@ -11,7 +11,7 @@
 //
 // Storage keys = twox128("Drand") ++ twox128(<item name>), no further
 // hashing (each is a StorageValue, not a map) -- computed via
-// src/twox-storage-key.mjs's storageMapPrefix and hardcoded below, matching
+// src/twox-storage-key.ts's storageMapPrefix and hardcoded below, matching
 // network-parameters.mjs's own precedent of precomputing fixed pallet/item
 // prefixes rather than hashing on every request (the pallet/item name never
 // changes). Cross-checked against that module's already-verified

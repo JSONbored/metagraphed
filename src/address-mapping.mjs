@@ -11,7 +11,7 @@
 // (sudo-key.mjs/network-parameters.mjs/etc use FINNEY_RPC_URL for
 // Substrate-native methods; eth_call is the Ethereum-native sibling on that
 // identical endpoint). Mirrors src/sudo-key.mjs's live-RPC + KV-cache shape.
-import { encodeAccountId32 } from "./ss58.mjs";
+import { encodeAccountId32 } from "./ss58.ts";
 import { functionSelector } from "./evm-precompiles.mjs";
 
 const ADDRESS_MAPPING_PRECOMPILE_ADDRESS =

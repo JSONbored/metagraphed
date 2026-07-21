@@ -10,7 +10,7 @@
 // Server-side SS58 encoding lives in src/ss58.mjs (extracted #4688) -- see
 // that module's header for why @noble/hashes' blake2b is required over
 // node:crypto's createHash("blake2b512") (unsupported in workerd).
-import { encodeAccountId32 } from "./ss58.mjs";
+import { encodeAccountId32 } from "./ss58.ts";
 
 const SUDO_KEY_STORAGE_KEY =
   "0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b";

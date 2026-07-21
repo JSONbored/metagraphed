@@ -22,7 +22,7 @@
 import postgres from "postgres";
 import * as Sentry from "@sentry/cloudflare";
 import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.mjs";
-import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
+import { decodeCursor, encodeCursor } from "../src/cursor.ts";
 import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
 import {
   buildExtrinsic,
