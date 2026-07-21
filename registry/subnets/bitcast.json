@@ -2105,7 +2105,7 @@
       "authority": "community",
       "id": "sn-93-bitcast-post-api-v2-twitter-coldkeys",
       "kind": "subnet-api",
-      "name": "Bitcast Register a coldkey with additional metadata and get registration tag",
+      "name": "Bitcast Register a Twitter payout wallet with additional metadata and get registration tag",
       "notes": "Auth-gated POST /api/v2/twitter/coldkeys on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
       "probe": {
         "enabled": false,
@@ -2134,7 +2134,7 @@
       "authority": "community",
       "id": "sn-93-bitcast-post-api-v2-twitter-coldkeys-coldkey",
       "kind": "subnet-api",
-      "name": "Bitcast Register a coldkey and get registration tag (legacy)",
+      "name": "Bitcast Register a Twitter payout wallet and get registration tag (legacy)",
       "notes": "Auth-gated POST /api/v2/twitter/coldkeys/{coldkey} on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
       "probe": {
         "enabled": false,
@@ -3584,7 +3584,7 @@
       "authority": "community",
       "id": "sn-93-bitcast-put-api-v2-youtube-users-portal-user-id-payment-coldkey",
       "kind": "subnet-api",
-      "name": "Bitcast Update Payment Coldkey",
+      "name": "Bitcast Update Payment Wallet Address",
       "notes": "Auth-gated PUT /api/v2/youtube/users/{portal_user_id}/payment-coldkey on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false; path-parameterized template.",
       "probe": {
         "enabled": false,
